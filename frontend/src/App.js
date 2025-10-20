@@ -1,0 +1,2445 @@
+import React, { useState, useEffect } from 'react';
+import { Shield, Activity, Video, DollarSign, Users, Plug, Bell, Search, Lock, Bot, Menu, X, ChevronRight, Calendar, FileText, Stethoscope, BarChart3, MessageSquare, Clock, UserCheck, CreditCard, Database, Zap, Settings, ArrowLeft, Plus, Edit, Trash2, Eye, Phone, Mail, MapPin, Check, AlertCircle, TrendingUp, Save, XCircle } from 'lucide-react';
+
+// API Configuration
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+
+// API Service
+const api = {
+  // Appointments
+  getAppointments: async () => {
+    const response = await fetch(`${API_BASE_URL}/appointments`);
+    if (!response.ok) throw new Error('Failed to fetch appointments');
+    return response.json();
+  },
+  createAppointment: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create appointment');
+    return response.json();
+  },
+  updateAppointment: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/appointments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update appointment');
+    return response.json();
+  },
+  deleteAppointment: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/appointments/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete appointment');
+    return response.json();
+  },
+
+  // Patients
+  getPatients: async () => {
+    const response = await fetch(`${API_BASE_URL}/patients`);
+    if (!response.ok) throw new Error('Failed to fetch patients');
+    return response.json();
+  },
+  createPatient: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/patients`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create patient');
+    return response.json();
+  },
+  updatePatient: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update patient');
+    return response.json();
+  },
+  deletePatient: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete patient');
+    return response.json();
+  },
+
+  // Claims
+  getClaims: async () => {
+    const response = await fetch(`${API_BASE_URL}/claims`);
+    if (!response.ok) throw new Error('Failed to fetch claims');
+    return response.json();
+  },
+  createClaim: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/claims`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create claim');
+    return response.json();
+  },
+  updateClaim: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/claims/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update claim');
+    return response.json();
+  },
+  deleteClaim: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/claims/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete claim');
+    return response.json();
+  },
+
+  // Notifications
+  getNotifications: async () => {
+    const response = await fetch(`${API_BASE_URL}/notifications`);
+    if (!response.ok) throw new Error('Failed to fetch notifications');
+    return response.json();
+  },
+  createNotification: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create notification');
+    return response.json();
+  },
+  deleteNotification: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete notification');
+    return response.json();
+  },
+  clearAllNotifications: async () => {
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to clear notifications');
+    return response.json();
+  }
+};
+
+const MedFlowApp = () => {
+  const [currentModule, setCurrentModule] = useState('dashboard');
+  const [currentView, setCurrentView] = useState('list');
+  const [language, setLanguage] = useState('en');
+  const [planTier, setPlanTier] = useState('professional');
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [showForm, setShowForm] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const [appointments, setAppointments] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [claims, setClaims] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  
+  const [tasks, setTasks] = useState([
+    { id: 1, title: 'Review lab results for John Doe', priority: 'High', dueDate: '2025-10-20', status: 'Pending' },
+    { id: 2, title: 'Call pharmacy for Jane Smith prescription', priority: 'High', dueDate: '2025-10-20', status: 'Pending' },
+    { id: 3, title: 'Complete insurance verification', priority: 'Medium', dueDate: '2025-10-21', status: 'Pending' },
+  ]);
+
+  const [user] = useState({
+    name: 'Dr. Sarah Chen',
+    role: 'admin',
+    practice: 'Central Medical Group',
+    avatar: 'SC'
+  });
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [appointmentsData, patientsData, claimsData, notificationsData] = await Promise.all([
+        api.getAppointments(),
+        api.getPatients(),
+        api.getClaims(),
+        api.getNotifications()
+      ]);
+      
+      // Add computed 'name' field to patients for compatibility
+      const patientsWithNames = patientsData.map(p => ({
+        ...p,
+        name: p.name || `${p.first_name} ${p.last_name}`
+      }));
+      
+      setAppointments(appointmentsData);
+      setPatients(patientsWithNames);
+      setClaims(claimsData);
+      setNotifications(notificationsData);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load data. Please check if the backend server is running.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addNotification = async (type, message) => {
+    try {
+      const newNotif = await api.createNotification({ type, message, read: false });
+      setNotifications(prev => [newNotif, ...prev]);
+    } catch (err) {
+      console.error('Error creating notification:', err);
+    }
+  };
+
+  const translations = {
+    en: {
+      dashboard: 'Dashboard',
+      practiceManagement: 'Practice Management',
+      ehr: 'Electronic Health Records',
+      telehealth: 'Telehealth',
+      rcm: 'Revenue Cycle Management',
+      crm: 'Patient CRM',
+      integrations: 'Integrations',
+      welcome: 'Welcome back',
+      todaysAppointments: "Today's Appointments",
+      pendingTasks: 'Pending Tasks',
+      revenue: 'Revenue This Month',
+      activePatients: 'Active Patients',
+      backToDashboard: 'Back to Dashboard'
+    }
+  };
+
+  const t = translations[language];
+
+  const modules = [
+    { id: 'practiceManagement', name: t.practiceManagement, icon: Activity, color: 'from-blue-500 to-cyan-500' },
+    { id: 'ehr', name: t.ehr, icon: FileText, color: 'from-purple-500 to-pink-500' },
+    { id: 'telehealth', name: t.telehealth, icon: Video, color: 'from-green-500 to-emerald-500' },
+    { id: 'rcm', name: t.rcm, icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
+    { id: 'crm', name: t.crm, icon: Users, color: 'from-red-500 to-rose-500' },
+    { id: 'integrations', name: t.integrations, icon: Plug, color: 'from-indigo-500 to-blue-500' }
+  ];
+
+  const planFeatures = {
+    starter: ['practiceManagement', 'rcm'],
+    professional: ['practiceManagement', 'ehr', 'telehealth', 'rcm', 'crm'],
+    enterprise: ['practiceManagement', 'ehr', 'telehealth', 'rcm', 'crm', 'integrations']
+  };
+
+  const hasAccess = (moduleId) => planFeatures[planTier]?.includes(moduleId);
+
+  const completeTask = (taskId) => {
+    setTasks(prevTasks => prevTasks.map(task => 
+      task.id === taskId ? { ...task, status: 'Completed' } : task
+    ));
+  };
+
+  const clearNotification = async (notifId) => {
+    try {
+      await api.deleteNotification(notifId);
+      setNotifications(prevNotifications => prevNotifications.filter(n => n.id !== notifId));
+    } catch (err) {
+      console.error('Error clearing notification:', err);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await api.clearAllNotifications();
+      setNotifications([]);
+    } catch (err) {
+      console.error('Error clearing all notifications:', err);
+    }
+  };
+
+  // New Appointment Form
+  const NewAppointmentForm = () => {
+    const [formData, setFormData] = useState({
+      patientId: '',
+      providerId: '1',
+      date: '',
+      time: '',
+      type: 'Check-up',
+      duration: 30,
+      reason: '',
+      notes: ''
+    });
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      
+      try {
+        const appointmentData = {
+          patient_id: formData.patientId,
+          provider_id: formData.providerId,
+          date: formData.date,
+          time: formData.time,
+          type: formData.type,
+          status: 'Scheduled',
+          reason: formData.reason,
+          duration: formData.duration,
+          notes: formData.notes
+        };
+        
+        const newAppointment = await api.createAppointment(appointmentData);
+        setAppointments(prev => [...prev, newAppointment]);
+        
+        const patient = patients.find(p => p.id.toString() === formData.patientId);
+        await addNotification('appointment', `New appointment scheduled with ${patient?.name || patient?.first_name + ' ' + patient?.last_name}`);
+        
+        setShowForm(null);
+      } catch (err) {
+        console.error('Error creating appointment:', err);
+        alert('Failed to create appointment. Please try again.');
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowForm(null)}>
+        <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b border-slate-700 flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white">New Appointment</h2>
+            </div>
+            <button onClick={() => setShowForm(null)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Patient <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.patientId}
+                    onChange={(e) => setFormData({...formData, patientId: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="">Select Patient</option>
+                    {patients.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} - {p.mrn}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Appointment Type <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.type}
+                    onChange={(e) => setFormData({...formData, type: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="Check-up">Check-up</option>
+                    <option value="Follow-up">Follow-up</option>
+                    <option value="Consultation">Consultation</option>
+                    <option value="Physical">Physical Exam</option>
+                    <option value="Procedure">Procedure</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Date <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.date}
+                    onChange={(e) => setFormData({...formData, date: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Time <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={formData.time}
+                    onChange={(e) => setFormData({...formData, time: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Duration (minutes) <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="15"
+                    step="15"
+                    value={formData.duration}
+                    onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Provider
+                  </label>
+                  <select
+                    value={formData.providerId}
+                    onChange={(e) => setFormData({...formData, providerId: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="1">Dr. Sarah Chen</option>
+                    <option value="2">Dr. Michael Torres</option>
+                    <option value="3">Dr. Emily Watson</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Reason for Visit <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.reason}
+                  onChange={(e) => setFormData({...formData, reason: e.target.value})}
+                  placeholder="e.g., Annual physical, Follow-up on treatment"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Additional Notes
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  rows="3"
+                  placeholder="Any additional information..."
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-6 border-t border-slate-700">
+              <button
+                type="button"
+                onClick={() => setShowForm(null)}
+                className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Save className="w-5 h-5" />
+                Schedule Appointment
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  // New Patient Form
+  const NewPatientForm = () => {
+    const [formData, setFormData] = useState({
+      firstName: '',
+      lastName: '',
+      dob: '',
+      gender: '',
+      phone: '',
+      email: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      insurance: '',
+      insuranceId: '',
+      emergencyContact: '',
+      emergencyPhone: ''
+    });
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      
+      try {
+        // Generate MRN
+        const mrn = `MRN${String(patients.length + 1).padStart(6, '0')}`;
+        
+        const patientData = {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          mrn: mrn,
+          dob: formData.dob,
+          gender: formData.gender,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zip: formData.zip,
+          insurance: formData.insurance,
+          insurance_id: formData.insuranceId,
+          status: 'Active'
+        };
+        
+        const newPatient = await api.createPatient(patientData);
+        // Add computed 'name' field for compatibility
+        const patientWithName = {
+          ...newPatient,
+          name: `${newPatient.first_name} ${newPatient.last_name}`
+        };
+        setPatients(prev => [...prev, patientWithName]);
+        
+        await addNotification('alert', `New patient added: ${newPatient.first_name} ${newPatient.last_name}`);
+        setShowForm(null);
+      } catch (err) {
+        console.error('Error creating patient:', err);
+        alert('Failed to create patient. Please try again.');
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowForm(null)}>
+        <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b border-slate-700 flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white">New Patient</h2>
+            </div>
+            <button onClick={() => setShowForm(null)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Personal Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      First Name <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Last Name <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Date of Birth <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.dob}
+                      onChange={(e) => setFormData({...formData, dob: e.target.value})}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Gender <span className="text-red-400">*</span>
+                    </label>
+                    <select
+                      required
+                      value={formData.gender}
+                      onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Contact Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Phone <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      placeholder="+1-555-0100"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      placeholder="patient@example.com"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Address <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.address}
+                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                      placeholder="123 Main Street"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      City <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.city}
+                      onChange={(e) => setFormData({...formData, city: e.target.value})}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      State <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength="2"
+                      value={formData.state}
+                      onChange={(e) => setFormData({...formData, state: e.target.value.toUpperCase()})}
+                      placeholder="MA"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      ZIP Code <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.zip}
+                      onChange={(e) => setFormData({...formData, zip: e.target.value})}
+                      placeholder="02101"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Insurance Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Insurance Provider
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.insurance}
+                      onChange={(e) => setFormData({...formData, insurance: e.target.value})}
+                      placeholder="Blue Cross"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Insurance ID
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.insuranceId}
+                      onChange={(e) => setFormData({...formData, insuranceId: e.target.value})}
+                      placeholder="BC123456"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Emergency Contact</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Emergency Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.emergencyContact}
+                      onChange={(e) => setFormData({...formData, emergencyContact: e.target.value})}
+                      placeholder="Jane Doe (Spouse)"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Emergency Contact Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.emergencyPhone}
+                      onChange={(e) => setFormData({...formData, emergencyPhone: e.target.value})}
+                      placeholder="+1-555-0200"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-6 border-t border-slate-700">
+              <button
+                type="button"
+                onClick={() => setShowForm(null)}
+                className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Save className="w-5 h-5" />
+                Add Patient
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  // New Claim Form
+  const NewClaimForm = () => {
+    const [formData, setFormData] = useState({
+      patientId: '',
+      payerId: '',
+      serviceDate: '',
+      diagnosisCodes: '',
+      procedureCodes: '',
+      amount: '',
+      notes: ''
+    });
+
+    const payers = [
+      { id: 'BC001', name: 'Blue Cross' },
+      { id: 'AE001', name: 'Aetna' },
+      { id: 'UH001', name: 'UnitedHealth' },
+      { id: 'CG001', name: 'Cigna' },
+      { id: 'HU001', name: 'Humana' }
+    ];
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      
+      try {
+        const claimNo = `CLM-2024-${String(claims.length + 1).padStart(3, '0')}`;
+        const patient = patients.find(p => p.id.toString() === formData.patientId);
+        const payer = payers.find(p => p.id === formData.payerId);
+        
+        const claimData = {
+          claim_no: claimNo,
+          patient_id: formData.patientId,
+          payer: payer?.name || 'Unknown',
+          payer_id: formData.payerId,
+          amount: parseFloat(formData.amount),
+          status: 'Pending',
+          date: new Date().toISOString().split('T')[0],
+          service_date: formData.serviceDate,
+          diagnosis_codes: formData.diagnosisCodes.split(',').map(c => c.trim()),
+          procedure_codes: formData.procedureCodes.split(',').map(c => c.trim()),
+          notes: formData.notes
+        };
+        
+        const newClaim = await api.createClaim(claimData);
+        setClaims(prev => [...prev, newClaim]);
+        
+        await addNotification('claim', `New claim ${claimNo} created for ${patient?.name || patient?.first_name + ' ' + patient?.last_name}`);
+        setShowForm(null);
+      } catch (err) {
+        console.error('Error creating claim:', err);
+        alert('Failed to create claim. Please try again.');
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowForm(null)}>
+        <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-3xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b border-slate-700 flex items-center justify-between bg-gradient-to-r from-yellow-500/10 to-orange-500/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white">New Claim</h2>
+            </div>
+            <button onClick={() => setShowForm(null)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Patient <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.patientId}
+                    onChange={(e) => setFormData({...formData, patientId: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
+                  >
+                    <option value="">Select Patient</option>
+                    {patients.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} - {p.mrn}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Insurance Payer <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.payerId}
+                    onChange={(e) => setFormData({...formData, payerId: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
+                  >
+                    <option value="">Select Payer</option>
+                    {payers.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Service Date <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.serviceDate}
+                    onChange={(e) => setFormData({...formData, serviceDate: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Claim Amount ($) <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                    placeholder="0.00"
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Diagnosis Codes (ICD-10) <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.diagnosisCodes}
+                  onChange={(e) => setFormData({...formData, diagnosisCodes: e.target.value})}
+                  placeholder="e.g., Z00.00, I10 (comma-separated)"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Enter multiple codes separated by commas</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Procedure Codes (CPT) <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.procedureCodes}
+                  onChange={(e) => setFormData({...formData, procedureCodes: e.target.value})}
+                  placeholder="e.g., 99213, 99214 (comma-separated)"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Enter multiple codes separated by commas</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Clinical Notes
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  rows="4"
+                  placeholder="Add any relevant clinical documentation or notes..."
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500 resize-none"
+                />
+              </div>
+
+              <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Bot className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-cyan-400 text-sm font-medium mb-1">AI Coding Assistant</p>
+                    <p className="text-slate-300 text-xs">
+                      Based on the selected patient and service date, AI can suggest appropriate diagnosis and procedure codes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-6 border-t border-slate-700">
+              <button
+                type="button"
+                onClick={() => setShowForm(null)}
+                className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Save className="w-5 h-5" />
+                Create Claim
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  // View/Edit Modal
+  const ViewEditModal = () => {
+    const [editData, setEditData] = useState(editingItem?.data || {});
+    
+    // Update editData when editingItem changes
+    useEffect(() => {
+      if (editingItem?.data) {
+        setEditData(editingItem.data);
+      }
+    }, [editingItem]);
+    
+    if (!editingItem) return null;
+
+    const isView = currentView === 'view';
+    const { type, data } = editingItem;
+
+    const handleSave = async () => {
+      try {
+        if (type === 'appointment') {
+          const updated = await api.updateAppointment(editData.id, editData);
+          setAppointments(prev => prev.map(apt => 
+            apt.id === editData.id ? updated : apt
+          ));
+        } else {
+          const updated = await api.updateClaim(editData.id, editData);
+          setClaims(prev => prev.map(claim => 
+            claim.id === editData.id ? updated : claim
+          ));
+        }
+        await addNotification('alert', `${type === 'appointment' ? 'Appointment' : 'Claim'} updated successfully`);
+        setEditingItem(null);
+      } catch (err) {
+        console.error('Error saving:', err);
+        alert('Failed to save changes. Please try again.');
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingItem(null)}>
+        <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b border-slate-700 flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
+            <h2 className="text-2xl font-bold text-white">
+              {isView ? 'View' : 'Edit'} {type === 'appointment' ? 'Appointment' : 'Claim'}
+            </h2>
+            <button onClick={() => setEditingItem(null)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
+          </div>
+
+          <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+            {type === 'appointment' ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Patient</label>
+                    {isView ? (
+                      <p className="text-white">{editData.patient}</p>
+                    ) : (
+                      <select
+                        value={editData.patientId}
+                        onChange={(e) => {
+                          const patient = patients.find(p => p.id.toString() === e.target.value);
+                          setEditData({...editData, patientId: e.target.value, patient: patient?.name});
+                        }}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                      >
+                        {patients.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Doctor</label>
+                    <p className="text-white">{editData.doctor}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
+                    {isView ? (
+                      <p className="text-white">{editData.date}</p>
+                    ) : (
+                      <input
+                        type="date"
+                        value={editData.date}
+                        onChange={(e) => setEditData({...editData, date: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Time</label>
+                    {isView ? (
+                      <p className="text-white">{editData.time}</p>
+                    ) : (
+                      <input
+                        type="time"
+                        value={editData.time}
+                        onChange={(e) => setEditData({...editData, time: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Type</label>
+                    {isView ? (
+                      <p className="text-white">{editData.type}</p>
+                    ) : (
+                      <select
+                        value={editData.type}
+                        onChange={(e) => setEditData({...editData, type: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="Check-up">Check-up</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="Consultation">Consultation</option>
+                        <option value="Physical">Physical Exam</option>
+                        <option value="Procedure">Procedure</option>
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Duration</label>
+                    {isView ? (
+                      <p className="text-white">{editData.duration} minutes</p>
+                    ) : (
+                      <input
+                        type="number"
+                        value={editData.duration}
+                        onChange={(e) => setEditData({...editData, duration: parseInt(e.target.value)})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Status</label>
+                    {isView ? (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        editData.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {editData.status}
+                      </span>
+                    ) : (
+                      <select
+                        value={editData.status}
+                        onChange={(e) => setEditData({...editData, status: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Reason</label>
+                  {isView ? (
+                    <p className="text-white">{editData.reason}</p>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editData.reason}
+                      onChange={(e) => setEditData({...editData, reason: e.target.value})}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Claim Number</label>
+                    <p className="text-white font-mono">{editData.claimNo}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Status</label>
+                    {isView ? (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        editData.status === 'Approved' ? 'bg-green-500/20 text-green-400' : 
+                        editData.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' : 
+                        'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                        {editData.status}
+                      </span>
+                    ) : (
+                      <select
+                        value={editData.status}
+                        onChange={(e) => setEditData({...editData, status: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Submitted">Submitted</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Denied">Denied</option>
+                        <option value="Paid">Paid</option>
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Patient</label>
+                    <p className="text-white">{editData.patient}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Amount</label>
+                    {isView ? (
+                      <p className="text-white text-lg font-semibold">${editData.amount.toFixed(2)}</p>
+                    ) : (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editData.amount}
+                        onChange={(e) => setEditData({...editData, amount: parseFloat(e.target.value)})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Payer</label>
+                    <p className="text-white">{editData.payer}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Service Date</label>
+                    {isView ? (
+                      <p className="text-white">{editData.serviceDate}</p>
+                    ) : (
+                      <input
+                        type="date"
+                        value={editData.serviceDate}
+                        onChange={(e) => setEditData({...editData, serviceDate: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
+                      />
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Diagnosis Codes</label>
+                  {isView ? (
+                    <div className="flex gap-2 flex-wrap">
+                      {editData.diagnosisCodes?.map((code, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-mono">
+                          {code}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editData.diagnosisCodes?.join(', ')}
+                      onChange={(e) => setEditData({...editData, diagnosisCodes: e.target.value.split(',').map(c => c.trim())})}
+                      placeholder="Z00.00, I10"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Procedure Codes</label>
+                  {isView ? (
+                    <div className="flex gap-2 flex-wrap">
+                      {editData.procedureCodes?.map((code, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm font-mono">
+                          {code}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editData.procedureCodes?.join(', ')}
+                      onChange={(e) => setEditData({...editData, procedureCodes: e.target.value.split(',').map(c => c.trim())})}
+                      placeholder="99213, 99214"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
+                    />
+                  )}
+                </div>
+                {(editData.notes || !isView) && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Notes</label>
+                    {isView ? (
+                      <p className="text-white">{editData.notes}</p>
+                    ) : (
+                      <textarea
+                        value={editData.notes || ''}
+                        onChange={(e) => setEditData({...editData, notes: e.target.value})}
+                        rows="3"
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-6 pt-6 border-t border-slate-700">
+              <button
+                onClick={() => setEditingItem(null)}
+                className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Close
+              </button>
+              {!isView && (
+                <button
+                  onClick={handleSave}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <Save className="w-5 h-5" />
+                  Save Changes
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const StatCard = ({ title, value, icon: Icon, trend, color, onClick }) => (
+    <div 
+      onClick={onClick}
+      className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 cursor-pointer group"
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-slate-400 text-sm mb-2">{title}</p>
+          <p className="text-3xl font-bold text-white mb-2">{value}</p>
+          {trend && (
+            <p className="text-sm text-green-400 flex items-center">
+              <TrendingUp className="w-4 h-4 mr-1" />
+              {trend}
+            </p>
+          )}
+        </div>
+        <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+      </div>
+    </div>
+  );
+
+  const ModuleCard = ({ module, onClick }) => {
+    const Icon = module.icon;
+    const locked = !hasAccess(module.id);
+    
+    return (
+      <button
+        onClick={() => !locked && onClick(module.id)}
+        disabled={locked}
+        className={`relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50 transition-all duration-300 text-left w-full ${!locked && 'hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/20 cursor-pointer'} ${locked && 'opacity-50 cursor-not-allowed'}`}
+      >
+        {locked && <Lock className="absolute top-3 right-3 w-5 h-5 text-slate-500" />}
+        <div className={`w-14 h-14 rounded-lg bg-gradient-to-br ${module.color} flex items-center justify-center mb-4`}>
+          <Icon className="w-7 h-7 text-white" />
+        </div>
+        <h3 className="text-lg font-semibold text-white mb-2">{module.name}</h3>
+        <p className="text-sm text-slate-400">{locked ? 'Upgrade to access' : 'Click to open'}</p>
+      </button>
+    );
+  };
+
+  const AppointmentsQuickView = ({ onClose }) => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-4xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">Today's Appointments</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
+          <div className="space-y-3">
+            {appointments.map(apt => {
+              const patient = patients.find(p => p.id === apt.patient_id);
+              const patientName = apt.patient || patient?.name || 'Unknown Patient';
+              const initials = patientName.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase();
+              
+              return (
+                <div key={apt.id} className="p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-semibold">
+                        {initials}
+                      </div>
+                      <div>
+                        <h3 className="text-white font-semibold">{patientName}</h3>
+                        <p className="text-slate-400 text-sm">{apt.type}</p>
+                      </div>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      apt.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {apt.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-slate-400 ml-13">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {apt.time}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <UserCheck className="w-4 h-4" />
+                      {apt.doctor || 'Dr. Sarah Chen'}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button 
+            onClick={() => {
+              onClose();
+              setCurrentModule('practiceManagement');
+            }}
+            className="w-full mt-6 px-4 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-medium transition-colors"
+          >
+            View All Appointments
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const TasksQuickView = ({ onClose }) => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-3xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">Pending Tasks</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
+          <div className="space-y-3">
+            {tasks.filter(t => t.status === 'Pending').map(task => (
+              <div key={task.id} className="p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-white font-medium">{task.title}</h3>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        task.priority === 'High' ? 'bg-red-500/20 text-red-400' :
+                        task.priority === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {task.priority}
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-sm">Due: {task.dueDate}</p>
+                  </div>
+                  <button 
+                    onClick={() => completeTask(task.id)}
+                    className="p-2 hover:bg-green-500/20 rounded-lg transition-colors group"
+                    title="Mark as complete"
+                  >
+                    <Check className="w-5 h-5 text-slate-400 group-hover:text-green-400" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const RevenueQuickView = ({ onClose }) => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-4xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">Revenue Overview</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="p-4 bg-slate-800/50 rounded-lg">
+              <p className="text-slate-400 text-sm mb-1">Total Billed</p>
+              <p className="text-2xl font-bold text-white">$52,840</p>
+            </div>
+            <div className="p-4 bg-slate-800/50 rounded-lg">
+              <p className="text-slate-400 text-sm mb-1">Collected</p>
+              <p className="text-2xl font-bold text-green-400">$48,200</p>
+            </div>
+            <div className="p-4 bg-slate-800/50 rounded-lg">
+              <p className="text-slate-400 text-sm mb-1">Pending</p>
+              <p className="text-2xl font-bold text-yellow-400">$4,640</p>
+            </div>
+          </div>
+          
+          <h3 className="text-lg font-semibold text-white mb-4">Recent Claims</h3>
+          <div className="space-y-3">
+            {claims.map(claim => {
+              const patient = patients.find(p => p.id === claim.patient_id);
+              const patientName = claim.patient || patient?.name || 'Unknown Patient';
+              
+              return (
+                <div key={claim.id} className="p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h4 className="text-white font-medium">{claim.claimNo}</h4>
+                      <p className="text-slate-400 text-sm">{patientName}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-white font-semibold">${claim.amount.toFixed(2)}</p>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        claim.status === 'Approved' ? 'bg-green-500/20 text-green-400' :
+                        claim.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                        {claim.status}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-slate-500 text-sm">{claim.payer} • {claim.date}</p>
+                </div>
+              );
+            })}
+          </div>
+          <button 
+            onClick={() => {
+              onClose();
+              setCurrentModule('rcm');
+            }}
+            className="w-full mt-6 px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-medium transition-colors"
+          >
+            View All Claims
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const PatientsQuickView = ({ onClose }) => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-4xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">Active Patients</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {patients.map(patient => {
+              const displayName = patient.name || `${patient.first_name || ''} ${patient.last_name || ''}`.trim();
+              const initials = displayName.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase();
+              
+              return (
+                <div key={patient.id} className="p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold">
+                      {initials}
+                    </div>
+                    <div>
+                      <h3 className="text-white font-semibold">{displayName}</h3>
+                      <p className="text-slate-400 text-sm">{patient.mrn}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Calendar className="w-4 h-4" />
+                      <span>{patient.dob}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Phone className="w-4 h-4" />
+                      <span>{patient.phone}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button 
+            onClick={() => {
+              onClose();
+              setCurrentModule('ehr');
+            }}
+            className="w-full mt-6 px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
+          >
+            View All Patients
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const NotificationsPanel = () => (
+    <div className="fixed top-16 right-4 w-96 bg-slate-900 rounded-xl border border-slate-700 shadow-2xl z-50 max-h-[80vh] overflow-hidden">
+      <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-white">Notifications</h3>
+        <div className="flex items-center gap-2">
+          {notifications.length > 0 && (
+            <button 
+              onClick={clearAllNotifications}
+              className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+            >
+              Clear All
+            </button>
+          )}
+          <button onClick={() => setShowNotifications(false)} className="p-1 hover:bg-slate-800 rounded transition-colors">
+            <X className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+      </div>
+      <div className="overflow-y-auto max-h-[calc(80vh-60px)]">
+        {notifications.length === 0 ? (
+          <div className="p-8 text-center text-slate-400">
+            <Bell className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>No notifications</p>
+          </div>
+        ) : (
+          notifications.map(notif => (
+            <div key={notif.id} className={`p-4 border-b border-slate-800 hover:bg-slate-800/50 transition-colors ${!notif.read && 'bg-cyan-500/5'}`}>
+              <div className="flex items-start gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  notif.type === 'appointment' ? 'bg-blue-500/20' :
+                  notif.type === 'claim' ? 'bg-yellow-500/20' :
+                  notif.type === 'alert' ? 'bg-red-500/20' :
+                  'bg-green-500/20'
+                }`}>
+                  {notif.type === 'appointment' && <Calendar className="w-4 h-4 text-blue-400" />}
+                  {notif.type === 'claim' && <DollarSign className="w-4 h-4 text-yellow-400" />}
+                  {notif.type === 'alert' && <AlertCircle className="w-4 h-4 text-red-400" />}
+                  {notif.type === 'message' && <MessageSquare className="w-4 h-4 text-green-400" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm mb-1">{notif.message}</p>
+                  <p className="text-slate-500 text-xs">{notif.time}</p>
+                </div>
+                <button
+                  onClick={() => clearNotification(notif.id)}
+                  className="p-1 hover:bg-slate-700 rounded transition-colors flex-shrink-0"
+                  title="Clear notification"
+                >
+                  <X className="w-4 h-4 text-slate-400 hover:text-white" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  const SearchPanel = () => {
+    const [searchQuery, setSearchQuery] = useState('');
+    
+    const searchResults = [
+      ...patients.filter(p => {
+        const name = p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim();
+        return name.toLowerCase().includes(searchQuery.toLowerCase());
+      }).map(p => ({ type: 'patient', ...p })),
+      ...appointments.filter(a => {
+        const patient = patients.find(p => p.id === a.patient_id);
+        const patientName = a.patient || patient?.name || '';
+        return patientName.toLowerCase().includes(searchQuery.toLowerCase());
+      }).map(a => ({ type: 'appointment', ...a }))
+    ].slice(0, 5);
+
+    return (
+      <div className="fixed top-16 left-1/2 transform -translate-x-1/2 w-full max-w-2xl bg-slate-900 rounded-xl border border-slate-700 shadow-2xl z-50">
+        <div className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search patients, appointments, records..."
+              className="w-full pl-10 pr-10 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              autoFocus
+            />
+            <button onClick={() => setShowSearch(false)} className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-slate-700 rounded">
+              <X className="w-4 h-4 text-slate-400" />
+            </button>
+          </div>
+        </div>
+        {searchQuery && (
+          <div className="border-t border-slate-700 max-h-96 overflow-y-auto">
+            {searchResults.length > 0 ? (
+              searchResults.map((result, idx) => {
+                let displayName;
+                if (result.type === 'patient') {
+                  displayName = result.name || `${result.first_name || ''} ${result.last_name || ''}`.trim();
+                } else {
+                  const patient = patients.find(p => p.id === result.patient_id);
+                  displayName = result.patient || patient?.name || 'Unknown Patient';
+                }
+                
+                return (
+                <div key={idx} className="p-4 hover:bg-slate-800 transition-colors cursor-pointer border-b border-slate-800 last:border-b-0">
+                  <div className="flex items-center gap-3">
+                    {result.type === 'patient' && <Users className="w-5 h-5 text-purple-400" />}
+                    {result.type === 'appointment' && <Calendar className="w-5 h-5 text-blue-400" />}
+                    <div>
+                      <p className="text-white font-medium">{displayName}</p>
+                      <p className="text-slate-400 text-sm">
+                        {result.type === 'patient' ? result.mrn : `${result.date} ${result.time}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+              })
+            ) : (
+              <div className="p-8 text-center text-slate-400">
+                No results found
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const AIAssistantPanel = () => (
+    <div className="fixed bottom-24 right-6 w-96 bg-slate-900 rounded-xl border border-cyan-500/30 shadow-2xl z-50">
+      <div className="p-4 border-b border-slate-700 bg-gradient-to-r from-cyan-500/10 to-blue-500/10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
+            <Bot className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-white font-semibold">AI Assistant</h3>
+            <p className="text-cyan-400 text-xs">How can I help you today?</p>
+          </div>
+          <button onClick={() => setShowAIAssistant(false)} className="p-1 hover:bg-slate-800 rounded">
+            <X className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+      </div>
+      <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+        <div className="p-3 bg-slate-800/50 rounded-lg">
+          <p className="text-cyan-400 text-sm mb-2">📊 Today's Insights</p>
+          <p className="text-slate-300 text-sm">You have {tasks.filter(t => t.status === 'Pending' && t.priority === 'High').length} high-priority tasks requiring attention.</p>
+        </div>
+        <div className="p-3 bg-slate-800/50 rounded-lg">
+          <p className="text-cyan-400 text-sm mb-2">💡 Suggestion</p>
+          <p className="text-slate-300 text-sm">2 appointments can be rescheduled to reduce patient wait time by 15 minutes.</p>
+        </div>
+        <div className="p-3 bg-slate-800/50 rounded-lg">
+          <p className="text-cyan-400 text-sm mb-2">⚠️ Alert</p>
+          <p className="text-slate-300 text-sm">Review documentation for pending claims to reduce denial risk.</p>
+        </div>
+      </div>
+      <div className="p-4 border-t border-slate-700">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Ask me anything..."
+            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500"
+          />
+          <button className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors">
+            <MessageSquare className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">{t.welcome}, {user.name}</h1>
+          <p className="text-slate-400">{user.practice}</p>
+        </div>
+        <div className="flex gap-3">
+          <div className="px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Bot className="w-5 h-5 text-cyan-400" />
+              <span className="text-sm text-cyan-400 font-medium">AI Enabled</span>
+            </div>
+          </div>
+          <div className="px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-green-400" />
+              <span className="text-sm text-green-400 font-medium">HIPAA Compliant</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          title={t.todaysAppointments} 
+          value={appointments.length.toString()} 
+          icon={Calendar} 
+          trend="+12% from yesterday" 
+          color="from-blue-500 to-cyan-500"
+          onClick={() => setSelectedItem('appointments')}
+        />
+        <StatCard 
+          title={t.pendingTasks} 
+          value={tasks.filter(t => t.status === 'Pending').length.toString()} 
+          icon={Clock} 
+          trend={`${tasks.filter(t => t.priority === 'High' && t.status === 'Pending').length} urgent`}
+          color="from-purple-500 to-pink-500"
+          onClick={() => setSelectedItem('tasks')}
+        />
+        <StatCard 
+          title={t.revenue} 
+          value="$48.2K" 
+          icon={DollarSign} 
+          trend="+18% vs last month" 
+          color="from-green-500 to-emerald-500"
+          onClick={() => setSelectedItem('revenue')}
+        />
+        <StatCard 
+          title={t.activePatients} 
+          value={patients.length.toString()} 
+          icon={Users} 
+          trend="+45 this week" 
+          color="from-yellow-500 to-orange-500"
+          onClick={() => setSelectedItem('patients')}
+        />
+      </div>
+
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
+        <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button 
+            onClick={() => setShowForm('appointment')}
+            className="p-4 bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors text-left group"
+          >
+            <Calendar className="w-6 h-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-white font-medium text-sm">New Appointment</p>
+          </button>
+          <button 
+            onClick={() => setShowForm('patient')}
+            className="p-4 bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors text-left group"
+          >
+            <FileText className="w-6 h-6 text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-white font-medium text-sm">Add Patient</p>
+          </button>
+          <button 
+            onClick={() => setCurrentModule('telehealth')}
+            className="p-4 bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors text-left group"
+          >
+            <Video className="w-6 h-6 text-green-400 mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-white font-medium text-sm">Start Video Call</p>
+          </button>
+          <button 
+            onClick={() => setShowForm('claim')}
+            className="p-4 bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors text-left group"
+          >
+            <DollarSign className="w-6 h-6 text-yellow-400 mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-white font-medium text-sm">New Claim</p>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-2xl font-bold text-white mb-6">Available Modules</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {modules.map(module => (
+            <ModuleCard key={module.id} module={module} onClick={(id) => {
+              setCurrentModule(id);
+            }} />
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-lg font-semibold text-white mb-4">Upcoming Appointments</h3>
+          <div className="space-y-3">
+            {appointments.slice(0, 3).map(apt => {
+              const patient = patients.find(p => p.id === apt.patient_id);
+              const patientName = apt.patient || patient?.name || 'Unknown Patient';
+              
+              return (
+                <div key={apt.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors cursor-pointer">
+                  <div>
+                    <p className="text-white font-medium">{patientName}</p>
+                    <p className="text-slate-400 text-sm">{apt.time} - {apt.type}</p>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    apt.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                  }`}>
+                    {apt.status}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-lg font-semibold text-white mb-4">High Priority Tasks</h3>
+          <div className="space-y-3">
+            {tasks.filter(t => t.priority === 'High' && t.status === 'Pending').slice(0, 3).map(task => (
+              <div key={task.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
+                <div className="flex-1">
+                  <p className="text-white font-medium text-sm">{task.title}</p>
+                  <p className="text-slate-400 text-xs">Due: {task.dueDate}</p>
+                </div>
+                <button 
+                  onClick={() => completeTask(task.id)}
+                  className="p-2 hover:bg-green-500/20 rounded-lg transition-colors"
+                >
+                  <Check className="w-4 h-4 text-green-400" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPracticeManagement = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Appointments</h2>
+        <button 
+          onClick={() => setShowForm('appointment')}
+          className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Appointment
+        </button>
+      </div>
+
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-800/50 border-b border-slate-700">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Patient</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Doctor</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Date & Time</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Type</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Status</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {appointments.map((apt, idx) => {
+                const patient = patients.find(p => p.id === apt.patient_id);
+                const patientName = apt.patient || patient?.name || 'Unknown Patient';
+                
+                return (
+                  <tr key={apt.id} className={`border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors ${idx % 2 === 0 ? 'bg-slate-800/10' : ''}`}>
+                    <td className="px-6 py-4 text-white">{patientName}</td>
+                    <td className="px-6 py-4 text-slate-300">{apt.doctor || 'Dr. Sarah Chen'}</td>
+                    <td className="px-6 py-4 text-slate-300">{apt.date} {apt.time}</td>
+                    <td className="px-6 py-4 text-slate-300">{apt.type}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        apt.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {apt.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            setEditingItem({ type: 'appointment', data: apt });
+                            setCurrentView('view');
+                          }}
+                          className="p-2 hover:bg-slate-700 rounded-lg transition-colors" 
+                          title="View"
+                        >
+                          <Eye className="w-4 h-4 text-slate-400" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setEditingItem({ type: 'appointment', data: apt });
+                            setCurrentView('edit');
+                          }}
+                          className="p-2 hover:bg-slate-700 rounded-lg transition-colors" 
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4 text-slate-400" />
+                        </button>
+                        <button 
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to delete this appointment?')) {
+                              try {
+                                await api.deleteAppointment(apt.id);
+                                setAppointments(prev => prev.filter(a => a.id !== apt.id));
+                                await addNotification('alert', 'Appointment deleted successfully');
+                              } catch (err) {
+                                console.error('Error deleting appointment:', err);
+                                alert('Failed to delete appointment');
+                              }
+                            }
+                          }}
+                          className="p-2 hover:bg-slate-700 rounded-lg transition-colors" 
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderEHR = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Patient Records</h2>
+        <button 
+          onClick={() => setShowForm('patient')}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Patient
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {patients.map(patient => {
+          const displayName = patient.name || `${patient.first_name || ''} ${patient.last_name || ''}`.trim();
+          const initials = displayName.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase();
+          
+          return (
+            <div key={patient.id} className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50 hover:border-purple-500/50 transition-all">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold">
+                  {initials}
+                </div>
+                <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
+                  {patient.status}
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">{displayName}</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <FileText className="w-4 h-4" />
+                  <span>MRN: {patient.mrn}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Calendar className="w-4 h-4" />
+                  <span>DOB: {patient.dob}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Phone className="w-4 h-4" />
+                  <span>{patient.phone}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Mail className="w-4 h-4" />
+                  <span className="truncate">{patient.email}</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-700 flex gap-2">
+                <button className="flex-1 px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-sm transition-colors">
+                  View Chart
+                </button>
+                <button className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">
+                  <Edit className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderTelehealth = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-white">Video Consultations</h2>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-8 border border-slate-700/50 text-center">
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+            <Video className="w-10 h-10 text-white" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-3">Start Video Call</h3>
+          <p className="text-slate-400 mb-6">Launch a secure video consultation with your patient</p>
+          <button className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors">
+            Start New Call
+          </button>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-8 border border-slate-700/50 text-center">
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
+            <Calendar className="w-10 h-10 text-white" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-3">Scheduled Sessions</h3>
+          <p className="text-slate-400 mb-6">View and manage upcoming telehealth appointments</p>
+          <button className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors">
+            View Schedule
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50">
+        <h3 className="text-lg font-semibold text-white mb-4">Recent Sessions</h3>
+        <div className="space-y-3">
+          {['John Doe - 45 min - Oct 19, 2025', 'Jane Smith - 30 min - Oct 18, 2025', 'Mike Johnson - 60 min - Oct 17, 2025'].map((session, idx) => (
+            <div key={idx} className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
+              <span className="text-slate-300">{session}</span>
+              <button className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors">
+                View Recording
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderRCM = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Claims Management</h2>
+        <button 
+          onClick={() => setShowForm('claim')}
+          className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Claim
+        </button>
+      </div>
+
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-800/50 border-b border-slate-700">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Claim #</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Patient</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Amount</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Payer</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Date</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Status</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {claims.map((claim, idx) => {
+                const patient = patients.find(p => p.id === claim.patient_id);
+                const patientName = claim.patient || patient?.name || 'Unknown Patient';
+                
+                return (
+                <tr key={claim.id} className={`border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors ${idx % 2 === 0 ? 'bg-slate-800/10' : ''}`}>
+                  <td className="px-6 py-4 text-white font-medium">{claim.claimNo}</td>
+                  <td className="px-6 py-4 text-slate-300">{patientName}</td>
+                  <td className="px-6 py-4 text-slate-300">${claim.amount.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-slate-300">{claim.payer}</td>
+                  <td className="px-6 py-4 text-slate-300">{claim.date}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      claim.status === 'Approved' ? 'bg-green-500/20 text-green-400' : 
+                      claim.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' : 
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {claim.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => {
+                          setEditingItem({ type: 'claim', data: claim });
+                          setCurrentView('view');
+                        }}
+                        className="p-2 hover:bg-slate-700 rounded-lg transition-colors" 
+                        title="View"
+                      >
+                        <Eye className="w-4 h-4 text-slate-400" />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setEditingItem({ type: 'claim', data: claim });
+                          setCurrentView('edit');
+                        }}
+                        className="p-2 hover:bg-slate-700 rounded-lg transition-colors" 
+                        title="Edit"
+                      >
+                        <Edit className="w-4 h-4 text-slate-400" />
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          if (window.confirm('Are you sure you want to delete this claim?')) {
+                            try {
+                              await api.deleteClaim(claim.id);
+                              setClaims(prev => prev.filter(c => c.id !== claim.id));
+                              await addNotification('alert', 'Claim deleted successfully');
+                            } catch (err) {
+                              console.error('Error deleting claim:', err);
+                              alert('Failed to delete claim');
+                            }
+                          }
+                        }}
+                        className="p-2 hover:bg-slate-700 rounded-lg transition-colors" 
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderCRM = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-white">Patient Communications</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50 text-center hover:border-red-500/50 transition-all cursor-pointer">
+          <Mail className="w-12 h-12 mx-auto mb-4 text-red-400" />
+          <h3 className="text-lg font-semibold text-white mb-2">Email Campaign</h3>
+          <p className="text-slate-400 text-sm mb-4">Send bulk emails to patients</p>
+          <button className="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors">
+            Create Campaign
+          </button>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50 text-center hover:border-green-500/50 transition-all cursor-pointer">
+          <MessageSquare className="w-12 h-12 mx-auto mb-4 text-green-400" />
+          <h3 className="text-lg font-semibold text-white mb-2">SMS Reminders</h3>
+          <p className="text-slate-400 text-sm mb-4">Send appointment reminders</p>
+          <button className="w-full px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors">
+            Send SMS
+          </button>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50 text-center hover:border-blue-500/50 transition-all cursor-pointer">
+          <Phone className="w-12 h-12 mx-auto mb-4 text-blue-400" />
+          <h3 className="text-lg font-semibold text-white mb-2">Call Queue</h3>
+          <p className="text-slate-400 text-sm mb-4">Manage patient callbacks</p>
+          <button className="w-full px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors">
+            View Queue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderIntegrations = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-white">API & Integrations</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-lg font-semibold text-white mb-4">API Keys</h3>
+          <div className="space-y-3 mb-4">
+            <div className="p-4 bg-slate-800/50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-slate-300 font-medium">Production API Key</span>
+                <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">Active</span>
+              </div>
+              <code className="text-xs text-slate-500 break-all">medflow_prod_xxxxxxxxxxxxxxxxxxx</code>
+            </div>
+          </div>
+          <button className="w-full px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors">
+            Generate New Key
+          </button>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-lg font-semibold text-white mb-4">Webhooks</h3>
+          <div className="space-y-3 mb-4">
+            <div className="p-4 bg-slate-800/50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-slate-300 font-medium">Appointment Created</span>
+                <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">Active</span>
+              </div>
+              <code className="text-xs text-slate-500 break-all">https://api.example.com/webhook</code>
+            </div>
+          </div>
+          <button className="w-full px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors">
+            Add Webhook
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderModule = () => {
+    const module = modules.find(m => m.id === currentModule);
+    if (!module) return renderDashboard();
+
+    const Icon = module.icon;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setCurrentModule('dashboard')}
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors px-4 py-2 rounded-lg hover:bg-slate-800/50"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>{t.backToDashboard}</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${module.color} flex items-center justify-center shadow-lg`}>
+            <Icon className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-white">{module.name}</h1>
+            <p className="text-slate-400 mt-1">Manage and monitor all activities</p>
+          </div>
+        </div>
+
+        {currentModule === 'practiceManagement' && renderPracticeManagement()}
+        {currentModule === 'ehr' && renderEHR()}
+        {currentModule === 'telehealth' && renderTelehealth()}
+        {currentModule === 'rcm' && renderRCM()}
+        {currentModule === 'crm' && renderCRM()}
+        {currentModule === 'integrations' && renderIntegrations()}
+      </div>
+    );
+  };
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-slate-900 rounded-xl p-8 border border-slate-700">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+              <p className="text-white">Loading data...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4">
+          <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-red-400 font-medium">Error</p>
+              <p className="text-red-300 text-sm">{error}</p>
+            </div>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <header className="bg-slate-900/50 backdrop-blur-md border-b border-slate-800/50 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <button 
+              onClick={() => setCurrentModule('dashboard')}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center">
+                <Stethoscope className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">MedFlow</h1>
+                <p className="text-xs text-slate-400 capitalize">{planTier} Plan</p>
+              </div>
+            </button>
+            
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setShowSearch(!showSearch)}
+                className="p-2 hover:bg-slate-800 rounded-lg transition-colors relative"
+                title="Search"
+              >
+                <Search className="w-5 h-5 text-slate-400" />
+              </button>
+
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 hover:bg-slate-800 rounded-lg transition-colors relative"
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5 text-slate-400" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
+              </button>
+
+              <button 
+                className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                title="Settings"
+              >
+                <Settings className="w-5 h-5 text-slate-400" />
+              </button>
+
+              <button 
+                onClick={() => {
+                  const plans = ['starter', 'professional', 'enterprise'];
+                  const currentIndex = plans.indexOf(planTier);
+                  const nextIndex = (currentIndex + 1) % plans.length;
+                  setPlanTier(plans[nextIndex]);
+                }}
+                className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-400 text-xs font-medium transition-colors"
+              >
+                {planTier}
+              </button>
+
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer hover:scale-105 transition-transform">
+                {user.avatar}
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {currentModule === 'dashboard' ? renderDashboard() : renderModule()}
+      </main>
+
+      <button 
+        onClick={() => setShowAIAssistant(!showAIAssistant)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-110 z-50"
+        title="AI Assistant"
+      >
+        <Bot className="w-6 h-6 text-white" />
+      </button>
+
+      {showForm === 'appointment' && <NewAppointmentForm />}
+      {showForm === 'patient' && <NewPatientForm />}
+      {showForm === 'claim' && <NewClaimForm />}
+      {editingItem && <ViewEditModal />}
+      {selectedItem === 'appointments' && <AppointmentsQuickView onClose={() => setSelectedItem(null)} />}
+      {selectedItem === 'tasks' && <TasksQuickView onClose={() => setSelectedItem(null)} />}
+      {selectedItem === 'revenue' && <RevenueQuickView onClose={() => setSelectedItem(null)} />}
+      {selectedItem === 'patients' && <PatientsQuickView onClose={() => setSelectedItem(null)} />}
+      {showNotifications && <NotificationsPanel />}
+      {showSearch && <SearchPanel />}
+      {showAIAssistant && <AIAssistantPanel />}
+    </div>
+  );
+};
+
+export default MedFlowApp;
