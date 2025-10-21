@@ -322,12 +322,7 @@ const MedFlowApp = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  
+
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [claims, setClaims] = useState([]);
@@ -388,12 +383,45 @@ const MedFlowApp = () => {
       // Update user data if fetched successfully
       if (userData) {
         setUser(userData);
+        // Sync theme and language from user preferences
+        if (userData.preferences) {
+          if (userData.preferences.darkMode !== undefined) {
+            setTheme(userData.preferences.darkMode ? 'dark' : 'light');
+          }
+          if (userData.preferences.language) {
+            setLanguage(userData.preferences.language);
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching data:', err);
       setError('Failed to load data. Please check if the backend server is running.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateUserPreferences = async (newPreferences) => {
+    try {
+      const updatedUser = {
+        ...user,
+        preferences: {
+          ...user.preferences,
+          ...newPreferences
+        }
+      };
+
+      // Update backend
+      await api.updateUser(user.id, { preferences: updatedUser.preferences });
+
+      // Update local state
+      setUser(updatedUser);
+
+      return true;
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+      await addNotification('alert', 'Failed to save preferences');
+      return false;
     }
   };
 
@@ -2561,6 +2589,13 @@ const MedFlowApp = () => {
   };
 
   const UserProfileModal = () => {
+    // Local state for password change
+    const [localPasswordData, setLocalPasswordData] = useState({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+
     // ESC key handler
     useEffect(() => {
       const handleEsc = (e) => {
@@ -2577,25 +2612,25 @@ const MedFlowApp = () => {
       e.preventDefault();
 
       // Validation
-      if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      if (!localPasswordData.currentPassword || !localPasswordData.newPassword || !localPasswordData.confirmPassword) {
         await addNotification('alert', 'Please fill in all password fields');
         return;
       }
 
-      if (passwordData.newPassword !== passwordData.confirmPassword) {
+      if (localPasswordData.newPassword !== localPasswordData.confirmPassword) {
         await addNotification('alert', 'New passwords do not match');
         return;
       }
 
-      if (passwordData.newPassword.length < 6) {
+      if (localPasswordData.newPassword.length < 6) {
         await addNotification('alert', 'Password must be at least 6 characters long');
         return;
       }
 
       try {
-        await api.changePassword(user.id, passwordData.currentPassword, passwordData.newPassword);
+        await api.changePassword(user.id, localPasswordData.currentPassword, localPasswordData.newPassword);
         await addNotification('success', 'Password changed successfully');
-        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setLocalPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setShowChangePassword(false);
       } catch (error) {
         await addNotification('alert', error.message || 'Failed to change password');
@@ -2648,15 +2683,38 @@ const MedFlowApp = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Email Notifications</span>
-                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                <input
+                  type="checkbox"
+                  checked={user.preferences?.emailNotifications ?? true}
+                  onChange={async (e) => {
+                    await updateUserPreferences({ emailNotifications: e.target.checked });
+                  }}
+                  className="form-checkbox h-5 w-5 text-cyan-500"
+                />
               </div>
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>SMS Alerts</span>
-                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                <input
+                  type="checkbox"
+                  checked={user.preferences?.smsAlerts ?? true}
+                  onChange={async (e) => {
+                    await updateUserPreferences({ smsAlerts: e.target.checked });
+                  }}
+                  className="form-checkbox h-5 w-5 text-cyan-500"
+                />
               </div>
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Dark Mode</span>
-                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                <input
+                  type="checkbox"
+                  checked={theme === 'dark'}
+                  onChange={async (e) => {
+                    const isDark = e.target.checked;
+                    setTheme(isDark ? 'dark' : 'light');
+                    await updateUserPreferences({ darkMode: isDark });
+                  }}
+                  className="form-checkbox h-5 w-5 text-cyan-500"
+                />
               </div>
             </div>
           </div>
@@ -2669,7 +2727,7 @@ const MedFlowApp = () => {
                 onClick={() => {
                   setShowChangePassword(!showChangePassword);
                   if (!showChangePassword) {
-                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    setLocalPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                   }
                 }}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -2690,8 +2748,8 @@ const MedFlowApp = () => {
                   </label>
                   <input
                     type="password"
-                    value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    value={localPasswordData.currentPassword}
+                    onChange={(e) => setLocalPasswordData({ ...localPasswordData, currentPassword: e.target.value })}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
                       theme === 'dark'
                         ? 'bg-slate-700 border-slate-600 text-white'
@@ -2706,8 +2764,8 @@ const MedFlowApp = () => {
                   </label>
                   <input
                     type="password"
-                    value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    value={localPasswordData.newPassword}
+                    onChange={(e) => setLocalPasswordData({ ...localPasswordData, newPassword: e.target.value })}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
                       theme === 'dark'
                         ? 'bg-slate-700 border-slate-600 text-white'
@@ -2723,8 +2781,8 @@ const MedFlowApp = () => {
                   </label>
                   <input
                     type="password"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    value={localPasswordData.confirmPassword}
+                    onChange={(e) => setLocalPasswordData({ ...localPasswordData, confirmPassword: e.target.value })}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
                       theme === 'dark'
                         ? 'bg-slate-700 border-slate-600 text-white'
@@ -2797,21 +2855,42 @@ const MedFlowApp = () => {
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Email Notifications</p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Receive email updates for appointments and tasks</p>
                   </div>
-                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                  <input
+                    type="checkbox"
+                    checked={user.preferences?.emailNotifications ?? true}
+                    onChange={async (e) => {
+                      await updateUserPreferences({ emailNotifications: e.target.checked });
+                    }}
+                    className="form-checkbox h-5 w-5 text-cyan-500"
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>SMS Alerts</p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Get text message reminders</p>
                   </div>
-                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                  <input
+                    type="checkbox"
+                    checked={user.preferences?.smsAlerts ?? true}
+                    onChange={async (e) => {
+                      await updateUserPreferences({ smsAlerts: e.target.checked });
+                    }}
+                    className="form-checkbox h-5 w-5 text-cyan-500"
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Push Notifications</p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Browser notifications for important updates</p>
                   </div>
-                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                  <input
+                    type="checkbox"
+                    checked={user.preferences?.pushNotifications ?? true}
+                    onChange={async (e) => {
+                      await updateUserPreferences({ pushNotifications: e.target.checked });
+                    }}
+                    className="form-checkbox h-5 w-5 text-cyan-500"
+                  />
                 </div>
               </div>
             </div>
@@ -2828,7 +2907,11 @@ const MedFlowApp = () => {
                   <input
                     type="checkbox"
                     checked={theme === 'dark'}
-                    onChange={(e) => setTheme(e.target.checked ? 'dark' : 'light')}
+                    onChange={async (e) => {
+                      const isDark = e.target.checked;
+                      setTheme(isDark ? 'dark' : 'light');
+                      await updateUserPreferences({ darkMode: isDark });
+                    }}
                     className="form-checkbox h-5 w-5 text-cyan-500"
                   />
                 </div>
@@ -2836,7 +2919,11 @@ const MedFlowApp = () => {
                   <label className={`block font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Language</label>
                   <select
                     value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
+                    onChange={async (e) => {
+                      const newLanguage = e.target.value;
+                      setLanguage(newLanguage);
+                      await updateUserPreferences({ language: newLanguage });
+                    }}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                   >
                     <option value="en">English</option>
@@ -4137,8 +4224,35 @@ const renderDashboard = () => (
               <button
                 onClick={() => setCurrentView('profile')}
                 className={`w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center font-semibold cursor-pointer hover:scale-105 transition-transform ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+                title="User Profile"
               >
                 {user.avatar}
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsAuthenticated(false);
+                  setUser({
+                    id: 1,
+                    name: 'Dr. Sarah Chen',
+                    role: 'admin',
+                    practice: 'Central Medical Group',
+                    avatar: 'SC',
+                    email: 'sarah.chen@medflow.com',
+                    phone: '(555) 123-4567',
+                    license: 'MD-123456',
+                    specialty: 'Internal Medicine',
+                    preferences: {
+                      emailNotifications: true,
+                      smsAlerts: true,
+                      darkMode: true
+                    }
+                  });
+                }}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400' : 'bg-red-500/20 hover:bg-red-500/30 text-red-600'}`}
+                title="Logout"
+              >
+                Logout
               </button>
             </div>
           </div>
