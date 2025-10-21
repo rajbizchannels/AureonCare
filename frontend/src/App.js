@@ -2934,8 +2934,7 @@ const MedFlowApp = () => {
           </button>
         </div>
       </div>
-    </div>
-  );
+    );
 };
 
 const renderDashboard = () => (
