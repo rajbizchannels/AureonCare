@@ -199,6 +199,50 @@ const api = {
     });
     if (!response.ok) throw new Error('Failed to delete user');
     return response.json();
+  },
+
+  // Auth
+  login: async (email, password) => {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!response.ok) throw new Error('Failed to login');
+    return response.json();
+  },
+  changePassword: async (userId, currentPassword, newPassword) => {
+    const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, currentPassword, newPassword })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to change password');
+    }
+    return response.json();
+  },
+  forgotPassword: async (email) => {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    if (!response.ok) throw new Error('Failed to send password reset email');
+    return response.json();
+  },
+  resetPassword: async (resetToken, newPassword) => {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resetToken, newPassword })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to reset password');
+    }
+    return response.json();
   }
 };
 
@@ -262,6 +306,8 @@ const formatDateTime = (dateTimeString) => {
 };
 
 const MedFlowApp = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [currentModule, setCurrentModule] = useState('dashboard');
   const [currentView, setCurrentView] = useState('list');
   const [language, setLanguage] = useState('en');
@@ -275,6 +321,12 @@ const MedFlowApp = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -2514,11 +2566,41 @@ const MedFlowApp = () => {
       const handleEsc = (e) => {
         if (e.key === 'Escape') {
           setCurrentView('list');
+          setShowChangePassword(false);
         }
       };
       window.addEventListener('keydown', handleEsc);
       return () => window.removeEventListener('keydown', handleEsc);
     }, []);
+
+    const handlePasswordChange = async (e) => {
+      e.preventDefault();
+
+      // Validation
+      if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+        await addNotification('alert', 'Please fill in all password fields');
+        return;
+      }
+
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        await addNotification('alert', 'New passwords do not match');
+        return;
+      }
+
+      if (passwordData.newPassword.length < 6) {
+        await addNotification('alert', 'Password must be at least 6 characters long');
+        return;
+      }
+
+      try {
+        await api.changePassword(user.id, passwordData.currentPassword, passwordData.newPassword);
+        await addNotification('success', 'Password changed successfully');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setShowChangePassword(false);
+      } catch (error) {
+        await addNotification('alert', error.message || 'Failed to change password');
+      }
+    };
 
     return (
       <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => setCurrentView('list')}>
@@ -2577,6 +2659,89 @@ const MedFlowApp = () => {
                 <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
               </div>
             </div>
+          </div>
+
+          {/* Change Password Section */}
+          <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Security</h4>
+              <button
+                onClick={() => {
+                  setShowChangePassword(!showChangePassword);
+                  if (!showChangePassword) {
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  showChangePassword
+                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
+                    : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400'
+                }`}
+              >
+                {showChangePassword ? 'Cancel' : 'Change Password'}
+              </button>
+            </div>
+
+            {showChangePassword && (
+              <form onSubmit={handlePasswordChange} className="space-y-3 mt-4">
+                <div>
+                  <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white"
+                >
+                  Update Password
+                </button>
+              </form>
+            )}
           </div>
 
           <div className="flex gap-3">
@@ -2704,9 +2869,6 @@ const MedFlowApp = () => {
                     <option value="60">1 hour</option>
                   </select>
                 </div>
-                <button className="w-full px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg font-medium transition-colors">
-                  Change Password
-                </button>
               </div>
             </div>
 
@@ -3566,7 +3728,300 @@ const renderDashboard = () => (
       </div>
     );
   };
-  
+
+  // Login Page Component
+  const LoginPage = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loginError, setLoginError] = useState('');
+
+    const handleLogin = async (e) => {
+      e.preventDefault();
+      setLoginError('');
+
+      try {
+        const response = await api.login(email, password);
+        setUser(response.user);
+        setIsAuthenticated(true);
+        await addNotification('success', 'Login successful');
+      } catch (error) {
+        setLoginError(error.message || 'Login failed');
+      }
+    };
+
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gradient-to-br from-gray-100 via-white to-gray-100'}`}>
+        <div className={`max-w-md w-full mx-4 rounded-xl border p-8 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-white" />
+            </div>
+            <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>MedFlow</h1>
+            <p className={`mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Sign in to your account</p>
+          </div>
+
+          {loginError && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg">
+              <p className="text-red-400 text-sm">{loginError}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                required
+                placeholder="your.email@example.com"
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                required
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center">
+                <input type="checkbox" className="form-checkbox h-4 w-4 text-cyan-500 rounded" />
+                <span className={`ml-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Remember me</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-cyan-500 hover:text-cyan-400 transition-colors"
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white"
+            >
+              Sign In
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={`text-sm ${theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-600 hover:text-gray-700'}`}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4 inline mr-1" /> : <Moon className="w-4 h-4 inline mr-1" />}
+              {theme === 'dark' ? 'Light' : 'Dark'} Mode
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Forgot Password Modal
+  const ForgotPasswordModal = () => {
+    const [email, setEmail] = useState('');
+    const [resetToken, setResetToken] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [step, setStep] = useState(1); // 1: request reset, 2: enter new password
+    const [resetError, setResetError] = useState('');
+    const [resetSuccess, setResetSuccess] = useState('');
+
+    const handleRequestReset = async (e) => {
+      e.preventDefault();
+      setResetError('');
+      setResetSuccess('');
+
+      try {
+        const response = await api.forgotPassword(email);
+        setResetSuccess('Password reset instructions sent! Check your email.');
+        setResetToken(response.resetToken); // In production, this would come from email
+        setStep(2);
+      } catch (error) {
+        setResetError(error.message || 'Failed to send reset email');
+      }
+    };
+
+    const handleResetPassword = async (e) => {
+      e.preventDefault();
+      setResetError('');
+
+      if (newPassword !== confirmPassword) {
+        setResetError('Passwords do not match');
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        setResetError('Password must be at least 6 characters long');
+        return;
+      }
+
+      try {
+        await api.resetPassword(resetToken, newPassword);
+        setResetSuccess('Password reset successfully! You can now login.');
+        setTimeout(() => {
+          setShowForgotPassword(false);
+          setStep(1);
+          setEmail('');
+          setResetToken('');
+          setNewPassword('');
+          setConfirmPassword('');
+        }, 2000);
+      } catch (error) {
+        setResetError(error.message || 'Failed to reset password');
+      }
+    };
+
+    return (
+      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => setShowForgotPassword(false)}>
+        <div className={`rounded-xl border max-w-md w-full p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {step === 1 ? 'Forgot Password' : 'Reset Password'}
+            </h2>
+            <button onClick={() => setShowForgotPassword(false)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
+              <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+            </button>
+          </div>
+
+          {resetError && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg">
+              <p className="text-red-400 text-sm">{resetError}</p>
+            </div>
+          )}
+
+          {resetSuccess && (
+            <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-lg">
+              <p className="text-green-400 text-sm">{resetSuccess}</p>
+            </div>
+          )}
+
+          {step === 1 ? (
+            <form onSubmit={handleRequestReset} className="space-y-4">
+              <div>
+                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  required
+                  placeholder="your.email@example.com"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white"
+              >
+                Send Reset Link
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Reset Token (Check your email)
+                </label>
+                <input
+                  type="text"
+                  value={resetToken}
+                  onChange={(e) => setResetToken(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  required
+                  placeholder="Enter reset token from email"
+                />
+              </div>
+              <div>
+                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  required
+                  minLength={6}
+                  placeholder="Enter new password"
+                />
+              </div>
+              <div>
+                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  required
+                  minLength={6}
+                  placeholder="Confirm new password"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white"
+              >
+                Reset Password
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LoginPage />
+        {showForgotPassword && <ForgotPasswordModal />}
+      </>
+    );
+  }
+
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gradient-to-br from-gray-100 via-white to-gray-100'}`}>
       {/* Loading Overlay */}
