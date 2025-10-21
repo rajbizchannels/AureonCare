@@ -83,9 +83,41 @@ CREATE TABLE IF NOT EXISTS tasks (
   priority VARCHAR(50) DEFAULT 'Medium',
   due_date DATE,
   status VARCHAR(50) DEFAULT 'Pending',
+  description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Users Table
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  role VARCHAR(100) DEFAULT 'user',
+  practice VARCHAR(255),
+  avatar VARCHAR(10),
+  email VARCHAR(255),
+  phone VARCHAR(20),
+  license VARCHAR(50),
+  specialty VARCHAR(100),
+  preferences JSONB DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert sample user
+INSERT INTO users (name, role, practice, avatar, email, phone, license, specialty, preferences)
+VALUES (
+  'Dr. Sarah Chen',
+  'admin',
+  'Central Medical Group',
+  'SC',
+  'sarah.chen@medflow.com',
+  '(555) 123-4567',
+  'MD-123456',
+  'Internal Medicine',
+  '{"emailNotifications": true, "smsAlerts": true, "darkMode": true}'::jsonb
+)
+ON CONFLICT DO NOTHING;
 
 -- Insert sample provider
 INSERT INTO providers (first_name, last_name, specialization, email, phone)
