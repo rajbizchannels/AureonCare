@@ -133,6 +133,65 @@ const api = {
   }
 };
 
+// Utility Functions for Date and Currency Formatting
+const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return '$0.00';
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(numAmount)) return '$0.00';
+  return `$${numAmount.toFixed(2)}`;
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.error('Date formatting error:', error);
+    return 'Invalid Date';
+  }
+};
+
+const formatTime = (timeString) => {
+  if (!timeString) return 'N/A';
+  try {
+    // If it's a full timestamp, extract time
+    if (timeString.includes('T') || timeString.includes(' ')) {
+      const date = new Date(timeString);
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    // If it's already in HH:MM format
+    return timeString.substring(0, 5);
+  } catch (error) {
+    return 'Invalid Time';
+  }
+};
+
+const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return 'N/A';
+  try {
+    const date = new Date(dateTimeString);
+    if (isNaN(date.getTime())) return 'Invalid DateTime';
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return 'Invalid DateTime';
+  }
+};
+
 const MedFlowApp = () => {
   const [currentModule, setCurrentModule] = useState('dashboard');
   const [currentView, setCurrentView] = useState('list');
@@ -1202,7 +1261,7 @@ const MedFlowApp = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Amount</label>
                     {isView ? (
-                      <p className="text-white text-lg font-semibold">${editData.amount.toFixed(2)}</p>
+                      <p className="text-white text-lg font-semibold">{formatCurrency(editData.amount)}</p>
                     ) : (
                       <input
                         type="number"
@@ -1392,7 +1451,7 @@ const MedFlowApp = () => {
                   <div className="flex items-center gap-4 text-sm text-slate-400 ml-13">
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {apt.time}
+                      {formatTime(apt.time)}
                     </div>
                     <div className="flex items-center gap-1">
                       <UserCheck className="w-4 h-4" />
@@ -1499,7 +1558,7 @@ const MedFlowApp = () => {
                       <p className="text-slate-400 text-sm">{patientName}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-semibold">${claim.amount.toFixed(2)}</p>
+                      <p className="text-white font-semibold">{formatCurrency(claim.amount)}</p>
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                         claim.status === 'Approved' ? 'bg-green-500/20 text-green-400' :
                         claim.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' :
@@ -1509,7 +1568,7 @@ const MedFlowApp = () => {
                       </span>
                     </div>
                   </div>
-                  <p className="text-slate-500 text-sm">{claim.payer} • {claim.date}</p>
+                  <p className="text-slate-500 text-sm">{claim.payer} • {formatDate(claim.date)}</p>
                 </div>
               );
             })}
@@ -1557,7 +1616,7 @@ const MedFlowApp = () => {
                   <div className="space-y-1 text-sm">
                     <div className="flex items-center gap-2 text-slate-400">
                       <Calendar className="w-4 h-4" />
-                      <span>{patient.dob}</span>
+                      <span>{formatDate(patient.dob)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-slate-400">
                       <Phone className="w-4 h-4" />
@@ -1871,7 +1930,7 @@ const MedFlowApp = () => {
                 <div key={apt.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors cursor-pointer">
                   <div>
                     <p className="text-white font-medium">{patientName}</p>
-                    <p className="text-slate-400 text-sm">{apt.time} - {apt.type}</p>
+                    <p className="text-slate-400 text-sm">{formatTime(apt.time)} - {apt.type}</p>
                   </div>
                   <span className={`px-2 py-1 rounded text-xs ${
                     apt.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
@@ -1942,7 +2001,7 @@ const MedFlowApp = () => {
                   <tr key={apt.id} className={`border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors ${idx % 2 === 0 ? 'bg-slate-800/10' : ''}`}>
                     <td className="px-6 py-4 text-white">{patientName}</td>
                     <td className="px-6 py-4 text-slate-300">{apt.doctor || 'Dr. Sarah Chen'}</td>
-                    <td className="px-6 py-4 text-slate-300">{apt.date} {apt.time}</td>
+                    <td className="px-6 py-4 text-slate-300">{formatDate(apt.date)} {formatTime(apt.time)}</td>
                     <td className="px-6 py-4 text-slate-300">{apt.type}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -2039,7 +2098,7 @@ const MedFlowApp = () => {
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
                   <Calendar className="w-4 h-4" />
-                  <span>DOB: {patient.dob}</span>
+                  <span>DOB: {formatDate(patient.dob)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
                   <Phone className="w-4 h-4" />
@@ -2145,9 +2204,9 @@ const MedFlowApp = () => {
                 <tr key={claim.id} className={`border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors ${idx % 2 === 0 ? 'bg-slate-800/10' : ''}`}>
                   <td className="px-6 py-4 text-white font-medium">{claim.claimNo}</td>
                   <td className="px-6 py-4 text-slate-300">{patientName}</td>
-                  <td className="px-6 py-4 text-slate-300">${claim.amount.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-slate-300">{formatCurrency(claim.amount)}</td>
                   <td className="px-6 py-4 text-slate-300">{claim.payer}</td>
-                  <td className="px-6 py-4 text-slate-300">{claim.date}</td>
+                  <td className="px-6 py-4 text-slate-300">{formatDate(claim.date)}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       claim.status === 'Approved' ? 'bg-green-500/20 text-green-400' : 
