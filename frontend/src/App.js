@@ -1074,16 +1074,21 @@ const MedFlowApp = () => {
       try {
         if (type === 'appointment') {
           const updated = await api.updateAppointment(editData.id, editData);
-          setAppointments(prev => prev.map(apt => 
+          setAppointments(prev => prev.map(apt =>
             apt.id === editData.id ? updated : apt
+          ));
+        } else if (type === 'patient') {
+          const updated = await api.updatePatient(editData.id, editData);
+          setPatients(prev => prev.map(patient =>
+            patient.id === editData.id ? {...updated, name: updated.name || `${updated.first_name} ${updated.last_name}`} : patient
           ));
         } else {
           const updated = await api.updateClaim(editData.id, editData);
-          setClaims(prev => prev.map(claim => 
+          setClaims(prev => prev.map(claim =>
             claim.id === editData.id ? updated : claim
           ));
         }
-        await addNotification('alert', `${type === 'appointment' ? 'Appointment' : 'Claim'} updated successfully`);
+        await addNotification('alert', `${type === 'appointment' ? 'Appointment' : type === 'patient' ? 'Patient' : 'Claim'} updated successfully`);
         setEditingItem(null);
       } catch (err) {
         console.error('Error saving:', err);
@@ -1096,7 +1101,7 @@ const MedFlowApp = () => {
         <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
           <div className="p-6 border-b border-slate-700 flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
             <h2 className="text-2xl font-bold text-white">
-              {isView ? 'View' : 'Edit'} {type === 'appointment' ? 'Appointment' : 'Claim'}
+              {isView ? 'View' : 'Edit'} {type === 'appointment' ? 'Appointment' : type === 'patient' ? 'Patient Chart' : 'Claim'}
             </h2>
             <button onClick={() => setEditingItem(null)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
               <X className="w-5 h-5 text-slate-400" />
@@ -1133,11 +1138,11 @@ const MedFlowApp = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
                     {isView ? (
-                      <p className="text-white">{editData.date}</p>
+                      <p className="text-white">{formatDate(editData.date)}</p>
                     ) : (
                       <input
                         type="date"
-                        value={editData.date}
+                        value={editData.date ? editData.date.split('T')[0] : ''}
                         onChange={(e) => setEditData({...editData, date: e.target.value})}
                         className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
                       />
@@ -1146,7 +1151,7 @@ const MedFlowApp = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Time</label>
                     {isView ? (
-                      <p className="text-white">{editData.time}</p>
+                      <p className="text-white">{formatTime(editData.time)}</p>
                     ) : (
                       <input
                         type="time"
@@ -1223,12 +1228,116 @@ const MedFlowApp = () => {
                   )}
                 </div>
               </div>
+            ) : type === 'patient' ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">First Name</label>
+                    {isView ? (
+                      <p className="text-white">{editData.first_name}</p>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editData.first_name || ''}
+                        onChange={(e) => setEditData({...editData, first_name: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Last Name</label>
+                    {isView ? (
+                      <p className="text-white">{editData.last_name}</p>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editData.last_name || ''}
+                        onChange={(e) => setEditData({...editData, last_name: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">MRN</label>
+                    <p className="text-white font-mono">{editData.mrn || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Date of Birth</label>
+                    {isView ? (
+                      <p className="text-white">{formatDate(editData.dob)}</p>
+                    ) : (
+                      <input
+                        type="date"
+                        value={(editData.dob || '').split('T')[0]}
+                        onChange={(e) => setEditData({...editData, dob: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Gender</label>
+                    {isView ? (
+                      <p className="text-white">{editData.gender || 'N/A'}</p>
+                    ) : (
+                      <select
+                        value={editData.gender || ''}
+                        onChange={(e) => setEditData({...editData, gender: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Phone</label>
+                    {isView ? (
+                      <p className="text-white">{editData.phone}</p>
+                    ) : (
+                      <input
+                        type="tel"
+                        value={editData.phone || ''}
+                        onChange={(e) => setEditData({...editData, phone: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
+                    {isView ? (
+                      <p className="text-white">{editData.email}</p>
+                    ) : (
+                      <input
+                        type="email"
+                        value={editData.email || ''}
+                        onChange={(e) => setEditData({...editData, email: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Address</label>
+                    {isView ? (
+                      <p className="text-white">{editData.address || 'N/A'}</p>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editData.address || ''}
+                        onChange={(e) => setEditData({...editData, address: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Claim Number</label>
-                    <p className="text-white font-mono">{editData.claimNo}</p>
+                    <p className="text-white font-mono">{editData.claimNo || editData.claim_no || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Status</label>
@@ -1279,12 +1388,12 @@ const MedFlowApp = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Service Date</label>
                     {isView ? (
-                      <p className="text-white">{editData.serviceDate}</p>
+                      <p className="text-white">{formatDate(editData.serviceDate || editData.service_date)}</p>
                     ) : (
                       <input
                         type="date"
-                        value={editData.serviceDate}
-                        onChange={(e) => setEditData({...editData, serviceDate: e.target.value})}
+                        value={(editData.serviceDate || editData.service_date || '').split('T')[0]}
+                        onChange={(e) => setEditData({...editData, serviceDate: e.target.value, service_date: e.target.value})}
                         className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
                       />
                     )}
@@ -1745,14 +1854,22 @@ const MedFlowApp = () => {
                 }
                 
                 return (
-                <div key={idx} className="p-4 hover:bg-slate-800 transition-colors cursor-pointer border-b border-slate-800 last:border-b-0">
+                <div
+                  key={idx}
+                  onClick={() => {
+                    setCurrentView('view');
+                    setEditingItem({ type: result.type, data: result });
+                    setShowSearch(false);
+                  }}
+                  className="p-4 hover:bg-slate-800 transition-colors cursor-pointer border-b border-slate-800 last:border-b-0"
+                >
                   <div className="flex items-center gap-3">
                     {result.type === 'patient' && <Users className="w-5 h-5 text-purple-400" />}
                     {result.type === 'appointment' && <Calendar className="w-5 h-5 text-blue-400" />}
                     <div>
                       <p className="text-white font-medium">{displayName}</p>
                       <p className="text-slate-400 text-sm">
-                        {result.type === 'patient' ? result.mrn : `${result.date} ${result.time}`}
+                        {result.type === 'patient' ? result.mrn : `${formatDate(result.date)} ${formatTime(result.time)}`}
                       </p>
                     </div>
                   </div>
@@ -1810,6 +1927,78 @@ const MedFlowApp = () => {
           <button className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors">
             <MessageSquare className="w-4 h-4" />
           </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const UserProfileModal = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setCurrentView('list')}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">User Profile</h2>
+          <button onClick={() => setCurrentView('list')} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+              {user.avatar}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-white">{user.name}</h3>
+              <p className="text-slate-400 capitalize">{user.role}</p>
+              <p className="text-slate-500 text-sm">{user.practice}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Email</p>
+              <p className="text-white">sarah.chen@medflow.com</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Phone</p>
+              <p className="text-white">(555) 123-4567</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">License</p>
+              <p className="text-white">MD-123456</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Specialty</p>
+              <p className="text-white">Internal Medicine</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-800/50 rounded-lg p-4">
+            <h4 className="text-white font-semibold mb-3">Preferences</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">Email Notifications</span>
+                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">SMS Alerts</span>
+                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">Dark Mode</span>
+                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">
+              Edit Profile
+            </button>
+            <button onClick={() => setCurrentView('list')} className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium transition-colors">
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -2110,10 +2299,22 @@ const MedFlowApp = () => {
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-slate-700 flex gap-2">
-                <button className="flex-1 px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-sm transition-colors">
+                <button
+                  onClick={() => {
+                    setCurrentView('view');
+                    setEditingItem({ type: 'patient', data: patient });
+                  }}
+                  className="flex-1 px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-sm transition-colors"
+                >
                   View Chart
                 </button>
-                <button className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">
+                <button
+                  onClick={() => {
+                    setCurrentView('edit');
+                    setEditingItem({ type: 'patient', data: patient });
+                  }}
+                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
+                >
                   <Edit className="w-4 h-4" />
                 </button>
               </div>
@@ -2466,9 +2667,12 @@ const MedFlowApp = () => {
                 {planTier}
               </button>
 
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer hover:scale-105 transition-transform">
+              <button
+                onClick={() => setCurrentView('profile')}
+                className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer hover:scale-105 transition-transform"
+              >
                 {user.avatar}
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -2497,6 +2701,7 @@ const MedFlowApp = () => {
       {showNotifications && <NotificationsPanel />}
       {showSearch && <SearchPanel />}
       {showAIAssistant && <AIAssistantPanel />}
+      {currentView === 'profile' && <UserProfileModal />}
     </div>
   );
 };
