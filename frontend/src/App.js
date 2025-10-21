@@ -2935,10 +2935,10 @@ const MedFlowApp = () => {
         </div>
       </div>
     </div>
-    );
-  };
+  );
+};
 
-  const renderDashboard = () => (
+const renderDashboard = () => (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
