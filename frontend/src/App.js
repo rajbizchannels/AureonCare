@@ -133,6 +133,65 @@ const api = {
   }
 };
 
+// Utility Functions for Date and Currency Formatting
+const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return '$0.00';
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(numAmount)) return '$0.00';
+  return `$${numAmount.toFixed(2)}`;
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.error('Date formatting error:', error);
+    return 'Invalid Date';
+  }
+};
+
+const formatTime = (timeString) => {
+  if (!timeString) return 'N/A';
+  try {
+    // If it's a full timestamp, extract time
+    if (timeString.includes('T') || timeString.includes(' ')) {
+      const date = new Date(timeString);
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    // If it's already in HH:MM format
+    return timeString.substring(0, 5);
+  } catch (error) {
+    return 'Invalid Time';
+  }
+};
+
+const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return 'N/A';
+  try {
+    const date = new Date(dateTimeString);
+    if (isNaN(date.getTime())) return 'Invalid DateTime';
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return 'Invalid DateTime';
+  }
+};
+
 const MedFlowApp = () => {
   const [currentModule, setCurrentModule] = useState('dashboard');
   const [currentView, setCurrentView] = useState('list');
@@ -1015,16 +1074,21 @@ const MedFlowApp = () => {
       try {
         if (type === 'appointment') {
           const updated = await api.updateAppointment(editData.id, editData);
-          setAppointments(prev => prev.map(apt => 
+          setAppointments(prev => prev.map(apt =>
             apt.id === editData.id ? updated : apt
+          ));
+        } else if (type === 'patient') {
+          const updated = await api.updatePatient(editData.id, editData);
+          setPatients(prev => prev.map(patient =>
+            patient.id === editData.id ? {...updated, name: updated.name || `${updated.first_name} ${updated.last_name}`} : patient
           ));
         } else {
           const updated = await api.updateClaim(editData.id, editData);
-          setClaims(prev => prev.map(claim => 
+          setClaims(prev => prev.map(claim =>
             claim.id === editData.id ? updated : claim
           ));
         }
-        await addNotification('alert', `${type === 'appointment' ? 'Appointment' : 'Claim'} updated successfully`);
+        await addNotification('alert', `${type === 'appointment' ? 'Appointment' : type === 'patient' ? 'Patient' : 'Claim'} updated successfully`);
         setEditingItem(null);
       } catch (err) {
         console.error('Error saving:', err);
@@ -1037,7 +1101,7 @@ const MedFlowApp = () => {
         <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
           <div className="p-6 border-b border-slate-700 flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
             <h2 className="text-2xl font-bold text-white">
-              {isView ? 'View' : 'Edit'} {type === 'appointment' ? 'Appointment' : 'Claim'}
+              {isView ? 'View' : 'Edit'} {type === 'appointment' ? 'Appointment' : type === 'patient' ? 'Patient Chart' : 'Claim'}
             </h2>
             <button onClick={() => setEditingItem(null)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
               <X className="w-5 h-5 text-slate-400" />
@@ -1074,11 +1138,11 @@ const MedFlowApp = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
                     {isView ? (
-                      <p className="text-white">{editData.date}</p>
+                      <p className="text-white">{formatDate(editData.date)}</p>
                     ) : (
                       <input
                         type="date"
-                        value={editData.date}
+                        value={editData.date ? editData.date.split('T')[0] : ''}
                         onChange={(e) => setEditData({...editData, date: e.target.value})}
                         className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
                       />
@@ -1087,7 +1151,7 @@ const MedFlowApp = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Time</label>
                     {isView ? (
-                      <p className="text-white">{editData.time}</p>
+                      <p className="text-white">{formatTime(editData.time)}</p>
                     ) : (
                       <input
                         type="time"
@@ -1164,12 +1228,116 @@ const MedFlowApp = () => {
                   )}
                 </div>
               </div>
+            ) : type === 'patient' ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">First Name</label>
+                    {isView ? (
+                      <p className="text-white">{editData.first_name}</p>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editData.first_name || ''}
+                        onChange={(e) => setEditData({...editData, first_name: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Last Name</label>
+                    {isView ? (
+                      <p className="text-white">{editData.last_name}</p>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editData.last_name || ''}
+                        onChange={(e) => setEditData({...editData, last_name: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">MRN</label>
+                    <p className="text-white font-mono">{editData.mrn || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Date of Birth</label>
+                    {isView ? (
+                      <p className="text-white">{formatDate(editData.dob)}</p>
+                    ) : (
+                      <input
+                        type="date"
+                        value={(editData.dob || '').split('T')[0]}
+                        onChange={(e) => setEditData({...editData, dob: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Gender</label>
+                    {isView ? (
+                      <p className="text-white">{editData.gender || 'N/A'}</p>
+                    ) : (
+                      <select
+                        value={editData.gender || ''}
+                        onChange={(e) => setEditData({...editData, gender: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Phone</label>
+                    {isView ? (
+                      <p className="text-white">{editData.phone}</p>
+                    ) : (
+                      <input
+                        type="tel"
+                        value={editData.phone || ''}
+                        onChange={(e) => setEditData({...editData, phone: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
+                    {isView ? (
+                      <p className="text-white">{editData.email}</p>
+                    ) : (
+                      <input
+                        type="email"
+                        value={editData.email || ''}
+                        onChange={(e) => setEditData({...editData, email: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Address</label>
+                    {isView ? (
+                      <p className="text-white">{editData.address || 'N/A'}</p>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editData.address || ''}
+                        onChange={(e) => setEditData({...editData, address: e.target.value})}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Claim Number</label>
-                    <p className="text-white font-mono">{editData.claimNo}</p>
+                    <p className="text-white font-mono">{editData.claimNo || editData.claim_no || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Status</label>
@@ -1202,7 +1370,7 @@ const MedFlowApp = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Amount</label>
                     {isView ? (
-                      <p className="text-white text-lg font-semibold">${editData.amount.toFixed(2)}</p>
+                      <p className="text-white text-lg font-semibold">{formatCurrency(editData.amount)}</p>
                     ) : (
                       <input
                         type="number"
@@ -1220,12 +1388,12 @@ const MedFlowApp = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Service Date</label>
                     {isView ? (
-                      <p className="text-white">{editData.serviceDate}</p>
+                      <p className="text-white">{formatDate(editData.serviceDate || editData.service_date)}</p>
                     ) : (
                       <input
                         type="date"
-                        value={editData.serviceDate}
-                        onChange={(e) => setEditData({...editData, serviceDate: e.target.value})}
+                        value={(editData.serviceDate || editData.service_date || '').split('T')[0]}
+                        onChange={(e) => setEditData({...editData, serviceDate: e.target.value, service_date: e.target.value})}
                         className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
                       />
                     )}
@@ -1392,7 +1560,7 @@ const MedFlowApp = () => {
                   <div className="flex items-center gap-4 text-sm text-slate-400 ml-13">
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {apt.time}
+                      {formatTime(apt.time)}
                     </div>
                     <div className="flex items-center gap-1">
                       <UserCheck className="w-4 h-4" />
@@ -1473,15 +1641,21 @@ const MedFlowApp = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="p-4 bg-slate-800/50 rounded-lg">
               <p className="text-slate-400 text-sm mb-1">Total Billed</p>
-              <p className="text-2xl font-bold text-white">$52,840</p>
+              <p className="text-2xl font-bold text-white">
+                {formatCurrency(claims.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
+              </p>
             </div>
             <div className="p-4 bg-slate-800/50 rounded-lg">
               <p className="text-slate-400 text-sm mb-1">Collected</p>
-              <p className="text-2xl font-bold text-green-400">$48,200</p>
+              <p className="text-2xl font-bold text-green-400">
+                {formatCurrency(claims.filter(c => c.status === 'Approved' || c.status === 'Paid').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
+              </p>
             </div>
             <div className="p-4 bg-slate-800/50 rounded-lg">
               <p className="text-slate-400 text-sm mb-1">Pending</p>
-              <p className="text-2xl font-bold text-yellow-400">$4,640</p>
+              <p className="text-2xl font-bold text-yellow-400">
+                {formatCurrency(claims.filter(c => c.status === 'Pending' || c.status === 'Submitted').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
+              </p>
             </div>
           </div>
           
@@ -1495,11 +1669,11 @@ const MedFlowApp = () => {
                 <div key={claim.id} className="p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <h4 className="text-white font-medium">{claim.claimNo}</h4>
+                      <h4 className="text-white font-medium">{claim.claimNo || claim.claim_no || 'N/A'}</h4>
                       <p className="text-slate-400 text-sm">{patientName}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-semibold">${claim.amount.toFixed(2)}</p>
+                      <p className="text-white font-semibold">{formatCurrency(claim.amount)}</p>
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                         claim.status === 'Approved' ? 'bg-green-500/20 text-green-400' :
                         claim.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' :
@@ -1509,7 +1683,7 @@ const MedFlowApp = () => {
                       </span>
                     </div>
                   </div>
-                  <p className="text-slate-500 text-sm">{claim.payer} • {claim.date}</p>
+                  <p className="text-slate-500 text-sm">{claim.payer} • {formatDate(claim.date)}</p>
                 </div>
               );
             })}
@@ -1557,7 +1731,7 @@ const MedFlowApp = () => {
                   <div className="space-y-1 text-sm">
                     <div className="flex items-center gap-2 text-slate-400">
                       <Calendar className="w-4 h-4" />
-                      <span>{patient.dob}</span>
+                      <span>{formatDate(patient.dob)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-slate-400">
                       <Phone className="w-4 h-4" />
@@ -1686,14 +1860,22 @@ const MedFlowApp = () => {
                 }
                 
                 return (
-                <div key={idx} className="p-4 hover:bg-slate-800 transition-colors cursor-pointer border-b border-slate-800 last:border-b-0">
+                <div
+                  key={idx}
+                  onClick={() => {
+                    setCurrentView('view');
+                    setEditingItem({ type: result.type, data: result });
+                    setShowSearch(false);
+                  }}
+                  className="p-4 hover:bg-slate-800 transition-colors cursor-pointer border-b border-slate-800 last:border-b-0"
+                >
                   <div className="flex items-center gap-3">
                     {result.type === 'patient' && <Users className="w-5 h-5 text-purple-400" />}
                     {result.type === 'appointment' && <Calendar className="w-5 h-5 text-blue-400" />}
                     <div>
                       <p className="text-white font-medium">{displayName}</p>
                       <p className="text-slate-400 text-sm">
-                        {result.type === 'patient' ? result.mrn : `${result.date} ${result.time}`}
+                        {result.type === 'patient' ? result.mrn : `${formatDate(result.date)} ${formatTime(result.time)}`}
                       </p>
                     </div>
                   </div>
@@ -1728,15 +1910,33 @@ const MedFlowApp = () => {
         </div>
       </div>
       <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-        <div className="p-3 bg-slate-800/50 rounded-lg">
+        <div
+          onClick={() => {
+            setSelectedItem('tasks');
+            setShowAIAssistant(false);
+          }}
+          className="p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+        >
           <p className="text-cyan-400 text-sm mb-2">📊 Today's Insights</p>
           <p className="text-slate-300 text-sm">You have {tasks.filter(t => t.status === 'Pending' && t.priority === 'High').length} high-priority tasks requiring attention.</p>
         </div>
-        <div className="p-3 bg-slate-800/50 rounded-lg">
+        <div
+          onClick={() => {
+            setSelectedItem('appointments');
+            setShowAIAssistant(false);
+          }}
+          className="p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+        >
           <p className="text-cyan-400 text-sm mb-2">💡 Suggestion</p>
           <p className="text-slate-300 text-sm">2 appointments can be rescheduled to reduce patient wait time by 15 minutes.</p>
         </div>
-        <div className="p-3 bg-slate-800/50 rounded-lg">
+        <div
+          onClick={() => {
+            setCurrentModule('rcm');
+            setShowAIAssistant(false);
+          }}
+          className="p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+        >
           <p className="text-cyan-400 text-sm mb-2">⚠️ Alert</p>
           <p className="text-slate-300 text-sm">Review documentation for pending claims to reduce denial risk.</p>
         </div>
@@ -1751,6 +1951,227 @@ const MedFlowApp = () => {
           <button className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors">
             <MessageSquare className="w-4 h-4" />
           </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const UserProfileModal = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setCurrentView('list')}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">User Profile</h2>
+          <button onClick={() => setCurrentView('list')} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+              {user.avatar}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-white">{user.name}</h3>
+              <p className="text-slate-400 capitalize">{user.role}</p>
+              <p className="text-slate-500 text-sm">{user.practice}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Email</p>
+              <p className="text-white">sarah.chen@medflow.com</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Phone</p>
+              <p className="text-white">(555) 123-4567</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">License</p>
+              <p className="text-white">MD-123456</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Specialty</p>
+              <p className="text-white">Internal Medicine</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-800/50 rounded-lg p-4">
+            <h4 className="text-white font-semibold mb-3">Preferences</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">Email Notifications</span>
+                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">SMS Alerts</span>
+                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">Dark Mode</span>
+                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setCurrentView('edit');
+                setEditingItem({ type: 'userProfile', data: user });
+              }}
+              className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+            >
+              Edit Profile
+            </button>
+            <button onClick={() => setCurrentView('list')} className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium transition-colors">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const SettingsModal = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setCurrentView('list')}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-3xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-slate-700 flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
+          <h2 className="text-2xl font-bold text-white">Settings</h2>
+          <button onClick={() => setCurrentView('list')} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+          <div className="space-y-6">
+            {/* General Settings */}
+            <div className="bg-slate-800/50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">General Settings</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Email Notifications</p>
+                    <p className="text-slate-400 text-sm">Receive email updates for appointments and tasks</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">SMS Alerts</p>
+                    <p className="text-slate-400 text-sm">Get text message reminders</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Push Notifications</p>
+                    <p className="text-slate-400 text-sm">Browser notifications for important updates</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                </div>
+              </div>
+            </div>
+
+            {/* Appearance */}
+            <div className="bg-slate-800/50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Appearance</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Dark Mode</p>
+                    <p className="text-slate-400 text-sm">Use dark theme</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                </div>
+                <div>
+                  <label className="block text-white font-medium mb-2">Language</label>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Privacy & Security */}
+            <div className="bg-slate-800/50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Privacy & Security</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Two-Factor Authentication</p>
+                    <p className="text-slate-400 text-sm">Enhanced account security</p>
+                  </div>
+                  <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Enabled</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Session Timeout</p>
+                    <p className="text-slate-400 text-sm">Auto logout after inactivity</p>
+                  </div>
+                  <select className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500">
+                    <option value="15">15 minutes</option>
+                    <option value="30" selected>30 minutes</option>
+                    <option value="60">1 hour</option>
+                  </select>
+                </div>
+                <button className="w-full px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg font-medium transition-colors">
+                  Change Password
+                </button>
+              </div>
+            </div>
+
+            {/* Integration Settings */}
+            <div className="bg-slate-800/50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Integrations</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Calendar Sync</p>
+                      <p className="text-slate-400 text-sm">Google Calendar integration</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors">
+                    Connected
+                  </button>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Email Provider</p>
+                      <p className="text-slate-400 text-sm">Gmail integration</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">
+                    Connect
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <button onClick={() => setCurrentView('list')} className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">
+              Cancel
+            </button>
+            <button className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg font-medium transition-colors">
+              Save Changes
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1860,18 +2281,24 @@ const MedFlowApp = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50">
-          <h3 className="text-lg font-semibold text-white mb-4">Upcoming Appointments</h3>
+        <div
+          onClick={() => setSelectedItem('appointments')}
+          className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50 cursor-pointer hover:border-blue-500/50 transition-all"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Upcoming Appointments</h3>
+            <ChevronRight className="w-5 h-5 text-slate-400" />
+          </div>
           <div className="space-y-3">
             {appointments.slice(0, 3).map(apt => {
               const patient = patients.find(p => p.id === apt.patient_id);
               const patientName = apt.patient || patient?.name || 'Unknown Patient';
-              
+
               return (
-                <div key={apt.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors cursor-pointer">
+                <div key={apt.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
                   <div>
                     <p className="text-white font-medium">{patientName}</p>
-                    <p className="text-slate-400 text-sm">{apt.time} - {apt.type}</p>
+                    <p className="text-slate-400 text-sm">{formatTime(apt.time)} - {apt.type}</p>
                   </div>
                   <span className={`px-2 py-1 rounded text-xs ${
                     apt.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
@@ -1884,8 +2311,14 @@ const MedFlowApp = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50">
-          <h3 className="text-lg font-semibold text-white mb-4">High Priority Tasks</h3>
+        <div
+          onClick={() => setSelectedItem('tasks')}
+          className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50 cursor-pointer hover:border-purple-500/50 transition-all"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">High Priority Tasks</h3>
+            <ChevronRight className="w-5 h-5 text-slate-400" />
+          </div>
           <div className="space-y-3">
             {tasks.filter(t => t.priority === 'High' && t.status === 'Pending').slice(0, 3).map(task => (
               <div key={task.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
@@ -1893,8 +2326,11 @@ const MedFlowApp = () => {
                   <p className="text-white font-medium text-sm">{task.title}</p>
                   <p className="text-slate-400 text-xs">Due: {task.dueDate}</p>
                 </div>
-                <button 
-                  onClick={() => completeTask(task.id)}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    completeTask(task.id);
+                  }}
                   className="p-2 hover:bg-green-500/20 rounded-lg transition-colors"
                 >
                   <Check className="w-4 h-4 text-green-400" />
@@ -1942,7 +2378,7 @@ const MedFlowApp = () => {
                   <tr key={apt.id} className={`border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors ${idx % 2 === 0 ? 'bg-slate-800/10' : ''}`}>
                     <td className="px-6 py-4 text-white">{patientName}</td>
                     <td className="px-6 py-4 text-slate-300">{apt.doctor || 'Dr. Sarah Chen'}</td>
-                    <td className="px-6 py-4 text-slate-300">{apt.date} {apt.time}</td>
+                    <td className="px-6 py-4 text-slate-300">{formatDate(apt.date)} {formatTime(apt.time)}</td>
                     <td className="px-6 py-4 text-slate-300">{apt.type}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -2039,7 +2475,7 @@ const MedFlowApp = () => {
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
                   <Calendar className="w-4 h-4" />
-                  <span>DOB: {patient.dob}</span>
+                  <span>DOB: {formatDate(patient.dob)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
                   <Phone className="w-4 h-4" />
@@ -2051,10 +2487,22 @@ const MedFlowApp = () => {
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-slate-700 flex gap-2">
-                <button className="flex-1 px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-sm transition-colors">
+                <button
+                  onClick={() => {
+                    setCurrentView('view');
+                    setEditingItem({ type: 'patient', data: patient });
+                  }}
+                  className="flex-1 px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-sm transition-colors"
+                >
                   View Chart
                 </button>
-                <button className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">
+                <button
+                  onClick={() => {
+                    setCurrentView('edit');
+                    setEditingItem({ type: 'patient', data: patient });
+                  }}
+                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
+                >
                   <Edit className="w-4 h-4" />
                 </button>
               </div>
@@ -2143,11 +2591,11 @@ const MedFlowApp = () => {
                 
                 return (
                 <tr key={claim.id} className={`border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors ${idx % 2 === 0 ? 'bg-slate-800/10' : ''}`}>
-                  <td className="px-6 py-4 text-white font-medium">{claim.claimNo}</td>
+                  <td className="px-6 py-4 text-white font-medium">{claim.claimNo || claim.claim_no || 'N/A'}</td>
                   <td className="px-6 py-4 text-slate-300">{patientName}</td>
-                  <td className="px-6 py-4 text-slate-300">${claim.amount.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-slate-300">{formatCurrency(claim.amount)}</td>
                   <td className="px-6 py-4 text-slate-300">{claim.payer}</td>
-                  <td className="px-6 py-4 text-slate-300">{claim.date}</td>
+                  <td className="px-6 py-4 text-slate-300">{formatDate(claim.date)}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       claim.status === 'Approved' ? 'bg-green-500/20 text-green-400' : 
@@ -2218,7 +2666,10 @@ const MedFlowApp = () => {
           <Mail className="w-12 h-12 mx-auto mb-4 text-red-400" />
           <h3 className="text-lg font-semibold text-white mb-2">Email Campaign</h3>
           <p className="text-slate-400 text-sm mb-4">Send bulk emails to patients</p>
-          <button className="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors">
+          <button
+            onClick={() => setShowForm('campaign')}
+            className="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+          >
             Create Campaign
           </button>
         </div>
@@ -2227,7 +2678,10 @@ const MedFlowApp = () => {
           <MessageSquare className="w-12 h-12 mx-auto mb-4 text-green-400" />
           <h3 className="text-lg font-semibold text-white mb-2">SMS Reminders</h3>
           <p className="text-slate-400 text-sm mb-4">Send appointment reminders</p>
-          <button className="w-full px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors">
+          <button
+            onClick={() => setShowForm('sms')}
+            className="w-full px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors"
+          >
             Send SMS
           </button>
         </div>
@@ -2236,7 +2690,10 @@ const MedFlowApp = () => {
           <Phone className="w-12 h-12 mx-auto mb-4 text-blue-400" />
           <h3 className="text-lg font-semibold text-white mb-2">Call Queue</h3>
           <p className="text-slate-400 text-sm mb-4">Manage patient callbacks</p>
-          <button className="w-full px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors">
+          <button
+            onClick={() => setShowForm('callQueue')}
+            className="w-full px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors"
+          >
             View Queue
           </button>
         </div>
@@ -2388,7 +2845,8 @@ const MedFlowApp = () => {
                 )}
               </button>
 
-              <button 
+              <button
+                onClick={() => setCurrentView('settings')}
                 className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
                 title="Settings"
               >
@@ -2407,9 +2865,12 @@ const MedFlowApp = () => {
                 {planTier}
               </button>
 
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer hover:scale-105 transition-transform">
+              <button
+                onClick={() => setCurrentView('profile')}
+                className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer hover:scale-105 transition-transform"
+              >
                 {user.avatar}
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -2438,6 +2899,8 @@ const MedFlowApp = () => {
       {showNotifications && <NotificationsPanel />}
       {showSearch && <SearchPanel />}
       {showAIAssistant && <AIAssistantPanel />}
+      {currentView === 'profile' && <UserProfileModal />}
+      {currentView === 'settings' && <SettingsModal />}
     </div>
   );
 };
