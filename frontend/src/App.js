@@ -1641,15 +1641,21 @@ const MedFlowApp = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="p-4 bg-slate-800/50 rounded-lg">
               <p className="text-slate-400 text-sm mb-1">Total Billed</p>
-              <p className="text-2xl font-bold text-white">$52,840</p>
+              <p className="text-2xl font-bold text-white">
+                {formatCurrency(claims.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
+              </p>
             </div>
             <div className="p-4 bg-slate-800/50 rounded-lg">
               <p className="text-slate-400 text-sm mb-1">Collected</p>
-              <p className="text-2xl font-bold text-green-400">$48,200</p>
+              <p className="text-2xl font-bold text-green-400">
+                {formatCurrency(claims.filter(c => c.status === 'Approved' || c.status === 'Paid').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
+              </p>
             </div>
             <div className="p-4 bg-slate-800/50 rounded-lg">
               <p className="text-slate-400 text-sm mb-1">Pending</p>
-              <p className="text-2xl font-bold text-yellow-400">$4,640</p>
+              <p className="text-2xl font-bold text-yellow-400">
+                {formatCurrency(claims.filter(c => c.status === 'Pending' || c.status === 'Submitted').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
+              </p>
             </div>
           </div>
           
@@ -1663,7 +1669,7 @@ const MedFlowApp = () => {
                 <div key={claim.id} className="p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <h4 className="text-white font-medium">{claim.claimNo}</h4>
+                      <h4 className="text-white font-medium">{claim.claimNo || claim.claim_no || 'N/A'}</h4>
                       <p className="text-slate-400 text-sm">{patientName}</p>
                     </div>
                     <div className="text-right">
@@ -1904,15 +1910,33 @@ const MedFlowApp = () => {
         </div>
       </div>
       <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-        <div className="p-3 bg-slate-800/50 rounded-lg">
+        <div
+          onClick={() => {
+            setSelectedItem('tasks');
+            setShowAIAssistant(false);
+          }}
+          className="p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+        >
           <p className="text-cyan-400 text-sm mb-2">📊 Today's Insights</p>
           <p className="text-slate-300 text-sm">You have {tasks.filter(t => t.status === 'Pending' && t.priority === 'High').length} high-priority tasks requiring attention.</p>
         </div>
-        <div className="p-3 bg-slate-800/50 rounded-lg">
+        <div
+          onClick={() => {
+            setSelectedItem('appointments');
+            setShowAIAssistant(false);
+          }}
+          className="p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+        >
           <p className="text-cyan-400 text-sm mb-2">💡 Suggestion</p>
           <p className="text-slate-300 text-sm">2 appointments can be rescheduled to reduce patient wait time by 15 minutes.</p>
         </div>
-        <div className="p-3 bg-slate-800/50 rounded-lg">
+        <div
+          onClick={() => {
+            setCurrentModule('rcm');
+            setShowAIAssistant(false);
+          }}
+          className="p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+        >
           <p className="text-cyan-400 text-sm mb-2">⚠️ Alert</p>
           <p className="text-slate-300 text-sm">Review documentation for pending claims to reduce denial risk.</p>
         </div>
@@ -1992,11 +2016,160 @@ const MedFlowApp = () => {
           </div>
 
           <div className="flex gap-3">
-            <button className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">
+            <button
+              onClick={() => {
+                setCurrentView('edit');
+                setEditingItem({ type: 'userProfile', data: user });
+              }}
+              className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+            >
               Edit Profile
             </button>
             <button onClick={() => setCurrentView('list')} className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium transition-colors">
               Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const SettingsModal = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setCurrentView('list')}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-3xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-slate-700 flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
+          <h2 className="text-2xl font-bold text-white">Settings</h2>
+          <button onClick={() => setCurrentView('list')} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+          <div className="space-y-6">
+            {/* General Settings */}
+            <div className="bg-slate-800/50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">General Settings</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Email Notifications</p>
+                    <p className="text-slate-400 text-sm">Receive email updates for appointments and tasks</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">SMS Alerts</p>
+                    <p className="text-slate-400 text-sm">Get text message reminders</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Push Notifications</p>
+                    <p className="text-slate-400 text-sm">Browser notifications for important updates</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                </div>
+              </div>
+            </div>
+
+            {/* Appearance */}
+            <div className="bg-slate-800/50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Appearance</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Dark Mode</p>
+                    <p className="text-slate-400 text-sm">Use dark theme</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+                </div>
+                <div>
+                  <label className="block text-white font-medium mb-2">Language</label>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Privacy & Security */}
+            <div className="bg-slate-800/50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Privacy & Security</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Two-Factor Authentication</p>
+                    <p className="text-slate-400 text-sm">Enhanced account security</p>
+                  </div>
+                  <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Enabled</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Session Timeout</p>
+                    <p className="text-slate-400 text-sm">Auto logout after inactivity</p>
+                  </div>
+                  <select className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500">
+                    <option value="15">15 minutes</option>
+                    <option value="30" selected>30 minutes</option>
+                    <option value="60">1 hour</option>
+                  </select>
+                </div>
+                <button className="w-full px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg font-medium transition-colors">
+                  Change Password
+                </button>
+              </div>
+            </div>
+
+            {/* Integration Settings */}
+            <div className="bg-slate-800/50 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Integrations</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Calendar Sync</p>
+                      <p className="text-slate-400 text-sm">Google Calendar integration</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors">
+                    Connected
+                  </button>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Email Provider</p>
+                      <p className="text-slate-400 text-sm">Gmail integration</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors">
+                    Connect
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <button onClick={() => setCurrentView('list')} className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">
+              Cancel
+            </button>
+            <button className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg font-medium transition-colors">
+              Save Changes
             </button>
           </div>
         </div>
@@ -2108,15 +2281,21 @@ const MedFlowApp = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50">
-          <h3 className="text-lg font-semibold text-white mb-4">Upcoming Appointments</h3>
+        <div
+          onClick={() => setSelectedItem('appointments')}
+          className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50 cursor-pointer hover:border-blue-500/50 transition-all"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Upcoming Appointments</h3>
+            <ChevronRight className="w-5 h-5 text-slate-400" />
+          </div>
           <div className="space-y-3">
             {appointments.slice(0, 3).map(apt => {
               const patient = patients.find(p => p.id === apt.patient_id);
               const patientName = apt.patient || patient?.name || 'Unknown Patient';
-              
+
               return (
-                <div key={apt.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors cursor-pointer">
+                <div key={apt.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
                   <div>
                     <p className="text-white font-medium">{patientName}</p>
                     <p className="text-slate-400 text-sm">{formatTime(apt.time)} - {apt.type}</p>
@@ -2132,8 +2311,14 @@ const MedFlowApp = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50">
-          <h3 className="text-lg font-semibold text-white mb-4">High Priority Tasks</h3>
+        <div
+          onClick={() => setSelectedItem('tasks')}
+          className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-slate-700/50 cursor-pointer hover:border-purple-500/50 transition-all"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">High Priority Tasks</h3>
+            <ChevronRight className="w-5 h-5 text-slate-400" />
+          </div>
           <div className="space-y-3">
             {tasks.filter(t => t.priority === 'High' && t.status === 'Pending').slice(0, 3).map(task => (
               <div key={task.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
@@ -2141,8 +2326,11 @@ const MedFlowApp = () => {
                   <p className="text-white font-medium text-sm">{task.title}</p>
                   <p className="text-slate-400 text-xs">Due: {task.dueDate}</p>
                 </div>
-                <button 
-                  onClick={() => completeTask(task.id)}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    completeTask(task.id);
+                  }}
                   className="p-2 hover:bg-green-500/20 rounded-lg transition-colors"
                 >
                   <Check className="w-4 h-4 text-green-400" />
@@ -2403,7 +2591,7 @@ const MedFlowApp = () => {
                 
                 return (
                 <tr key={claim.id} className={`border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors ${idx % 2 === 0 ? 'bg-slate-800/10' : ''}`}>
-                  <td className="px-6 py-4 text-white font-medium">{claim.claimNo}</td>
+                  <td className="px-6 py-4 text-white font-medium">{claim.claimNo || claim.claim_no || 'N/A'}</td>
                   <td className="px-6 py-4 text-slate-300">{patientName}</td>
                   <td className="px-6 py-4 text-slate-300">{formatCurrency(claim.amount)}</td>
                   <td className="px-6 py-4 text-slate-300">{claim.payer}</td>
@@ -2478,7 +2666,10 @@ const MedFlowApp = () => {
           <Mail className="w-12 h-12 mx-auto mb-4 text-red-400" />
           <h3 className="text-lg font-semibold text-white mb-2">Email Campaign</h3>
           <p className="text-slate-400 text-sm mb-4">Send bulk emails to patients</p>
-          <button className="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors">
+          <button
+            onClick={() => setShowForm('campaign')}
+            className="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+          >
             Create Campaign
           </button>
         </div>
@@ -2487,7 +2678,10 @@ const MedFlowApp = () => {
           <MessageSquare className="w-12 h-12 mx-auto mb-4 text-green-400" />
           <h3 className="text-lg font-semibold text-white mb-2">SMS Reminders</h3>
           <p className="text-slate-400 text-sm mb-4">Send appointment reminders</p>
-          <button className="w-full px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors">
+          <button
+            onClick={() => setShowForm('sms')}
+            className="w-full px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors"
+          >
             Send SMS
           </button>
         </div>
@@ -2496,7 +2690,10 @@ const MedFlowApp = () => {
           <Phone className="w-12 h-12 mx-auto mb-4 text-blue-400" />
           <h3 className="text-lg font-semibold text-white mb-2">Call Queue</h3>
           <p className="text-slate-400 text-sm mb-4">Manage patient callbacks</p>
-          <button className="w-full px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors">
+          <button
+            onClick={() => setShowForm('callQueue')}
+            className="w-full px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors"
+          >
             View Queue
           </button>
         </div>
@@ -2648,7 +2845,8 @@ const MedFlowApp = () => {
                 )}
               </button>
 
-              <button 
+              <button
+                onClick={() => setCurrentView('settings')}
                 className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
                 title="Settings"
               >
@@ -2702,6 +2900,7 @@ const MedFlowApp = () => {
       {showSearch && <SearchPanel />}
       {showAIAssistant && <AIAssistantPanel />}
       {currentView === 'profile' && <UserProfileModal />}
+      {currentView === 'settings' && <SettingsModal />}
     </div>
   );
 };
