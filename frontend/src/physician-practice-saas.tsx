@@ -1,16 +1,68 @@
-import React, { useState } from 'react';
-import { Shield, Activity, Video, DollarSign, Users, Plug, Settings, Bell, Search, Globe, Lock, Bot, Menu, X, ChevronRight, Calendar, FileText, Stethoscope, BarChart3, MessageSquare, Clock, UserCheck, CreditCard, Database, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Activity, Video, DollarSign, Users, Plug, Settings, Bell, Search, Globe, Lock, Bot, Menu, X, ChevronRight, Calendar, FileText, Stethoscope, BarChart3, MessageSquare, Clock, UserCheck, CreditCard, Database, Zap, Edit, Trash2, Plus, Building2, UserCircle } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+
+const API_URL = 'http://localhost:3000/api';
+
+// Utility function to format dates
+const formatDate = (date) => {
+  if (!date) return 'N/A';
+  try {
+    if (typeof date === 'string') {
+      return format(parseISO(date), 'MMM dd, yyyy');
+    }
+    return format(new Date(date), 'MMM dd, yyyy');
+  } catch (error) {
+    console.error('Date formatting error:', error);
+    return 'Invalid Date';
+  }
+};
+
+// Utility function to format time
+const formatTime = (time) => {
+  if (!time) return 'N/A';
+  try {
+    return time.substring(0, 5); // HH:MM format
+  } catch (error) {
+    return 'Invalid Time';
+  }
+};
+
+// Utility function to format currency
+const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return '$0.00';
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(numAmount)) return '$0.00';
+  return `$${numAmount.toFixed(2)}`;
+};
 
 const MedFlowApp = () => {
   const [currentModule, setCurrentModule] = useState('dashboard');
   const [language, setLanguage] = useState('en');
   const [planTier, setPlanTier] = useState('professional');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showSettingsPopup, setShowSettingsPopup] = useState(false);
+  const [showAIPopup, setShowAIPopup] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [showDoctorProfile, setShowDoctorProfile] = useState(false);
+  const [showEditAppointment, setShowEditAppointment] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+
+  // Data states
+  const [appointments, setAppointments] = useState([]);
+  const [claims, setClaims] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [user] = useState({
     name: 'Dr. Sarah Chen',
     role: 'admin',
     practice: 'Central Medical Group',
-    avatar: 'SC'
+    avatar: 'SC',
+    specialty: 'Internal Medicine',
+    license: 'MD-123456',
+    email: 'sarah.chen@medflow.com',
+    phone: '(555) 123-4567'
   });
 
   const translations = {
@@ -22,6 +74,8 @@ const MedFlowApp = () => {
       rcm: 'Revenue Cycle Management',
       crm: 'Patient CRM',
       integrations: 'Integrations',
+      clinicAdmin: 'Clinic Admin',
+      saasAdmin: 'SaaS Admin',
       settings: 'Settings',
       logout: 'Logout',
       welcome: 'Welcome back',
@@ -33,140 +87,98 @@ const MedFlowApp = () => {
       scheduledCalls: 'Scheduled Video Calls',
       claimsPending: 'Claims Pending Review',
       upcomingFollowups: 'Upcoming Follow-ups'
-    },
-    de: {
-      dashboard: 'Dashboard',
-      practiceManagement: 'Praxisverwaltung',
-      ehr: 'Elektronische Patientenakte',
-      telehealth: 'Telemedizin',
-      rcm: 'Umsatzzyklusmanagement',
-      crm: 'Patienten-CRM',
-      integrations: 'Integrationen',
-      settings: 'Einstellungen',
-      logout: 'Abmelden',
-      welcome: 'Willkommen zurück',
-      todaysAppointments: 'Heutige Termine',
-      pendingTasks: 'Ausstehende Aufgaben',
-      revenue: 'Umsatz diesen Monat',
-      activePatients: 'Aktive Patienten',
-      aiInsights: 'KI-Einblicke',
-      scheduledCalls: 'Geplante Videoanrufe',
-      claimsPending: 'Ansprüche in Prüfung',
-      upcomingFollowups: 'Bevorstehende Nachuntersuchungen'
-    },
-    fr: {
-      dashboard: 'Tableau de bord',
-      practiceManagement: 'Gestion de cabinet',
-      ehr: 'Dossiers de santé électroniques',
-      telehealth: 'Télésanté',
-      rcm: 'Gestion du cycle de revenus',
-      crm: 'CRM patients',
-      integrations: 'Intégrations',
-      settings: 'Paramètres',
-      logout: 'Déconnexion',
-      welcome: 'Bon retour',
-      todaysAppointments: "Rendez-vous d'aujourd'hui",
-      pendingTasks: 'Tâches en attente',
-      revenue: 'Revenus ce mois',
-      activePatients: 'Patients actifs',
-      aiInsights: "Aperçus de l'IA",
-      scheduledCalls: 'Appels vidéo programmés',
-      claimsPending: 'Réclamations en attente',
-      upcomingFollowups: 'Suivis à venir'
-    },
-    ar: {
-      dashboard: 'لوحة التحكم',
-      practiceManagement: 'إدارة العيادة',
-      ehr: 'السجلات الصحية الإلكترونية',
-      telehealth: 'الرعاية الصحية عن بعد',
-      rcm: 'إدارة دورة الإيرادات',
-      crm: 'إدارة علاقات المرضى',
-      integrations: 'التكاملات',
-      settings: 'الإعدادات',
-      logout: 'تسجيل الخروج',
-      welcome: 'مرحباً بعودتك',
-      todaysAppointments: 'مواعيد اليوم',
-      pendingTasks: 'المهام المعلقة',
-      revenue: 'الإيرادات هذا الشهر',
-      activePatients: 'المرضى النشطون',
-      aiInsights: 'رؤى الذكاء الاصطناعي',
-      scheduledCalls: 'المكالمات المجدولة',
-      claimsPending: 'المطالبات قيد المراجعة',
-      upcomingFollowups: 'المتابعات القادمة'
-    },
-    es: {
-      dashboard: 'Panel de control',
-      practiceManagement: 'Gestión de consultas',
-      ehr: 'Historias clínicas electrónicas',
-      telehealth: 'Telesalud',
-      rcm: 'Gestión del ciclo de ingresos',
-      crm: 'CRM de pacientes',
-      integrations: 'Integraciones',
-      settings: 'Configuración',
-      logout: 'Cerrar sesión',
-      welcome: 'Bienvenido de nuevo',
-      todaysAppointments: 'Citas de hoy',
-      pendingTasks: 'Tareas pendientes',
-      revenue: 'Ingresos este mes',
-      activePatients: 'Pacientes activos',
-      aiInsights: 'Conocimientos de IA',
-      scheduledCalls: 'Llamadas programadas',
-      claimsPending: 'Reclamaciones pendientes',
-      upcomingFollowups: 'Seguimientos próximos'
     }
   };
 
   const t = translations[language];
 
+  // Fetch data from API
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      const [appointmentsRes, claimsRes, patientsRes] = await Promise.all([
+        fetch(`${API_URL}/appointments`).then(r => r.json()),
+        fetch(`${API_URL}/claims`).then(r => r.json()),
+        fetch(`${API_URL}/patients`).then(r => r.json())
+      ]);
+
+      setAppointments(appointmentsRes);
+      setClaims(claimsRes);
+      setPatients(patientsRes);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const modules = [
-    { 
-      id: 'practiceManagement', 
-      name: t.practiceManagement, 
-      icon: Activity, 
+    {
+      id: 'practiceManagement',
+      name: t.practiceManagement,
+      icon: Activity,
       color: 'from-blue-500 to-cyan-500',
       plans: ['starter', 'professional', 'enterprise']
     },
-    { 
-      id: 'ehr', 
-      name: t.ehr, 
-      icon: FileText, 
+    {
+      id: 'ehr',
+      name: t.ehr,
+      icon: FileText,
       color: 'from-purple-500 to-pink-500',
       plans: ['professional', 'enterprise']
     },
-    { 
-      id: 'telehealth', 
-      name: t.telehealth, 
-      icon: Video, 
+    {
+      id: 'telehealth',
+      name: t.telehealth,
+      icon: Video,
       color: 'from-green-500 to-emerald-500',
       plans: ['professional', 'enterprise']
     },
-    { 
-      id: 'rcm', 
-      name: t.rcm, 
-      icon: DollarSign, 
+    {
+      id: 'rcm',
+      name: t.rcm,
+      icon: DollarSign,
       color: 'from-yellow-500 to-orange-500',
       plans: ['starter', 'professional', 'enterprise']
     },
-    { 
-      id: 'crm', 
-      name: t.crm, 
-      icon: Users, 
+    {
+      id: 'crm',
+      name: t.crm,
+      icon: Users,
       color: 'from-red-500 to-rose-500',
       plans: ['professional', 'enterprise']
     },
-    { 
-      id: 'integrations', 
-      name: t.integrations, 
-      icon: Plug, 
+    {
+      id: 'integrations',
+      name: t.integrations,
+      icon: Plug,
       color: 'from-indigo-500 to-blue-500',
+      plans: ['enterprise']
+    },
+    {
+      id: 'clinicAdmin',
+      name: t.clinicAdmin,
+      icon: Building2,
+      color: 'from-teal-500 to-cyan-500',
+      plans: ['professional', 'enterprise']
+    },
+    {
+      id: 'saasAdmin',
+      name: t.saasAdmin,
+      icon: Database,
+      color: 'from-orange-500 to-red-500',
       plans: ['enterprise']
     }
   ];
 
   const planFeatures = {
     starter: ['practiceManagement', 'rcm'],
-    professional: ['practiceManagement', 'ehr', 'telehealth', 'rcm', 'crm'],
-    enterprise: ['practiceManagement', 'ehr', 'telehealth', 'rcm', 'crm', 'integrations']
+    professional: ['practiceManagement', 'ehr', 'telehealth', 'rcm', 'crm', 'clinicAdmin'],
+    enterprise: ['practiceManagement', 'ehr', 'telehealth', 'rcm', 'crm', 'integrations', 'clinicAdmin', 'saasAdmin']
   };
 
   const hasAccess = (moduleId) => planFeatures[planTier]?.includes(moduleId);
@@ -194,14 +206,14 @@ const MedFlowApp = () => {
   const ModuleCard = ({ module, onClick }) => {
     const Icon = module.icon;
     const locked = !hasAccess(module.id);
-    
+
     return (
       <button
         onClick={() => !locked && onClick(module.id)}
         disabled={locked}
         className={`relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 transition-all duration-300 text-left w-full group ${
-          locked 
-            ? 'opacity-50 cursor-not-allowed' 
+          locked
+            ? 'opacity-50 cursor-not-allowed'
             : 'hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10 cursor-pointer'
         }`}
       >
@@ -235,6 +247,392 @@ const MedFlowApp = () => {
     </div>
   );
 
+  // Quick View Components with real data
+  const RevenueQuickView = () => {
+    const totalRevenue = claims.reduce((sum, claim) => {
+      const amount = typeof claim.amount === 'string' ? parseFloat(claim.amount) : (claim.amount || 0);
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+
+    return (
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
+        <div className="flex items-center gap-3 mb-4">
+          <CreditCard className="w-6 h-6 text-yellow-400" />
+          <h3 className="text-lg font-semibold text-white">{t.claimsPending}</h3>
+        </div>
+        <div className="space-y-3">
+          {claims.length === 0 ? (
+            <p className="text-slate-400 text-sm">No pending claims</p>
+          ) : (
+            claims.slice(0, 3).map((claim) => (
+              <div key={claim.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                <span className="text-slate-300 text-sm">
+                  {claim.claim_no} - {formatCurrency(claim.amount)}
+                </span>
+                <span className={`text-xs px-2 py-1 rounded ${
+                  claim.status === 'Approved' ? 'bg-green-500/20 text-green-400' :
+                  claim.status === 'Denied' ? 'bg-red-500/20 text-red-400' :
+                  'bg-yellow-500/20 text-yellow-400'
+                }`}>
+                  {claim.status}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="mt-4 pt-4 border-t border-slate-700">
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400 text-sm">Total Revenue</span>
+            <span className="text-xl font-bold text-green-400">{formatCurrency(totalRevenue)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const UpcomingAppointmentsCard = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayAppointments = appointments.filter(apt => apt.date && apt.date.startsWith(today));
+
+    return (
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Calendar className="w-6 h-6 text-blue-400" />
+            <h3 className="text-lg font-semibold text-white">{t.todaysAppointments}</h3>
+          </div>
+          <button
+            onClick={() => setCurrentModule('practiceManagement')}
+            className="text-cyan-400 hover:text-cyan-300 text-sm"
+          >
+            View All
+          </button>
+        </div>
+        <div className="space-y-3">
+          {todayAppointments.length === 0 ? (
+            <p className="text-slate-400 text-sm">No appointments today</p>
+          ) : (
+            todayAppointments.slice(0, 3).map((apt) => (
+              <div key={apt.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                onClick={() => {
+                  setSelectedAppointment(apt);
+                  setShowEditAppointment(true);
+                }}
+              >
+                <div className="flex-1">
+                  <p className="text-slate-300 text-sm font-medium">{apt.patient || 'Unknown Patient'}</p>
+                  <p className="text-slate-500 text-xs">{formatTime(apt.time)} - {apt.type || 'General'}</p>
+                </div>
+                <button className="text-blue-400 hover:text-blue-300 transition-colors">
+                  <Edit className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const HighPriorityTasks = () => {
+    const urgentAppointments = appointments.filter(apt => apt.status === 'Urgent').length;
+    const pendingClaims = claims.filter(claim => claim.status === 'Pending').length;
+
+    return (
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
+        <div className="flex items-center gap-3 mb-4">
+          <Clock className="w-6 h-6 text-purple-400" />
+          <h3 className="text-lg font-semibold text-white">{t.pendingTasks}</h3>
+        </div>
+        <div className="space-y-3">
+          <div className="p-3 bg-slate-800/50 rounded-lg">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-slate-300 text-sm">Urgent Appointments</span>
+              <span className="text-lg font-bold text-red-400">{urgentAppointments}</span>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2">
+              <div className="bg-red-500 h-2 rounded-full" style={{width: `${Math.min(urgentAppointments * 10, 100)}%`}}></div>
+            </div>
+          </div>
+          <div className="p-3 bg-slate-800/50 rounded-lg">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-slate-300 text-sm">Pending Claims</span>
+              <span className="text-lg font-bold text-yellow-400">{pendingClaims}</span>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2">
+              <div className="bg-yellow-500 h-2 rounded-full" style={{width: `${Math.min(pendingClaims * 5, 100)}%`}}></div>
+            </div>
+          </div>
+          <div className="p-3 bg-slate-800/50 rounded-lg">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-slate-300 text-sm">Follow-ups Due</span>
+              <span className="text-lg font-bold text-purple-400">5</span>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2">
+              <div className="bg-purple-500 h-2 rounded-full" style={{width: '50%'}}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Popups
+  const DoctorProfilePopup = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={() => setShowDoctorProfile(false)}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full p-6"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">Doctor Profile</h2>
+          <button onClick={() => setShowDoctorProfile(false)} className="text-slate-400 hover:text-white">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+              {user.avatar}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-white">{user.name}</h3>
+              <p className="text-slate-400">{user.specialty}</p>
+              <p className="text-slate-500 text-sm">{user.license}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Email</p>
+              <p className="text-white">{user.email}</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Phone</p>
+              <p className="text-white">{user.phone}</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Practice</p>
+              <p className="text-white">{user.practice}</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <p className="text-slate-400 text-sm mb-1">Role</p>
+              <p className="text-white capitalize">{user.role}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const SettingsPopup = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={() => setShowSettingsPopup(false)}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full p-6"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">Settings</h2>
+          <button onClick={() => setShowSettingsPopup(false)} className="text-slate-400 hover:text-white">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="space-y-4">
+          <div className="bg-slate-800/50 rounded-lg p-4">
+            <h3 className="text-white font-semibold mb-3">General Settings</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">Email Notifications</span>
+                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">SMS Alerts</span>
+                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">Dark Mode</span>
+                <input type="checkbox" defaultChecked className="form-checkbox h-5 w-5 text-cyan-500" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 rounded-lg p-4">
+            <h3 className="text-white font-semibold mb-3">Privacy & Security</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">Two-Factor Authentication</span>
+                <span className="text-green-400 text-sm">Enabled</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-300">Session Timeout</span>
+                <span className="text-slate-400 text-sm">30 minutes</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const AIAssistantPopup = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={() => setShowAIPopup(false)}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full p-6"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-white">AI Assistant</h2>
+          </div>
+          <button onClick={() => setShowAIPopup(false)} className="text-slate-400 hover:text-white">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="space-y-4">
+          <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
+            <p className="text-cyan-300 text-sm mb-2">AI Insights for Today</p>
+            <ul className="space-y-2">
+              <li className="text-slate-300 text-sm flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                <span>You have {appointments.filter(a => a.date && a.date.startsWith(new Date().toISOString().split('T')[0])).length} appointments scheduled today</span>
+              </li>
+              <li className="text-slate-300 text-sm flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                <span>{claims.filter(c => c.status === 'Pending').length} claims require your review</span>
+              </li>
+              <li className="text-slate-300 text-sm flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                <span>Revenue forecasting shows positive trend for this month</span>
+              </li>
+            </ul>
+          </div>
+          <div className="bg-slate-800/50 rounded-lg p-4">
+            <textarea
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 resize-none"
+              rows="4"
+              placeholder="Ask AI Assistant anything..."
+            />
+            <button className="mt-3 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:shadow-lg hover:shadow-cyan-500/50 transition-all">
+              Send Message
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const EditAppointmentPopup = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={() => setShowEditAppointment(false)}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full p-6"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">Edit Appointment</h2>
+          <button onClick={() => setShowEditAppointment(false)} className="text-slate-400 hover:text-white">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        {selectedAppointment && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-slate-400 text-sm block mb-2">Patient</label>
+                <input
+                  type="text"
+                  defaultValue={selectedAppointment.patient}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-slate-400 text-sm block mb-2">Doctor</label>
+                <input
+                  type="text"
+                  defaultValue={selectedAppointment.doctor}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-slate-400 text-sm block mb-2">Date</label>
+                <input
+                  type="date"
+                  defaultValue={selectedAppointment.date}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-slate-400 text-sm block mb-2">Time</label>
+                <input
+                  type="time"
+                  defaultValue={selectedAppointment.time}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-slate-400 text-sm block mb-2">Type</label>
+                <select
+                  defaultValue={selectedAppointment.type}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
+                >
+                  <option>General Checkup</option>
+                  <option>Follow-up</option>
+                  <option>Consultation</option>
+                  <option>Emergency</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-slate-400 text-sm block mb-2">Status</label>
+                <select
+                  defaultValue={selectedAppointment.status}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
+                >
+                  <option>Scheduled</option>
+                  <option>Confirmed</option>
+                  <option>Completed</option>
+                  <option>Cancelled</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-slate-400 text-sm block mb-2">Notes</label>
+              <textarea
+                defaultValue={selectedAppointment.notes}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white resize-none"
+                rows="3"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:shadow-lg hover:shadow-cyan-500/50 transition-all">
+                Save Changes
+              </button>
+              <button onClick={() => setShowEditAppointment(false)} className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const SearchDropdown = () => (
+    <div className="absolute top-full left-0 mt-2 w-full bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+      <div className="p-2">
+        <div className="px-3 py-2 text-slate-400 text-xs font-semibold uppercase">Patients</div>
+        {patients.slice(0, 3).map(patient => (
+          <div key={patient.id} className="px-3 py-2 hover:bg-slate-700 rounded cursor-pointer">
+            <p className="text-white text-sm">{patient.first_name} {patient.last_name}</p>
+            <p className="text-slate-400 text-xs">{patient.email}</p>
+          </div>
+        ))}
+        <div className="px-3 py-2 text-slate-400 text-xs font-semibold uppercase mt-2">Appointments</div>
+        {appointments.slice(0, 3).map(apt => (
+          <div key={apt.id} className="px-3 py-2 hover:bg-slate-700 rounded cursor-pointer">
+            <p className="text-white text-sm">{apt.patient} - {formatDate(apt.date)}</p>
+            <p className="text-slate-400 text-xs">{formatTime(apt.time)} - {apt.type}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderDashboard = () => (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -259,30 +657,30 @@ const MedFlowApp = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
+        <StatCard
           title={t.todaysAppointments}
-          value="24"
+          value={appointments.filter(a => a.date && a.date.startsWith(new Date().toISOString().split('T')[0])).length}
           icon={Calendar}
           trend="+12% from yesterday"
           color="from-blue-500 to-cyan-500"
         />
-        <StatCard 
+        <StatCard
           title={t.pendingTasks}
-          value="8"
+          value={claims.filter(c => c.status === 'Pending').length}
           icon={Clock}
-          trend="3 urgent"
+          trend={`${appointments.filter(a => a.status === 'Urgent').length} urgent`}
           color="from-purple-500 to-pink-500"
         />
-        <StatCard 
+        <StatCard
           title={t.revenue}
-          value="$48.2K"
+          value={formatCurrency(claims.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
           icon={DollarSign}
           trend="+18% vs last month"
           color="from-green-500 to-emerald-500"
         />
-        <StatCard 
+        <StatCard
           title={t.activePatients}
-          value="1,247"
+          value={patients.length}
           icon={Users}
           trend="+45 this week"
           color="from-yellow-500 to-orange-500"
@@ -300,15 +698,15 @@ const MedFlowApp = () => {
             <ul className="space-y-2 text-slate-300">
               <li className="flex items-start gap-2">
                 <ChevronRight className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                <span>3 appointments can be consolidated to reduce patient wait time by 25 minutes</span>
+                <span>You have {appointments.filter(a => a.date && a.date.startsWith(new Date().toISOString().split('T')[0])).length} appointments scheduled for today</span>
               </li>
               <li className="flex items-start gap-2">
                 <ChevronRight className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                <span>5 prior authorizations are likely to be approved based on historical patterns</span>
+                <span>{claims.filter(c => c.status === 'Pending').length} claims are pending review and approval</span>
               </li>
               <li className="flex items-start gap-2">
                 <ChevronRight className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                <span>Coding suggestions for 7 encounters could increase revenue by $1,240</span>
+                <span>Total revenue tracked: {formatCurrency(claims.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}</span>
               </li>
             </ul>
           </div>
@@ -317,7 +715,7 @@ const MedFlowApp = () => {
 
       <div>
         <h2 className="text-2xl font-bold text-white mb-6">Available Modules</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {modules.map(module => (
             <ModuleCard key={module.id} module={module} onClick={setCurrentModule} />
           ))}
@@ -325,61 +723,91 @@ const MedFlowApp = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
-          <div className="flex items-center gap-3 mb-4">
-            <Video className="w-6 h-6 text-green-400" />
-            <h3 className="text-lg font-semibold text-white">{t.scheduledCalls}</h3>
-          </div>
-          <div className="space-y-3">
-            {['John Smith - 10:00 AM', 'Maria Garcia - 2:30 PM', 'Ahmed Hassan - 4:00 PM'].map((call, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                <span className="text-slate-300 text-sm">{call}</span>
-                <button className="text-green-400 hover:text-green-300 transition-colors">
-                  <Video className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <UpcomingAppointmentsCard />
+        <RevenueQuickView />
+        <HighPriorityTasks />
+      </div>
+    </div>
+  );
 
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
-          <div className="flex items-center gap-3 mb-4">
-            <CreditCard className="w-6 h-6 text-yellow-400" />
-            <h3 className="text-lg font-semibold text-white">{t.claimsPending}</h3>
-          </div>
-          <div className="space-y-3">
-            {['Claim #A1234 - $850', 'Claim #A1235 - $1,240', 'Claim #A1236 - $620'].map((claim, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                <span className="text-slate-300 text-sm">{claim}</span>
-                <button className="text-yellow-400 hover:text-yellow-300 transition-colors text-sm">
-                  Review
-                </button>
-              </div>
-            ))}
-          </div>
+  const renderClinicAdmin = () => (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => setCurrentModule('dashboard')} className="text-slate-400 hover:text-white transition-colors">
+          ← Back
+        </button>
+        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+          <Building2 className="w-6 h-6 text-white" />
         </div>
+        <h1 className="text-3xl font-bold text-white">Clinic Admin</h1>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-xl font-semibold text-white mb-4">Staff Management</h3>
+          <p className="text-slate-400 mb-4">Manage doctors, nurses, and administrative staff</p>
+          <button className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600">
+            Manage Staff
+          </button>
+        </div>
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-xl font-semibold text-white mb-4">Facility Settings</h3>
+          <p className="text-slate-400 mb-4">Configure clinic hours, locations, and resources</p>
+          <button className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600">
+            Configure
+          </button>
+        </div>
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-xl font-semibold text-white mb-4">Reports</h3>
+          <p className="text-slate-400 mb-4">View clinic performance and analytics</p>
+          <button className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600">
+            View Reports
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
-          <div className="flex items-center gap-3 mb-4">
-            <UserCheck className="w-6 h-6 text-purple-400" />
-            <h3 className="text-lg font-semibold text-white">{t.upcomingFollowups}</h3>
-          </div>
-          <div className="space-y-3">
-            {['Sarah Johnson - Oct 18', 'Michael Brown - Oct 19', 'Lisa Wang - Oct 20'].map((followup, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                <span className="text-slate-300 text-sm">{followup}</span>
-                <button className="text-purple-400 hover:text-purple-300 transition-colors text-sm">
-                  Contact
-                </button>
-              </div>
-            ))}
-          </div>
+  const renderSaaSAdmin = () => (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => setCurrentModule('dashboard')} className="text-slate-400 hover:text-white transition-colors">
+          ← Back
+        </button>
+        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
+          <Database className="w-6 h-6 text-white" />
+        </div>
+        <h1 className="text-3xl font-bold text-white">SaaS Admin</h1>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-xl font-semibold text-white mb-4">Tenant Management</h3>
+          <p className="text-slate-400 mb-4">Manage all clinic tenants and subscriptions</p>
+          <button className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+            Manage Tenants
+          </button>
+        </div>
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-xl font-semibold text-white mb-4">System Configuration</h3>
+          <p className="text-slate-400 mb-4">Configure global system settings and features</p>
+          <button className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+            Configure
+          </button>
+        </div>
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-xl font-semibold text-white mb-4">Analytics</h3>
+          <p className="text-slate-400 mb-4">Platform-wide analytics and insights</p>
+          <button className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+            View Analytics
+          </button>
         </div>
       </div>
     </div>
   );
 
   const renderModule = () => {
+    if (currentModule === 'clinicAdmin') return renderClinicAdmin();
+    if (currentModule === 'saasAdmin') return renderSaaSAdmin();
+
     const module = modules.find(m => m.id === currentModule);
     if (!module) return renderDashboard();
 
@@ -510,8 +938,11 @@ const MedFlowApp = () => {
                 <input
                   type="text"
                   placeholder="Search..."
+                  onFocus={() => setShowSearchDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
                   className="pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors w-64"
                 />
+                {showSearchDropdown && <SearchDropdown />}
               </div>
 
               <select
@@ -520,11 +951,14 @@ const MedFlowApp = () => {
                 className="px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-300 focus:outline-none focus:border-cyan-500 transition-colors"
               >
                 <option value="en">English</option>
-                <option value="de">Deutsch</option>
-                <option value="fr">Français</option>
-                <option value="ar">العربية</option>
-                <option value="es">Español</option>
               </select>
+
+              <button
+                onClick={() => setShowSettingsPopup(true)}
+                className="p-2 text-slate-400 hover:text-white transition-colors"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
 
               <button className="relative p-2 text-slate-400 hover:text-white transition-colors">
                 <Bell className="w-5 h-5" />
@@ -536,9 +970,12 @@ const MedFlowApp = () => {
                   <p className="text-sm font-medium text-white">{user.name}</p>
                   <p className="text-xs text-slate-400 capitalize">{user.role}</p>
                 </div>
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold">
+                <button
+                  onClick={() => setShowDoctorProfile(true)}
+                  className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold hover:scale-110 transition-transform"
+                >
                   {user.avatar}
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -553,10 +990,6 @@ const MedFlowApp = () => {
                 className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-300"
               >
                 <option value="en">English</option>
-                <option value="de">Deutsch</option>
-                <option value="fr">Français</option>
-                <option value="ar">العربية</option>
-                <option value="es">Español</option>
               </select>
               <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
                 <div className="flex items-center gap-3">
@@ -575,14 +1008,26 @@ const MedFlowApp = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentModule === 'dashboard' ? renderDashboard() : renderModule()}
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-slate-400">Loading...</p>
+            </div>
+          </div>
+        ) : (
+          currentModule === 'dashboard' ? renderDashboard() : renderModule()
+        )}
       </main>
 
       <div className="fixed bottom-6 right-6 flex flex-col gap-3">
-        <button className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-110">
+        <button
+          onClick={() => setShowAIPopup(true)}
+          className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-110"
+        >
           <Bot className="w-6 h-6 text-white" />
         </button>
-        <button 
+        <button
           onClick={() => {
             const plans = ['starter', 'professional', 'enterprise'];
             const currentIndex = plans.indexOf(planTier);
@@ -594,6 +1039,11 @@ const MedFlowApp = () => {
           Switch Plan
         </button>
       </div>
+
+      {showDoctorProfile && <DoctorProfilePopup />}
+      {showSettingsPopup && <SettingsPopup />}
+      {showAIPopup && <AIAssistantPopup />}
+      {showEditAppointment && <EditAppointmentPopup />}
     </div>
   );
 };
