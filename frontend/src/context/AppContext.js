@@ -34,23 +34,8 @@ const AppProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
 
-  // User state
-  const [user, setUser] = useState({
-    id: 1,
-    name: 'Dr. Sarah Chen',
-    role: 'admin',
-    practice: 'Central Medical Group',
-    avatar: 'SC',
-    email: 'sarah.chen@medflow.com',
-    phone: '(555) 123-4567',
-    license: 'MD-123456',
-    specialty: 'Internal Medicine',
-    preferences: {
-      emailNotifications: true,
-      smsAlerts: true,
-      darkMode: true
-    }
-  });
+  // User state - dynamically loaded from database
+  const [user, setUser] = useState(null);
 
   // Fetch all data on component mount
   useEffect(() => {
@@ -87,16 +72,37 @@ const AppProvider = ({ children }) => {
       setTasks(tasksData);
       setUsers(usersData);
 
-      // Update user data if fetched successfully
-      if (userData) {
-        setUser(userData);
-        // Sync theme and language from user preferences
-        if (userData.preferences) {
-          if (userData.preferences.darkMode !== undefined) {
-            setTheme(userData.preferences.darkMode ? 'dark' : 'light');
+      // Update user data - fetch from API or use first admin/physician from users list
+      let currentUser = userData;
+      if (!currentUser && usersData.length > 0) {
+        // If no user fetched, get first admin or physician from users list
+        currentUser = usersData.find(u => u.role === 'admin' || u.role === 'physician') || usersData[0];
+        console.log('Using fallback user:', currentUser);
+      }
+
+      if (currentUser) {
+        // Add computed fields for compatibility
+        const userWithComputedFields = {
+          ...currentUser,
+          name: currentUser.name || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || currentUser.email,
+          avatar: currentUser.avatar || (currentUser.name || currentUser.first_name || 'U').substring(0, 2).toUpperCase(),
+          practice: currentUser.practice || 'Medical Practice',
+          preferences: currentUser.preferences || {
+            emailNotifications: true,
+            smsAlerts: true,
+            darkMode: true
           }
-          if (userData.preferences.language) {
-            setLanguage(userData.preferences.language);
+        };
+
+        setUser(userWithComputedFields);
+
+        // Sync theme and language from user preferences
+        if (userWithComputedFields.preferences) {
+          if (userWithComputedFields.preferences.darkMode !== undefined) {
+            setTheme(userWithComputedFields.preferences.darkMode ? 'dark' : 'light');
+          }
+          if (userWithComputedFields.preferences.language) {
+            setLanguage(userWithComputedFields.preferences.language);
           }
         }
       }
