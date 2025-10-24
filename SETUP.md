@@ -67,16 +67,25 @@ JWT_SECRET=your_jwt_secret_key_here
 
 ### 3. Run Database Migrations
 
+**IMPORTANT:** Use `migrate-enhanced.js` for a fresh installation. This creates all tables with the correct schema.
+
 ```bash
 cd backend
 
 # Install dependencies
 npm install
 
-# Run base migration (creates base tables)
-node scripts/migrate.js
+# Run the complete migration script
+node scripts/migrate-enhanced.js
+```
 
-# Run enhanced migration (creates new feature tables)
+**If you have existing tables with old schema:**
+
+```bash
+# Drop all existing tables (⚠️ WARNING: This deletes all data!)
+node scripts/drop-tables.js
+
+# Then run the enhanced migration
 node scripts/migrate-enhanced.js
 ```
 
@@ -90,6 +99,8 @@ This will create the following tables:
 - `medical_records` - Patient medical history
 - `patient_portal_sessions` - Patient portal authentication
 - `social_auth` - OAuth social login connections
+
+**Note:** Do NOT run `migrate.js` - it's an older version. Use `migrate-enhanced.js` instead.
 
 ### 4. Load Seed Data (Optional)
 
@@ -328,6 +339,40 @@ sudo systemctl start postgresql
 # Check connection
 psql -U medflow_user -d medflow -c "SELECT 1"
 ```
+
+### Migration Errors
+
+**Error: "column 'start_time' does not exist"**
+
+This means you have an old version of the tables in your database. Solution:
+
+```bash
+# Option 1: Drop all tables and recreate (⚠️ WARNING: Deletes all data!)
+cd backend
+node scripts/drop-tables.js
+node scripts/migrate-enhanced.js
+
+# Option 2: Drop tables manually in psql
+psql -U medflow_user -d medflow
+DROP TABLE IF EXISTS social_auth CASCADE;
+DROP TABLE IF EXISTS patient_portal_sessions CASCADE;
+DROP TABLE IF EXISTS medical_records CASCADE;
+DROP TABLE IF EXISTS fhir_resources CASCADE;
+DROP TABLE IF EXISTS telehealth_sessions CASCADE;
+DROP TABLE IF EXISTS claims CASCADE;
+DROP TABLE IF EXISTS appointments CASCADE;
+DROP TABLE IF EXISTS patients CASCADE;
+DROP TABLE IF EXISTS practices CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+\q
+
+# Then run migration
+node scripts/migrate-enhanced.js
+```
+
+**Error: "relation already exists"**
+
+The table already exists but with correct schema. This is usually safe to ignore if the migration completes successfully. If not, use the drop-tables.js script above.
 
 ### OAuth Issues
 
