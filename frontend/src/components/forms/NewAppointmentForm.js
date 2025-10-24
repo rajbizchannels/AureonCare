@@ -21,6 +21,17 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
     }
   }, [users, formData.providerId]);
 
+  // ESC key handler
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 

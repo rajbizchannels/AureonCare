@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, X, Save } from 'lucide-react';
 
 const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotification }) => {
@@ -18,6 +18,17 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
     emergencyContact: '',
     emergencyPhone: ''
   });
+
+  // ESC key handler
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
