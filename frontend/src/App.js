@@ -10,9 +10,6 @@ import { AppProvider, useApp } from './context/AppContext';
 // OAuth Config
 import { googleOAuthConfig, microsoftOAuthConfig } from './config/oauthConfig';
 
-// Initialize MSAL
-const msalInstance = new PublicClientApplication(microsoftOAuthConfig);
-
 // API
 import api from './api/apiService';
 
@@ -55,6 +52,9 @@ import AppointmentsQuickView from './components/quickViews/AppointmentsQuickView
 import TasksQuickView from './components/quickViews/TasksQuickView';
 import RevenueQuickView from './components/quickViews/RevenueQuickView';
 import PatientsQuickView from './components/quickViews/PatientsQuickView';
+
+// Initialize MSAL instance for Microsoft OAuth
+const msalInstance = new PublicClientApplication(microsoftOAuthConfig);
 
 function App() {
   const {
