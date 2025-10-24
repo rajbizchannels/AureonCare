@@ -86,6 +86,10 @@ app.use('/api/claims', require('./routes/claims'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/telehealth', require('./routes/telehealth'));
+app.use('/api/fhir', require('./routes/fhir'));
+app.use('/api/patient-portal', require('./routes/patient-portal'));
+app.use('/api/medical-records', require('./routes/medical-records'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
