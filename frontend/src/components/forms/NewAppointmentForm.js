@@ -1,31 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, X, Save } from 'lucide-react';
 
-const NewAppointmentForm = ({ theme, api, patients, onClose, onSuccess, addNotification }) => {
+const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, addNotification }) => {
   const [formData, setFormData] = useState({
     patientId: '',
-    providerId: '1',
+    providerId: '',
     date: '',
     time: '',
-    type: 'Check-up',
+    type: 'office-visit',
     duration: 30,
     reason: '',
     notes: ''
   });
 
+  // Set default provider to first available provider when users are loaded
+  useEffect(() => {
+    if (users && users.length > 0 && !formData.providerId) {
+      const firstProvider = users.find(u => u.role === 'physician' || u.role === 'doctor' || u.role === 'provider') || users[0];
+      setFormData(prev => ({ ...prev, providerId: firstProvider.id }));
+    }
+  }, [users, formData.providerId]);
+
+  // ESC key handler
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
+      // Combine date and time into start_time timestamp
+      const startTime = `${formData.date}T${formData.time}:00`;
+
+      // Calculate end_time by adding duration
+      const startDate = new Date(startTime);
+      const endDate = new Date(startDate.getTime() + formData.duration * 60000);
+      const endTime = endDate.toISOString().slice(0, 19).replace('T', ' ');
+      const formattedStartTime = startDate.toISOString().slice(0, 19).replace('T', ' ');
+
       const appointmentData = {
         patient_id: formData.patientId,
         provider_id: formData.providerId,
-        date: formData.date,
-        time: formData.time,
-        type: formData.type,
-        status: 'Scheduled',
+        practice_id: null, // Can be set if you have practice context
+        appointment_type: formData.type,
+        start_time: formattedStartTime,
+        end_time: endTime,
+        duration_minutes: formData.duration,
+        status: 'scheduled',
         reason: formData.reason,
-        duration: formData.duration,
         notes: formData.notes
       };
 
@@ -41,6 +70,11 @@ const NewAppointmentForm = ({ theme, api, patients, onClose, onSuccess, addNotif
       alert('Failed to create appointment. Please try again.');
     }
   };
+
+  // Filter providers from users
+  const providers = users?.filter(u =>
+    u.role === 'physician' || u.role === 'doctor' || u.role === 'provider' || u.role === 'admin'
+  ) || [];
 
   return (
     <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
@@ -87,11 +121,12 @@ const NewAppointmentForm = ({ theme, api, patients, onClose, onSuccess, addNotif
                   onChange={(e) => setFormData({...formData, type: e.target.value})}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
-                  <option value="Check-up">Check-up</option>
-                  <option value="Follow-up">Follow-up</option>
-                  <option value="Consultation">Consultation</option>
-                  <option value="Physical">Physical Exam</option>
-                  <option value="Procedure">Procedure</option>
+                  <option value="office-visit">Office Visit</option>
+                  <option value="telehealth">Telehealth</option>
+                  <option value="follow-up">Follow-up</option>
+                  <option value="annual-physical">Annual Physical</option>
+                  <option value="consultation">Consultation</option>
+                  <option value="procedure">Procedure</option>
                 </select>
               </div>
 
@@ -145,9 +180,12 @@ const NewAppointmentForm = ({ theme, api, patients, onClose, onSuccess, addNotif
                   onChange={(e) => setFormData({...formData, providerId: e.target.value})}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
-                  <option value="1">Dr. Sarah Chen</option>
-                  <option value="2">Dr. Michael Torres</option>
-                  <option value="3">Dr. Emily Watson</option>
+                  <option value="">Select Provider</option>
+                  {providers.map(provider => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.name || `${provider.first_name || ''} ${provider.last_name || ''}`.trim() || provider.email}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

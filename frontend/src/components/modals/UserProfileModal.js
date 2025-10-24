@@ -25,13 +25,13 @@ const UserProfileModal = ({
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
-        setCurrentView('list');
+        onClose();
         setShowChangePassword(false);
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [setCurrentView, setShowChangePassword]);
+  }, [onClose, setShowChangePassword]);
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -63,11 +63,11 @@ const UserProfileModal = ({
   };
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => setCurrentView('list')}>
+    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
       <div className={`rounded-xl border max-w-2xl w-full p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>User Profile</h2>
-          <button onClick={() => setCurrentView('list')} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
+          <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
         </div>
@@ -237,7 +237,7 @@ const UserProfileModal = ({
             >
               Edit Profile
             </button>
-            <button onClick={() => setCurrentView('list')} className={`flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <button onClick={onClose} className={`flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               Close
             </button>
           </div>
