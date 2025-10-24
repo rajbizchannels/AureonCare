@@ -1,8 +1,17 @@
 import React from 'react';
 import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft } from 'lucide-react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import { MsalProvider } from '@azure/msal-react';
+import { PublicClientApplication } from '@azure/msal-browser';
 
 // Context
 import { AppProvider, useApp } from './context/AppContext';
+
+// OAuth Config
+import { googleOAuthConfig, microsoftOAuthConfig } from './config/oauthConfig';
+
+// Initialize MSAL
+const msalInstance = new PublicClientApplication(microsoftOAuthConfig);
 
 // API
 import api from './api/apiService';
@@ -561,11 +570,15 @@ function App() {
   );
 }
 
-// Wrap App with AppProvider
+// Wrap App with AppProvider and OAuth Providers
 export default function AppWithProvider() {
   return (
-    <AppProvider>
-      <App />
-    </AppProvider>
+    <GoogleOAuthProvider clientId={googleOAuthConfig.clientId}>
+      <MsalProvider instance={msalInstance}>
+        <AppProvider>
+          <App />
+        </AppProvider>
+      </MsalProvider>
+    </GoogleOAuthProvider>
   );
 }
