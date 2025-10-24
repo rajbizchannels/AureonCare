@@ -6,12 +6,12 @@ router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(`
-      SELECT a.*, 
+      SELECT a.*,
              CONCAT(p.first_name, ' ', p.last_name) as patient,
              CONCAT(pr.first_name, ' ', pr.last_name) as doctor
       FROM appointments a
-      LEFT JOIN patients p ON a.patient_id = p.id
-      LEFT JOIN providers pr ON a.provider_id = pr.id
+      LEFT JOIN patients p ON a.patient_id::text = p.id::text
+      LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
       ORDER BY a.date DESC, a.time DESC
     `);
     res.json(result.rows);
@@ -26,7 +26,7 @@ router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      'SELECT * FROM appointments WHERE id = $1',
+      'SELECT * FROM appointments WHERE id::text = $1::text',
       [req.params.id]
     );
     if (result.rows.length === 0) {
@@ -66,10 +66,10 @@ router.put('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      `UPDATE appointments 
-       SET patient_id = $1, provider_id = $2, date = $3, time = $4, 
+      `UPDATE appointments
+       SET patient_id = $1, provider_id = $2, date = $3, time = $4,
            type = $5, duration = $6, reason = $7, notes = $8, status = $9, updated_at = NOW()
-       WHERE id = $10
+       WHERE id::text = $10::text
        RETURNING *`,
       [patient_id, provider_id, date, time, type, duration, reason, notes, status, req.params.id]
     );
@@ -88,7 +88,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      'DELETE FROM appointments WHERE id = $1 RETURNING *',
+      'DELETE FROM appointments WHERE id::text = $1::text RETURNING *',
       [req.params.id]
     );
     if (result.rows.length === 0) {

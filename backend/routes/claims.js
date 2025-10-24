@@ -6,11 +6,11 @@ router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(`
-      SELECT c.*, 
+      SELECT c.*,
              CONCAT(p.first_name, ' ', p.last_name) as patient
       FROM claims c
-      LEFT JOIN patients p ON c.patient_id = p.id
-      ORDER BY c.date DESC
+      LEFT JOIN patients p ON c.patient_id::text = p.id::text
+      ORDER BY c.service_date DESC NULLS LAST, c.created_at DESC
     `);
     res.json(result.rows);
   } catch (error) {
@@ -24,7 +24,7 @@ router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      'SELECT * FROM claims WHERE id = $1',
+      'SELECT * FROM claims WHERE id::text = $1::text',
       [req.params.id]
     );
     if (result.rows.length === 0) {
@@ -72,11 +72,11 @@ router.put('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      `UPDATE claims 
-       SET claim_no = $1, patient_id = $2, payer = $3, payer_id = $4, 
-           amount = $5, status = $6, date = $7, service_date = $8, 
+      `UPDATE claims
+       SET claim_no = $1, patient_id = $2, payer = $3, payer_id = $4,
+           amount = $5, status = $6, date = $7, service_date = $8,
            diagnosis_codes = $9, procedure_codes = $10, notes = $11, updated_at = NOW()
-       WHERE id = $12
+       WHERE id::text = $12::text
        RETURNING *`,
       [claim_no, patient_id, payer, payer_id, amount, status, 
        date, service_date, JSON.stringify(diagnosis_codes), JSON.stringify(procedure_codes), notes, req.params.id]
@@ -96,7 +96,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      'DELETE FROM claims WHERE id = $1 RETURNING *',
+      'DELETE FROM claims WHERE id::text = $1::text RETURNING *',
       [req.params.id]
     );
     if (result.rows.length === 0) {
