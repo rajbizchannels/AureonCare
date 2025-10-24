@@ -198,4 +198,244 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// Social login endpoint (Google, Microsoft, Facebook)
+router.post('/social-login', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const {
+      provider, // 'google', 'microsoft', or 'facebook'
+      providerId,
+      accessToken,
+      refreshToken,
+      email,
+      firstName,
+      lastName,
+      profileData
+    } = req.body;
+
+    if (!provider || !providerId || !email) {
+      return res.status(400).json({ error: 'Provider, provider ID, and email are required' });
+    }
+
+    // Check if social auth already exists
+    const socialAuthResult = await pool.query(
+      'SELECT * FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
+      [provider, providerId]
+    );
+
+    let user;
+
+    if (socialAuthResult.rows.length > 0) {
+      // Existing social auth - get the user
+      const userId = socialAuthResult.rows[0].user_id;
+      const userResult = await pool.query(
+        'SELECT * FROM users WHERE id = $1',
+        [userId]
+      );
+
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      user = userResult.rows[0];
+
+      // Update tokens
+      await pool.query(`
+        UPDATE social_auth
+        SET access_token = $1, refresh_token = $2, profile_data = $3, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
+      `, [accessToken, refreshToken, JSON.stringify(profileData), socialAuthResult.rows[0].id]);
+
+    } else {
+      // New social auth - check if user exists by email
+      const existingUserResult = await pool.query(
+        'SELECT * FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (existingUserResult.rows.length > 0) {
+        // User exists - link social auth
+        user = existingUserResult.rows[0];
+
+        await pool.query(`
+          INSERT INTO social_auth (
+            user_id,
+            provider,
+            provider_user_id,
+            access_token,
+            refresh_token,
+            profile_data
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [user.id, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
+
+      } else {
+        // Create new user
+        const newUserResult = await pool.query(`
+          INSERT INTO users (
+            email,
+            first_name,
+            last_name,
+            role,
+            status,
+            avatar
+          )
+          VALUES ($1, $2, $3, 'staff', 'active', $4)
+          RETURNING *
+        `, [
+          email,
+          firstName || '',
+          lastName || '',
+          `${(firstName?.[0] || '')}${(lastName?.[0] || '')}`.toUpperCase()
+        ]);
+
+        user = newUserResult.rows[0];
+
+        // Create social auth entry
+        await pool.query(`
+          INSERT INTO social_auth (
+            user_id,
+            provider,
+            provider_user_id,
+            access_token,
+            refresh_token,
+            profile_data
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [user.id, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
+      }
+    }
+
+    // Update last login
+    await pool.query(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    );
+
+    // Don't send password_hash back to client
+    const { password_hash, ...userData } = user;
+
+    res.json({
+      message: 'Social login successful',
+      user: toCamelCase(userData),
+      isNewUser: !existingUserResult || existingUserResult.rows.length === 0
+    });
+
+  } catch (error) {
+    console.error('Error during social login:', error);
+    res.status(500).json({ error: 'Social login failed' });
+  }
+});
+
+// Link social account to existing user
+router.post('/link-social-account', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const {
+      userId,
+      provider,
+      providerId,
+      accessToken,
+      refreshToken,
+      profileData
+    } = req.body;
+
+    if (!userId || !provider || !providerId) {
+      return res.status(400).json({ error: 'User ID, provider, and provider ID are required' });
+    }
+
+    // Check if user exists
+    const userResult = await pool.query(
+      'SELECT * FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if this social account is already linked to another user
+    const existingSocialAuth = await pool.query(
+      'SELECT * FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
+      [provider, providerId]
+    );
+
+    if (existingSocialAuth.rows.length > 0 && existingSocialAuth.rows[0].user_id !== userId) {
+      return res.status(409).json({ error: 'This social account is already linked to another user' });
+    }
+
+    // Create or update social auth
+    await pool.query(`
+      INSERT INTO social_auth (
+        user_id,
+        provider,
+        provider_user_id,
+        access_token,
+        refresh_token,
+        profile_data
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (provider, provider_user_id)
+      DO UPDATE SET
+        user_id = $1,
+        access_token = $4,
+        refresh_token = $5,
+        profile_data = $6,
+        updated_at = CURRENT_TIMESTAMP
+    `, [userId, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
+
+    res.json({ message: 'Social account linked successfully' });
+
+  } catch (error) {
+    console.error('Error linking social account:', error);
+    res.status(500).json({ error: 'Failed to link social account' });
+  }
+});
+
+// Unlink social account
+router.post('/unlink-social-account', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { userId, provider } = req.body;
+
+    if (!userId || !provider) {
+      return res.status(400).json({ error: 'User ID and provider are required' });
+    }
+
+    const result = await pool.query(
+      'DELETE FROM social_auth WHERE user_id = $1 AND provider = $2 RETURNING id',
+      [userId, provider]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Social account link not found' });
+    }
+
+    res.json({ message: 'Social account unlinked successfully' });
+
+  } catch (error) {
+    console.error('Error unlinking social account:', error);
+    res.status(500).json({ error: 'Failed to unlink social account' });
+  }
+});
+
+// Get linked social accounts for a user
+router.get('/social-accounts/:userId', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { userId } = req.params;
+
+    const result = await pool.query(
+      'SELECT id, provider, provider_user_id, created_at FROM social_auth WHERE user_id = $1',
+      [userId]
+    );
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error fetching social accounts:', error);
+    res.status(500).json({ error: 'Failed to fetch social accounts' });
+  }
+});
+
 module.exports = router;
