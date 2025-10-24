@@ -333,11 +333,11 @@ function App() {
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors"
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  {user.avatar}
+                  {user?.avatar || 'U'}
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.name}</p>
-                  <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user.role}</p>
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.name || 'User'}</p>
+                  <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.role || 'user'}</p>
                 </div>
               </button>
 

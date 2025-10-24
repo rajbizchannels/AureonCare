@@ -23,8 +23,8 @@ const DashboardView = ({
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className={`text-3xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.welcome}, {user.name}</h1>
-          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user.practice}</p>
+          <h1 className={`text-3xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.welcome}, {user?.name || 'User'}</h1>
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.practice || 'Medical Practice'}</p>
         </div>
         <div className="flex gap-3">
           <div className="px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-lg">
