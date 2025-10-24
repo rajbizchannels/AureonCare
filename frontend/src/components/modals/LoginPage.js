@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Shield, Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
-import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
 import { facebookOAuthConfig } from '../../config/oauthConfig';
 
 const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword }) => {
@@ -92,33 +91,73 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
     }
   };
 
-  // Facebook OAuth Callback
-  const handleFacebookCallback = async (response) => {
-    if (response.status === 'unknown') {
-      setLoginError('Facebook login failed');
-      return;
-    }
-
+  // Facebook OAuth Login
+  const handleFacebookLogin = async () => {
     try {
-      // Login with our backend
-      const apiResponse = await api.socialLogin(
-        'facebook',
-        response.userID,
-        response.accessToken,
-        response.email,
-        response.name?.split(' ')[0] || '',
-        response.name?.split(' ').slice(1).join(' ') || '',
-        response
-      );
+      // Check if FB SDK is loaded
+      if (typeof window.FB === 'undefined') {
+        setLoginError('Facebook SDK not loaded. Please refresh the page.');
+        return;
+      }
 
-      setUser(apiResponse.user);
-      setIsAuthenticated(true);
-      await addNotification('success', 'Logged in with Facebook');
+      // Login with Facebook
+      window.FB.login((response) => {
+        if (response.authResponse) {
+          // Get user info
+          window.FB.api('/me', { fields: 'id,name,email,picture' }, async (userInfo) => {
+            try {
+              // Login with our backend
+              const apiResponse = await api.socialLogin(
+                'facebook',
+                userInfo.id,
+                response.authResponse.accessToken,
+                userInfo.email,
+                userInfo.name?.split(' ')[0] || '',
+                userInfo.name?.split(' ').slice(1).join(' ') || '',
+                userInfo
+              );
+
+              setUser(apiResponse.user);
+              setIsAuthenticated(true);
+              await addNotification('success', 'Logged in with Facebook');
+            } catch (error) {
+              setLoginError(error.message || 'Facebook login failed');
+              console.error('Facebook login error:', error);
+            }
+          });
+        } else {
+          setLoginError('Facebook login cancelled');
+        }
+      }, { scope: 'public_profile,email' });
     } catch (error) {
       setLoginError(error.message || 'Facebook login failed');
       console.error('Facebook login error:', error);
     }
   };
+
+  // Load Facebook SDK on component mount
+  React.useEffect(() => {
+    // Load Facebook SDK
+    if (typeof window.FB === 'undefined') {
+      window.fbAsyncInit = function() {
+        window.FB.init({
+          appId: facebookOAuthConfig.appId,
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        });
+      };
+
+      // Load the SDK asynchronously
+      (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+    }
+  }, []);
 
   return (
     <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gradient-to-br from-gray-100 via-white to-gray-100'}`}>
@@ -233,22 +272,15 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
                 <path fill="#ffb900" d="M12 12h11v11H12z"/>
               </svg>
             </button>
-            <FacebookLogin
-              appId={facebookOAuthConfig.appId}
-              callback={handleFacebookCallback}
-              fields="name,email,picture"
-              render={(renderProps) => (
-                <button
-                  onClick={renderProps.onClick}
-                  className={`flex items-center justify-center px-4 py-3 border rounded-lg transition-colors ${theme === 'dark' ? 'border-slate-700 hover:bg-slate-800 text-slate-300' : 'border-gray-300 hover:bg-gray-50 text-gray-700'}`}
-                  title="Sign in with Facebook"
-                >
-                  <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                  </svg>
-                </button>
-              )}
-            />
+            <button
+              onClick={handleFacebookLogin}
+              className={`flex items-center justify-center px-4 py-3 border rounded-lg transition-colors ${theme === 'dark' ? 'border-slate-700 hover:bg-slate-800 text-slate-300' : 'border-gray-300 hover:bg-gray-50 text-gray-700'}`}
+              title="Sign in with Facebook"
+            >
+              <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+            </button>
           </div>
         </div>
 
