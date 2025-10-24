@@ -5,3 +5,5 @@ export { default as TelehealthView } from './TelehealthView';
 export { default as RCMView } from './RCMView';
 export { default as CRMView } from './CRMView';
 export { default as IntegrationsView } from './IntegrationsView';
+export { default as FHIRView } from './FHIRView';
+export { default as PatientPortalView } from './PatientPortalView';

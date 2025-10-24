@@ -20,6 +20,8 @@ import TelehealthView from './views/TelehealthView';
 import RCMView from './views/RCMView';
 import CRMView from './views/CRMView';
 import IntegrationsView from './views/IntegrationsView';
+import FHIRView from './views/FHIRView';
+import PatientPortalView from './views/PatientPortalView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -166,7 +168,15 @@ function App() {
           />
         );
       case 'telehealth':
-        return <TelehealthView theme={theme} />;
+        return (
+          <TelehealthView
+            theme={theme}
+            api={api}
+            appointments={appointments}
+            patients={patients}
+            addNotification={addNotification}
+          />
+        );
       case 'rcm':
         return (
           <RCMView
@@ -185,6 +195,23 @@ function App() {
         return <CRMView theme={theme} setShowForm={setShowForm} />;
       case 'integrations':
         return <IntegrationsView theme={theme} />;
+      case 'fhir':
+        return (
+          <FHIRView
+            theme={theme}
+            api={api}
+            patients={patients}
+            addNotification={addNotification}
+          />
+        );
+      case 'patientPortal':
+        return (
+          <PatientPortalView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+          />
+        );
       default:
         return null;
     }
