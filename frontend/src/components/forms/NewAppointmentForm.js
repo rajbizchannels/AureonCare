@@ -1,0 +1,205 @@
+import React, { useState } from 'react';
+import { Calendar, X, Save } from 'lucide-react';
+
+const NewAppointmentForm = ({ theme, api, patients, onClose, onSuccess, addNotification }) => {
+  const [formData, setFormData] = useState({
+    patientId: '',
+    providerId: '1',
+    date: '',
+    time: '',
+    type: 'Check-up',
+    duration: 30,
+    reason: '',
+    notes: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const appointmentData = {
+        patient_id: formData.patientId,
+        provider_id: formData.providerId,
+        date: formData.date,
+        time: formData.time,
+        type: formData.type,
+        status: 'Scheduled',
+        reason: formData.reason,
+        duration: formData.duration,
+        notes: formData.notes
+      };
+
+      const newAppointment = await api.createAppointment(appointmentData);
+
+      const patient = patients.find(p => p.id.toString() === formData.patientId);
+      await addNotification('appointment', `New appointment scheduled with ${patient?.name || patient?.first_name + ' ' + patient?.last_name}`);
+
+      onSuccess(newAppointment);
+      onClose();
+    } catch (err) {
+      console.error('Error creating appointment:', err);
+      alert('Failed to create appointment. Please try again.');
+    }
+  };
+
+  return (
+    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
+      <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
+        <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+              <Calendar className={`w-5 h-5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+            </div>
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>New Appointment</h2>
+          </div>
+          <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
+            <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Patient <span className="text-red-400">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.patientId}
+                  onChange={(e) => setFormData({...formData, patientId: e.target.value})}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                >
+                  <option value="">Select Patient</option>
+                  {patients.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} - {p.mrn}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Appointment Type <span className="text-red-400">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                >
+                  <option value="Check-up">Check-up</option>
+                  <option value="Follow-up">Follow-up</option>
+                  <option value="Consultation">Consultation</option>
+                  <option value="Physical">Physical Exam</option>
+                  <option value="Procedure">Procedure</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Date <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Time <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={formData.time}
+                  onChange={(e) => setFormData({...formData, time: e.target.value})}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Duration (minutes) <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="15"
+                  step="15"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Provider
+                </label>
+                <select
+                  value={formData.providerId}
+                  onChange={(e) => setFormData({...formData, providerId: e.target.value})}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                >
+                  <option value="1">Dr. Sarah Chen</option>
+                  <option value="2">Dr. Michael Torres</option>
+                  <option value="3">Dr. Emily Watson</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Reason for Visit <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.reason}
+                onChange={(e) => setFormData({...formData, reason: e.target.value})}
+                placeholder="e.g., Annual physical, Follow-up on treatment"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Additional Notes
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                rows="3"
+                placeholder="Any additional information..."
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 resize-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+              />
+            </div>
+          </div>
+
+          <div className={`flex gap-3 mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={`flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+            >
+              <Save className="w-5 h-5" />
+              Schedule Appointment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default NewAppointmentForm;

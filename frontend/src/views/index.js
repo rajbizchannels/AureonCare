@@ -1,0 +1,7 @@
+export { default as DashboardView } from './DashboardView';
+export { default as PracticeManagementView } from './PracticeManagementView';
+export { default as EHRView } from './EHRView';
+export { default as TelehealthView } from './TelehealthView';
+export { default as RCMView } from './RCMView';
+export { default as CRMView } from './CRMView';
+export { default as IntegrationsView } from './IntegrationsView';
