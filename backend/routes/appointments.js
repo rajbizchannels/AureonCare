@@ -8,11 +8,11 @@ router.get('/', async (req, res) => {
     const result = await pool.query(`
       SELECT a.*,
              CONCAT(p.first_name, ' ', p.last_name) as patient,
-             CONCAT(pr.first_name, ' ', pr.last_name) as doctor
+             CONCAT(u.first_name, ' ', u.last_name) as doctor
       FROM appointments a
       LEFT JOIN patients p ON a.patient_id::text = p.id::text
-      LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
-      ORDER BY a.date DESC, a.time DESC
+      LEFT JOIN users u ON a.provider_id::text = u.id::text
+      ORDER BY a.start_time DESC
     `);
     res.json(result.rows);
   } catch (error) {
@@ -41,16 +41,21 @@ router.get('/:id', async (req, res) => {
 
 // Create new appointment
 router.post('/', async (req, res) => {
-  const { patient_id, provider_id, date, time, type, duration, reason, notes, status } = req.body;
-  
+  const {
+    patient_id, provider_id, practice_id, appointment_type,
+    start_time, end_time, duration_minutes, reason, notes, status
+  } = req.body;
+
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      `INSERT INTO appointments 
-       (patient_id, provider_id, date, time, type, duration, reason, notes, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      `INSERT INTO appointments
+       (patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
+        duration_minutes, reason, notes, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
        RETURNING *`,
-      [patient_id, provider_id, date, time, type, duration, reason, notes, status || 'Scheduled']
+      [patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
+       duration_minutes, reason, notes, status || 'scheduled']
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -61,17 +66,22 @@ router.post('/', async (req, res) => {
 
 // Update appointment
 router.put('/:id', async (req, res) => {
-  const { patient_id, provider_id, date, time, type, duration, reason, notes, status } = req.body;
-  
+  const {
+    patient_id, provider_id, practice_id, appointment_type,
+    start_time, end_time, duration_minutes, reason, notes, status
+  } = req.body;
+
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
       `UPDATE appointments
-       SET patient_id = $1, provider_id = $2, date = $3, time = $4,
-           type = $5, duration = $6, reason = $7, notes = $8, status = $9, updated_at = NOW()
-       WHERE id::text = $10::text
+       SET patient_id = $1, provider_id = $2, practice_id = $3, appointment_type = $4,
+           start_time = $5, end_time = $6, duration_minutes = $7, reason = $8,
+           notes = $9, status = $10, updated_at = NOW()
+       WHERE id::text = $11::text
        RETURNING *`,
-      [patient_id, provider_id, date, time, type, duration, reason, notes, status, req.params.id]
+      [patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
+       duration_minutes, reason, notes, status, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Appointment not found' });

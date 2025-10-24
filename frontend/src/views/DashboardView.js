@@ -13,6 +13,7 @@ const DashboardView = ({
   claims,
   patients,
   modules,
+  hasAccess,
   setSelectedItem,
   setShowForm,
   setCurrentModule,
@@ -142,9 +143,15 @@ const DashboardView = ({
         <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Available Modules</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {modules.map(module => (
-            <ModuleCard key={module.id} module={module} onClick={(id) => {
-              setCurrentModule(id);
-            }} />
+            <ModuleCard
+              key={module.id}
+              module={module}
+              onClick={(id) => {
+                setCurrentModule(id);
+              }}
+              hasAccess={hasAccess}
+              theme={theme}
+            />
           ))}
         </div>
       </div>
