@@ -277,5 +277,6 @@ export const useApp = () => {
   return context;
 };
 
-// Export AppProvider as default
+// Export AppProvider as both named and default export
+export { AppProvider };
 export default AppProvider;
