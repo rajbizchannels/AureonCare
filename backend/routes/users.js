@@ -32,7 +32,7 @@ router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      'SELECT * FROM users WHERE id = $1',
+      'SELECT * FROM users WHERE id::text = $1::text',
       [req.params.id]
     );
 
@@ -94,7 +94,7 @@ router.put('/:id', async (req, res) => {
            specialty = COALESCE($8, specialty),
            preferences = COALESCE($9, preferences),
            updated_at = NOW()
-       WHERE id = $10
+       WHERE id::text = $10::text
        RETURNING *`,
       [
         name,
@@ -126,7 +126,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      'DELETE FROM users WHERE id = $1 RETURNING *',
+      'DELETE FROM users WHERE id::text = $1::text RETURNING *',
       [req.params.id]
     );
 
