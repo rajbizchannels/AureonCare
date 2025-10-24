@@ -377,6 +377,7 @@ function App() {
           theme={theme}
           api={api}
           patients={patients}
+          users={users}
           onClose={() => setShowForm(null)}
           onSuccess={(newAppointment) => {
             setAppointments([...appointments, newAppointment]);
