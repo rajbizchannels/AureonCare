@@ -39,21 +39,24 @@ router.get('/:id', async (req, res) => {
 
 // Create new claim
 router.post('/', async (req, res) => {
-  const { 
-    claim_no, patient_id, payer, payer_id, amount, status, 
-    date, service_date, diagnosis_codes, procedure_codes, notes 
+  const {
+    claim_no, claim_number, patient_id, payer, amount, status,
+    service_date, diagnosis_codes, procedure_codes, notes
   } = req.body;
-  
+
   try {
     const pool = req.app.locals.pool;
+    // Use claim_number field (database column name), fall back to claim_no for compatibility
+    const claimNum = claim_number || claim_no;
+
     const result = await pool.query(
-      `INSERT INTO claims 
-       (claim_no, patient_id, payer, payer_id, amount, status, 
-        date, service_date, diagnosis_codes, procedure_codes, notes, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+      `INSERT INTO claims
+       (claim_number, patient_id, payer, amount, status,
+        service_date, diagnosis_codes, procedure_codes, notes, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
        RETURNING *`,
-      [claim_no, patient_id, payer, payer_id, amount, status || 'Pending', 
-       date, service_date, JSON.stringify(diagnosis_codes), JSON.stringify(procedure_codes), notes]
+      [claimNum, patient_id, payer, amount, status || 'pending',
+       service_date, diagnosis_codes, procedure_codes, notes]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -64,22 +67,32 @@ router.post('/', async (req, res) => {
 
 // Update claim
 router.put('/:id', async (req, res) => {
-  const { 
-    claim_no, patient_id, payer, payer_id, amount, status, 
-    date, service_date, diagnosis_codes, procedure_codes, notes 
+  const {
+    claim_no, claim_number, patient_id, payer, amount, status,
+    service_date, diagnosis_codes, procedure_codes, notes
   } = req.body;
-  
+
   try {
     const pool = req.app.locals.pool;
+    // Use claim_number field (database column name), fall back to claim_no for compatibility
+    const claimNum = claim_number || claim_no;
+
     const result = await pool.query(
       `UPDATE claims
-       SET claim_no = $1, patient_id = $2, payer = $3, payer_id = $4,
-           amount = $5, status = $6, date = $7, service_date = $8,
-           diagnosis_codes = $9, procedure_codes = $10, notes = $11, updated_at = NOW()
-       WHERE id::text = $12::text
+       SET claim_number = COALESCE($1, claim_number),
+           patient_id = COALESCE($2, patient_id),
+           payer = COALESCE($3, payer),
+           amount = COALESCE($4, amount),
+           status = COALESCE($5, status),
+           service_date = COALESCE($6, service_date),
+           diagnosis_codes = COALESCE($7, diagnosis_codes),
+           procedure_codes = COALESCE($8, procedure_codes),
+           notes = COALESCE($9, notes),
+           updated_at = NOW()
+       WHERE id::text = $10::text
        RETURNING *`,
-      [claim_no, patient_id, payer, payer_id, amount, status, 
-       date, service_date, JSON.stringify(diagnosis_codes), JSON.stringify(procedure_codes), notes, req.params.id]
+      [claimNum, patient_id, payer, amount, status,
+       service_date, diagnosis_codes, procedure_codes, notes, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Claim not found' });

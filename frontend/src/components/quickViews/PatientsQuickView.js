@@ -2,7 +2,7 @@ import React from 'react';
 import { X, Calendar, Phone } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
 
-const PatientsQuickView = ({ theme, patients, onClose, onViewAll }) => (
+const PatientsQuickView = ({ theme, patients, onClose, onViewAll, setEditingItem, setCurrentView }) => (
   <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
     <div className={`rounded-xl border max-w-4xl w-full max-h-[80vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
       <div className={`p-6 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
@@ -18,7 +18,17 @@ const PatientsQuickView = ({ theme, patients, onClose, onViewAll }) => (
             const initials = displayName.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase();
 
             return (
-              <div key={patient.id} className={`p-4 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}>
+              <div
+                key={patient.id}
+                onClick={() => {
+                  if (setEditingItem && setCurrentView) {
+                    setEditingItem({ type: 'patient', data: patient });
+                    setCurrentView('view');
+                    onClose();
+                  }
+                }}
+                className={`p-4 rounded-lg transition-colors cursor-pointer ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
+              >
                 <div className="flex items-center gap-3 mb-3">
                   <div className={`w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {initials}

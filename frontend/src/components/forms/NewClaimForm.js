@@ -42,13 +42,11 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
       const payer = payers.find(p => p.id === formData.payerId);
 
       const claimData = {
-        claim_no: claimNo,
+        claim_number: claimNo,
         patient_id: formData.patientId,
         payer: payer?.name || 'Unknown',
-        payer_id: formData.payerId,
         amount: parseFloat(formData.amount),
-        status: 'Pending',
-        date: new Date().toISOString().split('T')[0],
+        status: 'pending',
         service_date: formData.serviceDate,
         diagnosis_codes: formData.diagnosisCodes.split(',').map(c => c.trim()),
         procedure_codes: formData.procedureCodes.split(',').map(c => c.trim()),

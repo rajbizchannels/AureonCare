@@ -2,7 +2,7 @@ import React from 'react';
 import { X, Check } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
 
-const TasksQuickView = ({ theme, tasks, onClose, onCompleteTask }) => {
+const TasksQuickView = ({ theme, tasks, onClose, onCompleteTask, setEditingItem, setCurrentView }) => {
   // Helper function to parse due date
   const getDueDate = (task) => {
     if (task.due_date) {
@@ -27,7 +27,17 @@ const TasksQuickView = ({ theme, tasks, onClose, onCompleteTask }) => {
             {tasks.filter(t => t.status === 'Pending' || t.status === 'pending').map(task => {
               const dueDate = getDueDate(task);
               return (
-                <div key={task.id} className={`p-4 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}>
+                <div
+                  key={task.id}
+                  onClick={() => {
+                    if (setEditingItem && setCurrentView) {
+                      setEditingItem({ type: 'task', data: task });
+                      setCurrentView('view');
+                      onClose();
+                    }
+                  }}
+                  className={`p-4 rounded-lg transition-colors cursor-pointer ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -45,7 +55,10 @@ const TasksQuickView = ({ theme, tasks, onClose, onCompleteTask }) => {
                       </p>
                     </div>
                     <button
-                      onClick={() => onCompleteTask(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCompleteTask(task.id);
+                      }}
                       className="p-2 hover:bg-green-500/20 rounded-lg transition-colors group"
                       title="Mark as complete"
                     >
