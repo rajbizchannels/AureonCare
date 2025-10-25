@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 const ForgotPasswordModal = ({ theme, api, onClose }) => {
@@ -9,6 +9,17 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
   const [step, setStep] = useState(1); // 1: request reset, 2: enter new password
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
+
+  // ESC key handler
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
 
   const handleRequestReset = async (e) => {
     e.preventDefault();
