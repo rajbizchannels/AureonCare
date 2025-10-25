@@ -26,9 +26,18 @@ export const formatDate = (dateString) => {
 export const formatTime = (timeString) => {
   if (!timeString) return 'N/A';
   try {
-    // If it's a full timestamp, extract time
+    // If it's a Date object
+    if (timeString instanceof Date) {
+      if (isNaN(timeString.getTime())) return 'Invalid Time';
+      return timeString.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    // If it's a full timestamp string, extract time
     if (timeString.includes('T') || timeString.includes(' ')) {
       const date = new Date(timeString);
+      if (isNaN(date.getTime())) return 'Invalid Time';
       return date.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit'
@@ -37,6 +46,7 @@ export const formatTime = (timeString) => {
     // If it's already in HH:MM format
     return timeString.substring(0, 5);
   } catch (error) {
+    console.error('Time formatting error:', error);
     return 'Invalid Time';
   }
 };
