@@ -758,7 +758,7 @@ const ViewEditModal = ({
                 </div>
               )}
             </div>
-          ) : type === 'task' ? (
+          ) } type === 'task' ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
@@ -850,7 +850,7 @@ const ViewEditModal = ({
                 )}
               </div>
             </div>
-          ) : null}
+          ) : null
 
           <div className={`flex gap-3 mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
             <button
