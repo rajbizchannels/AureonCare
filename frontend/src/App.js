@@ -505,6 +505,8 @@ function App() {
           tasks={tasks}
           onClose={() => setSelectedItem(null)}
           onCompleteTask={completeTask}
+          setEditingItem={setEditingItem}
+          setCurrentView={setCurrentView}
         />
       )}
 
@@ -530,6 +532,8 @@ function App() {
             setSelectedItem(null);
             setCurrentModule('ehr');
           }}
+          setEditingItem={setEditingItem}
+          setCurrentView={setCurrentView}
         />
       )}
 

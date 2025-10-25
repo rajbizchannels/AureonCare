@@ -153,7 +153,7 @@ const ViewEditModal = ({
       <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {isView ? 'View' : 'Edit'} {type === 'appointment' ? 'Appointment' : type === 'patient' ? 'Patient Chart' : type === 'userProfile' ? 'User Profile' : 'Claim'}
+            {isView ? 'View' : 'Edit'} {type === 'appointment' ? 'Appointment' : type === 'patient' ? 'Patient Chart' : type === 'userProfile' ? 'User Profile' : type === 'user' ? 'User' : type === 'task' ? 'Task' : 'Claim'}
           </h2>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
@@ -372,11 +372,17 @@ const ViewEditModal = ({
                 <div className="col-span-2">
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {typeof editData.address === 'object' && editData.address !== null
+                        ? `${editData.address.street || ''}, ${editData.address.city || ''}, ${editData.address.state || ''} ${editData.address.zip || ''}`.replace(/,\s*,/g, ',').trim()
+                        : editData.address || 'N/A'}
+                    </p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.address || ''}
+                      value={typeof editData.address === 'object' && editData.address !== null
+                        ? `${editData.address.street || ''}, ${editData.address.city || ''}, ${editData.address.state || ''} ${editData.address.zip || ''}`.replace(/,\s*,/g, ',').trim()
+                        : editData.address || ''}
                       onChange={(e) => setEditData({...editData, address: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
@@ -634,7 +640,7 @@ const ViewEditModal = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Claim Number</label>
-                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.claimNo || editData.claim_no || 'N/A'}</p>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.claim_number || editData.claimNumber || editData.claimNo || editData.claim_no || 'N/A'}</p>
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
@@ -752,7 +758,99 @@ const ViewEditModal = ({
                 </div>
               )}
             </div>
-          )}
+          ) : type === 'task' ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Title</label>
+                  {isView ? (
+                    <p className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.title}</p>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editData.title || ''}
+                      onChange={(e) => setEditData({...editData, title: e.target.value})}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Priority</label>
+                  {isView ? (
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      editData.priority === 'High' || editData.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                      editData.priority === 'Medium' || editData.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {editData.priority}
+                    </span>
+                  ) : (
+                    <select
+                      value={editData.priority || 'medium'}
+                      onChange={(e) => setEditData({...editData, priority: e.target.value})}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
+                  {isView ? (
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      editData.status === 'Completed' || editData.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                      editData.status === 'In Progress' || editData.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {editData.status}
+                    </span>
+                  ) : (
+                    <select
+                      value={editData.status || 'pending'}
+                      onChange={(e) => setEditData({...editData, status: e.target.value})}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  )}
+                </div>
+                <div className="col-span-2">
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Due Date</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {formatDate(editData.due_date || editData.dueDate)}
+                    </p>
+                  ) : (
+                    <input
+                      type="date"
+                      value={(editData.due_date || editData.dueDate || '').split('T')[0]}
+                      onChange={(e) => setEditData({...editData, due_date: e.target.value, dueDate: e.target.value})}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    />
+                  )}
+                </div>
+                {editData.description && (
+                  <div className="col-span-2">
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Description</label>
+                    {isView ? (
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.description}</p>
+                    ) : (
+                      <textarea
+                        value={editData.description || ''}
+                        onChange={(e) => setEditData({...editData, description: e.target.value})}
+                        rows="4"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           <div className={`flex gap-3 mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
             <button
