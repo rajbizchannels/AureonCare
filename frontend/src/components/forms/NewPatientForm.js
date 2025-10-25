@@ -23,11 +23,13 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
+        e.preventDefault();
         onClose();
       }
     };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    window.addEventListener('keydown', handleEsc, true); // Use capture phase
+    return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
 
   const handleSubmit = async (e) => {

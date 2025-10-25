@@ -27,14 +27,31 @@ const ViewEditModal = ({
 
       // For appointments, extract date and time from start_time
       if (editingItem.type === 'appointment' && data.start_time) {
-        const startDate = new Date(data.start_time);
-        data.date = startDate.toISOString().split('T')[0];
-        data.time = startDate.toTimeString().slice(0, 5);
+        try {
+          // Handle both ISO format and SQL timestamp format
+          const startTimeStr = data.start_time.replace(' ', 'T'); // Convert SQL timestamp to ISO
+          const startDate = new Date(startTimeStr);
 
-        // Calculate duration if we have end_time
-        if (data.end_time) {
-          const endDate = new Date(data.end_time);
-          data.duration = Math.round((endDate - startDate) / 60000);
+          if (!isNaN(startDate.getTime())) {
+            // Format date as YYYY-MM-DD
+            data.date = startDate.toISOString().split('T')[0];
+
+            // Format time as HH:MM in local timezone
+            const hours = String(startDate.getHours()).padStart(2, '0');
+            const minutes = String(startDate.getMinutes()).padStart(2, '0');
+            data.time = `${hours}:${minutes}`;
+
+            // Calculate duration if we have end_time
+            if (data.end_time) {
+              const endTimeStr = data.end_time.replace(' ', 'T');
+              const endDate = new Date(endTimeStr);
+              if (!isNaN(endDate.getTime())) {
+                data.duration = Math.round((endDate - startDate) / 60000);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing appointment time:', error);
         }
 
         // Map appointment_type to type for the form
@@ -49,11 +66,13 @@ const ViewEditModal = ({
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
+        e.preventDefault();
         onClose();
       }
     };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    window.addEventListener('keydown', handleEsc, true); // Use capture phase
+    return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
 
   if (!editingItem) return null;

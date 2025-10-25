@@ -25,12 +25,14 @@ const UserProfileModal = ({
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
+        e.preventDefault();
         onClose();
         setShowChangePassword(false);
       }
     };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    window.addEventListener('keydown', handleEsc, true); // Use capture phase
+    return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose, setShowChangePassword]);
 
   const handlePasswordChange = async (e) => {
