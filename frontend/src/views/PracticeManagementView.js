@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, List, Calendar, Eye, Edit, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 
 const PracticeManagementView = ({
@@ -17,17 +17,33 @@ const PracticeManagementView = ({
   api,
   addNotification
 }) => {
+  // State for calendar navigation
+  const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week, -1 = last week, +1 = next week
+  const [selectedDay, setSelectedDay] = useState(new Date());
+
+  // Helper function to parse appointment date/time
+  const getAppointmentDateTime = (apt) => {
+    if (apt.start_time) {
+      const startTimeStr = apt.start_time.replace(' ', 'T');
+      return new Date(startTimeStr);
+    } else if (apt.date) {
+      return new Date(apt.date);
+    }
+    return new Date();
+  };
+
   // Helper function to get appointments for a specific date
   const getAppointmentsForDate = (date) => {
     return appointments.filter(apt => {
-      const aptDate = new Date(apt.date);
+      const aptDate = getAppointmentDateTime(apt);
       return aptDate.toDateString() === date.toDateString();
     });
   };
 
   // Get current week dates
-  const getCurrentWeekDates = () => {
+  const getCurrentWeekDates = (weekOffset = 0) => {
     const today = new Date();
+    today.setDate(today.getDate() + (weekOffset * 7));
     const currentDay = today.getDay(); // 0 = Sunday
     const monday = new Date(today);
     monday.setDate(today.getDate() - currentDay + (currentDay === 0 ? -6 : 1)); // Get Monday
@@ -41,7 +57,7 @@ const PracticeManagementView = ({
     return week;
   };
 
-  const weekDates = getCurrentWeekDates();
+  const weekDates = getCurrentWeekDates(selectedWeek);
   const today = new Date();
 
   return (
@@ -130,16 +146,19 @@ const PracticeManagementView = ({
                 {appointments.map((apt, idx) => {
                   const patient = patients.find(p => p.id === apt.patient_id);
                   const patientName = apt.patient || patient?.name || 'Unknown Patient';
+                  const aptDateTime = getAppointmentDateTime(apt);
+                  const doctorName = apt.doctor || 'N/A';
+                  const appointmentType = apt.type || apt.appointment_type || 'Consultation';
 
                   return (
                     <tr key={apt.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{patientName}</td>
-                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{apt.doctor || 'Dr. Sarah Chen'}</td>
-                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(apt.date)} {formatTime(apt.time)}</td>
-                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{apt.type}</td>
+                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{doctorName}</td>
+                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(aptDateTime)} {formatTime(aptDateTime)}</td>
+                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{appointmentType}</td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          apt.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                          apt.status === 'Confirmed' || apt.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
                         }`}>
                           {apt.status}
                         </span>
@@ -198,6 +217,60 @@ const PracticeManagementView = ({
       {/* Calendar View */}
       {appointmentViewType === 'calendar' && (
         <div className={`bg-gradient-to-br rounded-xl border p-6 ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+          {/* Week Navigation Controls */}
+          {calendarViewType === 'week' && (
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={() => setSelectedWeek(selectedWeek - 1)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous Week
+              </button>
+              <div className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {weekDates[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - {weekDates[6].toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </div>
+              <button
+                onClick={() => setSelectedWeek(selectedWeek + 1)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
+              >
+                Next Week
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Day Navigation Controls */}
+          {calendarViewType === 'day' && (
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={() => {
+                  const newDay = new Date(selectedDay);
+                  newDay.setDate(selectedDay.getDate() - 1);
+                  setSelectedDay(newDay);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous Day
+              </button>
+              <div className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {selectedDay.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </div>
+              <button
+                onClick={() => {
+                  const newDay = new Date(selectedDay);
+                  newDay.setDate(selectedDay.getDate() + 1);
+                  setSelectedDay(newDay);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
+              >
+                Next Day
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Week View */}
           {calendarViewType === 'week' && (
             <div>
@@ -216,10 +289,14 @@ const PracticeManagementView = ({
                   return (
                     <div
                       key={idx}
-                      className={`min-h-[120px] rounded-lg p-3 border ${
+                      onClick={() => {
+                        setSelectedDay(date);
+                        setCalendarViewType('day');
+                      }}
+                      className={`min-h-[120px] rounded-lg p-3 border cursor-pointer transition-all hover:shadow-lg ${
                         isToday
                           ? theme === 'dark' ? 'bg-cyan-500/10 border-cyan-500/50' : 'bg-cyan-100 border-cyan-500/50'
-                          : theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'
+                          : theme === 'dark' ? 'bg-slate-800/50 border-slate-700 hover:bg-slate-800' : 'bg-white border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       <div className={`text-sm font-semibold mb-2 ${isToday ? 'text-cyan-400' : theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -229,20 +306,22 @@ const PracticeManagementView = ({
                         {dayAppointments.map(apt => {
                           const patient = patients.find(p => p.id === apt.patient_id);
                           const patientName = apt.patient || patient?.name || 'Unknown';
+                          const aptDateTime = getAppointmentDateTime(apt);
                           return (
                             <div
                               key={apt.id}
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setEditingItem({ type: 'appointment', data: apt });
                                 setCurrentView('view');
                               }}
                               className={`text-xs p-2 rounded cursor-pointer transition-colors ${
-                                apt.status === 'Confirmed'
+                                apt.status === 'Confirmed' || apt.status === 'confirmed'
                                   ? 'bg-green-500/20 hover:bg-green-500/30 text-green-400'
                                   : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400'
                               }`}
                             >
-                              <div className="font-semibold truncate">{formatTime(apt.time)}</div>
+                              <div className="font-semibold truncate">{formatTime(aptDateTime)}</div>
                               <div className="truncate">{patientName}</div>
                             </div>
                           );
@@ -258,14 +337,14 @@ const PracticeManagementView = ({
           {/* Day View */}
           {calendarViewType === 'day' && (
             <div>
-              <div className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </div>
               <div className="space-y-2">
-                {getAppointmentsForDate(today).length > 0 ? (
-                  getAppointmentsForDate(today).map(apt => {
+                {getAppointmentsForDate(selectedDay).length > 0 ? (
+                  getAppointmentsForDate(selectedDay).map(apt => {
                     const patient = patients.find(p => p.id === apt.patient_id);
                     const patientName = apt.patient || patient?.name || 'Unknown Patient';
+                    const aptDateTime = getAppointmentDateTime(apt);
+                    const doctorName = apt.doctor || 'N/A';
+                    const appointmentType = apt.type || apt.appointment_type || 'Consultation';
 
                     return (
                       <div
@@ -283,20 +362,20 @@ const PracticeManagementView = ({
                         <div className="flex-1">
                           <div className="flex items-center gap-4">
                             <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-600'}`}>
-                              {formatTime(apt.time)}
+                              {formatTime(aptDateTime)}
                             </div>
                             <div>
                               <div className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                 {patientName}
                               </div>
                               <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                {apt.type} with {apt.doctor || 'Dr. Sarah Chen'}
+                                {appointmentType} with {doctorName}
                               </div>
                             </div>
                           </div>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          apt.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                          apt.status === 'Confirmed' || apt.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
                         }`}>
                           {apt.status}
                         </span>
@@ -305,7 +384,7 @@ const PracticeManagementView = ({
                   })
                 ) : (
                   <div className={`text-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    No appointments scheduled for today
+                    No appointments scheduled for this day
                   </div>
                 )}
               </div>
