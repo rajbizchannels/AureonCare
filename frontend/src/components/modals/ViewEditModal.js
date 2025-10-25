@@ -23,7 +23,25 @@ const ViewEditModal = ({
   // Update editData when editingItem changes
   useEffect(() => {
     if (editingItem?.data) {
-      setEditData(editingItem.data);
+      const data = { ...editingItem.data };
+
+      // For appointments, extract date and time from start_time
+      if (editingItem.type === 'appointment' && data.start_time) {
+        const startDate = new Date(data.start_time);
+        data.date = startDate.toISOString().split('T')[0];
+        data.time = startDate.toTimeString().slice(0, 5);
+
+        // Calculate duration if we have end_time
+        if (data.end_time) {
+          const endDate = new Date(data.end_time);
+          data.duration = Math.round((endDate - startDate) / 60000);
+        }
+
+        // Map appointment_type to type for the form
+        data.type = data.appointment_type || data.type;
+      }
+
+      setEditData(data);
     }
   }, [editingItem]);
 
@@ -46,7 +64,28 @@ const ViewEditModal = ({
   const handleSave = async () => {
     try {
       if (type === 'appointment') {
-        const updated = await api.updateAppointment(editData.id, editData);
+        // Prepare appointment data with proper start_time and end_time
+        const appointmentData = { ...editData };
+
+        // If we have separate date and time, combine them into start_time
+        if (editData.date && editData.time) {
+          const startTime = `${editData.date.split('T')[0]}T${editData.time}:00`;
+          const startDate = new Date(startTime);
+          const endDate = new Date(startDate.getTime() + (editData.duration || 30) * 60000);
+
+          appointmentData.start_time = startDate.toISOString().slice(0, 19).replace('T', ' ');
+          appointmentData.end_time = endDate.toISOString().slice(0, 19).replace('T', ' ');
+          appointmentData.duration_minutes = editData.duration || 30;
+          appointmentData.appointment_type = editData.type;
+          appointmentData.patient_id = editData.patientId || editData.patient_id;
+          appointmentData.provider_id = editData.providerId || editData.provider_id;
+
+          // Remove old fields
+          delete appointmentData.date;
+          delete appointmentData.time;
+        }
+
+        const updated = await api.updateAppointment(editData.id, appointmentData);
         setAppointments(prev => prev.map(apt =>
           apt.id === editData.id ? updated : apt
         ));
@@ -68,7 +107,16 @@ const ViewEditModal = ({
         ));
         await addNotification('alert', 'User updated successfully');
       } else {
-        const updated = await api.updateClaim(editData.id, editData);
+        // Prepare claim data with proper field names
+        const claimData = {
+          ...editData,
+          claim_number: editData.claim_number || editData.claimNo || editData.claim_no,
+          service_date: editData.service_date || editData.serviceDate,
+          diagnosis_codes: editData.diagnosis_codes || editData.diagnosisCodes,
+          procedure_codes: editData.procedure_codes || editData.procedureCodes
+        };
+
+        const updated = await api.updateClaim(editData.id, claimData);
         setClaims(prev => prev.map(claim =>
           claim.id === editData.id ? updated : claim
         ));
@@ -358,11 +406,11 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.email || 'sarah.chen@medflow.com'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.email || 'N/A'}</p>
                   ) : (
                     <input
                       type="email"
-                      value={editData.email || 'sarah.chen@medflow.com'}
+                      value={editData.email || ''}
                       onChange={(e) => setEditData({...editData, email: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
@@ -371,11 +419,11 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.phone || '(555) 123-4567'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.phone || 'N/A'}</p>
                   ) : (
                     <input
                       type="tel"
-                      value={editData.phone || '(555) 123-4567'}
+                      value={editData.phone || ''}
                       onChange={(e) => setEditData({...editData, phone: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
@@ -384,11 +432,11 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>License</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.license || 'MD-123456'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.license || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.license || 'MD-123456'}
+                      value={editData.license || ''}
                       onChange={(e) => setEditData({...editData, license: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
@@ -397,11 +445,11 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Specialty</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.specialty || 'Internal Medicine'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.specialty || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.specialty || 'Internal Medicine'}
+                      value={editData.specialty || ''}
                       onChange={(e) => setEditData({...editData, specialty: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
