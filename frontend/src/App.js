@@ -28,6 +28,7 @@ import CRMView from './views/CRMView';
 import IntegrationsView from './views/IntegrationsView';
 import FHIRView from './views/FHIRView';
 import PatientPortalView from './views/PatientPortalView';
+import AdminPanelView from './views/AdminPanelView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -181,6 +182,8 @@ function App() {
             setSelectedItem={handleSetSelectedItem}
             setShowForm={handleSetShowForm}
             setCurrentModule={setCurrentModule}
+            setAppointmentViewType={setAppointmentViewType}
+            setCalendarViewType={setCalendarViewType}
             completeTask={completeTask}
           />
         );
@@ -253,6 +256,19 @@ function App() {
         return (
           <PatientPortalView
             theme={theme}
+            api={api}
+            addNotification={addNotification}
+          />
+        );
+      case 'admin':
+        return (
+          <AdminPanelView
+            theme={theme}
+            users={users}
+            setUsers={setUsers}
+            setShowForm={handleSetShowForm}
+            setEditingItem={handleSetEditingItem}
+            setCurrentView={setCurrentView}
             api={api}
             addNotification={addNotification}
           />
@@ -496,6 +512,7 @@ function App() {
           setShowForm={handleSetShowForm}
           setEditingItem={handleSetEditingItem}
           setUsers={setUsers}
+          setCurrentModule={setCurrentModule}
           api={api}
           addNotification={addNotification}
         />
