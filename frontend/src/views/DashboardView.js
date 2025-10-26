@@ -1,5 +1,5 @@
-import React from 'react';
-import { Bot, Shield, Calendar, Clock, DollarSign, Users, Video, FileText, ChevronRight, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bot, Shield, Calendar, Clock, DollarSign, Users, Video, FileText, ChevronRight, Check, Settings } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
@@ -19,8 +19,35 @@ const DashboardView = ({
   setCurrentModule,
   setAppointmentViewType,
   setCalendarViewType,
-  completeTask
+  completeTask,
+  updateUserPreferences,
+  addNotification
 }) => {
+  const [showQuickActionsSettings, setShowQuickActionsSettings] = useState(false);
+
+  // Define all available quick actions
+  const allQuickActions = [
+    { id: 'appointment', label: 'New Appointment', icon: Calendar, color: 'blue' },
+    { id: 'patient', label: 'Add Patient', icon: FileText, color: 'purple' },
+    { id: 'task', label: 'New Task', icon: Check, color: 'green' },
+    { id: 'claim', label: 'New Claim', icon: DollarSign, color: 'yellow' }
+  ];
+
+  // Get enabled actions from user preferences or default to all
+  const enabledActions = user?.preferences?.quickActions || allQuickActions.map(a => a.id);
+
+  const toggleQuickAction = async (actionId) => {
+    const newEnabledActions = enabledActions.includes(actionId)
+      ? enabledActions.filter(id => id !== actionId)
+      : [...enabledActions, actionId];
+
+    await updateUserPreferences({ quickActions: newEnabledActions });
+    if (enabledActions.includes(actionId)) {
+      await addNotification('success', 'Quick action removed');
+    } else {
+      await addNotification('success', 'Quick action added');
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -108,37 +135,63 @@ const DashboardView = ({
       </div>
 
       <div className={`bg-gradient-to-br backdrop-blur-sm rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
-        <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h3>
           <button
-            onClick={() => setShowForm('appointment')}
-            className={`p-4 rounded-lg transition-colors text-left group ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
+            onClick={() => setShowQuickActionsSettings(!showQuickActionsSettings)}
+            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+            title="Customize Quick Actions"
           >
-            <Calendar className="w-6 h-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
-            <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>New Appointment</p>
-          </button>
-          <button
-            onClick={() => setShowForm('patient')}
-            className={`p-4 rounded-lg transition-colors text-left group ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
-          >
-            <FileText className="w-6 h-6 text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
-            <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Add Patient</p>
-          </button>
-          <button
-            onClick={() => setShowForm('task')}
-            className={`p-4 rounded-lg transition-colors text-left group ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
-          >
-            <Check className="w-6 h-6 text-green-400 mb-2 group-hover:scale-110 transition-transform" />
-            <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>New Task</p>
-          </button>
-          <button
-            onClick={() => setShowForm('claim')}
-            className={`p-4 rounded-lg transition-colors text-left group ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
-          >
-            <DollarSign className="w-6 h-6 text-yellow-400 mb-2 group-hover:scale-110 transition-transform" />
-            <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>New Claim</p>
+            <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
         </div>
+
+        {showQuickActionsSettings ? (
+          <div className="space-y-3">
+            <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Toggle which quick actions you want to see:
+            </p>
+            {allQuickActions.map(action => {
+              const Icon = action.icon;
+              const isEnabled = enabledActions.includes(action.id);
+              return (
+                <div
+                  key={action.id}
+                  className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-5 h-5 text-${action.color}-400`} />
+                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{action.label}</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isEnabled}
+                    onChange={() => toggleQuickAction(action.id)}
+                    className="form-checkbox h-5 w-5 text-blue-500"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {allQuickActions
+              .filter(action => enabledActions.includes(action.id))
+              .map(action => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.id}
+                    onClick={() => setShowForm(action.id)}
+                    className={`p-4 rounded-lg transition-colors text-left group ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
+                  >
+                    <Icon className={`w-6 h-6 text-${action.color}-400 mb-2 group-hover:scale-110 transition-transform`} />
+                    <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{action.label}</p>
+                  </button>
+                );
+              })}
+          </div>
+        )}
       </div>
 
       <div>

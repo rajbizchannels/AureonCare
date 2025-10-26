@@ -214,6 +214,8 @@ function App() {
             setAppointmentViewType={setAppointmentViewType}
             setCalendarViewType={setCalendarViewType}
             completeTask={completeTask}
+            updateUserPreferences={updateUserPreferences}
+            addNotification={addNotification}
           />
         );
       case 'practiceManagement':
