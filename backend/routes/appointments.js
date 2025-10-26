@@ -5,15 +5,26 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query(`
+    const { patientId } = req.query;
+
+    let query = `
       SELECT a.*,
              CONCAT(p.first_name, ' ', p.last_name) as patient,
              CONCAT(u.first_name, ' ', u.last_name) as doctor
       FROM appointments a
       LEFT JOIN patients p ON a.patient_id::text = p.id::text
       LEFT JOIN users u ON a.provider_id::text = u.id::text
-      ORDER BY a.start_time DESC
-    `);
+    `;
+
+    const params = [];
+    if (patientId) {
+      query += ` WHERE a.patient_id::text = $1::text`;
+      params.push(patientId);
+    }
+
+    query += ` ORDER BY a.start_time DESC`;
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching appointments:', error);
