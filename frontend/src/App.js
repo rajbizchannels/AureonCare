@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Globe } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -154,6 +154,22 @@ function App() {
     }
   };
 
+  // Local state for language menu
+  const [showLanguageMenu, setShowLanguageMenu] = React.useState(false);
+
+  // Close language menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showLanguageMenu) {
+        setShowLanguageMenu(false);
+      }
+    };
+    if (showLanguageMenu) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showLanguageMenu]);
+
   // Get user initials from name
   const getUserInitials = () => {
     if (user?.avatar) return user.avatar;
@@ -164,6 +180,18 @@ function App() {
     }
     return user.name.substring(0, 2).toUpperCase();
   };
+
+  // Language configuration
+  const languages = [
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'es', name: 'Español', flag: '🇪🇸' },
+    { code: 'fr', name: 'Français', flag: '🇫🇷' },
+    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+    { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+    { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' }
+  ];
+
+  const currentLanguage = languages.find(l => l.code === language) || languages[0];
 
   // Render the appropriate view based on currentModule
   const renderModule = () => {
@@ -387,6 +415,51 @@ function App() {
               >
                 <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
               </button>
+
+              {/* Language Selector */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+                  className={`p-2 rounded-lg transition-colors flex items-center gap-2 ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                  title="Change Language"
+                >
+                  <Globe className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                  <span className="text-lg">{currentLanguage.flag}</span>
+                </button>
+
+                {showLanguageMenu && (
+                  <div
+                    className={`absolute top-full right-0 mt-2 w-48 rounded-lg border shadow-lg z-50 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {languages.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={async () => {
+                          setLanguage(lang.code);
+                          await updateUserPreferences({ language: lang.code });
+                          setShowLanguageMenu(false);
+                          await addNotification('success', `Language changed to ${lang.name}`);
+                        }}
+                        className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
+                          language === lang.code
+                            ? theme === 'dark'
+                              ? 'bg-blue-500/20 text-blue-400'
+                              : 'bg-blue-50 text-blue-600'
+                            : theme === 'dark'
+                            ? 'hover:bg-slate-800 text-white'
+                            : 'hover:bg-gray-100 text-gray-900'
+                        } ${lang === languages[0] ? 'rounded-t-lg' : ''} ${
+                          lang === languages[languages.length - 1] ? 'rounded-b-lg' : ''
+                        }`}
+                      >
+                        <span className="text-xl">{lang.flag}</span>
+                        <span className="font-medium">{lang.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* User Menu */}
               <button
