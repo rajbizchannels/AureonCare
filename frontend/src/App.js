@@ -420,7 +420,10 @@ function App() {
               {/* Language Selector */}
               <div className="relative">
                 <button
-                  onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowLanguageMenu(!showLanguageMenu);
+                  }}
                   className={`p-2 rounded-lg transition-colors flex items-center gap-2 ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
                   title="Change Language"
                 >
