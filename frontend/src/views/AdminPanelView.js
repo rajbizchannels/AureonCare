@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield } from 'lucide-react';
+import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock } from 'lucide-react';
 
 const AdminPanelView = ({
   theme,
@@ -96,6 +96,21 @@ const AdminPanelView = ({
       await addNotification('success', 'User deleted successfully');
     } catch (error) {
       await addNotification('alert', 'Failed to delete user');
+    }
+  };
+
+  const handleToggleUserStatus = async (userId, currentStatus) => {
+    const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
+    const actionText = newStatus === 'blocked' ? 'block' : 'unblock';
+
+    if (!window.confirm(`Are you sure you want to ${actionText} this user?`)) return;
+
+    try {
+      const updatedUser = await api.updateUser(userId, { status: newStatus });
+      setUsers(users.map(u => u.id === userId ? updatedUser : u));
+      await addNotification('success', `User ${actionText}ed successfully`);
+    } catch (error) {
+      await addNotification('alert', `Failed to ${actionText} user`);
     }
   };
 
@@ -298,6 +313,7 @@ const AdminPanelView = ({
                   <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Name</th>
                   <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Email</th>
                   <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Role</th>
+                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
                   <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Specialty</th>
                   <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
                 </tr>
@@ -321,6 +337,16 @@ const AdminPanelView = ({
                         {user.role}
                       </span>
                     </td>
+                    <td className={`px-4 py-3`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                        user.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                        user.status === 'blocked' ? 'bg-red-500/20 text-red-400' :
+                        user.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-green-500/20 text-green-400'
+                      }`}>
+                        {user.status || 'active'}
+                      </span>
+                    </td>
                     <td className={`px-4 py-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       {user.specialty || 'N/A'}
                     </td>
@@ -332,12 +358,25 @@ const AdminPanelView = ({
                             setCurrentView('edit');
                           }}
                           className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                          title="Edit User"
                         >
                           <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
                         </button>
                         <button
+                          onClick={() => handleToggleUserStatus(user.id, user.status || 'active')}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                          title={(user.status || 'active') === 'blocked' ? 'Unblock User' : 'Block User'}
+                        >
+                          {(user.status || 'active') === 'blocked' ? (
+                            <Unlock className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
+                          ) : (
+                            <Lock className={`w-4 h-4 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                          )}
+                        </button>
+                        <button
                           onClick={() => handleDeleteUser(user.id)}
                           className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                          title="Delete User"
                         >
                           <Trash2 className={`w-4 h-4 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
                         </button>
