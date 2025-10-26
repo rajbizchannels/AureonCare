@@ -152,6 +152,17 @@ function App() {
     }
   };
 
+  // Get user initials from name
+  const getUserInitials = () => {
+    if (user?.avatar) return user.avatar;
+    if (!user?.name) return 'U';
+    const names = user.name.trim().split(/\s+/);
+    if (names.length >= 2) {
+      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    }
+    return user.name.substring(0, 2).toUpperCase();
+  };
+
   // Render the appropriate view based on currentModule
   const renderModule = () => {
     switch (currentModule) {
@@ -359,7 +370,7 @@ function App() {
                 title={`${user?.name || 'User'} (${user?.role || 'user'})`}
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  {user?.avatar || 'U'}
+                  {getUserInitials()}
                 </div>
                 <div className="text-left">
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.name || 'User'}</p>
@@ -547,6 +558,8 @@ function App() {
             setSelectedItem(null);
             setCurrentModule('rcm');
           }}
+          setEditingItem={handleSetEditingItem}
+          setCurrentView={setCurrentView}
         />
       )}
 

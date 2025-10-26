@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
-const RevenueQuickView = ({ theme, claims, patients, onClose, onViewAll }) => (
+const RevenueQuickView = ({ theme, claims, patients, onClose, onViewAll, setEditingItem, setCurrentView }) => (
   <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
     <div className={`rounded-xl border max-w-4xl w-full max-h-[80vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
       <div className={`p-6 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
@@ -13,19 +13,43 @@ const RevenueQuickView = ({ theme, claims, patients, onClose, onViewAll }) => (
       </div>
       <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+          <div
+            onClick={() => {
+              if (onViewAll) {
+                onClose();
+                onViewAll();
+              }
+            }}
+            className={`p-4 rounded-lg cursor-pointer transition-all hover:scale-105 ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-200'}`}
+          >
             <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Total Billed</p>
             <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {formatCurrency(claims.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
             </p>
           </div>
-          <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+          <div
+            onClick={() => {
+              if (onViewAll) {
+                onClose();
+                onViewAll();
+              }
+            }}
+            className={`p-4 rounded-lg cursor-pointer transition-all hover:scale-105 ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-200'}`}
+          >
             <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Collected</p>
             <p className="text-2xl font-bold text-green-400">
               {formatCurrency(claims.filter(c => c.status === 'Approved' || c.status === 'Paid').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
             </p>
           </div>
-          <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+          <div
+            onClick={() => {
+              if (onViewAll) {
+                onClose();
+                onViewAll();
+              }
+            }}
+            className={`p-4 rounded-lg cursor-pointer transition-all hover:scale-105 ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-200'}`}
+          >
             <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Pending</p>
             <p className="text-2xl font-bold text-yellow-400">
               {formatCurrency(claims.filter(c => c.status === 'Pending' || c.status === 'Submitted').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0))}
@@ -40,7 +64,17 @@ const RevenueQuickView = ({ theme, claims, patients, onClose, onViewAll }) => (
             const patientName = claim.patient || patient?.name || 'Unknown Patient';
 
             return (
-              <div key={claim.id} className={`p-4 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}>
+              <div
+                key={claim.id}
+                onClick={() => {
+                  if (setEditingItem && setCurrentView) {
+                    setEditingItem({ type: 'claim', data: claim });
+                    setCurrentView('view');
+                    onClose();
+                  }
+                }}
+                className={`p-4 rounded-lg transition-colors cursor-pointer ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{claim.claim_number || claim.claimNumber || claim.claimNo || claim.claim_no || 'N/A'}</h4>

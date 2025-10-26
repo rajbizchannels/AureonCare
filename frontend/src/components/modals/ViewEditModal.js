@@ -316,12 +316,12 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatDate(editData.dob)}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatDate(editData.date_of_birth || editData.dob)}</p>
                   ) : (
                     <input
                       type="date"
-                      value={(editData.dob || '').split('T')[0]}
-                      onChange={(e) => setEditData({...editData, dob: e.target.value})}
+                      value={((editData.date_of_birth || editData.dob) || '').split('T')[0]}
+                      onChange={(e) => setEditData({...editData, date_of_birth: e.target.value, dob: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
                   )}
