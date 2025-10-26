@@ -48,6 +48,28 @@ router.post('/', async (req, res) => {
 
   try {
     const pool = req.app.locals.pool;
+
+    // Check for scheduling conflicts with the same doctor
+    const conflictCheck = await pool.query(
+      `SELECT a.id,
+              CONCAT(u.first_name, ' ', u.last_name) as doctor,
+              CONCAT(p.first_name, ' ', p.last_name) as patient
+       FROM appointments a
+       LEFT JOIN users u ON a.provider_id::text = u.id::text
+       LEFT JOIN patients p ON a.patient_id::text = p.id::text
+       WHERE a.provider_id::text = $1::text
+         AND a.start_time = $2
+         AND a.status NOT IN ('cancelled', 'completed')`,
+      [provider_id, start_time]
+    );
+
+    if (conflictCheck.rows.length > 0) {
+      const conflict = conflictCheck.rows[0];
+      return res.status(409).json({
+        error: `Doctor ${conflict.doctor} already has an appointment with ${conflict.patient} at this time`
+      });
+    }
+
     const result = await pool.query(
       `INSERT INTO appointments
        (patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
@@ -73,6 +95,29 @@ router.put('/:id', async (req, res) => {
 
   try {
     const pool = req.app.locals.pool;
+
+    // Check for scheduling conflicts with the same doctor (excluding current appointment)
+    const conflictCheck = await pool.query(
+      `SELECT a.id,
+              CONCAT(u.first_name, ' ', u.last_name) as doctor,
+              CONCAT(p.first_name, ' ', p.last_name) as patient
+       FROM appointments a
+       LEFT JOIN users u ON a.provider_id::text = u.id::text
+       LEFT JOIN patients p ON a.patient_id::text = p.id::text
+       WHERE a.provider_id::text = $1::text
+         AND a.start_time = $2
+         AND a.id::text != $3::text
+         AND a.status NOT IN ('cancelled', 'completed')`,
+      [provider_id, start_time, req.params.id]
+    );
+
+    if (conflictCheck.rows.length > 0) {
+      const conflict = conflictCheck.rows[0];
+      return res.status(409).json({
+        error: `Doctor ${conflict.doctor} already has an appointment with ${conflict.patient} at this time`
+      });
+    }
+
     const result = await pool.query(
       `UPDATE appointments
        SET patient_id = $1, provider_id = $2, practice_id = $3, appointment_type = $4,

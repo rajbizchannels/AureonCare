@@ -127,6 +127,31 @@ function App() {
   const modules = getModules(t);
   const hasModuleAccess = (moduleId) => hasAccess(planTier, moduleId);
 
+  // Modal management: close other modals when opening a new one
+  const handleSetEditingItem = (item) => {
+    setEditingItem(item);
+    if (item) {
+      setShowForm(null);
+      setSelectedItem(null);
+    }
+  };
+
+  const handleSetShowForm = (form) => {
+    setShowForm(form);
+    if (form) {
+      setEditingItem(null);
+      setSelectedItem(null);
+    }
+  };
+
+  const handleSetSelectedItem = (item) => {
+    setSelectedItem(item);
+    if (item) {
+      setEditingItem(null);
+      setShowForm(null);
+    }
+  };
+
   // Render the appropriate view based on currentModule
   const renderModule = () => {
     switch (currentModule) {
@@ -142,8 +167,8 @@ function App() {
             patients={patients}
             modules={modules}
             hasAccess={hasModuleAccess}
-            setSelectedItem={setSelectedItem}
-            setShowForm={setShowForm}
+            setSelectedItem={handleSetSelectedItem}
+            setShowForm={handleSetShowForm}
             setCurrentModule={setCurrentModule}
             completeTask={completeTask}
           />
@@ -158,8 +183,8 @@ function App() {
             calendarViewType={calendarViewType}
             setAppointmentViewType={setAppointmentViewType}
             setCalendarViewType={setCalendarViewType}
-            setShowForm={setShowForm}
-            setEditingItem={setEditingItem}
+            setShowForm={handleSetShowForm}
+            setEditingItem={handleSetEditingItem}
             setCurrentView={setCurrentView}
             setAppointments={setAppointments}
             api={api}
@@ -171,9 +196,9 @@ function App() {
           <EHRView
             theme={theme}
             patients={patients}
-            setShowForm={setShowForm}
+            setShowForm={handleSetShowForm}
             setCurrentView={setCurrentView}
-            setEditingItem={setEditingItem}
+            setEditingItem={handleSetEditingItem}
           />
         );
       case 'telehealth':
@@ -192,8 +217,8 @@ function App() {
             theme={theme}
             claims={claims}
             patients={patients}
-            setShowForm={setShowForm}
-            setEditingItem={setEditingItem}
+            setShowForm={handleSetShowForm}
+            setEditingItem={handleSetEditingItem}
             setCurrentView={setCurrentView}
             setClaims={setClaims}
             addNotification={addNotification}
@@ -201,7 +226,7 @@ function App() {
           />
         );
       case 'crm':
-        return <CRMView theme={theme} setShowForm={setShowForm} />;
+        return <CRMView theme={theme} setShowForm={handleSetShowForm} />;
       case 'integrations':
         return <IntegrationsView theme={theme} />;
       case 'fhir':
@@ -329,13 +354,14 @@ function App() {
 
               {/* User Menu */}
               <button
-                onClick={() => setShowForm('userProfile')}
+                onClick={() => handleSetShowForm('userProfile')}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors"
+                title={`${user?.name || 'User'} (${user?.role || 'user'})`}
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
                   {user?.avatar || 'U'}
                 </div>
-                <div className="hidden md:block text-left">
+                <div className="text-left">
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.name || 'User'}</p>
                   <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.role || 'user'}</p>
                 </div>
@@ -435,7 +461,7 @@ function App() {
           user={user}
           onClose={() => setShowForm(null)}
           setCurrentView={setCurrentView}
-          setEditingItem={setEditingItem}
+          setEditingItem={handleSetEditingItem}
           showChangePassword={showChangePassword}
           setShowChangePassword={setShowChangePassword}
           updateUserPreferences={updateUserPreferences}
@@ -456,8 +482,8 @@ function App() {
           updateUserPreferences={updateUserPreferences}
           setTheme={setTheme}
           setLanguage={setLanguage}
-          setShowForm={setShowForm}
-          setEditingItem={setEditingItem}
+          setShowForm={handleSetShowForm}
+          setEditingItem={handleSetEditingItem}
           setUsers={setUsers}
           api={api}
           addNotification={addNotification}
@@ -505,7 +531,7 @@ function App() {
           tasks={tasks}
           onClose={() => setSelectedItem(null)}
           onCompleteTask={completeTask}
-          setEditingItem={setEditingItem}
+          setEditingItem={handleSetEditingItem}
           setCurrentView={setCurrentView}
         />
       )}
@@ -532,7 +558,7 @@ function App() {
             setSelectedItem(null);
             setCurrentModule('ehr');
           }}
-          setEditingItem={setEditingItem}
+          setEditingItem={handleSetEditingItem}
           setCurrentView={setCurrentView}
         />
       )}
