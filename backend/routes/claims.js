@@ -5,13 +5,24 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query(`
+    const { patientId } = req.query;
+
+    let query = `
       SELECT c.*,
              CONCAT(p.first_name, ' ', p.last_name) as patient
       FROM claims c
       LEFT JOIN patients p ON c.patient_id::text = p.id::text
-      ORDER BY c.service_date DESC NULLS LAST, c.created_at DESC
-    `);
+    `;
+
+    const params = [];
+    if (patientId) {
+      query += ` WHERE c.patient_id::text = $1::text`;
+      params.push(patientId);
+    }
+
+    query += ` ORDER BY c.service_date DESC NULLS LAST, c.created_at DESC`;
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching claims:', error);

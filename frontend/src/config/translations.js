@@ -1,5 +1,6 @@
 export const translations = {
   en: {
+    // Modules
     dashboard: 'Dashboard',
     practiceManagement: 'Practice Management',
     ehr: 'Electronic Health Records',
@@ -9,14 +10,76 @@ export const translations = {
     integrations: 'Integrations',
     fhir: 'FHIR HL7',
     patientPortal: 'Patient Portal',
+    adminPanel: 'Admin Panel',
+
+    // Dashboard
     welcome: 'Welcome back',
     todaysAppointments: "Today's Appointments",
     pendingTasks: 'Pending Tasks',
     revenue: 'Revenue This Month',
     activePatients: 'Active Patients',
-    backToDashboard: 'Back to Dashboard'
+    backToDashboard: 'Back to Dashboard',
+
+    // Common Actions
+    save: 'Save',
+    cancel: 'Cancel',
+    edit: 'Edit',
+    delete: 'Delete',
+    close: 'Close',
+    add: 'Add',
+    create: 'Create',
+    update: 'Update',
+    search: 'Search',
+    filter: 'Filter',
+    export: 'Export',
+    import: 'Import',
+    settings: 'Settings',
+
+    // User Interface
+    profile: 'Profile',
+    notifications: 'Notifications',
+    logout: 'Logout',
+    login: 'Login',
+    changePassword: 'Change Password',
+    darkMode: 'Dark Mode',
+    lightMode: 'Light Mode',
+    language: 'Language',
+
+    // Status
+    active: 'Active',
+    inactive: 'Inactive',
+    blocked: 'Blocked',
+    pending: 'Pending',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+
+    // Messages
+    saveSuccess: 'Saved successfully',
+    saveFailed: 'Failed to save',
+    deleteSuccess: 'Deleted successfully',
+    deleteFailed: 'Failed to delete',
+    updateSuccess: 'Updated successfully',
+    updateFailed: 'Failed to update',
+
+    // Admin Panel
+    clinicSettings: 'Clinic Settings',
+    userManagement: 'User Management',
+    rolesPermissions: 'Roles & Permissions',
+    workingHours: 'Working Hours',
+    appointmentSettings: 'Appointment Settings',
+
+    // User Profile
+    editProfile: 'Edit Profile',
+    firstName: 'First Name',
+    lastName: 'Last Name',
+    email: 'Email',
+    phone: 'Phone',
+    role: 'Role',
+    status: 'Status',
+    specialty: 'Specialty'
   },
   es: {
+    // Modules
     dashboard: 'Tablero',
     practiceManagement: 'Gestión de Consulta',
     ehr: 'Historia Clínica Electrónica',
@@ -26,12 +89,73 @@ export const translations = {
     integrations: 'Integraciones',
     fhir: 'FHIR HL7',
     patientPortal: 'Portal del Paciente',
+    adminPanel: 'Panel de Administración',
+
+    // Dashboard
     welcome: 'Bienvenido de nuevo',
     todaysAppointments: 'Citas de Hoy',
     pendingTasks: 'Tareas Pendientes',
     revenue: 'Ingresos Este Mes',
     activePatients: 'Pacientes Activos',
-    backToDashboard: 'Volver al Tablero'
+    backToDashboard: 'Volver al Tablero',
+
+    // Common Actions
+    save: 'Guardar',
+    cancel: 'Cancelar',
+    edit: 'Editar',
+    delete: 'Eliminar',
+    close: 'Cerrar',
+    add: 'Añadir',
+    create: 'Crear',
+    update: 'Actualizar',
+    search: 'Buscar',
+    filter: 'Filtrar',
+    export: 'Exportar',
+    import: 'Importar',
+    settings: 'Configuración',
+
+    // User Interface
+    profile: 'Perfil',
+    notifications: 'Notificaciones',
+    logout: 'Cerrar Sesión',
+    login: 'Iniciar Sesión',
+    changePassword: 'Cambiar Contraseña',
+    darkMode: 'Modo Oscuro',
+    lightMode: 'Modo Claro',
+    language: 'Idioma',
+
+    // Status
+    active: 'Activo',
+    inactive: 'Inactivo',
+    blocked: 'Bloqueado',
+    pending: 'Pendiente',
+    completed: 'Completado',
+    cancelled: 'Cancelado',
+
+    // Messages
+    saveSuccess: 'Guardado exitosamente',
+    saveFailed: 'Error al guardar',
+    deleteSuccess: 'Eliminado exitosamente',
+    deleteFailed: 'Error al eliminar',
+    updateSuccess: 'Actualizado exitosamente',
+    updateFailed: 'Error al actualizar',
+
+    // Admin Panel
+    clinicSettings: 'Configuración de Clínica',
+    userManagement: 'Gestión de Usuarios',
+    rolesPermissions: 'Roles y Permisos',
+    workingHours: 'Horario de Trabajo',
+    appointmentSettings: 'Configuración de Citas',
+
+    // User Profile
+    editProfile: 'Editar Perfil',
+    firstName: 'Nombre',
+    lastName: 'Apellido',
+    email: 'Correo Electrónico',
+    phone: 'Teléfono',
+    role: 'Rol',
+    status: 'Estado',
+    specialty: 'Especialidad'
   },
   fr: {
     dashboard: 'Tableau de Bord',

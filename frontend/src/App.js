@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Globe } from 'lucide-react';
+import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Globe, Sun, Moon } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -415,6 +415,24 @@ function App() {
                 title="Settings"
               >
                 <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+              </button>
+
+              {/* Theme Toggle */}
+              <button
+                onClick={async () => {
+                  const newTheme = theme === 'dark' ? 'light' : 'dark';
+                  setTheme(newTheme);
+                  await updateUserPreferences({ darkMode: newTheme === 'dark' });
+                  await addNotification('success', `Switched to ${newTheme} mode`);
+                }}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-5 h-5 text-slate-400" />
+                ) : (
+                  <Moon className="w-5 h-5 text-gray-600" />
+                )}
               </button>
 
               {/* Language Selector */}
