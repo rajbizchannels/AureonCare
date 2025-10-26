@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield } from 'lucide-react';
 
 const AdminPanelView = ({
@@ -90,11 +90,28 @@ const AdminPanelView = ({
     }
   };
 
+  // Load permissions from backend on mount
+  useEffect(() => {
+    const loadPermissions = async () => {
+      try {
+        const permissions = await api.getPermissions();
+        if (Object.keys(permissions).length > 0) {
+          setRolePermissions(permissions);
+        }
+      } catch (error) {
+        console.error('Error loading permissions:', error);
+        // Use default permissions if loading fails
+      }
+    };
+    loadPermissions();
+  }, [api]);
+
   const handleSaveRolePermissions = async () => {
     try {
-      // In a real app, this would call an API endpoint to save role permissions
+      await api.updatePermissions(rolePermissions);
       await addNotification('success', 'Role permissions saved successfully');
     } catch (error) {
+      console.error('Error saving permissions:', error);
       await addNotification('alert', 'Failed to save role permissions');
     }
   };
