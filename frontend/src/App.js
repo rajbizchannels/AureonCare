@@ -635,6 +635,13 @@ function App() {
           onSelectResult={(result) => {
             setShowSearch(false);
             // Handle navigation to result
+            if (result.type === 'patient') {
+              handleSetEditingItem({ type: 'patient', data: result });
+              setCurrentView('view');
+            } else if (result.type === 'appointment') {
+              handleSetEditingItem({ type: 'appointment', data: result });
+              setCurrentView('view');
+            }
           }}
         />
       )}
