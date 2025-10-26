@@ -58,6 +58,13 @@ const ViewEditModal = ({
         data.type = data.appointment_type || data.type;
       }
 
+      // For users, ensure we have first_name and last_name
+      if ((editingItem.type === 'user' || editingItem.type === 'userProfile') && !data.first_name && !data.last_name && data.name) {
+        const nameParts = data.name.trim().split(/\s+/);
+        data.first_name = nameParts[0] || '';
+        data.last_name = nameParts.slice(1).join(' ') || '';
+      }
+
       setEditData(data);
     }
   }, [editingItem]);
@@ -114,13 +121,23 @@ const ViewEditModal = ({
           patient.id === editData.id ? {...updated, name: updated.name || `${updated.first_name} ${updated.last_name}`} : patient
         ));
       } else if (type === 'userProfile') {
-        // Update user profile
-        const updated = await api.updateUser(editData.id, editData);
+        // Update user profile - ensure we send firstName and lastName
+        const userData = {
+          ...editData,
+          firstName: editData.first_name || editData.firstName,
+          lastName: editData.last_name || editData.lastName
+        };
+        const updated = await api.updateUser(editData.id, userData);
         setUser(updated);
         await addNotification('alert', 'User profile updated successfully');
       } else if (type === 'user') {
-        // Update user
-        const updated = await api.updateUser(editData.id, editData);
+        // Update user - ensure we send firstName and lastName
+        const userData = {
+          ...editData,
+          firstName: editData.first_name || editData.firstName,
+          lastName: editData.last_name || editData.lastName
+        };
+        const updated = await api.updateUser(editData.id, userData);
         setUsers(prev => prev.map(u =>
           u.id === editData.id ? updated : u
         ));
@@ -403,27 +420,27 @@ const ViewEditModal = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Full Name</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.name}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.first_name}</p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.name || ''}
-                      onChange={(e) => setEditData({...editData, name: e.target.value})}
+                      value={editData.first_name || ''}
+                      onChange={(e) => setEditData({...editData, first_name: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Practice</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.practice}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.last_name}</p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.practice || ''}
-                      onChange={(e) => setEditData({...editData, practice: e.target.value})}
+                      value={editData.last_name || ''}
+                      onChange={(e) => setEditData({...editData, last_name: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
                   )}
@@ -540,14 +557,27 @@ const ViewEditModal = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Full Name</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.name}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.first_name}</p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.name || ''}
-                      onChange={(e) => setEditData({...editData, name: e.target.value})}
+                      value={editData.first_name || ''}
+                      onChange={(e) => setEditData({...editData, first_name: e.target.value})}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.last_name}</p>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editData.last_name || ''}
+                      onChange={(e) => setEditData({...editData, last_name: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
                   )}
@@ -616,19 +646,6 @@ const ViewEditModal = ({
                       type="text"
                       value={editData.specialty || ''}
                       onChange={(e) => setEditData({...editData, specialty: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                    />
-                  )}
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Practice</label>
-                  {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.practice || 'N/A'}</p>
-                  ) : (
-                    <input
-                      type="text"
-                      value={editData.practice || ''}
-                      onChange={(e) => setEditData({...editData, practice: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
                   )}
