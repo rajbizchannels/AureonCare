@@ -511,8 +511,7 @@ const ViewEditModal = ({
                       <option value="Spanish">Spanish</option>
                       <option value="French">French</option>
                       <option value="German">German</option>
-                      <option value="Chinese">Chinese</option>
-                      <option value="Japanese">Japanese</option>
+                      <option value="Arabic">Arabic</option>
                       <option value="Hindi">Hindi</option>
                     </select>
                   )}
