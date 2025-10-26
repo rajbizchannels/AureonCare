@@ -14,6 +14,7 @@ const SettingsModal = ({
   setShowForm,
   setEditingItem,
   setUsers,
+  setCurrentModule,
   api,
   addNotification
 }) => {
@@ -42,6 +43,29 @@ const SettingsModal = ({
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
           <div className="space-y-6">
+            {/* Admin Panel Access (only for admins) */}
+            {user.role === 'admin' && (
+              <div className={`rounded-lg p-6 border-2 border-purple-500/30 ${theme === 'dark' ? 'bg-purple-500/10' : 'bg-purple-50'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Admin Panel</h3>
+                    <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Manage clinic settings, users, and system configuration
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      setCurrentModule('admin');
+                    }}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white"
+                  >
+                    Open Admin Panel
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* General Settings */}
             <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>General Settings</h3>

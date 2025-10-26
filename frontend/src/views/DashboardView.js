@@ -17,6 +17,8 @@ const DashboardView = ({
   setSelectedItem,
   setShowForm,
   setCurrentModule,
+  setAppointmentViewType,
+  setCalendarViewType,
   completeTask
 }) => {
   return (
@@ -158,7 +160,13 @@ const DashboardView = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div
-          onClick={() => setSelectedItem('appointments')}
+          onClick={() => {
+            if (setAppointmentViewType && setCalendarViewType) {
+              setAppointmentViewType('calendar');
+              setCalendarViewType('day');
+            }
+            setCurrentModule('practiceManagement');
+          }}
           className={`bg-gradient-to-br rounded-xl p-6 border cursor-pointer transition-all ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-blue-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-blue-600/50'}`}
         >
           <div className="flex items-center justify-between mb-4">
