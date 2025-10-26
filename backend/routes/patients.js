@@ -37,21 +37,24 @@ router.get('/:id', async (req, res) => {
 
 // Create new patient
 router.post('/', async (req, res) => {
-  const { 
-    first_name, last_name, mrn, dob, gender, phone, email, 
-    address, city, state, zip, insurance, insurance_id, status 
+  const {
+    first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
+    address, city, state, zip, insurance, insurance_id, status
   } = req.body;
-  
+
   try {
     const pool = req.app.locals.pool;
+    // Use date_of_birth (database column name), fall back to dob for compatibility
+    const birthDate = date_of_birth || dob;
+
     const result = await pool.query(
-      `INSERT INTO patients 
-       (first_name, last_name, mrn, dob, gender, phone, email, 
-        address, city, state, zip, insurance, insurance_id, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+      `INSERT INTO patients
+       (first_name, last_name, mrn, date_of_birth, gender, phone, email,
+        address, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
        RETURNING *`,
-      [first_name, last_name, mrn, dob, gender, phone, email, 
-       address, city, state, zip, insurance, insurance_id, status || 'Active']
+      [first_name, last_name, mrn, birthDate, gender, phone, email,
+       address, status || 'active']
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -62,22 +65,32 @@ router.post('/', async (req, res) => {
 
 // Update patient
 router.put('/:id', async (req, res) => {
-  const { 
-    first_name, last_name, mrn, dob, gender, phone, email, 
-    address, city, state, zip, insurance, insurance_id, status 
+  const {
+    first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
+    address, city, state, zip, insurance, insurance_id, status
   } = req.body;
-  
+
   try {
     const pool = req.app.locals.pool;
+    // Use date_of_birth (database column name), fall back to dob for compatibility
+    const birthDate = date_of_birth || dob;
+
     const result = await pool.query(
-      `UPDATE patients 
-       SET first_name = $1, last_name = $2, mrn = $3, dob = $4, gender = $5, 
-           phone = $6, email = $7, address = $8, city = $9, state = $10, 
-           zip = $11, insurance = $12, insurance_id = $13, status = $14, updated_at = NOW()
-       WHERE id = $15
+      `UPDATE patients
+       SET first_name = COALESCE($1, first_name),
+           last_name = COALESCE($2, last_name),
+           mrn = COALESCE($3, mrn),
+           date_of_birth = COALESCE($4, date_of_birth),
+           gender = COALESCE($5, gender),
+           phone = COALESCE($6, phone),
+           email = COALESCE($7, email),
+           address = COALESCE($8, address),
+           status = COALESCE($9, status),
+           updated_at = NOW()
+       WHERE id::text = $10::text
        RETURNING *`,
-      [first_name, last_name, mrn, dob, gender, phone, email, 
-       address, city, state, zip, insurance, insurance_id, status, req.params.id]
+      [first_name, last_name, mrn, birthDate, gender, phone, email,
+       address, status, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });

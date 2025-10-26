@@ -18,6 +18,9 @@ const AppointmentsQuickView = ({ theme, appointments, patients, onClose, onViewA
             const patientName = apt.patient || patient?.name || 'Unknown Patient';
             const initials = patientName.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase();
 
+            // Parse appointment time from start_time or time
+            const appointmentTime = apt.start_time || apt.time;
+
             return (
               <div key={apt.id} className={`p-4 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}>
                 <div className="flex items-center justify-between mb-2">
@@ -27,11 +30,11 @@ const AppointmentsQuickView = ({ theme, appointments, patients, onClose, onViewA
                     </div>
                     <div>
                       <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{patientName}</h3>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{apt.type}</p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{apt.type || apt.appointment_type}</p>
                     </div>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    apt.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                    apt.status === 'Confirmed' || apt.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
                   }`}>
                     {apt.status}
                   </span>
@@ -39,11 +42,11 @@ const AppointmentsQuickView = ({ theme, appointments, patients, onClose, onViewA
                 <div className={`flex items-center gap-4 text-sm ml-13 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    {formatTime(apt.time)}
+                    {formatTime(appointmentTime)}
                   </div>
                   <div className="flex items-center gap-1">
                     <UserCheck className="w-4 h-4" />
-                    {apt.doctor || 'Dr. Sarah Chen'}
+                    {apt.doctor || 'N/A'}
                   </div>
                 </div>
               </div>

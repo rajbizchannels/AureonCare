@@ -43,7 +43,7 @@ const RevenueQuickView = ({ theme, claims, patients, onClose, onViewAll }) => (
               <div key={claim.id} className={`p-4 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{claim.claimNo || claim.claim_no || 'N/A'}</h4>
+                    <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{claim.claim_number || claim.claimNumber || claim.claimNo || claim.claim_no || 'N/A'}</h4>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{patientName}</p>
                   </div>
                   <div className="text-right">
@@ -57,7 +57,7 @@ const RevenueQuickView = ({ theme, claims, patients, onClose, onViewAll }) => (
                     </span>
                   </div>
                 </div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{claim.payer} • {formatDate(claim.date)}</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{claim.payer} • {formatDate(claim.service_date || claim.serviceDate || claim.date)}</p>
               </div>
             );
           })}
