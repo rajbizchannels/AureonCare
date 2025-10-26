@@ -30,6 +30,7 @@ const AppProvider = ({ children }) => {
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [claims, setClaims] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
@@ -49,10 +50,11 @@ const AppProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const [appointmentsData, patientsData, claimsData, notificationsData, tasksData, userData, usersData] = await Promise.all([
+      const [appointmentsData, patientsData, claimsData, paymentsData, notificationsData, tasksData, userData, usersData] = await Promise.all([
         api.getAppointments(),
         api.getPatients(),
         api.getClaims(),
+        api.getPayments().catch(() => []), // Get payments, fallback to empty array if fails
         api.getNotifications(),
         api.getTasks(),
         api.getUser(1).catch(() => null), // Get user with id 1, fallback to null if fails
@@ -68,6 +70,7 @@ const AppProvider = ({ children }) => {
       setAppointments(appointmentsData);
       setPatients(patientsWithNames);
       setClaims(claimsData);
+      setPayments(paymentsData);
       setNotifications(notificationsData);
       setTasks(tasksData);
       setUsers(usersData);
@@ -247,6 +250,8 @@ const AppProvider = ({ children }) => {
     setPatients,
     claims,
     setClaims,
+    payments,
+    setPayments,
     notifications,
     setNotifications,
     tasks,

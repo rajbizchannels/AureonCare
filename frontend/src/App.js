@@ -41,6 +41,7 @@ import SettingsModal from './components/modals/SettingsModal';
 import NewAppointmentForm from './components/forms/NewAppointmentForm';
 import NewPatientForm from './components/forms/NewPatientForm';
 import NewClaimForm from './components/forms/NewClaimForm';
+import NewPaymentForm from './components/forms/NewPaymentForm';
 import NewTaskForm from './components/forms/NewTaskForm';
 import NewUserForm from './components/forms/NewUserForm';
 
@@ -102,6 +103,8 @@ function App() {
     setPatients,
     claims,
     setClaims,
+    payments,
+    setPayments,
     notifications,
     setNotifications,
     tasks,
@@ -575,6 +578,21 @@ function App() {
           onClose={() => setShowForm(null)}
           onSuccess={(newClaim) => {
             setClaims([...claims, newClaim]);
+            setShowForm(null);
+          }}
+          addNotification={addNotification}
+        />
+      )}
+
+      {showForm === 'payment' && (
+        <NewPaymentForm
+          theme={theme}
+          api={api}
+          patients={patients}
+          claims={claims}
+          onClose={() => setShowForm(null)}
+          onSuccess={(newPayment) => {
+            setPayments([...payments, newPayment]);
             setShowForm(null);
           }}
           addNotification={addNotification}

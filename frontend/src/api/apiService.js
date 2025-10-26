@@ -99,6 +99,47 @@ const api = {
     return response.json();
   },
 
+  // Payments
+  getPayments: async (patientId, claimId, status) => {
+    const params = new URLSearchParams();
+    if (patientId) params.append('patientId', patientId);
+    if (claimId) params.append('claimId', claimId);
+    if (status) params.append('status', status);
+    const response = await fetch(`${API_BASE_URL}/payments?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch payments');
+    return response.json();
+  },
+  getPayment: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/payments/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch payment');
+    return response.json();
+  },
+  createPayment: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create payment');
+    return response.json();
+  },
+  updatePayment: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/payments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update payment');
+    return response.json();
+  },
+  deletePayment: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/payments/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete payment');
+    return response.json();
+  },
+
   // Notifications
   getNotifications: async () => {
     const response = await fetch(`${API_BASE_URL}/notifications`);

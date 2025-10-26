@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, CreditCard } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const RCMView = ({
@@ -16,14 +16,23 @@ const RCMView = ({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Claims Management</h2>
-        <button
-          onClick={() => setShowForm('claim')}
-          className={`flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
-        >
-          <Plus className="w-4 h-4" />
-          New Claim
-        </button>
+        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Revenue Cycle Management</h2>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowForm('payment')}
+            className={`flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+          >
+            <CreditCard className="w-4 h-4" />
+            Process Payment
+          </button>
+          <button
+            onClick={() => setShowForm('claim')}
+            className={`flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+          >
+            <Plus className="w-4 h-4" />
+            New Claim
+          </button>
+        </div>
       </div>
 
       <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
