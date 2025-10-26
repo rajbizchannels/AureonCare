@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus } from 'lucide-react';
+import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield } from 'lucide-react';
 
 const AdminPanelView = ({
   theme,
@@ -39,6 +39,36 @@ const AdminPanelView = ({
     cancellationDeadline: 24
   });
 
+  const [rolePermissions, setRolePermissions] = useState({
+    admin: {
+      patients: { view: true, create: true, edit: true, delete: true },
+      appointments: { view: true, create: true, edit: true, delete: true },
+      claims: { view: true, create: true, edit: true, delete: true },
+      ehr: { view: true, create: true, edit: true, delete: true },
+      users: { view: true, create: true, edit: true, delete: true },
+      reports: { view: true, create: true, edit: true, delete: true },
+      settings: { view: true, create: true, edit: true, delete: true }
+    },
+    doctor: {
+      patients: { view: true, create: true, edit: true, delete: false },
+      appointments: { view: true, create: true, edit: true, delete: false },
+      claims: { view: true, create: true, edit: true, delete: false },
+      ehr: { view: true, create: true, edit: true, delete: false },
+      users: { view: true, create: false, edit: false, delete: false },
+      reports: { view: true, create: false, edit: false, delete: false },
+      settings: { view: false, create: false, edit: false, delete: false }
+    },
+    staff: {
+      patients: { view: true, create: true, edit: true, delete: false },
+      appointments: { view: true, create: true, edit: true, delete: false },
+      claims: { view: true, create: false, edit: false, delete: false },
+      ehr: { view: true, create: false, edit: false, delete: false },
+      users: { view: false, create: false, edit: false, delete: false },
+      reports: { view: true, create: false, edit: false, delete: false },
+      settings: { view: false, create: false, edit: false, delete: false }
+    }
+  });
+
   const handleSaveClinicSettings = async () => {
     try {
       // In a real app, this would call an API endpoint
@@ -60,9 +90,32 @@ const AdminPanelView = ({
     }
   };
 
+  const handleSaveRolePermissions = async () => {
+    try {
+      // In a real app, this would call an API endpoint to save role permissions
+      await addNotification('success', 'Role permissions saved successfully');
+    } catch (error) {
+      await addNotification('alert', 'Failed to save role permissions');
+    }
+  };
+
+  const handleTogglePermission = (role, module, action) => {
+    setRolePermissions({
+      ...rolePermissions,
+      [role]: {
+        ...rolePermissions[role],
+        [module]: {
+          ...rolePermissions[role][module],
+          [action]: !rolePermissions[role][module][action]
+        }
+      }
+    });
+  };
+
   const tabs = [
     { id: 'clinic', label: 'Clinic Settings', icon: Building2 },
     { id: 'users', label: 'User Management', icon: Users },
+    { id: 'roles', label: 'Roles & Permissions', icon: Shield },
     { id: 'hours', label: 'Working Hours', icon: Clock },
     { id: 'appointments', label: 'Appointment Settings', icon: Settings }
   ];
@@ -267,6 +320,97 @@ const AdminPanelView = ({
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Roles & Permissions Tab */}
+      {activeTab === 'roles' && (
+        <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Role Permissions
+          </h2>
+          <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Configure what each role can do in the system. Check or uncheck permissions for each role.
+          </p>
+
+          <div className="space-y-8">
+            {Object.entries(rolePermissions).map(([role, permissions]) => (
+              <div key={role} className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <Shield className={`w-6 h-6 ${
+                    role === 'admin' ? 'text-purple-400' :
+                    role === 'doctor' ? 'text-blue-400' :
+                    'text-gray-400'
+                  }`} />
+                  <h3 className={`text-lg font-semibold capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {role}
+                  </h3>
+                  <span className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
+                    role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
+                    role === 'doctor' ? 'bg-blue-500/20 text-blue-400' :
+                    'bg-gray-500/20 text-gray-400'
+                  }`}>
+                    {Object.values(permissions).reduce((count, perms) =>
+                      count + Object.values(perms).filter(Boolean).length, 0
+                    )} permissions
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                        <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Module
+                        </th>
+                        <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                          View
+                        </th>
+                        <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Create
+                        </th>
+                        <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Edit
+                        </th>
+                        <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Delete
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(permissions).map(([module, actions]) => (
+                        <tr key={module} className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'}`}>
+                          <td className={`px-4 py-3 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {module}
+                          </td>
+                          {['view', 'create', 'edit', 'delete'].map(action => (
+                            <td key={action} className="px-4 py-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={actions[action]}
+                                onChange={() => handleTogglePermission(role, module, action)}
+                                className="form-checkbox h-5 w-5 text-blue-500"
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleSaveRolePermissions}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
+            >
+              <Save className="w-5 h-5" />
+              Save Permissions
+            </button>
           </div>
         </div>
       )}
