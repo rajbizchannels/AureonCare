@@ -34,6 +34,16 @@ router.post('/login', async (req, res) => {
 
     const user = result.rows[0];
 
+    // Check if user is blocked
+    if (user.status === 'blocked') {
+      return res.status(403).json({ error: 'Your account has been blocked. Please contact an administrator.' });
+    }
+
+    // Check if user is pending
+    if (user.status === 'pending') {
+      return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
+    }
+
     // Check if password_hash exists
     if (!user.password_hash) {
       return res.status(401).json({ error: 'Password not set for this account' });
