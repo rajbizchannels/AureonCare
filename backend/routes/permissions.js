@@ -59,10 +59,9 @@ router.get('/:role', async (req, res) => {
 // Update all role permissions
 router.put('/', async (req, res) => {
   const permissions = req.body;
+  const pool = req.app.locals.pool;
 
   try {
-    const pool = req.app.locals.pool;
-
     // Begin transaction
     await pool.query('BEGIN');
 
@@ -86,7 +85,11 @@ router.put('/', async (req, res) => {
     res.json({ message: 'Permissions updated successfully' });
   } catch (error) {
     // Rollback on error
-    await pool.query('ROLLBACK');
+    try {
+      await pool.query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Error during rollback:', rollbackError);
+    }
     console.error('Error updating permissions:', error);
     res.status(500).json({ error: 'Failed to update permissions' });
   }
@@ -96,10 +99,9 @@ router.put('/', async (req, res) => {
 router.put('/:role', async (req, res) => {
   const { role } = req.params;
   const permissions = req.body;
+  const pool = req.app.locals.pool;
 
   try {
-    const pool = req.app.locals.pool;
-
     // Begin transaction
     await pool.query('BEGIN');
 
@@ -121,7 +123,11 @@ router.put('/:role', async (req, res) => {
     res.json({ message: `Permissions for ${role} updated successfully` });
   } catch (error) {
     // Rollback on error
-    await pool.query('ROLLBACK');
+    try {
+      await pool.query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Error during rollback:', rollbackError);
+    }
     console.error('Error updating role permissions:', error);
     res.status(500).json({ error: 'Failed to update role permissions' });
   }
