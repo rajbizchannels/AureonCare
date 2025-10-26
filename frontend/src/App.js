@@ -41,6 +41,7 @@ import SettingsModal from './components/modals/SettingsModal';
 import NewAppointmentForm from './components/forms/NewAppointmentForm';
 import NewPatientForm from './components/forms/NewPatientForm';
 import NewClaimForm from './components/forms/NewClaimForm';
+import NewTaskForm from './components/forms/NewTaskForm';
 import NewUserForm from './components/forms/NewUserForm';
 
 // Panels
@@ -379,6 +380,14 @@ function App() {
                 <Bot className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
               </button>
 
+              <button
+                onClick={() => handleSetShowForm('settings')}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                title="Settings"
+              >
+                <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+              </button>
+
               {/* User Menu */}
               <button
                 onClick={() => handleSetShowForm('userProfile')}
@@ -477,6 +486,19 @@ function App() {
           onClose={() => setShowForm(null)}
           onSuccess={(newUser) => {
             setUsers([...users, newUser]);
+            setShowForm(null);
+          }}
+          addNotification={addNotification}
+        />
+      )}
+
+      {showForm === 'task' && (
+        <NewTaskForm
+          theme={theme}
+          api={api}
+          onClose={() => setShowForm(null)}
+          onSuccess={(newTask) => {
+            setTasks([...tasks, newTask]);
             setShowForm(null);
           }}
           addNotification={addNotification}

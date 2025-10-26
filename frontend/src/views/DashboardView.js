@@ -125,11 +125,11 @@ const DashboardView = ({
             <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Add Patient</p>
           </button>
           <button
-            onClick={() => setCurrentModule('telehealth')}
+            onClick={() => setShowForm('task')}
             className={`p-4 rounded-lg transition-colors text-left group ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
           >
-            <Video className="w-6 h-6 text-green-400 mb-2 group-hover:scale-110 transition-transform" />
-            <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Start Video Call</p>
+            <Check className="w-6 h-6 text-green-400 mb-2 group-hover:scale-110 transition-transform" />
+            <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>New Task</p>
           </button>
           <button
             onClick={() => setShowForm('claim')}
