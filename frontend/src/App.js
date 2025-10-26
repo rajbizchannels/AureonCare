@@ -368,7 +368,14 @@ function App() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <button
-              onClick={() => setCurrentModule('dashboard')}
+              onClick={() => {
+                // Route to patient portal if user is a patient, otherwise dashboard
+                if (user?.role === 'patient') {
+                  setCurrentModule('patientPortal');
+                } else {
+                  setCurrentModule('dashboard');
+                }
+              }}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center">
