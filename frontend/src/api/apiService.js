@@ -445,6 +445,36 @@ const api = {
     });
     if (!response.ok) throw new Error('Failed to logout');
     return response.json();
+  },
+
+  // Permissions
+  getPermissions: async () => {
+    const response = await fetch(`${API_BASE_URL}/permissions`);
+    if (!response.ok) throw new Error('Failed to fetch permissions');
+    return response.json();
+  },
+  getRolePermissions: async (role) => {
+    const response = await fetch(`${API_BASE_URL}/permissions/${role}`);
+    if (!response.ok) throw new Error('Failed to fetch role permissions');
+    return response.json();
+  },
+  updatePermissions: async (permissions) => {
+    const response = await fetch(`${API_BASE_URL}/permissions`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(permissions)
+    });
+    if (!response.ok) throw new Error('Failed to update permissions');
+    return response.json();
+  },
+  updateRolePermissions: async (role, permissions) => {
+    const response = await fetch(`${API_BASE_URL}/permissions/${role}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(permissions)
+    });
+    if (!response.ok) throw new Error('Failed to update role permissions');
+    return response.json();
   }
 };
 

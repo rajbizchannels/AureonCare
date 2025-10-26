@@ -4,12 +4,22 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
 import { facebookOAuthConfig } from '../../config/oauthConfig';
 
-const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword }) => {
+const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
   const { instance } = useMsal();
+
+  // Helper function to route user based on their role
+  const routeUserByRole = (user) => {
+    if (user.role === 'patient') {
+      setCurrentModule('patientPortal');
+    } else {
+      // admin, doctor, staff, or any other role goes to dashboard
+      setCurrentModule('dashboard');
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -19,6 +29,10 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
       const response = await api.login(email, password);
       setUser(response.user);
       setIsAuthenticated(true);
+
+      // Route user based on their role
+      routeUserByRole(response.user);
+
       await addNotification('success', 'Login successful');
     } catch (error) {
       setLoginError(error.message || 'Login failed');
@@ -50,6 +64,10 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
 
         setUser(response.user);
         setIsAuthenticated(true);
+
+        // Route user based on their role
+        routeUserByRole(response.user);
+
         await addNotification('success', 'Logged in with Google');
       } catch (error) {
         setLoginError(error.message || 'Google login failed');
@@ -84,6 +102,10 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
 
       setUser(response.user);
       setIsAuthenticated(true);
+
+      // Route user based on their role
+      routeUserByRole(response.user);
+
       await addNotification('success', 'Logged in with Microsoft');
     } catch (error) {
       setLoginError(error.message || 'Microsoft login failed');
@@ -119,6 +141,10 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
 
               setUser(apiResponse.user);
               setIsAuthenticated(true);
+
+              // Route user based on their role
+              routeUserByRole(apiResponse.user);
+
               await addNotification('success', 'Logged in with Facebook');
             } catch (error) {
               setLoginError(error.message || 'Facebook login failed');
