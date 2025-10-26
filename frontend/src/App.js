@@ -319,6 +319,7 @@ function App() {
           setIsAuthenticated={setIsAuthenticated}
           addNotification={addNotification}
           setShowForgotPassword={setShowForgotPassword}
+          setCurrentModule={setCurrentModule}
         />
         {showForgotPassword && (
           <ForgotPasswordModal
