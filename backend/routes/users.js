@@ -94,7 +94,7 @@ router.post('/', async (req, res) => {
 
 // Update user
 router.put('/:id', async (req, res) => {
-  const { name, firstName, lastName, role, avatar, email, phone, license, specialty, preferences, practice } = req.body;
+  const { name, firstName, lastName, role, avatar, email, phone, license, specialty, preferences } = req.body;
 
   try {
     const pool = req.app.locals.pool;
@@ -120,9 +120,8 @@ router.put('/:id', async (req, res) => {
            license_number = COALESCE($7, license_number),
            specialty = COALESCE($8, specialty),
            preferences = COALESCE($9, preferences),
-           practice = COALESCE($10, practice),
            updated_at = NOW()
-       WHERE id::text = $11::text
+       WHERE id::text = $10::text
        RETURNING *, CONCAT(first_name, ' ', last_name) as name`,
       [
         first_name,
@@ -134,7 +133,6 @@ router.put('/:id', async (req, res) => {
         license,
         specialty,
         preferences ? JSON.stringify(preferences) : null,
-        practice,
         req.params.id
       ]
     );
