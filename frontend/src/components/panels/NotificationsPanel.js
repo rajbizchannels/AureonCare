@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Bell, Calendar, DollarSign, AlertCircle, MessageSquare } from 'lucide-react';
+import { formatDateTime } from '../../utils/formatters';
 
 const NotificationsPanel = ({
   theme,
@@ -7,8 +8,18 @@ const NotificationsPanel = ({
   onClose,
   clearAllNotifications,
   clearNotification
-}) => (
-  <div className={`fixed top-16 right-4 w-96 rounded-xl border shadow-2xl z-50 max-h-[80vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
+}) => {
+  const formatNotificationTime = (notif) => {
+    if (notif.created_at) {
+      return formatDateTime(notif.created_at);
+    } else if (notif.time) {
+      return notif.time;
+    }
+    return 'Just now';
+  };
+
+  return (
+    <div className={`fixed top-16 right-4 w-96 rounded-xl border shadow-2xl z-50 max-h-[80vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
     <div className={`p-4 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
       <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
       <div className="flex items-center gap-2">
@@ -48,7 +59,7 @@ const NotificationsPanel = ({
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{notif.message}</p>
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{notif.time}</p>
+                <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{formatNotificationTime(notif)}</p>
               </div>
               <button
                 onClick={() => clearNotification(notif.id)}
@@ -63,6 +74,7 @@ const NotificationsPanel = ({
       )}
     </div>
   </div>
-);
+  );
+};
 
 export default NotificationsPanel;
