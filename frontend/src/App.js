@@ -24,6 +24,7 @@ import PracticeManagementView from './views/PracticeManagementView';
 import EHRView from './views/EHRView';
 import TelehealthView from './views/TelehealthView';
 import RCMView from './views/RCMView';
+import ReportsView from './views/ReportsView';
 import CRMView from './views/CRMView';
 import IntegrationsView from './views/IntegrationsView';
 import FHIRView from './views/FHIRView';
@@ -271,6 +272,17 @@ function App() {
             setClaims={setClaims}
             addNotification={addNotification}
             api={api}
+          />
+        );
+      case 'reports':
+        return (
+          <ReportsView
+            theme={theme}
+            patients={patients}
+            appointments={appointments}
+            claims={claims}
+            payments={payments}
+            addNotification={addNotification}
           />
         );
       case 'crm':
