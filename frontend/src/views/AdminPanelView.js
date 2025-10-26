@@ -66,6 +66,15 @@ const AdminPanelView = ({
       users: { view: false, create: false, edit: false, delete: false },
       reports: { view: true, create: false, edit: false, delete: false },
       settings: { view: false, create: false, edit: false, delete: false }
+    },
+    patient: {
+      patients: { view: true, create: false, edit: false, delete: false },
+      appointments: { view: true, create: true, edit: false, delete: false },
+      claims: { view: true, create: false, edit: false, delete: false },
+      ehr: { view: true, create: false, edit: false, delete: false },
+      users: { view: false, create: false, edit: false, delete: false },
+      reports: { view: false, create: false, edit: false, delete: false },
+      settings: { view: false, create: false, edit: false, delete: false }
     }
   });
 
@@ -306,6 +315,7 @@ const AdminPanelView = ({
                       <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
                         user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
                         user.role === 'doctor' ? 'bg-blue-500/20 text-blue-400' :
+                        user.role === 'patient' ? 'bg-green-500/20 text-green-400' :
                         'bg-gray-500/20 text-gray-400'
                       }`}>
                         {user.role}
@@ -358,6 +368,7 @@ const AdminPanelView = ({
                   <Shield className={`w-6 h-6 ${
                     role === 'admin' ? 'text-purple-400' :
                     role === 'doctor' ? 'text-blue-400' :
+                    role === 'patient' ? 'text-green-400' :
                     'text-gray-400'
                   }`} />
                   <h3 className={`text-lg font-semibold capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -366,6 +377,7 @@ const AdminPanelView = ({
                   <span className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
                     role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
                     role === 'doctor' ? 'bg-blue-500/20 text-blue-400' :
+                    role === 'patient' ? 'bg-green-500/20 text-green-400' :
                     'bg-gray-500/20 text-gray-400'
                   }`}>
                     {Object.values(permissions).reduce((count, perms) =>

@@ -45,6 +45,17 @@ INSERT INTO role_permissions (role, module, view_permission, create_permission, 
 ('staff', 'settings', FALSE, FALSE, FALSE, FALSE)
 ON CONFLICT (role, module) DO NOTHING;
 
+-- Insert default permissions for patient role (view only their own data)
+INSERT INTO role_permissions (role, module, view_permission, create_permission, edit_permission, delete_permission) VALUES
+('patient', 'patients', TRUE, FALSE, FALSE, FALSE),
+('patient', 'appointments', TRUE, TRUE, FALSE, FALSE),
+('patient', 'claims', TRUE, FALSE, FALSE, FALSE),
+('patient', 'ehr', TRUE, FALSE, FALSE, FALSE),
+('patient', 'users', FALSE, FALSE, FALSE, FALSE),
+('patient', 'reports', FALSE, FALSE, FALSE, FALSE),
+('patient', 'settings', FALSE, FALSE, FALSE, FALSE)
+ON CONFLICT (role, module) DO NOTHING;
+
 -- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_role_permissions_role ON role_permissions(role);
 CREATE INDEX IF NOT EXISTS idx_role_permissions_module ON role_permissions(module);
