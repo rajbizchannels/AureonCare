@@ -66,6 +66,16 @@ const SearchPanel = ({
                 displayName = result.patient || patient?.name || 'Unknown Patient';
               }
 
+              // Parse appointment date/time from start_time
+              let appointmentDateTime = '';
+              if (result.type === 'appointment' && result.start_time) {
+                const startTimeStr = result.start_time.replace(' ', 'T');
+                const startDate = new Date(startTimeStr);
+                if (!isNaN(startDate.getTime())) {
+                  appointmentDateTime = `${formatDate(startDate)} ${formatTime(startDate)}`;
+                }
+              }
+
               return (
               <div
                 key={idx}
@@ -81,7 +91,7 @@ const SearchPanel = ({
                   <div>
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{displayName}</p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      {result.type === 'patient' ? result.mrn : `${formatDate(result.date)} ${formatTime(result.time)}`}
+                      {result.type === 'patient' ? result.mrn : appointmentDateTime}
                     </p>
                   </div>
                 </div>

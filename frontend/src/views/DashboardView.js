@@ -170,11 +170,22 @@ const DashboardView = ({
               const patient = patients.find(p => p.id === apt.patient_id);
               const patientName = apt.patient || patient?.name || 'Unknown Patient';
 
+              // Parse appointment date/time from start_time
+              let appointmentDateTime = '';
+              if (apt.start_time) {
+                const startTimeStr = apt.start_time.replace(' ', 'T');
+                const startDate = new Date(startTimeStr);
+                if (!isNaN(startDate.getTime())) {
+                  appointmentDateTime = `${formatDate(startDate)} ${formatTime(startDate)}`;
+                }
+              }
+              const appointmentType = apt.appointment_type || apt.type || 'N/A';
+
               return (
                 <div key={apt.id} className={`flex items-center justify-between p-3 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/30 hover:bg-slate-800/50' : 'bg-gray-100/30 hover:bg-gray-200/50'}`}>
                   <div>
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{patientName}</p>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{formatTime(apt.time)} - {apt.type}</p>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{appointmentDateTime} - {appointmentType}</p>
                   </div>
                   <span className={`px-2 py-1 rounded text-xs ${
                     apt.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
@@ -200,7 +211,7 @@ const DashboardView = ({
               <div key={task.id} className={`flex items-center justify-between p-3 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/30 hover:bg-slate-800/50' : 'bg-gray-100/30 hover:bg-gray-200/50'}`}>
                 <div className="flex-1">
                   <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{task.title}</p>
-                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Due: {task.dueDate}</p>
+                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Due: {formatDate(task.due_date || task.dueDate)}</p>
                 </div>
                 <button
                   onClick={(e) => {
