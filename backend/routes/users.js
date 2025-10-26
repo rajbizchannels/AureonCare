@@ -70,7 +70,7 @@ router.post('/', async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO users (first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, created_at)
+      `INSERT INTO users (first_name, last_name, role, avatar, email, phone, license, specialty, preferences, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
        RETURNING *, CONCAT(first_name, ' ', last_name) as name`,
       [
@@ -117,7 +117,7 @@ router.put('/:id', async (req, res) => {
            avatar = COALESCE($4, avatar),
            email = COALESCE($5, email),
            phone = COALESCE($6, phone),
-           license_number = COALESCE($7, license_number),
+           license = COALESCE($7, license),
            specialty = COALESCE($8, specialty),
            preferences = COALESCE($9, preferences),
            updated_at = NOW()
