@@ -25,6 +25,14 @@ export const translations = {
     upcomingAppointments: 'Upcoming Appointments',
     highPriorityTasks: 'High Priority Tasks',
     viewAllPatients: 'View All Patients',
+    newAppointment: 'New Appointment',
+    addPatient: 'Add Patient',
+    newTask: 'New Task',
+    newClaim: 'New Claim',
+    fromAverage: 'from average',
+    urgent: 'urgent',
+    approved: 'approved',
+    thisWeek: 'this week',
 
     // Common Actions
     save: 'Save',
@@ -110,6 +118,14 @@ export const translations = {
     upcomingAppointments: 'Próximas Citas',
     highPriorityTasks: 'Tareas de Alta Prioridad',
     viewAllPatients: 'Ver Todos los Pacientes',
+    newAppointment: 'Nueva Cita',
+    addPatient: 'Añadir Paciente',
+    newTask: 'Nueva Tarea',
+    newClaim: 'Nuevo Reclamo',
+    fromAverage: 'del promedio',
+    urgent: 'urgente',
+    approved: 'aprobado',
+    thisWeek: 'esta semana',
 
     // Common Actions
     save: 'Guardar',
@@ -195,6 +211,14 @@ export const translations = {
     upcomingAppointments: 'Rendez-vous à Venir',
     highPriorityTasks: 'Tâches Prioritaires',
     viewAllPatients: 'Voir Tous les Patients',
+    newAppointment: 'Nouveau Rendez-vous',
+    addPatient: 'Ajouter un Patient',
+    newTask: 'Nouvelle Tâche',
+    newClaim: 'Nouvelle Réclamation',
+    fromAverage: 'de la moyenne',
+    urgent: 'urgent',
+    approved: 'approuvé',
+    thisWeek: 'cette semaine',
 
     // Common Actions
     save: 'Enregistrer',
@@ -280,6 +304,14 @@ export const translations = {
     upcomingAppointments: 'Bevorstehende Termine',
     highPriorityTasks: 'Hochprioritätsaufgaben',
     viewAllPatients: 'Alle Patienten Anzeigen',
+    newAppointment: 'Neuer Termin',
+    addPatient: 'Patient Hinzufügen',
+    newTask: 'Neue Aufgabe',
+    newClaim: 'Neue Forderung',
+    fromAverage: 'vom Durchschnitt',
+    urgent: 'dringend',
+    approved: 'genehmigt',
+    thisWeek: 'diese Woche',
 
     // Common Actions
     save: 'Speichern',
@@ -365,6 +397,14 @@ export const translations = {
     upcomingAppointments: 'المواعيد القادمة',
     highPriorityTasks: 'المهام ذات الأولوية العالية',
     viewAllPatients: 'عرض جميع المرضى',
+    newAppointment: 'موعد جديد',
+    addPatient: 'إضافة مريض',
+    newTask: 'مهمة جديدة',
+    newClaim: 'مطالبة جديدة',
+    fromAverage: 'من المتوسط',
+    urgent: 'عاجل',
+    approved: 'معتمد',
+    thisWeek: 'هذا الأسبوع',
 
     // Common Actions
     save: 'حفظ',
@@ -450,6 +490,14 @@ export const translations = {
     upcomingAppointments: 'आगामी नियुक्तियां',
     highPriorityTasks: 'उच्च प्राथमिकता वाले कार्य',
     viewAllPatients: 'सभी रोगियों को देखें',
+    newAppointment: 'नई नियुक्ति',
+    addPatient: 'रोगी जोड़ें',
+    newTask: 'नया कार्य',
+    newClaim: 'नया दावा',
+    fromAverage: 'औसत से',
+    urgent: 'जरूरी',
+    approved: 'स्वीकृत',
+    thisWeek: 'इस सप्ताह',
 
     // Common Actions
     save: 'सहेजें',

@@ -122,20 +122,34 @@ const ViewEditModal = ({
         ));
       } else if (type === 'userProfile') {
         // Update user profile - ensure we send firstName and lastName
+        const firstName = editData.first_name || editData.firstName || '';
+        const lastName = editData.last_name || editData.lastName || '';
+
+        // Generate avatar from initials
+        const avatar = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
+
         const userData = {
           ...editData,
-          firstName: editData.first_name || editData.firstName,
-          lastName: editData.last_name || editData.lastName
+          firstName,
+          lastName,
+          avatar: avatar || editData.avatar
         };
         const updated = await api.updateUser(editData.id, userData);
         setUser(updated);
         await addNotification('success', 'Profile updated successfully');
       } else if (type === 'user') {
         // Update user - ensure we send firstName and lastName
+        const firstName = editData.first_name || editData.firstName || '';
+        const lastName = editData.last_name || editData.lastName || '';
+
+        // Generate avatar from initials
+        const avatar = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
+
         const userData = {
           ...editData,
-          firstName: editData.first_name || editData.firstName,
-          lastName: editData.last_name || editData.lastName
+          firstName,
+          lastName,
+          avatar: avatar || editData.avatar
         };
         const updated = await api.updateUser(editData.id, userData);
         setUsers(prev => prev.map(u =>
