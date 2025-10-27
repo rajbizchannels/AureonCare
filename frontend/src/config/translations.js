@@ -20,6 +20,11 @@ export const translations = {
     revenue: 'Revenue This Month',
     activePatients: 'Active Patients',
     backToDashboard: 'Back to Dashboard',
+    quickActions: 'Quick Actions',
+    availableModules: 'Available Modules',
+    upcomingAppointments: 'Upcoming Appointments',
+    highPriorityTasks: 'High Priority Tasks',
+    viewAllPatients: 'View All Patients',
 
     // Common Actions
     save: 'Save',
@@ -100,6 +105,11 @@ export const translations = {
     revenue: 'Ingresos Este Mes',
     activePatients: 'Pacientes Activos',
     backToDashboard: 'Volver al Tablero',
+    quickActions: 'Acciones Rápidas',
+    availableModules: 'Módulos Disponibles',
+    upcomingAppointments: 'Próximas Citas',
+    highPriorityTasks: 'Tareas de Alta Prioridad',
+    viewAllPatients: 'Ver Todos los Pacientes',
 
     // Common Actions
     save: 'Guardar',
@@ -180,6 +190,11 @@ export const translations = {
     revenue: 'Revenus Ce Mois',
     activePatients: 'Patients Actifs',
     backToDashboard: 'Retour au Tableau de Bord',
+    quickActions: 'Actions Rapides',
+    availableModules: 'Modules Disponibles',
+    upcomingAppointments: 'Rendez-vous à Venir',
+    highPriorityTasks: 'Tâches Prioritaires',
+    viewAllPatients: 'Voir Tous les Patients',
 
     // Common Actions
     save: 'Enregistrer',
@@ -260,6 +275,11 @@ export const translations = {
     revenue: 'Umsatz Diesen Monat',
     activePatients: 'Aktive Patienten',
     backToDashboard: 'Zurück zum Dashboard',
+    quickActions: 'Schnellaktionen',
+    availableModules: 'Verfügbare Module',
+    upcomingAppointments: 'Bevorstehende Termine',
+    highPriorityTasks: 'Hochprioritätsaufgaben',
+    viewAllPatients: 'Alle Patienten Anzeigen',
 
     // Common Actions
     save: 'Speichern',
@@ -340,6 +360,11 @@ export const translations = {
     revenue: 'الإيرادات هذا الشهر',
     activePatients: 'المرضى النشطون',
     backToDashboard: 'العودة إلى لوحة التحكم',
+    quickActions: 'إجراءات سريعة',
+    availableModules: 'الوحدات المتاحة',
+    upcomingAppointments: 'المواعيد القادمة',
+    highPriorityTasks: 'المهام ذات الأولوية العالية',
+    viewAllPatients: 'عرض جميع المرضى',
 
     // Common Actions
     save: 'حفظ',
@@ -420,6 +445,11 @@ export const translations = {
     revenue: 'इस माह का राजस्व',
     activePatients: 'सक्रिय रोगी',
     backToDashboard: 'डैशबोर्ड पर वापस जाएं',
+    quickActions: 'त्वरित क्रियाएं',
+    availableModules: 'उपलब्ध मॉड्यूल',
+    upcomingAppointments: 'आगामी नियुक्तियां',
+    highPriorityTasks: 'उच्च प्राथमिकता वाले कार्य',
+    viewAllPatients: 'सभी रोगियों को देखें',
 
     // Common Actions
     save: 'सहेजें',

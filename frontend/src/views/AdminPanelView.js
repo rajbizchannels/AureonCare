@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock } from 'lucide-react';
+import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle } from 'lucide-react';
 
 const AdminPanelView = ({
   theme,
@@ -111,6 +111,18 @@ const AdminPanelView = ({
       await addNotification('success', `User ${actionText}ed successfully`);
     } catch (error) {
       await addNotification('alert', `Failed to ${actionText} user`);
+    }
+  };
+
+  const handleApproveUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to approve this user?')) return;
+
+    try {
+      const updatedUser = await api.updateUser(userId, { status: 'active' });
+      setUsers(users.map(u => u.id === userId ? updatedUser : u));
+      await addNotification('success', 'User approved successfully');
+    } catch (error) {
+      await addNotification('alert', 'Failed to approve user');
     }
   };
 
@@ -352,6 +364,15 @@ const AdminPanelView = ({
                     </td>
                     <td className={`px-4 py-3`}>
                       <div className="flex items-center gap-2">
+                        {user.status === 'pending' && (
+                          <button
+                            onClick={() => handleApproveUser(user.id)}
+                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                            title="Approve User"
+                          >
+                            <CheckCircle className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setEditingItem({ type: 'user', data: user });
@@ -362,17 +383,19 @@ const AdminPanelView = ({
                         >
                           <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
                         </button>
-                        <button
-                          onClick={() => handleToggleUserStatus(user.id, user.status || 'active')}
-                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                          title={(user.status || 'active') === 'blocked' ? 'Unblock User' : 'Block User'}
-                        >
-                          {(user.status || 'active') === 'blocked' ? (
-                            <Unlock className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
-                          ) : (
-                            <Lock className={`w-4 h-4 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-                          )}
-                        </button>
+                        {user.status !== 'pending' && (
+                          <button
+                            onClick={() => handleToggleUserStatus(user.id, user.status || 'active')}
+                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                            title={(user.status || 'active') === 'blocked' ? 'Unblock User' : 'Block User'}
+                          >
+                            {(user.status || 'active') === 'blocked' ? (
+                              <Unlock className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
+                            ) : (
+                              <Lock className={`w-4 h-4 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteUser(user.id)}
                           className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}

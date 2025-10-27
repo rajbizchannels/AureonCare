@@ -85,7 +85,13 @@ const DashboardView = ({
             return change >= 0 ? `+${change}% from average` : `${change}% from average`;
           })()}
           color="from-blue-500 to-cyan-500"
-          onClick={() => setSelectedItem('appointments')}
+          onClick={() => {
+            if (setAppointmentViewType && setCalendarViewType) {
+              setAppointmentViewType('calendar');
+              setCalendarViewType('day');
+            }
+            setCurrentModule('practiceManagement');
+          }}
         />
         <StatCard
           title={t.pendingTasks}
@@ -136,7 +142,7 @@ const DashboardView = ({
 
       <div className={`bg-gradient-to-br backdrop-blur-sm rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h3>
+          <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.quickActions}</h3>
           <button
             onClick={() => setShowQuickActionsSettings(!showQuickActionsSettings)}
             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
@@ -195,7 +201,7 @@ const DashboardView = ({
       </div>
 
       <div>
-        <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Available Modules</h2>
+        <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.availableModules}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {modules.map(module => (
             <ModuleCard
@@ -223,7 +229,7 @@ const DashboardView = ({
           className={`bg-gradient-to-br rounded-xl p-6 border cursor-pointer transition-all ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-blue-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-blue-600/50'}`}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Upcoming Appointments</h3>
+            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.upcomingAppointments}</h3>
             <ChevronRight className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </div>
           <div className="space-y-3">
@@ -264,7 +270,7 @@ const DashboardView = ({
           className={`bg-gradient-to-br rounded-xl p-6 border cursor-pointer transition-all ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-purple-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-purple-600/50'}`}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>High Priority Tasks</h3>
+            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.highPriorityTasks}</h3>
             <ChevronRight className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </div>
           <div className="space-y-3">

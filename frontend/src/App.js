@@ -33,6 +33,7 @@ import AdminPanelView from './views/AdminPanelView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
+import PatientLoginPage from './components/modals/PatientLoginPage';
 import RegisterPage from './components/modals/RegisterPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
@@ -187,6 +188,13 @@ function App() {
     }
     return user.name.substring(0, 2).toUpperCase();
   };
+
+  // Check if URL is patient login page
+  const isPatientLoginUrl = React.useMemo(() => {
+    const path = window.location.pathname;
+    const hash = window.location.hash;
+    return path.includes('/patient-login') || hash.includes('#patient-login') || window.location.search.includes('type=patient');
+  }, []);
 
   // Language configuration
   const languages = [
@@ -345,20 +353,34 @@ function App() {
       );
     }
 
-    // Show login page
+    // Show appropriate login page based on URL
     return (
       <>
-        <LoginPage
-          theme={theme}
-          setTheme={setTheme}
-          api={api}
-          setUser={setUser}
-          setIsAuthenticated={setIsAuthenticated}
-          addNotification={addNotification}
-          setShowForgotPassword={setShowForgotPassword}
-          setShowRegister={setShowRegister}
-          setCurrentModule={setCurrentModule}
-        />
+        {isPatientLoginUrl ? (
+          <PatientLoginPage
+            theme={theme}
+            setTheme={setTheme}
+            api={api}
+            setUser={setUser}
+            setIsAuthenticated={setIsAuthenticated}
+            addNotification={addNotification}
+            setShowForgotPassword={setShowForgotPassword}
+            setShowRegister={setShowRegister}
+            setCurrentModule={setCurrentModule}
+          />
+        ) : (
+          <LoginPage
+            theme={theme}
+            setTheme={setTheme}
+            api={api}
+            setUser={setUser}
+            setIsAuthenticated={setIsAuthenticated}
+            addNotification={addNotification}
+            setShowForgotPassword={setShowForgotPassword}
+            setShowRegister={setShowRegister}
+            setCurrentModule={setCurrentModule}
+          />
+        )}
         {showForgotPassword && (
           <ForgotPasswordModal
             theme={theme}
@@ -760,6 +782,7 @@ function App() {
       {selectedItem === 'patients' && (
         <PatientsQuickView
           theme={theme}
+          t={t}
           patients={patients}
           onClose={() => setSelectedItem(null)}
           onViewAll={() => {
