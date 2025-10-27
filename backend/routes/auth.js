@@ -249,6 +249,16 @@ router.post('/social-login', async (req, res) => {
 
       user = userResult.rows[0];
 
+      // Check if user is blocked
+      if (user.status === 'blocked') {
+        return res.status(403).json({ error: 'Your account has been blocked. Please contact an administrator.' });
+      }
+
+      // Check if user is pending
+      if (user.status === 'pending') {
+        return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
+      }
+
       // Update tokens
       await pool.query(`
         UPDATE social_auth
@@ -267,6 +277,16 @@ router.post('/social-login', async (req, res) => {
         // User exists - link social auth
         user = existingUserResult.rows[0];
 
+        // Check if user is blocked
+        if (user.status === 'blocked') {
+          return res.status(403).json({ error: 'Your account has been blocked. Please contact an administrator.' });
+        }
+
+        // Check if user is pending
+        if (user.status === 'pending') {
+          return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
+        }
+
         await pool.query(`
           INSERT INTO social_auth (
             user_id,
@@ -280,7 +300,7 @@ router.post('/social-login', async (req, res) => {
         `, [user.id, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
       } else {
-        // Create new user
+        // Create new user with pending status (requires admin approval)
         const newUserResult = await pool.query(`
           INSERT INTO users (
             email,
@@ -290,7 +310,7 @@ router.post('/social-login', async (req, res) => {
             status,
             avatar
           )
-          VALUES ($1, $2, $3, 'staff', 'active', $4)
+          VALUES ($1, $2, $3, 'patient', 'pending', $4)
           RETURNING *
         `, [
           email,
@@ -300,6 +320,15 @@ router.post('/social-login', async (req, res) => {
         ]);
 
         user = newUserResult.rows[0];
+
+        // Check if user is blocked or pending
+        if (user.status === 'blocked') {
+          return res.status(403).json({ error: 'Your account has been blocked. Please contact an administrator.' });
+        }
+
+        if (user.status === 'pending') {
+          return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
+        }
 
         // Create social auth entry
         await pool.query(`

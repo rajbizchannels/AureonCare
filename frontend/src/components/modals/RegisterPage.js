@@ -9,7 +9,7 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'staff', // Default role for registration
+    role: 'patient', // Default role for registration
     practice: ''
   });
   const [registerError, setRegisterError] = useState('');
@@ -181,6 +181,7 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
                 }`}
                 required
               >
+                <option value="patient">Patient</option>
                 <option value="staff">Staff</option>
                 <option value="doctor">Doctor</option>
                 <option value="nurse">Nurse</option>

@@ -1,152 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, LogOut } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 
-const PatientPortalView = ({ theme, api, addNotification }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [patient, setPatient] = useState(null);
-  const [sessionToken, setSessionToken] = useState(null);
+const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [currentView, setCurrentView] = useState('dashboard'); // dashboard, appointments, records, profile
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loading, setLoading] = useState(false);
 
   // Data states
   const [appointments, setAppointments] = useState([]);
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileData, setProfileData] = useState({});
+  const [profileData, setProfileData] = useState(user || {});
 
   useEffect(() => {
-    if (isLoggedIn && patient) {
+    if (user) {
+      setProfileData(user);
       fetchPatientData();
     }
-  }, [isLoggedIn, patient]);
+  }, [user]);
 
   const fetchPatientData = async () => {
     try {
+      // Fetch appointments and medical records for the patient user
       const [appts, records] = await Promise.all([
-        api.getPatientAppointments(patient.id),
-        api.getPatientMedicalRecords(patient.id)
+        api.getAppointments().then(all => all.filter(a => a.patient_id === user.id)),
+        api.getMedicalRecords ? api.getMedicalRecords(user.id) : Promise.resolve([])
       ]);
       setAppointments(appts);
       setMedicalRecords(records);
     } catch (error) {
       console.error('Error fetching patient data:', error);
-    }
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      const result = await api.patientPortalLogin(loginEmail, loginPassword);
-      setPatient(result.patient);
-      setSessionToken(result.sessionToken);
-      setIsLoggedIn(true);
-      setProfileData(result.patient);
-      addNotification('appointment', 'Welcome to Patient Portal');
-    } catch (error) {
-      addNotification('alert', 'Login failed. Please check your credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await api.patientPortalLogout(sessionToken);
-      setIsLoggedIn(false);
-      setPatient(null);
-      setSessionToken(null);
-      setCurrentView('dashboard');
-    } catch (error) {
-      console.error('Logout error:', error);
+      addNotification('alert', 'Failed to load patient data');
     }
   };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
-      const updated = await api.updatePatientProfile(patient.id, {
+      const updated = await api.updateUser(user.id, {
         phone: profileData.phone,
-        email: profileData.email,
-        address: profileData.address,
-        emergencyContact: profileData.emergency_contact
+        email: profileData.email
       });
-      setPatient(updated);
       setProfileData(updated);
       setEditingProfile(false);
-      addNotification('appointment', 'Profile updated successfully');
+      addNotification('success', 'Profile updated successfully');
     } catch (error) {
       addNotification('alert', 'Failed to update profile');
     }
   };
-
-  // Login Page
-  if (!isLoggedIn) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gradient-to-br from-gray-100 via-white to-gray-100'}`}>
-        <div className={`w-full max-w-md p-8 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
-              <User className="w-8 h-8 text-white" />
-            </div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Patient Portal
-            </h2>
-            <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Access your medical records and appointments
-            </p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Email
-              </label>
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                required
-              />
-            </div>
-            <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Password
-              </label>
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white disabled:opacity-50"
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   // Dashboard View
   const renderDashboard = () => (
     <div className="space-y-6">
       <div>
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Welcome, {patient.first_name}!
+          Welcome, {user?.firstName || user?.name}!
         </h2>
         <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-          MRN: {patient.mrn}
+          Email: {user?.email}
         </p>
       </div>
 
@@ -357,37 +267,31 @@ const PatientPortalView = ({ theme, api, addNotification }) => {
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Name</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patient.first_name} {patient.last_name}
+                {user?.firstName} {user?.lastName}
               </p>
             </div>
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {formatDate(patient.date_of_birth)}
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Role</p>
+              <p className={`font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {user?.role}
               </p>
             </div>
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patient.email || 'Not provided'}
+                {user?.email || 'Not provided'}
               </p>
             </div>
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patient.phone || 'Not provided'}
+                {user?.phone || 'Not provided'}
               </p>
             </div>
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>MRN</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Practice</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patient.mrn}
-              </p>
-            </div>
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gender</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patient.gender || 'Not specified'}
+                {user?.practice || 'Not specified'}
               </p>
             </div>
           </div>
@@ -398,51 +302,40 @@ const PatientPortalView = ({ theme, api, addNotification }) => {
 
   // Main Portal Layout
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gradient-to-br from-gray-100 via-white to-gray-100'}`}>
-      {/* Header */}
-      <header className={`backdrop-blur-md border-b ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800/50' : 'bg-white/50 border-gray-200/50'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Patient Portal
-            </h1>
-            <button
-              onClick={handleLogout}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-gray-600'}`}
-            >
-              <LogOut className="w-5 h-5" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Patient Portal
+        </h2>
+        <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Access your medical information and appointments
+        </p>
+      </div>
 
       {/* Navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-4 mb-6">
-          {['dashboard', 'appointments', 'records', 'profile'].map((view) => (
-            <button
-              key={view}
-              onClick={() => setCurrentView(view)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize ${
-                currentView === view
-                  ? 'bg-cyan-500 text-white'
-                  : theme === 'dark'
-                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {view}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        {currentView === 'dashboard' && renderDashboard()}
-        {currentView === 'appointments' && renderAppointments()}
-        {currentView === 'records' && renderMedicalRecords()}
-        {currentView === 'profile' && renderProfile()}
+      <div className="flex gap-4">
+        {['dashboard', 'appointments', 'records', 'profile'].map((view) => (
+          <button
+            key={view}
+            onClick={() => setCurrentView(view)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize ${
+              currentView === view
+                ? 'bg-cyan-500 text-white'
+                : theme === 'dark'
+                ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {view}
+          </button>
+        ))}
       </div>
+
+      {/* Content */}
+      {currentView === 'dashboard' && renderDashboard()}
+      {currentView === 'appointments' && renderAppointments()}
+      {currentView === 'records' && renderMedicalRecords()}
+      {currentView === 'profile' && renderProfile()}
     </div>
   );
 };

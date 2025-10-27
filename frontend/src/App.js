@@ -307,6 +307,7 @@ function App() {
             theme={theme}
             api={api}
             addNotification={addNotification}
+            user={user}
           />
         );
       case 'admin':
