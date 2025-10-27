@@ -24,6 +24,7 @@ import PracticeManagementView from './views/PracticeManagementView';
 import EHRView from './views/EHRView';
 import TelehealthView from './views/TelehealthView';
 import RCMView from './views/RCMView';
+import ReportsView from './views/ReportsView';
 import CRMView from './views/CRMView';
 import IntegrationsView from './views/IntegrationsView';
 import FHIRView from './views/FHIRView';
@@ -41,6 +42,7 @@ import SettingsModal from './components/modals/SettingsModal';
 import NewAppointmentForm from './components/forms/NewAppointmentForm';
 import NewPatientForm from './components/forms/NewPatientForm';
 import NewClaimForm from './components/forms/NewClaimForm';
+import NewPaymentForm from './components/forms/NewPaymentForm';
 import NewTaskForm from './components/forms/NewTaskForm';
 import NewUserForm from './components/forms/NewUserForm';
 
@@ -102,6 +104,8 @@ function App() {
     setPatients,
     claims,
     setClaims,
+    payments,
+    setPayments,
     notifications,
     setNotifications,
     tasks,
@@ -214,6 +218,8 @@ function App() {
             setAppointmentViewType={setAppointmentViewType}
             setCalendarViewType={setCalendarViewType}
             completeTask={completeTask}
+            updateUserPreferences={updateUserPreferences}
+            addNotification={addNotification}
           />
         );
       case 'practiceManagement':
@@ -266,6 +272,17 @@ function App() {
             setClaims={setClaims}
             addNotification={addNotification}
             api={api}
+          />
+        );
+      case 'reports':
+        return (
+          <ReportsView
+            theme={theme}
+            patients={patients}
+            appointments={appointments}
+            claims={claims}
+            payments={payments}
+            addNotification={addNotification}
           />
         );
       case 'crm':
@@ -368,7 +385,14 @@ function App() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <button
-              onClick={() => setCurrentModule('dashboard')}
+              onClick={() => {
+                // Route to patient portal if user is a patient, otherwise dashboard
+                if (user?.role === 'patient') {
+                  setCurrentModule('patientPortal');
+                } else {
+                  setCurrentModule('dashboard');
+                }
+              }}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center">
@@ -567,6 +591,21 @@ function App() {
           onClose={() => setShowForm(null)}
           onSuccess={(newClaim) => {
             setClaims([...claims, newClaim]);
+            setShowForm(null);
+          }}
+          addNotification={addNotification}
+        />
+      )}
+
+      {showForm === 'payment' && (
+        <NewPaymentForm
+          theme={theme}
+          api={api}
+          patients={patients}
+          claims={claims}
+          onClose={() => setShowForm(null)}
+          onSuccess={(newPayment) => {
+            setPayments([...payments, newPayment]);
             setShowForm(null);
           }}
           addNotification={addNotification}
