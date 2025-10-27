@@ -33,6 +33,7 @@ import AdminPanelView from './views/AdminPanelView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
+import RegisterPage from './components/modals/RegisterPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
@@ -67,6 +68,8 @@ function App() {
     setIsAuthenticated,
     showForgotPassword,
     setShowForgotPassword,
+    showRegister,
+    setShowRegister,
     currentModule,
     setCurrentModule,
     currentView,
@@ -326,6 +329,22 @@ function App() {
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
+    // Show register page
+    if (showRegister) {
+      return (
+        <RegisterPage
+          theme={theme}
+          api={api}
+          addNotification={addNotification}
+          onClose={() => setShowRegister(false)}
+          onRegistered={() => {
+            setShowRegister(false);
+          }}
+        />
+      );
+    }
+
+    // Show login page
     return (
       <>
         <LoginPage
@@ -336,6 +355,7 @@ function App() {
           setIsAuthenticated={setIsAuthenticated}
           addNotification={addNotification}
           setShowForgotPassword={setShowForgotPassword}
+          setShowRegister={setShowRegister}
           setCurrentModule={setCurrentModule}
         />
         {showForgotPassword && (
