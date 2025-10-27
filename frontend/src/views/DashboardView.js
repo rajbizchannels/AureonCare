@@ -27,10 +27,10 @@ const DashboardView = ({
 
   // Define all available quick actions
   const allQuickActions = [
-    { id: 'appointment', label: 'New Appointment', icon: Calendar, color: 'blue' },
-    { id: 'patient', label: 'Add Patient', icon: FileText, color: 'purple' },
-    { id: 'task', label: 'New Task', icon: Check, color: 'green' },
-    { id: 'claim', label: 'New Claim', icon: DollarSign, color: 'yellow' }
+    { id: 'appointment', label: t.newAppointment, icon: Calendar, color: 'blue' },
+    { id: 'patient', label: t.addPatient, icon: FileText, color: 'purple' },
+    { id: 'task', label: t.newTask, icon: Check, color: 'green' },
+    { id: 'claim', label: t.newClaim, icon: DollarSign, color: 'yellow' }
   ];
 
   // Get enabled actions from user preferences or default to all
@@ -74,15 +74,35 @@ const DashboardView = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title={t.todaysAppointments}
-          value={appointments.length.toString()}
+          value={(() => {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            return appointments.filter(a => {
+              if (a.date && a.date.startsWith(todayStr)) return true;
+              if (a.start_time) {
+                const startDate = new Date(a.start_time.replace(' ', 'T'));
+                const startDateStr = startDate.toISOString().split('T')[0];
+                return startDateStr === todayStr;
+              }
+              return false;
+            }).length.toString();
+          })()}
           icon={Calendar}
           trend={(() => {
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
-            const todayCount = appointments.filter(a => a.date && a.date.startsWith(todayStr)).length;
+            const todayCount = appointments.filter(a => {
+              if (a.date && a.date.startsWith(todayStr)) return true;
+              if (a.start_time) {
+                const startDate = new Date(a.start_time.replace(' ', 'T'));
+                const startDateStr = startDate.toISOString().split('T')[0];
+                return startDateStr === todayStr;
+              }
+              return false;
+            }).length;
             const avgPerDay = Math.ceil(appointments.length / 7);
             const change = avgPerDay > 0 ? Math.round(((todayCount - avgPerDay) / avgPerDay) * 100) : 0;
-            return change >= 0 ? `+${change}% from average` : `${change}% from average`;
+            return change >= 0 ? `+${change}% ${t.fromAverage || 'from average'}` : `${change}% ${t.fromAverage || 'from average'}`;
           })()}
           color="from-blue-500 to-cyan-500"
           onClick={() => {
@@ -97,7 +117,7 @@ const DashboardView = ({
           title={t.pendingTasks}
           value={tasks.filter(t => t.status === 'Pending').length.toString()}
           icon={Clock}
-          trend={`${tasks.filter(t => t.priority === 'High' && t.status === 'Pending').length} urgent`}
+          trend={`${tasks.filter(t => t.priority === 'High' && t.status === 'Pending').length} ${t.urgent}`}
           color="from-purple-500 to-pink-500"
           onClick={() => setSelectedItem('tasks')}
         />
@@ -115,7 +135,7 @@ const DashboardView = ({
             const totalRevenue = claims.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
             const approvedRevenue = claims.filter(c => c.status === 'Approved' || c.status === 'Paid').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
             const approvalRate = totalRevenue > 0 ? Math.round((approvedRevenue / totalRevenue) * 100) : 0;
-            return `${approvalRate}% approved`;
+            return `${approvalRate}% ${t.approved}`;
           })()}
           color="from-green-500 to-emerald-500"
           onClick={() => setSelectedItem('revenue')}
@@ -133,7 +153,7 @@ const DashboardView = ({
               weekAgo.setDate(weekAgo.getDate() - 7);
               return patientDate >= weekAgo;
             }).length;
-            return `+${recentPatients} this week`;
+            return `+${recentPatients} ${t.thisWeek}`;
           })()}
           color="from-yellow-500 to-orange-500"
           onClick={() => setSelectedItem('patients')}
