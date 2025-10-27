@@ -67,7 +67,8 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
-    address, city, state, zip, insurance, insurance_id, status
+    address, city, state, zip, insurance, insurance_id, status,
+    height, weight, blood_type, allergies, past_history, family_history, current_medications
   } = req.body;
 
   try {
@@ -86,11 +87,19 @@ router.put('/:id', async (req, res) => {
            email = COALESCE($7, email),
            address = COALESCE($8, address),
            status = COALESCE($9, status),
+           height = COALESCE($10, height),
+           weight = COALESCE($11, weight),
+           blood_type = COALESCE($12, blood_type),
+           allergies = COALESCE($13, allergies),
+           past_history = COALESCE($14, past_history),
+           family_history = COALESCE($15, family_history),
+           current_medications = COALESCE($16, current_medications),
            updated_at = NOW()
-       WHERE id::text = $10::text
+       WHERE id::text = $17::text
        RETURNING *`,
       [first_name, last_name, mrn, birthDate, gender, phone, email,
-       address, status, req.params.id]
+       address, status, height, weight, blood_type, allergies,
+       past_history, family_history, current_medications, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });
