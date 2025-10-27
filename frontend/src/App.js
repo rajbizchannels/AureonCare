@@ -202,8 +202,7 @@ function App() {
     { code: 'es', name: 'Español', flag: '🇪🇸' },
     { code: 'fr', name: 'Français', flag: '🇫🇷' },
     { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-    { code: 'ar', name: 'العربية', flag: '🇸🇦' },
-    { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' }
+    { code: 'ar', name: 'العربية', flag: '🇸🇦' }
   ];
 
   const currentLanguage = languages.find(l => l.code === language) || languages[0];
@@ -509,7 +508,7 @@ function App() {
                     e.stopPropagation();
                     setShowLanguageMenu(!showLanguageMenu);
                   }}
-                  className={`p-2 rounded-lg transition-colors flex items-center gap-2 ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                  className={`p-2 rounded-lg transition-colors flex items-center gap-2 ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-gray-600'}`}
                   title="Change Language"
                 >
                   <Globe className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
