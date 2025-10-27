@@ -2,8 +2,8 @@
 CREATE TABLE IF NOT EXISTS payments (
   id SERIAL PRIMARY KEY,
   payment_number VARCHAR(50) UNIQUE NOT NULL,
-  patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
-  claim_id INTEGER REFERENCES claims(id) ON DELETE SET NULL,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+  claim_id UUID REFERENCES claims(id) ON DELETE SET NULL,
   amount DECIMAL(10, 2) NOT NULL,
   payment_method VARCHAR(50) NOT NULL, -- 'credit_card', 'debit_card', 'paypal', 'apple_pay', 'google_pay', etc.
   payment_status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed', 'refunded'
