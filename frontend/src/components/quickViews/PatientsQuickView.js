@@ -2,7 +2,7 @@ import React from 'react';
 import { X, Calendar, Phone } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
 
-const PatientsQuickView = ({ theme, patients, onClose, onViewAll, setEditingItem, setCurrentView }) => (
+const PatientsQuickView = ({ theme, t, patients, onClose, onViewAll, setEditingItem, setCurrentView }) => (
   <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
     <div className={`rounded-xl border max-w-4xl w-full max-h-[80vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
       <div className={`p-6 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
@@ -59,7 +59,7 @@ const PatientsQuickView = ({ theme, patients, onClose, onViewAll, setEditingItem
           }}
           className={`w-full mt-6 px-4 py-3 bg-purple-500 hover:bg-purple-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
         >
-          View All Patients
+          {t.viewAllPatients}
         </button>
       </div>
     </div>

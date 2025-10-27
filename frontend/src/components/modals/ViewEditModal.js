@@ -129,6 +129,7 @@ const ViewEditModal = ({
         };
         const updated = await api.updateUser(editData.id, userData);
         setUser(updated);
+        await addNotification('success', 'Profile updated successfully');
       } else if (type === 'user') {
         // Update user - ensure we send firstName and lastName
         const userData = {
