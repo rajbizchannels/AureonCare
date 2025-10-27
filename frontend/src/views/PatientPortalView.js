@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, FileText, User, Edit, Check, X, Lock } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
+import { getTranslations } from '../config/translations';
+import { useApp } from '../context/AppContext';
 
 const PatientPortalView = ({ theme, api, addNotification, user }) => {
+  const { language } = useApp();
+  const t = getTranslations(language);
   const [currentView, setCurrentView] = useState('dashboard'); // dashboard, appointments, records, profile
 
   // Data states
@@ -53,10 +57,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     <div className="space-y-6">
       <div>
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Welcome, {user?.firstName || user?.name}!
+          {t.welcomeBack}, {user?.firstName || user?.name}!
         </h2>
         <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-          Email: {user?.email}
+          {t.email}: {user?.email}
         </p>
       </div>
 
@@ -67,7 +71,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         >
           <Calendar className={`w-8 h-8 mb-4 ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-600'}`} />
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            My Appointments
+            {t.myAppointments}
           </h3>
           <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {appointments.length}
@@ -80,7 +84,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         >
           <FileText className={`w-8 h-8 mb-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Medical Records
+            {t.medicalRecords}
           </h3>
           <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {medicalRecords.length}
@@ -93,10 +97,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         >
           <User className={`w-8 h-8 mb-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            My Profile
+            {t.myProfile}
           </h3>
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            View & Edit
+            {t.viewAndEdit}
           </p>
         </div>
       </div>
@@ -107,12 +111,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const renderAppointments = () => (
     <div className="space-y-6">
       <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        My Appointments
+        {t.myAppointments}
       </h2>
       {appointments.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <Calendar className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
-          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No appointments found</p>
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.noAppointmentsFound}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -124,17 +128,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {apt.provider ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}` : 'Provider TBD'}
+                    {apt.provider ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}` : t.providerTBD}
                   </h3>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {formatDate(apt.start_time)} at {formatTime(apt.start_time)}
                   </p>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Type: {apt.appointment_type || 'General Consultation'}
+                    {t.type}: {apt.appointment_type || t.generalConsultation}
                   </p>
                   {apt.reason && (
                     <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Reason: {apt.reason}
+                      {t.reason}: {apt.reason}
                     </p>
                   )}
                 </div>
@@ -143,7 +147,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   apt.status === 'completed' ? 'bg-green-500/20 text-green-400' :
                   'bg-yellow-500/20 text-yellow-400'
                 }`}>
-                  {apt.status}
+                  {apt.status === 'scheduled' ? t.scheduled : apt.status}
                 </span>
               </div>
             </div>
@@ -157,12 +161,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const renderMedicalRecords = () => (
     <div className="space-y-6">
       <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        My Medical Records
+        {t.medicalRecords}
       </h2>
       {medicalRecords.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <FileText className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
-          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No medical records found</p>
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.noMedicalRecordsFound}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -175,11 +179,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 {record.title || record.record_type}
               </h3>
               <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Date: {formatDate(record.record_date)}
+                {t.date}: {formatDate(record.record_date)}
               </p>
               {record.provider && (
                 <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  Provider: Dr. {record.provider.first_name} {record.provider.last_name}
+                  {t.provider}: Dr. {record.provider.first_name} {record.provider.last_name}
                 </p>
               )}
               {record.description && (
@@ -189,7 +193,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               )}
               {record.diagnosis && (
                 <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  <strong>Diagnosis:</strong> {record.diagnosis}
+                  <strong>{t.diagnosis}:</strong> {record.diagnosis}
                 </p>
               )}
             </div>
@@ -204,7 +208,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          My Profile
+          {t.myProfile}
         </h2>
         {!editingProfile && (
           <button
@@ -212,7 +216,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-lg text-white font-medium transition-colors"
           >
             <Edit className="w-4 h-4" />
-            Edit Profile
+            {t.editProfile}
           </button>
         )}
       </div>
@@ -222,7 +226,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Phone
+                {t.phone}
               </label>
               <input
                 type="tel"
@@ -233,7 +237,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             </div>
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Email
+                {t.email}
               </label>
               <input
                 type="email"
@@ -249,7 +253,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-medium transition-colors"
             >
               <Check className="w-4 h-4" />
-              Save Changes
+              {t.saveChanges}
             </button>
             <button
               type="button"
@@ -257,7 +261,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
             >
               <X className="w-4 h-4" />
-              Cancel
+              {t.cancel}
             </button>
           </div>
         </form>
@@ -265,33 +269,33 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Name</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.name}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {user?.firstName} {user?.lastName}
               </p>
             </div>
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Role</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.role}</p>
               <p className={`font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {user?.role}
               </p>
             </div>
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.email}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.email || 'Not provided'}
+                {user?.email || t.notProvided}
               </p>
             </div>
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.phone}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.phone || 'Not provided'}
+                {user?.phone || t.notProvided}
               </p>
             </div>
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Practice</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.practice}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.practice || 'Not specified'}
+                {user?.practice || t.notSpecified}
               </p>
             </div>
           </div>
@@ -305,30 +309,63 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     <div className="space-y-6">
       <div>
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Patient Portal
+          {t.patientPortal}
         </h2>
         <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-          Access your medical information and appointments
+          {t.patientPortalDescription}
         </p>
       </div>
 
       {/* Navigation */}
       <div className="flex gap-4">
-        {['dashboard', 'appointments', 'records', 'profile'].map((view) => (
-          <button
-            key={view}
-            onClick={() => setCurrentView(view)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize ${
-              currentView === view
-                ? 'bg-cyan-500 text-white'
-                : theme === 'dark'
-                ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            {view}
-          </button>
-        ))}
+        <button
+          onClick={() => setCurrentView('dashboard')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            currentView === 'dashboard'
+              ? 'bg-cyan-500 text-white'
+              : theme === 'dark'
+              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          {t.dashboardTab}
+        </button>
+        <button
+          onClick={() => setCurrentView('appointments')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            currentView === 'appointments'
+              ? 'bg-cyan-500 text-white'
+              : theme === 'dark'
+              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          {t.appointmentsTab}
+        </button>
+        <button
+          onClick={() => setCurrentView('records')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            currentView === 'records'
+              ? 'bg-cyan-500 text-white'
+              : theme === 'dark'
+              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          {t.recordsTab}
+        </button>
+        <button
+          onClick={() => setCurrentView('profile')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            currentView === 'profile'
+              ? 'bg-cyan-500 text-white'
+              : theme === 'dark'
+              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          {t.profileTab}
+        </button>
       </div>
 
       {/* Content */}

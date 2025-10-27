@@ -88,6 +88,14 @@ const UserProfileModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.firstName || 'N/A'}</p>
+            </div>
+            <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.lastName || 'N/A'}</p>
+            </div>
+            <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
               <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Role</p>
               <p className={`capitalize font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.role || 'N/A'}</p>
             </div>
