@@ -4,7 +4,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
 import { facebookOAuthConfig } from '../../config/oauthConfig';
 
-const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule }) => {
+const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -310,7 +310,16 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
           </div>
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-3">
+          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Don't have an account?{' '}
+            <button
+              onClick={() => setShowRegister(true)}
+              className="text-cyan-500 hover:text-cyan-400 font-medium transition-colors"
+            >
+              Register here
+            </button>
+          </p>
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className={`text-sm ${theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-600 hover:text-gray-700'}`}

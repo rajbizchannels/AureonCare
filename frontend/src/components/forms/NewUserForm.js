@@ -6,6 +6,8 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
     name: '',
     email: '',
     phone: '',
+    password: '',
+    confirmPassword: '',
     role: 'staff',
     specialty: '',
     license: '',
@@ -28,6 +30,17 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate passwords
+    if (formData.password !== formData.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    if (formData.password && formData.password.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+
     try {
       const initials = formData.name.split(' ').map(n => n[0]).join('').toUpperCase();
 
@@ -35,6 +48,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
+        password: formData.password, // Include password in user data
         role: formData.role,
         specialty: formData.specialty,
         license: formData.license,
@@ -104,6 +118,38 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500'}`}
                   placeholder="(555) 123-4567"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Password <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                  placeholder="Minimum 6 characters"
+                  minLength={6}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Confirm Password <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                  placeholder="Re-enter password"
+                  minLength={6}
                 />
               </div>
             </div>

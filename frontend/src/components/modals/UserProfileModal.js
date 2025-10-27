@@ -118,7 +118,10 @@ const UserProfileModal = ({
                   type="checkbox"
                   checked={user.preferences?.emailNotifications ?? true}
                   onChange={async (e) => {
-                    await updateUserPreferences({ emailNotifications: e.target.checked });
+                    const success = await updateUserPreferences({ emailNotifications: e.target.checked });
+                    if (success) {
+                      await addNotification('success', 'Preference saved successfully');
+                    }
                   }}
                   className="form-checkbox h-5 w-5 text-cyan-500"
                 />
@@ -129,7 +132,10 @@ const UserProfileModal = ({
                   type="checkbox"
                   checked={user.preferences?.smsAlerts ?? true}
                   onChange={async (e) => {
-                    await updateUserPreferences({ smsAlerts: e.target.checked });
+                    const success = await updateUserPreferences({ smsAlerts: e.target.checked });
+                    if (success) {
+                      await addNotification('success', 'Preference saved successfully');
+                    }
                   }}
                   className="form-checkbox h-5 w-5 text-cyan-500"
                 />
@@ -142,7 +148,10 @@ const UserProfileModal = ({
                   onChange={async (e) => {
                     const isDark = e.target.checked;
                     setTheme(isDark ? 'dark' : 'light');
-                    await updateUserPreferences({ darkMode: isDark });
+                    const success = await updateUserPreferences({ darkMode: isDark });
+                    if (success) {
+                      await addNotification('success', 'Theme preference saved successfully');
+                    }
                   }}
                   className="form-checkbox h-5 w-5 text-cyan-500"
                 />
