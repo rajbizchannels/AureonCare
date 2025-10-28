@@ -46,8 +46,8 @@ async function main() {
     await pool.query('SELECT NOW()');
     console.log('✅ Database connection successful\n');
 
-    // Run the payments migration
-    const success = await runMigration('004_create_payments_table.sql');
+    // Run the prescriptions/diagnosis migration
+    const success = await runMigration('005_create_prescriptions_diagnosis_tables.sql');
 
     if (success) {
       console.log('\n========================================');
