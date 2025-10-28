@@ -57,7 +57,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       const endDate = new Date(startDate.getTime() + 30 * 60000); // Default 30 minutes duration
 
       const appointmentData = {
-        patient_id: user.id,
+        user_id: user.id, // Send user_id, backend will look up patient_id
         start_time: startDate.toISOString().slice(0, 19).replace('T', ' '),
         end_time: endDate.toISOString().slice(0, 19).replace('T', ' '),
         duration_minutes: 30,
@@ -72,7 +72,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       fetchPatientData();
     } catch (error) {
       console.error('Error booking appointment:', error);
-      addNotification('alert', 'Failed to book appointment');
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to book appointment';
+      addNotification('alert', errorMsg);
     }
   };
 

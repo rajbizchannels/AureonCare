@@ -52,33 +52,55 @@ router.get('/:id', async (req, res) => {
 
 // Create new appointment
 router.post('/', async (req, res) => {
-  const {
-    patient_id, provider_id, practice_id, appointment_type,
+  let {
+    patient_id, user_id, provider_id, practice_id, appointment_type,
     start_time, end_time, duration_minutes, reason, notes, status
   } = req.body;
 
   try {
     const pool = req.app.locals.pool;
 
-    // Check for scheduling conflicts with the same doctor
-    const conflictCheck = await pool.query(
-      `SELECT a.id,
-              CONCAT(u.first_name, ' ', u.last_name) as doctor,
-              CONCAT(p.first_name, ' ', p.last_name) as patient
-       FROM appointments a
-       LEFT JOIN users u ON a.provider_id::text = u.id::text
-       LEFT JOIN patients p ON a.patient_id::text = p.id::text
-       WHERE a.provider_id::text = $1::text
-         AND a.start_time = $2
-         AND a.status NOT IN ('cancelled', 'completed')`,
-      [provider_id, start_time]
-    );
+    // If user_id is provided instead of patient_id, look up the patient
+    if (!patient_id && user_id) {
+      const patientLookup = await pool.query(
+        'SELECT id FROM patients WHERE user_id::text = $1::text',
+        [user_id]
+      );
 
-    if (conflictCheck.rows.length > 0) {
-      const conflict = conflictCheck.rows[0];
-      return res.status(409).json({
-        error: `Doctor ${conflict.doctor} already has an appointment with ${conflict.patient} at this time`
-      });
+      if (patientLookup.rows.length > 0) {
+        patient_id = patientLookup.rows[0].id;
+      } else {
+        return res.status(404).json({
+          error: 'Patient record not found for this user. Please contact support.'
+        });
+      }
+    }
+
+    if (!patient_id) {
+      return res.status(400).json({ error: 'patient_id or user_id is required' });
+    }
+
+    // Check for scheduling conflicts with the same doctor
+    if (provider_id && start_time) {
+      const conflictCheck = await pool.query(
+        `SELECT a.id,
+                CONCAT(u.first_name, ' ', u.last_name) as doctor,
+                CONCAT(p.first_name, ' ', p.last_name) as patient
+         FROM appointments a
+         LEFT JOIN users u ON a.provider_id::text = u.id::text
+         LEFT JOIN patients p ON a.patient_id::text = p.id::text
+         WHERE a.provider_id::text = $1::text
+           AND a.start_time = $2
+           AND a.status NOT IN ('cancelled', 'completed')`,
+        [provider_id, start_time]
+      );
+
+      if (conflictCheck.rows.length > 0) {
+        const conflict = conflictCheck.rows[0];
+        return res.status(409).json({
+          error: `Doctor ${conflict.doctor} already has an appointment with ${conflict.patient} at this time`
+        });
+      }
     }
 
     const result = await pool.query(
@@ -93,7 +115,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating appointment:', error);
-    res.status(500).json({ error: 'Failed to create appointment' });
+    res.status(500).json({ error: 'Failed to create appointment', details: error.message });
   }
 });
 
