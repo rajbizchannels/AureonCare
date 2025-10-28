@@ -51,11 +51,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const handleBookAppointment = async (e) => {
     e.preventDefault();
     try {
+      // Combine date and time into start_time timestamp
+      const startTime = `${bookingData.date.split('T')[0]}T${bookingData.time}:00`;
+      const startDate = new Date(startTime);
+      const endDate = new Date(startDate.getTime() + 30 * 60000); // Default 30 minutes duration
+
       const appointmentData = {
         patient_id: user.id,
-        date: bookingData.date,
-        time: bookingData.time,
-        type: bookingData.type,
+        start_time: startDate.toISOString().slice(0, 19).replace('T', ' '),
+        end_time: endDate.toISOString().slice(0, 19).replace('T', ' '),
+        duration_minutes: 30,
+        appointment_type: bookingData.type,
         reason: bookingData.reason,
         status: 'Scheduled'
       };
@@ -65,6 +71,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setBookingData({ date: '', time: '', type: 'General Consultation', reason: '' });
       fetchPatientData();
     } catch (error) {
+      console.error('Error booking appointment:', error);
       addNotification('alert', 'Failed to book appointment');
     }
   };
@@ -246,9 +253,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const renderProfile = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t.myProfile}
-        </h2>
+        <div className="flex items-center gap-4">
+          <div className={`w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-xl font-bold text-white`}>
+            {user?.avatar || `${user?.firstName?.charAt(0) || ''}${user?.lastName?.charAt(0) || ''}`.toUpperCase()}
+          </div>
+          <div>
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {user?.firstName} {user?.lastName}
+            </h2>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.email}</p>
+          </div>
+        </div>
         {!editingProfile && (
           <button
             onClick={() => setEditingProfile(true)}
@@ -285,6 +300,76 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               />
             </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</label>
+              <input
+                type="text"
+                value={profileData.height || ''}
+                onChange={(e) => setProfileData({...profileData, height: e.target.value})}
+                placeholder="e.g., 5'10&quot;"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</label>
+              <input
+                type="text"
+                value={profileData.weight || ''}
+                onChange={(e) => setProfileData({...profileData, weight: e.target.value})}
+                placeholder="e.g., 180 lbs"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</label>
+              <input
+                type="text"
+                value={profileData.blood_type || ''}
+                onChange={(e) => setProfileData({...profileData, blood_type: e.target.value})}
+                placeholder="e.g., O+"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</label>
+              <textarea
+                value={profileData.allergies || ''}
+                onChange={(e) => setProfileData({...profileData, allergies: e.target.value})}
+                placeholder="List any allergies..."
+                rows="3"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</label>
+              <textarea
+                value={profileData.past_history || ''}
+                onChange={(e) => setProfileData({...profileData, past_history: e.target.value})}
+                placeholder="Previous medical conditions..."
+                rows="3"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Family Medical History</label>
+              <textarea
+                value={profileData.family_history || ''}
+                onChange={(e) => setProfileData({...profileData, family_history: e.target.value})}
+                placeholder="Family medical history..."
+                rows="3"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</label>
+              <textarea
+                value={profileData.current_medications || ''}
+                onChange={(e) => setProfileData({...profileData, current_medications: e.target.value})}
+                placeholder="List current medications..."
+                rows="3"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
           </div>
           <div className="flex gap-3 mt-6">
             <button
@@ -306,19 +391,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         </form>
       ) : (
         <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+          <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Contact Information</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.name}</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.firstName} {user?.lastName}
-              </p>
-            </div>
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.role}</p>
-              <p className={`font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.role}
-              </p>
-            </div>
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.email}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -331,87 +405,39 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 {user?.phone || t.notProvided}
               </p>
             </div>
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.practice}</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.practice || t.notSpecified}
-              </p>
-            </div>
           </div>
 
-          {/* Medical Attributes Section */}
-          <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+          {/* Medical Information Section */}
+          <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
             <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Medical Information</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</label>
-                {editingProfile ? (
-                  <input
-                    type="text"
-                    value={profileData.height || ''}
-                    onChange={(e) => setProfileData({...profileData, height: e.target.value})}
-                    placeholder="e.g., 5'10&quot;"
-                    className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  />
-                ) : (
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.height || t.notProvided}</p>
-                )}
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.height || t.notProvided}</p>
               </div>
               <div>
-                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</label>
-                {editingProfile ? (
-                  <input
-                    type="text"
-                    value={profileData.weight || ''}
-                    onChange={(e) => setProfileData({...profileData, weight: e.target.value})}
-                    placeholder="e.g., 180 lbs"
-                    className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  />
-                ) : (
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.weight || t.notProvided}</p>
-                )}
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.weight || t.notProvided}</p>
               </div>
               <div>
-                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</label>
-                {editingProfile ? (
-                  <input
-                    type="text"
-                    value={profileData.blood_type || ''}
-                    onChange={(e) => setProfileData({...profileData, blood_type: e.target.value})}
-                    placeholder="e.g., O+"
-                    className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  />
-                ) : (
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.blood_type || t.notProvided}</p>
-                )}
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.blood_type || t.notProvided}</p>
               </div>
               <div className="col-span-2">
-                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</label>
-                {editingProfile ? (
-                  <textarea
-                    value={profileData.allergies || ''}
-                    onChange={(e) => setProfileData({...profileData, allergies: e.target.value})}
-                    placeholder="List any allergies..."
-                    rows="2"
-                    className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  />
-                ) : (
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.allergies || t.notProvided}</p>
-                )}
+                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.allergies || t.notProvided}</p>
               </div>
               <div className="col-span-2">
-                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</label>
-                {editingProfile ? (
-                  <textarea
-                    value={profileData.past_history || ''}
-                    onChange={(e) => setProfileData({...profileData, past_history: e.target.value})}
-                    placeholder="Previous medical conditions..."
-                    rows="2"
-                    className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  />
-                ) : (
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.past_history || t.notProvided}</p>
-                )}
+                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.past_history || t.notProvided}</p>
+              </div>
+              <div className="col-span-2">
+                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Family Medical History</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.family_history || t.notProvided}</p>
+              </div>
+              <div className="col-span-2">
+                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.current_medications || t.notProvided}</p>
               </div>
             </div>
           </div>
