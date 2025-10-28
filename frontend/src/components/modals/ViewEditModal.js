@@ -59,10 +59,20 @@ const ViewEditModal = ({
       }
 
       // For users, ensure we have first_name and last_name
-      if ((editingItem.type === 'user' || editingItem.type === 'userProfile') && !data.first_name && !data.last_name && data.name) {
-        const nameParts = data.name.trim().split(/\s+/);
-        data.first_name = nameParts[0] || '';
-        data.last_name = nameParts.slice(1).join(' ') || '';
+      if (editingItem.type === 'user' || editingItem.type === 'userProfile') {
+        // Check both camelCase and snake_case versions
+        if (!data.first_name && data.firstName) {
+          data.first_name = data.firstName;
+        }
+        if (!data.last_name && data.lastName) {
+          data.last_name = data.lastName;
+        }
+        // If still missing and we have a name field, parse it
+        if (!data.first_name && !data.last_name && data.name) {
+          const nameParts = data.name.trim().split(/\s+/);
+          data.first_name = nameParts[0] || '';
+          data.last_name = nameParts.slice(1).join(' ') || '';
+        }
       }
 
       setEditData(data);

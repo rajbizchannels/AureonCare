@@ -92,6 +92,8 @@ app.use('/api/telehealth', require('./routes/telehealth'));
 app.use('/api/fhir', require('./routes/fhir'));
 app.use('/api/patient-portal', require('./routes/patient-portal'));
 app.use('/api/medical-records', require('./routes/medical-records'));
+app.use('/api/prescriptions', require('./routes/prescriptions'));
+app.use('/api/diagnosis', require('./routes/diagnosis'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
