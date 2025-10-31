@@ -63,7 +63,7 @@ router.post('/', async (req, res) => {
     // If user_id is provided instead of patient_id, look up the patient
     if (!patient_id && user_id) {
       const patientLookup = await pool.query(
-        'SELECT id FROM patients WHERE user_id::text = $1::text',
+        'SELECT id FROM patients WHERE user_id::text = $1::text OR id::text = $1::text',
         [user_id]
       );
 
@@ -73,6 +73,31 @@ router.post('/', async (req, res) => {
         return res.status(404).json({
           error: 'Patient record not found for this user. Please contact support.'
         });
+      }
+    }
+
+    // If patient_id is provided, verify it exists
+    if (patient_id) {
+      const patientCheck = await pool.query(
+        'SELECT id FROM patients WHERE id::text = $1::text',
+        [patient_id]
+      );
+
+      if (patientCheck.rows.length === 0) {
+        // Try to find by user_id as fallback
+        const patientByUserId = await pool.query(
+          'SELECT id FROM patients WHERE user_id::text = $1::text',
+          [patient_id]
+        );
+
+        if (patientByUserId.rows.length > 0) {
+          patient_id = patientByUserId.rows[0].id;
+        } else {
+          return res.status(404).json({
+            error: 'Patient record not found. Please contact support.',
+            details: `Patient ID ${patient_id} does not exist in the system.`
+          });
+        }
       }
     }
 
