@@ -36,12 +36,19 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
   const fetchPatientData = async () => {
     try {
-      // Get patient_id - could be user.patient_id or user.id depending on login method
-      const patientId = user.patient_id || user.id;
+      // The user object from patient portal login is the patient record itself
+      const patientId = user.id;
+
+      console.log('Fetching patient data for ID:', patientId);
 
       // Fetch appointments, medical records, and prescriptions for the patient
       const [appts, records, presc] = await Promise.all([
-        api.getAppointments().then(all => all.filter(a => a.patient_id?.toString() === patientId?.toString())),
+        api.getAppointments().then(all => {
+          console.log('All appointments:', all);
+          const filtered = all.filter(a => a.patient_id?.toString() === patientId?.toString());
+          console.log('Filtered appointments for patient:', filtered);
+          return filtered;
+        }),
         api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
         fetch(`/api/prescriptions?patient_id=${patientId}`).then(r => r.json()).catch(() => [])
       ]);
@@ -62,12 +69,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       const startDate = new Date(startTime);
       const endDate = new Date(startDate.getTime() + 30 * 60000); // Default 30 minutes duration
 
-      // Get patient_id - could be user.patient_id or user.id depending on login method
-      const patientId = user.patient_id || user.id;
-
       const appointmentData = {
-        patient_id: patientId, // Use patient_id directly
-        user_id: user.user_id || user.id, // Also send user_id as fallback for backend lookup
+        // Send the user's id as both patient_id and user_id for backend to resolve
+        patient_id: user.id,
+        user_id: user.id,
         start_time: startDate.toISOString().slice(0, 19).replace('T', ' '),
         end_time: endDate.toISOString().slice(0, 19).replace('T', ' '),
         duration_minutes: 30,
@@ -75,6 +80,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         reason: bookingData.reason,
         status: 'Scheduled'
       };
+
+      console.log('Booking appointment with data:', appointmentData);
       await api.createAppointment(appointmentData);
       addNotification('success', 'Appointment booked successfully');
 
