@@ -60,48 +60,67 @@ router.post('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 
+    console.log('Creating appointment with:', { patient_id, user_id, appointment_type, start_time });
+
     // If user_id is provided instead of patient_id, look up the patient
     if (!patient_id && user_id) {
+      console.log('Looking up patient by user_id:', user_id);
       const patientLookup = await pool.query(
         'SELECT id FROM patients WHERE user_id::text = $1::text OR id::text = $1::text',
         [user_id]
       );
 
+      console.log('Patient lookup result:', patientLookup.rows);
+
       if (patientLookup.rows.length > 0) {
         patient_id = patientLookup.rows[0].id;
+        console.log('Found patient_id:', patient_id);
       } else {
+        console.error('No patient found for user_id:', user_id);
         return res.status(404).json({
-          error: 'Patient record not found for this user. Please contact support.'
+          error: 'Patient record not found for this user. Please contact support.',
+          details: `No patient record found for user ID: ${user_id}`
         });
       }
     }
 
     // If patient_id is provided, verify it exists
     if (patient_id) {
+      console.log('Verifying patient_id exists:', patient_id);
       const patientCheck = await pool.query(
-        'SELECT id FROM patients WHERE id::text = $1::text',
+        'SELECT id, first_name, last_name FROM patients WHERE id::text = $1::text',
         [patient_id]
       );
 
+      console.log('Patient verification result:', patientCheck.rows);
+
       if (patientCheck.rows.length === 0) {
         // Try to find by user_id as fallback
+        console.log('Patient not found by id, trying user_id fallback:', patient_id);
         const patientByUserId = await pool.query(
           'SELECT id FROM patients WHERE user_id::text = $1::text',
           [patient_id]
         );
 
+        console.log('Fallback lookup result:', patientByUserId.rows);
+
         if (patientByUserId.rows.length > 0) {
           patient_id = patientByUserId.rows[0].id;
+          console.log('Found patient via user_id fallback:', patient_id);
         } else {
+          console.error('Patient not found in either lookup:', patient_id);
           return res.status(404).json({
             error: 'Patient record not found. Please contact support.',
             details: `Patient ID ${patient_id} does not exist in the system.`
           });
         }
+      } else {
+        console.log('Patient verified:', patientCheck.rows[0]);
       }
     }
 
     if (!patient_id) {
+      console.error('No patient_id could be determined');
       return res.status(400).json({ error: 'patient_id or user_id is required' });
     }
 

@@ -15,7 +15,12 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error('Failed to create appointment');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create appointment' }));
+      const error = new Error(errorData.error || 'Failed to create appointment');
+      error.response = { data: errorData };
+      throw error;
+    }
     return response.json();
   },
   updateAppointment: async (id, data) => {

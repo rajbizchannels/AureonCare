@@ -82,7 +82,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       };
 
       console.log('Booking appointment with data:', appointmentData);
-      await api.createAppointment(appointmentData);
+      console.log('User object:', user);
+
+      const result = await api.createAppointment(appointmentData);
+      console.log('Appointment created successfully:', result);
+
       addNotification('success', 'Appointment booked successfully');
 
       // Show success confirmation
@@ -97,8 +101,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       }, 2000);
     } catch (error) {
       console.error('Error booking appointment:', error);
+      console.error('Full error details:', error.response?.data);
       const errorMsg = error.response?.data?.error || error.message || 'Failed to book appointment';
-      addNotification('alert', errorMsg);
+      const errorDetails = error.response?.data?.details;
+
+      // Show detailed error message
+      addNotification('alert', errorDetails ? `${errorMsg}\n${errorDetails}` : errorMsg);
+
+      // Don't show confirmation popup on error
+      setShowConfirmation(false);
     }
   };
 
