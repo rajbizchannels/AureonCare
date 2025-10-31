@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, X, Save } from 'lucide-react';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotification }) => {
   const [formData, setFormData] = useState({
@@ -18,6 +19,7 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
     emergencyContact: '',
     emergencyPhone: ''
   });
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // ESC key handler
   useEffect(() => {
@@ -65,17 +67,38 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
 
       await addNotification('alert', `New patient added: ${newPatient.first_name} ${newPatient.last_name}`);
 
-      onSuccess(patientWithName);
-      onClose();
+      // Show success confirmation
+      setShowConfirmation(true);
+
+      // Auto-close after 2 seconds
+      setTimeout(() => {
+        onSuccess(patientWithName);
+        onClose();
+      }, 2000);
     } catch (err) {
       console.error('Error creating patient:', err);
-      alert('Failed to create patient. Please try again.');
+      addNotification('alert', 'Failed to create patient. Please try again.');
     }
   };
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
-      <div className={`rounded-xl border max-w-4xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={() => {
+          setShowConfirmation(false);
+          onClose();
+        }}
+        title="Success!"
+        message="Patient has been added successfully."
+        type="success"
+        confirmText="OK"
+        showCancel={false}
+      />
+      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
+        <div className={`rounded-xl border max-w-4xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-pink-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
@@ -322,6 +345,7 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
         </form>
       </div>
     </div>
+    </>
   );
 };
 

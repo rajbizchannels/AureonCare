@@ -41,11 +41,11 @@ const PatientsQuickView = ({ theme, t, patients, onClose, onViewAll, setEditingI
                 <div className="space-y-1 text-sm">
                   <div className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     <Calendar className="w-4 h-4" />
-                    <span>{formatDate(patient.dob)}</span>
+                    <span>DOB: {formatDate(patient.date_of_birth || patient.dob)}</span>
                   </div>
                   <div className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     <Phone className="w-4 h-4" />
-                    <span>{patient.phone}</span>
+                    <span>{patient.phone || 'No phone'}</span>
                   </div>
                 </div>
               </div>
