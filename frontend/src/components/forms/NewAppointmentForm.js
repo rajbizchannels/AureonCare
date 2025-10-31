@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, X, Save } from 'lucide-react';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, addNotification }) => {
   const [formData, setFormData] = useState({
@@ -12,6 +13,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
     reason: '',
     notes: ''
   });
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Set default provider to first available provider when users are loaded
   useEffect(() => {
@@ -65,11 +67,17 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
       const patient = patients.find(p => p.id.toString() === formData.patientId);
       await addNotification('appointment', `New appointment scheduled with ${patient?.name || patient?.first_name + ' ' + patient?.last_name}`);
 
-      onSuccess(newAppointment);
-      onClose();
+      // Show success confirmation
+      setShowConfirmation(true);
+
+      // Auto-close confirmation and form after 2 seconds
+      setTimeout(() => {
+        onSuccess(newAppointment);
+        onClose();
+      }, 2000);
     } catch (err) {
       console.error('Error creating appointment:', err);
-      alert('Failed to create appointment. Please try again.');
+      addNotification('alert', 'Failed to create appointment. Please try again.');
     }
   };
 
@@ -79,8 +87,23 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
   ) || [];
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
-      <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={() => {
+          setShowConfirmation(false);
+          onClose();
+        }}
+        title="Success!"
+        message="Appointment has been scheduled successfully."
+        type="success"
+        confirmText="OK"
+        showCancel={false}
+      />
+      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
+        <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
@@ -239,6 +262,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
         </form>
       </div>
     </div>
+    </>
   );
 };
 

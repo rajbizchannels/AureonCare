@@ -3,6 +3,7 @@ import { Calendar, FileText, User, Edit, Check, X, Lock } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
+import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const { language } = useApp();
@@ -15,6 +16,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState(user || {});
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState('');
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -33,11 +36,14 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
   const fetchPatientData = async () => {
     try {
-      // Fetch appointments, medical records, and prescriptions for the patient user
+      // Get patient_id - could be user.patient_id or user.id depending on login method
+      const patientId = user.patient_id || user.id;
+
+      // Fetch appointments, medical records, and prescriptions for the patient
       const [appts, records, presc] = await Promise.all([
-        api.getAppointments().then(all => all.filter(a => a.patient_id === user.id)),
-        api.getMedicalRecords ? api.getMedicalRecords(user.id) : Promise.resolve([]),
-        fetch(`/api/prescriptions?patient_id=${user.id}`).then(r => r.json()).catch(() => [])
+        api.getAppointments().then(all => all.filter(a => a.patient_id?.toString() === patientId?.toString())),
+        api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
+        fetch(`/api/prescriptions?patient_id=${patientId}`).then(r => r.json()).catch(() => [])
       ]);
       setAppointments(appts);
       setMedicalRecords(records);
@@ -56,8 +62,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       const startDate = new Date(startTime);
       const endDate = new Date(startDate.getTime() + 30 * 60000); // Default 30 minutes duration
 
+      // Get patient_id - could be user.patient_id or user.id depending on login method
+      const patientId = user.patient_id || user.id;
+
       const appointmentData = {
-        user_id: user.id, // Send user_id, backend will look up patient_id
+        patient_id: patientId, // Use patient_id directly
+        user_id: user.user_id || user.id, // Also send user_id as fallback for backend lookup
         start_time: startDate.toISOString().slice(0, 19).replace('T', ' '),
         end_time: endDate.toISOString().slice(0, 19).replace('T', ' '),
         duration_minutes: 30,
@@ -67,9 +77,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       };
       await api.createAppointment(appointmentData);
       addNotification('success', 'Appointment booked successfully');
-      setCurrentView('appointments');
-      setBookingData({ date: '', time: '', type: 'General Consultation', reason: '' });
-      fetchPatientData();
+
+      // Show success confirmation
+      setConfirmationMessage('Your appointment has been booked successfully!');
+      setShowConfirmation(true);
+
+      // Auto-navigate to appointments view after confirmation
+      setTimeout(() => {
+        setCurrentView('appointments');
+        setBookingData({ date: '', time: '', type: 'General Consultation', reason: '' });
+        fetchPatientData();
+      }, 2000);
     } catch (error) {
       console.error('Error booking appointment:', error);
       const errorMsg = error.response?.data?.error || error.message || 'Failed to book appointment';
@@ -94,6 +112,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setProfileData(updated);
       setEditingProfile(false);
       addNotification('success', 'Profile updated successfully');
+
+      // Show success confirmation
+      setConfirmationMessage('Your profile has been updated successfully!');
+      setShowConfirmation(true);
     } catch (error) {
       addNotification('alert', 'Failed to update profile');
     }
@@ -104,7 +126,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     <div className="space-y-6">
       <div>
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t.welcomeBack}, {user?.firstName || user?.name}!
+          {t.welcomeBack}, {user?.first_name || user?.name}!
         </h2>
         <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
           {t.email}: {user?.email}
@@ -256,11 +278,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <div className={`w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-xl font-bold text-white`}>
-            {user?.avatar || `${user?.firstName?.charAt(0) || ''}${user?.lastName?.charAt(0) || ''}`.toUpperCase()}
+            {user?.avatar || `${user?.first_name?.charAt(0) || ''}${user?.last_name?.charAt(0) || ''}`.toUpperCase()}
           </div>
           <div>
             <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {user?.firstName} {user?.lastName}
+              {user?.first_name} {user?.last_name}
             </h2>
             <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.email}</p>
           </div>
@@ -587,7 +609,19 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
   // Main Portal Layout
   return (
-    <div className="space-y-6">
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={() => setShowConfirmation(false)}
+        title="Success!"
+        message={confirmationMessage}
+        type="success"
+        confirmText="OK"
+        showCancel={false}
+      />
+      <div className="space-y-6">
       <div>
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           {t.patientPortal}
@@ -681,6 +715,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       {currentView === 'records' && renderMedicalRecords()}
       {currentView === 'profile' && renderProfile()}
     </div>
+    </>
   );
 };
 

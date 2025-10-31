@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) => {
   const [formData, setFormData] = useState({
@@ -13,6 +14,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
     license: '',
     practice: user?.practice || 'Medical Practice'
   });
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // ESC key handler
   useEffect(() => {
@@ -65,17 +67,38 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
 
       await addNotification('alert', 'User created successfully');
 
-      onSuccess(newUser);
-      onClose();
+      // Show success confirmation
+      setShowConfirmation(true);
+
+      // Auto-close after 2 seconds
+      setTimeout(() => {
+        onSuccess(newUser);
+        onClose();
+      }, 2000);
     } catch (err) {
       console.error('Error creating user:', err);
-      alert('Failed to create user. Please try again.');
+      addNotification('alert', 'Failed to create user. Please try again.');
     }
   };
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
-      <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={() => {
+          setShowConfirmation(false);
+          onClose();
+        }}
+        title="Success!"
+        message="User has been created successfully."
+        type="success"
+        confirmText="OK"
+        showCancel={false}
+      />
+      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
+        <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-pink-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Add New User</h2>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
@@ -223,6 +246,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
         </form>
       </div>
     </div>
+    </>
   );
 };
 
