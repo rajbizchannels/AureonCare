@@ -24,40 +24,35 @@ pg_dump -h localhost -U medflow_user -d medflow > backup_$(date +%Y%m%d).sql
 
 ### Step 2: Run Migrations in Order
 
+**IMPORTANT**: Your database uses **UUID** primary keys. Use the `_uuid.sql` versions of the migration files.
+
 #### Option A: Using psql command line
 ```bash
 # Navigate to backend directory
 cd backend
 
-# Run each migration in order
-psql -h localhost -U medflow_user -d medflow -f migrations/002_alter_users_add_names.sql
-psql -h localhost -U medflow_user -d medflow -f migrations/005_create_prescriptions_diagnosis_tables.sql
-psql -h localhost -U medflow_user -d medflow -f migrations/006_remove_name_add_medical_attributes.sql
-psql -h localhost -U medflow_user -d medflow -f migrations/007_link_users_patients.sql
+# Run UUID-compatible migrations in order
+psql -h localhost -U medflow_user -d medflow -f migrations/005_create_prescriptions_diagnosis_tables_uuid.sql
+psql -h localhost -U medflow_user -d medflow -f migrations/006_remove_name_add_medical_attributes_uuid.sql
+psql -h localhost -U medflow_user -d medflow -f migrations/007_link_users_patients_uuid.sql
 ```
 
-#### Option B: Using pgAdmin
+#### Option B: Using pgAdmin (RECOMMENDED)
 1. Open pgAdmin
 2. Connect to your medflow database
-3. Open Query Tool
-4. For each migration file (in order 002, 005, 006, 007):
-   - Open the migration SQL file
-   - Copy the contents
-   - Paste into Query Tool
-   - Execute (F5)
-   - Verify no errors
-
-#### Option C: Using Node.js script
-```bash
-# Navigate to project root
-cd MedFlow
-
-# Install dependencies if not already done
-npm install
-
-# Run migrations
-node backend/run-migration.js
-```
+3. Open Query Tool (Tools → Query Tool or F4)
+4. **Run these UUID migration files in this exact order**:
+   - `005_create_prescriptions_diagnosis_tables_uuid.sql`
+   - `006_remove_name_add_medical_attributes_uuid.sql`
+   - `007_link_users_patients_uuid.sql`
+5. For each file:
+   - Open the migration SQL file from `backend/migrations/` in a text editor
+   - Copy all the contents
+   - Paste into pgAdmin Query Tool
+   - Click Execute (F5 or play button ▶)
+   - Verify you see "Query returned successfully" with no errors
+   - Check the Messages tab for confirmation messages
+   - Proceed to the next migration file only after success
 
 ### Step 3: Verify Migrations
 
