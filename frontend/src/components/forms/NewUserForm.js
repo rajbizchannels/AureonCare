@@ -257,6 +257,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
               Add User
             </button>
           </div>
+          </div>
         </form>
       </div>
     </div>
