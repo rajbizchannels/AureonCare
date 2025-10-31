@@ -178,15 +178,18 @@ function App() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showLanguageMenu]);
 
-  // Get user initials from name
+  // Get user initials from first_name and last_name
   const getUserInitials = () => {
     if (user?.avatar) return user.avatar;
-    if (!user?.name) return 'U';
-    const names = user.name.trim().split(/\s+/);
-    if (names.length >= 2) {
-      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    const firstName = user?.firstName || user?.first_name || '';
+    const lastName = user?.lastName || user?.last_name || '';
+    if (firstName && lastName) {
+      return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
     }
-    return user.name.substring(0, 2).toUpperCase();
+    if (firstName) {
+      return firstName.substring(0, 2).toUpperCase();
+    }
+    return 'U';
   };
 
   // Check if URL is patient login page
@@ -553,13 +556,13 @@ function App() {
               <button
                 onClick={() => handleSetShowForm('userProfile')}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors"
-                title={`${user?.name || 'User'} (${user?.role || 'user'})`}
+                title={`${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''} (${user?.role || 'user'})`}
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
                   {getUserInitials()}
                 </div>
                 <div className="text-left">
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.name || 'User'}</p>
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{`${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''}`.trim() || 'User'}</p>
                   <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.role || 'user'}</p>
                 </div>
               </button>

@@ -4,7 +4,8 @@ import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     password: '',
@@ -44,10 +45,11 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
     }
 
     try {
-      const initials = formData.name.split(' ').map(n => n[0]).join('').toUpperCase();
+      const initials = `${formData.firstName.charAt(0)}${formData.lastName.charAt(0)}`.toUpperCase();
 
       const userData = {
-        name: formData.name,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         password: formData.password, // Include password in user data
@@ -108,16 +110,28 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           <div className="space-y-4">
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Full Name *</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                placeholder="Dr. John Smith"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>First Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                  placeholder="John"
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Last Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500'}`}
+                  placeholder="Smith"
+                />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

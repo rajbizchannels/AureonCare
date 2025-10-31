@@ -7,7 +7,6 @@ router.get('/', async (req, res) => {
     const pool = req.app.locals.pool;
     const result = await pool.query(`
       SELECT *,
-             CONCAT(first_name, ' ', last_name) as name,
              date_of_birth as dob
       FROM patients
       ORDER BY last_name, first_name
