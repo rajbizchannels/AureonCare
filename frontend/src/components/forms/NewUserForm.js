@@ -246,8 +246,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
               type="button"
               onClick={onClose}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
-            >
-              Cancel
+            >Cancel
             </button>
             <button
               type="submit"
