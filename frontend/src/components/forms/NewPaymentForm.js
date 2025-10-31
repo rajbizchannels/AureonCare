@@ -108,7 +108,8 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
 
       const newPayment = await api.createPayment(paymentData);
 
-      await addNotification('success', `Payment ${paymentNo} processed successfully for ${patient?.name || patient?.first_name + ' ' + patient?.last_name}`);
+      const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
+      await addNotification('success', `Payment ${paymentNo} processed successfully for ${patientName}`);
 
       // Show success confirmation
       setShowConfirmation(true);
@@ -177,7 +178,7 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
                 >
                   <option value="">Select Patient</option>
                   {patients.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} - {p.mrn}</option>
+                    <option key={p.id} value={p.id}>{p.first_name} {p.last_name} - {p.mrn}</option>
                   ))}
                 </select>
               </div>

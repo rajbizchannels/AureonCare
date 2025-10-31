@@ -16,8 +16,7 @@ router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(`
-      SELECT *,
-             CONCAT(first_name, ' ', last_name) as name
+      SELECT *
       FROM users
       ORDER BY id ASC
     `);
@@ -34,8 +33,7 @@ router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      `SELECT *,
-              CONCAT(first_name, ' ', last_name) as name
+      `SELECT *
        FROM users
        WHERE id::text = $1::text`,
       [req.params.id]
@@ -54,28 +52,22 @@ router.get('/:id', async (req, res) => {
 
 // Create new user
 router.post('/', async (req, res) => {
-  const { name, firstName, lastName, role, practice, avatar, email, phone, license, specialty, preferences } = req.body;
+  const { firstName, lastName, first_name, last_name, role, practice, avatar, email, phone, license, specialty, preferences } = req.body;
 
   try {
     const pool = req.app.locals.pool;
 
-    // Parse name into first_name and last_name if provided as single field
-    let first_name = firstName;
-    let last_name = lastName;
-
-    if (!first_name && !last_name && name) {
-      const nameParts = name.trim().split(/\s+/);
-      first_name = nameParts[0] || '';
-      last_name = nameParts.slice(1).join(' ') || '';
-    }
+    // Accept both camelCase and snake_case
+    const finalFirstName = first_name || firstName || '';
+    const finalLastName = last_name || lastName || '';
 
     const result = await pool.query(
       `INSERT INTO users (first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-       RETURNING *, CONCAT(first_name, ' ', last_name) as name`,
+       RETURNING *`,
       [
-        first_name,
-        last_name,
+        finalFirstName,
+        finalLastName,
         role || 'user',
         avatar,
         email,
@@ -94,20 +86,14 @@ router.post('/', async (req, res) => {
 
 // Update user
 router.put('/:id', async (req, res) => {
-  const { name, firstName, lastName, role, avatar, email, phone, license, specialty, preferences } = req.body;
+  const { firstName, lastName, first_name, last_name, role, avatar, email, phone, license, specialty, preferences } = req.body;
 
   try {
     const pool = req.app.locals.pool;
 
-    // Parse name into first_name and last_name if provided as single field
-    let first_name = firstName;
-    let last_name = lastName;
-
-    if (!first_name && !last_name && name) {
-      const nameParts = name.trim().split(/\s+/);
-      first_name = nameParts[0] || '';
-      last_name = nameParts.slice(1).join(' ') || '';
-    }
+    // Accept both camelCase and snake_case
+    const finalFirstName = first_name || firstName;
+    const finalLastName = last_name || lastName;
 
     const result = await pool.query(
       `UPDATE users
@@ -122,10 +108,10 @@ router.put('/:id', async (req, res) => {
            preferences = COALESCE($9, preferences),
            updated_at = NOW()
        WHERE id::text = $10::text
-       RETURNING *, CONCAT(first_name, ' ', last_name) as name`,
+       RETURNING *`,
       [
-        first_name,
-        last_name,
+        finalFirstName,
+        finalLastName,
         role,
         avatar,
         email,

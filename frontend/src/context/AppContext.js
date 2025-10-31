@@ -62,14 +62,8 @@ const AppProvider = ({ children }) => {
         api.getUsers().catch(() => []) // Get all users, fallback to empty array if fails
       ]);
 
-      // Add computed 'name' field to patients for compatibility
-      const patientsWithNames = patientsData.map(p => ({
-        ...p,
-        name: p.name || `${p.first_name} ${p.last_name}`
-      }));
-
       setAppointments(appointmentsData);
-      setPatients(patientsWithNames);
+      setPatients(patientsData);
       setClaims(claimsData);
       setPayments(paymentsData);
       setNotifications(notificationsData);
@@ -85,11 +79,10 @@ const AppProvider = ({ children }) => {
       }
 
       if (currentUser) {
-        // Add computed fields for compatibility
-        const userWithComputedFields = {
+        // Ensure required fields exist with fallbacks
+        const userWithDefaults = {
           ...currentUser,
-          name: currentUser.name || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || currentUser.email,
-          avatar: currentUser.avatar || (currentUser.name || currentUser.first_name || 'U').substring(0, 2).toUpperCase(),
+          avatar: currentUser.avatar || `${currentUser.first_name?.charAt(0) || ''}${currentUser.last_name?.charAt(0) || ''}`.toUpperCase() || 'U',
           practice: currentUser.practice || 'Medical Practice',
           preferences: currentUser.preferences || {
             emailNotifications: true,
@@ -98,15 +91,15 @@ const AppProvider = ({ children }) => {
           }
         };
 
-        setUser(userWithComputedFields);
+        setUser(userWithDefaults);
 
         // Sync theme and language from user preferences
-        if (userWithComputedFields.preferences) {
-          if (userWithComputedFields.preferences.darkMode !== undefined) {
-            setTheme(userWithComputedFields.preferences.darkMode ? 'dark' : 'light');
+        if (userWithDefaults.preferences) {
+          if (userWithDefaults.preferences.darkMode !== undefined) {
+            setTheme(userWithDefaults.preferences.darkMode ? 'dark' : 'light');
           }
-          if (userWithComputedFields.preferences.language) {
-            setLanguage(userWithComputedFields.preferences.language);
+          if (userWithDefaults.preferences.language) {
+            setLanguage(userWithDefaults.preferences.language);
           }
         }
       }

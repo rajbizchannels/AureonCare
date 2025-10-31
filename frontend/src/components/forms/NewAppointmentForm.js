@@ -65,7 +65,8 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
       const newAppointment = await api.createAppointment(appointmentData);
 
       const patient = patients.find(p => p.id.toString() === formData.patientId);
-      await addNotification('appointment', `New appointment scheduled with ${patient?.name || patient?.first_name + ' ' + patient?.last_name}`);
+      const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
+      await addNotification('appointment', `New appointment scheduled with ${patientName}`);
 
       // Show success confirmation
       setShowConfirmation(true);
@@ -131,7 +132,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
                 >
                   <option value="">Select Patient</option>
                   {patients.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} - {p.mrn}</option>
+                    <option key={p.id} value={p.id}>{p.first_name} {p.last_name} - {p.mrn}</option>
                   ))}
                 </select>
               </div>
@@ -208,7 +209,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
                   <option value="">Select Provider</option>
                   {providers.map(provider => (
                     <option key={provider.id} value={provider.id}>
-                      {provider.name || `${provider.first_name || ''} ${provider.last_name || ''}`.trim() || provider.email}
+                      {`${provider.first_name || ''} ${provider.last_name || ''}`.trim() || provider.email}
                     </option>
                   ))}
                 </select>
