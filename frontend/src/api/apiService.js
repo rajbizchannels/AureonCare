@@ -244,6 +244,43 @@ const api = {
     return response.json();
   },
 
+  // Providers
+  getProviders: async () => {
+    const response = await fetch(`${API_BASE_URL}/providers`);
+    if (!response.ok) throw new Error('Failed to fetch providers');
+    return response.json();
+  },
+  getProvider: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/providers/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch provider');
+    return response.json();
+  },
+  createProvider: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/providers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create provider');
+    return response.json();
+  },
+  updateProvider: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/providers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update provider');
+    return response.json();
+  },
+  deleteProvider: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/providers/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete provider');
+    return response.json();
+  },
+
   // Auth
   login: async (email, password) => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
