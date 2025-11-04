@@ -15,13 +15,35 @@ const toCamelCase = (obj) => {
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query(`
-      SELECT p.*, u.status, u.role
-      FROM providers p
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE u.role = 'doctor' AND (u.status = 'active' OR u.status IS NULL)
-      ORDER BY p.last_name, p.first_name ASC
+
+    // First check if user_id column exists in providers table
+    const columnCheck = await pool.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'providers' AND column_name = 'user_id'
     `);
+
+    const hasUserIdColumn = columnCheck.rows.length > 0;
+
+    let result;
+    if (hasUserIdColumn) {
+      // If user_id column exists, join with users table
+      result = await pool.query(`
+        SELECT p.*, u.status, u.role
+        FROM providers p
+        LEFT JOIN users u ON p.user_id = u.id
+        WHERE u.role = 'doctor' AND u.status = 'active' OR u.id IS NULL
+        ORDER BY p.last_name, p.first_name ASC
+      `);
+    } else {
+      // If user_id column doesn't exist yet, just get all providers
+      result = await pool.query(`
+        SELECT *
+        FROM providers
+        ORDER BY last_name, first_name ASC
+      `);
+    }
+
     const providers = result.rows.map(toCamelCase);
     res.json(providers);
   } catch (error) {
