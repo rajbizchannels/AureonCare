@@ -52,35 +52,44 @@ router.get('/:id', async (req, res) => {
 
 // Create new user
 router.post('/', async (req, res) => {
-  const { firstName, lastName, first_name, last_name, role, practice, avatar, email, phone, license, specialty, preferences } = req.body;
+  const { firstName, lastName, first_name, last_name, role, practice, avatar, email, phone, license, specialty, preferences, status, password } = req.body;
 
   try {
     const pool = req.app.locals.pool;
+    const bcrypt = require('bcryptjs');
 
     // Accept both camelCase and snake_case
     const finalFirstName = first_name || firstName || '';
     const finalLastName = last_name || lastName || '';
 
+    // Hash password if provided
+    let passwordHash = null;
+    if (password) {
+      passwordHash = await bcrypt.hash(password, 10);
+    }
+
     const result = await pool.query(
-      `INSERT INTO users (first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      `INSERT INTO users (first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, status, password_hash, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
        RETURNING *`,
       [
         finalFirstName,
         finalLastName,
-        role || 'user',
+        role || 'patient',
         avatar,
         email,
         phone,
         license,
         specialty,
-        JSON.stringify(preferences || {})
+        JSON.stringify(preferences || {}),
+        status || 'pending',
+        passwordHash
       ]
     );
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(500).json({ error: 'Failed to create user', details: error.message });
   }
 });
 
@@ -143,6 +152,21 @@ router.put('/:id', async (req, res) => {
 
     // Handle role-based table synchronization
     if (oldRole !== newRole) {
+      // Check if user_id column exists in providers and patients tables
+      const providerColumnCheck = await pool.query(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'providers' AND column_name = 'user_id'
+      `);
+      const patientColumnCheck = await pool.query(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'patients' AND column_name = 'user_id'
+      `);
+
+      const hasProviderUserIdColumn = providerColumnCheck.rows.length > 0;
+      const hasPatientUserIdColumn = patientColumnCheck.rows.length > 0;
+
       // If new role is doctor, add to providers table
       if (newRole === 'doctor') {
         // Check if already exists in providers
@@ -152,24 +176,34 @@ router.put('/:id', async (req, res) => {
         );
 
         if (providerCheck.rows.length === 0) {
-          await pool.query(
-            `INSERT INTO providers (first_name, last_name, specialization, email, phone, user_id)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (email) DO UPDATE SET
-               first_name = EXCLUDED.first_name,
-               last_name = EXCLUDED.last_name,
-               specialization = EXCLUDED.specialization,
-               phone = EXCLUDED.phone,
-               user_id = EXCLUDED.user_id`,
-            [
-              updatedUser.first_name,
-              updatedUser.last_name,
-              updatedUser.specialty || 'General Practice',
-              updatedUser.email,
-              updatedUser.phone,
-              updatedUser.id
-            ]
-          );
+          if (hasProviderUserIdColumn) {
+            // Include user_id if column exists
+            await pool.query(
+              `INSERT INTO providers (first_name, last_name, specialization, email, phone, user_id)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [
+                updatedUser.first_name,
+                updatedUser.last_name,
+                updatedUser.specialty || 'General Practice',
+                updatedUser.email,
+                updatedUser.phone,
+                updatedUser.id
+              ]
+            );
+          } else {
+            // Exclude user_id if column doesn't exist
+            await pool.query(
+              `INSERT INTO providers (first_name, last_name, specialization, email, phone)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [
+                updatedUser.first_name,
+                updatedUser.last_name,
+                updatedUser.specialty || 'General Practice',
+                updatedUser.email,
+                updatedUser.phone
+              ]
+            );
+          }
         }
 
         // Remove from patients table if exists
@@ -194,24 +228,36 @@ router.put('/:id', async (req, res) => {
           const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
           const mrn = `MRN-${nextMrnNumber}`;
 
-          await pool.query(
-            `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')
-             ON CONFLICT (email) DO UPDATE SET
-               first_name = EXCLUDED.first_name,
-               last_name = EXCLUDED.last_name,
-               phone = EXCLUDED.phone,
-               user_id = EXCLUDED.user_id`,
-            [
-              updatedUser.first_name,
-              updatedUser.last_name,
-              mrn,
-              updatedUser.dob || '1990-01-01', // Default DOB if not provided
-              updatedUser.email,
-              updatedUser.phone,
-              updatedUser.id
-            ]
-          );
+          if (hasPatientUserIdColumn) {
+            // Include user_id if column exists
+            await pool.query(
+              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
+              [
+                updatedUser.first_name,
+                updatedUser.last_name,
+                mrn,
+                updatedUser.dob || '1990-01-01', // Default DOB if not provided
+                updatedUser.email,
+                updatedUser.phone,
+                updatedUser.id
+              ]
+            );
+          } else {
+            // Exclude user_id if column doesn't exist
+            await pool.query(
+              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
+               VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
+              [
+                updatedUser.first_name,
+                updatedUser.last_name,
+                mrn,
+                updatedUser.dob || '1990-01-01', // Default DOB if not provided
+                updatedUser.email,
+                updatedUser.phone
+              ]
+            );
+          }
         }
 
         // Remove from providers table if exists

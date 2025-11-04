@@ -242,8 +242,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {apt.provider ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}` : t.providerTBD}
+                    {apt.provider_first_name && apt.provider_last_name
+                      ? `Dr. ${apt.provider_first_name} ${apt.provider_last_name}`
+                      : apt.provider?.first_name && apt.provider?.last_name
+                      ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}`
+                      : apt.doctor || t.providerTBD}
                   </h3>
+                  {apt.provider_specialization && (
+                    <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      {apt.provider_specialization}
+                    </p>
+                  )}
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {formatDate(apt.start_time)} at {formatTime(apt.start_time)}
                   </p>

@@ -10,10 +10,13 @@ router.get('/', async (req, res) => {
     let query = `
       SELECT a.*,
              CONCAT(p.first_name, ' ', p.last_name) as patient,
-             CONCAT(u.first_name, ' ', u.last_name) as doctor
+             CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+             pr.first_name as provider_first_name,
+             pr.last_name as provider_last_name,
+             pr.specialization as provider_specialization
       FROM appointments a
       LEFT JOIN patients p ON a.patient_id::text = p.id::text
-      LEFT JOIN users u ON a.provider_id::text = u.id::text
+      LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
     `;
 
     const params = [];
