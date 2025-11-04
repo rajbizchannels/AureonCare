@@ -45,8 +45,21 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       const [appts, records, presc] = await Promise.all([
         api.getAppointments().then(all => {
           console.log('All appointments:', all);
-          const filtered = all.filter(a => a.patient_id?.toString() === patientId?.toString());
+          console.log('Looking for appointments with patient_id:', patientId);
+
+          // Filter appointments by patient_id
+          const filtered = all.filter(a => {
+            const appointmentPatientId = a.patient_id?.toString();
+            const userPatientId = patientId?.toString();
+            const matches = appointmentPatientId === userPatientId;
+
+            console.log(`Checking appointment ${a.id}: patient_id=${appointmentPatientId} vs user.id=${userPatientId} - ${matches ? 'MATCH ✓' : 'no match'}`);
+
+            return matches;
+          });
+
           console.log('Filtered appointments for patient:', filtered);
+          console.log(`Total: ${filtered.length} appointments found`);
           return filtered;
         }),
         api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
