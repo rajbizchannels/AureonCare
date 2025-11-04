@@ -4,8 +4,16 @@ This guide explains how to reset the MedFlow database and populate it with fresh
 
 ## Files
 
-- `reset-and-seed.sql` - SQL script that truncates all tables and inserts fresh test data
-- `run-reset-and-seed.js` - Node.js script to execute the SQL file
+### Option 1: Using DELETE (Recommended - Works with standard permissions)
+- `reset-and-seed-delete.sql` - SQL script using DELETE statements (requires only DELETE permission)
+- `run-reset-and-seed-delete.js` - Node.js script to execute the DELETE version
+
+### Option 2: Using TRUNCATE (Requires TRUNCATE permission)
+- `reset-and-seed.sql` - SQL script using TRUNCATE statements (requires TRUNCATE permission)
+- `run-reset-and-seed.js` - Node.js script to execute the TRUNCATE version
+
+### Permission Management
+- `grant-permissions.sql` - Grant all necessary permissions to database user (run once as admin)
 
 ## Prerequisites
 
@@ -28,25 +36,46 @@ This guide explains how to reset the MedFlow database and populate it with fresh
 
 ## How to Run
 
-### Option 1: Using Node.js Script (Recommended)
+### Option 1: Using DELETE (Recommended - Works without special permissions)
+
+This method uses DELETE statements which work with standard database permissions.
+
+```bash
+cd backend
+node scripts/run-reset-and-seed-delete.js
+```
+
+Or using psql:
+```bash
+cd backend/scripts
+psql -h localhost -U medflow_user -d medflow -f reset-and-seed-delete.sql
+```
+
+### Option 2: Using TRUNCATE (Requires TRUNCATE permission)
+
+This method is faster but requires TRUNCATE privilege. If you get permission errors, use Option 1 instead.
 
 ```bash
 cd backend
 node scripts/run-reset-and-seed.js
 ```
 
-This will:
-1. Connect to the database
-2. Truncate all existing tables
-3. Insert fresh test data
-4. Display a summary of inserted records
-
-### Option 2: Using psql Command Line
-
+Or using psql:
 ```bash
 cd backend/scripts
 psql -h localhost -U medflow_user -d medflow -f reset-and-seed.sql
 ```
+
+### Option 3: Grant Permissions First (One-time setup)
+
+If you prefer to use TRUNCATE and have database admin access, run this once:
+
+```bash
+# Run as database administrator/superuser
+psql -h localhost -U postgres -d medflow -f scripts/grant-permissions.sql
+```
+
+After granting permissions, you can use either Option 1 or Option 2.
 
 ## What Gets Reset
 
@@ -144,17 +173,35 @@ Data Summary:
 
 ## Troubleshooting
 
+### Error: Permission denied for table [tablename]
+**Solution:** Use the DELETE version instead of TRUNCATE:
+```bash
+node scripts/run-reset-and-seed-delete.js
+```
+
+Or grant permissions (requires database admin access):
+```bash
+psql -h localhost -U postgres -d medflow -f scripts/grant-permissions.sql
+```
+
 ### Error: Cannot connect to database
-- Make sure PostgreSQL is running: `sudo service postgresql status`
+- Make sure PostgreSQL is running: `sudo service postgresql status` (Linux) or check Services (Windows)
 - Check your `.env` file has correct credentials
 - Verify database exists: `psql -l | grep medflow`
 
-### Error: Permission denied
-- Make sure the database user has proper permissions
-- Try running migrations first: `node scripts/migrate-enhanced.js`
-
 ### Error: Module not found
 - Run `npm install` in the backend directory
+
+### Error: Tables don't exist
+- Run migrations first: `node scripts/migrate-enhanced.js`
+- Then run the reset script
+
+### Which version should I use?
+
+| Version | Pros | Cons | When to Use |
+|---------|------|------|-------------|
+| **DELETE** | ✅ Works with standard permissions<br>✅ No admin access needed | ⚠️ Slightly slower | **Recommended** - Use when you get permission errors |
+| **TRUNCATE** | ✅ Faster<br>✅ Resets auto-increment sequences | ❌ Requires TRUNCATE permission | Use after granting permissions |
 
 ## Safety Notes
 
