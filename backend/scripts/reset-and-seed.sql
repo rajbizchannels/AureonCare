@@ -6,10 +6,8 @@
 -- PART 1: TRUNCATE ALL TABLES (Preserve Schema)
 -- ================================================
 
--- Disable foreign key checks temporarily to truncate in any order
-SET session_replication_role = 'replica';
-
--- Truncate all tables (in dependency order)
+-- Truncate all tables using CASCADE to handle foreign key dependencies
+-- CASCADE automatically truncates dependent tables, no superuser privileges needed
 TRUNCATE TABLE social_auth CASCADE;
 TRUNCATE TABLE patient_portal_sessions CASCADE;
 TRUNCATE TABLE fhir_resources CASCADE;
@@ -25,9 +23,6 @@ TRUNCATE TABLE tasks CASCADE;
 TRUNCATE TABLE patients CASCADE;
 TRUNCATE TABLE users CASCADE;
 TRUNCATE TABLE practices CASCADE;
-
--- Re-enable foreign key checks
-SET session_replication_role = 'origin';
 
 -- ================================================
 -- PART 2: INSERT FRESH TEST DATA
