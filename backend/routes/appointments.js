@@ -95,28 +95,14 @@ router.post('/', async (req, res) => {
       console.log('Patient verification result:', patientCheck.rows);
 
       if (patientCheck.rows.length === 0) {
-        // Try to find by user_id as fallback
-        console.log('Patient not found by id, trying user_id fallback:', patient_id);
-        const patientByUserId = await pool.query(
-          'SELECT id FROM patients WHERE user_id::text = $1::text',
-          [patient_id]
-        );
-
-        console.log('Fallback lookup result:', patientByUserId.rows);
-
-        if (patientByUserId.rows.length > 0) {
-          patient_id = patientByUserId.rows[0].id;
-          console.log('Found patient via user_id fallback:', patient_id);
-        } else {
-          console.error('Patient not found in either lookup:', patient_id);
-          return res.status(404).json({
-            error: 'Patient record not found. Please contact support.',
-            details: `Patient ID ${patient_id} does not exist in the system.`
-          });
-        }
-      } else {
-        console.log('Patient verified:', patientCheck.rows[0]);
+        console.error('Patient not found:', patient_id);
+        return res.status(404).json({
+          error: 'Patient record not found. Please contact support.',
+          details: `Patient ID ${patient_id} does not exist in the system.`
+        });
       }
+
+      console.log('Patient verified:', patientCheck.rows[0]);
     }
 
     if (!patient_id) {
