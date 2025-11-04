@@ -12,15 +12,8 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
   const { instance } = useMsal();
 
   // Helper function to route patient to patient portal
-  const routePatient = (user) => {
-    if (user.role === 'patient') {
-      setCurrentModule('patientPortal');
-    } else {
-      // If user is not a patient, show error
-      setLoginError('This login page is for patients only. Please use the clinic login page.');
-      setIsAuthenticated(false);
-      setUser(null);
-    }
+  const routePatient = () => {
+    setCurrentModule('patientPortal');
   };
 
   const handleLogin = async (e) => {
@@ -28,23 +21,19 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
     setLoginError('');
 
     try {
-      const response = await api.login(email, password);
+      // Use patient portal login endpoint
+      const response = await api.patientPortalLogin(email, password);
 
-      // Check if user is a patient
-      if (response.user.role !== 'patient') {
-        setLoginError('This login page is for patients only. Please use the clinic login page.');
-        return;
-      }
-
-      setUser(response.user);
+      // Patient portal login returns { patient, sessionToken, expiresAt }
+      setUser(response.patient);
       setIsAuthenticated(true);
 
       // Route to patient portal
-      routePatient(response.user);
+      routePatient();
 
       await addNotification('success', 'Welcome to your patient portal');
     } catch (error) {
-      setLoginError(error.message || 'Login failed');
+      setLoginError(error.message || 'Login failed. Please check your credentials.');
     }
   };
 
@@ -60,32 +49,25 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
         });
         const userInfo = await userInfoResponse.json();
 
-        // Login with our backend
-        const response = await api.socialLogin(
-          'google',
-          userInfo.sub,
-          tokenResponse.access_token,
-          userInfo.email,
-          userInfo.given_name,
-          userInfo.family_name,
-          userInfo
+        // Login with our backend using patient portal login
+        const response = await api.patientPortalLogin(
+          null, // email
+          null, // password
+          'google', // provider
+          userInfo.sub, // providerId
+          tokenResponse.access_token // accessToken
         );
 
-        // Check if user is a patient
-        if (response.user.role !== 'patient') {
-          setLoginError('This login page is for patients only. Please use the clinic login page.');
-          return;
-        }
-
-        setUser(response.user);
+        // Patient portal login returns { patient, sessionToken, expiresAt }
+        setUser(response.patient);
         setIsAuthenticated(true);
 
         // Route to patient portal
-        routePatient(response.user);
+        routePatient();
 
         await addNotification('success', 'Welcome to your patient portal');
       } catch (error) {
-        setLoginError(error.message || 'Google login failed');
+        setLoginError(error.message || 'Google login failed. Please ensure your account is linked to a patient record.');
       }
     },
     onError: (error) => {
@@ -104,32 +86,25 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
       // Get user info
       const userInfo = loginResponse.account;
 
-      // Login with our backend
-      const response = await api.socialLogin(
-        'microsoft',
-        userInfo.homeAccountId,
-        loginResponse.accessToken,
-        userInfo.username,
-        userInfo.name?.split(' ')[0] || '',
-        userInfo.name?.split(' ').slice(1).join(' ') || '',
-        userInfo
+      // Login with our backend using patient portal login
+      const response = await api.patientPortalLogin(
+        null, // email
+        null, // password
+        'microsoft', // provider
+        userInfo.homeAccountId, // providerId
+        loginResponse.accessToken // accessToken
       );
 
-      // Check if user is a patient
-      if (response.user.role !== 'patient') {
-        setLoginError('This login page is for patients only. Please use the clinic login page.');
-        return;
-      }
-
-      setUser(response.user);
+      // Patient portal login returns { patient, sessionToken, expiresAt }
+      setUser(response.patient);
       setIsAuthenticated(true);
 
       // Route to patient portal
-      routePatient(response.user);
+      routePatient();
 
       await addNotification('success', 'Welcome to your patient portal');
     } catch (error) {
-      setLoginError(error.message || 'Microsoft login failed');
+      setLoginError(error.message || 'Microsoft login failed. Please ensure your account is linked to a patient record.');
       console.error('Microsoft login error:', error);
     }
   };
@@ -149,32 +124,25 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
           // Get user info
           window.FB.api('/me', { fields: 'id,name,email,picture' }, async (userInfo) => {
             try {
-              // Login with our backend
-              const apiResponse = await api.socialLogin(
-                'facebook',
-                userInfo.id,
-                response.authResponse.accessToken,
-                userInfo.email,
-                userInfo.name?.split(' ')[0] || '',
-                userInfo.name?.split(' ').slice(1).join(' ') || '',
-                userInfo
+              // Login with our backend using patient portal login
+              const apiResponse = await api.patientPortalLogin(
+                null, // email
+                null, // password
+                'facebook', // provider
+                userInfo.id, // providerId
+                response.authResponse.accessToken // accessToken
               );
 
-              // Check if user is a patient
-              if (apiResponse.user.role !== 'patient') {
-                setLoginError('This login page is for patients only. Please use the clinic login page.');
-                return;
-              }
-
-              setUser(apiResponse.user);
+              // Patient portal login returns { patient, sessionToken, expiresAt }
+              setUser(apiResponse.patient);
               setIsAuthenticated(true);
 
               // Route to patient portal
-              routePatient(apiResponse.user);
+              routePatient();
 
               await addNotification('success', 'Welcome to your patient portal');
             } catch (error) {
-              setLoginError(error.message || 'Facebook login failed');
+              setLoginError(error.message || 'Facebook login failed. Please ensure your account is linked to a patient record.');
               console.error('Facebook login error:', error);
             }
           });
