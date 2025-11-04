@@ -4,16 +4,22 @@ This guide explains how to reset the MedFlow database and populate it with fresh
 
 ## Files
 
-### Option 1: Using DELETE (Recommended - Works with standard permissions)
-- `reset-and-seed-delete.sql` - SQL script using DELETE statements (requires only DELETE permission)
-- `run-reset-and-seed-delete.js` - Node.js script to execute the DELETE version
+### Option 1: Simple Schema Version (Try This First!)
+- `reset-and-seed-simple.sql` - Minimal data, works with any schema
+- `run-reset-simple.js` - Runner for simple version
+- **Use this if you get "column does not exist" errors**
 
-### Option 2: Using TRUNCATE (Requires TRUNCATE permission)
-- `reset-and-seed.sql` - SQL script using TRUNCATE statements (requires TRUNCATE permission)
-- `run-reset-and-seed.js` - Node.js script to execute the TRUNCATE version
+### Option 2: Using DELETE (Works with standard permissions)
+- `reset-and-seed-delete.sql` - Full test data using DELETE statements
+- `run-reset-and-seed-delete.js` - Runner for DELETE version
 
-### Permission Management
-- `grant-permissions.sql` - Grant all necessary permissions to database user (run once as admin)
+### Option 3: Using TRUNCATE (Requires TRUNCATE permission)
+- `reset-and-seed.sql` - Full test data using TRUNCATE statements
+- `run-reset-and-seed.js` - Runner for TRUNCATE version
+
+### Utilities
+- `inspect-schema.js` - Inspect your actual database schema
+- `grant-permissions.sql` - Grant permissions (requires admin access)
 
 ## Prerequisites
 
@@ -36,46 +42,72 @@ This guide explains how to reset the MedFlow database and populate it with fresh
 
 ## How to Run
 
-### Option 1: Using DELETE (Recommended - Works without special permissions)
+### ⭐ Quick Start (Recommended)
 
-This method uses DELETE statements which work with standard database permissions.
+If you're getting schema errors, start with the simple version:
+
+```bash
+cd backend
+node scripts/run-reset-simple.js
+```
+
+This creates minimal test data that works with any schema version.
+
+---
+
+### Option 1: Simple Schema (Try This First!)
+
+**Use this if you get "column does not exist" errors**
+
+```bash
+cd backend
+node scripts/run-reset-simple.js
+```
+
+**What it does:**
+- ✅ Works with basic or enhanced schema
+- ✅ Creates 3 users, 3 patients, 2 appointments
+- ✅ Minimal data, maximum compatibility
+- ✅ Uses ON CONFLICT DO NOTHING for safety
+
+---
+
+### Option 2: Full Data with DELETE
+
+Once the simple version works, try the full data version:
 
 ```bash
 cd backend
 node scripts/run-reset-and-seed-delete.js
 ```
 
-Or using psql:
-```bash
-cd backend/scripts
-psql -h localhost -U medflow_user -d medflow -f reset-and-seed-delete.sql
-```
+**What it does:**
+- ✅ Complete test dataset (5 patients, 5 appointments, etc.)
+- ✅ Works with standard permissions
+- ✅ Uses DELETE statements
 
-### Option 2: Using TRUNCATE (Requires TRUNCATE permission)
+---
 
-This method is faster but requires TRUNCATE privilege. If you get permission errors, use Option 1 instead.
+### Option 3: Inspect Your Schema
+
+If you're unsure what schema you have:
 
 ```bash
 cd backend
-node scripts/run-reset-and-seed.js
+node scripts/inspect-schema.js
 ```
 
-Or using psql:
-```bash
-cd backend/scripts
-psql -h localhost -U medflow_user -d medflow -f reset-and-seed.sql
-```
+This shows all tables and columns in your database.
 
-### Option 3: Grant Permissions First (One-time setup)
+---
 
-If you prefer to use TRUNCATE and have database admin access, run this once:
+### Option 4: Grant Permissions (Advanced)
+
+If you have admin access and want to use TRUNCATE:
 
 ```bash
-# Run as database administrator/superuser
-psql -h localhost -U postgres -d medflow -f scripts/grant-permissions.sql
+psql -h localhost -U postgres -d medflow -f backend/scripts/grant-permissions.sql
 ```
-
-After granting permissions, you can use either Option 1 or Option 2.
 
 ## What Gets Reset
 
@@ -173,10 +205,20 @@ Data Summary:
 
 ## Troubleshooting
 
-### Error: Permission denied for table [tablename]
-**Solution:** Use the DELETE version instead of TRUNCATE:
+### Error: column "user_id" of relation "tasks" does not exist
+**Solution:** Your database has an older schema. Use the simple version:
 ```bash
-node scripts/run-reset-and-seed-delete.js
+node scripts/run-reset-simple.js
+```
+
+This version works with any schema and doesn't assume specific columns exist.
+
+---
+
+### Error: Permission denied for table [tablename]
+**Solution:** Use the simple or DELETE version:
+```bash
+node scripts/run-reset-simple.js
 ```
 
 Or grant permissions (requires database admin access):
@@ -184,24 +226,43 @@ Or grant permissions (requires database admin access):
 psql -h localhost -U postgres -d medflow -f scripts/grant-permissions.sql
 ```
 
+---
+
 ### Error: Cannot connect to database
 - Make sure PostgreSQL is running: `sudo service postgresql status` (Linux) or check Services (Windows)
 - Check your `.env` file has correct credentials
 - Verify database exists: `psql -l | grep medflow`
 
+---
+
 ### Error: Module not found
 - Run `npm install` in the backend directory
+
+---
 
 ### Error: Tables don't exist
 - Run migrations first: `node scripts/migrate-enhanced.js`
 - Then run the reset script
 
+---
+
 ### Which version should I use?
 
 | Version | Pros | Cons | When to Use |
 |---------|------|------|-------------|
-| **DELETE** | ✅ Works with standard permissions<br>✅ No admin access needed | ⚠️ Slightly slower | **Recommended** - Use when you get permission errors |
-| **TRUNCATE** | ✅ Faster<br>✅ Resets auto-increment sequences | ❌ Requires TRUNCATE permission | Use after granting permissions |
+| **SIMPLE** | ✅ Works with any schema<br>✅ No permission issues<br>✅ Minimal data | ⚠️ Less test data | **Start here** - Works everywhere |
+| **DELETE** | ✅ Full test data<br>✅ Standard permissions | ⚠️ Requires matching schema | Use after simple version works |
+| **TRUNCATE** | ✅ Fastest<br>✅ Resets sequences | ❌ Requires TRUNCATE permission<br>❌ Requires matching schema | Advanced users only |
+
+---
+
+### How to check your schema
+
+```bash
+node scripts/inspect-schema.js
+```
+
+This will show all your tables and columns.
 
 ## Safety Notes
 
