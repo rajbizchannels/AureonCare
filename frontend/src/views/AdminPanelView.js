@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle } from 'lucide-react';
+import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft } from 'lucide-react';
 
 const AdminPanelView = ({
   theme,
@@ -9,7 +9,8 @@ const AdminPanelView = ({
   setEditingItem,
   setCurrentView,
   api,
-  addNotification
+  addNotification,
+  setCurrentModule
 }) => {
   const [activeTab, setActiveTab] = useState('clinic');
   const [clinicSettings, setClinicSettings] = useState({
@@ -176,13 +177,22 @@ const AdminPanelView = ({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Admin Panel
-          </h1>
-          <p className={`mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            Manage clinic settings and users
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
+            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          </button>
+          <div>
+            <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Admin Panel
+            </h1>
+            <p className={`mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Manage clinic settings and users
+            </p>
+          </div>
         </div>
       </div>
 

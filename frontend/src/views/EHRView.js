@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, FileText, Calendar, Phone, Mail, Edit } from 'lucide-react';
+import { Plus, FileText, Calendar, Phone, Mail, Edit, ArrowLeft } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 
 const EHRView = ({
@@ -7,12 +7,22 @@ const EHRView = ({
   patients,
   setShowForm,
   setCurrentView,
-  setEditingItem
+  setEditingItem,
+  setCurrentModule
 }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Patient Records</h2>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
+            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          </button>
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Patient Records</h2>
+        </div>
         <button
           onClick={() => setShowForm('patient')}
           className={`flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
@@ -24,7 +34,7 @@ const EHRView = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {patients.map(patient => {
-          const displayName = patient.name || `${patient.first_name || ''} ${patient.last_name || ''}`.trim();
+          const displayName = `${patient.first_name || ''} ${patient.last_name || ''}`.trim();
           const initials = displayName.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase();
 
           return (
