@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, TrendingUp, DollarSign, Users, Calendar, FileText, Download, Filter } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, Users, Calendar, FileText, Download, Filter, ArrowLeft } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const ReportsView = ({
@@ -8,7 +8,8 @@ const ReportsView = ({
   appointments,
   claims,
   payments,
-  addNotification
+  addNotification,
+  setCurrentModule
 }) => {
   const [dateRange, setDateRange] = useState('30'); // Days
   const [selectedReport, setSelectedReport] = useState('overview');
@@ -115,9 +116,18 @@ const ReportsView = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Reports & Analytics
-        </h2>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
+            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          </button>
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Reports & Analytics
+          </h2>
+        </div>
         <div className="flex gap-3">
           <select
             value={dateRange}

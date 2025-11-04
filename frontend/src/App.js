@@ -251,6 +251,7 @@ function App() {
             setAppointments={setAppointments}
             api={api}
             addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
           />
         );
       case 'ehr':
@@ -261,6 +262,7 @@ function App() {
             setShowForm={handleSetShowForm}
             setCurrentView={setCurrentView}
             setEditingItem={handleSetEditingItem}
+            setCurrentModule={setCurrentModule}
           />
         );
       case 'telehealth':
@@ -271,6 +273,7 @@ function App() {
             appointments={appointments}
             patients={patients}
             addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
           />
         );
       case 'rcm':
@@ -285,6 +288,7 @@ function App() {
             setClaims={setClaims}
             addNotification={addNotification}
             api={api}
+            setCurrentModule={setCurrentModule}
           />
         );
       case 'reports':
@@ -296,12 +300,13 @@ function App() {
             claims={claims}
             payments={payments}
             addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
           />
         );
       case 'crm':
-        return <CRMView theme={theme} setShowForm={handleSetShowForm} />;
+        return <CRMView theme={theme} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} />;
       case 'integrations':
-        return <IntegrationsView theme={theme} />;
+        return <IntegrationsView theme={theme} setCurrentModule={setCurrentModule} />;
       case 'fhir':
         return (
           <FHIRView
@@ -309,6 +314,7 @@ function App() {
             api={api}
             patients={patients}
             addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
           />
         );
       case 'patientPortal':
@@ -331,6 +337,7 @@ function App() {
             setCurrentView={setCurrentView}
             api={api}
             addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
           />
         );
       default:

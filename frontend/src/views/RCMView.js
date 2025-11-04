@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Eye, Edit, Trash2, CreditCard } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const RCMView = ({
@@ -11,12 +11,22 @@ const RCMView = ({
   setCurrentView,
   setClaims,
   addNotification,
-  api
+  api,
+  setCurrentModule
 }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Revenue Cycle Management</h2>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
+            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          </button>
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Revenue Cycle Management</h2>
+        </div>
         <div className="flex gap-3">
           <button
             onClick={() => setShowForm('payment')}
@@ -52,7 +62,7 @@ const RCMView = ({
             <tbody>
               {claims.map((claim, idx) => {
                 const patient = patients.find(p => p.id === claim.patient_id);
-                const patientName = claim.patient || patient?.name || 'Unknown Patient';
+                const patientName = patient ? `${patient.first_name || ''} ${patient.last_name || ''}`.trim() : 'Unknown Patient';
 
                 return (
                 <tr key={claim.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>

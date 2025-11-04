@@ -26,12 +26,12 @@ const SearchPanel = ({
 
   const searchResults = [
     ...patients.filter(p => {
-      const name = p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim();
+      const name = `${p.first_name || ''} ${p.last_name || ''}`.trim();
       return name.toLowerCase().includes(searchQuery.toLowerCase());
     }).map(p => ({ type: 'patient', ...p })),
     ...appointments.filter(a => {
       const patient = patients.find(p => p.id === a.patient_id);
-      const patientName = a.patient || patient?.name || '';
+      const patientName = patient ? `${patient.first_name || ''} ${patient.last_name || ''}`.trim() : '';
       return patientName.toLowerCase().includes(searchQuery.toLowerCase());
     }).map(a => ({ type: 'appointment', ...a }))
   ].slice(0, 5);
@@ -60,10 +60,10 @@ const SearchPanel = ({
             searchResults.map((result, idx) => {
               let displayName;
               if (result.type === 'patient') {
-                displayName = result.name || `${result.first_name || ''} ${result.last_name || ''}`.trim();
+                displayName = `${result.first_name || ''} ${result.last_name || ''}`.trim();
               } else {
                 const patient = patients.find(p => p.id === result.patient_id);
-                displayName = result.patient || patient?.name || 'Unknown Patient';
+                displayName = patient ? `${patient.first_name || ''} ${patient.last_name || ''}`.trim() : 'Unknown Patient';
               }
 
               // Parse appointment date/time from start_time

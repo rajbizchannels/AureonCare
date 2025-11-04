@@ -1,9 +1,19 @@
 import React from 'react';
+import { ArrowLeft } from 'lucide-react';
 
-const IntegrationsView = ({ theme }) => {
+const IntegrationsView = ({ theme, setCurrentModule }) => {
   return (
     <div className="space-y-6">
-      <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>API & Integrations</h2>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setCurrentModule && setCurrentModule('dashboard')}
+          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+          title="Back to Dashboard"
+        >
+          <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+        </button>
+        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>API & Integrations</h2>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
