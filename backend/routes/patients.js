@@ -40,15 +40,20 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
-    address, city, state, zip, insurance, insurance_id, status
+    address, city, state, zip, insurance, insurance_id, status, createUserAccount
   } = req.body;
 
+  const pool = req.app.locals.pool;
+  const client = await pool.connect();
+
   try {
-    const pool = req.app.locals.pool;
+    await client.query('BEGIN');
+
     // Use date_of_birth (database column name), fall back to dob for compatibility
     const birthDate = date_of_birth || dob;
 
-    const result = await pool.query(
+    // Create patient record
+    const patientResult = await client.query(
       `INSERT INTO patients
        (first_name, last_name, mrn, date_of_birth, gender, phone, email,
         address, status, created_at, updated_at)
@@ -57,10 +62,50 @@ router.post('/', async (req, res) => {
       [first_name, last_name, mrn, birthDate, gender, phone, email,
        address, status || 'active']
     );
-    res.status(201).json(result.rows[0]);
+
+    const newPatient = patientResult.rows[0];
+
+    // Create corresponding user account with patient role if email is provided
+    if (email && createUserAccount !== false) {
+      // Check if user with this email already exists
+      const existingUser = await client.query(
+        'SELECT id FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (existingUser.rows.length === 0) {
+        // Create user with patient role
+        const bcrypt = require('bcryptjs');
+        // Generate a temporary password (user should reset via patient portal)
+        const tempPassword = Math.random().toString(36).slice(-8);
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+        const userResult = await client.query(
+          `INSERT INTO users
+           (email, password_hash, first_name, last_name, role, phone, status, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, 'patient', $5, 'active', NOW(), NOW())
+           RETURNING id`,
+          [email, passwordHash, first_name, last_name, phone]
+        );
+
+        // Link patient to user
+        await client.query(
+          'UPDATE patients SET user_id = $1 WHERE id = $2',
+          [userResult.rows[0].id, newPatient.id]
+        );
+
+        console.log(`Created user account for patient ${first_name} ${last_name} with temporary password: ${tempPassword}`);
+      }
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json(newPatient);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error creating patient:', error);
     res.status(500).json({ error: 'Failed to create patient' });
+  } finally {
+    client.release();
   }
 });
 

@@ -52,7 +52,7 @@ const DashboardView = ({
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className={`text-3xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.welcome}, {user?.name || 'User'}</h1>
+          <h1 className={`text-3xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.welcome}, {user?.first_name || 'User'}</h1>
           <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.practice || 'Medical Practice'}</p>
         </div>
         <div className="flex gap-3">
@@ -255,7 +255,7 @@ const DashboardView = ({
           <div className="space-y-3">
             {appointments.slice(0, 3).map(apt => {
               const patient = patients.find(p => p.id === apt.patient_id);
-              const patientName = apt.patient || patient?.name || 'Unknown Patient';
+              const patientName = apt.patient || (patient?.first_name && patient?.last_name ? `${patient.first_name} ${patient.last_name}` : patient?.first_name || patient?.last_name || 'Unknown Patient');
 
               // Parse appointment date/time from start_time
               let appointmentDateTime = '';
