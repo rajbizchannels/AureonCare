@@ -14,6 +14,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [appointments, setAppointments] = useState([]);
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
+  const [providers, setProviders] = useState([]);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState(user || {});
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -24,6 +25,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     date: '',
     time: '',
     type: 'General Consultation',
+    providerId: '',
     reason: ''
   });
 
@@ -31,8 +33,19 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     if (user) {
       setProfileData(user);
       fetchPatientData();
+      fetchProviders();
     }
   }, [user]);
+
+  const fetchProviders = async () => {
+    try {
+      const providersList = await api.getProviders();
+      setProviders(providersList);
+    } catch (error) {
+      console.error('Error fetching providers:', error);
+      addNotification('alert', 'Failed to load providers');
+    }
+  };
 
   const fetchPatientData = async () => {
     try {
@@ -86,6 +99,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         // Send the user's id as both patient_id and user_id for backend to resolve
         patient_id: user.id,
         user_id: user.id,
+        provider_id: bookingData.providerId || null,
         start_time: startDate.toISOString().slice(0, 19).replace('T', ' '),
         end_time: endDate.toISOString().slice(0, 19).replace('T', ' '),
         duration_minutes: 30,
@@ -109,7 +123,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       // Auto-navigate to appointments view after confirmation
       setTimeout(() => {
         setCurrentView('appointments');
-        setBookingData({ date: '', time: '', type: 'General Consultation', reason: '' });
+        setBookingData({ date: '', time: '', type: 'General Consultation', providerId: '', reason: '' });
         fetchPatientData();
       }, 2000);
     } catch (error) {
@@ -602,6 +616,23 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               <option value="Follow-up">Follow-up</option>
               <option value="Check-up">Check-up</option>
               <option value="Physical Exam">Physical Exam</option>
+            </select>
+          </div>
+          <div className="col-span-2">
+            <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Select Provider
+            </label>
+            <select
+              value={bookingData.providerId}
+              onChange={(e) => setBookingData({...bookingData, providerId: e.target.value})}
+              className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+            >
+              <option value="">Any Available Provider</option>
+              {providers.map(provider => (
+                <option key={provider.id} value={provider.id}>
+                  Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
+                </option>
+              ))}
             </select>
           </div>
           <div className="col-span-2">

@@ -166,45 +166,21 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Role <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${
-                  theme === 'dark'
-                    ? 'bg-slate-800 border-slate-700 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-                required
-              >
-                <option value="patient">Patient</option>
-                <option value="staff">Staff</option>
-                <option value="doctor">Doctor</option>
-                <option value="nurse">Nurse</option>
-                <option value="admin">Administrator</option>
-              </select>
-            </div>
-
-            <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Practice Name
-              </label>
-              <input
-                type="text"
-                value={formData.practice}
-                onChange={(e) => setFormData({ ...formData, practice: e.target.value })}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${
-                  theme === 'dark'
-                    ? 'bg-slate-800 border-slate-700 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-                placeholder="Your Medical Practice"
-              />
-            </div>
+          <div>
+            <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Practice Name
+            </label>
+            <input
+              type="text"
+              value={formData.practice}
+              onChange={(e) => setFormData({ ...formData, practice: e.target.value })}
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${
+                theme === 'dark'
+                  ? 'bg-slate-800 border-slate-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="Your Medical Practice"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

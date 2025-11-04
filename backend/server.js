@@ -87,6 +87,7 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/providers', require('./routes/providers'));
 app.use('/api/permissions', require('./routes/permissions'));
 app.use('/api/telehealth', require('./routes/telehealth'));
 app.use('/api/fhir', require('./routes/fhir'));
