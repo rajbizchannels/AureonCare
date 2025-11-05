@@ -9,9 +9,9 @@ Error updating user: error: null value in column "id" of relation "providers" vi
 
 This error occurs due to two issues:
 
-1. **Missing AUTO INCREMENT on providers.id**: The `id` column in the `providers` table doesn't have a proper SERIAL sequence attached, so it receives NULL instead of an auto-generated value.
+1. **Missing AUTO INCREMENT on providers.id**: The `id` column in the `providers` table doesn't have a default value set, so it receives NULL instead of an auto-generated value. This applies to both UUID and INTEGER id types.
 
-2. **Missing first_name/last_name columns in users table**: The users table only has a `name` column, but the code tries to insert `first_name` and `last_name` into the providers table.
+2. **Missing first_name/last_name columns in users table**: The users table may be missing `first_name` and `last_name` columns that the code tries to insert into the providers table.
 
 ## Solution
 
@@ -46,9 +46,10 @@ psql -h localhost -U medflow_user -d medflow -f migrations\011_fix_providers_id_
 ```
 
 **What it does:**
-- Creates or fixes the `providers_id_seq` sequence
-- Sets the DEFAULT value for `providers.id` to use the sequence
-- Syncs the sequence with existing data
+- Detects whether `providers.id` is UUID or INTEGER type
+- For UUID: Installs uuid-ossp extension and sets DEFAULT to `uuid_generate_v4()`
+- For INTEGER: Creates sequence and sets DEFAULT to `nextval('providers_id_seq')`
+- Ensures the id column has NOT NULL constraint
 
 #### Migration 012: Add first_name and last_name to Users
 
@@ -63,9 +64,9 @@ psql -h localhost -U medflow_user -d medflow -f migrations\012_add_first_last_na
 ```
 
 **What it does:**
-- Adds `first_name` and `last_name` columns to the users table
-- Migrates existing data from the `name` column
-- Splits "First Last" into separate columns
+- Adds `first_name` and `last_name` columns to the users table if they don't exist
+- Skips columns that already exist
+- No data migration needed (columns are added empty)
 
 ### Step 3: Verify the Fix
 
@@ -111,13 +112,20 @@ If you prefer using pgAdmin GUI:
 ```sql
 SELECT
     column_name,
+    data_type,
     column_default,
     is_nullable
 FROM information_schema.columns
 WHERE table_name = 'providers' AND column_name = 'id';
 ```
 
-Expected result:
+Expected result for UUID type:
+- `data_type` should be: `uuid`
+- `column_default` should contain: `uuid_generate_v4()`
+- `is_nullable` should be: `NO`
+
+Expected result for INTEGER type:
+- `data_type` should be: `integer`
 - `column_default` should contain: `nextval('providers_id_seq'::regclass)`
 - `is_nullable` should be: `NO`
 
@@ -126,10 +134,10 @@ Expected result:
 SELECT column_name, data_type
 FROM information_schema.columns
 WHERE table_name = 'users'
-AND column_name IN ('first_name', 'last_name', 'name');
+AND column_name IN ('first_name', 'last_name');
 ```
 
-Expected result: Should show `name`, `first_name`, and `last_name` columns.
+Expected result: Should show `first_name` and `last_name` columns.
 
 ### Test insert:
 ```sql
@@ -149,20 +157,27 @@ DELETE FROM providers WHERE email = 'test@example.com';
 
 ### Why the id was NULL
 
-The providers table's `id` column was defined as INTEGER PRIMARY KEY but without a DEFAULT value. In PostgreSQL, SERIAL is shorthand for:
-1. Creating a sequence (e.g., `providers_id_seq`)
-2. Setting the column DEFAULT to `nextval('providers_id_seq')`
-3. Setting the sequence ownership to the column
+The providers table's `id` column was defined as PRIMARY KEY but without a DEFAULT value:
 
-If any of these steps are missing, the column will receive NULL unless explicitly provided.
+**For UUID type:**
+- The column was created as UUID PRIMARY KEY without a default generator
+- PostgreSQL doesn't automatically generate UUIDs
+- Requires uuid-ossp extension and DEFAULT uuid_generate_v4()
+
+**For INTEGER type (SERIAL):**
+- SERIAL is shorthand for creating a sequence and setting DEFAULT
+- Steps: Create sequence → Set DEFAULT to nextval() → Set sequence ownership
+- If any step is missing, the column receives NULL
+
+The migration detects your id type and applies the correct fix.
 
 ### Why first_name and last_name were needed
 
-The original schema had:
-- `users` table with a `name` column (single field)
+The code expects:
+- `users` table with `first_name` and `last_name` columns (separate fields)
 - `providers` table with `first_name` and `last_name` columns (separate fields)
 
-When syncing a user to the providers table, the code needs to provide separate first and last names. The migration adds these columns to users and migrates existing data.
+When syncing a user to the providers table (role change to 'doctor'), the code extracts `first_name` and `last_name` from the user record. If these columns don't exist in the users table, the INSERT fails. The migration ensures these columns exist.
 
 ## Troubleshooting
 

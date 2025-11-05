@@ -38,7 +38,7 @@ async function fixProvidersInsertError() {
       console.log('✅ Users table has first_name and last_name columns\n');
     }
 
-    // Step 2: Check providers table structure and sequence
+    // Step 2: Check providers table structure
     console.log('Step 2: Checking providers table structure...');
     const providersColumns = await pool.query(`
       SELECT column_name, data_type, column_default, is_nullable
@@ -53,38 +53,50 @@ async function fixProvidersInsertError() {
       console.log(`  Default: ${idCol.column_default || 'NONE - THIS IS THE PROBLEM!'}`);
       console.log(`  Nullable: ${idCol.is_nullable}`);
 
-      if (!idCol.column_default || !idCol.column_default.includes('nextval')) {
-        console.log('\n❌ PROBLEM: providers.id does not have auto-increment default');
+      const isUUID = idCol.data_type === 'uuid';
+      const isInteger = idCol.data_type === 'integer';
+
+      if (!idCol.column_default) {
+        console.log('\n❌ PROBLEM: providers.id does not have a default value');
         console.log('📋 Run migration: 011_fix_providers_id_sequence.sql\n');
-      } else {
+      } else if (isUUID && idCol.column_default.includes('uuid_generate')) {
+        console.log('✅ Providers.id has correct UUID generation setup\n');
+      } else if (isInteger && idCol.column_default.includes('nextval')) {
         console.log('✅ Providers.id has correct auto-increment setup\n');
+      } else {
+        console.log('\n⚠️  WARNING: Unexpected default value for id column');
+        console.log('📋 Run migration: 011_fix_providers_id_sequence.sql\n');
       }
     }
 
-    // Step 3: Check sequence status
-    console.log('Step 3: Checking providers_id_seq sequence...');
-    const sequenceCheck = await pool.query(`
-      SELECT sequence_name, last_value
-      FROM information_schema.sequences
-      JOIN pg_sequences ON sequences.sequence_name = pg_sequences.sequencename
-      WHERE sequence_name = 'providers_id_seq'
-    `);
+    // Step 3: Check sequence status (only for integer ids)
+    const idType = providersColumns.rows[0]?.data_type;
+    if (idType === 'integer') {
+      console.log('Step 3: Checking providers_id_seq sequence...');
+      const sequenceCheck = await pool.query(`
+        SELECT sequence_name, last_value
+        FROM pg_sequences
+        WHERE schemaname = 'public' AND sequencename = 'providers_id_seq'
+      `);
 
-    if (sequenceCheck.rows.length === 0) {
-      console.log('❌ Sequence providers_id_seq does not exist');
-      console.log('📋 Run migration: 011_fix_providers_id_sequence.sql\n');
-    } else {
-      const maxId = await pool.query('SELECT MAX(id) as max_id FROM providers');
-      const currentMax = maxId.rows[0].max_id || 0;
-      const seqValue = parseInt(sequenceCheck.rows[0].last_value) || 0;
-
-      console.log(`✅ Sequence exists`);
-      console.log(`  Current sequence value: ${seqValue}`);
-      console.log(`  Max id in table: ${currentMax}`);
-
-      if (seqValue < currentMax) {
-        console.log(`\n⚠️  WARNING: Sequence value (${seqValue}) is behind max id (${currentMax})`);
+      if (sequenceCheck.rows.length === 0) {
+        console.log('❌ Sequence providers_id_seq does not exist');
         console.log('📋 Run migration: 011_fix_providers_id_sequence.sql\n');
+      } else {
+        console.log(`✅ Sequence exists`);
+        console.log(`  Current sequence value: ${sequenceCheck.rows[0].last_value}\n`);
+      }
+    } else if (idType === 'uuid') {
+      console.log('Step 3: Checking UUID extension...');
+      const extensionCheck = await pool.query(`
+        SELECT extname FROM pg_extension WHERE extname = 'uuid-ossp'
+      `);
+
+      if (extensionCheck.rows.length === 0) {
+        console.log('❌ uuid-ossp extension not installed');
+        console.log('📋 Run migration: 011_fix_providers_id_sequence.sql\n');
+      } else {
+        console.log('✅ uuid-ossp extension is installed\n');
       }
     }
 
