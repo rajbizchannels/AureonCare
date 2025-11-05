@@ -113,14 +113,34 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'patient_id or user_id is required' });
     }
 
+    // Validate provider_id if provided
+    if (provider_id && provider_id !== '' && provider_id !== 'null') {
+      console.log('Validating provider_id:', provider_id);
+      const providerCheck = await pool.query(
+        'SELECT id, first_name, last_name FROM providers WHERE id::text = $1::text',
+        [provider_id]
+      );
+
+      if (providerCheck.rows.length === 0) {
+        console.warn('Provider not found:', provider_id, '- Setting provider_id to NULL');
+        // Set to null if provider doesn't exist rather than failing
+        provider_id = null;
+      } else {
+        console.log('Provider verified:', providerCheck.rows[0]);
+      }
+    } else {
+      // Convert empty string or 'null' to actual NULL
+      provider_id = null;
+    }
+
     // Check for scheduling conflicts with the same doctor
     if (provider_id && start_time) {
       const conflictCheck = await pool.query(
         `SELECT a.id,
-                CONCAT(u.first_name, ' ', u.last_name) as doctor,
+                CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
                 CONCAT(p.first_name, ' ', p.last_name) as patient
          FROM appointments a
-         LEFT JOIN users u ON a.provider_id::text = u.id::text
+         LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
          LEFT JOIN patients p ON a.patient_id::text = p.id::text
          WHERE a.provider_id::text = $1::text
            AND a.start_time = $2
