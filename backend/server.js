@@ -23,23 +23,28 @@ const pool = new Pool({
 // Make pool available to routes
 app.locals.pool = pool;
 
-// Redis connection
+// Redis connection - disabled for development
+// Redis is optional and not required for core functionality
+let redisClient = null;
+
+// Uncomment below to enable Redis
+/*
 const redisConfig = {
   socket: {
     host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379
+    port: process.env.REDIS_PORT || 6379,
+    reconnectStrategy: () => false
   }
 };
 
-// Only add password if it's set
 if (process.env.REDIS_PASSWORD) {
   redisConfig.password = process.env.REDIS_PASSWORD;
 }
 
-const redisClient = redis.createClient(redisConfig);
-
-redisClient.on('error', (err) => console.log('Redis Client Error', err));
-redisClient.on('connect', () => console.log('✓ Redis Client Connected'));
+redisClient = redis.createClient(redisConfig);
+redisClient.on('error', (err) => console.log('Redis Error:', err.message));
+redisClient.on('connect', () => console.log('✓ Redis Connected'));
+*/
 
 // Middleware
 app.use(helmet());
@@ -54,17 +59,25 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.get('/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
-    await redisClient.ping();
-    res.json({ 
-      status: 'healthy', 
+    let redisStatus = 'not configured';
+    if (redisClient) {
+      try {
+        await redisClient.ping();
+        redisStatus = 'connected';
+      } catch (err) {
+        redisStatus = 'disconnected';
+      }
+    }
+    res.json({
+      status: 'healthy',
       database: 'connected',
-      redis: 'connected',
+      redis: redisStatus,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    res.status(500).json({ 
-      status: 'unhealthy', 
-      error: error.message 
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message
     });
   }
 });
@@ -111,11 +124,21 @@ async function startServer() {
     // Test database connection
     await pool.query('SELECT NOW()');
     console.log('✓ Database connected');
-    
-    // Connect Redis
-    await redisClient.connect();
-    console.log('✓ Redis connected');
-    
+
+    // Try to connect Redis (optional)
+    let redisConnected = false;
+    if (redisClient) {
+      try {
+        await redisClient.connect();
+        console.log('✓ Redis connected');
+        redisConnected = true;
+      } catch (redisError) {
+        console.log('⚠️  Redis not available (continuing without cache)');
+      }
+    } else {
+      console.log('⚠️  Redis not configured (continuing without cache)');
+    }
+
     // Start Express server
     app.listen(PORT, () => {
       console.log(`\n=================================`);
@@ -123,7 +146,7 @@ async function startServer() {
       console.log(`=================================`);
       console.log(`🌐 URL: http://localhost:${PORT}`);
       console.log(`🗄️  Database: ${process.env.DB_NAME}`);
-      console.log(`⚡ Redis: Connected`);
+      console.log(`⚡ Redis: ${redisConnected ? 'Connected' : 'Not available'}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`=================================\n`);
     });
@@ -139,6 +162,8 @@ startServer();
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
   await pool.end();
-  await redisClient.quit();
+  if (redisClient) {
+    await redisClient.quit();
+  }
   process.exit(0);
 });
