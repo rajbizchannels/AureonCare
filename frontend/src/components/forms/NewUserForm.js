@@ -19,13 +19,13 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
   const [availableRoles, setAvailableRoles] = useState([]);
   const [loadingRoles, setLoadingRoles] = useState(true);
 
-  // Fetch available roles (excluding system roles)
+  // Fetch available roles (including system roles for assignment)
   useEffect(() => {
     const fetchRoles = async () => {
       try {
-        const roles = await api.getRoles(true); // true = exclude system roles
+        const roles = await api.getRoles(false); // false = include all roles (system + custom)
         setAvailableRoles(roles);
-        // Set default role to first available custom role
+        // Set default role to first available role
         if (roles.length > 0 && !formData.role) {
           setFormData(prev => ({ ...prev, role: roles[0].name }));
         }
