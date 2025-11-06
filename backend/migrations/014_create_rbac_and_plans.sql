@@ -1,8 +1,16 @@
 -- Create comprehensive role-based access control system
 -- Supports predefined roles, custom roles, and fine-grained permissions
 
+-- Drop existing tables if they exist (to handle failed migration attempts)
+DROP TABLE IF EXISTS role_permissions CASCADE;
+DROP TABLE IF EXISTS user_roles CASCADE;
+DROP TABLE IF EXISTS organization_settings CASCADE;
+DROP TABLE IF EXISTS subscription_plans CASCADE;
+DROP TABLE IF EXISTS permissions CASCADE;
+DROP TABLE IF EXISTS roles CASCADE;
+
 -- 1. Create roles table
-CREATE TABLE IF NOT EXISTS roles (
+CREATE TABLE roles (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) UNIQUE NOT NULL,
   display_name VARCHAR(100) NOT NULL,
@@ -14,7 +22,7 @@ CREATE TABLE IF NOT EXISTS roles (
 );
 
 -- 2. Create permissions table
-CREATE TABLE IF NOT EXISTS permissions (
+CREATE TABLE permissions (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) UNIQUE NOT NULL,
   display_name VARCHAR(100) NOT NULL,
@@ -25,14 +33,14 @@ CREATE TABLE IF NOT EXISTS permissions (
 );
 
 -- 3. Create role-permissions mapping table
-CREATE TABLE IF NOT EXISTS role_permissions (
+CREATE TABLE role_permissions (
   role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
   permission_id INTEGER REFERENCES permissions(id) ON DELETE CASCADE,
   PRIMARY KEY (role_id, permission_id)
 );
 
 -- 4. Create plans table
-CREATE TABLE IF NOT EXISTS subscription_plans (
+CREATE TABLE subscription_plans (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) UNIQUE NOT NULL,
   display_name VARCHAR(100) NOT NULL,
@@ -48,7 +56,7 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
 );
 
 -- 5. Create organization settings table for plan management
-CREATE TABLE IF NOT EXISTS organization_settings (
+CREATE TABLE organization_settings (
   id SERIAL PRIMARY KEY,
   organization_name VARCHAR(255),
   current_plan_id INTEGER REFERENCES subscription_plans(id),
@@ -65,7 +73,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'en';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS active_role VARCHAR(100);
 
 -- 7. Create user_roles table for multiple role support
-CREATE TABLE IF NOT EXISTS user_roles (
+CREATE TABLE user_roles (
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
   assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -150,43 +158,43 @@ BEGIN
   -- Admin gets all permissions
   INSERT INTO role_permissions (role_id, permission_id)
   SELECT admin_role_id, id FROM permissions
-  ON CONFLICT DO NOTHING;
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
 
   -- Doctor permissions
   INSERT INTO role_permissions (role_id, permission_id)
   SELECT doctor_role_id, id FROM permissions
   WHERE module IN ('patients', 'appointments', 'ehr', 'reports')
-  ON CONFLICT DO NOTHING;
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
 
   -- Patient permissions (limited)
   INSERT INTO role_permissions (role_id, permission_id)
   SELECT patient_role_id, id FROM permissions
   WHERE name IN ('appointments.view', 'appointments.create', 'ehr.view')
-  ON CONFLICT DO NOTHING;
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
 
   -- Nurse permissions
   INSERT INTO role_permissions (role_id, permission_id)
   SELECT nurse_role_id, id FROM permissions
   WHERE module IN ('patients', 'appointments', 'ehr') AND action IN ('view', 'create', 'edit')
-  ON CONFLICT DO NOTHING;
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
 
   -- Receptionist permissions
   INSERT INTO role_permissions (role_id, permission_id)
   SELECT receptionist_role_id, id FROM permissions
   WHERE module IN ('patients', 'appointments') AND action IN ('view', 'create', 'edit')
-  ON CONFLICT DO NOTHING;
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
 
   -- Billing Manager permissions
   INSERT INTO role_permissions (role_id, permission_id)
   SELECT billing_role_id, id FROM permissions
   WHERE module IN ('billing', 'patients', 'reports')
-  ON CONFLICT DO NOTHING;
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
 
   -- CRM Manager permissions
   INSERT INTO role_permissions (role_id, permission_id)
   SELECT crm_role_id, id FROM permissions
   WHERE module IN ('crm', 'reports')
-  ON CONFLICT DO NOTHING;
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
 END $$;
 
 -- Insert default subscription plans
