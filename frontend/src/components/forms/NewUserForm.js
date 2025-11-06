@@ -10,12 +10,34 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'staff',
+    role: '',
     specialty: '',
     license: '',
     practice: user?.practice || 'Medical Practice'
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+
+  // Fetch available roles (excluding system roles)
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const roles = await api.getRoles(true); // true = exclude system roles
+        setAvailableRoles(roles);
+        // Set default role to first available custom role
+        if (roles.length > 0 && !formData.role) {
+          setFormData(prev => ({ ...prev, role: roles[0].name }));
+        }
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+        addNotification('alert', 'Failed to load roles');
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+    fetchRoles();
+  }, [api, addNotification]);
 
   // ESC key handler
   useEffect(() => {
@@ -198,11 +220,23 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
                   required
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                  disabled={loadingRoles}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingRoles ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <option value="staff">Staff</option>
-                  <option value="doctor">Doctor</option>
-                  <option value="admin">Administrator</option>
+                  {loadingRoles ? (
+                    <option>Loading roles...</option>
+                  ) : availableRoles.length === 0 ? (
+                    <option value="">No custom roles available</option>
+                  ) : (
+                    <>
+                      <option value="">Select a role</option>
+                      {availableRoles.map(role => (
+                        <option key={role.id} value={role.name}>
+                          {role.display_name}
+                        </option>
+                      ))}
+                    </>
+                  )}
                 </select>
               </div>
 

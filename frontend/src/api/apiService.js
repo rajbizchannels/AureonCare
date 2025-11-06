@@ -530,6 +530,16 @@ const api = {
     return response.json();
   },
 
+  // Roles
+  getRoles: async (excludeSystem = false) => {
+    const url = excludeSystem
+      ? `${API_BASE_URL}/roles?exclude_system=true`
+      : `${API_BASE_URL}/roles`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch roles');
+    return response.json();
+  },
+
   // Permissions
   getPermissions: async () => {
     const response = await fetch(`${API_BASE_URL}/permissions`);
