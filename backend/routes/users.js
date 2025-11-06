@@ -293,4 +293,238 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Update user language preference
+router.put('/:id/language', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { language } = req.body;
+
+    if (!language) {
+      return res.status(400).json({ error: 'Language is required' });
+    }
+
+    // Supported languages
+    const supportedLanguages = ['en', 'es', 'fr', 'de', 'pt', 'zh', 'ar', 'hi'];
+    if (!supportedLanguages.includes(language)) {
+      return res.status(400).json({
+        error: 'Unsupported language',
+        supported: supportedLanguages
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE users
+       SET language = $1, updated_at = NOW()
+       WHERE id::text = $2::text
+       RETURNING *`,
+      [language, req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(toCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error updating language:', error);
+    res.status(500).json({ error: 'Failed to update language' });
+  }
+});
+
+// Switch active role (for users with multiple roles)
+router.put('/:id/switch-role', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { role_name } = req.body;
+
+    if (!role_name) {
+      return res.status(400).json({ error: 'Role name is required' });
+    }
+
+    // Check if user has this role
+    const roleCheck = await pool.query(`
+      SELECT r.id, r.name, r.display_name
+      FROM roles r
+      JOIN user_roles ur ON r.id = ur.role_id
+      WHERE ur.user_id::text = $1::text AND r.name = $2
+    `, [req.params.id, role_name]);
+
+    if (roleCheck.rows.length === 0) {
+      return res.status(403).json({
+        error: 'User does not have this role',
+        requested_role: role_name
+      });
+    }
+
+    // Update active role
+    const result = await pool.query(
+      `UPDATE users
+       SET active_role = $1, role = $1, updated_at = NOW()
+       WHERE id::text = $2::text
+       RETURNING *`,
+      [role_name, req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: 'Role switched successfully',
+      user: toCamelCase(result.rows[0]),
+      new_role: roleCheck.rows[0]
+    });
+  } catch (error) {
+    console.error('Error switching role:', error);
+    res.status(500).json({ error: 'Failed to switch role' });
+  }
+});
+
+// Get user's roles
+router.get('/:id/roles', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+
+    const result = await pool.query(`
+      SELECT r.id, r.name, r.display_name, r.description,
+             ur.assigned_at,
+             CASE WHEN u.active_role = r.name THEN true ELSE false END as is_active
+      FROM roles r
+      JOIN user_roles ur ON r.id = ur.role_id
+      JOIN users u ON ur.user_id = u.id
+      WHERE ur.user_id::text = $1::text
+      ORDER BY is_active DESC, r.display_name
+    `, [req.params.id]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching user roles:', error);
+    res.status(500).json({ error: 'Failed to fetch user roles' });
+  }
+});
+
+// Assign role to user
+router.post('/:id/roles', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { role_id, assigned_by } = req.body;
+
+    if (!role_id) {
+      return res.status(400).json({ error: 'Role ID is required' });
+    }
+
+    // Check if role exists
+    const roleCheck = await pool.query(
+      'SELECT * FROM roles WHERE id = $1 AND is_active = true',
+      [role_id]
+    );
+
+    if (roleCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Role not found' });
+    }
+
+    const role = roleCheck.rows[0];
+
+    // Check if already assigned
+    const existingCheck = await pool.query(
+      'SELECT * FROM user_roles WHERE user_id::text = $1::text AND role_id = $2',
+      [req.params.id, role_id]
+    );
+
+    if (existingCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Role already assigned to user' });
+    }
+
+    // Assign role
+    await pool.query(
+      `INSERT INTO user_roles (user_id, role_id, assigned_by)
+       VALUES ($1, $2, $3)`,
+      [req.params.id, role_id, assigned_by || null]
+    );
+
+    // If this is the first role or user doesn't have an active role, set it as active
+    const userCheck = await pool.query(
+      'SELECT active_role FROM users WHERE id::text = $1::text',
+      [req.params.id]
+    );
+
+    if (userCheck.rows.length > 0 && !userCheck.rows[0].active_role) {
+      await pool.query(
+        'UPDATE users SET active_role = $1, role = $1 WHERE id::text = $2::text',
+        [role.name, req.params.id]
+      );
+    }
+
+    res.json({
+      message: 'Role assigned successfully',
+      role: role
+    });
+  } catch (error) {
+    console.error('Error assigning role:', error);
+    res.status(500).json({ error: 'Failed to assign role' });
+  }
+});
+
+// Remove role from user
+router.delete('/:id/roles/:role_id', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+
+    // Check if user has other roles
+    const rolesCheck = await pool.query(
+      'SELECT COUNT(*) as count FROM user_roles WHERE user_id::text = $1::text',
+      [req.params.id]
+    );
+
+    if (parseInt(rolesCheck.rows[0].count) <= 1) {
+      return res.status(400).json({ error: 'Cannot remove last role from user' });
+    }
+
+    // Remove role
+    const result = await pool.query(
+      'DELETE FROM user_roles WHERE user_id::text = $1::text AND role_id = $2 RETURNING *',
+      [req.params.id, req.params.role_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Role assignment not found' });
+    }
+
+    // If removed role was active, switch to another role
+    const userCheck = await pool.query(
+      'SELECT active_role FROM users WHERE id::text = $1::text',
+      [req.params.id]
+    );
+
+    const roleCheck = await pool.query(
+      'SELECT name FROM roles WHERE id = $1',
+      [req.params.role_id]
+    );
+
+    if (userCheck.rows.length > 0 && roleCheck.rows.length > 0 &&
+        userCheck.rows[0].active_role === roleCheck.rows[0].name) {
+      // Get first remaining role
+      const newRole = await pool.query(`
+        SELECT r.name
+        FROM roles r
+        JOIN user_roles ur ON r.id = ur.role_id
+        WHERE ur.user_id::text = $1::text
+        LIMIT 1
+      `, [req.params.id]);
+
+      if (newRole.rows.length > 0) {
+        await pool.query(
+          'UPDATE users SET active_role = $1, role = $1 WHERE id::text = $2::text',
+          [newRole.rows[0].name, req.params.id]
+        );
+      }
+    }
+
+    res.json({ message: 'Role removed successfully' });
+  } catch (error) {
+    console.error('Error removing role:', error);
+    res.status(500).json({ error: 'Failed to remove role' });
+  }
+});
+
 module.exports = router;
