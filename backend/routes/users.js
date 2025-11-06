@@ -206,11 +206,10 @@ router.put('/:id', async (req, res) => {
           }
         }
 
-        // Remove from patients table if exists
-        await pool.query(
-          'DELETE FROM patients WHERE email = $1',
-          [updatedUser.email]
-        );
+        // NOTE: We do NOT remove from patients table
+        // A user can be both a doctor (provider) and a patient
+        // Medical records (FHIR resources) must be preserved
+        // This prevents foreign key constraint violations
       }
       // If new role is patient, add to patients table
       else if (newRole === 'patient') {
@@ -260,11 +259,10 @@ router.put('/:id', async (req, res) => {
           }
         }
 
-        // Remove from providers table if exists
-        await pool.query(
-          'DELETE FROM providers WHERE email = $1',
-          [updatedUser.email]
-        );
+        // NOTE: We do NOT remove from providers table
+        // A user can have multiple roles (e.g., a doctor who becomes a patient)
+        // Provider records should be preserved for historical appointment data
+        // This maintains referential integrity with appointments and other records
       }
     }
 
