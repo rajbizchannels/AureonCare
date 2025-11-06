@@ -2,12 +2,17 @@ const express = require('express');
 const router = express.Router();
 
 // Get all roles
+// Query params:
+//   - exclude_system=true: Exclude system roles (use for role management UI where you delete/edit roles)
+//   - exclude_system=false or omitted: Include all roles (use for user assignment dropdowns)
+// Note: System roles (admin, doctor, patient, etc.) can be ASSIGNED to users but cannot be DELETED
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { exclude_system } = req.query;
 
     // Build WHERE clause - exclude system roles if requested
+    // System roles should still be shown in user assignment dropdowns
     const whereConditions = ['r.is_active = true'];
     if (exclude_system === 'true') {
       whereConditions.push('r.is_system_role = false');

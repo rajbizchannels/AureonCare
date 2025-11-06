@@ -22,11 +22,11 @@ const ViewEditModal = ({
   const [availableRoles, setAvailableRoles] = useState([]);
   const [loadingRoles, setLoadingRoles] = useState(true);
 
-  // Fetch available roles for user editing (excluding system roles)
+  // Fetch available roles for user editing (including system roles for assignment)
   useEffect(() => {
     const fetchRoles = async () => {
       try {
-        const roles = await api.getRoles(true); // true = exclude system roles
+        const roles = await api.getRoles(false); // false = include all roles (system + custom)
         setAvailableRoles(roles);
       } catch (error) {
         console.error('Error fetching roles:', error);
