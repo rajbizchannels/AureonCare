@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft, CreditCard, Check } from 'lucide-react';
 
 const AdminPanelView = ({
   theme,
@@ -78,6 +78,79 @@ const AdminPanelView = ({
       settings: { view: false, create: false, edit: false, delete: false }
     }
   });
+
+  const [subscriptionPlans, setSubscriptionPlans] = useState([
+    {
+      id: 'free',
+      name: 'Free Plan',
+      price: 0,
+      billing: 'monthly',
+      maxUsers: 3,
+      maxPatients: 50,
+      features: {
+        ehr: true,
+        appointments: true,
+        billing: false,
+        crm: false,
+        telehealth: false,
+        integrations: false
+      }
+    },
+    {
+      id: 'starter',
+      name: 'Starter Plan',
+      price: 99,
+      billing: 'monthly',
+      maxUsers: 10,
+      maxPatients: 200,
+      features: {
+        ehr: true,
+        appointments: true,
+        billing: true,
+        crm: false,
+        telehealth: true,
+        integrations: false
+      },
+      popular: false
+    },
+    {
+      id: 'professional',
+      name: 'Professional Plan',
+      price: 299,
+      billing: 'monthly',
+      maxUsers: 25,
+      maxPatients: 1000,
+      features: {
+        ehr: true,
+        appointments: true,
+        billing: true,
+        crm: true,
+        telehealth: true,
+        integrations: true
+      },
+      popular: true
+    },
+    {
+      id: 'enterprise',
+      name: 'Enterprise Plan',
+      price: 999,
+      billing: 'monthly',
+      maxUsers: -1,
+      maxPatients: -1,
+      features: {
+        ehr: true,
+        appointments: true,
+        billing: true,
+        crm: true,
+        telehealth: true,
+        integrations: true,
+        customBranding: true,
+        apiAccess: true
+      }
+    }
+  ]);
+
+  const [currentPlan, setCurrentPlan] = useState('professional');
 
   const handleSaveClinicSettings = async () => {
     try {
@@ -170,6 +243,7 @@ const AdminPanelView = ({
     { id: 'clinic', label: 'Clinic Settings', icon: Building2 },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'roles', label: 'Roles & Permissions', icon: Shield },
+    { id: 'plans', label: 'Subscription Plans', icon: CreditCard },
     { id: 'hours', label: 'Working Hours', icon: Clock },
     { id: 'appointments', label: 'Appointment Settings', icon: Settings }
   ];
@@ -512,6 +586,145 @@ const AdminPanelView = ({
               <Save className="w-5 h-5" />
               Save Permissions
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription Plans Tab */}
+      {activeTab === 'plans' && (
+        <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Subscription Plans
+          </h2>
+          <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Choose the plan that best fits your practice needs. Upgrade or downgrade anytime.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {subscriptionPlans.map((plan) => (
+              <div
+                key={plan.id}
+                className={`relative rounded-xl border-2 p-6 transition-all ${
+                  currentPlan === plan.id
+                    ? 'border-blue-500 bg-blue-500/5'
+                    : theme === 'dark'
+                    ? 'border-slate-700 hover:border-slate-600'
+                    : 'border-gray-300 hover:border-gray-400'
+                } ${plan.popular ? 'ring-2 ring-purple-500/50' : ''}`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium rounded-full">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
+
+                {currentPlan === plan.id && (
+                  <div className="absolute -top-3 -right-3">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <Check className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-center mb-6">
+                  <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {plan.name}
+                  </h3>
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      ${plan.price}
+                    </span>
+                    <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      /{plan.billing}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span>
+                      {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers} user{plan.maxUsers !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span>
+                      {plan.maxPatients === -1 ? 'Unlimited' : plan.maxPatients} patient{plan.maxPatients !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  {plan.features.ehr && (
+                    <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span>Electronic Health Records</span>
+                    </div>
+                  )}
+                  {plan.features.appointments && (
+                    <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span>Appointment Management</span>
+                    </div>
+                  )}
+                  {plan.features.billing && (
+                    <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span>Billing & Claims</span>
+                    </div>
+                  )}
+                  {plan.features.crm && (
+                    <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span>CRM</span>
+                    </div>
+                  )}
+                  {plan.features.telehealth && (
+                    <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span>Telehealth</span>
+                    </div>
+                  )}
+                  {plan.features.integrations && (
+                    <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span>Integrations</span>
+                    </div>
+                  )}
+                  {plan.features.customBranding && (
+                    <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span>Custom Branding</span>
+                    </div>
+                  )}
+                  {plan.features.apiAccess && (
+                    <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span>API Access</span>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={async () => {
+                    setCurrentPlan(plan.id);
+                    await addNotification('success', `Switched to ${plan.name}`);
+                  }}
+                  disabled={currentPlan === plan.id}
+                  className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                    currentPlan === plan.id
+                      ? theme === 'dark'
+                        ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : plan.popular
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  }`}
+                >
+                  {currentPlan === plan.id ? 'Current Plan' : 'Select Plan'}
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
