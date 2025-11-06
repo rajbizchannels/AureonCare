@@ -19,6 +19,26 @@ const ViewEditModal = ({
   user
 }) => {
   const [editData, setEditData] = useState(editingItem?.data || {});
+  const [availableRoles, setAvailableRoles] = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+
+  // Fetch available roles for user editing (excluding system roles)
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const roles = await api.getRoles(true); // true = exclude system roles
+        setAvailableRoles(roles);
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+
+    if (editingItem?.type === 'user') {
+      fetchRoles();
+    }
+  }, [api, editingItem?.type]);
 
   // Update editData when editingItem changes
   useEffect(() => {
@@ -637,13 +657,25 @@ const ViewEditModal = ({
                     <p className={`capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.role}</p>
                   ) : (
                     <select
-                      value={editData.role || 'staff'}
+                      value={editData.role || ''}
                       onChange={(e) => setEditData({...editData, role: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                      disabled={loadingRoles}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingRoles ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <option value="staff">Staff</option>
-                      <option value="doctor">Doctor</option>
-                      <option value="admin">Administrator</option>
+                      {loadingRoles ? (
+                        <option>Loading roles...</option>
+                      ) : availableRoles.length === 0 ? (
+                        <option value="">No custom roles available</option>
+                      ) : (
+                        <>
+                          <option value="">Select a role</option>
+                          {availableRoles.map(role => (
+                            <option key={role.id} value={role.name}>
+                              {role.display_name}
+                            </option>
+                          ))}
+                        </>
+                      )}
                     </select>
                   )}
                 </div>

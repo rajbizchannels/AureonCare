@@ -5,6 +5,14 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    const { exclude_system } = req.query;
+
+    // Build WHERE clause - exclude system roles if requested
+    const whereConditions = ['r.is_active = true'];
+    if (exclude_system === 'true') {
+      whereConditions.push('r.is_system_role = false');
+    }
+    const whereClause = whereConditions.join(' AND ');
 
     const result = await pool.query(`
       SELECT
@@ -14,7 +22,7 @@ router.get('/', async (req, res) => {
       FROM roles r
       LEFT JOIN user_roles ur ON r.id = ur.role_id
       LEFT JOIN role_permissions rp ON r.id = rp.role_id
-      WHERE r.is_active = true
+      WHERE ${whereClause}
       GROUP BY r.id
       ORDER BY
         CASE r.name
