@@ -110,6 +110,8 @@ app.use('/api/patient-portal', require('./routes/patient-portal'));
 app.use('/api/medical-records', require('./routes/medical-records'));
 app.use('/api/prescriptions', require('./routes/prescriptions'));
 app.use('/api/diagnosis', require('./routes/diagnosis'));
+app.use('/api/medications', require('./routes/medications'));
+app.use('/api/pharmacies', require('./routes/pharmacies'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

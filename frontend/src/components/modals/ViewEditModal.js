@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save } from 'lucide-react';
+import { X, Save, Pill } from 'lucide-react';
 import { formatDate, formatTime, formatCurrency } from '../../utils/formatters';
+import EPrescribeModal from './ePrescribeModal';
 
 const ViewEditModal = ({
   theme,
@@ -21,6 +22,9 @@ const ViewEditModal = ({
   const [editData, setEditData] = useState(editingItem?.data || {});
   const [availableRoles, setAvailableRoles] = useState([]);
   const [loadingRoles, setLoadingRoles] = useState(true);
+  const [showEPrescribe, setShowEPrescribe] = useState(false);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
 
   // Fetch available roles for user editing (including system roles for assignment)
   useEffect(() => {
@@ -39,6 +43,26 @@ const ViewEditModal = ({
       fetchRoles();
     }
   }, [api, editingItem?.type]);
+
+  // Fetch prescriptions for patient when viewing
+  useEffect(() => {
+    const fetchPrescriptions = async () => {
+      if (currentView === 'view' && editingItem?.type === 'patient' && editingItem?.data?.id) {
+        setLoadingPrescriptions(true);
+        try {
+          const patientPrescriptions = await api.getPatientActivePrescriptions(editingItem.data.id);
+          setPrescriptions(patientPrescriptions);
+        } catch (error) {
+          console.error('Error fetching prescriptions:', error);
+          setPrescriptions([]);
+        } finally {
+          setLoadingPrescriptions(false);
+        }
+      }
+    };
+
+    fetchPrescriptions();
+  }, [api, currentView, editingItem?.type, editingItem?.data?.id]);
 
   // Update editData when editingItem changes
   useEffect(() => {
@@ -450,6 +474,73 @@ const ViewEditModal = ({
                   )}
                 </div>
               </div>
+
+              {/* Active Prescriptions Section - Only shown in view mode */}
+              {isView && (
+                <div className={`mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Active Prescriptions
+                  </h3>
+                  {loadingPrescriptions ? (
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Loading prescriptions...
+                    </p>
+                  ) : prescriptions.length === 0 ? (
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      No active prescriptions found.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {prescriptions.map((rx) => (
+                        <div
+                          key={rx.id}
+                          className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  {rx.medicationName || rx.medication || 'Unknown Medication'}
+                                </h4>
+                                {rx.erxStatus && (
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    rx.erxStatus === 'sent' ? 'bg-green-500/20 text-green-400' :
+                                    rx.erxStatus === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                    rx.erxStatus === 'failed' ? 'bg-red-500/20 text-red-400' :
+                                    'bg-gray-500/20 text-gray-400'
+                                  }`}>
+                                    {rx.erxStatus === 'sent' ? 'ePrescribed' :
+                                     rx.erxStatus === 'pending' ? 'Pending' :
+                                     rx.erxStatus === 'failed' ? 'Failed' :
+                                     'Paper'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                {rx.dosage || 'N/A'} - {rx.frequency || 'N/A'}
+                              </p>
+                              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                                Qty: {rx.quantity || 'N/A'} | Refills: {rx.refillsRemaining !== undefined ? rx.refillsRemaining : 'N/A'}
+                              </p>
+                              {rx.pharmacyName && (
+                                <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                                  Pharmacy: {rx.pharmacyName}
+                                </p>
+                              )}
+                            </div>
+                            <div className={`text-right text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                              <p>Prescribed: {rx.prescribedDate ? formatDate(rx.prescribedDate) : 'N/A'}</p>
+                              {rx.expiresDate && (
+                                <p className="mt-1">Expires: {formatDate(rx.expiresDate)}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : type === 'userProfile' ? (
             <div className="space-y-4">
@@ -931,6 +1022,15 @@ const ViewEditModal = ({
             >
               Close
             </button>
+            {isView && type === 'patient' && (
+              <button
+                onClick={() => setShowEPrescribe(true)}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-white"
+              >
+                <Pill className="w-5 h-5" />
+                ePrescribe
+              </button>
+            )}
             {!isView && (
               <button
                 onClick={handleSave}
@@ -943,6 +1043,17 @@ const ViewEditModal = ({
           </div>
         </div>
       </div>
+
+      {/* ePrescribe Modal */}
+      {showEPrescribe && type === 'patient' && (
+        <EPrescribeModal
+          theme={theme}
+          patient={editData}
+          onClose={() => setShowEPrescribe(false)}
+          api={api}
+          addNotification={addNotification}
+        />
+      )}
     </div>
   );
 };
