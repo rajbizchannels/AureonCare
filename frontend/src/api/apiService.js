@@ -568,6 +568,224 @@ const api = {
     });
     if (!response.ok) throw new Error('Failed to update role permissions');
     return response.json();
+  },
+
+  // Medications
+  searchMedications: async (query, drugClass, genericOnly, limit) => {
+    const params = new URLSearchParams();
+    if (query) params.append('query', query);
+    if (drugClass) params.append('drug_class', drugClass);
+    if (genericOnly) params.append('generic_only', genericOnly);
+    if (limit) params.append('limit', limit);
+    const response = await fetch(`${API_BASE_URL}/medications/search?${params}`);
+    if (!response.ok) throw new Error('Failed to search medications');
+    return response.json();
+  },
+  getMedications: async (drugClass, controlledOnly) => {
+    const params = new URLSearchParams();
+    if (drugClass) params.append('drug_class', drugClass);
+    if (controlledOnly) params.append('controlled_only', controlledOnly);
+    const response = await fetch(`${API_BASE_URL}/medications?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch medications');
+    return response.json();
+  },
+  getMedication: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/medications/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch medication');
+    return response.json();
+  },
+  getMedicationByNdc: async (ndcCode) => {
+    const response = await fetch(`${API_BASE_URL}/medications/ndc/${ndcCode}`);
+    if (!response.ok) throw new Error('Failed to fetch medication');
+    return response.json();
+  },
+  getMedicationAlternatives: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/medications/${id}/alternatives`);
+    if (!response.ok) throw new Error('Failed to fetch medication alternatives');
+    return response.json();
+  },
+  checkDrugInteractions: async (ndcCodes) => {
+    const response = await fetch(`${API_BASE_URL}/medications/check-interactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ndcCodes })
+    });
+    if (!response.ok) throw new Error('Failed to check drug interactions');
+    return response.json();
+  },
+  getDrugClasses: async () => {
+    const response = await fetch(`${API_BASE_URL}/medications/drug-classes/list`);
+    if (!response.ok) throw new Error('Failed to fetch drug classes');
+    return response.json();
+  },
+  createMedication: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/medications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create medication');
+    return response.json();
+  },
+  updateMedication: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/medications/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update medication');
+    return response.json();
+  },
+
+  // Pharmacies
+  searchPharmacies: async (zip, city, state, name, limit) => {
+    const params = new URLSearchParams();
+    if (zip) params.append('zip', zip);
+    if (city) params.append('city', city);
+    if (state) params.append('state', state);
+    if (name) params.append('name', name);
+    if (limit) params.append('limit', limit);
+    const response = await fetch(`${API_BASE_URL}/pharmacies/search?${params}`);
+    if (!response.ok) throw new Error('Failed to search pharmacies');
+    return response.json();
+  },
+  getPharmacies: async () => {
+    const response = await fetch(`${API_BASE_URL}/pharmacies`);
+    if (!response.ok) throw new Error('Failed to fetch pharmacies');
+    return response.json();
+  },
+  getPharmacy: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/pharmacies/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch pharmacy');
+    return response.json();
+  },
+  getPharmacyByNcpdp: async (ncpdpId) => {
+    const response = await fetch(`${API_BASE_URL}/pharmacies/ncpdp/${ncpdpId}`);
+    if (!response.ok) throw new Error('Failed to fetch pharmacy');
+    return response.json();
+  },
+  getPatientPreferredPharmacies: async (patientId) => {
+    const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`);
+    if (!response.ok) throw new Error('Failed to fetch patient preferred pharmacies');
+    return response.json();
+  },
+  addPreferredPharmacy: async (patientId, pharmacyId, isPrimary) => {
+    const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pharmacyId, isPrimary })
+    });
+    if (!response.ok) throw new Error('Failed to add preferred pharmacy');
+    return response.json();
+  },
+  removePreferredPharmacy: async (patientId, pharmacyId) => {
+    const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred/${pharmacyId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to remove preferred pharmacy');
+    return response.json();
+  },
+  createPharmacy: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/pharmacies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create pharmacy');
+    return response.json();
+  },
+  updatePharmacy: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/pharmacies/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update pharmacy');
+    return response.json();
+  },
+
+  // Prescriptions (ePrescribing)
+  getPrescriptions: async (patientId, providerId, status, erxStatus) => {
+    const params = new URLSearchParams();
+    if (patientId) params.append('patient_id', patientId);
+    if (providerId) params.append('provider_id', providerId);
+    if (status) params.append('status', status);
+    if (erxStatus) params.append('erx_status', erxStatus);
+    const response = await fetch(`${API_BASE_URL}/prescriptions?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch prescriptions');
+    return response.json();
+  },
+  getPrescription: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch prescription');
+    return response.json();
+  },
+  createPrescription: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create prescription');
+    return response.json();
+  },
+  updatePrescription: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update prescription');
+    return response.json();
+  },
+  deletePrescription: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete prescription');
+    return response.json();
+  },
+  sendErx: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}/send-erx`, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to send electronic prescription');
+    return response.json();
+  },
+  cancelErx: async (id, reason) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}/cancel-erx`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    if (!response.ok) throw new Error('Failed to cancel electronic prescription');
+    return response.json();
+  },
+  getPrescriptionHistory: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}/history`);
+    if (!response.ok) throw new Error('Failed to fetch prescription history');
+    return response.json();
+  },
+  checkPrescriptionSafety: async (patientId, ndcCode) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/check-safety`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patientId, ndcCode })
+    });
+    if (!response.ok) throw new Error('Failed to check prescription safety');
+    return response.json();
+  },
+  getPatientActivePrescriptions: async (patientId) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/patient/${patientId}/active`);
+    if (!response.ok) throw new Error('Failed to fetch patient active prescriptions');
+    return response.json();
+  },
+  refillPrescription: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}/refill`, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to refill prescription');
+    return response.json();
   }
 };
 
