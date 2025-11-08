@@ -17,32 +17,43 @@ DROP TABLE IF EXISTS pharmacies CASCADE;
 DROP TABLE IF EXISTS medications CASCADE;
 
 -- 1. Enhance prescriptions table with ePrescribing fields
-ALTER TABLE prescriptions
-ADD COLUMN IF NOT EXISTS ndc_code VARCHAR(20),                    -- National Drug Code
-ADD COLUMN IF NOT EXISTS drug_strength VARCHAR(50),               -- e.g., "500mg"
-ADD COLUMN IF NOT EXISTS drug_form VARCHAR(50),                   -- e.g., "tablet", "capsule", "liquid"
-ADD COLUMN IF NOT EXISTS quantity INTEGER,                        -- Total quantity prescribed
-ADD COLUMN IF NOT EXISTS days_supply INTEGER,                     -- Number of days supply
-ADD COLUMN IF NOT EXISTS daw_code INTEGER DEFAULT 0,              -- Dispense As Written code (0-9)
-ADD COLUMN IF NOT EXISTS prior_auth_required BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS prior_auth_number VARCHAR(50),
-ADD COLUMN IF NOT EXISTS pharmacy_id UUID,                        -- Pharmacy where sent
-ADD COLUMN IF NOT EXISTS erx_message_id VARCHAR(100),             -- Electronic prescription message ID
-ADD COLUMN IF NOT EXISTS erx_status VARCHAR(50) DEFAULT 'draft',  -- draft, sent, accepted, rejected, dispensed, cancelled
-ADD COLUMN IF NOT EXISTS erx_sent_date TIMESTAMP,                 -- When sent electronically
-ADD COLUMN IF NOT EXISTS erx_response_date TIMESTAMP,             -- When pharmacy responded
-ADD COLUMN IF NOT EXISTS erx_error_message TEXT,                  -- Error messages from pharmacy
-ADD COLUMN IF NOT EXISTS controlled_substance_class VARCHAR(10),  -- DEA schedule (II, III, IV, V)
-ADD COLUMN IF NOT EXISTS prescriber_dea_number VARCHAR(20),        -- Prescriber's DEA number
-ADD COLUMN IF NOT EXISTS diagnosis_code VARCHAR(20),              -- ICD-10 code for indication
-ADD COLUMN IF NOT EXISTS substitution_allowed BOOLEAN DEFAULT TRUE,
-ADD COLUMN IF NOT EXISTS sig_code TEXT,                           -- Structured SIG (directions)
-ADD COLUMN IF NOT EXISTS notes_to_pharmacist TEXT,
-ADD COLUMN IF NOT EXISTS refills_remaining INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS last_filled_date DATE,
-ADD COLUMN IF NOT EXISTS cancelled_reason TEXT,
-ADD COLUMN IF NOT EXISTS cancelled_date TIMESTAMP,
-ADD COLUMN IF NOT EXISTS cancelled_by UUID REFERENCES users(id);
+-- Note: This requires ALTER privilege on prescriptions table
+DO $$
+BEGIN
+  BEGIN
+    ALTER TABLE prescriptions
+    ADD COLUMN IF NOT EXISTS ndc_code VARCHAR(20),                    -- National Drug Code
+    ADD COLUMN IF NOT EXISTS drug_strength VARCHAR(50),               -- e.g., "500mg"
+    ADD COLUMN IF NOT EXISTS drug_form VARCHAR(50),                   -- e.g., "tablet", "capsule", "liquid"
+    ADD COLUMN IF NOT EXISTS quantity INTEGER,                        -- Total quantity prescribed
+    ADD COLUMN IF NOT EXISTS days_supply INTEGER,                     -- Number of days supply
+    ADD COLUMN IF NOT EXISTS daw_code INTEGER DEFAULT 0,              -- Dispense As Written code (0-9)
+    ADD COLUMN IF NOT EXISTS prior_auth_required BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS prior_auth_number VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS pharmacy_id UUID,                        -- Pharmacy where sent
+    ADD COLUMN IF NOT EXISTS erx_message_id VARCHAR(100),             -- Electronic prescription message ID
+    ADD COLUMN IF NOT EXISTS erx_status VARCHAR(50) DEFAULT 'draft',  -- draft, sent, accepted, rejected, dispensed, cancelled
+    ADD COLUMN IF NOT EXISTS erx_sent_date TIMESTAMP,                 -- When sent electronically
+    ADD COLUMN IF NOT EXISTS erx_response_date TIMESTAMP,             -- When pharmacy responded
+    ADD COLUMN IF NOT EXISTS erx_error_message TEXT,                  -- Error messages from pharmacy
+    ADD COLUMN IF NOT EXISTS controlled_substance_class VARCHAR(10),  -- DEA schedule (II, III, IV, V)
+    ADD COLUMN IF NOT EXISTS prescriber_dea_number VARCHAR(20),        -- Prescriber's DEA number
+    ADD COLUMN IF NOT EXISTS diagnosis_code VARCHAR(20),              -- ICD-10 code for indication
+    ADD COLUMN IF NOT EXISTS substitution_allowed BOOLEAN DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS sig_code TEXT,                           -- Structured SIG (directions)
+    ADD COLUMN IF NOT EXISTS notes_to_pharmacist TEXT,
+    ADD COLUMN IF NOT EXISTS refills_remaining INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS last_filled_date DATE,
+    ADD COLUMN IF NOT EXISTS cancelled_reason TEXT,
+    ADD COLUMN IF NOT EXISTS cancelled_date TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS cancelled_by UUID REFERENCES users(id);
+
+    RAISE NOTICE 'Successfully added ePrescribing columns to prescriptions table';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE WARNING 'Insufficient privileges to alter prescriptions table - ePrescribing features may not work correctly';
+    RAISE WARNING 'Please run this migration with a user that owns the prescriptions table';
+  END;
+END $$;
 
 -- 2. Create medication formulary/drug database table
 CREATE TABLE medications (
@@ -202,27 +213,40 @@ CREATE TABLE medication_alternatives (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_prescriptions_pharmacy ON prescriptions(pharmacy_id);
-CREATE INDEX idx_prescriptions_erx_status ON prescriptions(erx_status);
-CREATE INDEX idx_prescriptions_ndc ON prescriptions(ndc_code);
-CREATE INDEX idx_medications_id ON medications(id);
-CREATE INDEX idx_medications_ndc ON medications(ndc_code);
-CREATE INDEX idx_medications_drug_name ON medications(drug_name);
-CREATE INDEX idx_medications_generic_name ON medications(generic_name);
-CREATE INDEX idx_medications_drug_class ON medications(drug_class);
-CREATE INDEX idx_pharmacies_id ON pharmacies(id);
-CREATE INDEX idx_pharmacies_ncpdp ON pharmacies(ncpdp_id);
-CREATE INDEX idx_pharmacies_city_state ON pharmacies(city, state);
-CREATE INDEX idx_pharmacies_zip ON pharmacies(zip_code);
-CREATE INDEX idx_patient_pharmacies_patient ON patient_pharmacies(patient_id);
-CREATE INDEX idx_patient_pharmacies_pharmacy ON patient_pharmacies(pharmacy_id);
-CREATE INDEX idx_patient_allergies_patient ON patient_allergies(patient_id);
-CREATE INDEX idx_prescription_history_prescription ON prescription_history(prescription_id);
-CREATE INDEX idx_prescription_history_pharmacy ON prescription_history(pharmacy_id);
-CREATE INDEX idx_erx_queue_status ON erx_message_queue(message_status);
-CREATE INDEX idx_erx_queue_pharmacy ON erx_message_queue(pharmacy_id);
-CREATE INDEX idx_drug_interactions_drug1 ON drug_interactions(drug1_ndc);
-CREATE INDEX idx_drug_interactions_drug2 ON drug_interactions(drug2_ndc);
+-- Note: Indexes on prescriptions table require table ownership
+-- Using IF NOT EXISTS to make migration idempotent and handle permission issues
+DO $$
+BEGIN
+  -- Try to create indexes on prescriptions table
+  -- These may fail if user doesn't own the table
+  BEGIN
+    CREATE INDEX IF NOT EXISTS idx_prescriptions_pharmacy ON prescriptions(pharmacy_id);
+    CREATE INDEX IF NOT EXISTS idx_prescriptions_erx_status ON prescriptions(erx_status);
+    CREATE INDEX IF NOT EXISTS idx_prescriptions_ndc ON prescriptions(ndc_code);
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE NOTICE 'Skipping prescriptions indexes - insufficient privileges';
+  END;
+END $$;
+
+-- Create indexes on new tables (should succeed)
+CREATE INDEX IF NOT EXISTS idx_medications_id ON medications(id);
+CREATE INDEX IF NOT EXISTS idx_medications_ndc ON medications(ndc_code);
+CREATE INDEX IF NOT EXISTS idx_medications_drug_name ON medications(drug_name);
+CREATE INDEX IF NOT EXISTS idx_medications_generic_name ON medications(generic_name);
+CREATE INDEX IF NOT EXISTS idx_medications_drug_class ON medications(drug_class);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_id ON pharmacies(id);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_ncpdp ON pharmacies(ncpdp_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_city_state ON pharmacies(city, state);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_zip ON pharmacies(zip_code);
+CREATE INDEX IF NOT EXISTS idx_patient_pharmacies_patient ON patient_pharmacies(patient_id);
+CREATE INDEX IF NOT EXISTS idx_patient_pharmacies_pharmacy ON patient_pharmacies(pharmacy_id);
+CREATE INDEX IF NOT EXISTS idx_patient_allergies_patient ON patient_allergies(patient_id);
+CREATE INDEX IF NOT EXISTS idx_prescription_history_prescription ON prescription_history(prescription_id);
+CREATE INDEX IF NOT EXISTS idx_prescription_history_pharmacy ON prescription_history(pharmacy_id);
+CREATE INDEX IF NOT EXISTS idx_erx_queue_status ON erx_message_queue(message_status);
+CREATE INDEX IF NOT EXISTS idx_erx_queue_pharmacy ON erx_message_queue(pharmacy_id);
+CREATE INDEX IF NOT EXISTS idx_drug_interactions_drug1 ON drug_interactions(drug1_ndc);
+CREATE INDEX IF NOT EXISTS idx_drug_interactions_drug2 ON drug_interactions(drug2_ndc);
 
 -- Add comments for documentation
 COMMENT ON TABLE medications IS 'Drug formulary database with NDC codes and drug information';
