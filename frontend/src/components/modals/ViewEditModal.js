@@ -1049,6 +1049,7 @@ const ViewEditModal = ({
         <EPrescribeModal
           theme={theme}
           patient={editData}
+          provider={user}
           onClose={() => setShowEPrescribe(false)}
           api={api}
           addNotification={addNotification}
