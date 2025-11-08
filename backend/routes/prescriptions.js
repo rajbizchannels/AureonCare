@@ -11,26 +11,65 @@ const toCamelCase = (obj) => {
   return newObj;
 };
 
+// Helper function to check if ePrescribing schema is available
+let ePrescribingAvailable = null;
+const checkEPrescribingSchema = async (pool) => {
+  if (ePrescribingAvailable !== null) {
+    return ePrescribingAvailable;
+  }
+
+  try {
+    // Check if pharmacies table exists
+    const result = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'pharmacies'
+      );
+    `);
+    ePrescribingAvailable = result.rows[0].exists;
+    return ePrescribingAvailable;
+  } catch (error) {
+    console.error('Error checking ePrescribing schema:', error);
+    ePrescribingAvailable = false;
+    return false;
+  }
+};
+
 // Get all prescriptions
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { patient_id, provider_id, status, erx_status } = req.query;
+    const hasEPrescribing = await checkEPrescribingSchema(pool);
 
-    let query = `
-      SELECT p.*,
-             pat.first_name || ' ' || pat.last_name as patient_name,
-             prov.first_name || ' ' || prov.last_name as provider_name,
-             ph.pharmacy_name,
-             m.generic_name,
-             m.brand_name
-      FROM prescriptions p
-      LEFT JOIN patients pat ON p.patient_id = pat.id
-      LEFT JOIN providers prov ON p.provider_id = prov.id
-      LEFT JOIN pharmacies ph ON p.pharmacy_id = ph.id
-      LEFT JOIN medications m ON p.ndc_code = m.ndc_code
-      WHERE 1=1
-    `;
+    let query;
+    if (hasEPrescribing) {
+      query = `
+        SELECT p.*,
+               pat.first_name || ' ' || pat.last_name as patient_name,
+               prov.first_name || ' ' || prov.last_name as provider_name,
+               ph.pharmacy_name,
+               m.generic_name,
+               m.brand_name
+        FROM prescriptions p
+        LEFT JOIN patients pat ON p.patient_id = pat.id
+        LEFT JOIN providers prov ON p.provider_id = prov.id
+        LEFT JOIN pharmacies ph ON p.pharmacy_id = ph.id
+        LEFT JOIN medications m ON p.ndc_code = m.ndc_code
+        WHERE 1=1
+      `;
+    } else {
+      query = `
+        SELECT p.*,
+               pat.first_name || ' ' || pat.last_name as patient_name,
+               prov.first_name || ' ' || prov.last_name as provider_name
+        FROM prescriptions p
+        LEFT JOIN patients pat ON p.patient_id = pat.id
+        LEFT JOIN providers prov ON p.provider_id = prov.id
+        WHERE 1=1
+      `;
+    }
 
     const params = [];
     let paramCount = 1;
@@ -53,7 +92,7 @@ router.get('/', async (req, res) => {
       paramCount++;
     }
 
-    if (erx_status) {
+    if (hasEPrescribing && erx_status) {
       query += ` AND p.erx_status = $${paramCount}`;
       params.push(erx_status);
       paramCount++;
@@ -209,6 +248,15 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/send-erx', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    const hasEPrescribing = await checkEPrescribingSchema(pool);
+
+    if (!hasEPrescribing) {
+      return res.status(501).json({
+        error: 'ePrescribing functionality not available',
+        message: 'Please run migration 015 to enable ePrescribing features'
+      });
+    }
+
     const { pharmacyId, prescriberDeaNumber } = req.body;
 
     // Get prescription details
@@ -273,6 +321,15 @@ router.post('/:id/send-erx', async (req, res) => {
 router.post('/:id/cancel-erx', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    const hasEPrescribing = await checkEPrescribingSchema(pool);
+
+    if (!hasEPrescribing) {
+      return res.status(501).json({
+        error: 'ePrescribing functionality not available',
+        message: 'Please run migration 015 to enable ePrescribing features'
+      });
+    }
+
     const { reason, cancelledBy } = req.body;
 
     const result = await pool.query(`
@@ -309,6 +366,15 @@ router.post('/:id/cancel-erx', async (req, res) => {
 router.get('/:id/history', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    const hasEPrescribing = await checkEPrescribingSchema(pool);
+
+    if (!hasEPrescribing) {
+      return res.status(501).json({
+        error: 'ePrescribing functionality not available',
+        message: 'Please run migration 015 to enable ePrescribing features'
+      });
+    }
+
     const result = await pool.query(`
       SELECT
         ph.*,
@@ -332,6 +398,15 @@ router.get('/:id/history', async (req, res) => {
 router.post('/check-safety', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    const hasEPrescribing = await checkEPrescribingSchema(pool);
+
+    if (!hasEPrescribing) {
+      return res.status(501).json({
+        error: 'ePrescribing functionality not available',
+        message: 'Please run migration 015 to enable ePrescribing features'
+      });
+    }
+
     const { patientId, ndcCode, currentMedications } = req.body;
 
     const warnings = [];
@@ -393,23 +468,39 @@ router.post('/check-safety', async (req, res) => {
 router.get('/patient/:patientId/active', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query(`
-      SELECT p.*,
-             prov.first_name || ' ' || prov.last_name as provider_name,
-             ph.pharmacy_name,
-             m.generic_name,
-             m.brand_name,
-             m.drug_class
-      FROM prescriptions p
-      LEFT JOIN providers prov ON p.provider_id = prov.id
-      LEFT JOIN pharmacies ph ON p.pharmacy_id = ph.id
-      LEFT JOIN medications m ON p.ndc_code = m.ndc_code
-      WHERE p.patient_id = $1
-        AND p.status = 'Active'
-        AND p.erx_status NOT IN ('cancelled', 'rejected')
-      ORDER BY p.prescribed_date DESC
-    `, [req.params.patientId]);
+    const hasEPrescribing = await checkEPrescribingSchema(pool);
 
+    let query;
+    if (hasEPrescribing) {
+      query = `
+        SELECT p.*,
+               prov.first_name || ' ' || prov.last_name as provider_name,
+               ph.pharmacy_name,
+               m.generic_name,
+               m.brand_name,
+               m.drug_class
+        FROM prescriptions p
+        LEFT JOIN providers prov ON p.provider_id = prov.id
+        LEFT JOIN pharmacies ph ON p.pharmacy_id = ph.id
+        LEFT JOIN medications m ON p.ndc_code = m.ndc_code
+        WHERE p.patient_id = $1
+          AND p.status = 'Active'
+          AND (p.erx_status IS NULL OR p.erx_status NOT IN ('cancelled', 'rejected'))
+        ORDER BY p.prescribed_date DESC
+      `;
+    } else {
+      query = `
+        SELECT p.*,
+               prov.first_name || ' ' || prov.last_name as provider_name
+        FROM prescriptions p
+        LEFT JOIN providers prov ON p.provider_id = prov.id
+        WHERE p.patient_id = $1
+          AND p.status = 'Active'
+        ORDER BY p.prescribed_date DESC
+      `;
+    }
+
+    const result = await pool.query(query, [req.params.patientId]);
     res.json(result.rows.map(toCamelCase));
   } catch (error) {
     console.error('Error fetching active prescriptions:', error);
@@ -421,6 +512,15 @@ router.get('/patient/:patientId/active', async (req, res) => {
 router.post('/:id/refill', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    const hasEPrescribing = await checkEPrescribingSchema(pool);
+
+    if (!hasEPrescribing) {
+      return res.status(501).json({
+        error: 'ePrescribing functionality not available',
+        message: 'Please run migration 015 to enable ePrescribing features'
+      });
+    }
+
     const { requestedBy } = req.body;
 
     // Check if refills available
