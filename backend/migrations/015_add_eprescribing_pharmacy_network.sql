@@ -6,6 +6,16 @@
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing tables if they exist (to handle previous failed migrations)
+DROP TABLE IF EXISTS medication_alternatives CASCADE;
+DROP TABLE IF EXISTS erx_message_queue CASCADE;
+DROP TABLE IF EXISTS patient_allergies CASCADE;
+DROP TABLE IF EXISTS drug_interactions CASCADE;
+DROP TABLE IF EXISTS prescription_history CASCADE;
+DROP TABLE IF EXISTS patient_pharmacies CASCADE;
+DROP TABLE IF EXISTS pharmacies CASCADE;
+DROP TABLE IF EXISTS medications CASCADE;
+
 -- 1. Enhance prescriptions table with ePrescribing fields
 ALTER TABLE prescriptions
 ADD COLUMN IF NOT EXISTS ndc_code VARCHAR(20),                    -- National Drug Code
@@ -32,10 +42,10 @@ ADD COLUMN IF NOT EXISTS refills_remaining INTEGER DEFAULT 0,
 ADD COLUMN IF NOT EXISTS last_filled_date DATE,
 ADD COLUMN IF NOT EXISTS cancelled_reason TEXT,
 ADD COLUMN IF NOT EXISTS cancelled_date TIMESTAMP,
-ADD COLUMN IF NOT EXISTS cancelled_by INTEGER REFERENCES users(id);
+ADD COLUMN IF NOT EXISTS cancelled_by UUID REFERENCES users(id);
 
 -- 2. Create medication formulary/drug database table
-CREATE TABLE IF NOT EXISTS medications (
+CREATE TABLE medications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   ndc_code VARCHAR(20) UNIQUE NOT NULL,
   drug_name VARCHAR(255) NOT NULL,
@@ -65,7 +75,7 @@ CREATE TABLE IF NOT EXISTS medications (
 );
 
 -- 3. Create pharmacy network table
-CREATE TABLE IF NOT EXISTS pharmacies (
+CREATE TABLE pharmacies (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   ncpdp_id VARCHAR(20) UNIQUE,                   -- National Council for Prescription Drug Programs ID
   npi VARCHAR(20),                               -- National Provider Identifier
@@ -99,9 +109,9 @@ CREATE TABLE IF NOT EXISTS pharmacies (
 );
 
 -- 4. Create patient preferred pharmacies
-CREATE TABLE IF NOT EXISTS patient_pharmacies (
+CREATE TABLE patient_pharmacies (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
   pharmacy_id UUID REFERENCES pharmacies(id) ON DELETE CASCADE,
   is_preferred BOOLEAN DEFAULT FALSE,
   added_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -109,11 +119,11 @@ CREATE TABLE IF NOT EXISTS patient_pharmacies (
 );
 
 -- 5. Create prescription history/audit log
-CREATE TABLE IF NOT EXISTS prescription_history (
+CREATE TABLE prescription_history (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  prescription_id INTEGER REFERENCES prescriptions(id) ON DELETE CASCADE,
+  prescription_id UUID REFERENCES prescriptions(id) ON DELETE CASCADE,
   action VARCHAR(50) NOT NULL,                   -- created, sent, modified, dispensed, cancelled, refilled
-  action_by INTEGER REFERENCES users(id),
+  action_by UUID REFERENCES users(id),
   action_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   old_status VARCHAR(50),
   new_status VARCHAR(50),
@@ -127,7 +137,7 @@ CREATE TABLE IF NOT EXISTS prescription_history (
 );
 
 -- 6. Create drug interactions tracking
-CREATE TABLE IF NOT EXISTS drug_interactions (
+CREATE TABLE drug_interactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   drug1_ndc VARCHAR(20) NOT NULL,
   drug2_ndc VARCHAR(20) NOT NULL,
@@ -136,15 +146,15 @@ CREATE TABLE IF NOT EXISTS drug_interactions (
   description TEXT NOT NULL,
   clinical_effects TEXT,
   management_recommendations TEXT,
-  references TEXT,
+  reference_sources TEXT,                        -- Renamed from "references" (reserved keyword)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(drug1_ndc, drug2_ndc)
 );
 
 -- 7. Create patient allergies tracking (enhanced)
-CREATE TABLE IF NOT EXISTS patient_allergies (
+CREATE TABLE patient_allergies (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
   allergen_type VARCHAR(50) NOT NULL,            -- drug, food, environmental
   allergen_name VARCHAR(255) NOT NULL,
   ndc_code VARCHAR(20),                          -- If drug allergy
@@ -152,9 +162,9 @@ CREATE TABLE IF NOT EXISTS patient_allergies (
   severity VARCHAR(50),                          -- mild, moderate, severe, life-threatening
   onset_date DATE,
   reported_date DATE DEFAULT CURRENT_DATE,
-  reported_by INTEGER REFERENCES users(id),
+  reported_by UUID REFERENCES users(id),
   verified BOOLEAN DEFAULT FALSE,
-  verified_by INTEGER REFERENCES users(id),
+  verified_by UUID REFERENCES users(id),
   verified_date TIMESTAMP,
   notes TEXT,
   is_active BOOLEAN DEFAULT TRUE,
@@ -163,9 +173,9 @@ CREATE TABLE IF NOT EXISTS patient_allergies (
 );
 
 -- 8. Create ePrescription message queue (for async processing)
-CREATE TABLE IF NOT EXISTS erx_message_queue (
+CREATE TABLE erx_message_queue (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  prescription_id INTEGER REFERENCES prescriptions(id) ON DELETE CASCADE,
+  prescription_id UUID REFERENCES prescriptions(id) ON DELETE CASCADE,
   message_type VARCHAR(50) NOT NULL,             -- NewRx, RefillRequest, CancelRx, ChangeRequest
   message_direction VARCHAR(20) NOT NULL,        -- outbound, inbound
   pharmacy_id UUID REFERENCES pharmacies(id),
@@ -181,7 +191,7 @@ CREATE TABLE IF NOT EXISTS erx_message_queue (
 );
 
 -- 9. Create formulary alternatives (generic/brand equivalents)
-CREATE TABLE IF NOT EXISTS medication_alternatives (
+CREATE TABLE medication_alternatives (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   original_ndc VARCHAR(20) REFERENCES medications(ndc_code),
   alternative_ndc VARCHAR(20) REFERENCES medications(ndc_code),
@@ -192,27 +202,27 @@ CREATE TABLE IF NOT EXISTS medication_alternatives (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_prescriptions_pharmacy ON prescriptions(pharmacy_id);
-CREATE INDEX IF NOT EXISTS idx_prescriptions_erx_status ON prescriptions(erx_status);
-CREATE INDEX IF NOT EXISTS idx_prescriptions_ndc ON prescriptions(ndc_code);
-CREATE INDEX IF NOT EXISTS idx_medications_id ON medications(id);
-CREATE INDEX IF NOT EXISTS idx_medications_ndc ON medications(ndc_code);
-CREATE INDEX IF NOT EXISTS idx_medications_drug_name ON medications(drug_name);
-CREATE INDEX IF NOT EXISTS idx_medications_generic_name ON medications(generic_name);
-CREATE INDEX IF NOT EXISTS idx_medications_drug_class ON medications(drug_class);
-CREATE INDEX IF NOT EXISTS idx_pharmacies_id ON pharmacies(id);
-CREATE INDEX IF NOT EXISTS idx_pharmacies_ncpdp ON pharmacies(ncpdp_id);
-CREATE INDEX IF NOT EXISTS idx_pharmacies_city_state ON pharmacies(city, state);
-CREATE INDEX IF NOT EXISTS idx_pharmacies_zip ON pharmacies(zip_code);
-CREATE INDEX IF NOT EXISTS idx_patient_pharmacies_patient ON patient_pharmacies(patient_id);
-CREATE INDEX IF NOT EXISTS idx_patient_pharmacies_pharmacy ON patient_pharmacies(pharmacy_id);
-CREATE INDEX IF NOT EXISTS idx_patient_allergies_patient ON patient_allergies(patient_id);
-CREATE INDEX IF NOT EXISTS idx_prescription_history_prescription ON prescription_history(prescription_id);
-CREATE INDEX IF NOT EXISTS idx_prescription_history_pharmacy ON prescription_history(pharmacy_id);
-CREATE INDEX IF NOT EXISTS idx_erx_queue_status ON erx_message_queue(message_status);
-CREATE INDEX IF NOT EXISTS idx_erx_queue_pharmacy ON erx_message_queue(pharmacy_id);
-CREATE INDEX IF NOT EXISTS idx_drug_interactions_drug1 ON drug_interactions(drug1_ndc);
-CREATE INDEX IF NOT EXISTS idx_drug_interactions_drug2 ON drug_interactions(drug2_ndc);
+CREATE INDEX idx_prescriptions_pharmacy ON prescriptions(pharmacy_id);
+CREATE INDEX idx_prescriptions_erx_status ON prescriptions(erx_status);
+CREATE INDEX idx_prescriptions_ndc ON prescriptions(ndc_code);
+CREATE INDEX idx_medications_id ON medications(id);
+CREATE INDEX idx_medications_ndc ON medications(ndc_code);
+CREATE INDEX idx_medications_drug_name ON medications(drug_name);
+CREATE INDEX idx_medications_generic_name ON medications(generic_name);
+CREATE INDEX idx_medications_drug_class ON medications(drug_class);
+CREATE INDEX idx_pharmacies_id ON pharmacies(id);
+CREATE INDEX idx_pharmacies_ncpdp ON pharmacies(ncpdp_id);
+CREATE INDEX idx_pharmacies_city_state ON pharmacies(city, state);
+CREATE INDEX idx_pharmacies_zip ON pharmacies(zip_code);
+CREATE INDEX idx_patient_pharmacies_patient ON patient_pharmacies(patient_id);
+CREATE INDEX idx_patient_pharmacies_pharmacy ON patient_pharmacies(pharmacy_id);
+CREATE INDEX idx_patient_allergies_patient ON patient_allergies(patient_id);
+CREATE INDEX idx_prescription_history_prescription ON prescription_history(prescription_id);
+CREATE INDEX idx_prescription_history_pharmacy ON prescription_history(pharmacy_id);
+CREATE INDEX idx_erx_queue_status ON erx_message_queue(message_status);
+CREATE INDEX idx_erx_queue_pharmacy ON erx_message_queue(pharmacy_id);
+CREATE INDEX idx_drug_interactions_drug1 ON drug_interactions(drug1_ndc);
+CREATE INDEX idx_drug_interactions_drug2 ON drug_interactions(drug2_ndc);
 
 -- Add comments for documentation
 COMMENT ON TABLE medications IS 'Drug formulary database with NDC codes and drug information';
