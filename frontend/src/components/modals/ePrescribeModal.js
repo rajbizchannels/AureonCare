@@ -75,31 +75,43 @@ const EPrescribeModal = ({
 
   // Select medication and check safety
   const handleSelectMedication = async (medication) => {
+    console.log('[ePrescribe] Selected medication:', medication);
+    console.log('[ePrescribe] Patient:', patient);
+
     setSelectedMedication(medication);
     setLoading(true);
 
     try {
       // Check drug safety (allergies and interactions)
       // This feature requires ePrescribing schema (migration 015)
+      const ndcCode = medication.ndcCode || medication.ndc_code;
+      console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
+
       const response = await fetch('/api/prescriptions/check-safety', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           patientId: patient.id,
-          ndcCode: medication.ndcCode,
+          ndcCode: ndcCode,
           currentMedications: [] // TODO: Get patient's current medications
         })
       });
 
+      console.log('[ePrescribe] Safety check response status:', response.status);
+
       if (response.ok) {
         const safetyData = await response.json();
+        console.log('[ePrescribe] Safety data:', safetyData);
         setSafetyWarnings(safetyData.warnings || []);
       } else if (response.status === 501) {
         // ePrescribing not available - skip safety check
-        console.log('Safety check not available - ePrescribing schema not installed');
+        console.log('[ePrescribe] Safety check not available - ePrescribing schema not installed');
         setSafetyWarnings([]);
       } else {
-        throw new Error('Failed to check medication safety');
+        const errorText = await response.text();
+        console.error('[ePrescribe] Safety check error:', response.status, errorText);
+        // Don't throw - just skip safety check
+        setSafetyWarnings([]);
       }
 
       // Pre-fill common dosage if available
@@ -108,14 +120,21 @@ const EPrescribeModal = ({
           ...prev,
           dosage: medication.strength || medication.commonDosages[0]
         }));
+      } else if (medication.strength) {
+        setPrescriptionDetails(prev => ({
+          ...prev,
+          dosage: medication.strength
+        }));
       }
 
+      console.log('[ePrescribe] Advancing to step 2');
       setStep(2);
     } catch (error) {
-      console.error('Error checking medication safety:', error);
+      console.error('[ePrescribe] Error in handleSelectMedication:', error);
       // Still advance to step 2 even if safety check fails
       // Safety warnings are optional
       setSafetyWarnings([]);
+      console.log('[ePrescribe] Error occurred, but advancing to step 2 anyway');
       setStep(2);
     } finally {
       setLoading(false);
