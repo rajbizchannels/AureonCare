@@ -142,11 +142,14 @@ router.post('/', async (req, res) => {
     providerId,
     appointmentId,
     medicationName,
+    ndcCode,
     dosage,
     frequency,
     duration,
+    quantity,
     instructions,
     refills,
+    substitutionAllowed,
     status,
     prescribedDate
   } = req.body;
@@ -155,22 +158,25 @@ router.post('/', async (req, res) => {
     const pool = req.app.locals.pool;
     const result = await pool.query(
       `INSERT INTO prescriptions (
-        patient_id, provider_id, appointment_id, medication_name,
-        dosage, frequency, duration, instructions, refills,
-        status, prescribed_date
+        patient_id, provider_id, appointment_id, medication_name, ndc_code,
+        dosage, frequency, duration, quantity, instructions, refills,
+        substitution_allowed, status, prescribed_date
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *`,
       [
         patientId,
         providerId,
         appointmentId,
         medicationName,
+        ndcCode || null,
         dosage,
         frequency,
         duration,
+        quantity || 0,
         instructions,
         refills || 0,
+        substitutionAllowed !== undefined ? substitutionAllowed : true,
         status || 'Active',
         prescribedDate || new Date().toISOString().split('T')[0]
       ]
