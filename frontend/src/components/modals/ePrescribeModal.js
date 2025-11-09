@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send } from 'lucide-react';
 
 const EPrescribeModal = ({
@@ -42,8 +42,16 @@ const EPrescribeModal = ({
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
 
-  // Search medications
-  const handleSearchMedications = async () => {
+  // Auto-advance to step 2 when medication is selected
+  useEffect(() => {
+    if (selectedMedication && step === 1) {
+      console.log('[ePrescribe] selectedMedication changed, advancing to step 2');
+      setStep(2);
+    }
+  }, [selectedMedication, step]);
+
+  // Search medications - wrapped in useCallback to prevent unnecessary re-renders
+  const handleSearchMedications = useCallback(async () => {
     if (!searchQuery) return;
 
     setLoading(true);
@@ -71,35 +79,41 @@ const EPrescribeModal = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, addNotification]);
+
+  // Auto-search as user types (debounced)
+  useEffect(() => {
+    if (!searchQuery || searchQuery.length < 2) {
+      setMedications([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      handleSearchMedications();
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, handleSearchMedications]);
 
   // Select medication and check safety
   const handleSelectMedication = async (medication) => {
     console.log('[ePrescribe] Selected medication:', medication);
     console.log('[ePrescribe] Patient:', patient);
 
-    // Use a single batched state update to ensure all state changes happen together
-    // This prevents any potential race conditions or re-rendering issues
+    // Pre-fill dosage from medication
     const dosage = medication.commonDosages && medication.commonDosages.length > 0
       ? (medication.strength || medication.commonDosages[0])
       : (medication.strength || '');
 
-    // Update all state synchronously in the correct order
     setPrescriptionDetails(prev => ({
       ...prev,
       dosage: dosage
     }));
 
+    // Set selected medication - useEffect will handle step advancement
     setSelectedMedication(medication);
 
-    // Use setTimeout to ensure state updates complete before advancing
-    // This works around React 18's automatic batching which can cause timing issues
-    setTimeout(() => {
-      console.log('[ePrescribe] Advancing to step 2');
-      setStep(2);
-    }, 0);
-
-    // Now do safety check in background (non-blocking)
+    // Run safety check in background (non-blocking)
     setLoading(true);
     try {
       const ndcCode = medication.ndcCode || medication.ndc_code;
@@ -274,35 +288,46 @@ const EPrescribeModal = ({
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Search Medication
                 </label>
-                <div className="flex gap-2">
+                <div className="relative">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearchMedications()}
-                    placeholder="Enter medication name or NDC..."
-                    className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
+                    placeholder="Start typing medication name or NDC code..."
+                    className={`w-full px-4 py-3 pr-10 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
+                    autoFocus
                   />
-                  <button
-                    onClick={handleSearchMedications}
-                    disabled={loading}
-                    className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
-                  >
-                    <Search className="w-5 h-5" />
-                    Search
-                  </button>
+                  {loading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                    </div>
+                  )}
+                  {!loading && searchQuery && (
+                    <Search className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                  )}
                 </div>
+                <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  Results appear automatically as you type (minimum 2 characters)
+                </p>
               </div>
 
-              {loading && (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                  <p className={`mt-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Searching medications...</p>
+              {!loading && searchQuery && searchQuery.length >= 2 && medications.length === 0 && (
+                <div className={`text-center py-8 rounded-lg border-2 border-dashed ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                  <Pill className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+                  <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    No medications found matching "{searchQuery}"
+                  </p>
+                  <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    Try a different search term or NDC code
+                  </p>
                 </div>
               )}
 
-              {!loading && medications.length > 0 && (
+              {medications.length > 0 && (
                 <div className="space-y-2">
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Found {medications.length} medication{medications.length !== 1 ? 's' : ''} - Click to select:
+                  </p>
                   {medications.map((med) => (
                     <div
                       key={med.id}
