@@ -146,8 +146,11 @@ const api = {
   },
 
   // Notifications
-  getNotifications: async () => {
-    const response = await fetch(`${API_BASE_URL}/notifications`);
+  getNotifications: async (userId = null) => {
+    const url = userId
+      ? `${API_BASE_URL}/notifications?userId=${userId}`
+      : `${API_BASE_URL}/notifications`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch notifications');
     return response.json();
   },

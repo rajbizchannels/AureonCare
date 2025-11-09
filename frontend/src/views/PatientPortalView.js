@@ -44,6 +44,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         const stateZip = (addressParts[2] || '').split(' ');
         parsedUser.address_state = stateZip[0] || '';
         parsedUser.address_zip = stateZip[1] || '';
+        // Preserve the original address field
+        parsedUser.address = user.address;
       }
       setProfileData(parsedUser);
       fetchPatientData();
@@ -609,7 +611,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <div className="col-span-2">
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.address ||
+                {profileData.address ||
                  (profileData.address_street || profileData.address_city || profileData.address_state || profileData.address_zip
                    ? `${profileData.address_street || ''}${profileData.address_city ? ', ' + profileData.address_city : ''}${profileData.address_state ? ', ' + profileData.address_state : ''}${profileData.address_zip ? ' ' + profileData.address_zip : ''}`
                    : t.notProvided)

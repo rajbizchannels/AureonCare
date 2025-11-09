@@ -1267,6 +1267,15 @@ const ViewEditModal = ({
           onClose={() => setShowEPrescribe(false)}
           api={api}
           addNotification={addNotification}
+          onSuccess={async (prescription) => {
+            // Refresh prescriptions list after successful prescription creation
+            try {
+              const patientPrescriptions = await api.getPatientActivePrescriptions(editData.id);
+              setPrescriptions(patientPrescriptions);
+            } catch (error) {
+              console.error('Error refreshing prescriptions:', error);
+            }
+          }}
         />
       )}
     </div>
