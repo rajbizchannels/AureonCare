@@ -22,6 +22,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [pharmacies, setPharmacies] = useState([]);
   const [preferredPharmacies, setPreferredPharmacies] = useState([]);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
+  const [selectedPrescription, setSelectedPrescription] = useState(null);
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -117,8 +118,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
       console.log('Fetching patient data for ID:', patientId);
 
-      // Fetch appointments, medical records, and prescriptions for the patient
-      const [appts, records, presc] = await Promise.all([
+      // Fetch appointments, medical records, prescriptions, and full profile for the patient
+      const [appts, records, presc, profile] = await Promise.all([
         api.getAppointments().then(all => {
           console.log('All appointments:', all);
           console.log('Looking for appointments with patient_id:', patientId);
@@ -139,11 +140,28 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           return filtered;
         }),
         api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
-        api.getPatientActivePrescriptions(patientId).catch(() => [])
+        api.getPatientActivePrescriptions(patientId).catch(() => []),
+        api.getPatientProfile(patientId).catch(() => null)
       ]);
       setAppointments(appts);
       setMedicalRecords(records);
       setPrescriptions(presc);
+
+      // Update profileData with the full profile from database
+      if (profile) {
+        let updatedProfile = { ...profile };
+        // Parse address if it's a string
+        if (profile.address && typeof profile.address === 'string') {
+          const addressParts = profile.address.split(',').map(p => p.trim());
+          updatedProfile.address_street = addressParts[0] || '';
+          updatedProfile.address_city = addressParts[1] || '';
+          const stateZip = (addressParts[2] || '').split(' ');
+          updatedProfile.address_state = stateZip[0] || '';
+          updatedProfile.address_zip = stateZip[1] || '';
+        }
+        updatedProfile.address = profile.address || '';
+        setProfileData(updatedProfile);
+      }
     } catch (error) {
       console.error('Error fetching patient data:', error);
       addNotification('alert', 'Failed to load patient data');
@@ -761,7 +779,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           {prescriptions.map((rx) => (
             <div
               key={rx.id}
-              className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}
+              onClick={() => setSelectedPrescription(rx)}
+              className={`p-6 rounded-xl border cursor-pointer transition-all hover:shadow-lg ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700 hover:bg-slate-700/50' : 'bg-gray-100/50 border-gray-300 hover:bg-gray-200/50'}`}
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
@@ -1015,6 +1034,80 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       {currentView === 'prescriptions' && renderPrescriptions()}
       {currentView === 'records' && renderMedicalRecords()}
       {currentView === 'profile' && renderProfile()}
+
+      {/* Prescription Details Modal */}
+      {selectedPrescription && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedPrescription(null)}>
+          <div
+            className={`max-w-2xl w-full rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {selectedPrescription.medicationName || selectedPrescription.medication_name}
+                </h3>
+                <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${
+                  selectedPrescription.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                }`}>
+                  {selectedPrescription.status}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedPrescription(null)}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Dosage</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.dosage || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Frequency</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.frequency || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Duration</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.duration || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Quantity</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.quantity || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Refills</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.refills || selectedPrescription.refillsRemaining || 'N/A'}</p>
+                </div>
+                {(selectedPrescription.pharmacyName || selectedPrescription.pharmacy_name) && (
+                  <div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Pharmacy</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.pharmacyName || selectedPrescription.pharmacy_name}</p>
+                  </div>
+                )}
+              </div>
+
+              {selectedPrescription.instructions && (
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Instructions</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.instructions}</p>
+                </div>
+              )}
+
+              {selectedPrescription.prescribedDate && (
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Prescribed Date</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatDate(selectedPrescription.prescribedDate || selectedPrescription.prescribed_date)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </>
   );

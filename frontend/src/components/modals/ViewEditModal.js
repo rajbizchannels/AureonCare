@@ -29,6 +29,8 @@ const ViewEditModal = ({
   const [preferredPharmacies, setPreferredPharmacies] = useState([]);
   const [loadingPharmacies, setLoadingPharmacies] = useState(false);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
+  const [selectedPrescription, setSelectedPrescription] = useState(null);
+  const [editingPrescription, setEditingPrescription] = useState(null);
 
   // Fetch available roles for user editing (including system roles for assignment)
   useEffect(() => {
@@ -708,7 +710,8 @@ const ViewEditModal = ({
                       {prescriptions.map((rx) => (
                         <div
                           key={rx.id}
-                          className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}
+                          onClick={() => setSelectedPrescription(rx)}
+                          className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700 hover:bg-slate-700/50' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -1277,6 +1280,190 @@ const ViewEditModal = ({
             }
           }}
         />
+      )}
+
+      {/* Prescription Detail/Edit Modal */}
+      {selectedPrescription && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => { setSelectedPrescription(null); setEditingPrescription(null); }}>
+          <div
+            className={`max-w-2xl w-full rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {selectedPrescription.medicationName || selectedPrescription.medication || 'Unknown Medication'}
+                </h3>
+                <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${
+                  selectedPrescription.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                }`}>
+                  {selectedPrescription.status}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {!editingPrescription && (
+                  <button
+                    onClick={() => setEditingPrescription({...selectedPrescription})}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  onClick={() => { setSelectedPrescription(null); setEditingPrescription(null); }}
+                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {editingPrescription ? (
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await api.updatePrescription(editingPrescription.id, editingPrescription);
+                  addNotification('success', 'Prescription updated successfully');
+                  const updated = await api.getPatientActivePrescriptions(editData.id);
+                  setPrescriptions(updated);
+                  setSelectedPrescription(null);
+                  setEditingPrescription(null);
+                } catch (error) {
+                  addNotification('alert', 'Failed to update prescription');
+                }
+              }}>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Dosage</label>
+                      <input
+                        type="text"
+                        value={editingPrescription.dosage || ''}
+                        onChange={(e) => setEditingPrescription({...editingPrescription, dosage: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Frequency</label>
+                      <input
+                        type="text"
+                        value={editingPrescription.frequency || ''}
+                        onChange={(e) => setEditingPrescription({...editingPrescription, frequency: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Duration</label>
+                      <input
+                        type="text"
+                        value={editingPrescription.duration || ''}
+                        onChange={(e) => setEditingPrescription({...editingPrescription, duration: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Quantity</label>
+                      <input
+                        type="number"
+                        value={editingPrescription.quantity || ''}
+                        onChange={(e) => setEditingPrescription({...editingPrescription, quantity: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Refills</label>
+                      <input
+                        type="number"
+                        value={editingPrescription.refills || editingPrescription.refillsRemaining || ''}
+                        onChange={(e) => setEditingPrescription({...editingPrescription, refills: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
+                      <select
+                        value={editingPrescription.status || 'Active'}
+                        onChange={(e) => setEditingPrescription({...editingPrescription, status: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Instructions</label>
+                    <textarea
+                      value={editingPrescription.instructions || ''}
+                      onChange={(e) => setEditingPrescription({...editingPrescription, instructions: e.target.value})}
+                      rows="3"
+                      className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Save Changes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingPrescription(null)}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Dosage</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.dosage || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Frequency</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.frequency || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Duration</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.duration || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Quantity</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.quantity || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Refills</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.refills || selectedPrescription.refillsRemaining || 'N/A'}</p>
+                  </div>
+                  {selectedPrescription.pharmacyName && (
+                    <div>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Pharmacy</p>
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.pharmacyName}</p>
+                    </div>
+                  )}
+                </div>
+                {selectedPrescription.instructions && (
+                  <div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Instructions</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.instructions}</p>
+                  </div>
+                )}
+                {selectedPrescription.prescribedDate && (
+                  <div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Prescribed Date</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatDate(selectedPrescription.prescribedDate)}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
