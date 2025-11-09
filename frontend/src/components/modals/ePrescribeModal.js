@@ -30,6 +30,23 @@ const EPrescribeModal = ({
     substitutionAllowed: true
   });
 
+  // Validate required props on mount
+  useEffect(() => {
+    console.log('[ePrescribe] Modal opened with:', { patient, provider, api });
+    if (!patient || !patient.id) {
+      console.error('[ePrescribe] Patient data is missing or invalid');
+      addNotification('alert', 'Cannot open ePrescribe: Patient information is missing');
+      onClose();
+      return;
+    }
+    if (!provider || !provider.id) {
+      console.error('[ePrescribe] Provider data is missing or invalid');
+      addNotification('alert', 'Cannot open ePrescribe: Provider information is missing');
+      onClose();
+      return;
+    }
+  }, []);
+
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e) => {
@@ -65,10 +82,16 @@ const EPrescribeModal = ({
       }
 
       const data = await response.json();
+      console.log('[ePrescribe] Medications found:', data);
       setMedications(data);
+
+      if (data && data.length > 0) {
+        console.log('[ePrescribe] First medication structure:', data[0]);
+      }
     } catch (error) {
-      console.error('Error searching medications:', error);
+      console.error('[ePrescribe] Error searching medications:', error);
       addNotification('alert', 'Failed to search medications. Please try again.');
+      setMedications([]);
     } finally {
       setLoading(false);
     }
@@ -196,6 +219,13 @@ const EPrescribeModal = ({
 
   // Submit prescription
   const handleSubmitPrescription = async () => {
+    console.log('[ePrescribe] Submitting prescription...');
+
+    if (!selectedMedication) {
+      addNotification('alert', 'No medication selected');
+      return;
+    }
+
     setLoading(true);
     try {
       // Create prescription
@@ -203,17 +233,19 @@ const EPrescribeModal = ({
         patientId: patient.id,
         providerId: provider.id,
         medicationName: selectedMedication.drugName,
-        ndcCode: selectedMedication.ndcCode,
+        ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code,
         dosage: prescriptionDetails.dosage,
         frequency: prescriptionDetails.frequency,
         duration: prescriptionDetails.duration,
-        quantity: parseInt(prescriptionDetails.quantity),
-        refills: parseInt(prescriptionDetails.refills),
+        quantity: parseInt(prescriptionDetails.quantity) || 0,
+        refills: parseInt(prescriptionDetails.refills) || 0,
         instructions: prescriptionDetails.instructions,
         substitutionAllowed: prescriptionDetails.substitutionAllowed,
         status: 'Active',
         prescribedDate: new Date().toISOString().split('T')[0]
       };
+
+      console.log('[ePrescribe] Prescription payload:', prescriptionPayload);
 
       const createResponse = await fetch('/api/prescriptions', {
         method: 'POST',
@@ -222,41 +254,48 @@ const EPrescribeModal = ({
       });
 
       if (!createResponse.ok) {
-        throw new Error('Failed to create prescription');
+        const errorData = await createResponse.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Failed to create prescription');
       }
 
       const prescription = await createResponse.json();
+      console.log('[ePrescribe] Prescription created:', prescription);
 
       // Send electronically to pharmacy (if ePrescribing is available)
       if (selectedPharmacy) {
+        console.log('[ePrescribe] Sending to pharmacy:', selectedPharmacy);
         const sendResponse = await fetch(`/api/prescriptions/${prescription.id}/send-erx`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             pharmacyId: selectedPharmacy.id,
-            prescriberDeaNumber: provider?.deaNumber || ''
+            prescriberDeaNumber: provider?.deaNumber || provider?.dea_number || ''
           })
         });
 
         if (sendResponse.ok) {
+          console.log('[ePrescribe] Successfully sent to pharmacy');
           addNotification('success', 'Prescription sent electronically to pharmacy');
         } else if (sendResponse.status === 501) {
           // ePrescribing not available - prescription still created
+          console.log('[ePrescribe] Electronic sending not available');
           addNotification('alert', 'Prescription created but electronic sending is not available. Migration 015 required.');
         } else {
           // Other error - still notify success for prescription creation
-          console.error('Failed to send eRx:', sendResponse.status);
+          const errorText = await sendResponse.text();
+          console.error('[ePrescribe] Failed to send eRx:', sendResponse.status, errorText);
           addNotification('alert', 'Prescription created but failed to send electronically');
         }
       } else {
+        console.log('[ePrescribe] No pharmacy selected, prescription created only');
         addNotification('success', 'Prescription created successfully');
       }
 
       if (onSuccess) onSuccess(prescription);
       onClose();
     } catch (error) {
-      console.error('Error submitting prescription:', error);
-      addNotification('alert', 'Failed to submit prescription');
+      console.error('[ePrescribe] Error submitting prescription:', error);
+      addNotification('alert', `Failed to submit prescription: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -268,7 +307,7 @@ const EPrescribeModal = ({
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <div>
             <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              ePrescribe for {patient.firstName} {patient.lastName}
+              ePrescribe for {patient.firstName || patient.first_name || 'Patient'} {patient.lastName || patient.last_name || ''}
             </h2>
             <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
               Step {step} of 4
@@ -519,7 +558,11 @@ const EPrescribeModal = ({
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => {
+                    setSelectedMedication(null);
+                    setSafetyWarnings([]);
+                    setStep(1);
+                  }}
                   className={`px-6 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
                 >
                   Back
@@ -530,7 +573,7 @@ const EPrescribeModal = ({
                     setStep(3);
                   }}
                   disabled={!prescriptionDetails.dosage || !prescriptionDetails.frequency || !prescriptionDetails.duration || !prescriptionDetails.quantity}
-                  className="flex-1 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50"
+                  className="flex-1 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Continue to Pharmacy Selection
                 </button>
@@ -626,7 +669,7 @@ const EPrescribeModal = ({
           )}
 
           {/* Step 4: Review and Send */}
-          {step === 4 && (
+          {step === 4 && selectedMedication && (
             <div className="space-y-6">
               <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Review Prescription
@@ -639,7 +682,7 @@ const EPrescribeModal = ({
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Medication:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{selectedMedication.drugName}</span>
+                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{selectedMedication?.drugName || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Dosage:</span>
