@@ -170,7 +170,18 @@ const ViewEditModal = ({
           apt.id === editData.id ? updated : apt
         ));
       } else if (type === 'patient') {
-        const updated = await api.updatePatient(editData.id, editData);
+        // Prepare patient data
+        const patientData = { ...editData };
+
+        // TEMPORARY FIX: Remove address field to avoid JSON parsing error
+        // TODO: After running migration 016_fix_patients_address_column.sql,
+        // the address column will be TEXT and this workaround can be removed
+        if (patientData.address) {
+          delete patientData.address;
+          console.warn('[ViewEditModal] Address field removed from update due to JSONB type mismatch. Run migration 016 to fix.');
+        }
+
+        const updated = await api.updatePatient(editData.id, patientData);
         setPatients(prev => prev.map(patient =>
           patient.id === editData.id ? {...updated, name: updated.name || `${updated.first_name} ${updated.last_name}`} : patient
         ));
