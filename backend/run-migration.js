@@ -46,8 +46,8 @@ async function main() {
     await pool.query('SELECT NOW()');
     console.log('✅ Database connection successful\n');
 
-    // Run the prescriptions/diagnosis migration
-    const success = await runMigration('005_create_prescriptions_diagnosis_tables.sql');
+    // Run the address column fix migration
+    const success = await runMigration('016_fix_patients_address_column.sql');
 
     if (success) {
       console.log('\n========================================');
