@@ -17,6 +17,7 @@ const EPrescribeModal = ({
   const [pharmacies, setPharmacies] = useState([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [safetyCheckLoading, setSafetyCheckLoading] = useState(false);
   const [safetyWarnings, setSafetyWarnings] = useState([]);
 
   const [prescriptionDetails, setPrescriptionDetails] = useState({
@@ -109,41 +110,42 @@ const EPrescribeModal = ({
     setStep(2);
 
     // Run safety check in background (async, non-blocking)
+    // Use separate loading state to avoid flickering the entire modal
     (async () => {
-      setLoading(true);
-    try {
-      const ndcCode = medication.ndcCode || medication.ndc_code;
-      console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
+      setSafetyCheckLoading(true);
+      try {
+        const ndcCode = medication.ndcCode || medication.ndc_code;
+        console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
 
-      const response = await fetch('/api/prescriptions/check-safety', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          patientId: patient.id,
-          ndcCode: ndcCode,
-          currentMedications: [] // TODO: Get patient's current medications
-        })
-      });
+        const response = await fetch('/api/prescriptions/check-safety', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patientId: patient.id,
+            ndcCode: ndcCode,
+            currentMedications: [] // TODO: Get patient's current medications
+          })
+        });
 
-      console.log('[ePrescribe] Safety check response status:', response.status);
+        console.log('[ePrescribe] Safety check response status:', response.status);
 
-      if (response.ok) {
-        const safetyData = await response.json();
-        console.log('[ePrescribe] Safety data:', safetyData);
-        setSafetyWarnings(safetyData.warnings || []);
-      } else if (response.status === 501) {
-        console.log('[ePrescribe] Safety check not available - ePrescribing schema not installed');
-        setSafetyWarnings([]);
-      } else {
-        const errorText = await response.text();
-        console.error('[ePrescribe] Safety check error:', response.status, errorText);
-        setSafetyWarnings([]);
-      }
+        if (response.ok) {
+          const safetyData = await response.json();
+          console.log('[ePrescribe] Safety data:', safetyData);
+          setSafetyWarnings(safetyData.warnings || []);
+        } else if (response.status === 501) {
+          console.log('[ePrescribe] Safety check not available - ePrescribing schema not installed');
+          setSafetyWarnings([]);
+        } else {
+          const errorText = await response.text();
+          console.error('[ePrescribe] Safety check error:', response.status, errorText);
+          setSafetyWarnings([]);
+        }
       } catch (error) {
         console.error('[ePrescribe] Error in safety check:', error);
         setSafetyWarnings([]);
       } finally {
-        setLoading(false);
+        setSafetyCheckLoading(false);
       }
     })(); // End of async IIFE
   };
@@ -372,7 +374,7 @@ const EPrescribeModal = ({
           {step === 2 && selectedMedication && (
             <div className="space-y-6">
               {/* Loading indicator for safety check */}
-              {loading && safetyWarnings.length === 0 && (
+              {safetyCheckLoading && safetyWarnings.length === 0 && (
                 <div className={`p-3 rounded-lg border ${theme === 'dark' ? 'border-blue-700 bg-blue-500/10' : 'border-blue-300 bg-blue-50'}`}>
                   <div className="flex items-center gap-3">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
