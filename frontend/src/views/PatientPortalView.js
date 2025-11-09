@@ -611,11 +611,20 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <div className="col-span-2">
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {profileData.address ||
-                 (profileData.address_street || profileData.address_city || profileData.address_state || profileData.address_zip
-                   ? `${profileData.address_street || ''}${profileData.address_city ? ', ' + profileData.address_city : ''}${profileData.address_state ? ', ' + profileData.address_state : ''}${profileData.address_zip ? ' ' + profileData.address_zip : ''}`
-                   : t.notProvided)
-                }
+                {(() => {
+                  // If there's a full address string, use it
+                  if (profileData.address) {
+                    return profileData.address;
+                  }
+                  // Otherwise, build from components
+                  const parts = [
+                    profileData.address_street,
+                    profileData.address_city,
+                    [profileData.address_state, profileData.address_zip].filter(Boolean).join(' ')
+                  ].filter(part => part && part.trim());
+
+                  return parts.length > 0 ? parts.join(', ') : t.notProvided;
+                })()}
               </p>
             </div>
             <div>
@@ -757,7 +766,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {rx.medicationName}
+                    {rx.medicationName || rx.medication_name}
                   </h3>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Dosage: {rx.dosage}
@@ -770,14 +779,22 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       Duration: {rx.duration}
                     </p>
                   )}
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Quantity: {rx.quantity || 'N/A'}
+                  </p>
                   {rx.instructions && (
                     <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       Instructions: {rx.instructions}
                     </p>
                   )}
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Refills: {rx.refills}
+                    Refills: {rx.refills || rx.refillsRemaining || 'N/A'}
                   </p>
+                  {(rx.pharmacyName || rx.pharmacy_name) && (
+                    <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Pharmacy: {rx.pharmacyName || rx.pharmacy_name}
+                    </p>
+                  )}
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   rx.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
