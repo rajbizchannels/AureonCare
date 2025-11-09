@@ -640,10 +640,12 @@ const api = {
   // Pharmacies
   searchPharmacies: async (zip, city, state, name, limit) => {
     const params = new URLSearchParams();
-    if (zip) params.append('zip', zip);
+    // Backend expects zip_code, not zip
+    if (zip) params.append('zip_code', zip);
     if (city) params.append('city', city);
     if (state) params.append('state', state);
-    if (name) params.append('name', name);
+    // Backend expects pharmacy_name, not name
+    if (name) params.append('pharmacy_name', name);
     if (limit) params.append('limit', limit);
     const response = await fetch(`${API_BASE_URL}/pharmacies/search?${params}`);
     if (!response.ok) throw new Error('Failed to search pharmacies');

@@ -166,11 +166,16 @@ const EPrescribeModal = ({
       console.log('[ePrescribe] Preferred pharmacies:', data);
 
       // If no preferred pharmacies, get nearby pharmacies
+      // Check all possible ZIP code field names (camelCase and snake_case)
       const zipCode = patient.zipCode || patient.zip_code || patient.zip;
+
       if ((!data || data.length === 0) && zipCode) {
         console.log('[ePrescribe] No preferred pharmacies, searching by ZIP:', zipCode);
         data = await api.searchPharmacies(zipCode, null, null, null, 10);
         console.log('[ePrescribe] Nearby pharmacies:', data);
+      } else if (!data || data.length === 0) {
+        console.warn('[ePrescribe] No pharmacies found and no ZIP code available for patient');
+        console.log('[ePrescribe] Patient data:', { zipCode: patient.zipCode, zip_code: patient.zip_code, zip: patient.zip });
       }
 
       setPharmacies(data || []);
