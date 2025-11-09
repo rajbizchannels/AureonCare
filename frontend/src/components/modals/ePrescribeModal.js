@@ -42,14 +42,6 @@ const EPrescribeModal = ({
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
 
-  // Auto-advance to step 2 when medication is selected
-  useEffect(() => {
-    if (selectedMedication && step === 1) {
-      console.log('[ePrescribe] selectedMedication changed, advancing to step 2');
-      setStep(2);
-    }
-  }, [selectedMedication, step]);
-
   // Search medications - wrapped in useCallback to prevent unnecessary re-renders
   const handleSearchMedications = useCallback(async () => {
     if (!searchQuery) return;
@@ -96,7 +88,7 @@ const EPrescribeModal = ({
   }, [searchQuery, handleSearchMedications]);
 
   // Select medication and check safety
-  const handleSelectMedication = async (medication) => {
+  const handleSelectMedication = (medication) => {
     console.log('[ePrescribe] Selected medication:', medication);
     console.log('[ePrescribe] Patient:', patient);
 
@@ -105,16 +97,20 @@ const EPrescribeModal = ({
       ? (medication.strength || medication.commonDosages[0])
       : (medication.strength || '');
 
+    // Update all states synchronously first
     setPrescriptionDetails(prev => ({
       ...prev,
       dosage: dosage
     }));
-
-    // Set selected medication - useEffect will handle step advancement
     setSelectedMedication(medication);
 
-    // Run safety check in background (non-blocking)
-    setLoading(true);
+    // Advance to step 2 immediately
+    console.log('[ePrescribe] Advancing to step 2');
+    setStep(2);
+
+    // Run safety check in background (async, non-blocking)
+    (async () => {
+      setLoading(true);
     try {
       const ndcCode = medication.ndcCode || medication.ndc_code;
       console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
@@ -143,12 +139,13 @@ const EPrescribeModal = ({
         console.error('[ePrescribe] Safety check error:', response.status, errorText);
         setSafetyWarnings([]);
       }
-    } catch (error) {
-      console.error('[ePrescribe] Error in safety check:', error);
-      setSafetyWarnings([]);
-    } finally {
-      setLoading(false);
-    }
+      } catch (error) {
+        console.error('[ePrescribe] Error in safety check:', error);
+        setSafetyWarnings([]);
+      } finally {
+        setLoading(false);
+      }
+    })(); // End of async IIFE
   };
 
   // Load patient's preferred pharmacies
