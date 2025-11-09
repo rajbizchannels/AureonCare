@@ -57,7 +57,7 @@ const AppProvider = ({ children }) => {
         api.getPatients(),
         api.getClaims(),
         api.getPayments().catch(() => []), // Get payments, fallback to empty array if fails
-        api.getNotifications(),
+        api.getNotifications(user?.id), // Filter by user_id if available
         api.getTasks(),
         api.getUsers().catch(() => []) // Get all users, fallback to empty array if fails
       ];

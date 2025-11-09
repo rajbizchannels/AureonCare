@@ -1,15 +1,24 @@
 const express = require('express');
 const router = express.Router();
 
-// Get all notifications
+// Get all notifications (optionally filtered by user_id)
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const result = await pool.query(`
-      SELECT * FROM notifications 
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
+    const { userId } = req.query;
+
+    let query = 'SELECT * FROM notifications';
+    const params = [];
+
+    // Filter by user_id if provided
+    if (userId) {
+      query += ' WHERE user_id = $1';
+      params.push(userId);
+    }
+
+    query += ' ORDER BY created_at DESC LIMIT 50';
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching notifications:', error);
