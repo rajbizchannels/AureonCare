@@ -44,9 +44,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         const stateZip = (addressParts[2] || '').split(' ');
         parsedUser.address_state = stateZip[0] || '';
         parsedUser.address_zip = stateZip[1] || '';
-        // Preserve the original address field
-        parsedUser.address = user.address;
       }
+      // Always preserve the original address field (even if null/empty)
+      parsedUser.address = user.address || '';
       setProfileData(parsedUser);
       fetchPatientData();
       fetchProviders();
@@ -139,7 +139,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           return filtered;
         }),
         api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
-        fetch(`/api/prescriptions?patient_id=${patientId}`).then(r => r.json()).catch(() => [])
+        api.getPatientActivePrescriptions(patientId).catch(() => [])
       ]);
       setAppointments(appts);
       setMedicalRecords(records);

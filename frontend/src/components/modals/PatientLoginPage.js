@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Heart, Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
-import { facebookOAuthConfig } from '../../config/oauthConfig';
 
 const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
   const [email, setEmail] = useState('');
@@ -109,77 +108,6 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
     }
   };
 
-  // Facebook OAuth Login
-  const handleFacebookLogin = async () => {
-    try {
-      // Check if FB SDK is loaded
-      if (typeof window.FB === 'undefined') {
-        setLoginError('Facebook SDK not loaded. Please refresh the page.');
-        return;
-      }
-
-      // Login with Facebook
-      window.FB.login((response) => {
-        if (response.authResponse) {
-          // Get user info
-          window.FB.api('/me', { fields: 'id,name,email,picture' }, async (userInfo) => {
-            try {
-              // Login with our backend using patient portal login
-              const apiResponse = await api.patientPortalLogin(
-                null, // email
-                null, // password
-                'facebook', // provider
-                userInfo.id, // providerId
-                response.authResponse.accessToken // accessToken
-              );
-
-              // Patient portal login returns { patient, sessionToken, expiresAt }
-              setUser(apiResponse.patient);
-              setIsAuthenticated(true);
-
-              // Route to patient portal
-              routePatient();
-
-              await addNotification('success', 'Welcome to your patient portal');
-            } catch (error) {
-              setLoginError(error.message || 'Facebook login failed. Please ensure your account is linked to a patient record.');
-              console.error('Facebook login error:', error);
-            }
-          });
-        } else {
-          setLoginError('Facebook login cancelled');
-        }
-      }, { scope: 'public_profile,email' });
-    } catch (error) {
-      setLoginError(error.message || 'Facebook login failed');
-      console.error('Facebook login error:', error);
-    }
-  };
-
-  // Load Facebook SDK on component mount
-  React.useEffect(() => {
-    // Load Facebook SDK
-    if (typeof window.FB === 'undefined') {
-      window.fbAsyncInit = function() {
-        window.FB.init({
-          appId: facebookOAuthConfig.appId,
-          cookie: true,
-          xfbml: true,
-          version: 'v18.0'
-        });
-      };
-
-      // Load the SDK asynchronously
-      (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.src = "https://connect.facebook.net/en_US/sdk.js";
-        fjs.parentNode.insertBefore(js, fjs);
-      }(document, 'script', 'facebook-jssdk'));
-    }
-  }, []);
-
   return (
     <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-gradient-to-br from-blue-950 via-indigo-900 to-blue-950' : 'bg-gradient-to-br from-blue-100 via-white to-blue-100'}`}>
       <div className={`max-w-md w-full mx-4 rounded-xl border p-8 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
@@ -268,7 +196,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="mt-6 grid grid-cols-2 gap-3">
             <button
               onClick={handleGoogleLogin}
               className={`flex items-center justify-center px-4 py-3 border rounded-lg transition-colors ${theme === 'dark' ? 'border-slate-700 hover:bg-slate-800 text-slate-300' : 'border-gray-300 hover:bg-gray-50 text-gray-700'}`}
@@ -291,15 +219,6 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
                 <path fill="#00a4ef" d="M12 0h11v11H12z"/>
                 <path fill="#7fba00" d="M0 12h11v11H0z"/>
                 <path fill="#ffb900" d="M12 12h11v11H12z"/>
-              </svg>
-            </button>
-            <button
-              onClick={handleFacebookLogin}
-              className={`flex items-center justify-center px-4 py-3 border rounded-lg transition-colors ${theme === 'dark' ? 'border-slate-700 hover:bg-slate-800 text-slate-300' : 'border-gray-300 hover:bg-gray-50 text-gray-700'}`}
-              title="Sign in with Facebook"
-            >
-              <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
               </svg>
             </button>
           </div>
