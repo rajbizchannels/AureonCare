@@ -64,24 +64,12 @@ const EPrescribeModal = ({
   const handleSearchMedications = useCallback(async () => {
     if (!searchQuery) return;
 
+    console.log('[ePrescribe] Searching for medications:', searchQuery);
     setLoading(true);
     try {
-      const response = await fetch(`/api/medications/search?query=${encodeURIComponent(searchQuery)}&limit=20`);
+      // Use the api service instead of direct fetch
+      const data = await api.searchMedications(searchQuery, null, null, 20);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-
-        if (response.status === 501 || response.status === 500) {
-          // ePrescribing not available
-          addNotification('alert', 'ePrescribing functionality requires migration 015 to be run. Please contact your system administrator.');
-          setMedications([]);
-          return;
-        }
-
-        throw new Error(errorData.error || 'Failed to search medications');
-      }
-
-      const data = await response.json();
       console.log('[ePrescribe] Medications found:', data);
       setMedications(data);
 
@@ -90,12 +78,19 @@ const EPrescribeModal = ({
       }
     } catch (error) {
       console.error('[ePrescribe] Error searching medications:', error);
-      addNotification('alert', 'Failed to search medications. Please try again.');
+
+      // Check if it's a "not available" error
+      if (error.message && error.message.includes('501')) {
+        addNotification('alert', 'ePrescribing functionality requires migration 015 to be run. Please contact your system administrator.');
+      } else {
+        addNotification('alert', `Failed to search medications: ${error.message}`);
+      }
+
       setMedications([]);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, addNotification]);
+  }, [searchQuery, api, addNotification]);
 
   // Auto-search as user types (debounced)
   useEffect(() => {
@@ -140,32 +135,19 @@ const EPrescribeModal = ({
         const ndcCode = medication.ndcCode || medication.ndc_code;
         console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
 
-        const response = await fetch('/api/prescriptions/check-safety', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            patientId: patient.id,
-            ndcCode: ndcCode,
-            currentMedications: [] // TODO: Get patient's current medications
-          })
-        });
-
-        console.log('[ePrescribe] Safety check response status:', response.status);
-
-        if (response.ok) {
-          const safetyData = await response.json();
-          console.log('[ePrescribe] Safety data:', safetyData);
-          setSafetyWarnings(safetyData.warnings || []);
-        } else if (response.status === 501) {
-          console.log('[ePrescribe] Safety check not available - ePrescribing schema not installed');
-          setSafetyWarnings([]);
-        } else {
-          const errorText = await response.text();
-          console.error('[ePrescribe] Safety check error:', response.status, errorText);
-          setSafetyWarnings([]);
-        }
+        // Use api service for safety check
+        const safetyData = await api.checkPrescriptionSafety(patient.id, ndcCode);
+        console.log('[ePrescribe] Safety data:', safetyData);
+        setSafetyWarnings(safetyData.warnings || []);
       } catch (error) {
         console.error('[ePrescribe] Error in safety check:', error);
+
+        // Check if it's a "not available" error
+        if (error.message && error.message.includes('501')) {
+          console.log('[ePrescribe] Safety check not available - ePrescribing schema not installed');
+        }
+
+        // Don't show error notification for safety check failures - just log and continue
         setSafetyWarnings([]);
       } finally {
         setSafetyCheckLoading(false);
@@ -175,42 +157,40 @@ const EPrescribeModal = ({
 
   // Load patient's preferred pharmacies
   const loadPharmacies = async () => {
+    console.log('[ePrescribe] Loading pharmacies for patient:', patient.id);
     setLoading(true);
     try {
-      // First try to get patient's preferred pharmacies
-      let response = await fetch(`/api/pharmacies/patient/${patient.id}/preferred`);
+      // First try to get patient's preferred pharmacies using api service
+      let data = await api.getPatientPreferredPharmacies(patient.id);
 
-      if (!response.ok) {
-        if (response.status === 501 || response.status === 500) {
-          addNotification('alert', 'Pharmacy network requires migration 015. Please contact your administrator.');
-          setPharmacies([]);
-          setLoading(false);
-          return;
-        }
-        throw new Error('Failed to load preferred pharmacies');
-      }
-
-      let data = await response.json();
+      console.log('[ePrescribe] Preferred pharmacies:', data);
 
       // If no preferred pharmacies, get nearby pharmacies
       const zipCode = patient.zipCode || patient.zip_code || patient.zip;
-      if (data.length === 0 && zipCode) {
-        response = await fetch(`/api/pharmacies/search?zip=${zipCode}&limit=10`);
-        if (response.ok) {
-          data = await response.json();
-        }
+      if ((!data || data.length === 0) && zipCode) {
+        console.log('[ePrescribe] No preferred pharmacies, searching by ZIP:', zipCode);
+        data = await api.searchPharmacies(zipCode, null, null, null, 10);
+        console.log('[ePrescribe] Nearby pharmacies:', data);
       }
 
-      setPharmacies(data);
+      setPharmacies(data || []);
 
       // Auto-select preferred pharmacy if exists
-      const preferred = data.find(p => p.isPreferred);
+      const preferred = data?.find(p => p.isPreferred || p.is_preferred);
       if (preferred) {
+        console.log('[ePrescribe] Auto-selecting preferred pharmacy:', preferred);
         setSelectedPharmacy(preferred);
       }
     } catch (error) {
-      console.error('Error loading pharmacies:', error);
-      addNotification('alert', 'Failed to load pharmacies');
+      console.error('[ePrescribe] Error loading pharmacies:', error);
+
+      // Check if it's a "not available" error
+      if (error.message && (error.message.includes('501') || error.message.includes('migration 015'))) {
+        addNotification('alert', 'Pharmacy network requires migration 015. Please contact your administrator.');
+      } else {
+        addNotification('alert', `Failed to load pharmacies: ${error.message}`);
+      }
+
       setPharmacies([]);
     } finally {
       setLoading(false);
@@ -228,11 +208,11 @@ const EPrescribeModal = ({
 
     setLoading(true);
     try {
-      // Create prescription
+      // Create prescription using api service
       const prescriptionPayload = {
         patientId: patient.id,
         providerId: provider.id,
-        medicationName: selectedMedication.drugName,
+        medicationName: selectedMedication.drugName || selectedMedication.drug_name,
         ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code,
         dosage: prescriptionDetails.dosage,
         frequency: prescriptionDetails.frequency,
@@ -245,46 +225,33 @@ const EPrescribeModal = ({
         prescribedDate: new Date().toISOString().split('T')[0]
       };
 
-      console.log('[ePrescribe] Prescription payload:', prescriptionPayload);
-
-      const createResponse = await fetch('/api/prescriptions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prescriptionPayload)
-      });
-
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || 'Failed to create prescription');
+      // Add pharmacy info if selected
+      if (selectedPharmacy) {
+        prescriptionPayload.pharmacyId = selectedPharmacy.id;
+        prescriptionPayload.prescriberDeaNumber = provider?.deaNumber || provider?.dea_number || '';
       }
 
-      const prescription = await createResponse.json();
+      console.log('[ePrescribe] Prescription payload:', prescriptionPayload);
+
+      const prescription = await api.createPrescription(prescriptionPayload);
       console.log('[ePrescribe] Prescription created:', prescription);
 
-      // Send electronically to pharmacy (if ePrescribing is available)
+      // Send electronically to pharmacy if selected
       if (selectedPharmacy) {
         console.log('[ePrescribe] Sending to pharmacy:', selectedPharmacy);
-        const sendResponse = await fetch(`/api/prescriptions/${prescription.id}/send-erx`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pharmacyId: selectedPharmacy.id,
-            prescriberDeaNumber: provider?.deaNumber || provider?.dea_number || ''
-          })
-        });
-
-        if (sendResponse.ok) {
+        try {
+          await api.sendErx(prescription.id);
           console.log('[ePrescribe] Successfully sent to pharmacy');
           addNotification('success', 'Prescription sent electronically to pharmacy');
-        } else if (sendResponse.status === 501) {
-          // ePrescribing not available - prescription still created
-          console.log('[ePrescribe] Electronic sending not available');
-          addNotification('alert', 'Prescription created but electronic sending is not available. Migration 015 required.');
-        } else {
-          // Other error - still notify success for prescription creation
-          const errorText = await sendResponse.text();
-          console.error('[ePrescribe] Failed to send eRx:', sendResponse.status, errorText);
-          addNotification('alert', 'Prescription created but failed to send electronically');
+        } catch (erxError) {
+          console.error('[ePrescribe] Failed to send eRx:', erxError);
+
+          // Check if it's a "not available" error
+          if (erxError.message && erxError.message.includes('501')) {
+            addNotification('alert', 'Prescription created but electronic sending is not available. Migration 015 required.');
+          } else {
+            addNotification('alert', 'Prescription created but failed to send electronically');
+          }
         }
       } else {
         console.log('[ePrescribe] No pharmacy selected, prescription created only');
