@@ -107,6 +107,16 @@ const ViewEditModal = ({
     if (editingItem?.data) {
       const data = { ...editingItem.data };
 
+      // For patients, parse address if it's a string
+      if (editingItem.type === 'patient' && data.address && typeof data.address === 'string') {
+        const addressParts = data.address.split(',').map(p => p.trim());
+        data.address_street = addressParts[0] || '';
+        data.address_city = addressParts[1] || '';
+        const stateZip = (addressParts[2] || '').split(' ');
+        data.address_state = stateZip[0] || '';
+        data.address_zip = stateZip[1] || '';
+      }
+
       // For appointments, extract date and time from start_time
       if (editingItem.type === 'appointment' && data.start_time) {
         try {
@@ -231,12 +241,21 @@ const ViewEditModal = ({
         // Prepare patient data
         const patientData = { ...editData };
 
-        // TEMPORARY FIX: Remove address field to avoid JSON parsing error
-        // TODO: After running migration 016_fix_patients_address_column.sql,
-        // the address column will be TEXT and this workaround can be removed
-        if (patientData.address) {
-          delete patientData.address;
-          console.warn('[ViewEditModal] Address field removed from update due to JSONB type mismatch. Run migration 016 to fix.');
+        // Combine address fields into a single string
+        if (patientData.address_street || patientData.address_city || patientData.address_state || patientData.address_zip) {
+          const addressParts = [
+            patientData.address_street,
+            patientData.address_city,
+            `${patientData.address_state || ''} ${patientData.address_zip || ''}`.trim()
+          ].filter(part => part && part.trim());
+
+          patientData.address = addressParts.join(', ');
+
+          // Clean up individual address fields
+          delete patientData.address_street;
+          delete patientData.address_city;
+          delete patientData.address_state;
+          delete patientData.address_zip;
         }
 
         const updated = await api.updatePatient(editData.id, patientData);
@@ -524,20 +543,59 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div className="col-span-2">
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Street Address</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {typeof editData.address === 'object' && editData.address !== null
-                        ? `${editData.address.street || ''}, ${editData.address.city || ''}, ${editData.address.state || ''} ${editData.address.zip || ''}`.replace(/,\s*,/g, ',').trim()
-                        : editData.address || 'N/A'}
-                    </p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_street || editData.address || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
-                      value={typeof editData.address === 'object' && editData.address !== null
-                        ? `${editData.address.street || ''}, ${editData.address.city || ''}, ${editData.address.state || ''} ${editData.address.zip || ''}`.replace(/,\s*,/g, ',').trim()
-                        : editData.address || ''}
-                      onChange={(e) => setEditData({...editData, address: e.target.value})}
+                      value={editData.address_street || ''}
+                      onChange={(e) => setEditData({...editData, address_street: e.target.value})}
+                      placeholder="123 Main Street"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>City</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_city || 'N/A'}</p>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editData.address_city || ''}
+                      onChange={(e) => setEditData({...editData, address_city: e.target.value})}
+                      placeholder="City"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>State</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_state || 'N/A'}</p>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editData.address_state || ''}
+                      onChange={(e) => setEditData({...editData, address_state: e.target.value})}
+                      placeholder="State"
+                      maxLength="2"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>ZIP Code</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_zip || 'N/A'}</p>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editData.address_zip || ''}
+                      onChange={(e) => setEditData({...editData, address_zip: e.target.value})}
+                      placeholder="12345"
+                      maxLength="10"
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
                   )}
