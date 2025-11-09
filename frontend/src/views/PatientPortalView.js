@@ -599,13 +599,13 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.email}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.email || t.notProvided}
+                {profileData?.email || user?.email || t.notProvided}
               </p>
             </div>
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.phone}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.phone || t.notProvided}
+                {profileData?.phone || user?.phone || t.notProvided}
               </p>
             </div>
             <div className="col-span-2">
@@ -630,7 +630,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.date_of_birth ? formatDate(user.date_of_birth) : user?.dob ? formatDate(user.dob) : t.notProvided}
+                {profileData?.date_of_birth ? formatDate(profileData.date_of_birth) : profileData?.dob ? formatDate(profileData.dob) : user?.date_of_birth ? formatDate(user.date_of_birth) : user?.dob ? formatDate(user.dob) : t.notProvided}
               </p>
             </div>
           </div>
@@ -641,31 +641,31 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</p>
-                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.height || t.notProvided}</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.height || user?.height || t.notProvided}</p>
               </div>
               <div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</p>
-                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.weight || t.notProvided}</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.weight || user?.weight || t.notProvided}</p>
               </div>
               <div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</p>
-                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.blood_type || t.notProvided}</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.blood_type || user?.blood_type || t.notProvided}</p>
               </div>
               <div className="col-span-2">
                 <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</p>
-                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.allergies || t.notProvided}</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.allergies || user?.allergies || t.notProvided}</p>
               </div>
               <div className="col-span-2">
                 <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</p>
-                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.past_history || t.notProvided}</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.past_history || user?.past_history || t.notProvided}</p>
               </div>
               <div className="col-span-2">
                 <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Family Medical History</p>
-                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.family_history || t.notProvided}</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.family_history || user?.family_history || t.notProvided}</p>
               </div>
               <div className="col-span-2">
                 <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</p>
-                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user?.current_medications || t.notProvided}</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.current_medications || user?.current_medications || t.notProvided}</p>
               </div>
             </div>
           </div>
