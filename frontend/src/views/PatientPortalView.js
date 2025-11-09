@@ -146,6 +146,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       const updated = await api.updatePatient(user.id, {
         phone: profileData.phone,
         email: profileData.email,
+        address: profileData.address,
+        date_of_birth: profileData.date_of_birth || profileData.dob,
         height: profileData.height,
         weight: profileData.weight,
         blood_type: profileData.blood_type,
@@ -162,6 +164,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setConfirmationMessage('Your profile has been updated successfully!');
       setShowConfirmation(true);
     } catch (error) {
+      console.error('Error updating profile:', error);
       addNotification('alert', 'Failed to update profile');
     }
   };
@@ -377,6 +380,25 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               />
             </div>
+            <div className="col-span-2">
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</label>
+              <input
+                type="text"
+                value={profileData.address || ''}
+                onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+                placeholder="Street address, City, State ZIP"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</label>
+              <input
+                type="date"
+                value={((profileData.date_of_birth || profileData.dob) || '').split('T')[0]}
+                onChange={(e) => setProfileData({ ...profileData, date_of_birth: e.target.value, dob: e.target.value })}
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</label>
               <input
@@ -480,6 +502,18 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.phone}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {user?.phone || t.notProvided}
+              </p>
+            </div>
+            <div className="col-span-2">
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {user?.address || t.notProvided}
+              </p>
+            </div>
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {user?.date_of_birth ? formatDate(user.date_of_birth) : user?.dob ? formatDate(user.dob) : t.notProvided}
               </p>
             </div>
           </div>

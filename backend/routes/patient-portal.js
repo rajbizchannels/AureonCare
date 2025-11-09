@@ -191,7 +191,13 @@ router.put('/:patientId/profile', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { patientId } = req.params;
-    const { phone, email, address, emergencyContact } = req.body;
+    const { phone, email, address, date_of_birth, emergencyContact } = req.body;
+
+    // Handle address - it should be plain TEXT, not JSON
+    // If address is an object, convert it to a string; otherwise keep it as is
+    const addressValue = typeof address === 'object' && address !== null
+      ? `${address.street || ''}, ${address.city || ''}, ${address.state || ''} ${address.zip || ''}`.trim()
+      : address;
 
     const result = await pool.query(`
       UPDATE patients
@@ -199,11 +205,19 @@ router.put('/:patientId/profile', async (req, res) => {
         phone = COALESCE($1, phone),
         email = COALESCE($2, email),
         address = COALESCE($3, address),
-        emergency_contact = COALESCE($4, emergency_contact),
+        date_of_birth = COALESCE($4, date_of_birth),
+        emergency_contact = COALESCE($5, emergency_contact),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
+      WHERE id = $6
       RETURNING *
-    `, [phone, email, JSON.stringify(address), JSON.stringify(emergencyContact), patientId]);
+    `, [
+      phone,
+      email,
+      addressValue,
+      date_of_birth,
+      emergencyContact ? JSON.stringify(emergencyContact) : null,
+      patientId
+    ]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });
