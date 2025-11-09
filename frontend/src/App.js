@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Globe, Sun, Moon } from 'lucide-react';
+import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Globe, Sun, Moon, LogOut } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -582,7 +582,7 @@ function App() {
                 className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-gray-600'}`}
                 title="Logout"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
