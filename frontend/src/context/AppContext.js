@@ -46,21 +46,29 @@ const AppProvider = ({ children }) => {
 
   /**
    * Fetches all data from the backend API
+   * @param {boolean} includeUser - Whether to fetch user data (only after authentication)
    */
-  const fetchAllData = async () => {
+  const fetchAllData = async (includeUser = false) => {
     setLoading(true);
     setError(null);
     try {
-      const [appointmentsData, patientsData, claimsData, paymentsData, notificationsData, tasksData, userData, usersData] = await Promise.all([
+      const dataPromises = [
         api.getAppointments(),
         api.getPatients(),
         api.getClaims(),
         api.getPayments().catch(() => []), // Get payments, fallback to empty array if fails
         api.getNotifications(),
         api.getTasks(),
-        api.getUser(1).catch(() => null), // Get user with id 1, fallback to null if fails
         api.getUsers().catch(() => []) // Get all users, fallback to empty array if fails
-      ]);
+      ];
+
+      // Only fetch user data if includeUser is true (after authentication)
+      if (includeUser && user?.id) {
+        dataPromises.push(api.getUser(user.id).catch(() => null));
+      }
+
+      const results = await Promise.all(dataPromises);
+      const [appointmentsData, patientsData, claimsData, paymentsData, notificationsData, tasksData, usersData, userData] = results;
 
       setAppointments(appointmentsData);
       setPatients(patientsData);
@@ -70,21 +78,15 @@ const AppProvider = ({ children }) => {
       setTasks(tasksData);
       setUsers(usersData);
 
-      // Update user data - fetch from API or use first admin/physician from users list
-      let currentUser = userData;
-      if (!currentUser && usersData.length > 0) {
-        // If no user fetched, get first admin or physician from users list
-        currentUser = usersData.find(u => u.role === 'admin' || u.role === 'physician') || usersData[0];
-        console.log('Using fallback user:', currentUser);
-      }
-
-      if (currentUser) {
-        // Ensure required fields exist with fallbacks
+      // Only update user data if we fetched it and includeUser is true
+      if (includeUser && userData) {
+        // Ensure required fields exist, but don't override with static defaults
         const userWithDefaults = {
-          ...currentUser,
-          avatar: currentUser.avatar || `${currentUser.first_name?.charAt(0) || ''}${currentUser.last_name?.charAt(0) || ''}`.toUpperCase() || 'U',
-          practice: currentUser.practice || 'Medical Practice',
-          preferences: currentUser.preferences || {
+          ...userData,
+          avatar: userData.avatar || `${userData.first_name?.charAt(0) || ''}${userData.last_name?.charAt(0) || ''}`.toUpperCase() || 'U',
+          // Only set practice default if it's explicitly null/undefined
+          practice: userData.practice !== undefined && userData.practice !== null ? userData.practice : 'Medical Practice',
+          preferences: userData.preferences || {
             emailNotifications: true,
             smsAlerts: true,
             darkMode: true

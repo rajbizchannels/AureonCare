@@ -78,25 +78,26 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] Selected medication:', medication);
     console.log('[ePrescribe] Patient:', patient);
 
-    // Set selected medication and step FIRST, before any async operations
+    // Use a single batched state update to ensure all state changes happen together
+    // This prevents any potential race conditions or re-rendering issues
+    const dosage = medication.commonDosages && medication.commonDosages.length > 0
+      ? (medication.strength || medication.commonDosages[0])
+      : (medication.strength || '');
+
+    // Update all state synchronously in the correct order
+    setPrescriptionDetails(prev => ({
+      ...prev,
+      dosage: dosage
+    }));
+
     setSelectedMedication(medication);
 
-    // Pre-fill dosage immediately
-    if (medication.commonDosages && medication.commonDosages.length > 0) {
-      setPrescriptionDetails(prev => ({
-        ...prev,
-        dosage: medication.strength || medication.commonDosages[0]
-      }));
-    } else if (medication.strength) {
-      setPrescriptionDetails(prev => ({
-        ...prev,
-        dosage: medication.strength
-      }));
-    }
-
-    // Advance to step 2 IMMEDIATELY - don't wait for safety check
-    console.log('[ePrescribe] Advancing to step 2 immediately');
-    setStep(2);
+    // Use setTimeout to ensure state updates complete before advancing
+    // This works around React 18's automatic batching which can cause timing issues
+    setTimeout(() => {
+      console.log('[ePrescribe] Advancing to step 2');
+      setStep(2);
+    }, 0);
 
     // Now do safety check in background (non-blocking)
     setLoading(true);
