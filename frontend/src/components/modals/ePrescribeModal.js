@@ -78,12 +78,29 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] Selected medication:', medication);
     console.log('[ePrescribe] Patient:', patient);
 
+    // Set selected medication and step FIRST, before any async operations
     setSelectedMedication(medication);
-    setLoading(true);
 
+    // Pre-fill dosage immediately
+    if (medication.commonDosages && medication.commonDosages.length > 0) {
+      setPrescriptionDetails(prev => ({
+        ...prev,
+        dosage: medication.strength || medication.commonDosages[0]
+      }));
+    } else if (medication.strength) {
+      setPrescriptionDetails(prev => ({
+        ...prev,
+        dosage: medication.strength
+      }));
+    }
+
+    // Advance to step 2 IMMEDIATELY - don't wait for safety check
+    console.log('[ePrescribe] Advancing to step 2 immediately');
+    setStep(2);
+
+    // Now do safety check in background (non-blocking)
+    setLoading(true);
     try {
-      // Check drug safety (allergies and interactions)
-      // This feature requires ePrescribing schema (migration 015)
       const ndcCode = medication.ndcCode || medication.ndc_code;
       console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
 
@@ -104,38 +121,16 @@ const EPrescribeModal = ({
         console.log('[ePrescribe] Safety data:', safetyData);
         setSafetyWarnings(safetyData.warnings || []);
       } else if (response.status === 501) {
-        // ePrescribing not available - skip safety check
         console.log('[ePrescribe] Safety check not available - ePrescribing schema not installed');
         setSafetyWarnings([]);
       } else {
         const errorText = await response.text();
         console.error('[ePrescribe] Safety check error:', response.status, errorText);
-        // Don't throw - just skip safety check
         setSafetyWarnings([]);
       }
-
-      // Pre-fill common dosage if available
-      if (medication.commonDosages && medication.commonDosages.length > 0) {
-        setPrescriptionDetails(prev => ({
-          ...prev,
-          dosage: medication.strength || medication.commonDosages[0]
-        }));
-      } else if (medication.strength) {
-        setPrescriptionDetails(prev => ({
-          ...prev,
-          dosage: medication.strength
-        }));
-      }
-
-      console.log('[ePrescribe] Advancing to step 2');
-      setStep(2);
     } catch (error) {
-      console.error('[ePrescribe] Error in handleSelectMedication:', error);
-      // Still advance to step 2 even if safety check fails
-      // Safety warnings are optional
+      console.error('[ePrescribe] Error in safety check:', error);
       setSafetyWarnings([]);
-      console.log('[ePrescribe] Error occurred, but advancing to step 2 anyway');
-      setStep(2);
     } finally {
       setLoading(false);
     }
@@ -353,6 +348,18 @@ const EPrescribeModal = ({
           {/* Step 2: Prescription Details */}
           {step === 2 && selectedMedication && (
             <div className="space-y-6">
+              {/* Loading indicator for safety check */}
+              {loading && safetyWarnings.length === 0 && (
+                <div className={`p-3 rounded-lg border ${theme === 'dark' ? 'border-blue-700 bg-blue-500/10' : 'border-blue-300 bg-blue-50'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
+                      Checking for drug interactions and allergies...
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Safety Warnings */}
               {safetyWarnings.length > 0 && (
                 <div className={`p-4 rounded-lg border-2 ${safetyWarnings.some(w => w.severity === 'severe') ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`}>
