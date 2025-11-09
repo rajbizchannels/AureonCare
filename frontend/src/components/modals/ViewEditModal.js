@@ -25,6 +25,10 @@ const ViewEditModal = ({
   const [showEPrescribe, setShowEPrescribe] = useState(false);
   const [prescriptions, setPrescriptions] = useState([]);
   const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
+  const [pharmacies, setPharmacies] = useState([]);
+  const [preferredPharmacies, setPreferredPharmacies] = useState([]);
+  const [loadingPharmacies, setLoadingPharmacies] = useState(false);
+  const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
 
   // Fetch available roles for user editing (including system roles for assignment)
   useEffect(() => {
@@ -63,6 +67,40 @@ const ViewEditModal = ({
 
     fetchPrescriptions();
   }, [api, currentView, editingItem?.type, editingItem?.data?.id]);
+
+  // Fetch pharmacies and preferred pharmacies for patient
+  useEffect(() => {
+    const fetchPharmacyData = async () => {
+      if (editingItem?.type === 'patient') {
+        setLoadingPharmacies(true);
+        try {
+          // Fetch all pharmacies for selection
+          const allPharmacies = await api.getPharmacies();
+          setPharmacies(allPharmacies || []);
+
+          // Fetch patient's preferred pharmacies
+          if (editingItem?.data?.id) {
+            const patientPreferred = await api.getPatientPreferredPharmacies(editingItem.data.id);
+            setPreferredPharmacies(patientPreferred || []);
+
+            // Set the primary preferred pharmacy as selected
+            const primary = patientPreferred?.find(p => p.isPreferred || p.is_preferred);
+            if (primary) {
+              setSelectedPharmacyId(primary.id || primary.pharmacyId);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching pharmacy data:', error);
+          setPharmacies([]);
+          setPreferredPharmacies([]);
+        } finally {
+          setLoadingPharmacies(false);
+        }
+      }
+    };
+
+    fetchPharmacyData();
+  }, [api, editingItem?.type, editingItem?.data?.id]);
 
   // Update editData when editingItem changes
   useEffect(() => {
@@ -140,6 +178,26 @@ const ViewEditModal = ({
 
   const isView = currentView === 'view';
   const { type, data } = editingItem;
+
+  // Handle adding/updating preferred pharmacy
+  const handleAddPreferredPharmacy = async () => {
+    if (!selectedPharmacyId || !editingItem?.data?.id) {
+      addNotification('alert', 'Please select a pharmacy');
+      return;
+    }
+
+    try {
+      await api.addPreferredPharmacy(editingItem.data.id, selectedPharmacyId, true);
+      addNotification('success', 'Preferred pharmacy updated successfully');
+
+      // Refresh preferred pharmacies list
+      const patientPreferred = await api.getPatientPreferredPharmacies(editingItem.data.id);
+      setPreferredPharmacies(patientPreferred || []);
+    } catch (error) {
+      console.error('Error adding preferred pharmacy:', error);
+      addNotification('alert', 'Failed to update preferred pharmacy');
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -484,6 +542,93 @@ const ViewEditModal = ({
                     />
                   )}
                 </div>
+              </div>
+
+              {/* Preferred Pharmacy Section */}
+              <div className={`mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Preferred Pharmacy
+                </h3>
+
+                {loadingPharmacies ? (
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Loading pharmacies...
+                  </p>
+                ) : (
+                  <>
+                    {/* Current Preferred Pharmacies */}
+                    {preferredPharmacies.length > 0 && (
+                      <div className="mb-4">
+                        <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          Current Preferred:
+                        </p>
+                        <div className="space-y-2">
+                          {preferredPharmacies.map((pharmacy) => (
+                            <div
+                              key={pharmacy.id || pharmacy.pharmacyId}
+                              className={`p-3 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}
+                            >
+                              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                {pharmacy.pharmacyName || pharmacy.pharmacy_name}
+                                {(pharmacy.isPreferred || pharmacy.is_preferred) && (
+                                  <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">Primary</span>
+                                )}
+                              </p>
+                              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                {pharmacy.addressLine1 || pharmacy.address_line1}, {pharmacy.city}, {pharmacy.state} {pharmacy.zipCode || pharmacy.zip_code}
+                              </p>
+                              {(pharmacy.phone) && (
+                                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                  Phone: {pharmacy.phone}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add/Change Preferred Pharmacy */}
+                    {!isView && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {preferredPharmacies.length > 0 ? 'Change Preferred Pharmacy' : 'Select Preferred Pharmacy'}
+                          </label>
+                          <select
+                            value={selectedPharmacyId}
+                            onChange={(e) => setSelectedPharmacyId(e.target.value)}
+                            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                          >
+                            <option value="">Select a pharmacy...</option>
+                            {pharmacies.map((pharmacy) => (
+                              <option key={pharmacy.id} value={pharmacy.id}>
+                                {pharmacy.pharmacyName || pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <button
+                          onClick={handleAddPreferredPharmacy}
+                          disabled={!selectedPharmacyId}
+                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                            selectedPharmacyId
+                              ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                        >
+                          {preferredPharmacies.length > 0 ? 'Update Preferred Pharmacy' : 'Set Preferred Pharmacy'}
+                        </button>
+                      </div>
+                    )}
+
+                    {preferredPharmacies.length === 0 && isView && (
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        No preferred pharmacy set.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Active Prescriptions Section - Only shown in view mode */}

@@ -165,17 +165,30 @@ const EPrescribeModal = ({
 
       console.log('[ePrescribe] Preferred pharmacies:', data);
 
-      // If no preferred pharmacies, get nearby pharmacies
+      // If no preferred pharmacies, get nearby pharmacies by ZIP code
       // Check all possible ZIP code field names (camelCase and snake_case)
       const zipCode = patient.zipCode || patient.zip_code || patient.zip;
 
       if ((!data || data.length === 0) && zipCode) {
         console.log('[ePrescribe] No preferred pharmacies, searching by ZIP:', zipCode);
         data = await api.searchPharmacies(zipCode, null, null, null, 10);
-        console.log('[ePrescribe] Nearby pharmacies:', data);
-      } else if (!data || data.length === 0) {
-        console.warn('[ePrescribe] No pharmacies found and no ZIP code available for patient');
+        console.log('[ePrescribe] Nearby pharmacies by ZIP:', data);
+      }
+
+      // If still no pharmacies found, load all pharmacies as fallback
+      if (!data || data.length === 0) {
+        console.warn('[ePrescribe] No preferred or nearby pharmacies found, loading all pharmacies');
         console.log('[ePrescribe] Patient data:', { zipCode: patient.zipCode, zip_code: patient.zip_code, zip: patient.zip });
+
+        // Get all pharmacies with a limit
+        data = await api.getPharmacies();
+        console.log('[ePrescribe] All pharmacies loaded:', data?.length || 0, 'pharmacies');
+
+        // Limit to first 20 for performance
+        if (data && data.length > 20) {
+          data = data.slice(0, 20);
+          console.log('[ePrescribe] Limited to first 20 pharmacies');
+        }
       }
 
       setPharmacies(data || []);
