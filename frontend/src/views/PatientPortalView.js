@@ -34,7 +34,18 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
   useEffect(() => {
     if (user) {
-      setProfileData(user);
+      // Parse address if it's a string
+      let parsedUser = { ...user };
+      if (user.address && typeof user.address === 'string') {
+        // Try to parse address string into components
+        const addressParts = user.address.split(',').map(p => p.trim());
+        parsedUser.address_street = addressParts[0] || '';
+        parsedUser.address_city = addressParts[1] || '';
+        const stateZip = (addressParts[2] || '').split(' ');
+        parsedUser.address_state = stateZip[0] || '';
+        parsedUser.address_zip = stateZip[1] || '';
+      }
+      setProfileData(parsedUser);
       fetchPatientData();
       fetchProviders();
       fetchPharmacyData();
@@ -193,10 +204,19 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
+      // Combine address fields into a single string
+      const addressParts = [
+        profileData.address_street,
+        profileData.address_city,
+        `${profileData.address_state || ''} ${profileData.address_zip || ''}`.trim()
+      ].filter(part => part && part.trim());
+
+      const combinedAddress = addressParts.join(', ');
+
       const updated = await api.updatePatient(user.id, {
         phone: profileData.phone,
         email: profileData.email,
-        address: profileData.address,
+        address: combinedAddress || profileData.address, // Use combined or fall back to original
         date_of_birth: profileData.date_of_birth || profileData.dob,
         height: profileData.height,
         weight: profileData.weight,
@@ -431,12 +451,44 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               />
             </div>
             <div className="col-span-2">
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</label>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Street Address</label>
               <input
                 type="text"
-                value={profileData.address || ''}
-                onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-                placeholder="Street address, City, State ZIP"
+                value={profileData.address_street || ''}
+                onChange={(e) => setProfileData({ ...profileData, address_street: e.target.value })}
+                placeholder="123 Main Street"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>City</label>
+              <input
+                type="text"
+                value={profileData.address_city || ''}
+                onChange={(e) => setProfileData({ ...profileData, address_city: e.target.value })}
+                placeholder="City"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>State</label>
+              <input
+                type="text"
+                value={profileData.address_state || ''}
+                onChange={(e) => setProfileData({ ...profileData, address_state: e.target.value })}
+                placeholder="State"
+                maxLength="2"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>ZIP Code</label>
+              <input
+                type="text"
+                value={profileData.address_zip || ''}
+                onChange={(e) => setProfileData({ ...profileData, address_zip: e.target.value })}
+                placeholder="12345"
+                maxLength="10"
                 className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               />
             </div>
@@ -557,7 +609,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <div className="col-span-2">
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {user?.address || t.notProvided}
+                {user?.address ||
+                 (profileData.address_street || profileData.address_city || profileData.address_state || profileData.address_zip
+                   ? `${profileData.address_street || ''}${profileData.address_city ? ', ' + profileData.address_city : ''}${profileData.address_state ? ', ' + profileData.address_state : ''}${profileData.address_zip ? ' ' + profileData.address_zip : ''}`
+                   : t.notProvided)
+                }
               </p>
             </div>
             <div>
