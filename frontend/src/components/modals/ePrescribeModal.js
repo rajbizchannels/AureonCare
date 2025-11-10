@@ -8,7 +8,8 @@ const EPrescribeModal = ({
   api,
   onClose,
   onSuccess,
-  addNotification
+  addNotification,
+  t
 }) => {
   const [step, setStep] = useState(1); // 1: Search Med, 2: Details, 3: Pharmacy, 4: Review
   const [searchQuery, setSearchQuery] = useState('');

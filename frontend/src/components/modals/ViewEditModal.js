@@ -18,7 +18,8 @@ const ViewEditModal = ({
   setClaims,
   setUsers,
   setUser,
-  user
+  user,
+  t
 }) => {
   const [editData, setEditData] = useState(editingItem?.data || {});
   const [availableRoles, setAvailableRoles] = useState([]);

@@ -9,7 +9,8 @@ const ReportsView = ({
   claims,
   payments,
   addNotification,
-  setCurrentModule
+  setCurrentModule,
+  t
 }) => {
   const [dateRange, setDateRange] = useState('30'); // Days
   const [selectedReport, setSelectedReport] = useState('overview');

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
-const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotification }) => {
+const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotification, t }) => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
