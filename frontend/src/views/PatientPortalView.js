@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 const PatientPortalView = ({ theme, api, addNotification, user }) => {
-  const { language } = useApp();
+  const { language, setLanguage } = useApp();
   const t = getTranslations(language);
   const [currentView, setCurrentView] = useState('dashboard'); // dashboard, appointments, records, profile, prescriptions, bookAppointment, payments
 
@@ -262,6 +262,20 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setProfileData(updated);
       setEditingProfile(false);
       addNotification('success', 'Profile updated successfully');
+
+      // Update language in AppContext if it changed
+      if (profileData.language) {
+        const languageMap = {
+          'English': 'en',
+          'Spanish': 'es',
+          'French': 'fr',
+          'German': 'de',
+          'Arabic': 'ar',
+          'Chinese': 'zh'
+        };
+        const languageCode = languageMap[profileData.language] || profileData.language;
+        setLanguage(languageCode);
+      }
 
       // Show success confirmation
       setConfirmationMessage('Your profile has been updated successfully!');
