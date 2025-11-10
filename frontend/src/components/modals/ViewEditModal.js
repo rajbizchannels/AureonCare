@@ -186,31 +186,6 @@ const ViewEditModal = ({
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
 
-  if (!editingItem) return null;
-
-  const isView = currentView === 'view';
-  const { type, data } = editingItem;
-
-  // Handle adding/updating preferred pharmacy
-  const handleAddPreferredPharmacy = async () => {
-    if (!selectedPharmacyId || !editingItem?.data?.id) {
-      addNotification('alert', 'Please select a pharmacy');
-      return;
-    }
-
-    try {
-      await api.addPreferredPharmacy(editingItem.data.id, selectedPharmacyId, true);
-      addNotification('success', 'Preferred pharmacy updated successfully');
-
-      // Refresh preferred pharmacies list
-      const patientPreferred = await api.getPatientPreferredPharmacies(editingItem.data.id);
-      setPreferredPharmacies(patientPreferred || []);
-    } catch (error) {
-      console.error('Error adding preferred pharmacy:', error);
-      addNotification('alert', 'Failed to update preferred pharmacy');
-    }
-  };
-
   // Auto-calculate quantity in edit prescription form based on frequency and duration
   useEffect(() => {
     if (!editingPrescription || !editingPrescription.frequency || !editingPrescription.duration) return;
@@ -260,6 +235,31 @@ const ViewEditModal = ({
     document.addEventListener('keydown', handleEscKey);
     return () => document.removeEventListener('keydown', handleEscKey);
   }, [selectedPrescription]);
+
+  if (!editingItem) return null;
+
+  const isView = currentView === 'view';
+  const { type, data } = editingItem;
+
+  // Handle adding/updating preferred pharmacy
+  const handleAddPreferredPharmacy = async () => {
+    if (!selectedPharmacyId || !editingItem?.data?.id) {
+      addNotification('alert', 'Please select a pharmacy');
+      return;
+    }
+
+    try {
+      await api.addPreferredPharmacy(editingItem.data.id, selectedPharmacyId, true);
+      addNotification('success', 'Preferred pharmacy updated successfully');
+
+      // Refresh preferred pharmacies list
+      const patientPreferred = await api.getPatientPreferredPharmacies(editingItem.data.id);
+      setPreferredPharmacies(patientPreferred || []);
+    } catch (error) {
+      console.error('Error adding preferred pharmacy:', error);
+      addNotification('alert', 'Failed to update preferred pharmacy');
+    }
+  };
 
   const handleSave = async () => {
     try {

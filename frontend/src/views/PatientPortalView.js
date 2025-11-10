@@ -256,7 +256,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         allergies: profileData.allergies,
         past_history: profileData.past_history,
         family_history: profileData.family_history,
-        current_medications: profileData.current_medications
+        current_medications: profileData.current_medications,
+        language: profileData.language
       });
       setProfileData(updated);
       setEditingProfile(false);

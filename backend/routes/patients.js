@@ -114,7 +114,7 @@ router.put('/:id', async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
     address, city, state, zip, insurance, insurance_id, status,
-    height, weight, blood_type, allergies, past_history, family_history, current_medications
+    height, weight, blood_type, allergies, past_history, family_history, current_medications, language
   } = req.body;
 
   try {
@@ -150,7 +150,29 @@ router.put('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });
     }
-    res.json(result.rows[0]);
+
+    const updatedPatient = result.rows[0];
+
+    // If language is provided and patient has a linked user account, update the users table
+    if (language && updatedPatient.user_id) {
+      // Convert full language name to code if needed
+      const languageMap = {
+        'English': 'en',
+        'Spanish': 'es',
+        'French': 'fr',
+        'German': 'de',
+        'Arabic': 'ar',
+        'Chinese': 'zh'
+      };
+      const languageCode = languageMap[language] || language;
+
+      await pool.query(
+        'UPDATE users SET language = $1, updated_at = NOW() WHERE id = $2',
+        [languageCode, updatedPatient.user_id]
+      );
+    }
+
+    res.json(updatedPatient);
   } catch (error) {
     console.error('Error updating patient:', error);
     res.status(500).json({ error: 'Failed to update patient' });
