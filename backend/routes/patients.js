@@ -161,8 +161,7 @@ router.put('/:id', async (req, res) => {
         'Spanish': 'es',
         'French': 'fr',
         'German': 'de',
-        'Arabic': 'ar',
-        'Chinese': 'zh'
+        'Arabic': 'ar'
       };
       const languageCode = languageMap[language] || language;
 

@@ -240,9 +240,8 @@ router.put('/:patientId/profile', async (req, res) => {
         'Spanish': 'es',
         'French': 'fr',
         'German': 'de',
-        'Arabic': 'ar',
-        'Chinese': 'zh'
-      };
+        'Arabic': 'ar'
+       };
       const languageCode = languageMap[language] || language;
 
       await pool.query(

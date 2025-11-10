@@ -21,7 +21,7 @@ MedFlow now includes a comprehensive role-based access control system with subsc
 
 ### 3. **Multi-Language Support**
 - User-specific language preferences
-- Supported languages: English, Spanish, French, German, Portuguese, Chinese, Arabic, Hindi
+- Supported languages: English, Spanish, French, German, Portuguese, Arabic, Hindi
 - Language persists across sessions
 
 ## Database Schema

@@ -270,8 +270,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           'Spanish': 'es',
           'French': 'fr',
           'German': 'de',
-          'Arabic': 'ar',
-          'Chinese': 'zh'
+          'Arabic': 'ar'
         };
         const languageCode = languageMap[profileData.language] || profileData.language;
         setLanguage(languageCode);

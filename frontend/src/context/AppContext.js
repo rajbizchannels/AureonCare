@@ -101,8 +101,7 @@ const AppProvider = ({ children }) => {
           'Spanish': 'es',
           'French': 'fr',
           'German': 'de',
-          'Arabic': 'ar',
-          'Chinese': 'zh'
+          'Arabic': 'ar'
         };
 
         // Sync theme from user preferences

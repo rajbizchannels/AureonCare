@@ -342,8 +342,7 @@ const ViewEditModal = ({
             'Spanish': 'es',
             'French': 'fr',
             'German': 'de',
-            'Arabic': 'ar',
-            'Chinese': 'zh'
+            'Arabic': 'ar'
           };
           const languageCode = languageMap[editData.language] || editData.language;
           setLanguage(languageCode);
@@ -1095,7 +1094,7 @@ const ViewEditModal = ({
                       <option value="Spanish">Spanish</option>
                       <option value="French">French</option>
                       <option value="German">German</option>
-                      <option value="Chinese">Chinese</option>
+                      <option value="Arabic">Arabic</option>
                     </select>
                   )}
                 </div>
