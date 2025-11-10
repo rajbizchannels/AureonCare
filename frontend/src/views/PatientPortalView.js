@@ -574,7 +574,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 <option value="Spanish">Spanish</option>
                 <option value="French">French</option>
                 <option value="German">German</option>
-                <option value="Chinese">Chinese</option>
+                <option value="Arabic">Arabic</option>
               </select>
             </div>
             <div className="col-span-2">
