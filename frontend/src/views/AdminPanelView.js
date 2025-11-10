@@ -14,7 +14,7 @@ const AdminPanelView = ({
   setCurrentModule,
   t
 }) => {
-  const { setPlanTier, updateUserPreferences } = useApp();
+  const { setPlanTier, updateUserPreferences, planTier } = useApp();
   const [activeTab, setActiveTab] = useState('clinic');
   const [clinicSettings, setClinicSettings] = useState({
     name: 'MedFlow Medical Center',
@@ -165,7 +165,14 @@ const AdminPanelView = ({
     }
   ]);
 
-  const [currentPlan, setCurrentPlan] = useState('professional');
+  const [currentPlan, setCurrentPlan] = useState(planTier || 'professional');
+
+  // Sync currentPlan with planTier from context
+  useEffect(() => {
+    if (planTier) {
+      setCurrentPlan(planTier);
+    }
+  }, [planTier]);
 
   const handleSaveClinicSettings = async () => {
     try {
