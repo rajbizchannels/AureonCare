@@ -40,27 +40,27 @@ const UserProfileModal = ({
 
     // Validation
     if (!localPasswordData.currentPassword || !localPasswordData.newPassword || !localPasswordData.confirmPassword) {
-      await addNotification('alert', 'Please fill in all password fields');
+      await addNotification('alert', t.fillAllPasswordFields);
       return;
     }
 
     if (localPasswordData.newPassword !== localPasswordData.confirmPassword) {
-      await addNotification('alert', 'New passwords do not match');
+      await addNotification('alert', t.passwordsDoNotMatch);
       return;
     }
 
     if (localPasswordData.newPassword.length < 6) {
-      await addNotification('alert', 'Password must be at least 6 characters long');
+      await addNotification('alert', t.passwordTooShort);
       return;
     }
 
     try {
       await api.changePassword(user.id, localPasswordData.currentPassword, localPasswordData.newPassword);
-      await addNotification('success', 'Password changed successfully');
+      await addNotification('success', t.passwordChanged);
       setLocalPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setShowChangePassword(false);
     } catch (error) {
-      await addNotification('alert', error.message || 'Failed to change password');
+      await addNotification('alert', error.message || t.failedToChangePassword);
     }
   };
 
@@ -128,7 +128,7 @@ const UserProfileModal = ({
                   onChange={async (e) => {
                     const success = await updateUserPreferences({ emailNotifications: e.target.checked });
                     if (success) {
-                      await addNotification('success', 'Preference saved successfully');
+                      await addNotification('success', t.preferenceSaved);
                     }
                   }}
                   className="form-checkbox h-5 w-5 text-cyan-500"
@@ -142,7 +142,7 @@ const UserProfileModal = ({
                   onChange={async (e) => {
                     const success = await updateUserPreferences({ smsAlerts: e.target.checked });
                     if (success) {
-                      await addNotification('success', 'Preference saved successfully');
+                      await addNotification('success', t.preferenceSaved);
                     }
                   }}
                   className="form-checkbox h-5 w-5 text-cyan-500"
@@ -158,7 +158,7 @@ const UserProfileModal = ({
                     setTheme(isDark ? 'dark' : 'light');
                     const success = await updateUserPreferences({ darkMode: isDark });
                     if (success) {
-                      await addNotification('success', 'Theme preference saved successfully');
+                      await addNotification('success', t.themePreferenceSaved);
                     }
                   }}
                   className="form-checkbox h-5 w-5 text-cyan-500"

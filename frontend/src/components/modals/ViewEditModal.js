@@ -248,20 +248,20 @@ const ViewEditModal = ({
   // Handle adding/updating preferred pharmacy
   const handleAddPreferredPharmacy = async () => {
     if (!selectedPharmacyId || !editingItem?.data?.id) {
-      addNotification('alert', 'Please select a pharmacy');
+      addNotification('alert', t.pleaseSelectPharmacy);
       return;
     }
 
     try {
       await api.addPreferredPharmacy(editingItem.data.id, selectedPharmacyId, true);
-      addNotification('success', 'Preferred pharmacy updated successfully');
+      addNotification('success', t.preferredPharmacyUpdated);
 
       // Refresh preferred pharmacies list
       const patientPreferred = await api.getPatientPreferredPharmacies(editingItem.data.id);
       setPreferredPharmacies(patientPreferred || []);
     } catch (error) {
       console.error('Error adding preferred pharmacy:', error);
-      addNotification('alert', 'Failed to update preferred pharmacy');
+      addNotification('alert', t.failedToUpdatePharmacy);
     }
   };
 
@@ -349,7 +349,7 @@ const ViewEditModal = ({
           setLanguage(languageCode);
         }
 
-        await addNotification('success', 'Profile updated successfully');
+        await addNotification('success', t.profileUpdatedSuccessfully);
       } else if (type === 'user') {
         // Update user - ensure we send firstName and lastName
         const firstName = editData.first_name || editData.firstName || '';
@@ -1409,13 +1409,13 @@ const ViewEditModal = ({
                 e.preventDefault();
                 try {
                   await api.updatePrescription(editingPrescription.id, editingPrescription);
-                  addNotification('success', 'Prescription updated successfully');
+                  addNotification('success', t.prescriptionUpdatedSuccessfully);
                   const updated = await api.getPatientActivePrescriptions(editData.id);
                   setPrescriptions(updated);
                   setSelectedPrescription(null);
                   setEditingPrescription(null);
                 } catch (error) {
-                  addNotification('alert', 'Failed to update prescription');
+                  addNotification('alert', t.failedToUpdatePrescription);
                 }
               }}>
                 <div className="space-y-4">
