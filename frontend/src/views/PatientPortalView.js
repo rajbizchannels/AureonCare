@@ -55,6 +55,18 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   }, [user]);
 
+  // Handle ESC key to close prescription modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && selectedPrescription) {
+        setSelectedPrescription(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [selectedPrescription]);
+
   const fetchProviders = async () => {
     try {
       const providersList = await api.getProviders();

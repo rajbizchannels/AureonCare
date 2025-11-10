@@ -211,6 +211,56 @@ const ViewEditModal = ({
     }
   };
 
+  // Auto-calculate quantity in edit prescription form based on frequency and duration
+  useEffect(() => {
+    if (!editingPrescription || !editingPrescription.frequency || !editingPrescription.duration) return;
+
+    const { frequency, duration } = editingPrescription;
+
+    // Parse frequency to get times per day
+    let timesPerDay = 1;
+    const frequencyLower = frequency.toLowerCase();
+    if (frequencyLower.includes('once')) timesPerDay = 1;
+    else if (frequencyLower.includes('twice') || frequencyLower.includes('bid')) timesPerDay = 2;
+    else if (frequencyLower.includes('three') || frequencyLower.includes('tid')) timesPerDay = 3;
+    else if (frequencyLower.includes('four') || frequencyLower.includes('qid')) timesPerDay = 4;
+    else if (frequencyLower.includes('every 4 hours') || frequencyLower.includes('q4h')) timesPerDay = 6;
+    else if (frequencyLower.includes('every 6 hours') || frequencyLower.includes('q6h')) timesPerDay = 4;
+    else if (frequencyLower.includes('every 8 hours') || frequencyLower.includes('q8h')) timesPerDay = 3;
+    else if (frequencyLower.includes('every 12 hours') || frequencyLower.includes('q12h')) timesPerDay = 2;
+
+    // Parse duration to get number of days
+    const durationMatch = duration.match(/(\d+)/);
+    if (!durationMatch) return;
+
+    const days = parseInt(durationMatch[1]);
+    if (isNaN(days)) return;
+
+    // Calculate quantity
+    const calculatedQuantity = timesPerDay * days;
+
+    // Update quantity if different
+    if (parseInt(editingPrescription.quantity) !== calculatedQuantity) {
+      setEditingPrescription(prev => ({
+        ...prev,
+        quantity: calculatedQuantity.toString()
+      }));
+    }
+  }, [editingPrescription?.frequency, editingPrescription?.duration]);
+
+  // Handle ESC key to close prescription modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && selectedPrescription) {
+        setSelectedPrescription(null);
+        setEditingPrescription(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [selectedPrescription]);
+
   const handleSave = async () => {
     try {
       if (type === 'appointment') {
