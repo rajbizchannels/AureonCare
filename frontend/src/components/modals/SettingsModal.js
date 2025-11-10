@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, Zap, Mail } from 'lucide-react';
+import { getTranslations } from '../../config/translations';
 
 const SettingsModal = ({
   theme,
@@ -18,6 +19,7 @@ const SettingsModal = ({
   api,
   addNotification
 }) => {
+  const t = getTranslations(language);
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e) => {
@@ -35,7 +37,7 @@ const SettingsModal = ({
     <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
       <div className={`rounded-xl border max-w-3xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Settings</h2>
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.settings}</h2>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
@@ -48,9 +50,9 @@ const SettingsModal = ({
               <div className={`rounded-lg p-6 border-2 border-purple-500/30 ${theme === 'dark' ? 'bg-purple-500/10' : 'bg-purple-50'}`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Admin Panel</h3>
+                    <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.adminPanel}</h3>
                     <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Manage clinic settings, users, and system configuration
+                      {t.manageClinicSettings}
                     </p>
                   </div>
                   <button
@@ -60,7 +62,7 @@ const SettingsModal = ({
                     }}
                     className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white"
                   >
-                    Open Admin Panel
+                    {t.openAdminPanel}
                   </button>
                 </div>
               </div>
@@ -68,12 +70,12 @@ const SettingsModal = ({
 
             {/* General Settings */}
             <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>General Settings</h3>
+              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.generalSettings}</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Email Notifications</p>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Receive email updates for appointments and tasks</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.notifications}</p>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.receiveEmailUpdates}</p>
                   </div>
                   <input
                     type="checkbox"
@@ -87,7 +89,7 @@ const SettingsModal = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>SMS Alerts</p>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Get text message reminders</p>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.getTextReminders}</p>
                   </div>
                   <input
                     type="checkbox"
@@ -100,8 +102,8 @@ const SettingsModal = ({
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Push Notifications</p>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Browser notifications for important updates</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.pushNotifications}</p>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.browserNotifications}</p>
                   </div>
                   <input
                     type="checkbox"
@@ -117,12 +119,12 @@ const SettingsModal = ({
 
             {/* Appearance */}
             <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Appearance</h3>
+              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.appearance}</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Dark Mode</p>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Use dark theme</p>
+                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.darkMode}</p>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.useDarkTheme}</p>
                   </div>
                   <input
                     type="checkbox"
@@ -141,24 +143,24 @@ const SettingsModal = ({
             {/* Privacy & Security - Admin Only */}
             {user.role === 'admin' && (
               <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-                <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Privacy & Security</h3>
+                <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.privacySecurity}</h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Two-Factor Authentication</p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Enhanced account security</p>
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.twoFactorAuth}</p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.enhancedSecurity}</p>
                     </div>
-                    <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Enabled</span>
+                    <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">{t.enabled}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Session Timeout</p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Auto logout after inactivity</p>
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.sessionTimeout}</p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.autoLogout}</p>
                     </div>
                     <select className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}>
-                      <option value="15">15 minutes</option>
-                      <option value="30" defaultValue>30 minutes</option>
-                      <option value="60">1 hour</option>
+                      <option value="15">{t.fifteenMinutes}</option>
+                      <option value="30" defaultValue>{t.thirtyMinutes}</option>
+                      <option value="60">{t.oneHour}</option>
                     </select>
                   </div>
                 </div>
@@ -168,7 +170,7 @@ const SettingsModal = ({
             {/* Integration Settings - Admin Only */}
             {user.role === 'admin' && (
               <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Integrations</h3>
+              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.integrations}</h3>
               <div className="space-y-3">
                 <div className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-200/50'}`}>
                   <div className="flex items-center gap-3">
@@ -176,12 +178,12 @@ const SettingsModal = ({
                       <Zap className="w-5 h-5 text-blue-400" />
                     </div>
                     <div>
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Calendar Sync</p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Google Calendar integration</p>
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.calendarSync}</p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.googleCalendarIntegration}</p>
                     </div>
                   </div>
                   <button className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors">
-                    Connected
+                    {t.connected}
                   </button>
                 </div>
                 <div className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-200/50'}`}>
@@ -190,12 +192,12 @@ const SettingsModal = ({
                       <Mail className="w-5 h-5 text-purple-400" />
                     </div>
                     <div>
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Email Provider</p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gmail integration</p>
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.emailProvider}</p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.gmailIntegration}</p>
                     </div>
                   </div>
                   <button className={`px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}>
-                    Connect
+                    {t.connect}
                   </button>
                 </div>
               </div>
@@ -209,7 +211,7 @@ const SettingsModal = ({
             onClick={onClose}
             className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
           >
-            Close
+            {t.close}
           </button>
           <button
             onClick={async () => {
@@ -218,7 +220,7 @@ const SettingsModal = ({
             }}
             className={`flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
-            Save Changes
+            {t.saveChanges}
           </button>
         </div>
       </div>
