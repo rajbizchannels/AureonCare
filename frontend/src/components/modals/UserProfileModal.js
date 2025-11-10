@@ -12,7 +12,8 @@ const UserProfileModal = ({
   updateUserPreferences,
   setTheme,
   api,
-  addNotification
+  addNotification,
+  t
 }) => {
   // Local state for password change
   const [localPasswordData, setLocalPasswordData] = useState({

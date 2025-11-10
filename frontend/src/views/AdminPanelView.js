@@ -11,7 +11,8 @@ const AdminPanelView = ({
   setCurrentView,
   api,
   addNotification,
-  setCurrentModule
+  setCurrentModule,
+  t
 }) => {
   const { setPlanTier, updateUserPreferences } = useApp();
   const [activeTab, setActiveTab] = useState('clinic');

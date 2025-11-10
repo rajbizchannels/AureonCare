@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import api from '../api/apiService';
+import { getTranslations } from '../config/translations';
 
 // Create the context
 const AppContext = createContext();
@@ -139,6 +140,7 @@ const AppProvider = ({ children }) => {
    * @returns {boolean} - Returns true if successful, false otherwise
    */
   const updateUserPreferences = async (newPreferences) => {
+    const t = getTranslations(language);
     try {
       const updatedUser = {
         ...user,
