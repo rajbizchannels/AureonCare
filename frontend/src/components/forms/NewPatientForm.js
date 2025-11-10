@@ -77,7 +77,7 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
       }, 2000);
     } catch (err) {
       console.error('Error creating patient:', err);
-      addNotification('alert', 'Failed to create patient. Please try again.');
+      addNotification('alert', t.failedToCreatePatient);
     }
   };
 
