@@ -158,7 +158,7 @@ const AppProvider = ({ children }) => {
       return true;
     } catch (error) {
       console.error('Error updating preferences:', error);
-      await addNotification('alert', 'Failed to save preferences');
+      await addNotification('alert', t.failedToSavePreferences);
       return false;
     }
   };

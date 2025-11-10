@@ -213,7 +213,7 @@ const SettingsModal = ({
           </button>
           <button
             onClick={async () => {
-              await addNotification('success', 'Settings saved successfully');
+              await addNotification('success', t.settingsSaved);
               onClose();
             }}
             className={`flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
