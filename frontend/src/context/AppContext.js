@@ -95,15 +95,32 @@ const AppProvider = ({ children }) => {
 
         setUser(userWithDefaults);
 
-        // Sync theme and language from user preferences
+        // Language mapping: full names to codes
+        const languageMap = {
+          'English': 'en',
+          'Spanish': 'es',
+          'French': 'fr',
+          'German': 'de',
+          'Arabic': 'ar',
+          'Chinese': 'zh'
+        };
+
+        // Sync theme from user preferences
         if (userWithDefaults.preferences) {
           if (userWithDefaults.preferences.darkMode !== undefined) {
             setTheme(userWithDefaults.preferences.darkMode ? 'dark' : 'light');
           }
-          if (userWithDefaults.preferences.language) {
-            setLanguage(userWithDefaults.preferences.language);
-          }
         }
+
+        // Load language from user profile setting (with fallback to preferences)
+        let userLanguage = 'en'; // default
+        if (userWithDefaults.language) {
+          // Convert full language name to code
+          userLanguage = languageMap[userWithDefaults.language] || userWithDefaults.language || 'en';
+        } else if (userWithDefaults.preferences?.language) {
+          userLanguage = userWithDefaults.preferences.language;
+        }
+        setLanguage(userLanguage);
       }
     } catch (err) {
       console.error('Error fetching data:', err);
