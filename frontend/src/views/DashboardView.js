@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bot, Shield, Calendar, Clock, DollarSign, Users, Video, FileText, ChevronRight, Check, Settings } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
@@ -24,6 +24,22 @@ const DashboardView = ({
   addNotification
 }) => {
   const [showQuickActionsSettings, setShowQuickActionsSettings] = useState(false);
+  const [clinicName, setClinicName] = useState('Medical Practice');
+
+  // Load clinic name from localStorage
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem('clinicSettings');
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        if (settings.name) {
+          setClinicName(settings.name);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading clinic name:', error);
+    }
+  }, []);
 
   // Define all available quick actions
   const allQuickActions = [
@@ -56,7 +72,7 @@ const DashboardView = ({
             {t.welcome}, {user?.firstName || user?.first_name || 'User'}
           </h1>
           <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            {user?.practice || (user?.firstName || user?.first_name ? `${user.firstName || user.first_name}'s Practice` : 'Medical Practice')}
+            {user?.practice || clinicName}
           </p>
         </div>
         <div className="flex gap-3">

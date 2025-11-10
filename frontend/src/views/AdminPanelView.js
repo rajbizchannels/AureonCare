@@ -35,6 +35,18 @@ const AdminPanelView = ({
     sunday: { open: '09:00', close: '13:00', enabled: false }
   });
 
+  // Load clinic settings from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem('clinicSettings');
+      if (savedSettings) {
+        setClinicSettings(JSON.parse(savedSettings));
+      }
+    } catch (error) {
+      console.error('Error loading clinic settings:', error);
+    }
+  }, []);
+
   const [appointmentSettings, setAppointmentSettings] = useState({
     defaultDuration: 30,
     slotInterval: 15,
@@ -156,9 +168,11 @@ const AdminPanelView = ({
 
   const handleSaveClinicSettings = async () => {
     try {
-      // In a real app, this would call an API endpoint
+      // Save to localStorage for now (until backend endpoint is created)
+      localStorage.setItem('clinicSettings', JSON.stringify(clinicSettings));
       await addNotification('success', 'Clinic settings saved successfully');
     } catch (error) {
+      console.error('Error saving clinic settings:', error);
       await addNotification('alert', 'Failed to save clinic settings');
     }
   };
