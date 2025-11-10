@@ -1063,6 +1063,24 @@ const ViewEditModal = ({
                     />
                   )}
                 </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.language || 'English'}</p>
+                  ) : (
+                    <select
+                      value={editData.language || 'English'}
+                      onChange={(e) => setEditData({...editData, language: e.target.value})}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    >
+                      <option value="English">English</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="French">French</option>
+                      <option value="German">German</option>
+                      <option value="Chinese">Chinese</option>
+                    </select>
+                  )}
+                </div>
               </div>
             </div>
           ) : type === 'claim' ? (

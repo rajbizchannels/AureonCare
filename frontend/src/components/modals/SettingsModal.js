@@ -135,52 +135,39 @@ const SettingsModal = ({
                     className="form-checkbox h-5 w-5 text-cyan-500"
                   />
                 </div>
-                <div>
-                  <label className={`block font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Language</label>
-                  <select
-                    value={language}
-                    onChange={async (e) => {
-                      const newLanguage = e.target.value;
-                      setLanguage(newLanguage);
-                      await updateUserPreferences({ language: newLanguage });
-                    }}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                  >
-                    <option value="en">English</option>
-                    <option value="es">Español</option>
-                    <option value="fr">Français</option>
-                  </select>
-                </div>
               </div>
             </div>
 
-            {/* Privacy & Security */}
-            <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Privacy & Security</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Two-Factor Authentication</p>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Enhanced account security</p>
+            {/* Privacy & Security - Admin Only */}
+            {user.role === 'admin' && (
+              <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+                <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Privacy & Security</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Two-Factor Authentication</p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Enhanced account security</p>
+                    </div>
+                    <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Enabled</span>
                   </div>
-                  <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Enabled</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Session Timeout</p>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Auto logout after inactivity</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Session Timeout</p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Auto logout after inactivity</p>
+                    </div>
+                    <select className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}>
+                      <option value="15">15 minutes</option>
+                      <option value="30" defaultValue>30 minutes</option>
+                      <option value="60">1 hour</option>
+                    </select>
                   </div>
-                  <select className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}>
-                    <option value="15">15 minutes</option>
-                    <option value="30" defaultValue>30 minutes</option>
-                    <option value="60">1 hour</option>
-                  </select>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Integration Settings */}
-            <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+            {/* Integration Settings - Admin Only */}
+            {user.role === 'admin' && (
+              <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Integrations</h3>
               <div className="space-y-3">
                 <div className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-200/50'}`}>
@@ -212,7 +199,8 @@ const SettingsModal = ({
                   </button>
                 </div>
               </div>
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
