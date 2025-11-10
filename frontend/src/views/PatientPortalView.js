@@ -73,7 +73,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setProviders(providersList);
     } catch (error) {
       console.error('Error fetching providers:', error);
-      addNotification('alert', 'Failed to load providers');
+      addNotification('alert', t.failedToLoadProviders);
     }
   };
 
@@ -103,13 +103,13 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
   const handleAddPreferredPharmacy = async () => {
     if (!selectedPharmacyId || !user?.id) {
-      addNotification('alert', 'Please select a pharmacy');
+      addNotification('alert', t.pleaseSelectPharmacy);
       return;
     }
 
     try {
       await api.addPreferredPharmacy(user.id, selectedPharmacyId, true);
-      addNotification('success', 'Preferred pharmacy updated successfully');
+      addNotification('success', t.preferredPharmacyUpdated);
 
       // Refresh preferred pharmacies list
       await fetchPharmacyData();
@@ -119,7 +119,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setShowConfirmation(true);
     } catch (error) {
       console.error('Error adding preferred pharmacy:', error);
-      addNotification('alert', 'Failed to update preferred pharmacy');
+      addNotification('alert', t.failedToUpdatePharmacy);
     }
   };
 
@@ -176,7 +176,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       }
     } catch (error) {
       console.error('Error fetching patient data:', error);
-      addNotification('alert', 'Failed to load patient data');
+      addNotification('alert', t.failedToLoadPatientData);
     }
   };
 
@@ -207,7 +207,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       const result = await api.createAppointment(appointmentData);
       console.log('Appointment created successfully:', result);
 
-      addNotification('success', 'Appointment booked successfully');
+      addNotification('success', t.appointmentBookedSuccessfully);
 
       // Show success confirmation
       setConfirmationMessage('Your appointment has been booked successfully!');
@@ -261,7 +261,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       });
       setProfileData(updated);
       setEditingProfile(false);
-      addNotification('success', 'Profile updated successfully');
+      addNotification('success', t.profileUpdatedSuccessfully);
 
       // Update language in AppContext if it changed
       if (profileData.language) {
@@ -282,7 +282,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setShowConfirmation(true);
     } catch (error) {
       console.error('Error updating profile:', error);
-      addNotification('alert', 'Failed to update profile');
+      addNotification('alert', t.failedToUpdateProfile);
     }
   };
 

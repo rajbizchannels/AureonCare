@@ -170,10 +170,10 @@ const AdminPanelView = ({
     try {
       // Save to localStorage for now (until backend endpoint is created)
       localStorage.setItem('clinicSettings', JSON.stringify(clinicSettings));
-      await addNotification('success', 'Clinic settings saved successfully');
+      await addNotification('success', t.clinicSettingsSaved);
     } catch (error) {
       console.error('Error saving clinic settings:', error);
-      await addNotification('alert', 'Failed to save clinic settings');
+      await addNotification('alert', t.failedToSaveClinicSettings);
     }
   };
 
@@ -183,9 +183,9 @@ const AdminPanelView = ({
     try {
       await api.deleteUser(userId);
       setUsers(users.filter(u => u.id !== userId));
-      await addNotification('success', 'User deleted successfully');
+      await addNotification('success', t.userDeletedSuccessfully);
     } catch (error) {
-      await addNotification('alert', 'Failed to delete user');
+      await addNotification('alert', t.failedToDeleteUser);
     }
   };
 
@@ -210,9 +210,9 @@ const AdminPanelView = ({
     try {
       const updatedUser = await api.updateUser(userId, { status: 'active' });
       setUsers(users.map(u => u.id === userId ? updatedUser : u));
-      await addNotification('success', 'User approved successfully');
+      await addNotification('success', t.userApprovedSuccessfully);
     } catch (error) {
-      await addNotification('alert', 'Failed to approve user');
+      await addNotification('alert', t.failedToApproveUser);
     }
   };
 
@@ -235,10 +235,10 @@ const AdminPanelView = ({
   const handleSaveRolePermissions = async () => {
     try {
       await api.updatePermissions(rolePermissions);
-      await addNotification('success', 'Role permissions saved successfully');
+      await addNotification('success', t.rolePermissionsSaved);
     } catch (error) {
       console.error('Error saving permissions:', error);
-      await addNotification('alert', 'Failed to save role permissions');
+      await addNotification('alert', t.failedToSaveRolePermissions);
     }
   };
 
@@ -799,7 +799,7 @@ const AdminPanelView = ({
           <div className="mt-6 flex justify-end">
             <button
               onClick={async () => {
-                await addNotification('success', 'Working hours saved successfully');
+                await addNotification('success', t.workingHoursSaved);
               }}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
@@ -865,7 +865,7 @@ const AdminPanelView = ({
           <div className="mt-6 flex justify-end">
             <button
               onClick={async () => {
-                await addNotification('success', 'Appointment settings saved successfully');
+                await addNotification('success', t.appointmentSettingsSaved);
               }}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
