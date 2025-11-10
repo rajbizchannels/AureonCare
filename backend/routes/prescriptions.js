@@ -195,6 +195,7 @@ router.put('/:id', async (req, res) => {
     dosage,
     frequency,
     duration,
+    quantity,
     instructions,
     refills,
     status
@@ -208,13 +209,14 @@ router.put('/:id', async (req, res) => {
         dosage = COALESCE($2, dosage),
         frequency = COALESCE($3, frequency),
         duration = COALESCE($4, duration),
-        instructions = COALESCE($5, instructions),
-        refills = COALESCE($6, refills),
-        status = COALESCE($7, status),
+        quantity = COALESCE($5, quantity),
+        instructions = COALESCE($6, instructions),
+        refills = COALESCE($7, refills),
+        status = COALESCE($8, status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
+      WHERE id = $9
       RETURNING *`,
-      [medicationName, dosage, frequency, duration, instructions, refills, status, req.params.id]
+      [medicationName, dosage, frequency, duration, quantity, instructions, refills, status, req.params.id]
     );
 
     if (result.rows.length === 0) {
