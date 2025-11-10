@@ -808,7 +808,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const renderPrescriptions = () => (
     <div className="space-y-6">
       <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        My Prescriptions
+        {t.myPrescriptions}
       </h2>
       {prescriptions.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
@@ -829,30 +829,30 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     {rx.medicationName || rx.medication_name}
                   </h3>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Dosage: {rx.dosage}
+                    {t.dosage}: {rx.dosage}
                   </p>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Frequency: {rx.frequency}
+                    {t.frequency}: {rx.frequency}
                   </p>
                   {rx.duration && (
                     <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Duration: {rx.duration}
+                      {t.duration}: {rx.duration}
                     </p>
                   )}
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Quantity: {rx.quantity || 'N/A'}
+                    {t.quantity}: {rx.quantity || t.notApplicable}
                   </p>
                   {rx.instructions && (
                     <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Instructions: {rx.instructions}
+                      {t.instructions}: {rx.instructions}
                     </p>
                   )}
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Refills: {rx.refills || rx.refillsRemaining || 'N/A'}
+                    {t.refills}: {rx.refills || rx.refillsRemaining || t.notApplicable}
                   </p>
                   {(rx.pharmacyName || rx.pharmacy_name) && (
                     <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Pharmacy: {rx.pharmacyName || rx.pharmacy_name}
+                      {t.pharmacy}: {rx.pharmacyName || rx.pharmacy_name}
                     </p>
                   )}
                 </div>
@@ -873,13 +873,13 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const renderBookAppointment = () => (
     <div className="space-y-6">
       <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Book Appointment
+        {t.bookAppointmentTab}
       </h2>
       <form onSubmit={handleBookAppointment} className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Date *
+              {t.dateRequired}
             </label>
             <input
               type="date"
@@ -892,7 +892,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           </div>
           <div>
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Time *
+              {t.timeRequired}
             </label>
             <input
               type="time"
@@ -904,29 +904,29 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           </div>
           <div className="col-span-2">
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Appointment Type *
+              {t.appointmentTypeRequired}
             </label>
             <select
               value={bookingData.type}
               onChange={(e) => setBookingData({...bookingData, type: e.target.value})}
               className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
             >
-              <option value="General Consultation">General Consultation</option>
-              <option value="Follow-up">Follow-up</option>
-              <option value="Check-up">Check-up</option>
-              <option value="Physical Exam">Physical Exam</option>
+              <option value="General Consultation">{t.generalConsultation}</option>
+              <option value="Follow-up">{t.followUp}</option>
+              <option value="Check-up">{t.checkUp}</option>
+              <option value="Physical Exam">{t.physicalExam}</option>
             </select>
           </div>
           <div className="col-span-2">
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Select Provider
+              {t.selectProvider}
             </label>
             <select
               value={bookingData.providerId}
               onChange={(e) => setBookingData({...bookingData, providerId: e.target.value})}
               className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
             >
-              <option value="">Any Available Provider</option>
+              <option value="">{t.anyAvailableProvider}</option>
               {providers.map(provider => (
                 <option key={provider.id} value={provider.id}>
                   Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
@@ -936,12 +936,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           </div>
           <div className="col-span-2">
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Reason for Visit
+              {t.reasonForVisit}
             </label>
             <textarea
               value={bookingData.reason}
               onChange={(e) => setBookingData({...bookingData, reason: e.target.value})}
-              placeholder="Describe your symptoms or reason for visit..."
+              placeholder={t.describeSymptoms}
               rows="4"
               className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
             />
@@ -953,7 +953,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-medium transition-colors"
           >
             <Check className="w-4 h-4" />
-            Book Appointment
+            {t.bookAppointmentTab}
           </button>
           <button
             type="button"
@@ -961,7 +961,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
           >
             <X className="w-4 h-4" />
-            Cancel
+            {t.cancel}
           </button>
         </div>
       </form>
@@ -1028,7 +1028,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          Book Appointment
+          {t.bookAppointmentTab}
         </button>
         <button
           onClick={() => setCurrentView('prescriptions')}
@@ -1040,7 +1040,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          Prescriptions
+          {t.prescriptionsTab}
         </button>
         <button
           onClick={() => setCurrentView('records')}
@@ -1105,28 +1105,28 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Dosage</p>
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.dosage || 'N/A'}</p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.dosage}</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.dosage || t.notApplicable}</p>
                 </div>
                 <div>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Frequency</p>
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.frequency || 'N/A'}</p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.frequency}</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.frequency || t.notApplicable}</p>
                 </div>
                 <div>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Duration</p>
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.duration || 'N/A'}</p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.duration}</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.duration || t.notApplicable}</p>
                 </div>
                 <div>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Quantity</p>
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.quantity || 'N/A'}</p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.quantity}</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.quantity || t.notApplicable}</p>
                 </div>
                 <div>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Refills</p>
-                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.refills || selectedPrescription.refillsRemaining || 'N/A'}</p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.refills}</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.refills || selectedPrescription.refillsRemaining || t.notApplicable}</p>
                 </div>
                 {(selectedPrescription.pharmacyName || selectedPrescription.pharmacy_name) && (
                   <div>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Pharmacy</p>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.pharmacy}</p>
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.pharmacyName || selectedPrescription.pharmacy_name}</p>
                   </div>
                 )}
@@ -1134,14 +1134,14 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
               {selectedPrescription.instructions && (
                 <div>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Instructions</p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.instructions}</p>
                   <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedPrescription.instructions}</p>
                 </div>
               )}
 
               {selectedPrescription.prescribedDate && (
                 <div>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Prescribed Date</p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.prescribedDate}</p>
                   <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatDate(selectedPrescription.prescribedDate || selectedPrescription.prescribed_date)}</p>
                 </div>
               )}

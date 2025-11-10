@@ -161,7 +161,23 @@ export const translations = {
     streetAddress: 'Street Address',
     city: 'City',
     state: 'State',
-    zipCode: 'ZIP Code'
+    zipCode: 'ZIP Code',
+    bookAppointmentTab: 'Book Appointment',
+    prescriptionsTab: 'Prescriptions',
+    dateRequired: 'Date *',
+    timeRequired: 'Time *',
+    appointmentTypeRequired: 'Appointment Type *',
+    followUp: 'Follow-up',
+    checkUp: 'Check-up',
+    physicalExam: 'Physical Exam',
+    anyAvailableProvider: 'Any Available Provider',
+    reasonForVisit: 'Reason for Visit',
+    describeSymptoms: 'Describe your symptoms or reason for visit...',
+    notApplicable: 'N/A',
+    activeStatus: 'Active',
+    prescribedDate: 'Prescribed Date',
+    time: 'Time',
+    appointmentType: 'Appointment Type'
   },
   es: {
     // Modules
@@ -325,7 +341,23 @@ export const translations = {
     streetAddress: 'Dirección',
     city: 'Ciudad',
     state: 'Estado',
-    zipCode: 'Código Postal'
+    zipCode: 'Código Postal',
+    bookAppointmentTab: 'Reservar Cita',
+    prescriptionsTab: 'Recetas',
+    dateRequired: 'Fecha *',
+    timeRequired: 'Hora *',
+    appointmentTypeRequired: 'Tipo de Cita *',
+    followUp: 'Seguimiento',
+    checkUp: 'Chequeo',
+    physicalExam: 'Examen Físico',
+    anyAvailableProvider: 'Cualquier Proveedor Disponible',
+    reasonForVisit: 'Motivo de la Visita',
+    describeSymptoms: 'Describa sus síntomas o motivo de la visita...',
+    notApplicable: 'N/A',
+    activeStatus: 'Activo',
+    prescribedDate: 'Fecha de Prescripción',
+    time: 'Hora',
+    appointmentType: 'Tipo de Cita'
   },
   fr: {
     // Modules
@@ -489,7 +521,23 @@ export const translations = {
     streetAddress: 'Adresse',
     city: 'Ville',
     state: 'État',
-    zipCode: 'Code Postal'
+    zipCode: 'Code Postal',
+    bookAppointmentTab: 'Prendre Rendez-vous',
+    prescriptionsTab: 'Ordonnances',
+    dateRequired: 'Date *',
+    timeRequired: 'Heure *',
+    appointmentTypeRequired: 'Type de Rendez-vous *',
+    followUp: 'Suivi',
+    checkUp: 'Contrôle',
+    physicalExam: 'Examen Physique',
+    anyAvailableProvider: 'Tout Prestataire Disponible',
+    reasonForVisit: 'Raison de la Visite',
+    describeSymptoms: 'Décrivez vos symptômes ou la raison de votre visite...',
+    notApplicable: 'N/A',
+    activeStatus: 'Actif',
+    prescribedDate: 'Date de Prescription',
+    time: 'Heure',
+    appointmentType: 'Type de Rendez-vous'
   },
   de: {
     // Modules
@@ -653,7 +701,23 @@ export const translations = {
     streetAddress: 'Straße',
     city: 'Stadt',
     state: 'Bundesland',
-    zipCode: 'Postleitzahl'
+    zipCode: 'Postleitzahl',
+    bookAppointmentTab: 'Termin Buchen',
+    prescriptionsTab: 'Rezepte',
+    dateRequired: 'Datum *',
+    timeRequired: 'Uhrzeit *',
+    appointmentTypeRequired: 'Terminart *',
+    followUp: 'Nachuntersuchung',
+    checkUp: 'Untersuchung',
+    physicalExam: 'Körperliche Untersuchung',
+    anyAvailableProvider: 'Beliebiger Verfügbarer Anbieter',
+    reasonForVisit: 'Grund des Besuchs',
+    describeSymptoms: 'Beschreiben Sie Ihre Symptome oder den Grund Ihres Besuchs...',
+    notApplicable: 'N/V',
+    activeStatus: 'Aktiv',
+    prescribedDate: 'Verschreibungsdatum',
+    time: 'Uhrzeit',
+    appointmentType: 'Terminart'
   },
   ar: {
     // Modules
@@ -817,7 +881,23 @@ export const translations = {
     streetAddress: 'عنوان الشارع',
     city: 'المدينة',
     state: 'الولاية',
-    zipCode: 'الرمز البريدي'
+    zipCode: 'الرمز البريدي',
+    bookAppointmentTab: 'حجز موعد',
+    prescriptionsTab: 'الوصفات الطبية',
+    dateRequired: 'التاريخ *',
+    timeRequired: 'الوقت *',
+    appointmentTypeRequired: 'نوع الموعد *',
+    followUp: 'المتابعة',
+    checkUp: 'الفحص',
+    physicalExam: 'الفحص البدني',
+    anyAvailableProvider: 'أي مزود متاح',
+    reasonForVisit: 'سبب الزيارة',
+    describeSymptoms: 'صف أعراضك أو سبب زيارتك...',
+    notApplicable: 'غير متوفر',
+    activeStatus: 'نشط',
+    prescribedDate: 'تاريخ الوصفة',
+    time: 'الوقت',
+    appointmentType: 'نوع الموعد'
   }
 };
 
