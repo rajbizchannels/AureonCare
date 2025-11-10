@@ -305,6 +305,7 @@ function App() {
         return (
           <AdminPanelView
             theme={theme}
+            t={t}
             users={users}
             setUsers={setUsers}
             setShowForm={handleSetShowForm}
