@@ -110,6 +110,10 @@ const AppProvider = ({ children }) => {
           if (userWithDefaults.preferences.darkMode !== undefined) {
             setTheme(userWithDefaults.preferences.darkMode ? 'dark' : 'light');
           }
+          // Load plan tier from preferences
+          if (userWithDefaults.preferences.planTier) {
+            setPlanTier(userWithDefaults.preferences.planTier);
+          }
         }
 
         // Load language from user profile setting (with fallback to preferences)

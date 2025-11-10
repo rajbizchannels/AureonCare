@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft, CreditCard, Check } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 const AdminPanelView = ({
   theme,
@@ -12,6 +13,7 @@ const AdminPanelView = ({
   addNotification,
   setCurrentModule
 }) => {
+  const { setPlanTier, updateUserPreferences } = useApp();
   const [activeTab, setActiveTab] = useState('clinic');
   const [clinicSettings, setClinicSettings] = useState({
     name: 'MedFlow Medical Center',
@@ -708,6 +710,8 @@ const AdminPanelView = ({
                 <button
                   onClick={async () => {
                     setCurrentPlan(plan.id);
+                    setPlanTier(plan.id); // Update global plan tier
+                    await updateUserPreferences({ planTier: plan.id }); // Save to backend
                     await addNotification('success', `Switched to ${plan.name}`);
                   }}
                   disabled={currentPlan === plan.id}
