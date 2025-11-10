@@ -549,7 +549,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               />
             </div>
             <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</label>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.height}"}</label>
               <input
                 type="text"
                 value={profileData.height || ''}
@@ -559,7 +559,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               />
             </div>
             <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</label>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.weight}"}</label>
               <input
                 type="text"
                 value={profileData.weight || ''}
@@ -569,7 +569,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               />
             </div>
             <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</label>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.bloodType}"}</label>
               <input
                 type="text"
                 value={profileData.blood_type || ''}
@@ -579,7 +579,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               />
             </div>
             <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language Preference</label>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.languagePreference}"}</label>
               <select
                 value={profileData.language || 'English'}
                 onChange={(e) => setProfileData({...profileData, language: e.target.value})}
@@ -593,7 +593,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               </select>
             </div>
             <div className="col-span-2">
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</label>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.allergies}"}</label>
               <textarea
                 value={profileData.allergies || ''}
                 onChange={(e) => setProfileData({...profileData, allergies: e.target.value})}
@@ -603,7 +603,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               />
             </div>
             <div className="col-span-2">
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</label>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.pastHistory}"}</label>
               <textarea
                 value={profileData.past_history || ''}
                 onChange={(e) => setProfileData({...profileData, past_history: e.target.value})}
@@ -623,7 +623,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               />
             </div>
             <div className="col-span-2">
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</label>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.currentMedications}"}</label>
               <textarea
                 value={profileData.current_medications || ''}
                 onChange={(e) => setProfileData({...profileData, current_medications: e.target.value})}
@@ -699,23 +699,23 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Medical Information</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.height}"}</p>
                 <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.height || user?.height || t.notProvided}</p>
               </div>
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.weight}"}</p>
                 <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.weight || user?.weight || t.notProvided}</p>
               </div>
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.bloodType}"}</p>
                 <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.blood_type || user?.blood_type || t.notProvided}</p>
               </div>
               <div className="col-span-2">
-                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</p>
+                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.allergies}"}</p>
                 <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.allergies || user?.allergies || t.notProvided}</p>
               </div>
               <div className="col-span-2">
-                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</p>
+                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.pastHistory}"}</p>
                 <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.past_history || user?.past_history || t.notProvided}</p>
               </div>
               <div className="col-span-2">
@@ -723,7 +723,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.family_history || user?.family_history || t.notProvided}</p>
               </div>
               <div className="col-span-2">
-                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</p>
+                <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{"${t.currentMedications}"}</p>
                 <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{profileData?.current_medications || user?.current_medications || t.notProvided}</p>
               </div>
             </div>
@@ -813,7 +813,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       {prescriptions.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <FileText className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
-          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No prescriptions found</p>
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.noPrescriptionsFound}</p>
         </div>
       ) : (
         <div className="space-y-4">

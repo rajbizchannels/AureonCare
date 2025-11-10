@@ -427,7 +427,9 @@ function App() {
               </div>
               <div>
                 <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>MedFlow</h1>
-                <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{planTier} Plan</p>
+                {user?.role === 'admin' && (
+                  <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{planTier} Plan</p>
+                )}
               </div>
             </button>
 
