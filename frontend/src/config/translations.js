@@ -147,7 +147,21 @@ export const translations = {
     prescriptionDetails: 'Prescription Details',
     address: 'Address',
     dateOfBirth: 'Date of Birth',
-    gender: 'Gender'
+    gender: 'Gender',
+    medicalInformation: 'Medical Information',
+    preferredPharmacy: 'Preferred Pharmacy',
+    primary: 'Primary',
+    noPreferredPharmacy: 'No preferred pharmacy set.',
+    changePreferredPharmacy: 'Change Preferred Pharmacy',
+    selectPreferredPharmacy: 'Select Preferred Pharmacy',
+    selectPharmacyPrompt: 'Select a pharmacy...',
+    updatePreferredPharmacy: 'Update Preferred Pharmacy',
+    setPreferredPharmacy: 'Set Preferred Pharmacy',
+    contactInformation: 'Contact Information',
+    streetAddress: 'Street Address',
+    city: 'City',
+    state: 'State',
+    zipCode: 'ZIP Code'
   },
   es: {
     // Modules
@@ -297,7 +311,21 @@ export const translations = {
     prescriptionDetails: 'Detalles de la Receta',
     address: 'Dirección',
     dateOfBirth: 'Fecha de Nacimiento',
-    gender: 'Género'
+    gender: 'Género',
+    medicalInformation: 'Información Médica',
+    preferredPharmacy: 'Farmacia Preferida',
+    primary: 'Principal',
+    noPreferredPharmacy: 'No se ha establecido una farmacia preferida.',
+    changePreferredPharmacy: 'Cambiar Farmacia Preferida',
+    selectPreferredPharmacy: 'Seleccionar Farmacia Preferida',
+    selectPharmacyPrompt: 'Seleccione una farmacia...',
+    updatePreferredPharmacy: 'Actualizar Farmacia Preferida',
+    setPreferredPharmacy: 'Establecer Farmacia Preferida',
+    contactInformation: 'Información de Contacto',
+    streetAddress: 'Dirección',
+    city: 'Ciudad',
+    state: 'Estado',
+    zipCode: 'Código Postal'
   },
   fr: {
     // Modules
@@ -447,7 +475,21 @@ export const translations = {
     prescriptionDetails: 'Détails de l'Ordonnance',
     address: 'Adresse',
     dateOfBirth: 'Date de Naissance',
-    gender: 'Genre'
+    gender: 'Genre',
+    medicalInformation: 'Informations Médicales',
+    preferredPharmacy: 'Pharmacie Préférée',
+    primary: 'Principal',
+    noPreferredPharmacy: 'Aucune pharmacie préférée définie.',
+    changePreferredPharmacy: 'Changer de Pharmacie Préférée',
+    selectPreferredPharmacy: 'Sélectionner une Pharmacie Préférée',
+    selectPharmacyPrompt: 'Sélectionnez une pharmacie...',
+    updatePreferredPharmacy: 'Mettre à Jour la Pharmacie Préférée',
+    setPreferredPharmacy: 'Définir la Pharmacie Préférée',
+    contactInformation: 'Coordonnées',
+    streetAddress: 'Adresse',
+    city: 'Ville',
+    state: 'État',
+    zipCode: 'Code Postal'
   },
   de: {
     // Modules
@@ -597,7 +639,21 @@ export const translations = {
     prescriptionDetails: 'Rezeptdetails',
     address: 'Adresse',
     dateOfBirth: 'Geburtsdatum',
-    gender: 'Geschlecht'
+    gender: 'Geschlecht',
+    medicalInformation: 'Medizinische Informationen',
+    preferredPharmacy: 'Bevorzugte Apotheke',
+    primary: 'Primär',
+    noPreferredPharmacy: 'Keine bevorzugte Apotheke festgelegt.',
+    changePreferredPharmacy: 'Bevorzugte Apotheke Ändern',
+    selectPreferredPharmacy: 'Bevorzugte Apotheke Auswählen',
+    selectPharmacyPrompt: 'Wählen Sie eine Apotheke...',
+    updatePreferredPharmacy: 'Bevorzugte Apotheke Aktualisieren',
+    setPreferredPharmacy: 'Bevorzugte Apotheke Festlegen',
+    contactInformation: 'Kontaktinformationen',
+    streetAddress: 'Straße',
+    city: 'Stadt',
+    state: 'Bundesland',
+    zipCode: 'Postleitzahl'
   },
   ar: {
     // Modules
@@ -747,7 +803,21 @@ export const translations = {
     prescriptionDetails: 'تفاصيل الوصفة الطبية',
     address: 'العنوان',
     dateOfBirth: 'تاريخ الميلاد',
-    gender: 'الجنس'
+    gender: 'الجنس',
+    medicalInformation: 'المعلومات الطبية',
+    preferredPharmacy: 'الصيدلية المفضلة',
+    primary: 'الأساسية',
+    noPreferredPharmacy: 'لم يتم تعيين صيدلية مفضلة.',
+    changePreferredPharmacy: 'تغيير الصيدلية المفضلة',
+    selectPreferredPharmacy: 'اختر الصيدلية المفضلة',
+    selectPharmacyPrompt: 'اختر صيدلية...',
+    updatePreferredPharmacy: 'تحديث الصيدلية المفضلة',
+    setPreferredPharmacy: 'تعيين الصيدلية المفضلة',
+    contactInformation: 'معلومات الاتصال',
+    streetAddress: 'عنوان الشارع',
+    city: 'المدينة',
+    state: 'الولاية',
+    zipCode: 'الرمز البريدي'
   }
 };
 
