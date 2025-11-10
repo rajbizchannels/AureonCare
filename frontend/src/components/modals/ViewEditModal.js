@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Pill } from 'lucide-react';
 import { formatDate, formatTime, formatCurrency } from '../../utils/formatters';
 import EPrescribeModal from './ePrescribeModal';
+import { useApp } from '../../context/AppContext';
 
 const ViewEditModal = ({
   theme,
@@ -31,6 +32,9 @@ const ViewEditModal = ({
   const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
   const [selectedPrescription, setSelectedPrescription] = useState(null);
   const [editingPrescription, setEditingPrescription] = useState(null);
+
+  // Get setLanguage from AppContext for updating language preference
+  const { setLanguage } = useApp();
 
   // Fetch available roles for user editing (including system roles for assignment)
   useEffect(() => {
@@ -330,6 +334,21 @@ const ViewEditModal = ({
         };
         const updated = await api.updateUser(editData.id, userData);
         setUser(updated);
+
+        // Update language in AppContext if it changed
+        if (editData.language) {
+          const languageMap = {
+            'English': 'en',
+            'Spanish': 'es',
+            'French': 'fr',
+            'German': 'de',
+            'Arabic': 'ar',
+            'Chinese': 'zh'
+          };
+          const languageCode = languageMap[editData.language] || editData.language;
+          setLanguage(languageCode);
+        }
+
         await addNotification('success', 'Profile updated successfully');
       } else if (type === 'user') {
         // Update user - ensure we send firstName and lastName
