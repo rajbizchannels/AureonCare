@@ -20,20 +20,24 @@ router.post('/login', async (req, res) => {
       );
 
       if (socialAuth.rows.length > 0) {
-        const patientResult = await pool.query(
-          'SELECT * FROM patients WHERE id = $1 AND portal_enabled = true',
-          [socialAuth.rows[0].patient_id]
-        );
+        const patientResult = await pool.query(`
+          SELECT p.*, u.language
+          FROM patients p
+          LEFT JOIN users u ON p.user_id = u.id
+          WHERE p.id = $1 AND p.portal_enabled = true
+        `, [socialAuth.rows[0].patient_id]);
         patient = patientResult.rows[0];
       } else {
         return res.status(404).json({ error: 'Social account not linked to a patient' });
       }
     } else {
       // Traditional login
-      const result = await pool.query(
-        'SELECT * FROM patients WHERE email = $1 AND portal_enabled = true',
-        [email]
-      );
+      const result = await pool.query(`
+        SELECT p.*, u.language
+        FROM patients p
+        LEFT JOIN users u ON p.user_id = u.id
+        WHERE p.email = $1 AND p.portal_enabled = true
+      `, [email]);
 
       if (result.rows.length === 0) {
         return res.status(401).json({ error: 'Invalid credentials or portal not enabled' });
@@ -169,10 +173,13 @@ router.get('/:patientId/profile', async (req, res) => {
     const pool = req.app.locals.pool;
     const { patientId } = req.params;
 
-    const result = await pool.query(
-      'SELECT * FROM patients WHERE id = $1',
-      [patientId]
-    );
+    // Join with users table to get language preference
+    const result = await pool.query(`
+      SELECT p.*, u.language
+      FROM patients p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1
+    `, [patientId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });
@@ -191,7 +198,7 @@ router.put('/:patientId/profile', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { patientId } = req.params;
-    const { phone, email, address, date_of_birth, emergencyContact } = req.body;
+    const { phone, email, address, date_of_birth, emergencyContact, language } = req.body;
 
     // Handle address - it should be plain TEXT, not JSON
     // If address is an object, convert it to a string; otherwise keep it as is
@@ -223,7 +230,31 @@ router.put('/:patientId/profile', async (req, res) => {
       return res.status(404).json({ error: 'Patient not found' });
     }
 
-    const { portal_password_hash, ...patientData } = result.rows[0];
+    const updatedPatient = result.rows[0];
+
+    // If language is provided and patient has a linked user account, update the users table
+    if (language && updatedPatient.user_id) {
+      // Convert full language name to code if needed
+      const languageMap = {
+        'English': 'en',
+        'Spanish': 'es',
+        'French': 'fr',
+        'German': 'de',
+        'Arabic': 'ar',
+        'Chinese': 'zh'
+      };
+      const languageCode = languageMap[language] || language;
+
+      await pool.query(
+        'UPDATE users SET language = $1, updated_at = NOW() WHERE id = $2',
+        [languageCode, updatedPatient.user_id]
+      );
+
+      // Add language to the response
+      updatedPatient.language = language;
+    }
+
+    const { portal_password_hash, ...patientData } = updatedPatient;
     res.json(patientData);
   } catch (error) {
     console.error('Error updating patient profile:', error);
