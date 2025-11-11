@@ -181,7 +181,21 @@ const PracticeManagementView = ({
                   const aptDateTime = getAppointmentDateTime(apt);
                   // Get doctor name from users array
                   const provider = users?.find(u => u.id === apt.provider_id);
-                  const doctorName = apt.doctor || apt.provider_name || (provider ? `${provider.first_name || provider.firstName || ''} ${provider.last_name || provider.lastName || ''}`.trim() : '') || t.notApplicable || 'N/A';
+                  let doctorName = t.notApplicable || 'N/A';
+                  if (apt.doctor) {
+                    doctorName = apt.doctor;
+                  } else if (apt.provider_name) {
+                    doctorName = apt.provider_name;
+                  } else if (provider) {
+                    const firstName = provider.first_name || provider.firstName || '';
+                    const lastName = provider.last_name || provider.lastName || '';
+                    const fullName = `${firstName} ${lastName}`.trim();
+                    if (fullName) {
+                      doctorName = fullName;
+                    } else if (provider.name) {
+                      doctorName = provider.name;
+                    }
+                  }
                   const appointmentType = apt.type || apt.appointment_type || t.consultation || 'Consultation';
 
                   return (
@@ -379,7 +393,21 @@ const PracticeManagementView = ({
                     const aptDateTime = getAppointmentDateTime(apt);
                     // Get doctor name from users array
                     const provider = users?.find(u => u.id === apt.provider_id);
-                    const doctorName = apt.doctor || apt.provider_name || (provider ? `${provider.first_name || provider.firstName || ''} ${provider.last_name || provider.lastName || ''}`.trim() : '') || t.notApplicable || 'N/A';
+                    let doctorName = t.notApplicable || 'N/A';
+                    if (apt.doctor) {
+                      doctorName = apt.doctor;
+                    } else if (apt.provider_name) {
+                      doctorName = apt.provider_name;
+                    } else if (provider) {
+                      const firstName = provider.first_name || provider.firstName || '';
+                      const lastName = provider.last_name || provider.lastName || '';
+                      const fullName = `${firstName} ${lastName}`.trim();
+                      if (fullName) {
+                        doctorName = fullName;
+                      } else if (provider.name) {
+                        doctorName = provider.name;
+                      }
+                    }
                     const appointmentType = apt.type || apt.appointment_type || t.consultation || 'Consultation';
 
                     return (
