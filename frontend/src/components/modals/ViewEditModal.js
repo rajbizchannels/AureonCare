@@ -987,7 +987,7 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.language || 'Language'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.language || 'English'}</p>
                   ) : (
@@ -997,19 +997,19 @@ const ViewEditModal = ({
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="English">English</option>
-                      <option value="Spanish">Spanish</option>
-                      <option value="French">French</option>
-                      <option value="German">German</option>
-                      <option value="Arabic">Arabic</option>
+                      <option value="Spanish">Español</option>
+                      <option value="French">Français</option>
+                      <option value="German">Deutsch</option>
+                      <option value="Arabic">العربية</option>
                     </select>
                   )}
                 </div>
               </div>
               <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-                <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Preferences</h4>
+                <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.preferences || 'Preferences'}</h4>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Email Notifications</span>
+                    <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.emailNotifications || 'Email Notifications'}</span>
                     <input
                       type="checkbox"
                       checked={editData.emailNotifications !== false}
@@ -1019,7 +1019,7 @@ const ViewEditModal = ({
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>SMS Alerts</span>
+                    <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
                     <input
                       type="checkbox"
                       checked={editData.smsAlerts !== false}
