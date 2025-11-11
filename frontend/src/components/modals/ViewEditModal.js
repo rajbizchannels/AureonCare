@@ -578,7 +578,7 @@ const ViewEditModal = ({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.firstName || 'First Name'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.first_name}</p>
                   ) : (
@@ -591,7 +591,7 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.lastName || 'Last Name'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.last_name}</p>
                   ) : (
@@ -604,11 +604,11 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>MRN</label>
-                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.mrn || 'N/A'}</p>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.mrn || 'MRN'}</label>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.mrn || t.notApplicable || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.dateOfBirth || 'Date of Birth'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatDate(editData.date_of_birth || editData.dob)}</p>
                   ) : (
@@ -621,24 +621,24 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gender</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.gender || 'Gender'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.gender || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.gender || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <select
                       value={editData.gender || ''}
                       onChange={(e) => setEditData({...editData, gender: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
-                      <option value="">Select</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
+                      <option value="">{t.select || 'Select'}</option>
+                      <option value="Male">{t.male || 'Male'}</option>
+                      <option value="Female">{t.female || 'Female'}</option>
+                      <option value="Other">{t.other || 'Other'}</option>
                     </select>
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.phone || 'Phone'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.phone}</p>
                   ) : (
@@ -651,7 +651,7 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div className="col-span-2">
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.email || 'Email'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.email}</p>
                   ) : (
@@ -664,52 +664,52 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div className="col-span-2">
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Street Address</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.streetAddress || 'Street Address'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_street || editData.address || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_street || editData.address || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
                       value={editData.address_street || ''}
                       onChange={(e) => setEditData({...editData, address_street: e.target.value})}
-                      placeholder="123 Main Street"
+                      placeholder={t.streetAddressPlaceholder || "123 Main Street"}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>City</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.city || 'City'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_city || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_city || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
                       value={editData.address_city || ''}
                       onChange={(e) => setEditData({...editData, address_city: e.target.value})}
-                      placeholder="City"
+                      placeholder={t.city || "City"}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>State</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.state || 'State'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_state || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_state || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
                       value={editData.address_state || ''}
                       onChange={(e) => setEditData({...editData, address_state: e.target.value})}
-                      placeholder="State"
+                      placeholder={t.state || "State"}
                       maxLength="2"
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>ZIP Code</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.zipCode || 'ZIP Code'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_zip || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_zip || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
@@ -726,12 +726,12 @@ const ViewEditModal = ({
               {/* Preferred Pharmacy Section */}
               <div className={`mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
                 <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Preferred Pharmacy
+                  {t.preferredPharmacy || 'Preferred Pharmacy'}
                 </h3>
 
                 {loadingPharmacies ? (
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Loading pharmacies...
+                    {t.loadingPharmacies || 'Loading pharmacies...'}
                   </p>
                 ) : (
                   <>
@@ -739,7 +739,7 @@ const ViewEditModal = ({
                     {preferredPharmacies.length > 0 && (
                       <div className="mb-4">
                         <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          Current Preferred:
+                          {t.currentPreferred || 'Current Preferred:'}
                         </p>
                         <div className="space-y-2">
                           {preferredPharmacies.map((pharmacy) => (
@@ -750,7 +750,7 @@ const ViewEditModal = ({
                               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                 {pharmacy.pharmacyName || pharmacy.pharmacy_name}
                                 {(pharmacy.isPreferred || pharmacy.is_preferred) && (
-                                  <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">Primary</span>
+                                  <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">{t.primary || 'Primary'}</span>
                                 )}
                               </p>
                               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -758,7 +758,7 @@ const ViewEditModal = ({
                               </p>
                               {(pharmacy.phone) && (
                                 <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                  Phone: {pharmacy.phone}
+                                  {t.phone || 'Phone'}: {pharmacy.phone}
                                 </p>
                               )}
                             </div>
@@ -772,14 +772,14 @@ const ViewEditModal = ({
                       <div className="space-y-3">
                         <div>
                           <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            {preferredPharmacies.length > 0 ? 'Change Preferred Pharmacy' : 'Select Preferred Pharmacy'}
+                            {preferredPharmacies.length > 0 ? (t.changePreferredPharmacy || 'Change Preferred Pharmacy') : (t.selectPreferredPharmacy || 'Select Preferred Pharmacy')}
                           </label>
                           <select
                             value={selectedPharmacyId}
                             onChange={(e) => setSelectedPharmacyId(e.target.value)}
                             className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                           >
-                            <option value="">Select a pharmacy...</option>
+                            <option value="">{t.selectAPharmacy || 'Select a pharmacy...'}</option>
                             {pharmacies.map((pharmacy) => (
                               <option key={pharmacy.id} value={pharmacy.id}>
                                 {pharmacy.pharmacyName || pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
@@ -796,14 +796,14 @@ const ViewEditModal = ({
                               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           }`}
                         >
-                          {preferredPharmacies.length > 0 ? 'Update Preferred Pharmacy' : 'Set Preferred Pharmacy'}
+                          {preferredPharmacies.length > 0 ? (t.updatePreferredPharmacy || 'Update Preferred Pharmacy') : (t.setPreferredPharmacy || 'Set Preferred Pharmacy')}
                         </button>
                       </div>
                     )}
 
                     {preferredPharmacies.length === 0 && isView && (
                       <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        No preferred pharmacy set.
+                        {t.noPreferredPharmacySet || 'No preferred pharmacy set.'}
                       </p>
                     )}
                   </>
@@ -814,15 +814,15 @@ const ViewEditModal = ({
               {isView && (
                 <div className={`mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
                   <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Active Prescriptions
+                    {t.activePrescriptions || 'Active Prescriptions'}
                   </h3>
                   {loadingPrescriptions ? (
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Loading prescriptions...
+                      {t.loadingPrescriptions || 'Loading prescriptions...'}
                     </p>
                   ) : prescriptions.length === 0 ? (
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      No active prescriptions found.
+                      {t.noActivePrescriptionsFound || 'No active prescriptions found.'}
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -836,7 +836,7 @@ const ViewEditModal = ({
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                  {rx.medicationName || rx.medication || 'Unknown Medication'}
+                                  {rx.medicationName || rx.medication || t.unknownMedication || 'Unknown Medication'}
                                 </h4>
                                 {rx.erxStatus && (
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -845,29 +845,29 @@ const ViewEditModal = ({
                                     rx.erxStatus === 'failed' ? 'bg-red-500/20 text-red-400' :
                                     'bg-gray-500/20 text-gray-400'
                                   }`}>
-                                    {rx.erxStatus === 'sent' ? 'ePrescribed' :
-                                     rx.erxStatus === 'pending' ? 'Pending' :
-                                     rx.erxStatus === 'failed' ? 'Failed' :
-                                     'Paper'}
+                                    {rx.erxStatus === 'sent' ? (t.ePrescribed || 'ePrescribed') :
+                                     rx.erxStatus === 'pending' ? (t.pending || 'Pending') :
+                                     rx.erxStatus === 'failed' ? (t.failed || 'Failed') :
+                                     (t.paper || 'Paper')}
                                   </span>
                                 )}
                               </div>
                               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                {rx.dosage || 'N/A'} - {rx.frequency || 'N/A'}
+                                {rx.dosage || t.notApplicable || 'N/A'} - {rx.frequency || t.notApplicable || 'N/A'}
                               </p>
                               <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                                Qty: {rx.quantity || 'N/A'} | Refills: {rx.refillsRemaining !== undefined ? rx.refillsRemaining : 'N/A'}
+                                {t.qty || 'Qty'}: {rx.quantity || t.notApplicable || 'N/A'} | {t.refills || 'Refills'}: {rx.refillsRemaining !== undefined ? rx.refillsRemaining : (t.notApplicable || 'N/A')}
                               </p>
                               {rx.pharmacyName && (
                                 <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                                  Pharmacy: {rx.pharmacyName}
+                                  {t.pharmacy || 'Pharmacy'}: {rx.pharmacyName}
                                 </p>
                               )}
                             </div>
                             <div className={`text-right text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                              <p>Prescribed: {rx.prescribedDate ? formatDate(rx.prescribedDate) : 'N/A'}</p>
+                              <p>{t.prescribed || 'Prescribed'}: {rx.prescribedDate ? formatDate(rx.prescribedDate) : (t.notApplicable || 'N/A')}</p>
                               {rx.expiresDate && (
-                                <p className="mt-1">Expires: {formatDate(rx.expiresDate)}</p>
+                                <p className="mt-1">{t.expires || 'Expires'}: {formatDate(rx.expiresDate)}</p>
                               )}
                             </div>
                           </div>
@@ -885,13 +885,13 @@ const ViewEditModal = ({
                   {editData.avatar}
                 </div>
                 <div>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Role</p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.role || 'Role'}</p>
                   <p className={`font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.role}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.firstName || 'First Name'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.first_name}</p>
                   ) : (
@@ -904,7 +904,7 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.lastName || 'Last Name'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.last_name}</p>
                   ) : (
@@ -917,9 +917,9 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.email || 'Email'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.email || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.email || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="email"
@@ -930,9 +930,9 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.phone || 'Phone'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.phone || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.phone || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="tel"
@@ -943,9 +943,9 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>License</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.license || 'License'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.license || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.license || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
@@ -956,9 +956,9 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Specialty</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.specialty || 'Specialty'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.specialty || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.specialty || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
