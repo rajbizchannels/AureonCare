@@ -172,6 +172,19 @@ const ViewEditModal = ({
           data.first_name = nameParts[0] || '';
           data.last_name = nameParts.slice(1).join(' ') || '';
         }
+
+        // Extract preferences from nested object if present
+        if (data.preferences && typeof data.preferences === 'object') {
+          data.emailNotifications = data.preferences.emailNotifications !== undefined
+            ? data.preferences.emailNotifications
+            : true;
+          data.smsAlerts = data.preferences.smsAlerts !== undefined
+            ? data.preferences.smsAlerts
+            : true;
+          data.darkMode = data.preferences.darkMode !== undefined
+            ? data.preferences.darkMode
+            : true;
+        }
       }
 
       setEditData(data);
@@ -327,11 +340,19 @@ const ViewEditModal = ({
         // Generate avatar from initials
         const avatar = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
 
+        // Package preferences into nested object
+        const preferences = {
+          emailNotifications: editData.emailNotifications !== undefined ? editData.emailNotifications : true,
+          smsAlerts: editData.smsAlerts !== undefined ? editData.smsAlerts : true,
+          darkMode: editData.darkMode !== undefined ? editData.darkMode : true
+        };
+
         const userData = {
           ...editData,
           firstName,
           lastName,
-          avatar: avatar || editData.avatar
+          avatar: avatar || editData.avatar,
+          preferences
         };
         const updated = await api.updateUser(editData.id, userData);
         setUser(updated);
