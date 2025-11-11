@@ -547,6 +547,7 @@ function App() {
             setShowForm(null);
           }}
           addNotification={addNotification}
+          t={t}
         />
       )}
 
@@ -561,6 +562,7 @@ function App() {
             setShowForm(null);
           }}
           addNotification={addNotification}
+          t={t}
         />
       )}
 
@@ -576,6 +578,7 @@ function App() {
             setShowForm(null);
           }}
           addNotification={addNotification}
+          t={t}
         />
       )}
 
@@ -591,6 +594,7 @@ function App() {
             setShowForm(null);
           }}
           addNotification={addNotification}
+          t={t}
         />
       )}
 
@@ -605,6 +609,7 @@ function App() {
             setShowForm(null);
           }}
           addNotification={addNotification}
+          t={t}
         />
       )}
 
@@ -618,6 +623,7 @@ function App() {
             setShowForm(null);
           }}
           addNotification={addNotification}
+          t={t}
         />
       )}
 
