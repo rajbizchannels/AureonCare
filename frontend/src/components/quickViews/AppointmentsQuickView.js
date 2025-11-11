@@ -2,11 +2,11 @@ import React from 'react';
 import { X, Clock, UserCheck } from 'lucide-react';
 import { formatTime } from '../../utils/formatters';
 
-const AppointmentsQuickView = ({ theme, appointments, patients, onClose, onViewAll }) => (
+const AppointmentsQuickView = ({ theme, t, appointments, patients, onClose, onViewAll }) => (
   <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
     <div className={`rounded-xl border max-w-4xl w-full max-h-[80vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
       <div className={`p-6 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Today's Appointments</h2>
+        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.todaysAppointments || "Today's Appointments"}</h2>
         <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
           <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
         </button>
@@ -15,7 +15,7 @@ const AppointmentsQuickView = ({ theme, appointments, patients, onClose, onViewA
         <div className="space-y-3">
           {appointments.map(apt => {
             const patient = patients.find(p => p.id === apt.patient_id);
-            const patientName = apt.patient || patient?.name || 'Unknown Patient';
+            const patientName = apt.patient || patient?.name || t.unknownPatient || 'Unknown Patient';
             const initials = patientName.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase();
 
             // Parse appointment time from start_time or time
@@ -46,7 +46,7 @@ const AppointmentsQuickView = ({ theme, appointments, patients, onClose, onViewA
                   </div>
                   <div className="flex items-center gap-1">
                     <UserCheck className="w-4 h-4" />
-                    {apt.doctor || 'N/A'}
+                    {apt.doctor || t.notApplicable || 'N/A'}
                   </div>
                 </div>
               </div>
@@ -60,7 +60,7 @@ const AppointmentsQuickView = ({ theme, appointments, patients, onClose, onViewA
           }}
           className={`w-full mt-6 px-4 py-3 bg-cyan-500 hover:bg-cyan-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
         >
-          View All Appointments
+          {t.viewAllAppointments || 'View All Appointments'}
         </button>
       </div>
     </div>

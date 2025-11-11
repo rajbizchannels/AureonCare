@@ -2,7 +2,7 @@ import React from 'react';
 import { X, Check } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
 
-const TasksQuickView = ({ theme, tasks, onClose, onCompleteTask, setEditingItem, setCurrentView }) => {
+const TasksQuickView = ({ theme, t, tasks, onClose, onCompleteTask, setEditingItem, setCurrentView }) => {
   // Helper function to parse due date
   const getDueDate = (task) => {
     if (task.due_date) {
@@ -17,7 +17,7 @@ const TasksQuickView = ({ theme, tasks, onClose, onCompleteTask, setEditingItem,
     <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
       <div className={`rounded-xl border max-w-3xl w-full max-h-[80vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Pending Tasks</h2>
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.pendingTasks || 'Pending Tasks'}</h2>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
@@ -51,7 +51,7 @@ const TasksQuickView = ({ theme, tasks, onClose, onCompleteTask, setEditingItem,
                         </span>
                       </div>
                       <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        Due: {dueDate ? formatDate(dueDate) : 'No due date'}
+                        {t.due || 'Due'}: {dueDate ? formatDate(dueDate) : (t.noDueDate || 'No due date')}
                       </p>
                     </div>
                     <button
@@ -60,7 +60,7 @@ const TasksQuickView = ({ theme, tasks, onClose, onCompleteTask, setEditingItem,
                         onCompleteTask(task.id);
                       }}
                       className="p-2 hover:bg-green-500/20 rounded-lg transition-colors group"
-                      title="Mark as complete"
+                      title={t.markAsComplete || 'Mark as complete'}
                     >
                       <Check className={`w-5 h-5 group-hover:text-green-400 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
                     </button>

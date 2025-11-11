@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
-const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, addNotification }) => {
+const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, addNotification, t }) => {
   const [formData, setFormData] = useState({
     patientId: '',
     providerId: '',
@@ -65,8 +65,8 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
       const newAppointment = await api.createAppointment(appointmentData);
 
       const patient = patients.find(p => p.id.toString() === formData.patientId);
-      const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
-      await addNotification('appointment', `New appointment scheduled with ${patientName}`);
+      const patientName = patient ? `${patient.first_name} ${patient.last_name}` : t.patient || 'patient';
+      await addNotification('appointment', `${t.newAppointmentScheduledWith || 'New appointment scheduled with'} ${patientName}`);
 
       // Show success confirmation
       setShowConfirmation(true);
@@ -78,7 +78,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
       }, 2000);
     } catch (err) {
       console.error('Error creating appointment:', err);
-      addNotification('alert', 'Failed to create appointment. Please try again.');
+      addNotification('alert', t.failedToCreateAppointment || 'Failed to create appointment. Please try again.');
     }
   };
 
@@ -97,10 +97,10 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
           setShowConfirmation(false);
           onClose();
         }}
-        title="Success!"
-        message="Appointment has been scheduled successfully."
+        title={t.success || 'Success!'}
+        message={t.appointmentScheduledSuccess || 'Appointment has been scheduled successfully.'}
         type="success"
-        confirmText="OK"
+        confirmText={t.ok || 'OK'}
         showCancel={false}
       />
       <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
@@ -110,7 +110,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
               <Calendar className={`w-5 h-5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
             </div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>New Appointment</h2>
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.newAppointment || 'New Appointment'}</h2>
           </div>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
@@ -122,7 +122,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Patient <span className="text-red-400">*</span>
+                  {t.patient || 'Patient'} <span className="text-red-400">*</span>
                 </label>
                 <select
                   required
@@ -130,7 +130,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
                   onChange={(e) => setFormData({...formData, patientId: e.target.value})}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
-                  <option value="">Select Patient</option>
+                  <option value="">{t.selectPatient || 'Select Patient'}</option>
                   {patients.map(p => (
                     <option key={p.id} value={p.id}>{p.first_name} {p.last_name} - {p.mrn}</option>
                   ))}
@@ -139,7 +139,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Appointment Type <span className="text-red-400">*</span>
+                  {t.appointmentType || 'Appointment Type'} <span className="text-red-400">*</span>
                 </label>
                 <select
                   required
@@ -147,18 +147,18 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
                   onChange={(e) => setFormData({...formData, type: e.target.value})}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
-                  <option value="office-visit">Office Visit</option>
-                  <option value="telehealth">Telehealth</option>
-                  <option value="follow-up">Follow-up</option>
-                  <option value="annual-physical">Annual Physical</option>
-                  <option value="consultation">Consultation</option>
-                  <option value="procedure">Procedure</option>
+                  <option value="office-visit">{t.officeVisit || 'Office Visit'}</option>
+                  <option value="telehealth">{t.telehealth || 'Telehealth'}</option>
+                  <option value="follow-up">{t.followUp || 'Follow-up'}</option>
+                  <option value="annual-physical">{t.annualPhysical || 'Annual Physical'}</option>
+                  <option value="consultation">{t.consultation || 'Consultation'}</option>
+                  <option value="procedure">{t.procedure || 'Procedure'}</option>
                 </select>
               </div>
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Date <span className="text-red-400">*</span>
+                  {t.date || 'Date'} <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="date"
@@ -171,7 +171,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Time <span className="text-red-400">*</span>
+                  {t.time || 'Time'} <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="time"
@@ -184,7 +184,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Duration (minutes) <span className="text-red-400">*</span>
+                  {t.durationMinutes || 'Duration (minutes)'} <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="number"
@@ -199,14 +199,14 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Provider
+                  {t.provider || 'Provider'}
                 </label>
                 <select
                   value={formData.providerId}
                   onChange={(e) => setFormData({...formData, providerId: e.target.value})}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
-                  <option value="">Select Provider</option>
+                  <option value="">{t.selectProvider || 'Select Provider'}</option>
                   {providers.map(provider => (
                     <option key={provider.id} value={provider.id}>
                       {`${provider.first_name || ''} ${provider.last_name || ''}`.trim() || provider.email}
@@ -218,27 +218,27 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Reason for Visit <span className="text-red-400">*</span>
+                {t.reasonForVisit || 'Reason for Visit'} <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={formData.reason}
                 onChange={(e) => setFormData({...formData, reason: e.target.value})}
-                placeholder="e.g., Annual physical, Follow-up on treatment"
+                placeholder={t.reasonPlaceholder || 'e.g., Annual physical, Follow-up on treatment'}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
               />
             </div>
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Additional Notes
+                {t.additionalNotes || 'Additional Notes'}
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
                 rows="3"
-                placeholder="Any additional information..."
+                placeholder={t.additionalNotesPlaceholder || 'Any additional information...'}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 resize-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
               />
             </div>
@@ -250,14 +250,14 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
               onClick={onClose}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
             >
-              Cancel
+              {t.cancel || 'Cancel'}
             </button>
             <button
               type="submit"
               className={`flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
             >
               <Save className="w-5 h-5" />
-              Schedule Appointment
+              {t.scheduleAppointment || 'Schedule Appointment'}
             </button>
           </div>
         </form>

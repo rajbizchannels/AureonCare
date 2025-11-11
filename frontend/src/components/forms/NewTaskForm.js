@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckSquare, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
-const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
+const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -30,7 +30,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
     e.preventDefault();
 
     if (!formData.title.trim()) {
-      alert('Please enter a task title');
+      alert(t.pleaseEnterTaskTitle || 'Please enter a task title');
       return;
     }
 
@@ -46,7 +46,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
 
       const newTask = await api.createTask(taskData);
 
-      await addNotification('task', `New task created: ${formData.title}`);
+      await addNotification('task', `${t.newTaskCreated || 'New task created'}: ${formData.title}`);
 
       // Show success confirmation
       setShowConfirmation(true);
@@ -58,7 +58,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
       }, 2000);
     } catch (err) {
       console.error('Error creating task:', err);
-      addNotification('alert', 'Failed to create task. Please try again.');
+      addNotification('alert', t.failedToCreateTask || 'Failed to create task. Please try again.');
     }
   };
 
@@ -72,10 +72,10 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
           setShowConfirmation(false);
           onClose();
         }}
-        title="Success!"
-        message="Task has been created successfully."
+        title={t.success || 'Success!'}
+        message={t.taskCreatedSuccess || 'Task has been created successfully.'}
         type="success"
-        confirmText="OK"
+        confirmText={t.ok || 'OK'}
         showCancel={false}
       />
       <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
@@ -85,7 +85,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
               <CheckSquare className="w-6 h-6 text-white" />
             </div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Create New Task</h2>
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.createNewTask || 'Create New Task'}</h2>
           </div>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
@@ -97,14 +97,14 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
             {/* Title */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Task Title *
+                {t.taskTitle || 'Task Title'} *
               </label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
-                placeholder="Enter task title"
+                placeholder={t.enterTaskTitle || 'Enter task title'}
                 required
               />
             </div>
@@ -112,14 +112,14 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
             {/* Description */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Description
+                {t.description || 'Description'}
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows="3"
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
-                placeholder="Enter task description"
+                placeholder={t.enterTaskDescription || 'Enter task description'}
               />
             </div>
 
@@ -127,34 +127,34 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
               {/* Priority */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  Priority
+                  {t.priority || 'Priority'}
                 </label>
                 <select
                   value={formData.priority}
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                 >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Urgent">Urgent</option>
+                  <option value="Low">{t.low || 'Low'}</option>
+                  <option value="Medium">{t.medium || 'Medium'}</option>
+                  <option value="High">{t.high || 'High'}</option>
+                  <option value="Urgent">{t.urgent || 'Urgent'}</option>
                 </select>
               </div>
 
               {/* Status */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  Status
+                  {t.status || 'Status'}
                 </label>
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                 >
-                  <option value="Pending">Pending</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                  <option value="On Hold">On Hold</option>
+                  <option value="Pending">{t.pending || 'Pending'}</option>
+                  <option value="In Progress">{t.inProgress || 'In Progress'}</option>
+                  <option value="Completed">{t.completed || 'Completed'}</option>
+                  <option value="On Hold">{t.onHold || 'On Hold'}</option>
                 </select>
               </div>
             </div>
@@ -162,7 +162,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
             {/* Due Date */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Due Date
+                {t.dueDate || 'Due Date'}
               </label>
               <input
                 type="date"
@@ -175,14 +175,14 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
             {/* Assigned To */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Assigned To (Optional)
+                {t.assignedToOptional || 'Assigned To (Optional)'}
               </label>
               <input
                 type="text"
                 value={formData.assignedTo}
                 onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
-                placeholder="Enter assignee name"
+                placeholder={t.enterAssigneeName || 'Enter assignee name'}
               />
             </div>
           </div>
@@ -193,14 +193,14 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification }) => {
               onClick={onClose}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
             >
-              Cancel
+              {t.cancel || 'Cancel'}
             </button>
             <button
               type="submit"
               className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2"
             >
               <Save className="w-5 h-5" />
-              Create Task
+              {t.createTask || 'Create Task'}
             </button>
           </div>
         </form>

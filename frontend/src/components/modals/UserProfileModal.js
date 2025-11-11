@@ -69,7 +69,7 @@ const UserProfileModal = ({
     <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
       <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`flex items-center justify-between p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>User Profile</h2>
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.userProfile || 'User Profile'}</h2>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
@@ -89,40 +89,40 @@ const UserProfileModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.firstName || 'N/A'}</p>
+              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.firstName || 'First Name'}</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.firstName || t.notApplicable || 'N/A'}</p>
             </div>
             <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.lastName || 'N/A'}</p>
+              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.lastName || 'Last Name'}</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.lastName || t.notApplicable || 'N/A'}</p>
             </div>
             <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Role</p>
-              <p className={`capitalize font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.role || 'N/A'}</p>
+              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.role || 'Role'}</p>
+              <p className={`capitalize font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.role || t.notApplicable || 'N/A'}</p>
             </div>
             <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
-              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.email || 'N/A'}</p>
+              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.email || 'Email'}</p>
+              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.email || t.notApplicable || 'N/A'}</p>
             </div>
             <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
-              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.phone || 'N/A'}</p>
+              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.phone || 'Phone'}</p>
+              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.phone || t.notApplicable || 'N/A'}</p>
             </div>
             <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>License</p>
-              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.license || 'N/A'}</p>
+              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.license || 'License'}</p>
+              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.license || t.notApplicable || 'N/A'}</p>
             </div>
             <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Specialty</p>
-              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.specialty || 'N/A'}</p>
+              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.specialty || 'Specialty'}</p>
+              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.specialty || t.notApplicable || 'N/A'}</p>
             </div>
           </div>
 
           <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-            <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Preferences</h4>
+            <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.preferences || 'Preferences'}</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Email Notifications</span>
+                <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.emailNotifications || 'Email Notifications'}</span>
                 <input
                   type="checkbox"
                   checked={user.preferences?.emailNotifications ?? true}
@@ -136,7 +136,7 @@ const UserProfileModal = ({
                 />
               </div>
               <div className="flex items-center justify-between">
-                <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>SMS Alerts</span>
+                <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
                 <input
                   type="checkbox"
                   checked={user.preferences?.smsAlerts ?? true}
@@ -150,7 +150,7 @@ const UserProfileModal = ({
                 />
               </div>
               <div className="flex items-center justify-between">
-                <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Dark Mode</span>
+                <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.darkMode || 'Dark Mode'}</span>
                 <input
                   type="checkbox"
                   checked={theme === 'dark'}

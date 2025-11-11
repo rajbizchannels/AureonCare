@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 
-const TelehealthView = ({ theme, api, appointments, patients, addNotification, setCurrentModule }) => {
+const TelehealthView = ({ theme, api, appointments, patients, addNotification, setCurrentModule, t }) => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNewSessionForm, setShowNewSessionForm] = useState(false);
@@ -18,7 +18,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       setSessions(data);
     } catch (error) {
       console.error('Error fetching telehealth sessions:', error);
-      addNotification('alert', 'Failed to load telehealth sessions');
+      addNotification('alert', t.failedToLoadTelehealthSessions || 'Failed to load telehealth sessions');
     } finally {
       setLoading(false);
     }
@@ -40,11 +40,11 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
       const newSession = await api.createTelehealthSession(sessionData);
       setSessions([newSession, ...sessions]);
-      addNotification('appointment', 'Telehealth session created successfully');
+      addNotification('appointment', t.telehealthSessionCreated || 'Telehealth session created successfully');
       setShowNewSessionForm(false);
     } catch (error) {
       console.error('Error creating session:', error);
-      addNotification('alert', 'Failed to create telehealth session');
+      addNotification('alert', t.failedToCreateTelehealthSession || 'Failed to create telehealth session');
     }
   };
 
@@ -61,7 +61,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       }
     } catch (error) {
       console.error('Error joining session:', error);
-      addNotification('alert', 'Failed to join session');
+      addNotification('alert', t.failedToJoinSession || 'Failed to join session');
     }
   };
 
@@ -82,7 +82,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
   const getPatientName = (patientId) => {
     const patient = patients.find(p => p.id === patientId);
-    return patient ? `${patient.first_name} ${patient.last_name}` : 'Unknown Patient';
+    return patient ? `${patient.first_name} ${patient.last_name}` : (t.unknownPatient || 'Unknown Patient');
   };
 
   const upcomingSessions = getUpcomingSessions();
@@ -103,12 +103,12 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
           <button
             onClick={() => setCurrentModule && setCurrentModule('dashboard')}
             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title="Back to Dashboard"
+            title={t.backToDashboard || 'Back to Dashboard'}
           >
             <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Video Consultations
+            {t.videoConsultations || 'Video Consultations'}
           </h2>
         </div>
         <button
@@ -116,7 +116,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg text-white font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
-          New Session
+          {t.newSession || 'New Session'}
         </button>
       </div>
 
@@ -124,7 +124,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Total Sessions</h3>
+            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.totalSessions || 'Total Sessions'}</h3>
             <Video className={`w-5 h-5 ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-600'}`} />
           </div>
           <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{sessions.length}</p>
@@ -132,7 +132,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
         <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Upcoming</h3>
+            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.upcoming || 'Upcoming'}</h3>
             <Calendar className={`w-5 h-5 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
           </div>
           <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{upcomingSessions.length}</p>
@@ -140,7 +140,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
         <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Completed</h3>
+            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.completed || 'Completed'}</h3>
             <Clock className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
           </div>
           <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{recentSessions.length}</p>
@@ -151,7 +151,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       {upcomingSessions.length > 0 && (
         <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
           <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Upcoming Sessions
+            {t.upcomingSessions || 'Upcoming Sessions'}
           </h3>
           <div className="space-y-3">
             {upcomingSessions.map((session) => (
@@ -169,7 +169,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                     </p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                       {formatDate(session.start_time)} at {formatTime(session.start_time)}
-                      {session.duration_minutes && ` · ${session.duration_minutes} min`}
+                      {session.duration_minutes && ` · ${session.duration_minutes} ${t.min || 'min'}`}
                     </p>
                   </div>
                 </div>
@@ -186,7 +186,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                     className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white text-sm font-medium transition-colors"
                   >
                     <Play className="w-4 h-4" />
-                    Join
+                    {t.join || 'Join'}
                   </button>
                 </div>
               </div>
@@ -199,7 +199,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       {recentSessions.length > 0 && (
         <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
           <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Recent Sessions
+            {t.recentSessions || 'Recent Sessions'}
           </h3>
           <div className="space-y-3">
             {recentSessions.map((session) => (
@@ -217,8 +217,8 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                     </p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                       {formatDate(session.end_time || session.start_time)}
-                      {session.duration_minutes && ` · ${session.duration_minutes} min`}
-                      {session.participants && ` · ${session.participants.length} participants`}
+                      {session.duration_minutes && ` · ${session.duration_minutes} ${t.min || 'min'}`}
+                      {session.participants && ` · ${session.participants.length} ${t.participants || 'participants'}`}
                     </p>
                   </div>
                 </div>
@@ -229,7 +229,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                       className={`px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
                     >
                       <ExternalLink className="w-4 h-4" />
-                      View Recording
+                      {t.viewRecording || 'View Recording'}
                     </button>
                   )}
                 </div>
@@ -246,16 +246,16 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
             <Video className="w-10 h-10 text-white" />
           </div>
           <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            No Telehealth Sessions Yet
+            {t.noTelehealthSessionsYet || 'No Telehealth Sessions Yet'}
           </h3>
           <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            Create your first telehealth session to start video consultations with patients
+            {t.createFirstTelehealthSession || 'Create your first telehealth session to start video consultations with patients'}
           </p>
           <button
             onClick={() => setShowNewSessionForm(true)}
             className="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-colors text-white"
           >
-            Create First Session
+            {t.createFirstSession || 'Create First Session'}
           </button>
         </div>
       )}
