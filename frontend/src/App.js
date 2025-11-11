@@ -227,6 +227,7 @@ function App() {
             api={api}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            t={t}
           />
         );
       case 'ehr':

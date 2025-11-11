@@ -16,7 +16,8 @@ const PracticeManagementView = ({
   setAppointments,
   api,
   addNotification,
-  setCurrentModule
+  setCurrentModule,
+  t
 }) => {
   // State for calendar navigation
   const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week, -1 = last week, +1 = next week
@@ -68,11 +69,11 @@ const PracticeManagementView = ({
           <button
             onClick={() => setCurrentModule && setCurrentModule('dashboard')}
             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title="Back to Dashboard"
+            title={t.backToDashboard || 'Back to Dashboard'}
           >
             <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Appointments</h2>
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.appointments || 'Appointments'}</h2>
         </div>
         <div className="flex items-center gap-3">
           {/* View Type Toggle */}
@@ -86,7 +87,7 @@ const PracticeManagementView = ({
               }`}
             >
               <List className="w-4 h-4" />
-              List
+              {t.list || 'List'}
             </button>
             <button
               onClick={() => setAppointmentViewType('calendar')}
@@ -97,7 +98,7 @@ const PracticeManagementView = ({
               }`}
             >
               <Calendar className="w-4 h-4" />
-              Calendar
+              {t.calendar || 'Calendar'}
             </button>
           </div>
 
@@ -112,7 +113,7 @@ const PracticeManagementView = ({
                     : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Day
+                {t.day || 'Day'}
               </button>
               <button
                 onClick={() => setCalendarViewType('week')}
@@ -122,7 +123,7 @@ const PracticeManagementView = ({
                     : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Week
+                {t.week || 'Week'}
               </button>
             </div>
           )}
@@ -132,7 +133,7 @@ const PracticeManagementView = ({
             className={`flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
             <Plus className="w-4 h-4" />
-            New Appointment
+            {t.newAppointment || 'New Appointment'}
           </button>
         </div>
       </div>
@@ -144,21 +145,21 @@ const PracticeManagementView = ({
             <table className="w-full">
               <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
                 <tr>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Patient</th>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Doctor</th>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Date & Time</th>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Type</th>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.patient || 'Patient'}</th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.doctor || 'Doctor'}</th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.dateAndTime || 'Date & Time'}</th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.type || 'Type'}</th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.status || 'Status'}</th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.actions || 'Actions'}</th>
                 </tr>
               </thead>
               <tbody>
                 {appointments.map((apt, idx) => {
                   const patient = patients.find(p => p.id === apt.patient_id);
-                  const patientName = apt.patient || patient?.name || 'Unknown Patient';
+                  const patientName = apt.patient || patient?.name || t.unknownPatient || 'Unknown Patient';
                   const aptDateTime = getAppointmentDateTime(apt);
-                  const doctorName = apt.doctor || 'N/A';
-                  const appointmentType = apt.type || apt.appointment_type || 'Consultation';
+                  const doctorName = apt.doctor || t.notApplicable || 'N/A';
+                  const appointmentType = apt.type || apt.appointment_type || t.consultation || 'Consultation';
 
                   return (
                     <tr key={apt.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
@@ -181,7 +182,7 @@ const PracticeManagementView = ({
                               setCurrentView('view');
                             }}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                            title="View"
+                            title={t.view || 'View'}
                           >
                             <Eye className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
                           </button>
@@ -191,25 +192,25 @@ const PracticeManagementView = ({
                               setCurrentView('edit');
                             }}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                            title="Edit"
+                            title={t.edit || 'Edit'}
                           >
                             <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
                           </button>
                           <button
                             onClick={async () => {
-                              if (window.confirm('Are you sure you want to delete this appointment?')) {
+                              if (window.confirm(t.confirmDeleteAppointment || 'Are you sure you want to delete this appointment?')) {
                                 try {
                                   await api.deleteAppointment(apt.id);
                                   setAppointments(prev => prev.filter(a => a.id !== apt.id));
-                                  await addNotification('alert', 'Appointment deleted successfully');
+                                  await addNotification('alert', t.appointmentDeletedSuccessfully || 'Appointment deleted successfully');
                                 } catch (err) {
                                   console.error('Error deleting appointment:', err);
-                                  alert('Failed to delete appointment');
+                                  alert(t.failedToDeleteAppointment || 'Failed to delete appointment');
                                 }
                               }
                             }}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                            title="Delete"
+                            title={t.delete || 'Delete'}
                           >
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
@@ -235,7 +236,7 @@ const PracticeManagementView = ({
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
               >
                 <ChevronLeft className="w-4 h-4" />
-                Previous Week
+                {t.previousWeek || 'Previous Week'}
               </button>
               <div className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {weekDates[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - {weekDates[6].toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -244,7 +245,7 @@ const PracticeManagementView = ({
                 onClick={() => setSelectedWeek(selectedWeek + 1)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
               >
-                Next Week
+                {t.nextWeek || 'Next Week'}
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -262,7 +263,7 @@ const PracticeManagementView = ({
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
               >
                 <ChevronLeft className="w-4 h-4" />
-                Previous Day
+                {t.previousDay || 'Previous Day'}
               </button>
               <div className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {selectedDay.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -275,7 +276,7 @@ const PracticeManagementView = ({
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
               >
-                Next Day
+                {t.nextDay || 'Next Day'}
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -285,7 +286,7 @@ const PracticeManagementView = ({
           {calendarViewType === 'week' && (
             <div>
               <div className="grid grid-cols-7 gap-4 mb-2">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                {[t.mon || 'Mon', t.tue || 'Tue', t.wed || 'Wed', t.thu || 'Thu', t.fri || 'Fri', t.sat || 'Sat', t.sun || 'Sun'].map(day => (
                   <div key={day} className={`text-center font-semibold text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {day}
                   </div>
@@ -315,7 +316,7 @@ const PracticeManagementView = ({
                       <div className="space-y-1">
                         {dayAppointments.map(apt => {
                           const patient = patients.find(p => p.id === apt.patient_id);
-                          const patientName = apt.patient || patient?.name || 'Unknown';
+                          const patientName = apt.patient || patient?.name || t.unknown || 'Unknown';
                           const aptDateTime = getAppointmentDateTime(apt);
                           return (
                             <div
@@ -351,10 +352,10 @@ const PracticeManagementView = ({
                 {getAppointmentsForDate(selectedDay).length > 0 ? (
                   getAppointmentsForDate(selectedDay).map(apt => {
                     const patient = patients.find(p => p.id === apt.patient_id);
-                    const patientName = apt.patient || patient?.name || 'Unknown Patient';
+                    const patientName = apt.patient || patient?.name || t.unknownPatient || 'Unknown Patient';
                     const aptDateTime = getAppointmentDateTime(apt);
-                    const doctorName = apt.doctor || 'N/A';
-                    const appointmentType = apt.type || apt.appointment_type || 'Consultation';
+                    const doctorName = apt.doctor || t.notApplicable || 'N/A';
+                    const appointmentType = apt.type || apt.appointment_type || t.consultation || 'Consultation';
 
                     return (
                       <div
@@ -379,7 +380,7 @@ const PracticeManagementView = ({
                                 {patientName}
                               </div>
                               <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                {appointmentType} with {doctorName}
+                                {appointmentType} {t.with || 'with'} {doctorName}
                               </div>
                             </div>
                           </div>
@@ -394,7 +395,7 @@ const PracticeManagementView = ({
                   })
                 ) : (
                   <div className={`text-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    No appointments scheduled for this day
+                    {t.noAppointmentsScheduledForThisDay || 'No appointments scheduled for this day'}
                   </div>
                 )}
               </div>
