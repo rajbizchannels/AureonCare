@@ -11,6 +11,7 @@ const ViewEditModal = ({
   onClose,
   onSave,
   patients,
+  users,
   api,
   addNotification,
   setAppointments,
@@ -418,7 +419,14 @@ const ViewEditModal = ({
       <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {isView ? 'View' : 'Edit'} {type === 'appointment' ? 'Appointment' : type === 'patient' ? 'Patient Chart' : type === 'userProfile' ? 'User Profile' : type === 'user' ? 'User' : type === 'task' ? 'Task' : 'Claim'}
+            {isView ? (t.view || 'View') : (t.edit || 'Edit')} {
+              type === 'appointment' ? (t.appointment || 'Appointment') :
+              type === 'patient' ? (t.patientChart || 'Patient Chart') :
+              type === 'userProfile' ? (t.userProfile || 'User Profile') :
+              type === 'user' ? (t.user || 'User') :
+              type === 'task' ? (t.task || 'Task') :
+              (t.claim || 'Claim')
+            }
           </h2>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
@@ -430,30 +438,51 @@ const ViewEditModal = ({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Patient</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.patient || 'Patient'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.patient}</p>
                   ) : (
                     <select
-                      value={editData.patientId}
+                      value={editData.patientId || editData.patient_id}
                       onChange={(e) => {
                         const patient = patients.find(p => p.id.toString() === e.target.value);
-                        setEditData({...editData, patientId: e.target.value, patient: patient?.name});
+                        setEditData({...editData, patientId: e.target.value, patient_id: e.target.value, patient: patient?.name || `${patient?.first_name} ${patient?.last_name}`});
                       }}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
+                      <option value="">{t.selectPatient || 'Select Patient'}</option>
                       {patients.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                        <option key={p.id} value={p.id}>
+                          {p.name || `${p.first_name} ${p.last_name}` || `${p.firstName} ${p.lastName}`} {p.mrn ? `- ${p.mrn}` : ''}
+                        </option>
                       ))}
                     </select>
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Doctor</label>
-                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.doctor}</p>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.provider || 'Provider'}</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.doctor || editData.provider_name || t.notApplicable || 'N/A'}</p>
+                  ) : (
+                    <select
+                      value={editData.providerId || editData.provider_id}
+                      onChange={(e) => {
+                        const provider = users?.find(u => u.id.toString() === e.target.value);
+                        setEditData({...editData, providerId: e.target.value, provider_id: e.target.value, doctor: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}` : ''});
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    >
+                      <option value="">{t.selectProvider || 'Select Provider'}</option>
+                      {users?.filter(u => u.role === 'doctor' || u.role === 'physician' || u.role === 'provider' || u.role === 'admin').map(provider => (
+                        <option key={provider.id} value={provider.id}>
+                          {`${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() || provider.email}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.date || 'Date'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatDate(editData.date)}</p>
                   ) : (
@@ -466,7 +495,7 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Time</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.time || 'Time'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatTime(editData.time)}</p>
                   ) : (
@@ -479,7 +508,7 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Type</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.type || 'Type'}</label>
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.type}</p>
                   ) : (
@@ -488,18 +517,18 @@ const ViewEditModal = ({
                       onChange={(e) => setEditData({...editData, type: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
-                      <option value="Check-up">Check-up</option>
-                      <option value="Follow-up">Follow-up</option>
-                      <option value="Consultation">Consultation</option>
-                      <option value="Physical">Physical Exam</option>
-                      <option value="Procedure">Procedure</option>
+                      <option value="Check-up">{t.checkUp || 'Check-up'}</option>
+                      <option value="Follow-up">{t.followUp || 'Follow-up'}</option>
+                      <option value="Consultation">{t.consultation || 'Consultation'}</option>
+                      <option value="Physical">{t.physicalExam || 'Physical Exam'}</option>
+                      <option value="Procedure">{t.procedure || 'Procedure'}</option>
                     </select>
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Duration</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.duration || 'Duration'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.duration} minutes</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.duration} {t.minutes || 'minutes'}</p>
                   ) : (
                     <input
                       type="number"
@@ -510,7 +539,7 @@ const ViewEditModal = ({
                   )}
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.status || 'Status'}</label>
                   {isView ? (
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       editData.status === 'Confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
@@ -523,16 +552,16 @@ const ViewEditModal = ({
                       onChange={(e) => setEditData({...editData, status: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
-                      <option value="Scheduled">Scheduled</option>
-                      <option value="Confirmed">Confirmed</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Cancelled">Cancelled</option>
+                      <option value="Scheduled">{t.scheduled || 'Scheduled'}</option>
+                      <option value="Confirmed">{t.confirmed || 'Confirmed'}</option>
+                      <option value="Completed">{t.completed || 'Completed'}</option>
+                      <option value="Cancelled">{t.cancelled || 'Cancelled'}</option>
                     </select>
                   )}
                 </div>
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Reason</label>
+                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.reason || 'Reason'}</label>
                 {isView ? (
                   <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.reason}</p>
                 ) : (
