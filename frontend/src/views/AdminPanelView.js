@@ -186,7 +186,7 @@ const AdminPanelView = ({
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    if (!window.confirm(t.confirmDeleteUser || 'Are you sure you want to delete this user?')) return;
 
     try {
       await api.deleteUser(userId);
@@ -200,20 +200,29 @@ const AdminPanelView = ({
   const handleToggleUserStatus = async (userId, currentStatus) => {
     const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
     const actionText = newStatus === 'blocked' ? 'block' : 'unblock';
+    const confirmMsg = newStatus === 'blocked'
+      ? (t.confirmBlockUser || 'Are you sure you want to block this user?')
+      : (t.confirmUnblockUser || 'Are you sure you want to unblock this user?');
 
-    if (!window.confirm(`Are you sure you want to ${actionText} this user?`)) return;
+    if (!window.confirm(confirmMsg)) return;
 
     try {
       const updatedUser = await api.updateUser(userId, { status: newStatus });
       setUsers(users.map(u => u.id === userId ? updatedUser : u));
-      await addNotification('success', `User ${actionText}ed successfully`);
+      const successMsg = newStatus === 'blocked'
+        ? (t.userBlockedSuccessfully || 'User blocked successfully')
+        : (t.userUnblockedSuccessfully || 'User unblocked successfully');
+      await addNotification('success', successMsg);
     } catch (error) {
-      await addNotification('alert', `Failed to ${actionText} user`);
+      const errorMsg = newStatus === 'blocked'
+        ? (t.failedToBlockUser || 'Failed to block user')
+        : (t.failedToUnblockUser || 'Failed to unblock user');
+      await addNotification('alert', errorMsg);
     }
   };
 
   const handleApproveUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to approve this user?')) return;
+    if (!window.confirm(t.confirmApproveUser || 'Are you sure you want to approve this user?')) return;
 
     try {
       const updatedUser = await api.updateUser(userId, { status: 'active' });
@@ -279,7 +288,7 @@ const AdminPanelView = ({
           <button
             onClick={() => setCurrentModule && setCurrentModule('dashboard')}
             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title="Back to Dashboard"
+            title={t.backToDashboard || 'Back to Dashboard'}
           >
             <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
@@ -367,7 +376,7 @@ const AdminPanelView = ({
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Website
+                {t.website || 'Website'}
               </label>
               <input
                 type="text"
@@ -378,7 +387,7 @@ const AdminPanelView = ({
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Tax ID
+                {t.taxId || 'Tax ID'}
               </label>
               <input
                 type="text"
@@ -389,7 +398,7 @@ const AdminPanelView = ({
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                NPI Number
+                {t.npiNumber || 'NPI Number'}
               </label>
               <input
                 type="text"
@@ -405,7 +414,7 @@ const AdminPanelView = ({
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
               <Save className="w-5 h-5" />
-              Save Changes
+              {t.saveChanges || 'Save Changes'}
             </button>
           </div>
         </div>
@@ -416,26 +425,26 @@ const AdminPanelView = ({
         <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
           <div className="flex items-center justify-between mb-6">
             <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Users ({users.length})
+              {t.users || 'Users'} ({users.length})
             </h2>
             <button
               onClick={() => setShowForm('user')}
               className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
               <UserPlus className="w-4 h-4" />
-              Add User
+              {t.addUser || 'Add User'}
             </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Name</th>
-                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Email</th>
-                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Role</th>
-                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
-                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Specialty</th>
-                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
+                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.name || 'Name'}</th>
+                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.email || 'Email'}</th>
+                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.role || 'Role'}</th>
+                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.status || 'Status'}</th>
+                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.specialty || 'Specialty'}</th>
+                  <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.actions || 'Actions'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -454,7 +463,7 @@ const AdminPanelView = ({
                         user.role === 'patient' ? 'bg-green-500/20 text-green-400' :
                         'bg-gray-500/20 text-gray-400'
                       }`}>
-                        {user.role}
+                        {t[user.role] || user.role}
                       </span>
                     </td>
                     <td className={`px-4 py-3`}>
@@ -464,11 +473,11 @@ const AdminPanelView = ({
                         user.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
                         'bg-green-500/20 text-green-400'
                       }`}>
-                        {user.status || 'active'}
+                        {t[user.status || 'active'] || user.status || 'active'}
                       </span>
                     </td>
                     <td className={`px-4 py-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      {user.specialty || 'N/A'}
+                      {user.specialty || (t.notApplicable || 'N/A')}
                     </td>
                     <td className={`px-4 py-3`}>
                       <div className="flex items-center gap-2">
@@ -476,7 +485,7 @@ const AdminPanelView = ({
                           <button
                             onClick={() => handleApproveUser(user.id)}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                            title="Approve User"
+                            title={t.approveUser || 'Approve User'}
                           >
                             <CheckCircle className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
                           </button>
@@ -487,7 +496,7 @@ const AdminPanelView = ({
                             setCurrentView('edit');
                           }}
                           className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                          title="Edit User"
+                          title={t.editUser || 'Edit User'}
                         >
                           <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
                         </button>
@@ -495,7 +504,7 @@ const AdminPanelView = ({
                           <button
                             onClick={() => handleToggleUserStatus(user.id, user.status || 'active')}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                            title={(user.status || 'active') === 'blocked' ? 'Unblock User' : 'Block User'}
+                            title={(user.status || 'active') === 'blocked' ? (t.unblockUser || 'Unblock User') : (t.blockUser || 'Block User')}
                           >
                             {(user.status || 'active') === 'blocked' ? (
                               <Unlock className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
@@ -507,7 +516,7 @@ const AdminPanelView = ({
                         <button
                           onClick={() => handleDeleteUser(user.id)}
                           className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                          title="Delete User"
+                          title={t.deleteUser || 'Delete User'}
                         >
                           <Trash2 className={`w-4 h-4 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
                         </button>
@@ -525,10 +534,10 @@ const AdminPanelView = ({
       {activeTab === 'roles' && (
         <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
           <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Role Permissions
+            {t.rolePermissions || 'Role Permissions'}
           </h2>
           <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            Configure what each role can do in the system. Check or uncheck permissions for each role.
+            {t.rolePermissionsDescription || 'Configure what each role can do in the system. Check or uncheck permissions for each role.'}
           </p>
 
           <div className="space-y-8">
@@ -542,7 +551,7 @@ const AdminPanelView = ({
                     'text-gray-400'
                   }`} />
                   <h3 className={`text-lg font-semibold capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {role}
+                    {t[role] || role}
                   </h3>
                   <span className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
                     role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
@@ -552,7 +561,7 @@ const AdminPanelView = ({
                   }`}>
                     {Object.values(permissions).reduce((count, perms) =>
                       count + Object.values(perms).filter(Boolean).length, 0
-                    )} permissions
+                    )} {t.permissions || 'permissions'}
                   </span>
                 </div>
 
@@ -561,19 +570,19 @@ const AdminPanelView = ({
                     <thead>
                       <tr className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
                         <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                          Module
+                          {t.module || 'Module'}
                         </th>
                         <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                          View
+                          {t.view || 'View'}
                         </th>
                         <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                          Create
+                          {t.create || 'Create'}
                         </th>
                         <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                          Edit
+                          {t.edit || 'Edit'}
                         </th>
                         <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                          Delete
+                          {t.delete || 'Delete'}
                         </th>
                       </tr>
                     </thead>
@@ -581,7 +590,7 @@ const AdminPanelView = ({
                       {Object.entries(permissions).map(([module, actions]) => (
                         <tr key={module} className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'}`}>
                           <td className={`px-4 py-3 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {module}
+                            {t[module] || module}
                           </td>
                           {['view', 'create', 'edit', 'delete'].map(action => (
                             <td key={action} className="px-4 py-3 text-center">
@@ -608,7 +617,7 @@ const AdminPanelView = ({
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
               <Save className="w-5 h-5" />
-              Save Permissions
+              {t.savePermissions || 'Save Permissions'}
             </button>
           </div>
         </div>
@@ -618,10 +627,10 @@ const AdminPanelView = ({
       {activeTab === 'plans' && (
         <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
           <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Subscription Plans
+            {t.subscriptionPlans || 'Subscription Plans'}
           </h2>
           <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            Choose the plan that best fits your practice needs. Upgrade or downgrade anytime.
+            {t.subscriptionPlansDescription || 'Choose the plan that best fits your practice needs. Upgrade or downgrade anytime.'}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -639,7 +648,7 @@ const AdminPanelView = ({
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium rounded-full">
-                      Most Popular
+                      {t.mostPopular || 'Most Popular'}
                     </span>
                   </div>
                 )}
@@ -654,14 +663,14 @@ const AdminPanelView = ({
 
                 <div className="text-center mb-6">
                   <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {plan.name}
+                    {t[plan.id + 'Plan'] || plan.name}
                   </h3>
                   <div className="flex items-baseline justify-center gap-1">
                     <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       ${plan.price}
                     </span>
                     <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      /{plan.billing}
+                      /{t[plan.billing] || plan.billing}
                     </span>
                   </div>
                 </div>
@@ -670,61 +679,61 @@ const AdminPanelView = ({
                   <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
                     <span>
-                      {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers} user{plan.maxUsers !== 1 ? 's' : ''}
+                      {plan.maxUsers === -1 ? (t.unlimited || 'Unlimited') : plan.maxUsers} {plan.maxUsers === 1 ? (t.user || 'user') : (t.users || 'users')}
                     </span>
                   </div>
                   <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
                     <span>
-                      {plan.maxPatients === -1 ? 'Unlimited' : plan.maxPatients} patient{plan.maxPatients !== 1 ? 's' : ''}
+                      {plan.maxPatients === -1 ? (t.unlimited || 'Unlimited') : plan.maxPatients} {plan.maxPatients === 1 ? (t.patient || 'patient') : (t.patients || 'patients')}
                     </span>
                   </div>
                   {plan.features.ehr && (
                     <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span>Electronic Health Records</span>
+                      <span>{t.electronicHealthRecords || 'Electronic Health Records'}</span>
                     </div>
                   )}
                   {plan.features.appointments && (
                     <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span>Appointment Management</span>
+                      <span>{t.appointmentManagement || 'Appointment Management'}</span>
                     </div>
                   )}
                   {plan.features.billing && (
                     <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span>Billing & Claims</span>
+                      <span>{t.billingAndClaims || 'Billing & Claims'}</span>
                     </div>
                   )}
                   {plan.features.crm && (
                     <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span>CRM</span>
+                      <span>{t.crm || 'CRM'}</span>
                     </div>
                   )}
                   {plan.features.telehealth && (
                     <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span>Telehealth</span>
+                      <span>{t.telehealth || 'Telehealth'}</span>
                     </div>
                   )}
                   {plan.features.integrations && (
                     <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span>Integrations</span>
+                      <span>{t.integrations || 'Integrations'}</span>
                     </div>
                   )}
                   {plan.features.customBranding && (
                     <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span>Custom Branding</span>
+                      <span>{t.customBranding || 'Custom Branding'}</span>
                     </div>
                   )}
                   {plan.features.apiAccess && (
                     <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span>API Access</span>
+                      <span>{t.apiAccess || 'API Access'}</span>
                     </div>
                   )}
                 </div>
@@ -734,7 +743,8 @@ const AdminPanelView = ({
                     setCurrentPlan(plan.id);
                     setPlanTier(plan.id); // Update global plan tier
                     await updateUserPreferences({ planTier: plan.id }); // Save to backend
-                    await addNotification('success', `Switched to ${plan.name}`);
+                    const planName = t[plan.id + 'Plan'] || plan.name;
+                    await addNotification('success', `${t.switchedToPlan || 'Switched to'} ${planName}`);
                   }}
                   disabled={currentPlan === plan.id}
                   className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
@@ -747,7 +757,7 @@ const AdminPanelView = ({
                       : 'bg-blue-500 hover:bg-blue-600 text-white'
                   }`}
                 >
-                  {currentPlan === plan.id ? 'Current Plan' : 'Select Plan'}
+                  {currentPlan === plan.id ? (t.currentPlan || 'Current Plan') : (t.selectPlan || 'Select Plan')}
                 </button>
               </div>
             ))}
@@ -759,7 +769,7 @@ const AdminPanelView = ({
       {activeTab === 'hours' && (
         <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
           <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Working Hours
+            {t.workingHours || 'Working Hours'}
           </h2>
           <div className="space-y-4">
             {Object.entries(workingHours).map(([day, hours]) => (
@@ -774,7 +784,7 @@ const AdminPanelView = ({
                   className="form-checkbox h-5 w-5 text-blue-500"
                 />
                 <span className={`w-32 capitalize font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {day}
+                  {t[day] || day}
                 </span>
                 <input
                   type="time"
@@ -788,7 +798,7 @@ const AdminPanelView = ({
                     theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
                   } ${!hours.enabled && 'opacity-50'}`}
                 />
-                <span className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>to</span>
+                <span className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.to || 'to'}</span>
                 <input
                   type="time"
                   value={hours.close}
@@ -812,7 +822,7 @@ const AdminPanelView = ({
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
               <Save className="w-5 h-5" />
-              Save Changes
+              {t.saveChanges || 'Save Changes'}
             </button>
           </div>
         </div>
@@ -822,12 +832,12 @@ const AdminPanelView = ({
       {activeTab === 'appointments' && (
         <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
           <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Appointment Configuration
+            {t.appointmentConfiguration || 'Appointment Configuration'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Default Duration (minutes)
+                {t.defaultDurationMinutes || 'Default Duration (minutes)'}
               </label>
               <input
                 type="number"
@@ -838,7 +848,7 @@ const AdminPanelView = ({
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Time Slot Interval (minutes)
+                {t.timeSlotIntervalMinutes || 'Time Slot Interval (minutes)'}
               </label>
               <input
                 type="number"
@@ -849,7 +859,7 @@ const AdminPanelView = ({
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Max Advance Booking (days)
+                {t.maxAdvanceBookingDays || 'Max Advance Booking (days)'}
               </label>
               <input
                 type="number"
@@ -860,7 +870,7 @@ const AdminPanelView = ({
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Cancellation Deadline (hours)
+                {t.cancellationDeadlineHours || 'Cancellation Deadline (hours)'}
               </label>
               <input
                 type="number"
@@ -878,7 +888,7 @@ const AdminPanelView = ({
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
               <Save className="w-5 h-5" />
-              Save Changes
+              {t.saveChanges || 'Save Changes'}
             </button>
           </div>
         </div>
