@@ -676,6 +676,7 @@ function App() {
             setCurrentView('list');
           }}
           patients={patients}
+          users={users}
           api={api}
           addNotification={addNotification}
           setAppointments={setAppointments}
@@ -684,6 +685,7 @@ function App() {
           setUsers={setUsers}
           setUser={setUser}
           user={user}
+          t={t}
         />
       )}
 
