@@ -696,6 +696,7 @@ function App() {
             setSelectedItem(null);
             setCurrentModule('practiceManagement');
           }}
+          t={t}
         />
       )}
 
@@ -707,6 +708,7 @@ function App() {
           onCompleteTask={completeTask}
           setEditingItem={handleSetEditingItem}
           setCurrentView={setCurrentView}
+          t={t}
         />
       )}
 
@@ -722,6 +724,7 @@ function App() {
           }}
           setEditingItem={handleSetEditingItem}
           setCurrentView={setCurrentView}
+          t={t}
         />
       )}
 
