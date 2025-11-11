@@ -289,7 +289,23 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         current_medications: profileData.current_medications,
         language: profileData.language
       });
-      setProfileData(updated);
+
+      // Convert language code to full name for display (in case backend returns code)
+      const codeToNameMap = {
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'ar': 'Arabic'
+      };
+      let updatedProfile = { ...updated };
+      if (updatedProfile.language && codeToNameMap[updatedProfile.language]) {
+        updatedProfile.language = codeToNameMap[updatedProfile.language];
+      } else if (!updatedProfile.language) {
+        updatedProfile.language = profileData.language || 'English'; // Preserve the language that was set
+      }
+
+      setProfileData(updatedProfile);
       setEditingProfile(false);
       addNotification('success', t.profileUpdatedSuccessfully);
 
