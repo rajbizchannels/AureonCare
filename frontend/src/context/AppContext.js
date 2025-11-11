@@ -105,7 +105,28 @@ const AppProvider = ({ children }) => {
       const results = await Promise.all(dataPromises);
       const [appointmentsData, patientsData, claimsData, paymentsData, notificationsData, tasksData, usersData, userData] = results;
 
-      setAppointments(appointmentsData);
+      // Auto-update past scheduled appointments to completed status
+      const now = new Date();
+      const updatedAppointments = await Promise.all(
+        appointmentsData.map(async (apt) => {
+          // Check if appointment is in the past and status is scheduled
+          if (apt.start_time && (apt.status === 'scheduled' || !apt.status)) {
+            try {
+              const startTime = new Date(apt.start_time.replace(' ', 'T'));
+              if (startTime < now) {
+                // Update the appointment status to completed
+                const updatedApt = await api.updateAppointment(apt.id, { ...apt, status: 'completed' });
+                return updatedApt;
+              }
+            } catch (error) {
+              console.error('Error parsing appointment time:', error);
+            }
+          }
+          return apt;
+        })
+      );
+
+      setAppointments(updatedAppointments);
       setPatients(patientsData);
       setClaims(claimsData);
       setPayments(paymentsData);
