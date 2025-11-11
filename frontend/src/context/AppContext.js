@@ -40,6 +40,40 @@ const AppProvider = ({ children }) => {
   // User state - dynamically loaded from database
   const [user, setUser] = useState(null);
 
+  // Sync language and theme when user changes (e.g., after login or profile update)
+  useEffect(() => {
+    if (user) {
+      // Language mapping: full names to codes
+      const languageMap = {
+        'English': 'en',
+        'Spanish': 'es',
+        'French': 'fr',
+        'German': 'de',
+        'Arabic': 'ar'
+      };
+
+      // Load language from user profile setting (with fallback to preferences)
+      let userLanguage = 'en'; // default
+      if (user.language) {
+        // Convert full language name to code
+        userLanguage = languageMap[user.language] || user.language || 'en';
+      } else if (user.preferences?.language) {
+        userLanguage = user.preferences.language;
+      }
+      setLanguage(userLanguage);
+
+      // Sync theme from user preferences
+      if (user.preferences?.darkMode !== undefined) {
+        setTheme(user.preferences.darkMode ? 'dark' : 'light');
+      }
+
+      // Load plan tier from preferences
+      if (user.preferences?.planTier) {
+        setPlanTier(user.preferences.planTier);
+      }
+    }
+  }, [user]);
+
   // Fetch all data on component mount
   useEffect(() => {
     fetchAllData();
