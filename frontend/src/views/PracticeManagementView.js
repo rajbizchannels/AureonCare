@@ -17,11 +17,31 @@ const PracticeManagementView = ({
   api,
   addNotification,
   setCurrentModule,
-  t
+  t,
+  user
 }) => {
   // State for calendar navigation
   const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week, -1 = last week, +1 = next week
   const [selectedDay, setSelectedDay] = useState(new Date());
+
+  // Filter appointments based on user role
+  // Doctors/providers should only see their own appointments
+  // Admins and other roles see all appointments
+  const filteredAppointments = appointments.filter(apt => {
+    // If no user, show all appointments (shouldn't happen, but safety check)
+    if (!user) return true;
+
+    // Check if user is a doctor/provider/physician
+    const isDoctorRole = user.role === 'doctor' || user.role === 'physician' || user.role === 'provider';
+
+    // If user is a doctor, only show appointments where they are the provider
+    if (isDoctorRole) {
+      return apt.provider_id === user.id;
+    }
+
+    // For admins and other roles, show all appointments
+    return true;
+  });
 
   // Helper function to parse appointment date/time
   const getAppointmentDateTime = (apt) => {
@@ -36,7 +56,7 @@ const PracticeManagementView = ({
 
   // Helper function to get appointments for a specific date
   const getAppointmentsForDate = (date) => {
-    return appointments.filter(apt => {
+    return filteredAppointments.filter(apt => {
       const aptDate = getAppointmentDateTime(apt);
       return aptDate.toDateString() === date.toDateString();
     });
@@ -154,7 +174,7 @@ const PracticeManagementView = ({
                 </tr>
               </thead>
               <tbody>
-                {appointments.map((apt, idx) => {
+                {filteredAppointments.map((apt, idx) => {
                   const patient = patients.find(p => p.id === apt.patient_id);
                   const patientName = apt.patient || patient?.name || t.unknownPatient || 'Unknown Patient';
                   const aptDateTime = getAppointmentDateTime(apt);

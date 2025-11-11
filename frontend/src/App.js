@@ -228,6 +228,7 @@ function App() {
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
             t={t}
+            user={user}
           />
         );
       case 'ehr':
