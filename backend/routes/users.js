@@ -6,7 +6,18 @@ const toCamelCase = (obj) => {
   const newObj = {};
   for (const key in obj) {
     const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-    newObj[camelKey] = obj[key];
+    let value = obj[key];
+
+    // Parse JSON fields if they're strings
+    if (camelKey === 'preferences' && typeof value === 'string') {
+      try {
+        value = JSON.parse(value);
+      } catch (e) {
+        // If parsing fails, keep as string
+      }
+    }
+
+    newObj[camelKey] = value;
   }
   return newObj;
 };
