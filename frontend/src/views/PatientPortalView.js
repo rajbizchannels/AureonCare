@@ -48,6 +48,21 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       }
       // Always preserve the original address field (even if null/empty)
       parsedUser.address = user.address || '';
+
+      // Convert language code to full name for display
+      const codeToNameMap = {
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'ar': 'Arabic'
+      };
+      if (parsedUser.language && codeToNameMap[parsedUser.language]) {
+        parsedUser.language = codeToNameMap[parsedUser.language];
+      } else if (!parsedUser.language) {
+        parsedUser.language = 'English'; // Default
+      }
+
       setProfileData(parsedUser);
       fetchPatientData();
       fetchProviders();
@@ -172,6 +187,21 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           updatedProfile.address_zip = stateZip[1] || '';
         }
         updatedProfile.address = profile.address || '';
+
+        // Convert language code to full name for display
+        const codeToNameMap = {
+          'en': 'English',
+          'es': 'Spanish',
+          'fr': 'French',
+          'de': 'German',
+          'ar': 'Arabic'
+        };
+        if (updatedProfile.language && codeToNameMap[updatedProfile.language]) {
+          updatedProfile.language = codeToNameMap[updatedProfile.language];
+        } else if (!updatedProfile.language) {
+          updatedProfile.language = 'English'; // Default
+        }
+
         setProfileData(updatedProfile);
       }
     } catch (error) {

@@ -264,12 +264,12 @@ const AdminPanelView = ({
   };
 
   const tabs = [
-    { id: 'clinic', label: 'Clinic Settings', icon: Building2 },
-    { id: 'users', label: 'User Management', icon: Users },
-    { id: 'roles', label: 'Roles & Permissions', icon: Shield },
-    { id: 'plans', label: 'Subscription Plans', icon: CreditCard },
-    { id: 'hours', label: 'Working Hours', icon: Clock },
-    { id: 'appointments', label: 'Appointment Settings', icon: Settings }
+    { id: 'clinic', label: t.clinicSettings || 'Clinic Settings', icon: Building2 },
+    { id: 'users', label: t.userManagement || 'User Management', icon: Users },
+    { id: 'roles', label: t.rolesPermissions || 'Roles & Permissions', icon: Shield },
+    { id: 'plans', label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard },
+    { id: 'hours', label: t.workingHours || 'Working Hours', icon: Clock },
+    { id: 'appointments', label: t.appointmentSettings || 'Appointment Settings', icon: Settings }
   ];
 
   return (
@@ -285,10 +285,10 @@ const AdminPanelView = ({
           </button>
           <div>
             <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Admin Panel
+              {t.adminPanel || 'Admin Panel'}
             </h1>
             <p className={`mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Manage clinic settings and users
+              {t.manageClinicSettingsUsers || 'Manage clinic settings and users'}
             </p>
           </div>
         </div>
@@ -318,12 +318,12 @@ const AdminPanelView = ({
       {activeTab === 'clinic' && (
         <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
           <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Clinic Information
+            {t.clinicInformation || 'Clinic Information'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Clinic Name
+                {t.clinicName || 'Clinic Name'}
               </label>
               <input
                 type="text"
@@ -334,7 +334,7 @@ const AdminPanelView = ({
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Phone
+                {t.phone || 'Phone'}
               </label>
               <input
                 type="tel"
@@ -345,7 +345,7 @@ const AdminPanelView = ({
             </div>
             <div className="md:col-span-2">
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Address
+                {t.address || 'Address'}
               </label>
               <input
                 type="text"
@@ -356,7 +356,7 @@ const AdminPanelView = ({
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Email
+                {t.email || 'Email'}
               </label>
               <input
                 type="email"

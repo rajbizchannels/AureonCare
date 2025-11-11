@@ -404,12 +404,12 @@ const ViewEditModal = ({
         setClaims(prev => prev.map(claim =>
           claim.id === editData.id ? updated : claim
         ));
+        await addNotification('success', t.claimUpdatedSuccessfully || 'Claim updated successfully');
       }
-      await addNotification('alert', `${type === 'appointment' ? 'Appointment' : type === 'patient' ? 'Patient' : type === 'userProfile' ? 'User Profile' : type === 'user' ? 'User' : 'Claim'} updated successfully`);
       onClose();
     } catch (err) {
       console.error('Error saving:', err);
-      alert('Failed to save changes. Please try again.');
+      await addNotification('alert', t.failedToSaveChanges || 'Failed to save changes. Please try again.');
     }
   };
 
