@@ -116,7 +116,17 @@ const AppProvider = ({ children }) => {
               if (startTime < now) {
                 // Update the appointment status to completed
                 const updatedApt = await api.updateAppointment(apt.id, { ...apt, status: 'completed' });
-                return updatedApt;
+
+                // Enrich the updated appointment with patient and provider names
+                const patient = patientsData?.find(p => p.id === updatedApt.patient_id);
+                const provider = usersData?.find(u => u.id === updatedApt.provider_id);
+
+                return {
+                  ...updatedApt,
+                  patient: patient ? (patient.name || `${patient.first_name} ${patient.last_name}`) : updatedApt.patient,
+                  doctor: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() : updatedApt.doctor,
+                  provider_name: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() : updatedApt.provider_name
+                };
               }
             } catch (error) {
               console.error('Error parsing appointment time:', error);

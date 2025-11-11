@@ -209,7 +209,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
                   <option value="">{t.selectProvider || 'Select Provider'}</option>
                   {providers.map(provider => (
                     <option key={provider.id} value={provider.id}>
-                      {`${provider.first_name || ''} ${provider.last_name || ''}`.trim() || provider.email}
+                      {`${provider.first_name || provider.firstName || ''} ${provider.last_name || provider.lastName || ''}`.trim() || provider.email}
                     </option>
                   ))}
                 </select>
