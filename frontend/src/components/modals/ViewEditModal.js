@@ -299,14 +299,32 @@ const ViewEditModal = ({
           appointmentData.patient_id = editData.patientId || editData.patient_id;
           appointmentData.provider_id = editData.providerId || editData.provider_id;
 
+          // Auto-update status to completed if appointment is in the past and currently scheduled
+          const now = new Date();
+          if (startDate < now && (appointmentData.status === 'scheduled' || !appointmentData.status)) {
+            appointmentData.status = 'completed';
+          }
+
           // Remove old fields
           delete appointmentData.date;
           delete appointmentData.time;
         }
 
         const updated = await api.updateAppointment(editData.id, appointmentData);
+
+        // Enrich the updated appointment with patient and provider names
+        const patient = patients?.find(p => p.id === updated.patient_id);
+        const provider = users?.find(u => u.id === updated.provider_id);
+
+        const enrichedAppointment = {
+          ...updated,
+          patient: patient ? (patient.name || `${patient.first_name} ${patient.last_name}`) : updated.patient,
+          doctor: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() : updated.doctor,
+          provider_name: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() : updated.provider_name
+        };
+
         setAppointments(prev => prev.map(apt =>
-          apt.id === editData.id ? updated : apt
+          apt.id === editData.id ? enrichedAppointment : apt
         ));
       } else if (type === 'patient') {
         // Prepare patient data
