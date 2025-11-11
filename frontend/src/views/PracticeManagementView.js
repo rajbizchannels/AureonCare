@@ -6,6 +6,7 @@ const PracticeManagementView = ({
   theme,
   appointments,
   patients,
+  users,
   appointmentViewType,
   calendarViewType,
   setAppointmentViewType,
@@ -178,7 +179,9 @@ const PracticeManagementView = ({
                   const patient = patients.find(p => p.id === apt.patient_id);
                   const patientName = apt.patient || patient?.name || t.unknownPatient || 'Unknown Patient';
                   const aptDateTime = getAppointmentDateTime(apt);
-                  const doctorName = apt.doctor || t.notApplicable || 'N/A';
+                  // Get doctor name from users array
+                  const provider = users?.find(u => u.id === apt.provider_id);
+                  const doctorName = apt.doctor || apt.provider_name || (provider ? `${provider.first_name || provider.firstName || ''} ${provider.last_name || provider.lastName || ''}`.trim() : '') || t.notApplicable || 'N/A';
                   const appointmentType = apt.type || apt.appointment_type || t.consultation || 'Consultation';
 
                   return (
@@ -374,7 +377,9 @@ const PracticeManagementView = ({
                     const patient = patients.find(p => p.id === apt.patient_id);
                     const patientName = apt.patient || patient?.name || t.unknownPatient || 'Unknown Patient';
                     const aptDateTime = getAppointmentDateTime(apt);
-                    const doctorName = apt.doctor || t.notApplicable || 'N/A';
+                    // Get doctor name from users array
+                    const provider = users?.find(u => u.id === apt.provider_id);
+                    const doctorName = apt.doctor || apt.provider_name || (provider ? `${provider.first_name || provider.firstName || ''} ${provider.last_name || provider.lastName || ''}`.trim() : '') || t.notApplicable || 'N/A';
                     const appointmentType = apt.type || apt.appointment_type || t.consultation || 'Consultation';
 
                     return (

@@ -59,6 +59,13 @@ export const translations = {
     export: 'Export',
     import: 'Import',
     settings: 'Settings',
+    actions: 'Actions',
+    view: 'View',
+    addUser: 'Add User',
+    editUser: 'Edit User',
+    deleteUser: 'Delete User',
+    confirmDeleteUser: 'Are you sure you want to delete this user?',
+    confirmApproveUser: 'Are you sure you want to approve this user?',
 
     // User Interface
     profile: 'Profile',
@@ -92,6 +99,15 @@ export const translations = {
     rolesPermissions: 'Roles & Permissions',
     workingHours: 'Working Hours',
     appointmentSettings: 'Appointment Settings',
+    clinicInformation: 'Clinic Information',
+    clinicName: 'Clinic Name',
+    taxId: 'Tax ID',
+    npiNumber: 'NPI Number',
+    website: 'Website',
+    manageClinicSettingsUsers: 'Manage clinic settings and users',
+    subscriptionPlans: 'Subscription Plans',
+    rolePermissions: 'Role Permissions',
+    module: 'Module',
 
     // User Profile
     editProfile: 'Edit Profile',
@@ -326,6 +342,13 @@ export const translations = {
     export: 'Exportar',
     import: 'Importar',
     settings: 'Configuración',
+    actions: 'Acciones',
+    view: 'Ver',
+    addUser: 'Agregar Usuario',
+    editUser: 'Editar Usuario',
+    deleteUser: 'Eliminar Usuario',
+    confirmDeleteUser: '¿Está seguro de que desea eliminar este usuario?',
+    confirmApproveUser: '¿Está seguro de que desea aprobar este usuario?',
 
     // User Interface
     profile: 'Perfil',
@@ -359,6 +382,15 @@ export const translations = {
     rolesPermissions: 'Roles y Permisos',
     workingHours: 'Horario de Trabajo',
     appointmentSettings: 'Configuración de Citas',
+    clinicInformation: 'Información de la Clínica',
+    clinicName: 'Nombre de la Clínica',
+    taxId: 'ID Fiscal',
+    npiNumber: 'Número NPI',
+    website: 'Sitio Web',
+    manageClinicSettingsUsers: 'Administrar configuración de clínica y usuarios',
+    subscriptionPlans: 'Planes de Suscripción',
+    rolePermissions: 'Permisos de Rol',
+    module: 'Módulo',
 
     // User Profile
     editProfile: 'Editar Perfil',
@@ -593,6 +625,13 @@ export const translations = {
     export: 'Exporter',
     import: 'Importer',
     settings: 'Paramètres',
+    actions: 'Actions',
+    view: 'Voir',
+    addUser: 'Ajouter Utilisateur',
+    editUser: 'Modifier Utilisateur',
+    deleteUser: 'Supprimer Utilisateur',
+    confirmDeleteUser: 'Êtes-vous sûr de vouloir supprimer cet utilisateur?',
+    confirmApproveUser: 'Êtes-vous sûr de vouloir approuver cet utilisateur?',
 
     // User Interface
     profile: 'Profil',
@@ -626,6 +665,15 @@ export const translations = {
     rolesPermissions: 'Rôles et Permissions',
     workingHours: 'Heures de Travail',
     appointmentSettings: 'Paramètres de Rendez-vous',
+    clinicInformation: 'Informations de la Clinique',
+    clinicName: 'Nom de la Clinique',
+    taxId: 'Numéro Fiscal',
+    npiNumber: 'Numéro NPI',
+    website: 'Site Web',
+    manageClinicSettingsUsers: 'Gérer les paramètres de la clinique et les utilisateurs',
+    subscriptionPlans: 'Plans d\'Abonnement',
+    rolePermissions: 'Permissions de Rôle',
+    module: 'Module',
 
     // User Profile
     editProfile: 'Modifier le Profil',
@@ -860,6 +908,13 @@ export const translations = {
     export: 'Exportieren',
     import: 'Importieren',
     settings: 'Einstellungen',
+    actions: 'Aktionen',
+    view: 'Ansehen',
+    addUser: 'Benutzer Hinzufügen',
+    editUser: 'Benutzer Bearbeiten',
+    deleteUser: 'Benutzer Löschen',
+    confirmDeleteUser: 'Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?',
+    confirmApproveUser: 'Sind Sie sicher, dass Sie diesen Benutzer genehmigen möchten?',
 
     // User Interface
     profile: 'Profil',
@@ -893,6 +948,15 @@ export const translations = {
     rolesPermissions: 'Rollen und Berechtigungen',
     workingHours: 'Arbeitszeiten',
     appointmentSettings: 'Termineinstellungen',
+    clinicInformation: 'Klinikinformationen',
+    clinicName: 'Klinikname',
+    taxId: 'Steuer-ID',
+    npiNumber: 'NPI-Nummer',
+    website: 'Webseite',
+    manageClinicSettingsUsers: 'Klinikeinstellungen und Benutzer verwalten',
+    subscriptionPlans: 'Abonnementpläne',
+    rolePermissions: 'Rollenberechtigungen',
+    module: 'Modul',
 
     // User Profile
     editProfile: 'Profil bearbeiten',
@@ -1127,6 +1191,13 @@ export const translations = {
     export: 'تصدير',
     import: 'استيراد',
     settings: 'الإعدادات',
+    actions: 'الإجراءات',
+    view: 'عرض',
+    addUser: 'إضافة مستخدم',
+    editUser: 'تعديل مستخدم',
+    deleteUser: 'حذف مستخدم',
+    confirmDeleteUser: 'هل أنت متأكد أنك تريد حذف هذا المستخدم؟',
+    confirmApproveUser: 'هل أنت متأكد أنك تريد الموافقة على هذا المستخدم؟',
 
     // User Interface
     profile: 'الملف الشخصي',
@@ -1160,6 +1231,15 @@ export const translations = {
     rolesPermissions: 'الأدوار والصلاحيات',
     workingHours: 'ساعات العمل',
     appointmentSettings: 'إعدادات المواعيد',
+    clinicInformation: 'معلومات العيادة',
+    clinicName: 'اسم العيادة',
+    taxId: 'الرقم الضريبي',
+    npiNumber: 'رقم NPI',
+    website: 'الموقع الإلكتروني',
+    manageClinicSettingsUsers: 'إدارة إعدادات العيادة والمستخدمين',
+    subscriptionPlans: 'خطط الاشتراك',
+    rolePermissions: 'صلاحيات الدور',
+    module: 'الوحدة',
 
     // User Profile
     editProfile: 'تعديل الملف الشخصي',

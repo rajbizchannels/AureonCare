@@ -216,6 +216,7 @@ function App() {
             theme={theme}
             appointments={appointments}
             patients={patients}
+            users={users}
             appointmentViewType={appointmentViewType}
             calendarViewType={calendarViewType}
             setAppointmentViewType={setAppointmentViewType}
