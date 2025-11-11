@@ -171,7 +171,7 @@ const UserProfileModal = ({
           {/* Change Password Section */}
           <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
             <div className="flex items-center justify-between mb-3">
-              <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Security</h4>
+              <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.security || 'Security'}</h4>
               <button
                 onClick={() => {
                   setShowChangePassword(!showChangePassword);
@@ -185,7 +185,7 @@ const UserProfileModal = ({
                     : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400'
                 }`}
               >
-                {showChangePassword ? 'Cancel' : 'Change Password'}
+                {showChangePassword ? (t.cancel || 'Cancel') : (t.changePassword || 'Change Password')}
               </button>
             </div>
 
@@ -193,7 +193,7 @@ const UserProfileModal = ({
               <form onSubmit={handlePasswordChange} className="space-y-3 mt-4">
                 <div>
                   <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Current Password
+                    {t.currentPassword || 'Current Password'}
                   </label>
                   <input
                     type="password"
@@ -209,7 +209,7 @@ const UserProfileModal = ({
                 </div>
                 <div>
                   <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    New Password
+                    {t.newPassword || 'New Password'}
                   </label>
                   <input
                     type="password"
@@ -226,7 +226,7 @@ const UserProfileModal = ({
                 </div>
                 <div>
                   <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Confirm New Password
+                    {t.confirmNewPassword || 'Confirm New Password'}
                   </label>
                   <input
                     type="password"
@@ -245,7 +245,7 @@ const UserProfileModal = ({
                   type="submit"
                   className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white"
                 >
-                  Update Password
+                  {t.updatePassword || 'Update Password'}
                 </button>
               </form>
             )}
@@ -259,10 +259,10 @@ const UserProfileModal = ({
               }}
               className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
             >
-              Edit Profile
+              {t.editProfile || 'Edit Profile'}
             </button>
             <button onClick={onClose} className={`flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Close
+              {t.close || 'Close'}
             </button>
           </div>
         </div>
