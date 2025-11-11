@@ -634,6 +634,7 @@ function App() {
           setTheme={setTheme}
           api={api}
           addNotification={addNotification}
+          t={t}
         />
       )}
 
