@@ -1,4 +1,4 @@
-import { Activity, FileText, Video, DollarSign, Users, Plug, Database, UserCheck, BarChart3, Stethoscope } from 'lucide-react';
+import { Activity, FileText, Video, DollarSign, Users, Plug, Database, UserCheck, BarChart3, Stethoscope, Package } from 'lucide-react';
 
 export const getModules = (t) => [
   { id: 'practiceManagement', name: t.practiceManagement, icon: Activity, color: 'from-blue-500 to-cyan-500' },
