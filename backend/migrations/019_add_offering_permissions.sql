@@ -1,5 +1,6 @@
 -- Add RBAC Permissions for Healthcare Offerings Management
 -- Migration: 019_add_offering_permissions.sql
+-- Using UUID for ID fields
 
 -- Insert new permissions for healthcare offerings management
 INSERT INTO permissions (name, description, category, is_system) VALUES
@@ -39,7 +40,7 @@ ON CONFLICT (name) DO NOTHING;
 
 -- System Administrator - Full access to all offerings features
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
+SELECT r.id::UUID, p.id::UUID
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'System Administrator'
@@ -48,7 +49,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Practice Manager - Full operational access to offerings
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
+SELECT r.id::UUID, p.id::UUID
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Practice Manager'
@@ -64,7 +65,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Billing Manager - Access to pricing, enrollments, and promotions
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
+SELECT r.id::UUID, p.id::UUID
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Billing Manager'
@@ -78,7 +79,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Physician - View offerings, packages, and create enrollments
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
+SELECT r.id::UUID, p.id::UUID
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Physician'
@@ -92,7 +93,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Nurse - View offerings and packages, limited enrollment access
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
+SELECT r.id::UUID, p.id::UUID
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Nurse'
@@ -105,7 +106,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Receptionist - View offerings, create enrollments, view promotions
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
+SELECT r.id::UUID, p.id::UUID
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Receptionist'
@@ -119,7 +120,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Medical Assistant - View offerings and packages
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
+SELECT r.id::UUID, p.id::UUID
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Medical Assistant'
@@ -132,7 +133,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Insurance Coordinator - View all, manage enrollments
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
+SELECT r.id::UUID, p.id::UUID
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Insurance Coordinator'
