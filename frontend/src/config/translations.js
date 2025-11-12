@@ -142,6 +142,7 @@ export const translations = {
     newPassword: 'New Password',
     confirmNewPassword: 'Confirm New Password',
     updatePassword: 'Update Password',
+    personalInformation: 'Personal Information',
 
     // Appointments
     appointments: 'Appointments',
@@ -504,6 +505,7 @@ export const translations = {
     newPassword: 'Nueva Contraseña',
     confirmNewPassword: 'Confirmar Nueva Contraseña',
     updatePassword: 'Actualizar Contraseña',
+    personalInformation: 'Información Personal',
 
     // Appointments
     appointments: 'Citas',
@@ -866,6 +868,7 @@ export const translations = {
     newPassword: 'Nouveau Mot de Passe',
     confirmNewPassword: 'Confirmer le Nouveau Mot de Passe',
     updatePassword: 'Mettre à Jour le Mot de Passe',
+    personalInformation: 'Informations Personnelles',
 
     // Appointments
     appointments: 'Rendez-vous',
@@ -1228,6 +1231,7 @@ export const translations = {
     newPassword: 'Neues Passwort',
     confirmNewPassword: 'Neues Passwort Bestätigen',
     updatePassword: 'Passwort Aktualisieren',
+    personalInformation: 'Persönliche Informationen',
 
     // Appointments
     appointments: 'Termine',
@@ -1590,6 +1594,7 @@ export const translations = {
     newPassword: 'كلمة المرور الجديدة',
     confirmNewPassword: 'تأكيد كلمة المرور الجديدة',
     updatePassword: 'تحديث كلمة المرور',
+    personalInformation: 'المعلومات الشخصية',
 
     // Appointments
     appointments: 'المواعيد',
