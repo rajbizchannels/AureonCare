@@ -3,6 +3,7 @@ export const translations = {
     // Modules
     dashboard: 'Dashboard',
     practiceManagement: 'Practice Management',
+    providerManagement: 'Provider Scheduling',
     ehr: 'Electronic Health Records',
     telehealth: 'Telehealth',
     rcm: 'Revenue Cycle Management',
