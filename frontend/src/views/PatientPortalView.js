@@ -23,6 +23,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [preferredPharmacies, setPreferredPharmacies] = useState([]);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
   const [selectedPrescription, setSelectedPrescription] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -328,6 +334,40 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     } catch (error) {
       console.error('Error updating profile:', error);
       addNotification('alert', t.failedToUpdateProfile);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+
+    // Validate passwords match
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      addNotification('alert', t.passwordsDoNotMatch || 'Passwords do not match');
+      return;
+    }
+
+    // Validate password length
+    if (passwordData.newPassword.length < 6) {
+      addNotification('alert', t.passwordTooShort || 'Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      await api.changePassword(user.id, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      });
+
+      addNotification('success', t.passwordChangedSuccessfully || 'Password changed successfully');
+      setShowChangePassword(false);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+      // Show success confirmation
+      setConfirmationMessage('Your password has been changed successfully!');
+      setShowConfirmation(true);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      addNotification('alert', error.response?.data?.error || t.failedToChangePassword || 'Failed to change password');
     }
   };
 
@@ -858,6 +898,109 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   {preferredPharmacies.length > 0 ? t.updatePreferredPharmacy : t.setPreferredPharmacy}
                 </button>
               </div>
+            )}
+          </div>
+
+          {/* Settings Section */}
+          <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.settings || 'Settings'}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.languagePreference || 'Language Preference'}</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {profileData?.language || user?.language || 'English'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Security Section */}
+          <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.security || 'Security'}</h4>
+              <button
+                onClick={() => {
+                  setShowChangePassword(!showChangePassword);
+                  if (!showChangePassword) {
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  showChangePassword
+                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
+                    : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400'
+                }`}
+              >
+                {showChangePassword ? (t.cancel || 'Cancel') : (t.changePassword || 'Change Password')}
+              </button>
+            </div>
+
+            {showChangePassword && (
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.currentPassword || 'Current Password'}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.newPassword || 'New Password'}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.confirmNewPassword || 'Confirm New Password'}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2"
+                >
+                  <Lock className="w-4 h-4" />
+                  {t.updatePassword || 'Update Password'}
+                </button>
+              </form>
+            )}
+
+            {!showChangePassword && (
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                {t.passwordLastChanged || 'Click "Change Password" to update your password'}
+              </p>
             )}
           </div>
         </div>
