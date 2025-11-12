@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS patient_offering_enrollments (
     amount_paid DECIMAL(10, 2),
     payment_method VARCHAR(50),
     payment_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'completed', 'refunded'
-    payment_id INTEGER REFERENCES payments(id) ON DELETE SET NULL,
+    payment_id UUID, -- FK constraint added in migration 020 after payments conversion
 
     -- Notes
     notes TEXT,
