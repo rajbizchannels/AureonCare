@@ -30,13 +30,21 @@ const ProviderManagementView = () => {
     setLoading(true);
     try {
       const response = await fetch('/api/providers');
-      if (!response.ok) throw new Error('Failed to fetch providers');
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch providers');
+        }
+        throw new Error(`Failed to fetch providers (${response.status})`);
+      }
       const data = await response.json();
       setProviders(data);
       if (data.length > 0 && !selectedProvider) {
         setSelectedProvider(data[0]);
       }
     } catch (err) {
+      console.error('Error fetching providers:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -48,22 +56,39 @@ const ProviderManagementView = () => {
       // Fetch booking config
       const configResponse = await fetch(`/api/scheduling/booking-config/${providerId}`);
       if (configResponse.ok) {
-        const configData = await configResponse.json();
-        setBookingConfig(configData);
+        const contentType = configResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const configData = await configResponse.json();
+          setBookingConfig(configData);
+        } else {
+          console.warn('Booking config response is not JSON');
+          setBookingConfig(null);
+        }
       } else {
+        console.log(`No booking config found for provider ${providerId} (${configResponse.status})`);
         setBookingConfig(null);
       }
 
       // Fetch appointment types
       const typesResponse = await fetch(`/api/scheduling/appointment-types/${providerId}`);
       if (typesResponse.ok) {
-        const typesData = await typesResponse.json();
-        setAppointmentTypes(typesData);
+        const contentType = typesResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const typesData = await typesResponse.json();
+          setAppointmentTypes(typesData);
+        } else {
+          console.warn('Appointment types response is not JSON');
+          setAppointmentTypes([]);
+        }
       } else {
+        console.log(`No appointment types found for provider ${providerId} (${typesResponse.status})`);
         setAppointmentTypes([]);
       }
     } catch (err) {
       console.error('Error fetching provider details:', err);
+      // Don't throw - just log and set empty states
+      setBookingConfig(null);
+      setAppointmentTypes([]);
     }
   };
 
@@ -87,7 +112,14 @@ const ProviderManagementView = () => {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to initialize schedule');
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to initialize schedule');
+        }
+        throw new Error(`Failed to initialize schedule (${response.status})`);
+      }
 
       // Create default appointment type
       await fetch('/api/scheduling/appointment-types', {
@@ -150,9 +182,17 @@ const ProviderManagementView = () => {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to update booking config');
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to update booking config');
+        }
+        throw new Error(`Failed to update booking config (${response.status})`);
+      }
       await fetchProviderDetails(selectedProvider.id);
     } catch (err) {
+      console.error('Error updating booking config:', err);
       alert('Error updating booking config: ' + err.message);
     }
   };
