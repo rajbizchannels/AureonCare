@@ -112,6 +112,7 @@ app.use('/api/prescriptions', require('./routes/prescriptions'));
 app.use('/api/diagnosis', require('./routes/diagnosis'));
 app.use('/api/medications', require('./routes/medications'));
 app.use('/api/pharmacies', require('./routes/pharmacies'));
+app.use('/api/scheduling', require('./routes/scheduling'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
