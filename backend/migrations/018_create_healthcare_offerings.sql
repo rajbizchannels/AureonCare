@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS patient_offering_enrollments (
     amount_paid DECIMAL(10, 2),
     payment_method VARCHAR(50),
     payment_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'completed', 'refunded'
-    payment_id UUID REFERENCES payments(id) ON DELETE SET NULL,
+    payment_id INTEGER REFERENCES payments(id) ON DELETE SET NULL,
 
     -- Notes
     notes TEXT,
