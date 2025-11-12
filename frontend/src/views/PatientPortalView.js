@@ -370,6 +370,33 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
+  const handleNotificationToggle = async (notificationType) => {
+    const updatedValue = !profileData[notificationType];
+
+    try {
+      // Optimistically update UI
+      setProfileData({
+        ...profileData,
+        [notificationType]: updatedValue
+      });
+
+      // Save to backend
+      await api.updatePatient(user.id, {
+        [notificationType]: updatedValue
+      });
+
+      addNotification('success', `${notificationType === 'email_notifications' ? 'Email' : 'SMS'} notifications ${updatedValue ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Error updating notification preference:', error);
+      // Revert on error
+      setProfileData({
+        ...profileData,
+        [notificationType]: !updatedValue
+      });
+      addNotification('alert', 'Failed to update notification preference');
+    }
+  };
+
   // Dashboard View
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -445,6 +472,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             >
               <div className="flex justify-between items-start">
                 <div>
+                  <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    {t.provider || 'Provider'}
+                  </p>
                   <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {apt.provider_first_name && apt.provider_last_name
                       ? `Dr. ${apt.provider_first_name} ${apt.provider_last_name}`
@@ -947,7 +977,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
               {/* Notification Preferences */}
               <div className="pt-4 border-t border-slate-600/50">
-                <h5 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.notifications || 'Notifications'}</h5>
+                <div className="mb-3">
+                  <h5 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.notifications || 'Notifications'}</h5>
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    Toggle to enable or disable notifications (changes save automatically)
+                  </p>
+                </div>
 
                 {/* Email Notifications Toggle */}
                 <div className="flex items-center justify-between mb-3">
@@ -955,20 +990,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     {t.emailNotifications || 'Email Notifications'}
                   </label>
                   <button
-                    onClick={() => {
-                      if (editingProfile) {
-                        setProfileData({
-                          ...profileData,
-                          email_notifications: !profileData.email_notifications
-                        });
-                      }
-                    }}
-                    disabled={!editingProfile}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    onClick={() => handleNotificationToggle('email_notifications')}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
                       profileData.email_notifications
                         ? 'bg-cyan-500'
                         : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                    } ${!editingProfile ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -984,20 +1011,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     {t.smsAlerts || 'SMS Alerts'}
                   </label>
                   <button
-                    onClick={() => {
-                      if (editingProfile) {
-                        setProfileData({
-                          ...profileData,
-                          sms_notifications: !profileData.sms_notifications
-                        });
-                      }
-                    }}
-                    disabled={!editingProfile}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    onClick={() => handleNotificationToggle('sms_notifications')}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
                       profileData.sms_notifications
                         ? 'bg-cyan-500'
                         : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                    } ${!editingProfile ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
