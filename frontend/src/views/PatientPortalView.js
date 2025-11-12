@@ -353,10 +353,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
 
     try {
-      await api.changePassword(user.id, {
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword
-      });
+      await api.changePassword(user.id, passwordData.currentPassword, passwordData.newPassword);
 
       addNotification('success', t.passwordChangedSuccessfully || 'Password changed successfully');
       setShowChangePassword(false);
@@ -460,6 +457,13 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   )}
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {formatDate(apt.start_time)} at {formatTime(apt.start_time)}
+                  </p>
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.provider || 'Provider'}: {apt.provider_first_name && apt.provider_last_name
+                      ? `Dr. ${apt.provider_first_name} ${apt.provider_last_name}`
+                      : apt.provider?.first_name && apt.provider?.last_name
+                      ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}`
+                      : apt.doctor || t.notApplicable || 'N/A'}
                   </p>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {t.type}: {apt.appointment_type || t.generalConsultation}
@@ -904,12 +908,109 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           {/* Settings Section */}
           <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
             <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.settings || 'Settings'}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.languagePreference || 'Language Preference'}</p>
                 <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {profileData?.language || user?.language || 'English'}
                 </p>
+              </div>
+
+              {/* Theme Preference */}
+              <div className="pt-4 border-t border-slate-600/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Theme</p>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {theme === 'dark' ? t.darkMode || 'Dark Mode' : t.lightMode || 'Light Mode'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newTheme = theme === 'dark' ? 'light' : 'dark';
+                      setTheme(newTheme);
+                      localStorage.setItem('theme', newTheme);
+                      if (editingProfile) {
+                        setProfileData({
+                          ...profileData,
+                          theme: newTheme
+                        });
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      theme === 'dark' ? 'bg-cyan-500' : 'bg-gray-300'
+                    } cursor-pointer`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Notification Preferences */}
+              <div className="pt-4 border-t border-slate-600/50">
+                <h5 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.notifications || 'Notifications'}</h5>
+
+                {/* Email Notifications Toggle */}
+                <div className="flex items-center justify-between mb-3">
+                  <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.emailNotifications || 'Email Notifications'}
+                  </label>
+                  <button
+                    onClick={() => {
+                      if (editingProfile) {
+                        setProfileData({
+                          ...profileData,
+                          email_notifications: !profileData.email_notifications
+                        });
+                      }
+                    }}
+                    disabled={!editingProfile}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      profileData.email_notifications
+                        ? 'bg-cyan-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    } ${!editingProfile ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        profileData.email_notifications ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* SMS Notifications Toggle */}
+                <div className="flex items-center justify-between">
+                  <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.smsAlerts || 'SMS Alerts'}
+                  </label>
+                  <button
+                    onClick={() => {
+                      if (editingProfile) {
+                        setProfileData({
+                          ...profileData,
+                          sms_notifications: !profileData.sms_notifications
+                        });
+                      }
+                    }}
+                    disabled={!editingProfile}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      profileData.sms_notifications
+                        ? 'bg-cyan-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    } ${!editingProfile ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        profileData.sms_notifications ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
