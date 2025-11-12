@@ -339,7 +339,6 @@ DECLARE
     vaccinations_id UUID;
     chronic_care_id UUID;
     mental_health_id UUID;
-    preventive_care_id UUID;
     telehealth_id UUID;
 
     physical_exam_id UUID;
@@ -371,8 +370,7 @@ BEGIN
     ('Diabetes Management Consultation', 'Comprehensive diabetes care visit with A1C review and treatment adjustment', chronic_care_id, 45, ARRAY['99214', '99215'], true, false),
     ('Mental Health Consultation', 'Initial psychiatric evaluation and treatment planning', mental_health_id, 60, ARRAY['90792'], true, true),
     ('Blood Pressure Check', 'Quick blood pressure screening and assessment', preventive_care_id, 15, ARRAY['99211'], true, false),
-    ('Telehealth Consultation', 'Virtual video consultation with healthcare provider', telehealth_id, 30, ARRAY['99213', '95'], true, true)
-    RETURNING id INTO physical_exam_id;
+    ('Telehealth Consultation', 'Virtual video consultation with healthcare provider', telehealth_id, 30, ARRAY['99213', '95'], true, true);
 
     -- Get offering IDs for pricing
     SELECT id INTO physical_exam_id FROM healthcare_offerings WHERE name = 'Annual Physical Exam';
@@ -402,8 +400,7 @@ BEGIN
     ('Annual Wellness Package', 'Complete annual wellness package including physical exam, labs, and vaccinations', preventive_care_id, 'bundle', 365, 500.00, 15.00, 425.00,
     ARRAY['Annual Physical Exam', 'Complete Blood Count', 'Lipid Panel', 'Flu Vaccination', '24/7 Nurse Hotline Access'], true, true),
     ('Diabetes Care Package', 'Comprehensive 6-month diabetes management program', chronic_care_id, 'subscription', 180, 1200.00, 20.00, 960.00,
-    ARRAY['Quarterly Diabetes Consultations', 'Monthly A1C Testing', 'Nutrition Counseling', 'Foot Care Examination', 'Retinal Screening'], true, true)
-    RETURNING id INTO wellness_pkg_id;
+    ARRAY['Quarterly Diabetes Consultations', 'Monthly A1C Testing', 'Nutrition Counseling', 'Foot Care Examination', 'Retinal Screening'], true, true);
 
     -- Get package IDs
     SELECT id INTO wellness_pkg_id FROM offering_packages WHERE name = 'Annual Wellness Package';
