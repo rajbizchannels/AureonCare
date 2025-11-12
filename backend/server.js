@@ -125,20 +125,31 @@ app.use((err, req, res, next) => {
 
 // Start server
 async function startServer() {
+  console.log('========================================');
+  console.log('MedFlow Backend Server Starting...');
+  console.log('========================================');
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Port: ${PORT}`);
+  console.log(`Database: ${process.env.DB_NAME || 'medflow'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}`);
+  console.log('========================================\n');
+
   try {
     // Test database connection
+    console.log('Testing database connection...');
     await pool.query('SELECT NOW()');
-    console.log('✓ Database connected');
+    console.log('✓ Database connected successfully');
 
     // Try to connect Redis (optional)
     let redisConnected = false;
     if (redisClient) {
       try {
+        console.log('Attempting Redis connection...');
         await redisClient.connect();
         console.log('✓ Redis connected');
         redisConnected = true;
       } catch (redisError) {
         console.log('⚠️  Redis not available (continuing without cache)');
+        console.log('   Redis error:', redisError.message);
       }
     } else {
       console.log('⚠️  Redis not configured (continuing without cache)');
@@ -156,7 +167,24 @@ async function startServer() {
       console.log(`=================================\n`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('\n========================================');
+    console.error('❌ FAILED TO START SERVER');
+    console.error('========================================');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+
+    if (error.code === 'ECONNREFUSED') {
+      console.error('\n🔴 PostgreSQL Database Connection Failed');
+      console.error('   - Make sure PostgreSQL is running');
+      console.error('   - Check database credentials in .env file');
+      console.error('   - Verify database exists and is accessible');
+      console.error(`   - Connection string: ${process.env.DB_USER}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
+    }
+
+    console.error('\nFull error stack:');
+    console.error(error.stack);
+    console.error('========================================\n');
     process.exit(1);
   }
 }

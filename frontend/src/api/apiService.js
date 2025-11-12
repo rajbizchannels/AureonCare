@@ -1,13 +1,24 @@
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
 
+console.log('API Service: Base URL configured as:', API_BASE_URL);
+
 // API Service
 const api = {
   // Appointments
   getAppointments: async () => {
-    const response = await fetch(`${API_BASE_URL}/appointments`);
-    if (!response.ok) throw new Error('Failed to fetch appointments');
-    return response.json();
+    console.log('API: Fetching appointments from:', `${API_BASE_URL}/appointments`);
+    try {
+      const response = await fetch(`${API_BASE_URL}/appointments`);
+      console.log('API: Appointments response status:', response.status);
+      if (!response.ok) throw new Error(`Failed to fetch appointments: ${response.status}`);
+      const data = await response.json();
+      console.log('API: Appointments fetched successfully, count:', data.length);
+      return data;
+    } catch (error) {
+      console.error('API: Error fetching appointments:', error);
+      throw error;
+    }
   },
   createAppointment: async (data) => {
     const response = await fetch(`${API_BASE_URL}/appointments`, {
