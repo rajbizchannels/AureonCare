@@ -11,9 +11,24 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
     type: 'office-visit',
     duration: 30,
     reason: '',
-    notes: ''
+    notes: '',
+    offeringId: ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [offerings, setOfferings] = useState([]);
+
+  // Fetch active offerings
+  useEffect(() => {
+    const fetchOfferings = async () => {
+      try {
+        const data = await api.getOfferings({ is_active: true, available_online: true });
+        setOfferings(data);
+      } catch (error) {
+        console.error('Error fetching offerings:', error);
+      }
+    };
+    fetchOfferings();
+  }, [api]);
 
   // Set default provider to first available provider when users are loaded
   useEffect(() => {
@@ -22,6 +37,16 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
       setFormData(prev => ({ ...prev, providerId: firstProvider.id }));
     }
   }, [users, formData.providerId]);
+
+  // Auto-update duration when offering is selected
+  useEffect(() => {
+    if (formData.offeringId) {
+      const selectedOffering = offerings.find(o => o.id.toString() === formData.offeringId);
+      if (selectedOffering && selectedOffering.duration_minutes) {
+        setFormData(prev => ({ ...prev, duration: selectedOffering.duration_minutes }));
+      }
+    }
+  }, [formData.offeringId, offerings]);
 
   // ESC key handler
   useEffect(() => {
@@ -59,7 +84,8 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
         duration_minutes: formData.duration,
         status: 'scheduled',
         reason: formData.reason,
-        notes: formData.notes
+        notes: formData.notes,
+        offering_id: formData.offeringId || null
       };
 
       const newAppointment = await api.createAppointment(appointmentData);
@@ -154,6 +180,32 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
                   <option value="consultation">{t.consultation || 'Consultation'}</option>
                   <option value="procedure">{t.procedure || 'Procedure'}</option>
                 </select>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.service || 'Service/Offering'} <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <select
+                  value={formData.offeringId}
+                  onChange={(e) => setFormData({...formData, offeringId: e.target.value})}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                >
+                  <option value="">{t.selectService || 'Select a service (optional)'}</option>
+                  {offerings.map(offering => (
+                    <option key={offering.id} value={offering.id}>
+                      {offering.name} {offering.duration_minutes && `(${offering.duration_minutes} min)`}
+                      {offering.pricing_options && offering.pricing_options.length > 0 &&
+                        ` - $${Math.min(...offering.pricing_options.map(p => p.final_price))}`}
+                    </option>
+                  ))}
+                </select>
+                {formData.offeringId && (() => {
+                  const selectedOffering = offerings.find(o => o.id.toString() === formData.offeringId);
+                  return selectedOffering && selectedOffering.description && (
+                    <p className="mt-1 text-xs text-gray-500">{selectedOffering.description}</p>
+                  );
+                })()}
               </div>
 
               <div>

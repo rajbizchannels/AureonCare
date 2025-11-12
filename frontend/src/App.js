@@ -30,6 +30,7 @@ import IntegrationsView from './views/IntegrationsView';
 import FHIRView from './views/FHIRView';
 import PatientPortalView from './views/PatientPortalView';
 import AdminPanelView from './views/AdminPanelView';
+import OfferingManagementView from './views/OfferingManagementView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -315,6 +316,16 @@ function App() {
             setEditingItem={handleSetEditingItem}
             setCurrentView={setCurrentView}
             api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+          />
+        );
+      case 'offerings':
+        return (
+          <OfferingManagementView
+            theme={theme}
+            api={api}
+            user={user}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
           />
