@@ -84,17 +84,19 @@ const AppProvider = ({ children }) => {
    * @param {boolean} includeUser - Whether to fetch user data (only after authentication)
    */
   const fetchAllData = async (includeUser = false) => {
+    console.log('AppContext: fetchAllData called, includeUser:', includeUser);
     setLoading(true);
     setError(null);
     try {
+      console.log('AppContext: Starting data fetch...');
       const dataPromises = [
-        api.getAppointments(),
-        api.getPatients(),
-        api.getClaims(),
-        api.getPayments().catch(() => []), // Get payments, fallback to empty array if fails
-        api.getNotifications(user?.id), // Filter by user_id if available
-        api.getTasks(),
-        api.getUsers().catch(() => []) // Get all users, fallback to empty array if fails
+        api.getAppointments().catch(err => { console.error('Failed to fetch appointments:', err); return []; }),
+        api.getPatients().catch(err => { console.error('Failed to fetch patients:', err); return []; }),
+        api.getClaims().catch(err => { console.error('Failed to fetch claims:', err); return []; }),
+        api.getPayments().catch(err => { console.error('Failed to fetch payments:', err); return []; }),
+        api.getNotifications(user?.id).catch(err => { console.error('Failed to fetch notifications:', err); return []; }),
+        api.getTasks().catch(err => { console.error('Failed to fetch tasks:', err); return []; }),
+        api.getUsers().catch(err => { console.error('Failed to fetch users:', err); return []; })
       ];
 
       // Only fetch user data if includeUser is true (after authentication)
