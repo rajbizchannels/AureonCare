@@ -335,6 +335,8 @@ export const translations = {
     passwordsDoNotMatch: 'New passwords do not match',
     passwordTooShort: 'Password must be at least 6 characters long',
     failedToChangePassword: 'Failed to change password',
+    passwordChangedSuccessfully: 'Password changed successfully',
+    passwordLastChanged: 'Click "Change Password" to update your password',
     failedToCreatePatient: 'Failed to create patient. Please try again.',
     // Settings Modal
     manageClinicSettings: 'Manage clinic settings, users, and system configuration',
@@ -698,6 +700,8 @@ export const translations = {
     passwordsDoNotMatch: 'Las contraseñas nuevas no coinciden',
     passwordTooShort: 'La contraseña debe tener al menos 6 caracteres',
     failedToChangePassword: 'Error al cambiar contraseña',
+    passwordChangedSuccessfully: 'Contraseña cambiada exitosamente',
+    passwordLastChanged: 'Haz clic en "Cambiar Contraseña" para actualizar tu contraseña',
     failedToCreatePatient: 'Error al crear paciente. Por favor intente nuevamente.',
     // Settings Modal
     manageClinicSettings: 'Administrar configuración de clínica, usuarios y sistema',
@@ -1061,6 +1065,8 @@ export const translations = {
     passwordsDoNotMatch: 'Les nouveaux mots de passe ne correspondent pas',
     passwordTooShort: 'Le mot de passe doit contenir au moins 6 caractères',
     failedToChangePassword: 'Échec du changement de mot de passe',
+    passwordChangedSuccessfully: 'Mot de passe modifié avec succès',
+    passwordLastChanged: 'Cliquez sur "Changer le Mot de Passe" pour mettre à jour votre mot de passe',
     failedToCreatePatient: 'Échec de la création du patient. Veuillez réessayer.',
     // Settings Modal
     manageClinicSettings: 'Gérer les paramètres de la clinique, les utilisateurs et la configuration système',
@@ -1424,6 +1430,8 @@ export const translations = {
     passwordsDoNotMatch: 'Die neuen Passwörter stimmen nicht überein',
     passwordTooShort: 'Passwort muss mindestens 6 Zeichen lang sein',
     failedToChangePassword: 'Fehler beim Ändern des Passworts',
+    passwordChangedSuccessfully: 'Passwort erfolgreich geändert',
+    passwordLastChanged: 'Klicken Sie auf "Passwort ändern", um Ihr Passwort zu aktualisieren',
     failedToCreatePatient: 'Fehler beim Erstellen des Patienten. Bitte versuchen Sie es erneut.',
     // Settings Modal
     manageClinicSettings: 'Klinikeinstellungen, Benutzer und Systemkonfiguration verwalten',
@@ -1787,6 +1795,8 @@ export const translations = {
     passwordsDoNotMatch: 'كلمات المرور الجديدة غير متطابقة',
     passwordTooShort: 'يجب أن تكون كلمة المرور 6 أحرف على الأقل',
     failedToChangePassword: 'فشل في تغيير كلمة المرور',
+    passwordChangedSuccessfully: 'تم تغيير كلمة المرور بنجاح',
+    passwordLastChanged: 'انقر فوق "تغيير كلمة المرور" لتحديث كلمة المرور الخاصة بك',
     failedToCreatePatient: 'فشل في إنشاء المريض. يرجى المحاولة مرة أخرى.',
     // Settings Modal
     manageClinicSettings: 'إدارة إعدادات العيادة والمستخدمين وتكوين النظام',
