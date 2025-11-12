@@ -12,6 +12,26 @@ BEGIN
     END IF;
 END $$;
 
+-- Clean up orphaned appointments data before adding new constraint
+-- Set provider_id to NULL for any appointments that reference non-existent providers
+DO $$
+BEGIN
+    -- Check if both tables exist
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'appointments')
+       AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'providers') THEN
+
+        -- Update appointments with invalid provider_ids to NULL
+        UPDATE appointments
+        SET provider_id = NULL
+        WHERE provider_id IS NOT NULL
+        AND NOT EXISTS (
+            SELECT 1 FROM providers WHERE providers.id = appointments.provider_id
+        );
+
+        RAISE NOTICE 'Cleaned up orphaned appointment provider references';
+    END IF;
+END $$;
+
 -- Add the correct constraint that references providers table
 -- Use CASCADE or SET NULL based on your requirements
 -- SET NULL is safer as it won't delete appointments if provider is deleted
@@ -31,6 +51,8 @@ BEGIN
             FOREIGN KEY (provider_id)
             REFERENCES providers(id)
             ON DELETE SET NULL;
+
+            RAISE NOTICE 'Added correct foreign key constraint to providers table';
         END IF;
     END IF;
 END $$;

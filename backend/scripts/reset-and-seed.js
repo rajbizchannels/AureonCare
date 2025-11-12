@@ -46,12 +46,20 @@ function logSection(title) {
   console.log('='.repeat(80) + '\n');
 }
 
-async function runSQLFile(filePath, description) {
+async function runSQLFile(filePath, description, executeAsOne = false) {
   try {
     log(`\n📄 Running: ${description}`, 'yellow');
     log(`   File: ${path.basename(filePath)}`, 'blue');
 
     const sql = fs.readFileSync(filePath, 'utf8');
+
+    // If executeAsOne is true, run the entire file as a single query (for files with DO blocks)
+    if (executeAsOne) {
+      log(`   Executing as single script...`, 'blue');
+      await pool.query(sql);
+      log(`✅ ${description} completed successfully`, 'green');
+      return true;
+    }
 
     // Split by semicolons and filter out empty statements
     const statements = sql
@@ -127,7 +135,7 @@ async function main() {
     logSection('🗑️  Step 2: Deleting Existing Data');
 
     const resetPath = path.join(__dirname, 'reset-database.sql');
-    const resetSuccess = await runSQLFile(resetPath, 'Delete all existing data');
+    const resetSuccess = await runSQLFile(resetPath, 'Delete all existing data', true); // Execute as one due to DO blocks
 
     if (!resetSuccess) {
       log('\n❌ Failed to reset database. Aborting.', 'red');
@@ -138,7 +146,7 @@ async function main() {
     logSection('🌱 Step 3: Seeding Test Data');
 
     const seedPath = path.join(__dirname, 'seed-test-data.sql');
-    const seedSuccess = await runSQLFile(seedPath, 'Insert test data');
+    const seedSuccess = await runSQLFile(seedPath, 'Insert test data', true); // Execute as one due to DO blocks
 
     if (!seedSuccess) {
       log('\n❌ Failed to seed database. Please check errors above.', 'red');
