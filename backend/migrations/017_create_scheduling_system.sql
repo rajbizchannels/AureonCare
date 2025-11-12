@@ -6,6 +6,98 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================================
+-- FIX EXISTING TABLES: Ensure PRIMARY KEY constraints exist
+-- ============================================================================
+-- PostgreSQL requires PRIMARY KEY or UNIQUE constraint on referenced columns for foreign keys
+
+-- Fix providers table if it doesn't have a PRIMARY KEY
+DO $$
+BEGIN
+    -- Check if providers table exists and doesn't have a primary key on id
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'providers'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'providers'
+        AND constraint_type = 'PRIMARY KEY'
+        AND constraint_name LIKE '%pkey%'
+    ) THEN
+        -- Add PRIMARY KEY to providers.id if it doesn't exist
+        ALTER TABLE providers ADD PRIMARY KEY (id);
+        RAISE NOTICE 'Added PRIMARY KEY to providers(id)';
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'PRIMARY KEY already exists on providers(id)';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Could not add PRIMARY KEY to providers: %', SQLERRM;
+END $$;
+
+-- Fix patients table if it doesn't have a PRIMARY KEY
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'patients'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'patients'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+        ALTER TABLE patients ADD PRIMARY KEY (id);
+        RAISE NOTICE 'Added PRIMARY KEY to patients(id)';
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'PRIMARY KEY already exists on patients(id)';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Could not add PRIMARY KEY to patients: %', SQLERRM;
+END $$;
+
+-- Fix appointments table if it doesn't have a PRIMARY KEY
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'appointments'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'appointments'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+        ALTER TABLE appointments ADD PRIMARY KEY (id);
+        RAISE NOTICE 'Added PRIMARY KEY to appointments(id)';
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'PRIMARY KEY already exists on appointments(id)';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Could not add PRIMARY KEY to appointments: %', SQLERRM;
+END $$;
+
+-- Fix users table if it doesn't have a PRIMARY KEY
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'users'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'users'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+        ALTER TABLE users ADD PRIMARY KEY (id);
+        RAISE NOTICE 'Added PRIMARY KEY to users(id)';
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'PRIMARY KEY already exists on users(id)';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Could not add PRIMARY KEY to users: %', SQLERRM;
+END $$;
+
+-- ============================================================================
 -- 1. DOCTOR AVAILABILITY TABLE
 -- ============================================================================
 -- Stores doctor's working hours, breaks, and time-off
