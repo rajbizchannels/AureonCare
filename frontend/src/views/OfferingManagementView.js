@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { AppContext } from '../context/AppContext';
+import React, { useState, useEffect } from 'react';
+import { useApp } from '../context/AppContext';
 import api from '../api/apiService';
 import {
   Package,
@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 
 const OfferingManagementView = () => {
-  const { user, theme, t } = useContext(AppContext);
+  const { user, theme } = useApp();
   const [activeTab, setActiveTab] = useState('offerings');
   const [offerings, setOfferings] = useState([]);
   const [packages, setPackages] = useState([]);
