@@ -31,6 +31,7 @@ import IntegrationsView from './views/IntegrationsView';
 import FHIRView from './views/FHIRView';
 import PatientPortalView from './views/PatientPortalView';
 import AdminPanelView from './views/AdminPanelView';
+import OfferingManagementView from './views/OfferingManagementView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -329,6 +330,16 @@ function App() {
             setCurrentModule={setCurrentModule}
           />
         );
+      case 'offerings':
+        return (
+          <OfferingManagementView
+            theme={theme}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+          />
+        );
       default:
         return null;
     }
@@ -504,8 +515,14 @@ function App() {
 
               {/* User Menu */}
               <button
-                onClick={() => handleSetShowForm('userProfile')}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors"
+                onClick={() => {
+                  // Only open profile modal for non-patient users
+                  // Patients use the profile tab in patient portal
+                  if (user?.role !== 'patient') {
+                    handleSetShowForm('userProfile');
+                  }
+                }}
+                className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${user?.role === 'patient' ? 'cursor-default' : 'hover:bg-slate-800'}`}
                 title={`${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''} (${user?.role || 'user'})`}
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">

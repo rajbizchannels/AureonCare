@@ -23,6 +23,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [preferredPharmacies, setPreferredPharmacies] = useState([]);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
   const [selectedPrescription, setSelectedPrescription] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -331,12 +337,43 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+
+    // Validate passwords match
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      addNotification('alert', t.passwordsDoNotMatch || 'Passwords do not match');
+      return;
+    }
+
+    // Validate password length
+    if (passwordData.newPassword.length < 6) {
+      addNotification('alert', t.passwordTooShort || 'Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      await api.changePassword(user.id, passwordData.currentPassword, passwordData.newPassword);
+
+      addNotification('success', t.passwordChangedSuccessfully || 'Password changed successfully');
+      setShowChangePassword(false);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+      // Show success confirmation
+      setConfirmationMessage('Your password has been changed successfully!');
+      setShowConfirmation(true);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      addNotification('alert', error.response?.data?.error || t.failedToChangePassword || 'Failed to change password');
+    }
+  };
+
   // Dashboard View
   const renderDashboard = () => (
     <div className="space-y-6">
       <div>
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t.welcomeBack}, {user?.first_name || user?.name}!
+          {t.welcomeBack}, {user?.first_name} {user?.last_name}!
         </h2>
         <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
           {t.email}: {user?.email}
@@ -420,6 +457,13 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   )}
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {formatDate(apt.start_time)} at {formatTime(apt.start_time)}
+                  </p>
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.provider || 'Provider'}: {apt.provider_first_name && apt.provider_last_name
+                      ? `Dr. ${apt.provider_first_name} ${apt.provider_last_name}`
+                      : apt.provider?.first_name && apt.provider?.last_name
+                      ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}`
+                      : apt.doctor || t.notApplicable || 'N/A'}
                   </p>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {t.type}: {apt.appointment_type || t.generalConsultation}
@@ -698,6 +742,22 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         </form>
       ) : (
         <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+          <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.personalInformation}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.firstName}</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {profileData?.first_name || user?.first_name || t.notProvided}
+              </p>
+            </div>
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.lastName}</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {profileData?.last_name || user?.last_name || t.notProvided}
+              </p>
+            </div>
+          </div>
+
           <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.contactInformation}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -842,6 +902,206 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   {preferredPharmacies.length > 0 ? t.updatePreferredPharmacy : t.setPreferredPharmacy}
                 </button>
               </div>
+            )}
+          </div>
+
+          {/* Settings Section */}
+          <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.settings || 'Settings'}</h4>
+            <div className="space-y-4">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.languagePreference || 'Language Preference'}</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {profileData?.language || user?.language || 'English'}
+                </p>
+              </div>
+
+              {/* Theme Preference */}
+              <div className="pt-4 border-t border-slate-600/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Theme</p>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {theme === 'dark' ? t.darkMode || 'Dark Mode' : t.lightMode || 'Light Mode'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newTheme = theme === 'dark' ? 'light' : 'dark';
+                      setTheme(newTheme);
+                      localStorage.setItem('theme', newTheme);
+                      if (editingProfile) {
+                        setProfileData({
+                          ...profileData,
+                          theme: newTheme
+                        });
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      theme === 'dark' ? 'bg-cyan-500' : 'bg-gray-300'
+                    } cursor-pointer`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Notification Preferences */}
+              <div className="pt-4 border-t border-slate-600/50">
+                <h5 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.notifications || 'Notifications'}</h5>
+
+                {/* Email Notifications Toggle */}
+                <div className="flex items-center justify-between mb-3">
+                  <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.emailNotifications || 'Email Notifications'}
+                  </label>
+                  <button
+                    onClick={() => {
+                      if (editingProfile) {
+                        setProfileData({
+                          ...profileData,
+                          email_notifications: !profileData.email_notifications
+                        });
+                      }
+                    }}
+                    disabled={!editingProfile}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      profileData.email_notifications
+                        ? 'bg-cyan-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    } ${!editingProfile ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        profileData.email_notifications ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* SMS Notifications Toggle */}
+                <div className="flex items-center justify-between">
+                  <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.smsAlerts || 'SMS Alerts'}
+                  </label>
+                  <button
+                    onClick={() => {
+                      if (editingProfile) {
+                        setProfileData({
+                          ...profileData,
+                          sms_notifications: !profileData.sms_notifications
+                        });
+                      }
+                    }}
+                    disabled={!editingProfile}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      profileData.sms_notifications
+                        ? 'bg-cyan-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    } ${!editingProfile ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        profileData.sms_notifications ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Security Section */}
+          <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.security || 'Security'}</h4>
+              <button
+                onClick={() => {
+                  setShowChangePassword(!showChangePassword);
+                  if (!showChangePassword) {
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  showChangePassword
+                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
+                    : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400'
+                }`}
+              >
+                {showChangePassword ? (t.cancel || 'Cancel') : (t.changePassword || 'Change Password')}
+              </button>
+            </div>
+
+            {showChangePassword && (
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.currentPassword || 'Current Password'}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.newPassword || 'New Password'}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.confirmNewPassword || 'Confirm New Password'}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2"
+                >
+                  <Lock className="w-4 h-4" />
+                  {t.updatePassword || 'Update Password'}
+                </button>
+              </form>
+            )}
+
+            {!showChangePassword && (
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                {t.passwordLastChanged || 'Click "Change Password" to update your password'}
+              </p>
             )}
           </div>
         </div>

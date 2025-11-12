@@ -791,6 +791,260 @@ const api = {
     });
     if (!response.ok) throw new Error('Failed to refill prescription');
     return response.json();
+  },
+
+  // Healthcare Offerings
+  // Service Categories
+  getServiceCategories: async () => {
+    const response = await fetch(`${API_BASE_URL}/offerings/categories`);
+    if (!response.ok) throw new Error('Failed to fetch service categories');
+    return response.json();
+  },
+  getServiceCategory: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/categories/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch service category');
+    return response.json();
+  },
+  createServiceCategory: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create service category');
+    return response.json();
+  },
+  updateServiceCategory: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update service category');
+    return response.json();
+  },
+  deleteServiceCategory: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/categories/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete service category');
+    return response.json();
+  },
+
+  // Healthcare Offerings
+  getOfferings: async (filters = {}) => {
+    const params = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+        params.append(key, filters[key]);
+      }
+    });
+    const response = await fetch(`${API_BASE_URL}/offerings?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch offerings');
+    return response.json();
+  },
+  getOffering: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch offering');
+    return response.json();
+  },
+  createOffering: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create offering');
+    return response.json();
+  },
+  updateOffering: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update offering');
+    return response.json();
+  },
+  deleteOffering: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete offering');
+    return response.json();
+  },
+
+  // Offering Pricing
+  getOfferingPricing: async (offeringId) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/pricing`);
+    if (!response.ok) throw new Error('Failed to fetch offering pricing');
+    return response.json();
+  },
+  addOfferingPricing: async (offeringId, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/pricing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to add offering pricing');
+    return response.json();
+  },
+  updateOfferingPricing: async (pricingId, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/pricing/${pricingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update offering pricing');
+    return response.json();
+  },
+  deleteOfferingPricing: async (pricingId) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/pricing/${pricingId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete offering pricing');
+    return response.json();
+  },
+
+  // Offering Packages
+  getOfferingPackages: async (filters = {}) => {
+    const params = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+        params.append(key, filters[key]);
+      }
+    });
+    const response = await fetch(`${API_BASE_URL}/offerings/packages/all?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch offering packages');
+    return response.json();
+  },
+  getOfferingPackage: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/packages/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch offering package');
+    return response.json();
+  },
+  createOfferingPackage: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/packages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create offering package');
+    return response.json();
+  },
+  updateOfferingPackage: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/packages/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update offering package');
+    return response.json();
+  },
+  deleteOfferingPackage: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/packages/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete offering package');
+    return response.json();
+  },
+
+  // Patient Enrollments
+  getPatientEnrollments: async (patientId) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/enrollments/patient/${patientId}`);
+    if (!response.ok) throw new Error('Failed to fetch patient enrollments');
+    return response.json();
+  },
+  createEnrollment: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/enrollments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create enrollment');
+    return response.json();
+  },
+  updateEnrollment: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/enrollments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update enrollment');
+    return response.json();
+  },
+
+  // Offering Reviews
+  getOfferingReviews: async (offeringId, isApproved) => {
+    const params = new URLSearchParams();
+    if (isApproved !== undefined) params.append('is_approved', isApproved);
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/reviews?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch offering reviews');
+    return response.json();
+  },
+  createOfferingReview: async (offeringId, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create offering review');
+    return response.json();
+  },
+  moderateReview: async (reviewId, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/reviews/${reviewId}/moderate`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to moderate review');
+    return response.json();
+  },
+
+  // Offering Promotions
+  getOfferingPromotions: async (isActive) => {
+    const params = new URLSearchParams();
+    if (isActive !== undefined) params.append('is_active', isActive);
+    const response = await fetch(`${API_BASE_URL}/offerings/promotions/all?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch offering promotions');
+    return response.json();
+  },
+  validatePromoCode: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/promotions/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Invalid promo code' }));
+      throw new Error(errorData.error || 'Invalid promo code');
+    }
+    return response.json();
+  },
+  createOfferingPromotion: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/promotions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create offering promotion');
+    return response.json();
+  },
+  updateOfferingPromotion: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/promotions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update offering promotion');
+    return response.json();
+  },
+
+  // Offering Statistics
+  getOfferingStatistics: async () => {
+    const response = await fetch(`${API_BASE_URL}/offerings/statistics/overview`);
+    if (!response.ok) throw new Error('Failed to fetch offering statistics');
+    return response.json();
   }
 };
 
