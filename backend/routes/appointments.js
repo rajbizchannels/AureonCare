@@ -114,22 +114,43 @@ router.post('/', async (req, res) => {
     }
 
     // Validate provider_id if provided
-    if (provider_id && provider_id !== '' && provider_id !== 'null') {
+    if (provider_id && provider_id !== '' && provider_id !== 'null' && provider_id !== 'undefined') {
       console.log('Validating provider_id:', provider_id);
+
+      // Check if provider exists in providers table
       const providerCheck = await pool.query(
-        'SELECT id, first_name, last_name FROM providers WHERE id::text = $1::text',
+        'SELECT id, first_name, last_name, user_id FROM providers WHERE id::text = $1::text',
         [provider_id]
       );
 
       if (providerCheck.rows.length === 0) {
-        console.warn('Provider not found:', provider_id, '- Setting provider_id to NULL');
-        // Set to null if provider doesn't exist rather than failing
+        console.warn('Provider not found in providers table:', provider_id);
+
+        // Check if this ID exists in users table (indicates migration issue)
+        const userCheck = await pool.query(
+          'SELECT id FROM users WHERE id::text = $1::text',
+          [provider_id]
+        );
+
+        if (userCheck.rows.length > 0) {
+          console.error('Provider ID exists in users table but not in providers table.');
+          console.error('This indicates a database schema issue. Please run: npm run migrate');
+          return res.status(500).json({
+            error: 'Database schema mismatch detected',
+            details: 'The provider reference exists in users table but not in providers table. Please contact administrator to run database migrations.',
+            code: 'SCHEMA_MISMATCH'
+          });
+        }
+
+        // Provider doesn't exist anywhere - set to null and allow appointment without provider
+        console.warn('Provider not found anywhere - Setting provider_id to NULL');
         provider_id = null;
       } else {
         console.log('Provider verified:', providerCheck.rows[0]);
       }
     } else {
-      // Convert empty string or 'null' to actual NULL
+      // Convert empty string, 'null', or 'undefined' to actual NULL
+      console.log('Provider ID is empty or invalid, setting to NULL:', provider_id);
       provider_id = null;
     }
 
@@ -156,6 +177,19 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Log the final values being inserted
+    console.log('Inserting appointment with values:', {
+      patient_id,
+      provider_id,
+      practice_id,
+      appointment_type,
+      start_time,
+      end_time,
+      duration_minutes,
+      reason,
+      status: status || 'scheduled'
+    });
+
     const result = await pool.query(
       `INSERT INTO appointments
        (patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
@@ -168,6 +202,21 @@ router.post('/', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating appointment:', error);
+
+    // Check if this is a foreign key constraint violation
+    if (error.code === '23503' && error.constraint === 'appointments_provider_id_fkey') {
+      console.error('Foreign key constraint violation on provider_id');
+      console.error('This usually means the database schema needs to be updated.');
+      console.error('Please run: npm run migrate');
+
+      return res.status(500).json({
+        error: 'Database schema issue detected',
+        details: 'The appointments table has an outdated foreign key constraint. Please run database migrations to fix this issue. Contact your system administrator.',
+        technicalDetails: 'Foreign key constraint "appointments_provider_id_fkey" is pointing to the wrong table. Run: npm run migrate',
+        code: 'FK_CONSTRAINT_ERROR'
+      });
+    }
+
     res.status(500).json({ error: 'Failed to create appointment', details: error.message });
   }
 });

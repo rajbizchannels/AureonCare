@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 const PatientPortalView = ({ theme, api, addNotification, user }) => {
-  const { language, setLanguage } = useApp();
+  const { language, setLanguage, setTheme } = useApp();
   const t = getTranslations(language);
   const [currentView, setCurrentView] = useState('dashboard'); // dashboard, appointments, records, profile, prescriptions, bookAppointment, payments
 
