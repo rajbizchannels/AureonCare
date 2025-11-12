@@ -1,55 +1,55 @@
 -- Add RBAC Permissions for Healthcare Offerings Management
 -- Migration: 019_add_offering_permissions.sql
--- Using UUID for ID fields
 
 -- Insert new permissions for healthcare offerings management
-INSERT INTO permissions (name, description, category, is_system) VALUES
+-- Permissions follow the pattern: module.action (e.g., offerings.view)
+INSERT INTO permissions (name, display_name, description, module, action) VALUES
 -- Healthcare Offerings Permissions
-('offerings.view', 'View healthcare offerings and services', 'offerings', true),
-('offerings.create', 'Create new healthcare offerings', 'offerings', true),
-('offerings.edit', 'Edit existing healthcare offerings', 'offerings', true),
-('offerings.delete', 'Delete healthcare offerings', 'offerings', true),
-('offerings.manage_pricing', 'Manage offering pricing and discounts', 'offerings', true),
+('offerings.view', 'View Offerings', 'View healthcare offerings and services', 'offerings', 'view'),
+('offerings.create', 'Create Offerings', 'Create new healthcare offerings', 'offerings', 'create'),
+('offerings.edit', 'Edit Offerings', 'Edit existing healthcare offerings', 'offerings', 'edit'),
+('offerings.delete', 'Delete Offerings', 'Delete healthcare offerings', 'offerings', 'delete'),
+('offerings.manage_pricing', 'Manage Pricing', 'Manage offering pricing and discounts', 'offerings', 'manage_pricing'),
 
 -- Package Permissions
-('packages.view', 'View healthcare packages', 'offerings', true),
-('packages.create', 'Create new healthcare packages', 'offerings', true),
-('packages.edit', 'Edit existing healthcare packages', 'offerings', true),
-('packages.delete', 'Delete healthcare packages', 'offerings', true),
+('packages.view', 'View Packages', 'View healthcare packages', 'offerings', 'view'),
+('packages.create', 'Create Packages', 'Create new healthcare packages', 'offerings', 'create'),
+('packages.edit', 'Edit Packages', 'Edit existing healthcare packages', 'offerings', 'edit'),
+('packages.delete', 'Delete Packages', 'Delete healthcare packages', 'offerings', 'delete'),
 
 -- Enrollment Permissions
-('enrollments.view', 'View patient enrollments', 'offerings', true),
-('enrollments.create', 'Create patient enrollments', 'offerings', true),
-('enrollments.manage', 'Manage patient enrollments and usage', 'offerings', true),
+('enrollments.view', 'View Enrollments', 'View patient enrollments', 'offerings', 'view'),
+('enrollments.create', 'Create Enrollments', 'Create patient enrollments', 'offerings', 'create'),
+('enrollments.manage', 'Manage Enrollments', 'Manage patient enrollments and usage', 'offerings', 'manage'),
 
 -- Promotion Permissions
-('promotions.view', 'View promotions and discount codes', 'offerings', true),
-('promotions.create', 'Create new promotions', 'offerings', true),
-('promotions.edit', 'Edit existing promotions', 'offerings', true),
-('promotions.manage', 'Manage promotion usage and validation', 'offerings', true),
+('promotions.view', 'View Promotions', 'View promotions and discount codes', 'offerings', 'view'),
+('promotions.create', 'Create Promotions', 'Create new promotions', 'offerings', 'create'),
+('promotions.edit', 'Edit Promotions', 'Edit existing promotions', 'offerings', 'edit'),
+('promotions.manage', 'Manage Promotions', 'Manage promotion usage and validation', 'offerings', 'manage'),
 
 -- Review Permissions
-('reviews.view', 'View offering reviews', 'offerings', true),
-('reviews.moderate', 'Moderate and approve offering reviews', 'offerings', true),
+('reviews.view', 'View Reviews', 'View offering reviews', 'offerings', 'view'),
+('reviews.moderate', 'Moderate Reviews', 'Moderate and approve offering reviews', 'offerings', 'moderate'),
 
 -- Category Permissions
-('categories.manage', 'Manage service categories', 'offerings', true)
+('categories.manage', 'Manage Categories', 'Manage service categories', 'offerings', 'manage')
 ON CONFLICT (name) DO NOTHING;
 
 -- Assign offerings permissions to relevant roles
 
 -- System Administrator - Full access to all offerings features
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id::UUID, p.id::UUID
+SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'System Administrator'
-  AND p.category = 'offerings'
+  AND p.module = 'offerings'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Practice Manager - Full operational access to offerings
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id::UUID, p.id::UUID
+SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Practice Manager'
@@ -65,7 +65,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Billing Manager - Access to pricing, enrollments, and promotions
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id::UUID, p.id::UUID
+SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Billing Manager'
@@ -79,7 +79,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Physician - View offerings, packages, and create enrollments
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id::UUID, p.id::UUID
+SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Physician'
@@ -93,7 +93,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Nurse - View offerings and packages, limited enrollment access
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id::UUID, p.id::UUID
+SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Nurse'
@@ -106,7 +106,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Receptionist - View offerings, create enrollments, view promotions
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id::UUID, p.id::UUID
+SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Receptionist'
@@ -120,7 +120,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Medical Assistant - View offerings and packages
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id::UUID, p.id::UUID
+SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Medical Assistant'
@@ -133,7 +133,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Insurance Coordinator - View all, manage enrollments
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id::UUID, p.id::UUID
+SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Insurance Coordinator'
