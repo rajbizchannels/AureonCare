@@ -7,3 +7,4 @@ export { default as CRMView } from './CRMView';
 export { default as IntegrationsView } from './IntegrationsView';
 export { default as FHIRView } from './FHIRView';
 export { default as PatientPortalView } from './PatientPortalView';
+export { default as ProviderManagementView } from './ProviderManagementView';
