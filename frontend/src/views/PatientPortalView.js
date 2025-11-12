@@ -293,7 +293,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         past_history: profileData.past_history,
         family_history: profileData.family_history,
         current_medications: profileData.current_medications,
-        language: profileData.language
+        language: profileData.language,
+        email_notifications: profileData.email_notifications || false,
+        sms_notifications: profileData.sms_notifications || false
       });
 
       // Convert language code to full name for display (in case backend returns code)
@@ -373,10 +375,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     <div className="space-y-6">
       <div>
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t.welcomeBack}, {user?.first_name} {user?.last_name}!
+          {t.welcomeBack}, {profileData?.first_name || user?.first_name} {profileData?.last_name || user?.last_name}!
         </h2>
         <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-          {t.email}: {user?.email}
+          {t.email}: {profileData?.email || user?.email}
         </p>
       </div>
 
@@ -457,13 +459,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   )}
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {formatDate(apt.start_time)} at {formatTime(apt.start_time)}
-                  </p>
-                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {t.provider || 'Provider'}: {apt.provider_first_name && apt.provider_last_name
-                      ? `Dr. ${apt.provider_first_name} ${apt.provider_last_name}`
-                      : apt.provider?.first_name && apt.provider?.last_name
-                      ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}`
-                      : apt.doctor || t.notApplicable || 'N/A'}
                   </p>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {t.type}: {apt.appointment_type || t.generalConsultation}
