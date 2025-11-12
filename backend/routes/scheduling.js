@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../db');
 
 // ============================================================================
 // DOCTOR AVAILABILITY ROUTES
@@ -12,6 +11,7 @@ const pool = require('../db');
  */
 router.get('/availability/:providerId', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId } = req.params;
 
         const result = await pool.query(
@@ -35,6 +35,7 @@ router.get('/availability/:providerId', async (req, res) => {
  */
 router.post('/availability', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId, dayOfWeek, startTime, endTime, timezone, isAvailable } = req.body;
 
         // Validation
@@ -67,6 +68,7 @@ router.post('/availability', async (req, res) => {
  */
 router.put('/availability/:id', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { id } = req.params;
         const { dayOfWeek, startTime, endTime, timezone, isAvailable } = req.body;
 
@@ -100,6 +102,7 @@ router.put('/availability/:id', async (req, res) => {
  */
 router.delete('/availability/:id', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { id } = req.params;
 
         const result = await pool.query(
@@ -124,6 +127,7 @@ router.delete('/availability/:id', async (req, res) => {
  * Body: { providerId, schedules: [{ dayOfWeek, startTime, endTime, timezone }] }
  */
 router.post('/availability/bulk', async (req, res) => {
+    const pool = req.app.locals.pool;
     const client = await pool.connect();
     try {
         const { providerId, schedules } = req.body;
@@ -174,6 +178,7 @@ router.post('/availability/bulk', async (req, res) => {
  */
 router.get('/time-off/:providerId', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId } = req.params;
 
         const result = await pool.query(
@@ -197,6 +202,7 @@ router.get('/time-off/:providerId', async (req, res) => {
  */
 router.post('/time-off', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId, startDate, endDate, reason, isRecurring, recurrenceRule } = req.body;
 
         if (!providerId || !startDate || !endDate) {
@@ -224,6 +230,7 @@ router.post('/time-off', async (req, res) => {
  */
 router.put('/time-off/:id', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { id } = req.params;
         const { startDate, endDate, reason, isRecurring, recurrenceRule } = req.body;
 
@@ -257,6 +264,7 @@ router.put('/time-off/:id', async (req, res) => {
  */
 router.delete('/time-off/:id', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { id } = req.params;
 
         const result = await pool.query(
@@ -285,6 +293,7 @@ router.delete('/time-off/:id', async (req, res) => {
  */
 router.get('/appointment-types/:providerId', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId } = req.params;
 
         const result = await pool.query(
@@ -308,6 +317,7 @@ router.get('/appointment-types/:providerId', async (req, res) => {
  */
 router.get('/appointment-types', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const result = await pool.query(
             `SELECT * FROM appointment_type_config
              WHERE is_active = true
@@ -327,6 +337,7 @@ router.get('/appointment-types', async (req, res) => {
  */
 router.post('/appointment-types', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const {
             providerId,
             name,
@@ -377,6 +388,7 @@ router.post('/appointment-types', async (req, res) => {
  */
 router.put('/appointment-types/:id', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { id } = req.params;
         const {
             name,
@@ -438,6 +450,7 @@ router.put('/appointment-types/:id', async (req, res) => {
  */
 router.delete('/appointment-types/:id', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { id } = req.params;
 
         const result = await pool.query(
@@ -466,6 +479,7 @@ router.delete('/appointment-types/:id', async (req, res) => {
  */
 router.get('/booking-config/:providerId', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId } = req.params;
 
         const result = await pool.query(
@@ -490,6 +504,7 @@ router.get('/booking-config/:providerId', async (req, res) => {
  */
 router.get('/booking-config/slug/:slug', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { slug } = req.params;
 
         const result = await pool.query(
@@ -517,6 +532,7 @@ router.get('/booking-config/slug/:slug', async (req, res) => {
  */
 router.post('/booking-config', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const {
             providerId,
             bookingUrlSlug,
@@ -584,6 +600,7 @@ router.post('/booking-config', async (req, res) => {
  */
 router.put('/booking-config/:providerId', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId } = req.params;
         const {
             bookingUrlSlug,
@@ -668,6 +685,7 @@ router.put('/booking-config/:providerId', async (req, res) => {
  */
 router.get('/slots/:providerId', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId } = req.params;
         const { date, appointmentTypeId, timezone = 'UTC' } = req.query;
 
@@ -826,6 +844,7 @@ router.get('/slots/:providerId', async (req, res) => {
  */
 router.get('/available-dates/:providerId', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId } = req.params;
         const { startDate, endDate, appointmentTypeId } = req.query;
 
@@ -899,6 +918,7 @@ router.get('/available-dates/:providerId', async (req, res) => {
  */
 router.post('/check-availability', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { providerId, startTime, endTime } = req.body;
 
         if (!providerId || !startTime || !endTime) {
@@ -928,6 +948,7 @@ router.post('/check-availability', async (req, res) => {
  * Body: { providerId, patientInfo, startTime, appointmentTypeId, customFormData }
  */
 router.post('/book', async (req, res) => {
+    const pool = req.app.locals.pool;
     const client = await pool.connect();
     try {
         const {
@@ -1074,6 +1095,7 @@ router.post('/book', async (req, res) => {
  */
 router.post('/cancel/:appointmentId', async (req, res) => {
     try {
+        const pool = req.app.locals.pool;
         const { appointmentId } = req.params;
         const { cancellationReason, cancelledBy } = req.body;
 
@@ -1156,6 +1178,7 @@ router.post('/cancel/:appointmentId', async (req, res) => {
  * Body: { newStartTime, reason }
  */
 router.post('/reschedule/:appointmentId', async (req, res) => {
+    const pool = req.app.locals.pool;
     const client = await pool.connect();
     try {
         const { appointmentId } = req.params;
