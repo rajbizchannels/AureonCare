@@ -144,11 +144,20 @@ The seed data creates proper relationships:
 ## 🐛 Troubleshooting
 
 ### Error: "relation does not exist"
-**Solution:** Run migrations first:
+**Solution:** This is normal if you haven't run all migrations yet. The scripts now handle missing tables gracefully and will skip them.
+
+To create all tables, run migrations:
 ```bash
 cd backend
 ./run_migrations.sh
+# or
+npm run migrate
 ```
+
+**Note:** The scripts will work fine even if some tables don't exist yet. They will:
+- Skip deleting from tables that don't exist
+- Skip inserting into tables that don't exist (like `doctor_availability`)
+- Show a notice about which tables were skipped
 
 ### Error: "foreign key constraint violation"
 **Solution:** This should not happen with `reset-and-seed.js`. If it does:

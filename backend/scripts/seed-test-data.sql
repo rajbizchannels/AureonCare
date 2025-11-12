@@ -115,27 +115,36 @@ INSERT INTO pharmacies (pharmacy_name, address_line1, city, state, zip_code, pho
 ('Rite Aid', '300 Elm Street', 'Springfield', 'IL', '62703', '555-2003', 'riteaid.springfield@riteaid.com', NOW(), NOW());
 
 -- ============================================================================
--- 10. CREATE DOCTOR AVAILABILITY (For scheduling system)
+-- 10. CREATE DOCTOR AVAILABILITY (For scheduling system - if table exists)
 -- ============================================================================
 
--- Dr. Smith - Monday to Friday, 9 AM - 5 PM
-INSERT INTO doctor_availability (provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
-('10000000-0000-0000-0000-000000000001', 1, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
-('10000000-0000-0000-0000-000000000001', 2, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
-('10000000-0000-0000-0000-000000000001', 3, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
-('10000000-0000-0000-0000-000000000001', 4, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
-('10000000-0000-0000-0000-000000000001', 5, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW());
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'doctor_availability') THEN
+        -- Dr. Smith - Monday to Friday, 9 AM - 5 PM
+        INSERT INTO doctor_availability (provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
+        ('10000000-0000-0000-0000-000000000001', 1, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
+        ('10000000-0000-0000-0000-000000000001', 2, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
+        ('10000000-0000-0000-0000-000000000001', 3, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
+        ('10000000-0000-0000-0000-000000000001', 4, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
+        ('10000000-0000-0000-0000-000000000001', 5, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW());
 
--- Dr. Johnson - Monday, Wednesday, Friday, 10 AM - 6 PM
-INSERT INTO doctor_availability (provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
-('10000000-0000-0000-0000-000000000002', 1, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW()),
-('10000000-0000-0000-0000-000000000002', 3, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW()),
-('10000000-0000-0000-0000-000000000002', 5, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW());
+        -- Dr. Johnson - Monday, Wednesday, Friday, 10 AM - 6 PM
+        INSERT INTO doctor_availability (provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
+        ('10000000-0000-0000-0000-000000000002', 1, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW()),
+        ('10000000-0000-0000-0000-000000000002', 3, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW()),
+        ('10000000-0000-0000-0000-000000000002', 5, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW());
 
--- Dr. Williams - Tuesday, Thursday, 8 AM - 4 PM
-INSERT INTO doctor_availability (provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
-('10000000-0000-0000-0000-000000000003', 2, '08:00', '16:00', 'America/Chicago', true, NOW(), NOW()),
-('10000000-0000-0000-0000-000000000003', 4, '08:00', '16:00', 'America/Chicago', true, NOW(), NOW());
+        -- Dr. Williams - Tuesday, Thursday, 8 AM - 4 PM
+        INSERT INTO doctor_availability (provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
+        ('10000000-0000-0000-0000-000000000003', 2, '08:00', '16:00', 'America/Chicago', true, NOW(), NOW()),
+        ('10000000-0000-0000-0000-000000000003', 4, '08:00', '16:00', 'America/Chicago', true, NOW(), NOW());
+
+        RAISE NOTICE 'Created doctor availability schedules';
+    ELSE
+        RAISE NOTICE 'Skipping doctor_availability - table does not exist (run migrations first)';
+    END IF;
+END $$;
 
 COMMIT;
 
@@ -189,3 +198,11 @@ SELECT
 FROM appointments a
 LEFT JOIN providers pr ON a.provider_id = pr.id
 WHERE a.provider_id IS NOT NULL AND pr.id IS NULL;
+
+-- Show doctor availability count if table exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'doctor_availability') THEN
+        RAISE NOTICE 'Doctor availability schedules: %', (SELECT COUNT(*) FROM doctor_availability);
+    END IF;
+END $$;
