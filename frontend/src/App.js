@@ -487,13 +487,16 @@ function App() {
                 <Bot className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
               </button>
 
-              <button
-                onClick={() => handleSetShowForm('settings')}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title="Settings"
-              >
-                <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-              </button>
+              {/* Settings button - hidden for patients as they have settings in their profile tab */}
+              {user?.role !== 'patient' && (
+                <button
+                  onClick={() => handleSetShowForm('settings')}
+                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                  title="Settings"
+                >
+                  <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                </button>
+              )}
 
               {/* Theme Toggle */}
               <button
