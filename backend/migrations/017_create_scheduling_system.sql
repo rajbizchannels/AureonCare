@@ -103,7 +103,7 @@ END $$;
 -- Stores doctor's working hours, breaks, and time-off
 CREATE TABLE IF NOT EXISTS doctor_availability (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    provider_id INTEGER NOT NULL,
+    provider_id UUID NOT NULL,
     day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6), -- 0=Sunday, 6=Saturday
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
@@ -136,7 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_doctor_availability_day ON doctor_availability(da
 -- Handles vacation days, holidays, specific date exceptions
 CREATE TABLE IF NOT EXISTS doctor_time_off (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    provider_id INTEGER NOT NULL,
+    provider_id UUID NOT NULL,
     start_date TIMESTAMP NOT NULL,
     end_date TIMESTAMP NOT NULL,
     reason VARCHAR(500),
@@ -169,7 +169,7 @@ CREATE INDEX IF NOT EXISTS idx_doctor_time_off_dates ON doctor_time_off(start_da
 -- Define available appointment types with duration, buffer, and pricing
 CREATE TABLE IF NOT EXISTS appointment_type_config (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    provider_id INTEGER, -- NULL means clinic-wide
+    provider_id UUID, -- NULL means clinic-wide
     name VARCHAR(100) NOT NULL,
     description TEXT,
     duration_minutes INTEGER NOT NULL DEFAULT 30,
@@ -206,7 +206,7 @@ CREATE INDEX IF NOT EXISTS idx_appointment_type_active ON appointment_type_confi
 -- Provider-specific booking settings and preferences
 CREATE TABLE IF NOT EXISTS provider_booking_config (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    provider_id INTEGER UNIQUE NOT NULL,
+    provider_id UUID UNIQUE NOT NULL,
     booking_url_slug VARCHAR(100) UNIQUE,
     timezone VARCHAR(100) DEFAULT 'UTC',
     slot_interval_minutes INTEGER DEFAULT 15, -- Time slot increments
@@ -248,8 +248,8 @@ CREATE INDEX IF NOT EXISTS idx_booking_config_provider ON provider_booking_confi
 -- Track appointment series (e.g., weekly therapy sessions)
 CREATE TABLE IF NOT EXISTS recurring_appointments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    patient_id INTEGER NOT NULL,
-    provider_id INTEGER NOT NULL,
+    patient_id UUID NOT NULL,
+    provider_id UUID NOT NULL,
     appointment_type_id UUID,
     recurrence_rule VARCHAR(255) NOT NULL, -- iCalendar RRULE (e.g., "FREQ=WEEKLY;BYDAY=MO")
     start_date TIMESTAMP NOT NULL,
@@ -305,9 +305,9 @@ ALTER TABLE appointments
     ADD COLUMN IF NOT EXISTS confirmation_sent_at TIMESTAMP,
     ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMP,
     ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS cancelled_by INTEGER,
+    ADD COLUMN IF NOT EXISTS cancelled_by UUID,
     ADD COLUMN IF NOT EXISTS cancellation_reason TEXT,
-    ADD COLUMN IF NOT EXISTS rescheduled_from INTEGER,
+    ADD COLUMN IF NOT EXISTS rescheduled_from UUID,
     ADD COLUMN IF NOT EXISTS no_show_notified_at TIMESTAMP,
     ADD COLUMN IF NOT EXISTS custom_form_data JSONB DEFAULT '{}';
 
@@ -361,8 +361,8 @@ CREATE INDEX IF NOT EXISTS idx_appointments_cancelled ON appointments(cancelled_
 -- Queue system for fully booked time slots
 CREATE TABLE IF NOT EXISTS appointment_waitlist (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    patient_id INTEGER NOT NULL,
-    provider_id INTEGER NOT NULL,
+    patient_id UUID NOT NULL,
+    provider_id UUID NOT NULL,
     appointment_type_id UUID,
     preferred_date_start DATE NOT NULL,
     preferred_date_end DATE NOT NULL,
@@ -416,7 +416,7 @@ CREATE INDEX IF NOT EXISTS idx_waitlist_dates ON appointment_waitlist(preferred_
 -- Track scheduled reminders (email, SMS, push)
 CREATE TABLE IF NOT EXISTS appointment_reminders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    appointment_id INTEGER NOT NULL,
+    appointment_id UUID NOT NULL,
     reminder_type VARCHAR(50) NOT NULL, -- email, sms, push
     scheduled_for TIMESTAMP NOT NULL,
     sent_at TIMESTAMP,
@@ -449,11 +449,11 @@ CREATE INDEX IF NOT EXISTS idx_reminders_status ON appointment_reminders(deliver
 -- Track booking metrics for insights
 CREATE TABLE IF NOT EXISTS booking_analytics (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    provider_id INTEGER,
+    provider_id UUID,
     event_type VARCHAR(50) NOT NULL, -- page_view, slot_selected, booking_started, booking_completed, booking_cancelled
-    appointment_id INTEGER,
+    appointment_id UUID,
     appointment_type_id UUID,
-    patient_id INTEGER,
+    patient_id UUID,
     session_id VARCHAR(100),
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -526,7 +526,7 @@ WHERE NOT EXISTS (
 INSERT INTO provider_booking_config (provider_id, booking_url_slug, timezone, slot_interval_minutes, allow_public_booking)
 SELECT
     p.id,
-    LOWER(REGEXP_REPLACE(CONCAT(p.first_name, '-', p.last_name, '-', p.id), '[^a-zA-Z0-9-]', '', 'g')),
+    LOWER(REGEXP_REPLACE(CONCAT(p.first_name, '-', p.last_name, '-', p.id::text), '[^a-zA-Z0-9-]', '', 'g')),
     'America/New_York',
     15,
     true
@@ -542,7 +542,7 @@ WHERE NOT EXISTS (
 
 -- Function to check if a time slot is available
 CREATE OR REPLACE FUNCTION is_slot_available(
-    p_provider_id INTEGER,
+    p_provider_id UUID,
     p_start_time TIMESTAMP,
     p_end_time TIMESTAMP
 ) RETURNS BOOLEAN AS $$
