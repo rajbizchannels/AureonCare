@@ -336,7 +336,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     <div className="space-y-6">
       <div>
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t.welcomeBack}, {user?.first_name || user?.name}!
+          {t.welcomeBack}, {user?.first_name} {user?.last_name}!
         </h2>
         <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
           {t.email}: {user?.email}
@@ -698,6 +698,22 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         </form>
       ) : (
         <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+          <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.personalInformation}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.firstName}</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {profileData?.first_name || user?.first_name || t.notProvided}
+              </p>
+            </div>
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.lastName}</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {profileData?.last_name || user?.last_name || t.notProvided}
+              </p>
+            </div>
+          </div>
+
           <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.contactInformation}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
