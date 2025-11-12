@@ -21,6 +21,7 @@ import { hasAccess } from './config/planFeatures';
 // Views
 import DashboardView from './views/DashboardView';
 import PracticeManagementView from './views/PracticeManagementView';
+import ProviderManagementView from './views/ProviderManagementView';
 import EHRView from './views/EHRView';
 import TelehealthView from './views/TelehealthView';
 import RCMView from './views/RCMView';
@@ -230,6 +231,15 @@ function App() {
             setCurrentModule={setCurrentModule}
             t={t}
             user={user}
+          />
+        );
+      case 'providerManagement':
+        return (
+          <ProviderManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
           />
         );
       case 'ehr':
