@@ -77,7 +77,7 @@ const RevenueQuickView = ({ theme, t, claims, patients, onClose, onViewAll, setE
               >
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{claim.claim_number || claim.claimNumber || claim.claimNo || claim.claim_no || t.notApplicable || 'N/A'}</h4>
+                    <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{claim.claim_number || t.notApplicable || 'N/A'}</h4>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{patientName}</p>
                   </div>
                   <div className="text-right">
