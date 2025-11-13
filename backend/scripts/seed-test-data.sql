@@ -23,14 +23,14 @@ INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone,
 
 -- Patient Users
 INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone, created_at, updated_at) VALUES
-('p0000000-0000-0000-0000-000000000001', 'john.doe@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'John', 'Doe', '555-1001', NOW(), NOW()),
-('p0000000-0000-0000-0000-000000000002', 'jane.smith@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'Jane', 'Smith', '555-1002', NOW(), NOW()),
-('p0000000-0000-0000-0000-000000000003', 'bob.wilson@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'Bob', 'Wilson', '555-1003', NOW(), NOW()),
-('p0000000-0000-0000-0000-000000000004', 'alice.brown@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'Alice', 'Brown', '555-1004', NOW(), NOW());
+('b0000000-0000-0000-0000-000000000001', 'john.doe@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'John', 'Doe', '555-1001', NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000002', 'jane.smith@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'Jane', 'Smith', '555-1002', NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000003', 'bob.wilson@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'Bob', 'Wilson', '555-1003', NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000004', 'alice.brown@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'Alice', 'Brown', '555-1004', NOW(), NOW());
 
 -- Staff User
 INSERT INTO users (id, email, password_hash, role, first_name, last_name, created_at, updated_at) VALUES
-('s0000000-0000-0000-0000-000000000001', 'staff@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'staff', 'Lisa', 'Martinez', NOW(), NOW());
+('c0000000-0000-0000-0000-000000000001', 'staff@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'staff', 'Lisa', 'Martinez', NOW(), NOW());
 
 -- ============================================================================
 -- 2. CREATE PROVIDERS (References users table)
@@ -46,10 +46,10 @@ INSERT INTO providers (id, user_id, first_name, last_name, email, phone, special
 -- ============================================================================
 
 INSERT INTO patients (id, user_id, first_name, last_name, email, phone, date_of_birth, address, gender, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000001', 'p0000000-0000-0000-0000-000000000001', 'John', 'Doe', 'john.doe@example.com', '555-1001', '1985-05-15', '123 Main St, Springfield, IL 62701', 'male', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000002', 'p0000000-0000-0000-0000-000000000002', 'Jane', 'Smith', 'jane.smith@example.com', '555-1002', '1990-08-22', '456 Oak Ave, Springfield, IL 62702', 'female', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000003', 'p0000000-0000-0000-0000-000000000003', 'Bob', 'Wilson', 'bob.wilson@example.com', '555-1003', '1978-03-10', '789 Pine Rd, Springfield, IL 62703', 'male', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000004', 'p0000000-0000-0000-0000-000000000004', 'Alice', 'Brown', 'alice.brown@example.com', '555-1004', '1995-11-30', '321 Elm St, Springfield, IL 62704', 'female', NOW(), NOW());
+('20000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'John', 'Doe', 'john.doe@example.com', '555-1001', '1985-05-15', '123 Main St, Springfield, IL 62701', 'male', NOW(), NOW()),
+('20000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Jane', 'Smith', 'jane.smith@example.com', '555-1002', '1990-08-22', '456 Oak Ave, Springfield, IL 62702', 'female', NOW(), NOW()),
+('20000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', 'Bob', 'Wilson', 'bob.wilson@example.com', '555-1003', '1978-03-10', '789 Pine Rd, Springfield, IL 62703', 'male', NOW(), NOW()),
+('20000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000004', 'Alice', 'Brown', 'alice.brown@example.com', '555-1004', '1995-11-30', '321 Elm St, Springfield, IL 62704', 'female', NOW(), NOW());
 
 -- ============================================================================
 -- 4. CREATE APPOINTMENTS (References patients and providers)
@@ -77,8 +77,8 @@ INSERT INTO appointments (patient_id, provider_id, appointment_type, start_time,
 
 INSERT INTO tasks (title, description, priority, status, due_date, assigned_to, created_at, updated_at) VALUES
 ('Review Lab Results', 'Review and file patient lab results for John Doe', 'high', 'pending', NOW() + INTERVAL '2 days', 'd0000000-0000-0000-0000-000000000001', NOW(), NOW()),
-('Schedule Follow-up', 'Schedule follow-up appointment for Jane Smith', 'medium', 'pending', NOW() + INTERVAL '1 day', 's0000000-0000-0000-0000-000000000001', NOW(), NOW()),
-('Insurance Verification', 'Verify insurance for Bob Wilson', 'high', 'in-progress', NOW() + INTERVAL '3 hours', 's0000000-0000-0000-0000-000000000001', NOW(), NOW());
+('Schedule Follow-up', 'Schedule follow-up appointment for Jane Smith', 'medium', 'pending', NOW() + INTERVAL '1 day', 'c0000000-0000-0000-0000-000000000001', NOW(), NOW()),
+('Insurance Verification', 'Verify insurance for Bob Wilson', 'high', 'in-progress', NOW() + INTERVAL '3 hours', 'c0000000-0000-0000-0000-000000000001', NOW(), NOW());
 
 -- ============================================================================
 -- 6. CREATE PRESCRIPTIONS
