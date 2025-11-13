@@ -65,20 +65,21 @@ router.post('/', async (req, res) => {
 
     console.log('Creating appointment with:', { patient_id, user_id, appointment_type, start_time });
 
-    // If user_id is provided instead of patient_id, look up the patient
+    // If user_id is provided instead of patient_id, use it directly
+    // (patient.id = user.id in new schema)
     if (!patient_id && user_id) {
-      console.log('Looking up patient by user_id:', user_id);
+      console.log('Using user_id as patient_id:', user_id);
+      patient_id = user_id; // patient.id = user.id
+
+      // Verify patient exists
       const patientLookup = await pool.query(
-        'SELECT id FROM patients WHERE user_id::text = $1::text OR id::text = $1::text',
-        [user_id]
+        'SELECT id FROM patients WHERE id::text = $1::text',
+        [patient_id]
       );
 
       console.log('Patient lookup result:', patientLookup.rows);
 
-      if (patientLookup.rows.length > 0) {
-        patient_id = patientLookup.rows[0].id;
-        console.log('Found patient_id:', patient_id);
-      } else {
+      if (patientLookup.rows.length === 0) {
         console.error('No patient found for user_id:', user_id);
         return res.status(404).json({
           error: 'Patient record not found for this user. Please contact support.',
