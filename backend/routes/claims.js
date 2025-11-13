@@ -51,14 +51,12 @@ router.get('/:id', async (req, res) => {
 // Create new claim
 router.post('/', async (req, res) => {
   const {
-    claim_no, claim_number, patient_id, payer, amount, status,
+    claim_number, patient_id, payer, amount, status,
     service_date, diagnosis_codes, procedure_codes, notes
   } = req.body;
 
   try {
     const pool = req.app.locals.pool;
-    // Use claim_number field (database column name), fall back to claim_no for compatibility
-    const claimNum = claim_number || claim_no;
 
     const result = await pool.query(
       `INSERT INTO claims
@@ -66,7 +64,7 @@ router.post('/', async (req, res) => {
         service_date, diagnosis_codes, procedure_codes, notes, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
        RETURNING *`,
-      [claimNum, patient_id, payer, amount, status || 'pending',
+      [claim_number, patient_id, payer, amount, status || 'pending',
        service_date, diagnosis_codes, procedure_codes, notes]
     );
     res.status(201).json(result.rows[0]);
@@ -79,14 +77,12 @@ router.post('/', async (req, res) => {
 // Update claim
 router.put('/:id', async (req, res) => {
   const {
-    claim_no, claim_number, patient_id, payer, amount, status,
+    claim_number, patient_id, payer, amount, status,
     service_date, diagnosis_codes, procedure_codes, notes
   } = req.body;
 
   try {
     const pool = req.app.locals.pool;
-    // Use claim_number field (database column name), fall back to claim_no for compatibility
-    const claimNum = claim_number || claim_no;
 
     const result = await pool.query(
       `UPDATE claims
@@ -102,7 +98,7 @@ router.put('/:id', async (req, res) => {
            updated_at = NOW()
        WHERE id::text = $10::text
        RETURNING *`,
-      [claimNum, patient_id, payer, amount, status,
+      [claim_number, patient_id, payer, amount, status,
        service_date, diagnosis_codes, procedure_codes, notes, req.params.id]
     );
     if (result.rows.length === 0) {

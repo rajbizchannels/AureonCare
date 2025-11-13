@@ -413,7 +413,7 @@ const ViewEditModal = ({
         // Prepare claim data with proper field names
         const claimData = {
           ...editData,
-          claim_number: editData.claim_number || editData.claimNo || editData.claim_no,
+          claim_number: editData.claim_number,
           service_date: editData.service_date || editData.serviceDate,
           diagnosis_codes: editData.diagnosis_codes || editData.diagnosisCodes,
           procedure_codes: editData.procedure_codes || editData.procedureCodes
@@ -1174,7 +1174,7 @@ const ViewEditModal = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Claim Number</label>
-                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.claim_number || editData.claimNumber || editData.claimNo || editData.claim_no || 'N/A'}</p>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.claim_number || 'N/A'}</p>
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>

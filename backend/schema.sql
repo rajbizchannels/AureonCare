@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS appointments (
 -- Claims Table
 CREATE TABLE IF NOT EXISTS claims (
   id SERIAL PRIMARY KEY,
-  claim_no VARCHAR(50) UNIQUE NOT NULL,
+  claim_number VARCHAR(50) UNIQUE NOT NULL,
   patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
   payer VARCHAR(100),
   payer_id VARCHAR(100),

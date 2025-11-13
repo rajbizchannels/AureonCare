@@ -93,8 +93,8 @@ INSERT INTO prescriptions (patient_id, provider_id, medication_name, dosage, fre
 -- 7. CREATE CLAIMS
 -- ============================================================================
 
--- Note: claims table uses claim_no (not claim_number), and diagnosis_codes/procedure_codes (JSONB arrays)
-INSERT INTO claims (patient_id, claim_no, service_date, diagnosis_codes, procedure_codes, amount, status, created_at, updated_at) VALUES
+-- Note: claims table uses claim_number, and diagnosis_codes/procedure_codes (JSONB arrays)
+INSERT INTO claims (patient_id, claim_number, service_date, diagnosis_codes, procedure_codes, amount, status, created_at, updated_at) VALUES
 ('20000000-0000-0000-0000-000000000001', 'CLM-2024-001', NOW() - INTERVAL '30 days', '{Z00.00}', '{99213}', 150.00, 'submitted', NOW() - INTERVAL '25 days', NOW()),
 ('20000000-0000-0000-0000-000000000002', 'CLM-2024-002', NOW() - INTERVAL '20 days', '{I10}', '{99214}', 200.00, 'approved', NOW() - INTERVAL '15 days', NOW()),
 ('20000000-0000-0000-0000-000000000003', 'CLM-2024-003', NOW() - INTERVAL '10 days', '{J02.9}', '{99212}', 100.00, 'paid', NOW() - INTERVAL '5 days', NOW());
@@ -104,7 +104,7 @@ INSERT INTO claims (patient_id, claim_no, service_date, diagnosis_codes, procedu
 -- ============================================================================
 
 INSERT INTO payments (patient_id, claim_id, amount, payment_method, payment_date, status, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000003', (SELECT id FROM claims WHERE claim_no = 'CLM-2024-003'), 100.00, 'credit_card', NOW() - INTERVAL '3 days', 'completed', NOW() - INTERVAL '3 days', NOW());
+('20000000-0000-0000-0000-000000000003', (SELECT id FROM claims WHERE claim_number = 'CLM-2024-003'), 100.00, 'credit_card', NOW() - INTERVAL '3 days', 'completed', NOW() - INTERVAL '3 days', NOW());
 
 -- ============================================================================
 -- 9. CREATE PHARMACIES
