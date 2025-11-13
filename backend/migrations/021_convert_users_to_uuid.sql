@@ -225,4 +225,8 @@ CREATE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id);
 
 COMMIT;
 
-RAISE NOTICE 'Migration 021 completed: users.id converted to UUID';
+-- Final notification
+DO $$
+BEGIN
+    RAISE NOTICE 'Migration 021 completed: users.id converted to UUID';
+END $$;
