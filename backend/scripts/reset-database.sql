@@ -17,6 +17,27 @@ SET session_replication_role = 'replica';
 -- 1. Delete scheduling system data (if tables exist)
 DO $$
 BEGIN
+    -- New scheduling tables
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'appointment_reminders') THEN
+        DELETE FROM appointment_reminders;
+    END IF;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'booking_analytics') THEN
+        DELETE FROM booking_analytics;
+    END IF;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'provider_booking_config') THEN
+        DELETE FROM provider_booking_config;
+    END IF;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'appointment_type_config') THEN
+        DELETE FROM appointment_type_config;
+    END IF;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'doctor_time_off') THEN
+        DELETE FROM doctor_time_off;
+    END IF;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'doctor_availability') THEN
+        DELETE FROM doctor_availability;
+    END IF;
+
+    -- Old scheduling tables (legacy)
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'recurring_appointments') THEN
         DELETE FROM recurring_appointments;
     END IF;
@@ -25,12 +46,6 @@ BEGIN
     END IF;
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'appointment_type_configurations') THEN
         DELETE FROM appointment_type_configurations;
-    END IF;
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'doctor_time_off') THEN
-        DELETE FROM doctor_time_off;
-    END IF;
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'doctor_availability') THEN
-        DELETE FROM doctor_availability;
     END IF;
 END $$;
 
@@ -142,6 +157,15 @@ BEGIN
     END IF;
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'tasks') THEN
         result_text := result_text || 'tasks: ' || (SELECT COUNT(*)::TEXT FROM tasks) || E'\n';
+    END IF;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'doctor_availability') THEN
+        result_text := result_text || 'doctor_availability: ' || (SELECT COUNT(*)::TEXT FROM doctor_availability) || E'\n';
+    END IF;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'appointment_type_config') THEN
+        result_text := result_text || 'appointment_type_config: ' || (SELECT COUNT(*)::TEXT FROM appointment_type_config) || E'\n';
+    END IF;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'provider_booking_config') THEN
+        result_text := result_text || 'provider_booking_config: ' || (SELECT COUNT(*)::TEXT FROM provider_booking_config) || E'\n';
     END IF;
 
     RAISE NOTICE '%', result_text;
