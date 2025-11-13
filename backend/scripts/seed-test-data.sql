@@ -42,14 +42,15 @@ INSERT INTO providers (id, user_id, first_name, last_name, email, phone, special
 ('10000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000003', 'Emily', 'Williams', 'dr.williams@medflow.com', '555-0103', 'Pediatrics', 'MD-34567', NOW(), NOW());
 
 -- ============================================================================
--- 3. CREATE PATIENTS (References users table)
+-- 3. CREATE PATIENTS (id directly references users.id - no separate user_id)
 -- ============================================================================
+-- NOTE: patient.id IS the user.id (same value, no separate ID)
 
-INSERT INTO patients (id, user_id, first_name, last_name, email, phone, date_of_birth, address, gender, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'John', 'Doe', 'john.doe@example.com', '555-1001', '1985-05-15', '123 Main St, Springfield, IL 62701', 'male', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Jane', 'Smith', 'jane.smith@example.com', '555-1002', '1990-08-22', '456 Oak Ave, Springfield, IL 62702', 'female', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', 'Bob', 'Wilson', 'bob.wilson@example.com', '555-1003', '1978-03-10', '789 Pine Rd, Springfield, IL 62703', 'male', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000004', 'Alice', 'Brown', 'alice.brown@example.com', '555-1004', '1995-11-30', '321 Elm St, Springfield, IL 62704', 'female', NOW(), NOW());
+INSERT INTO patients (id, first_name, last_name, mrn, email, phone, date_of_birth, address, gender, portal_enabled, created_at, updated_at) VALUES
+('b0000000-0000-0000-0000-000000000001', 'John', 'Doe', 'MRN-001', 'john.doe@example.com', '555-1001', '1985-05-15', '123 Main St, Springfield, IL 62701', 'male', true, NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000002', 'Jane', 'Smith', 'MRN-002', 'jane.smith@example.com', '555-1002', '1990-08-22', '456 Oak Ave, Springfield, IL 62702', 'female', true, NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000003', 'Bob', 'Wilson', 'MRN-003', 'bob.wilson@example.com', '555-1003', '1978-03-10', '789 Pine Rd, Springfield, IL 62703', 'male', true, NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000004', 'Alice', 'Brown', 'MRN-004', 'alice.brown@example.com', '555-1004', '1995-11-30', '321 Elm St, Springfield, IL 62704', 'female', true, NOW(), NOW());
 
 -- ============================================================================
 -- 4. CREATE APPOINTMENTS (References patients and providers)
@@ -57,19 +58,20 @@ INSERT INTO patients (id, user_id, first_name, last_name, email, phone, date_of_
 -- IMPORTANT: provider_id must reference providers.id, NOT users.id
 
 -- Today's appointments
+-- NOTE: patient_id now references users.id (b0000000...)
 INSERT INTO appointments (patient_id, provider_id, appointment_type, start_time, end_time, duration_minutes, status, reason, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'General Consultation', NOW() + INTERVAL '2 hours', NOW() + INTERVAL '2.5 hours', 30, 'scheduled', 'Annual checkup', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Follow-up', NOW() + INTERVAL '4 hours', NOW() + INTERVAL '4.5 hours', 30, 'scheduled', 'Blood pressure check', NOW(), NOW());
+('b0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'General Consultation', NOW() + INTERVAL '2 hours', NOW() + INTERVAL '2.5 hours', 30, 'scheduled', 'Annual checkup', NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Follow-up', NOW() + INTERVAL '4 hours', NOW() + INTERVAL '4.5 hours', 30, 'scheduled', 'Blood pressure check', NOW(), NOW());
 
 -- Tomorrow's appointments
 INSERT INTO appointments (patient_id, provider_id, appointment_type, start_time, end_time, duration_minutes, status, reason, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'Check-up', NOW() + INTERVAL '1 day' + INTERVAL '9 hours', NOW() + INTERVAL '1 day' + INTERVAL '9.5 hours', 30, 'scheduled', 'Child wellness visit', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'General Consultation', NOW() + INTERVAL '1 day' + INTERVAL '14 hours', NOW() + INTERVAL '1 day' + INTERVAL '14.5 hours', 30, 'scheduled', 'Flu symptoms', NOW(), NOW());
+('b0000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'Check-up', NOW() + INTERVAL '1 day' + INTERVAL '9 hours', NOW() + INTERVAL '1 day' + INTERVAL '9.5 hours', 30, 'scheduled', 'Child wellness visit', NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'General Consultation', NOW() + INTERVAL '1 day' + INTERVAL '14 hours', NOW() + INTERVAL '1 day' + INTERVAL '14.5 hours', 30, 'scheduled', 'Flu symptoms', NOW(), NOW());
 
 -- Past appointments (completed)
 INSERT INTO appointments (patient_id, provider_id, appointment_type, start_time, end_time, duration_minutes, status, reason, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'Follow-up', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days' + INTERVAL '30 minutes', 30, 'completed', 'Test results review', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
-('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'General Consultation', NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days' + INTERVAL '30 minutes', 30, 'completed', 'Medication refill', NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days');
+('b0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'Follow-up', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days' + INTERVAL '30 minutes', 30, 'completed', 'Test results review', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+('b0000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'General Consultation', NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days' + INTERVAL '30 minutes', 30, 'completed', 'Medication refill', NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days');
 
 -- ============================================================================
 -- 5. CREATE TASKS
@@ -85,9 +87,9 @@ INSERT INTO tasks (title, description, priority, status, due_date, assigned_to, 
 -- ============================================================================
 
 INSERT INTO prescriptions (patient_id, provider_id, medication_name, dosage, frequency, duration, quantity, refills, instructions, status, prescribed_date, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Lisinopril', '10mg', 'Once daily', '90 days', 90, 3, 'Take with water, preferably in the morning', 'Active', NOW() - INTERVAL '30 days', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Metformin', '500mg', 'Twice daily', '90 days', 180, 2, 'Take with meals', 'Active', NOW() - INTERVAL '60 days', NOW(), NOW()),
-('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'Amoxicillin', '500mg', 'Three times daily', '10 days', 30, 0, 'Complete the full course', 'Active', NOW() - INTERVAL '2 days', NOW(), NOW());
+('b0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Lisinopril', '10mg', 'Once daily', '90 days', 90, 3, 'Take with water, preferably in the morning', 'Active', NOW() - INTERVAL '30 days', NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Metformin', '500mg', 'Twice daily', '90 days', 180, 2, 'Take with meals', 'Active', NOW() - INTERVAL '60 days', NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'Amoxicillin', '500mg', 'Three times daily', '10 days', 30, 0, 'Complete the full course', 'Active', NOW() - INTERVAL '2 days', NOW(), NOW());
 
 -- ============================================================================
 -- 7. CREATE CLAIMS
@@ -95,16 +97,16 @@ INSERT INTO prescriptions (patient_id, provider_id, medication_name, dosage, fre
 
 -- Note: claims table uses claim_number, and diagnosis_codes/procedure_codes (JSONB arrays)
 INSERT INTO claims (patient_id, claim_number, service_date, diagnosis_codes, procedure_codes, amount, status, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000001', 'CLM-2024-001', NOW() - INTERVAL '30 days', '{Z00.00}', '{99213}', 150.00, 'submitted', NOW() - INTERVAL '25 days', NOW()),
-('20000000-0000-0000-0000-000000000002', 'CLM-2024-002', NOW() - INTERVAL '20 days', '{I10}', '{99214}', 200.00, 'approved', NOW() - INTERVAL '15 days', NOW()),
-('20000000-0000-0000-0000-000000000003', 'CLM-2024-003', NOW() - INTERVAL '10 days', '{J02.9}', '{99212}', 100.00, 'paid', NOW() - INTERVAL '5 days', NOW());
+('b0000000-0000-0000-0000-000000000001', 'CLM-2024-001', NOW() - INTERVAL '30 days', '{Z00.00}', '{99213}', 150.00, 'submitted', NOW() - INTERVAL '25 days', NOW()),
+('b0000000-0000-0000-0000-000000000002', 'CLM-2024-002', NOW() - INTERVAL '20 days', '{I10}', '{99214}', 200.00, 'approved', NOW() - INTERVAL '15 days', NOW()),
+('b0000000-0000-0000-0000-000000000003', 'CLM-2024-003', NOW() - INTERVAL '10 days', '{J02.9}', '{99212}', 100.00, 'paid', NOW() - INTERVAL '5 days', NOW());
 
 -- ============================================================================
 -- 8. CREATE PAYMENTS
 -- ============================================================================
 
 INSERT INTO payments (patient_id, claim_id, amount, payment_method, payment_date, status, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000003', (SELECT id FROM claims WHERE claim_number = 'CLM-2024-003'), 100.00, 'credit_card', NOW() - INTERVAL '3 days', 'completed', NOW() - INTERVAL '3 days', NOW());
+('b0000000-0000-0000-0000-000000000003', (SELECT id FROM claims WHERE claim_number = 'CLM-2024-003'), 100.00, 'credit_card', NOW() - INTERVAL '3 days', 'completed', NOW() - INTERVAL '3 days', NOW());
 
 -- ============================================================================
 -- 9. CREATE PHARMACIES
