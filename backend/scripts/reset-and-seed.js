@@ -125,6 +125,7 @@ async function main() {
 
     const criticalMigrations = [
       '021_convert_users_to_uuid.sql',
+      '022_convert_patients_providers_to_uuid.sql',
       '009_fix_appointments_provider_fkey.sql',
     ];
 
