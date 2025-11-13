@@ -28,11 +28,11 @@ router.get('/', async (req, res) => {
     let result;
     if (hasUserIdColumn) {
       // If user_id column exists, join with users table
+      // Show all providers for management view
       result = await pool.query(`
         SELECT p.*, u.status, u.role
         FROM providers p
         LEFT JOIN users u ON p.user_id = u.id
-        WHERE u.role = 'doctor' AND u.status = 'active' OR u.id IS NULL
         ORDER BY p.last_name, p.first_name ASC
       `);
     } else {
