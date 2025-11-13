@@ -198,7 +198,7 @@ router.put('/:patientId/profile', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { patientId } = req.params;
-    const { phone, email, address, date_of_birth, emergencyContact, language } = req.body;
+    const { first_name, last_name, phone, email, address, date_of_birth, emergencyContact, language } = req.body;
 
     // Handle address - it should be plain TEXT, not JSON
     // If address is an object, convert it to a string; otherwise keep it as is
@@ -209,15 +209,19 @@ router.put('/:patientId/profile', async (req, res) => {
     const result = await pool.query(`
       UPDATE patients
       SET
-        phone = COALESCE($1, phone),
-        email = COALESCE($2, email),
-        address = COALESCE($3, address),
-        date_of_birth = COALESCE($4, date_of_birth),
-        emergency_contact = COALESCE($5, emergency_contact),
+        first_name = COALESCE($1, first_name),
+        last_name = COALESCE($2, last_name),
+        phone = COALESCE($3, phone),
+        email = COALESCE($4, email),
+        address = COALESCE($5, address),
+        date_of_birth = COALESCE($6, date_of_birth),
+        emergency_contact = COALESCE($7, emergency_contact),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6
+      WHERE id = $8
       RETURNING *
     `, [
+      first_name,
+      last_name,
       phone,
       email,
       addressValue,
@@ -232,25 +236,50 @@ router.put('/:patientId/profile', async (req, res) => {
 
     const updatedPatient = result.rows[0];
 
-    // If language is provided and patient has a linked user account, update the users table
-    if (language && updatedPatient.user_id) {
-      // Convert full language name to code if needed
-      const languageMap = {
-        'English': 'en',
-        'Spanish': 'es',
-        'French': 'fr',
-        'German': 'de',
-        'Arabic': 'ar'
-       };
-      const languageCode = languageMap[language] || language;
+    // If patient has a linked user account, update the users table
+    if (updatedPatient.user_id) {
+      const updateFields = [];
+      const updateValues = [];
+      let paramIndex = 1;
 
-      await pool.query(
-        'UPDATE users SET language = $1, updated_at = NOW() WHERE id = $2',
-        [languageCode, updatedPatient.user_id]
-      );
+      // Update first_name and last_name if provided
+      if (first_name) {
+        updateFields.push(`first_name = $${paramIndex++}`);
+        updateValues.push(first_name);
+      }
+      if (last_name) {
+        updateFields.push(`last_name = $${paramIndex++}`);
+        updateValues.push(last_name);
+      }
 
-      // Add language to the response
-      updatedPatient.language = language;
+      // Update language if provided
+      if (language) {
+        // Convert full language name to code if needed
+        const languageMap = {
+          'English': 'en',
+          'Spanish': 'es',
+          'French': 'fr',
+          'German': 'de',
+          'Arabic': 'ar'
+        };
+        const languageCode = languageMap[language] || language;
+        updateFields.push(`language = $${paramIndex++}`);
+        updateValues.push(languageCode);
+
+        // Add language to the response
+        updatedPatient.language = language;
+      }
+
+      // Execute update if there are fields to update
+      if (updateFields.length > 0) {
+        updateFields.push(`updated_at = NOW()`);
+        updateValues.push(updatedPatient.user_id);
+
+        await pool.query(
+          `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+          updateValues
+        );
+      }
     }
 
     const { portal_password_hash, ...patientData } = updatedPatient;
