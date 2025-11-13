@@ -3,8 +3,20 @@
 ## Problem
 The Provider Management View is failing with error: "Unexpected token '<', '<!DOCTYPE'... is not valid JSON"
 
+OR
+
+You're getting a foreign key constraint error:
+```
+ERROR:  insert or update on table "appointment_type_config" violates foreign key constraint "fk_appointment_type_config_provider"
+Key (provider_id)=(00000000-0000-0000-0000-000000000001) is not present in table "providers".
+```
+
 ## Cause
-The scheduling system tables (doctor_availability, appointment_type_config, provider_booking_config, etc.) don't exist in the database.
+1. The scheduling system tables (doctor_availability, appointment_type_config, provider_booking_config, etc.) don't exist in the database.
+2. OR there's old/stale data in scheduling tables that conflicts with the migration.
+
+## Fixed in Latest Version
+The reset-database.sql script has been updated to properly clean up all scheduling tables before seeding, which fixes the foreign key constraint error.
 
 ## Solution
 
