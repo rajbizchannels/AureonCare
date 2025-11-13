@@ -52,18 +52,11 @@ router.post('/', async (req, res) => {
     // Use date_of_birth (database column name), fall back to dob for compatibility
     const birthDate = date_of_birth || dob;
 
-    // Create patient record
-    const patientResult = await client.query(
-      `INSERT INTO patients
-       (first_name, last_name, mrn, date_of_birth, gender, phone, email,
-        address, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-       RETURNING *`,
-      [first_name, last_name, mrn, birthDate, gender, phone, email,
-       address, status || 'active']
-    );
+    let userId;
+    let tempPassword;
 
-    const newPatient = patientResult.rows[0];
+    // IMPORTANT: With new schema, patient.id = user.id
+    // So we must create the user FIRST to get the ID
 
     // Create corresponding user account with patient role if email is provided
     if (email && createUserAccount !== false) {
@@ -73,11 +66,14 @@ router.post('/', async (req, res) => {
         [email]
       );
 
-      if (existingUser.rows.length === 0) {
+      if (existingUser.rows.length > 0) {
+        // Use existing user ID
+        userId = existingUser.rows[0].id;
+      } else {
         // Create user with patient role
         const bcrypt = require('bcryptjs');
         // Generate a temporary password (user should reset via patient portal)
-        const tempPassword = Math.random().toString(36).slice(-8);
+        tempPassword = Math.random().toString(36).slice(-8);
         const passwordHash = await bcrypt.hash(tempPassword, 10);
 
         const userResult = await client.query(
@@ -88,15 +84,30 @@ router.post('/', async (req, res) => {
           [email, passwordHash, first_name, last_name, phone]
         );
 
-        // Link patient to user
-        await client.query(
-          'UPDATE patients SET user_id = $1 WHERE id = $2',
-          [userResult.rows[0].id, newPatient.id]
-        );
-
+        userId = userResult.rows[0].id;
         console.log(`Created user account for patient ${first_name} ${last_name} with temporary password: ${tempPassword}`);
       }
     }
+
+    // Create patient record with user ID (patient.id = user.id)
+    const patientInsertQuery = userId
+      ? `INSERT INTO patients
+         (id, first_name, last_name, mrn, date_of_birth, gender, phone, email,
+          address, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+         RETURNING *`
+      : `INSERT INTO patients
+         (first_name, last_name, mrn, date_of_birth, gender, phone, email,
+          address, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+         RETURNING *`;
+
+    const patientInsertParams = userId
+      ? [userId, first_name, last_name, mrn, birthDate, gender, phone, email, address, status || 'active']
+      : [first_name, last_name, mrn, birthDate, gender, phone, email, address, status || 'active'];
+
+    const patientResult = await client.query(patientInsertQuery, patientInsertParams);
+    const newPatient = patientResult.rows[0];
 
     await client.query('COMMIT');
     res.status(201).json(newPatient);
@@ -153,8 +164,8 @@ router.put('/:id', async (req, res) => {
 
     const updatedPatient = result.rows[0];
 
-    // If language is provided and patient has a linked user account, update the users table
-    if (language && updatedPatient.user_id) {
+    // Update the users table since patient.id = user.id (no separate user_id)
+    if (language) {
       // Convert full language name to code if needed
       const languageMap = {
         'English': 'en',
@@ -167,7 +178,31 @@ router.put('/:id', async (req, res) => {
 
       await pool.query(
         'UPDATE users SET language = $1, updated_at = NOW() WHERE id = $2',
-        [languageCode, updatedPatient.user_id]
+        [languageCode, req.params.id] // patient.id = user.id
+      );
+    }
+
+    // Also update first_name and last_name in users table if provided
+    if (first_name || last_name) {
+      const userUpdateFields = [];
+      const userUpdateValues = [];
+      let paramIndex = 1;
+
+      if (first_name) {
+        userUpdateFields.push(`first_name = $${paramIndex++}`);
+        userUpdateValues.push(first_name);
+      }
+      if (last_name) {
+        userUpdateFields.push(`last_name = $${paramIndex++}`);
+        userUpdateValues.push(last_name);
+      }
+
+      userUpdateFields.push(`updated_at = NOW()`);
+      userUpdateValues.push(req.params.id);
+
+      await pool.query(
+        `UPDATE users SET ${userUpdateFields.join(', ')} WHERE id = $${paramIndex}`,
+        userUpdateValues
       );
     }
 

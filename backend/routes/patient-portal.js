@@ -21,9 +21,9 @@ router.post('/login', async (req, res) => {
 
       if (socialAuth.rows.length > 0) {
         const patientResult = await pool.query(`
-          SELECT p.*, u.language
+          SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
           FROM patients p
-          LEFT JOIN users u ON p.user_id = u.id
+          LEFT JOIN users u ON p.id = u.id
           WHERE p.id = $1 AND p.portal_enabled = true
         `, [socialAuth.rows[0].patient_id]);
         patient = patientResult.rows[0];
@@ -33,9 +33,9 @@ router.post('/login', async (req, res) => {
     } else {
       // Traditional login
       const result = await pool.query(`
-        SELECT p.*, u.language
+        SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
         FROM patients p
-        LEFT JOIN users u ON p.user_id = u.id
+        LEFT JOIN users u ON p.id = u.id
         WHERE p.email = $1 AND p.portal_enabled = true
       `, [email]);
 
@@ -174,10 +174,11 @@ router.get('/:patientId/profile', async (req, res) => {
     const { patientId } = req.params;
 
     // Join with users table to get language preference
+    // Note: patient.id now directly equals user.id (no separate user_id column)
     const result = await pool.query(`
-      SELECT p.*, u.language
+      SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
       FROM patients p
-      LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN users u ON p.id = u.id
       WHERE p.id = $1
     `, [patientId]);
 
@@ -236,50 +237,48 @@ router.put('/:patientId/profile', async (req, res) => {
 
     const updatedPatient = result.rows[0];
 
-    // If patient has a linked user account, update the users table
-    if (updatedPatient.user_id) {
-      const updateFields = [];
-      const updateValues = [];
-      let paramIndex = 1;
+    // Update the users table since patient.id = user.id (no separate user_id)
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
 
-      // Update first_name and last_name if provided
-      if (first_name) {
-        updateFields.push(`first_name = $${paramIndex++}`);
-        updateValues.push(first_name);
-      }
-      if (last_name) {
-        updateFields.push(`last_name = $${paramIndex++}`);
-        updateValues.push(last_name);
-      }
+    // Update first_name and last_name if provided
+    if (first_name) {
+      updateFields.push(`first_name = $${paramIndex++}`);
+      updateValues.push(first_name);
+    }
+    if (last_name) {
+      updateFields.push(`last_name = $${paramIndex++}`);
+      updateValues.push(last_name);
+    }
 
-      // Update language if provided
-      if (language) {
-        // Convert full language name to code if needed
-        const languageMap = {
-          'English': 'en',
-          'Spanish': 'es',
-          'French': 'fr',
-          'German': 'de',
-          'Arabic': 'ar'
-        };
-        const languageCode = languageMap[language] || language;
-        updateFields.push(`language = $${paramIndex++}`);
-        updateValues.push(languageCode);
+    // Update language if provided
+    if (language) {
+      // Convert full language name to code if needed
+      const languageMap = {
+        'English': 'en',
+        'Spanish': 'es',
+        'French': 'fr',
+        'German': 'de',
+        'Arabic': 'ar'
+      };
+      const languageCode = languageMap[language] || language;
+      updateFields.push(`language = $${paramIndex++}`);
+      updateValues.push(languageCode);
 
-        // Add language to the response
-        updatedPatient.language = language;
-      }
+      // Add language to the response
+      updatedPatient.language = language;
+    }
 
-      // Execute update if there are fields to update
-      if (updateFields.length > 0) {
-        updateFields.push(`updated_at = NOW()`);
-        updateValues.push(updatedPatient.user_id);
+    // Execute update if there are fields to update
+    if (updateFields.length > 0) {
+      updateFields.push(`updated_at = NOW()`);
+      updateValues.push(patientId); // patient.id = user.id
 
-        await pool.query(
-          `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
-          updateValues
-        );
-      }
+      await pool.query(
+        `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+        updateValues
+      );
     }
 
     const { portal_password_hash, ...patientData } = updatedPatient;
