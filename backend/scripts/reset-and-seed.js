@@ -124,6 +124,7 @@ async function main() {
     logSection('📋 Step 1: Running Database Migrations');
 
     const criticalMigrations = [
+      '021_convert_users_to_uuid.sql',
       '009_fix_appointments_provider_fkey.sql',
     ];
 
