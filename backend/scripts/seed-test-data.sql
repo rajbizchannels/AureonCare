@@ -12,24 +12,24 @@ BEGIN;
 -- ============================================================================
 
 -- Admin User
-INSERT INTO users (id, email, password, role, first_name, last_name, created_at, updated_at) VALUES
+INSERT INTO users (id, email, password_hash, role, first_name, last_name, created_at, updated_at) VALUES
 ('a0000000-0000-0000-0000-000000000001', 'admin@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'admin', 'System', 'Administrator', NOW(), NOW());
 
 -- Doctor Users
-INSERT INTO users (id, email, password, role, first_name, last_name, phone, created_at, updated_at) VALUES
+INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone, created_at, updated_at) VALUES
 ('d0000000-0000-0000-0000-000000000001', 'dr.smith@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'doctor', 'Sarah', 'Smith', '555-0101', NOW(), NOW()),
 ('d0000000-0000-0000-0000-000000000002', 'dr.johnson@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'doctor', 'Michael', 'Johnson', '555-0102', NOW(), NOW()),
 ('d0000000-0000-0000-0000-000000000003', 'dr.williams@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'doctor', 'Emily', 'Williams', '555-0103', NOW(), NOW());
 
 -- Patient Users
-INSERT INTO users (id, email, password, role, first_name, last_name, phone, created_at, updated_at) VALUES
+INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone, created_at, updated_at) VALUES
 ('p0000000-0000-0000-0000-000000000001', 'john.doe@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'John', 'Doe', '555-1001', NOW(), NOW()),
 ('p0000000-0000-0000-0000-000000000002', 'jane.smith@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'Jane', 'Smith', '555-1002', NOW(), NOW()),
 ('p0000000-0000-0000-0000-000000000003', 'bob.wilson@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'Bob', 'Wilson', '555-1003', NOW(), NOW()),
 ('p0000000-0000-0000-0000-000000000004', 'alice.brown@example.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'patient', 'Alice', 'Brown', '555-1004', NOW(), NOW());
 
 -- Staff User
-INSERT INTO users (id, email, password, role, first_name, last_name, created_at, updated_at) VALUES
+INSERT INTO users (id, email, password_hash, role, first_name, last_name, created_at, updated_at) VALUES
 ('s0000000-0000-0000-0000-000000000001', 'staff@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'staff', 'Lisa', 'Martinez', NOW(), NOW());
 
 -- ============================================================================
