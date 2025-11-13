@@ -282,6 +282,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       const combinedAddress = addressParts.join(', ');
 
       const updated = await api.updatePatient(user.id, {
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
         phone: profileData.phone,
         email: profileData.email,
         address: combinedAddress || profileData.address, // Use combined or fall back to original
@@ -589,6 +591,28 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       {editingProfile ? (
         <form onSubmit={handleUpdateProfile} className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                {t.firstName}
+              </label>
+              <input
+                type="text"
+                value={profileData.first_name || ''}
+                onChange={(e) => setProfileData({ ...profileData, first_name: e.target.value })}
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                {t.lastName}
+              </label>
+              <input
+                type="text"
+                value={profileData.last_name || ''}
+                onChange={(e) => setProfileData({ ...profileData, last_name: e.target.value })}
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                 {t.phone}
