@@ -258,7 +258,7 @@ ALTER TABLE patients
     ADD CONSTRAINT patients_id_fkey
     FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE;
 
-RAISE NOTICE 'Recreated patients table with id referencing users(id)';
+RAISE NOTICE 'Recreated patients table with id referencing users id';
 
 -- ============================================================================
 -- Step 5: Re-establish foreign key constraints in dependent tables
