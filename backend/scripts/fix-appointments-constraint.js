@@ -9,6 +9,8 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'medflow',
   user: process.env.DB_USER || 'medflow_user',
   password: process.env.DB_PASSWORD,
+  // Explicitly set search_path to ensure tables are found
+  options: '-c search_path=public',
 });
 
 async function fixAppointmentsConstraint() {

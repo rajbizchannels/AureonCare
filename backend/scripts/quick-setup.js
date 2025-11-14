@@ -24,7 +24,9 @@ async function setupDatabase() {
   console.log('✓ DATABASE_URL found:', process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@'));
 
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
+    connectionString: process.env.DATABASE_URL,
+    // Explicitly set search_path to ensure tables are found
+    options: '-c search_path=public',
   });
 
   try {

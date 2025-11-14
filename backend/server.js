@@ -18,6 +18,8 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+  // Explicitly set search_path to ensure tables are found
+  options: '-c search_path=public',
 });
 
 // Make pool available to routes

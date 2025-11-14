@@ -28,6 +28,8 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'medflow',
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT || 5432,
+  // Explicitly set search_path to ensure tables are found
+  options: '-c search_path=public',
 });
 
 async function runMigration() {
