@@ -36,13 +36,13 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] Modal opened with:', { patient, provider, api });
     if (!patient || !patient.id) {
       console.error('[ePrescribe] Patient data is missing or invalid');
-      addNotification('alert', t.cannotOpenEPrescribePatient);
+      addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
       onClose();
       return;
     }
     if (!provider || !provider.id) {
       console.error('[ePrescribe] Provider data is missing or invalid');
-      addNotification('alert', t.cannotOpenEPrescribeProvider);
+      addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
       onClose();
       return;
     }
@@ -258,7 +258,7 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] Submitting prescription...');
 
     if (!selectedMedication) {
-      addNotification('alert', t.noMedicationSelected);
+      addNotification('alert', 'Please select a medication first');
       return;
     }
 
@@ -298,7 +298,7 @@ const EPrescribeModal = ({
         try {
           await api.sendErx(prescription.id);
           console.log('[ePrescribe] Successfully sent to pharmacy');
-          addNotification('success', t.prescriptionSent);
+          addNotification('success', 'Prescription sent to pharmacy successfully');
         } catch (erxError) {
           console.error('[ePrescribe] Failed to send eRx:', erxError);
 
@@ -311,7 +311,7 @@ const EPrescribeModal = ({
         }
       } else {
         console.log('[ePrescribe] No pharmacy selected, prescription created only');
-        addNotification('success', t.prescriptionCreated);
+        addNotification('success', 'Prescription created successfully');
       }
 
       if (onSuccess) onSuccess(prescription);

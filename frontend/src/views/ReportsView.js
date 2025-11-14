@@ -103,7 +103,7 @@ const ReportsView = ({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    addNotification('success', t.reportExportedSuccessfully);
+    addNotification('success', 'Report exported successfully');
   };
 
   const reportTypes = [
