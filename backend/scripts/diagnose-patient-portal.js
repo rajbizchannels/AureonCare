@@ -7,7 +7,9 @@ require('dotenv').config();
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
+  // Explicitly set search_path to ensure tables are found
+  options: '-c search_path=public',
 });
 
 async function diagnose() {

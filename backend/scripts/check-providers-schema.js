@@ -6,7 +6,9 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'medflow',
   user: process.env.DB_USER || 'medflow_user',
-  password: process.env.DB_PASSWORD || 'MedFlow2024SecurePass!'
+  password: process.env.DB_PASSWORD || 'MedFlow2024SecurePass!',
+  // Explicitly set search_path to ensure tables are found
+  options: '-c search_path=public',
 });
 
 async function checkProvidersSchema() {
