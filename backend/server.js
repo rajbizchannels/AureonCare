@@ -14,7 +14,7 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'medflow',
   user: process.env.DB_USER || 'medflow_user',
-  password: process.env.DB_PASSWORD,
+  password: process.env.DB_PASSWORD || 'MedFlow2024SecurePass!',
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
