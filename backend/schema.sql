@@ -135,8 +135,137 @@ CREATE TABLE IF NOT EXISTS tasks (
   due_date DATE,
   status VARCHAR(50) DEFAULT 'Pending',
   description TEXT,
+  assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- PAYMENTS TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS payments (
+  id SERIAL PRIMARY KEY,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+  claim_id INTEGER REFERENCES claims(id) ON DELETE SET NULL,
+  amount DECIMAL(10, 2) NOT NULL,
+  payment_method VARCHAR(50),
+  payment_date DATE,
+  status VARCHAR(50) DEFAULT 'pending',
+  transaction_id VARCHAR(100),
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- PRESCRIPTIONS TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS prescriptions (
+  id SERIAL PRIMARY KEY,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+  provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
+  medication_name VARCHAR(255) NOT NULL,
+  dosage VARCHAR(100),
+  frequency VARCHAR(100),
+  duration VARCHAR(100),
+  quantity INTEGER,
+  refills INTEGER DEFAULT 0,
+  instructions TEXT,
+  status VARCHAR(50) DEFAULT 'Active',
+  prescribed_date DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- DIAGNOSIS TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS diagnosis (
+  id SERIAL PRIMARY KEY,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+  provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
+  code VARCHAR(20),
+  description TEXT,
+  date DATE,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- MEDICAL RECORDS TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS medical_records (
+  id SERIAL PRIMARY KEY,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+  provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
+  visit_date DATE,
+  chief_complaint TEXT,
+  diagnosis TEXT,
+  treatment TEXT,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- PATIENT PORTAL SESSIONS TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS patient_portal_sessions (
+  id SERIAL PRIMARY KEY,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+  session_token VARCHAR(255) UNIQUE NOT NULL,
+  ip_address VARCHAR(50),
+  user_agent TEXT,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- SOCIAL AUTH TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS social_auth (
+  id SERIAL PRIMARY KEY,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+  provider VARCHAR(50) NOT NULL, -- google, microsoft, etc.
+  provider_user_id VARCHAR(255) NOT NULL,
+  access_token TEXT,
+  refresh_token TEXT,
+  profile_data JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(provider, provider_user_id)
+);
+
+-- ============================================================================
+-- PHARMACIES TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS pharmacies (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  address TEXT,
+  city VARCHAR(100),
+  state VARCHAR(2),
+  zip VARCHAR(10),
+  phone VARCHAR(20),
+  fax VARCHAR(20),
+  email VARCHAR(255),
+  ncpdp_id VARCHAR(50),
+  npi VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- PATIENT PREFERRED PHARMACIES TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS patient_preferred_pharmacies (
+  id SERIAL PRIMARY KEY,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+  pharmacy_id INTEGER REFERENCES pharmacies(id) ON DELETE CASCADE,
+  is_preferred BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(patient_id, pharmacy_id)
 );
 
 -- ============================================================================
@@ -151,6 +280,14 @@ CREATE INDEX IF NOT EXISTS idx_appointments_provider ON appointments(provider_id
 CREATE INDEX IF NOT EXISTS idx_claims_patient ON claims(patient_id);
 CREATE INDEX IF NOT EXISTS idx_claims_claim_number ON claims(claim_number);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+CREATE INDEX IF NOT EXISTS idx_payments_patient ON payments(patient_id);
+CREATE INDEX IF NOT EXISTS idx_payments_claim ON payments(claim_id);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_id);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_status ON prescriptions(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_portal_sessions_token ON patient_portal_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_portal_sessions_expires ON patient_portal_sessions(expires_at);
 
 -- ============================================================================
 -- SAMPLE DATA (optional - can be removed for production)
