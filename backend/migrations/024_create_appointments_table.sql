@@ -8,9 +8,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================================================
 -- 1. CREATE PROVIDERS TABLE IF IT DOESN'T EXIST
 -- ============================================================================
+-- Note: providers.id directly references users.id (provider IS a user)
+-- This matches the pattern used in patients table
 CREATE TABLE IF NOT EXISTS providers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     specialization VARCHAR(100),
@@ -22,7 +23,8 @@ CREATE TABLE IF NOT EXISTS providers (
     CONSTRAINT providers_email_unique UNIQUE (email)
 );
 
-CREATE INDEX IF NOT EXISTS idx_providers_user_id ON providers(user_id);
+COMMENT ON TABLE providers IS 'Provider records. id directly references users.id (provider IS a user). Users can have multiple roles.';
+COMMENT ON COLUMN providers.id IS 'Primary key - references users.id directly (provider IS a user)';
 
 -- ============================================================================
 -- 2. CREATE OR REPLACE APPOINTMENTS TABLE
@@ -96,13 +98,12 @@ CREATE INDEX IF NOT EXISTS idx_appointments_booking_source ON appointments(booki
 CREATE INDEX IF NOT EXISTS idx_appointments_cancelled ON appointments(cancelled_at);
 
 COMMENT ON TABLE appointments IS 'Patient appointments with healthcare providers';
-COMMENT ON TABLE providers IS 'Healthcare providers - references users via user_id';
 
 -- ============================================================================
 -- 3. MIGRATE EXISTING USERS WITH DOCTOR ROLE TO PROVIDERS TABLE
 -- ============================================================================
 -- Insert doctors from users table into providers table if they don't exist
-INSERT INTO providers (user_id, first_name, last_name, specialization, email, phone, license_number)
+INSERT INTO providers (id, first_name, last_name, specialization, email, phone, license_number)
 SELECT
     u.id,
     u.first_name,
@@ -114,9 +115,9 @@ SELECT
 FROM users u
 WHERE u.role IN ('doctor', 'provider', 'admin')
 AND NOT EXISTS (
-    SELECT 1 FROM providers p WHERE p.user_id = u.id
+    SELECT 1 FROM providers p WHERE p.id = u.id
 )
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- Success message
