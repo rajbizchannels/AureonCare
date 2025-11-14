@@ -112,10 +112,10 @@ INSERT INTO payments (patient_id, claim_id, amount, payment_method, payment_date
 -- 9. CREATE PHARMACIES
 -- ============================================================================
 
-INSERT INTO pharmacies (pharmacy_name, address_line1, city, state, zip_code, phone, email, created_at, updated_at) VALUES
-('CVS Pharmacy', '100 Main Street', 'Springfield', 'IL', '62701', '555-2001', 'cvs.springfield@cvs.com', NOW(), NOW()),
-('Walgreens', '200 Oak Avenue', 'Springfield', 'IL', '62702', '555-2002', 'walgreens.springfield@walgreens.com', NOW(), NOW()),
-('Rite Aid', '300 Elm Street', 'Springfield', 'IL', '62703', '555-2003', 'riteaid.springfield@riteaid.com', NOW(), NOW());
+INSERT INTO pharmacies (id, pharmacy_name, address_line1, city, state, zip_code, phone, email, created_at, updated_at) VALUES
+('b0000000-0000-0000-0000-000000000001', 'CVS Pharmacy', '100 Main Street', 'Springfield', 'IL', '62701', '555-2001', 'cvs.springfield@cvs.com', NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000002','Walgreens', '200 Oak Avenue', 'Springfield', 'IL', '62702', '555-2002', 'walgreens.springfield@walgreens.com', NOW(), NOW()),
+('b0000000-0000-0000-0000-000000000003','Rite Aid', '300 Elm Street', 'Springfield', 'IL', '62703', '555-2003', 'riteaid.springfield@riteaid.com', NOW(), NOW());
 
 -- ============================================================================
 -- 10. CREATE DOCTOR AVAILABILITY (For scheduling system - if table exists)
@@ -125,23 +125,23 @@ DO $$
 BEGIN
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'doctor_availability') THEN
         -- Dr. Smith - Monday to Friday, 9 AM - 5 PM
-        INSERT INTO doctor_availability (provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
-        ('10000000-0000-0000-0000-000000000001', 1, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
-        ('10000000-0000-0000-0000-000000000001', 2, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
-        ('10000000-0000-0000-0000-000000000001', 3, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
-        ('10000000-0000-0000-0000-000000000001', 4, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
-        ('10000000-0000-0000-0000-000000000001', 5, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW());
+        INSERT INTO doctor_availability (id, provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
+        ('00000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001', 1, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001', 2, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000003','10000000-0000-0000-0000-000000000001', 3, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000004','10000000-0000-0000-0000-000000000001', 4, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000005','10000000-0000-0000-0000-000000000001', 5, '09:00', '17:00', 'America/Chicago', true, NOW(), NOW());
 
         -- Dr. Johnson - Monday, Wednesday, Friday, 10 AM - 6 PM
-        INSERT INTO doctor_availability (provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
-        ('10000000-0000-0000-0000-000000000002', 1, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW()),
-        ('10000000-0000-0000-0000-000000000002', 3, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW()),
-        ('10000000-0000-0000-0000-000000000002', 5, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW());
+        INSERT INTO doctor_availability (id, provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
+        ('00000000-0000-0000-0000-000000000006','10000000-0000-0000-0000-000000000002', 1, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000007','10000000-0000-0000-0000-000000000002', 3, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000008','10000000-0000-0000-0000-000000000002', 5, '10:00', '18:00', 'America/Chicago', true, NOW(), NOW());
 
         -- Dr. Williams - Tuesday, Thursday, 8 AM - 4 PM
-        INSERT INTO doctor_availability (provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
-        ('10000000-0000-0000-0000-000000000003', 2, '08:00', '16:00', 'America/Chicago', true, NOW(), NOW()),
-        ('10000000-0000-0000-0000-000000000003', 4, '08:00', '16:00', 'America/Chicago', true, NOW(), NOW());
+        INSERT INTO doctor_availability (id, provider_id, day_of_week, start_time, end_time, timezone, is_available, created_at, updated_at) VALUES
+        ('00000000-0000-0000-0000-000000000009','10000000-0000-0000-0000-000000000003', 2, '08:00', '16:00', 'America/Chicago', true, NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000010','10000000-0000-0000-0000-000000000003', 4, '08:00', '16:00', 'America/Chicago', true, NOW(), NOW());
 
         RAISE NOTICE 'Created doctor availability schedules';
     ELSE

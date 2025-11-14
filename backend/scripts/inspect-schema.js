@@ -6,7 +6,7 @@ const pool = new Pool({
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'medflow',
   user: process.env.DB_USER || 'medflow_user',
-  password: process.env.DB_PASSWORD,
+  password: 'MedFlow2024SecurePass!',
 });
 
 async function inspectSchema() {

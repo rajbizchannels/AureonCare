@@ -108,6 +108,8 @@ function App() {
     setAppointments,
     patients,
     setPatients,
+    providers,
+    setProviders,
     claims,
     setClaims,
     payments,
@@ -238,6 +240,7 @@ function App() {
         return (
           <ProviderManagementView
             theme={theme}
+            providers={providers}
             api={api}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
