@@ -5,8 +5,8 @@ const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'medflow_user',
-  password: 'MedFlow2024SecurePass!',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'MedFlow2024!',
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
 });
