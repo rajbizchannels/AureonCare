@@ -33,39 +33,38 @@ const EPrescribeModal = ({
   // Track if we've successfully validated - prevents closing modal on re-renders
   const isValidatedRef = useRef(false);
 
-  // Validate required props - only close modal on first validation failure
+  // Validate required props - only run once on mount to prevent flickering
   useEffect(() => {
+    // Only validate on first mount
+    if (isValidatedRef.current) {
+      return;
+    }
+
     console.log('[ePrescribe] Validating modal props:', {
       hasPatient: !!patient,
       patientId: patient?.id,
       hasProvider: !!provider,
-      providerId: provider?.id,
-      isValidated: isValidatedRef.current
+      providerId: provider?.id
     });
 
     if (!patient || !patient.id) {
       console.error('[ePrescribe] Patient data is missing or invalid:', patient);
-      if (!isValidatedRef.current) {
-        addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
-        onClose();
-      }
+      addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
+      onClose();
       return;
     }
     if (!provider || !provider.id) {
       console.error('[ePrescribe] Provider data is missing or invalid:', provider);
-      if (!isValidatedRef.current) {
-        addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
-        onClose();
-      }
+      addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
+      onClose();
       return;
     }
 
     // Mark as successfully validated
-    if (!isValidatedRef.current) {
-      isValidatedRef.current = true;
-      console.log('[ePrescribe] Modal opened successfully with valid data');
-    }
-  }, [patient, provider, addNotification, onClose]);
+    isValidatedRef.current = true;
+    console.log('[ePrescribe] Modal opened successfully with valid data');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
   // ESC key handler
   useEffect(() => {
@@ -181,8 +180,6 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] ========================================');
     console.log('[ePrescribe] handleSelectMedication called');
     console.log('[ePrescribe] Medication received:', medication);
-    console.log('[ePrescribe] Current step:', step);
-    console.log('[ePrescribe] Current selectedMedication:', selectedMedication);
 
     // Validate medication object
     if (!medication) {
@@ -265,7 +262,7 @@ const EPrescribeModal = ({
 
       addNotification('alert', `Error processing medication: ${error.message}. Please check the details.`);
     }
-  }, [patient, api, addNotification, step, selectedMedication]);
+  }, [patient, api, addNotification]);
 
   // Load patient's preferred pharmacies
   const loadPharmacies = async () => {
