@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Plus, Trash2, Save, X } from 'lucide-react';
 
+// Helper function to get authentication headers
+const getAuthHeaders = () => {
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user && user.id) {
+            headers['x-user-id'] = user.id;
+            headers['x-user-role'] = user.role || 'patient';
+        }
+    } catch (error) {
+        console.error('Error parsing user from localStorage:', error);
+    }
+
+    return headers;
+};
+
 const DAYS_OF_WEEK = [
     { value: 0, label: 'Sunday' },
     { value: 1, label: 'Monday' },
@@ -28,7 +47,9 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`/api/scheduling/availability/${providerId}`);
+            const response = await fetch(`/api/scheduling/availability/${providerId}`, {
+                headers: getAuthHeaders()
+            });
             if (!response.ok) throw new Error('Failed to fetch availability');
             const data = await response.json();
             setAvailability(data);
@@ -81,7 +102,7 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
 
             const response = await fetch('/api/scheduling/availability/bulk', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     providerId,
                     schedules: schedulesToSave

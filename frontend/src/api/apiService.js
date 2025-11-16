@@ -3,6 +3,46 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api
 
 console.log('API Service: Base URL configured as:', API_BASE_URL);
 
+/**
+ * Get authentication headers from localStorage
+ * @returns {Object} Headers object with authentication info
+ */
+const getAuthHeaders = () => {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user && user.id) {
+      headers['x-user-id'] = user.id;
+      headers['x-user-role'] = user.role || 'patient';
+    }
+  } catch (error) {
+    console.error('Error parsing user from localStorage:', error);
+  }
+
+  return headers;
+};
+
+/**
+ * Make an authenticated fetch request
+ * @param {string} url - The URL to fetch
+ * @param {Object} options - Fetch options
+ * @returns {Promise<Response>} Fetch response
+ */
+const authenticatedFetch = async (url, options = {}) => {
+  const authHeaders = getAuthHeaders();
+  const mergedOptions = {
+    ...options,
+    headers: {
+      ...authHeaders,
+      ...(options.headers || {})
+    }
+  };
+  return fetch(url, mergedOptions);
+};
+
 // API Service
 const api = {
   // Appointments
@@ -260,35 +300,33 @@ const api = {
 
   // Providers
   getProviders: async () => {
-    const response = await fetch(`${API_BASE_URL}/providers`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/providers`);
     if (!response.ok) throw new Error('Failed to fetch providers');
     return response.json();
   },
   getProvider: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/providers/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/providers/${id}`);
     if (!response.ok) throw new Error('Failed to fetch provider');
     return response.json();
   },
   createProvider: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/providers`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/providers`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to create provider');
     return response.json();
   },
   updateProvider: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/providers/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/providers/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to update provider');
     return response.json();
   },
   deleteProvider: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/providers/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/providers/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete provider');
