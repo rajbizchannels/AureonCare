@@ -346,9 +346,9 @@ router.get('/appointment-types', optionalAuth, async (req, res) => {
 /**
  * POST /api/scheduling/appointment-types
  * Create appointment type
- * Requires authentication - only admin/receptionist can create appointment types
+ * Requires authentication - only admin/receptionist/doctor can create appointment types
  */
-router.post('/appointment-types', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
+router.post('/appointment-types', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const {
@@ -398,9 +398,9 @@ router.post('/appointment-types', authenticate, authorize('admin', 'receptionist
 /**
  * PUT /api/scheduling/appointment-types/:id
  * Update appointment type
- * Requires authentication - only admin/receptionist can update appointment types
+ * Requires authentication - only admin/receptionist/doctor can update appointment types
  */
-router.put('/appointment-types/:id', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
+router.put('/appointment-types/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { id } = req.params;
@@ -546,9 +546,9 @@ router.get('/booking-config/slug/:slug', async (req, res) => {
 /**
  * POST /api/scheduling/booking-config
  * Create booking configuration
- * Requires authentication - only admin/receptionist can create booking config
+ * Requires authentication - only admin/receptionist/doctor can create booking config
  */
-router.post('/booking-config', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
+router.post('/booking-config', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const {
@@ -615,9 +615,9 @@ router.post('/booking-config', authenticate, authorize('admin', 'receptionist'),
 /**
  * PUT /api/scheduling/booking-config/:providerId
  * Update booking configuration
- * Requires authentication - only admin/receptionist can update booking config
+ * Requires authentication - only admin/receptionist/doctor can update booking config
  */
-router.put('/booking-config/:providerId', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
+router.put('/booking-config/:providerId', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { providerId } = req.params;
