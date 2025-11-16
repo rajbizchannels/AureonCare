@@ -34,6 +34,7 @@ const ProviderManagementView = () => {
   const [bookingConfig, setBookingConfig] = useState(null);
   const [appointmentTypes, setAppointmentTypes] = useState([]);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [availability, setAvailability] = useState([]);
 
   useEffect(() => {
     fetchProviders();
@@ -70,6 +71,46 @@ const ProviderManagementView = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Check if provider's schedule matches clinic hours (Mon-Fri 9-5)
+  const scheduleMatchesClinicHours = () => {
+    if (availability.length === 0) {
+      return false;
+    }
+
+    // Define clinic schedule
+    const clinicSchedule = [
+      { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' },
+      { dayOfWeek: 2, startTime: '09:00', endTime: '17:00' },
+      { dayOfWeek: 3, startTime: '09:00', endTime: '17:00' },
+      { dayOfWeek: 4, startTime: '09:00', endTime: '17:00' },
+      { dayOfWeek: 5, startTime: '09:00', endTime: '17:00' }
+    ];
+
+    // Check if availability has exactly 5 entries (Mon-Fri)
+    if (availability.length !== 5) {
+      return false;
+    }
+
+    // Check if each day matches clinic hours
+    for (const clinicDay of clinicSchedule) {
+      const providerDay = availability.find(
+        a => a.day_of_week === clinicDay.dayOfWeek && a.is_available === true
+      );
+
+      if (!providerDay) {
+        return false;
+      }
+
+      // Check if times match
+      if (providerDay.start_time !== clinicDay.startTime ||
+          providerDay.end_time !== clinicDay.endTime) {
+        return false;
+      }
+    }
+
+    return true;
   };
 
   const fetchProviderDetails = async (providerId) => {
@@ -109,11 +150,30 @@ const ProviderManagementView = () => {
         console.log(`No appointment types found for provider ${providerId} (${typesResponse.status})`);
         setAppointmentTypes([]);
       }
+
+      // Fetch availability schedule
+      const availabilityResponse = await fetch(`/api/scheduling/availability/${providerId}`, {
+        headers: getAuthHeaders()
+      });
+      if (availabilityResponse.ok) {
+        const contentType = availabilityResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const availabilityData = await availabilityResponse.json();
+          setAvailability(availabilityData);
+        } else {
+          console.warn('Availability response is not JSON');
+          setAvailability([]);
+        }
+      } else {
+        console.log(`No availability found for provider ${providerId} (${availabilityResponse.status})`);
+        setAvailability([]);
+      }
     } catch (err) {
       console.error('Error fetching provider details:', err);
       // Don't throw - just log and set empty states
       setBookingConfig(null);
       setAppointmentTypes([]);
+      setAvailability([]);
     }
   };
 
@@ -164,7 +224,7 @@ const ProviderManagementView = () => {
 
       // Create booking configuration
       const provider = providers.find(p => p.id === providerId);
-      const slug = `${provider.first_name}-${provider.last_name}-${providerId}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      const slug = `${provider.firstName}-${provider.lastName}-${providerId}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
 
       await fetch('/api/scheduling/booking-config', {
         method: 'POST',
@@ -265,11 +325,11 @@ const ProviderManagementView = () => {
             >
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                  {provider.first_name?.[0]}{provider.last_name?.[0]}
+                  {provider.firstName?.[0]}{provider.lastName?.[0]}
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-900">
-                    Dr. {provider.first_name} {provider.last_name}
+                    Dr. {provider.firstName} {provider.lastName}
                   </h3>
                   <p className="text-sm text-gray-600">{provider.specialization || 'General Practice'}</p>
                 </div>
@@ -288,11 +348,11 @@ const ProviderManagementView = () => {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                    {selectedProvider.first_name?.[0]}{selectedProvider.last_name?.[0]}
+                    {selectedProvider.firstName?.[0]}{selectedProvider.lastName?.[0]}
                   </div>
                   <div>
                     <h1 className="text-3xl font-bold text-gray-900">
-                      Dr. {selectedProvider.first_name} {selectedProvider.last_name}
+                      Dr. {selectedProvider.firstName} {selectedProvider.lastName}
                     </h1>
                     <p className="text-gray-600 mt-1">{selectedProvider.specialization || 'General Practice'}</p>
                     <div className="flex items-center gap-4 mt-2">
@@ -355,11 +415,11 @@ const ProviderManagementView = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                        <p className="text-gray-900">{selectedProvider.first_name}</p>
+                        <p className="text-gray-900">{selectedProvider.firstName}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                        <p className="text-gray-900">{selectedProvider.last_name}</p>
+                        <p className="text-gray-900">{selectedProvider.lastName}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -382,22 +442,26 @@ const ProviderManagementView = () => {
                   <div>
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-bold">Weekly Schedule</h2>
-                      <button
-                        onClick={() => initializeScheduleWithClinicHours(selectedProvider.id)}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                      >
-                        <Clock className="w-5 h-5" />
-                        Set Clinic Hours
-                      </button>
+                      {!scheduleMatchesClinicHours() && (
+                        <button
+                          onClick={() => initializeScheduleWithClinicHours(selectedProvider.id)}
+                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                          <Clock className="w-5 h-5" />
+                          Set Clinic Hours
+                        </button>
+                      )}
                     </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                      <p className="text-sm text-blue-800">
-                        <strong>Clinic Working Hours:</strong> Monday - Friday, 9:00 AM - 5:00 PM
-                      </p>
-                      <p className="text-sm text-blue-700 mt-2">
-                        Click "Set Clinic Hours" to automatically configure this provider's schedule to match clinic hours.
-                      </p>
-                    </div>
+                    {!scheduleMatchesClinicHours() && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <p className="text-sm text-blue-800">
+                          <strong>Clinic Working Hours:</strong> Monday - Friday, 9:00 AM - 5:00 PM
+                        </p>
+                        <p className="text-sm text-blue-700 mt-2">
+                          Click "Set Clinic Hours" to automatically configure this provider's schedule to match clinic hours.
+                        </p>
+                      </div>
+                    )}
                     <div className="text-center py-8">
                       <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                       <p className="text-gray-600 mb-4">
