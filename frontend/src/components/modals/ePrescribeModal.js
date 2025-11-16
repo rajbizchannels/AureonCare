@@ -10,6 +10,15 @@ const EPrescribeModal = ({
   onSuccess,
   addNotification
 }) => {
+  // Normalize provider ID early - accept both 'id' and 'user_id'
+  const normalizedProvider = React.useMemo(() => {
+    if (!provider) return null;
+    return {
+      ...provider,
+      id: provider.id || provider.user_id
+    };
+  }, [provider]);
+
   const [step, setStep] = useState(1); // 1: Search Med, 2: Details, 3: Pharmacy, 4: Review
   const [searchQuery, setSearchQuery] = useState('');
   const [medications, setMedications] = useState([]);
@@ -32,28 +41,45 @@ const EPrescribeModal = ({
 
   // Track if we've successfully validated - prevents closing modal on re-renders
   const isValidatedRef = useRef(false);
+  // Track if we've shown error notification to prevent spam
+  const hasShownErrorRef = useRef(false);
 
   // Validate required props - only close modal on first validation failure
   useEffect(() => {
     console.log('[ePrescribe] Validating modal props:', {
       hasPatient: !!patient,
       patientId: patient?.id,
-      hasProvider: !!provider,
-      providerId: provider?.id,
+      hasProvider: !!normalizedProvider,
+      providerId: normalizedProvider?.id,
+      providerOriginalId: provider?.id,
+      providerUserId: provider?.user_id,
       isValidated: isValidatedRef.current
     });
 
+    // Skip validation if already validated successfully
+    if (isValidatedRef.current) {
+      console.log('[ePrescribe] Already validated, skipping validation');
+      return;
+    }
+
     if (!patient || !patient.id) {
       console.error('[ePrescribe] Patient data is missing or invalid:', patient);
-      if (!isValidatedRef.current) {
+      if (!hasShownErrorRef.current) {
+        hasShownErrorRef.current = true;
         addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
         onClose();
       }
       return;
     }
-    if (!provider || !provider.id) {
-      console.error('[ePrescribe] Provider data is missing or invalid:', provider);
-      if (!isValidatedRef.current) {
+    if (!normalizedProvider || !normalizedProvider.id) {
+      console.error('[ePrescribe] Provider data is missing or invalid:', {
+        provider,
+        normalizedProvider,
+        hasId: !!provider?.id,
+        hasUserId: !!provider?.user_id
+      });
+      if (!hasShownErrorRef.current) {
+        hasShownErrorRef.current = true;
         addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
         onClose();
       }
@@ -61,11 +87,9 @@ const EPrescribeModal = ({
     }
 
     // Mark as successfully validated
-    if (!isValidatedRef.current) {
-      isValidatedRef.current = true;
-      console.log('[ePrescribe] Modal opened successfully with valid data');
-    }
-  }, [patient, provider, addNotification, onClose]);
+    isValidatedRef.current = true;
+    console.log('[ePrescribe] Modal opened successfully with valid data');
+  }, [patient, normalizedProvider, provider, addNotification, onClose]);
 
   // ESC key handler
   useEffect(() => {
@@ -220,8 +244,9 @@ const EPrescribeModal = ({
 
       // Advance to step 2 immediately - THIS IS THE CRITICAL STEP
       console.log('[ePrescribe] *** ADVANCING TO STEP 2 ***');
+      console.log('[ePrescribe] Setting step to 2...');
       setStep(2);
-      console.log('[ePrescribe] Step advancement completed');
+      console.log('[ePrescribe] Step state update called - React will batch this with other state updates');
 
       // Run safety check in background (async, non-blocking)
       // This runs AFTER step advancement, so it won't block the UI
@@ -253,6 +278,7 @@ const EPrescribeModal = ({
       })(); // End of async IIFE
 
       console.log('[ePrescribe] handleSelectMedication function completed successfully');
+      console.log('[ePrescribe] Next render should show step 2');
       console.log('[ePrescribe] ========================================');
     } catch (error) {
       console.error('[ePrescribe] CRITICAL ERROR in handleSelectMedication:', error);
@@ -330,6 +356,7 @@ const EPrescribeModal = ({
   // Submit prescription
   const handleSubmitPrescription = async () => {
     console.log('[ePrescribe] Submitting prescription...');
+    console.log('[ePrescribe] Using provider:', normalizedProvider);
 
     if (!selectedMedication) {
       addNotification('alert', 'Please select a medication first');
@@ -341,7 +368,7 @@ const EPrescribeModal = ({
       // Create prescription using api service
       const prescriptionPayload = {
         patientId: patient.id,
-        providerId: provider.id,
+        providerId: normalizedProvider.id,
         medicationName: selectedMedication.drugName || selectedMedication.drug_name,
         ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code,
         dosage: prescriptionDetails.dosage,
@@ -358,7 +385,7 @@ const EPrescribeModal = ({
       // Add pharmacy info if selected
       if (selectedPharmacy) {
         prescriptionPayload.pharmacyId = selectedPharmacy.id;
-        prescriptionPayload.prescriberDeaNumber = provider?.deaNumber || provider?.dea_number || '';
+        prescriptionPayload.prescriberDeaNumber = normalizedProvider?.deaNumber || normalizedProvider?.dea_number || '';
       }
 
       console.log('[ePrescribe] Prescription payload:', prescriptionPayload);
