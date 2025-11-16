@@ -119,8 +119,9 @@ router.post('/', async (req, res) => {
       console.log('Validating provider_id:', provider_id);
 
       // Check if provider exists in providers table
+      // Note: providers.id now directly references users.id (no separate user_id column)
       const providerCheck = await pool.query(
-        'SELECT id, first_name, last_name, user_id FROM providers WHERE id::text = $1::text',
+        'SELECT id, first_name, last_name FROM providers WHERE id::text = $1::text',
         [provider_id]
       );
 
