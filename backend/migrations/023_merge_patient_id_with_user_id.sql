@@ -224,16 +224,16 @@ BEGIN
     END IF;
 END $$;
 
--- Update patient_preferred_pharmacies.patient_id (if exists)
+-- Update patient_pharmacies.patient_id (if exists)
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'patient_preferred_pharmacies' AND column_name = 'patient_id') THEN
-        UPDATE patient_preferred_pharmacies p
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'patient_pharmacies' AND column_name = 'patient_id') THEN
+        UPDATE patient_pharmacies p
         SET patient_id = m.new_patient_id
         FROM patient_id_mapping m
         WHERE p.patient_id = m.old_patient_id;
 
-        RAISE NOTICE 'Updated patient_preferred_pharmacies.patient_id references';
+        RAISE NOTICE 'Updated patient_pharmacies.patient_id references';
     END IF;
 END $$;
 
