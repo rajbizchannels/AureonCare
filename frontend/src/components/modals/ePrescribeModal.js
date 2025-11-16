@@ -119,26 +119,77 @@ const EPrescribeModal = ({
 
   // Search medications - wrapped in useCallback to prevent unnecessary re-renders
   const handleSearchMedications = useCallback(async () => {
-    if (!searchQuery) return;
+    if (!searchQuery) {
+      console.log('[ePrescribe] Search query is empty, skipping search');
+      return;
+    }
 
-    console.log('[ePrescribe] Searching for medications:', searchQuery);
+    if (searchQuery.length < 2) {
+      console.log('[ePrescribe] Search query too short (min 2 chars):', searchQuery);
+      return;
+    }
+
+    console.log('[ePrescribe] ========================================');
+    console.log('[ePrescribe] Starting medication search');
+    console.log('[ePrescribe] Search query:', searchQuery);
+    console.log('[ePrescribe] API object:', api ? 'Available' : 'MISSING');
+
     setLoading(true);
+    setMedications([]); // Clear previous results
+
     try {
+      console.log('[ePrescribe] Calling api.searchMedications...');
+      const startTime = Date.now();
+
       // Use the api service instead of direct fetch
-      const data = await api.searchMedications(searchQuery, null, null, 20);
+      const data = await api.searchMedications(searchQuery, null, null, 50);
 
-      console.log('[ePrescribe] Medications found:', data);
-      setMedications(data);
+      const elapsed = Date.now() - startTime;
+      console.log('[ePrescribe] API response received in', elapsed, 'ms');
+      console.log('[ePrescribe] Response type:', typeof data);
+      console.log('[ePrescribe] Response is array:', Array.isArray(data));
+      console.log('[ePrescribe] Number of medications found:', data?.length || 0);
 
-      if (data && data.length > 0) {
-        console.log('[ePrescribe] First medication structure:', data[0]);
+      if (data && Array.isArray(data)) {
+        setMedications(data);
+
+        if (data.length > 0) {
+          console.log('[ePrescribe] First medication:', data[0]);
+          console.log('[ePrescribe] Sample medication structure:', {
+            id: data[0].id,
+            drugName: data[0].drugName,
+            genericName: data[0].genericName,
+            ndcCode: data[0].ndcCode,
+            strength: data[0].strength
+          });
+        } else {
+          console.log('[ePrescribe] No medications found matching:', searchQuery);
+        }
+      } else {
+        console.error('[ePrescribe] Unexpected response format:', data);
+        setMedications([]);
+        addNotification('alert', 'Received invalid data format from server');
       }
-    } catch (error) {
-      console.error('[ePrescribe] Error searching medications:', error);
 
-      // Check if it's a "not available" error
+      console.log('[ePrescribe] Search completed successfully');
+      console.log('[ePrescribe] ========================================');
+    } catch (error) {
+      console.error('[ePrescribe] ========================================');
+      console.error('[ePrescribe] ERROR in medication search');
+      console.error('[ePrescribe] Error type:', error.constructor.name);
+      console.error('[ePrescribe] Error message:', error.message);
+      console.error('[ePrescribe] Error stack:', error.stack);
+      console.error('[ePrescribe] ========================================');
+
+      // Check for specific error types
       if (error.message && error.message.includes('501')) {
         addNotification('alert', 'ePrescribing functionality requires migration 015 to be run. Please contact your system administrator.');
+      } else if (error.message && error.message.includes('Failed to fetch')) {
+        addNotification('alert', 'Cannot connect to server. Please check if the backend is running.');
+      } else if (error.message && error.message.includes('404')) {
+        addNotification('alert', 'Medication search endpoint not found. Migration 015 may not be installed.');
+      } else if (error.message && error.message.includes('500')) {
+        addNotification('alert', 'Server error while searching medications. Check console for details.');
       } else {
         addNotification('alert', `Failed to search medications: ${error.message}`);
       }
@@ -474,14 +525,25 @@ const EPrescribeModal = ({
               </div>
 
               {!loading && searchQuery && searchQuery.length >= 2 && medications.length === 0 && (
-                <div className={`text-center py-8 rounded-lg border-2 border-dashed ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                <div className={`text-center py-8 rounded-lg border-2 border-dashed ${theme === 'dark' ? 'border-slate-700 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
                   <Pill className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
-                  <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  <p className={`font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     No medications found matching "{searchQuery}"
                   </p>
-                  <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Try a different search term or NDC code
                   </p>
+                  <div className={`mt-4 p-3 rounded text-left ${theme === 'dark' ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-gray-200'}`}>
+                    <p className={`text-xs font-mono ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      <strong className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Troubleshooting:</strong>
+                    </p>
+                    <ul className={`text-xs mt-2 space-y-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      <li>• Check browser console (F12) for error details</li>
+                      <li>• Ensure migration 015 has been run on the database</li>
+                      <li>• Verify backend server is running on port 3001</li>
+                      <li>• Try common medications: lisinopril, metformin, atorvastatin</li>
+                    </ul>
+                  </div>
                 </div>
               )}
 
