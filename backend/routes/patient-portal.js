@@ -142,7 +142,7 @@ router.put('/:patientId/appointments/:appointmentId', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { patientId, appointmentId } = req.params;
-    const { startTime, endTime, reason, notes } = req.body;
+    const { startTime, endTime, reason, notes, appointmentType, providerId } = req.body;
 
     const result = await pool.query(`
       UPDATE appointments
@@ -151,10 +151,12 @@ router.put('/:patientId/appointments/:appointmentId', async (req, res) => {
         end_time = COALESCE($2, end_time),
         reason = COALESCE($3, reason),
         notes = COALESCE($4, notes),
+        appointment_type = COALESCE($5, appointment_type),
+        provider_id = COALESCE($6, provider_id),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5 AND patient_id = $6
+      WHERE id = $7 AND patient_id = $8
       RETURNING *
-    `, [startTime, endTime, reason, notes, appointmentId, patientId]);
+    `, [startTime, endTime, reason, notes, appointmentType, providerId, appointmentId, patientId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Appointment not found' });
@@ -164,6 +166,28 @@ router.put('/:patientId/appointments/:appointmentId', async (req, res) => {
   } catch (error) {
     console.error('Error updating appointment:', error);
     res.status(500).json({ error: 'Failed to update appointment' });
+  }
+});
+
+// Delete patient appointment
+router.delete('/:patientId/appointments/:appointmentId', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { patientId, appointmentId } = req.params;
+
+    const result = await pool.query(
+      'DELETE FROM appointments WHERE id = $1 AND patient_id = $2 RETURNING *',
+      [appointmentId, patientId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Appointment not found or not authorized to delete' });
+    }
+
+    res.json({ message: 'Appointment deleted successfully', appointment: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting appointment:', error);
+    res.status(500).json({ error: 'Failed to delete appointment' });
   }
 });
 
