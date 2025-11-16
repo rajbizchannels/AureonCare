@@ -30,7 +30,7 @@ const DAYS_OF_WEEK = [
     { value: 6, label: 'Saturday' }
 ];
 
-const DoctorAvailabilityManager = ({ providerId, onClose }) => {
+const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
     const [availability, setAvailability] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -134,18 +134,22 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className={`rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden ${
+                theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+            }`}>
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b">
+                <div className={`flex items-center justify-between p-6 border-b ${
+                    theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+                }`}>
                     <div className="flex items-center gap-2">
-                        <Calendar className="w-6 h-6 text-blue-600" />
-                        <h2 className="text-2xl font-bold text-gray-800">
+                        <Calendar className={`w-6 h-6 ${theme === 'dark' ? 'text-cyan-400' : 'text-blue-600'}`} />
+                        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
                             Manage Availability
                         </h2>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600"
+                        className={theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-gray-400 hover:text-gray-600'}
                     >
                         <X className="w-6 h-6" />
                     </button>
@@ -154,28 +158,42 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
                 {/* Content */}
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
                     {error && (
-                        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+                        <div className={`mb-4 p-3 border rounded ${
+                            theme === 'dark'
+                                ? 'bg-red-900/20 border-red-500/50 text-red-300'
+                                : 'bg-red-50 border-red-200 text-red-700'
+                        }`}>
                             {error}
                         </div>
                     )}
 
                     {loading && !editMode ? (
                         <div className="text-center py-8">
-                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                            <p className="mt-2 text-gray-600">Loading availability...</p>
+                            <div className={`inline-block animate-spin rounded-full h-8 w-8 border-b-2 ${
+                                theme === 'dark' ? 'border-cyan-500' : 'border-blue-600'
+                            }`}></div>
+                            <p className={`mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                Loading availability...
+                            </p>
                         </div>
                     ) : (
                         <div className="space-y-6">
                             {DAYS_OF_WEEK.map(day => (
-                                <div key={day.value} className="border rounded-lg p-4">
-                                    <h3 className="font-semibold text-lg mb-3">{day.label}</h3>
+                                <div key={day.value} className={`border rounded-lg p-4 ${
+                                    theme === 'dark' ? 'border-slate-700 bg-slate-700/30' : 'border-gray-200'
+                                }`}>
+                                    <h3 className={`font-semibold text-lg mb-3 ${
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    }`}>{day.label}</h3>
                                     {groupedSchedules[day.value]?.length > 0 ? (
                                         <div className="space-y-2">
                                             {groupedSchedules[day.value].map((schedule, index) => (
                                                 <div key={index} className="flex items-center gap-3">
                                                     {editMode ? (
                                                         <>
-                                                            <Clock className="w-5 h-5 text-gray-400" />
+                                                            <Clock className={`w-5 h-5 ${
+                                                                theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                                                            }`} />
                                                             <input
                                                                 type="time"
                                                                 value={schedule.startTime || schedule.start_time}
@@ -186,9 +204,13 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
                                                                     );
                                                                     updateSchedule(globalIndex, 'startTime', e.target.value);
                                                                 }}
-                                                                className="border rounded px-3 py-2"
+                                                                className={`border rounded px-3 py-2 ${
+                                                                    theme === 'dark'
+                                                                        ? 'bg-slate-700 border-slate-600 text-white'
+                                                                        : 'bg-white border-gray-300 text-gray-900'
+                                                                }`}
                                                             />
-                                                            <span className="text-gray-600">to</span>
+                                                            <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>to</span>
                                                             <input
                                                                 type="time"
                                                                 value={schedule.endTime || schedule.end_time}
@@ -199,7 +221,11 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
                                                                     );
                                                                     updateSchedule(globalIndex, 'endTime', e.target.value);
                                                                 }}
-                                                                className="border rounded px-3 py-2"
+                                                                className={`border rounded px-3 py-2 ${
+                                                                    theme === 'dark'
+                                                                        ? 'bg-slate-700 border-slate-600 text-white'
+                                                                        : 'bg-white border-gray-300 text-gray-900'
+                                                                }`}
                                                             />
                                                             <button
                                                                 onClick={() => {
@@ -209,22 +235,26 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
                                                                     );
                                                                     removeSchedule(globalIndex);
                                                                 }}
-                                                                className="text-red-600 hover:text-red-800"
+                                                                className="text-red-500 hover:text-red-600"
                                                             >
                                                                 <Trash2 className="w-5 h-5" />
                                                             </button>
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <Clock className="w-5 h-5 text-gray-400" />
-                                                            <span className="text-gray-700">
+                                                            <Clock className={`w-5 h-5 ${
+                                                                theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                                                            }`} />
+                                                            <span className={theme === 'dark' ? 'text-white' : 'text-gray-700'}>
                                                                 {schedule.start_time || schedule.startTime} -{' '}
                                                                 {schedule.end_time || schedule.endTime}
                                                             </span>
                                                             <span className={`px-2 py-1 rounded text-xs ${
                                                                 schedule.is_available !== false
-                                                                    ? 'bg-green-100 text-green-800'
-                                                                    : 'bg-gray-100 text-gray-800'
+                                                                    ? 'bg-green-600/20 text-green-400 border border-green-500/50'
+                                                                    : theme === 'dark'
+                                                                        ? 'bg-slate-600 text-slate-300'
+                                                                        : 'bg-gray-100 text-gray-800'
                                                             }`}>
                                                                 {schedule.is_available !== false ? 'Available' : 'Blocked'}
                                                             </span>
@@ -234,7 +264,9 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-gray-500 text-sm">No availability set</p>
+                                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                                            No availability set
+                                        </p>
                                     )}
                                 </div>
                             ))}
@@ -243,12 +275,20 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between p-6 border-t bg-gray-50">
+                <div className={`flex items-center justify-between p-6 border-t ${
+                    theme === 'dark'
+                        ? 'bg-slate-900 border-slate-700'
+                        : 'bg-gray-50 border-gray-200'
+                }`}>
                     <div>
                         {editMode && (
                             <button
                                 onClick={addNewSchedule}
-                                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded"
+                                className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+                                    theme === 'dark'
+                                        ? 'text-cyan-400 hover:bg-slate-700'
+                                        : 'text-blue-600 hover:bg-blue-50'
+                                }`}
                             >
                                 <Plus className="w-5 h-5" />
                                 Add Time Slot
@@ -260,7 +300,11 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
                             <>
                                 <button
                                     onClick={cancelEdit}
-                                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+                                    className={`px-6 py-2 border rounded transition-colors ${
+                                        theme === 'dark'
+                                            ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
+                                            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    }`}
                                     disabled={loading}
                                 >
                                     Cancel
@@ -268,7 +312,11 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
                                 <button
                                     onClick={saveSchedules}
                                     disabled={loading}
-                                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                                    className={`flex items-center gap-2 px-6 py-2 rounded disabled:opacity-50 transition-colors ${
+                                        theme === 'dark'
+                                            ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    }`}
                                 >
                                     <Save className="w-5 h-5" />
                                     {loading ? 'Saving...' : 'Save Changes'}
@@ -277,7 +325,11 @@ const DoctorAvailabilityManager = ({ providerId, onClose }) => {
                         ) : (
                             <button
                                 onClick={() => setEditMode(true)}
-                                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                className={`px-6 py-2 rounded transition-colors ${
+                                    theme === 'dark'
+                                        ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                }`}
                             >
                                 Edit Schedule
                             </button>

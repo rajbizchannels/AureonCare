@@ -24,7 +24,7 @@ const getAuthHeaders = () => {
   return headers;
 };
 
-const ProviderManagementView = () => {
+const ProviderManagementView = ({ theme = 'dark' }) => {
   const [providers, setProviders] = useState([]);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -284,10 +284,10 @@ const ProviderManagementView = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className={`flex items-center justify-center h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading providers...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+          <p className={`mt-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>Loading providers...</p>
         </div>
       </div>
     );
@@ -296,7 +296,11 @@ const ProviderManagementView = () => {
   if (error) {
     return (
       <div className="p-6">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className={`border px-4 py-3 rounded ${
+          theme === 'dark'
+            ? 'bg-red-900/20 border-red-500/50 text-red-300'
+            : 'bg-red-50 border-red-200 text-red-700'
+        }`}>
           <AlertCircle className="inline w-5 h-5 mr-2" />
           {error}
         </div>
@@ -305,12 +309,16 @@ const ProviderManagementView = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className={`flex h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
       {/* Sidebar - Provider List */}
-      <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
-        <div className="p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-800">Providers</h2>
-          <p className="text-sm text-gray-600 mt-1">{providers.length} total</p>
+      <div className={`w-80 border-r overflow-y-auto ${
+        theme === 'dark'
+          ? 'bg-slate-800 border-slate-700'
+          : 'bg-white border-gray-200'
+      }`}>
+        <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+          <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>Providers</h2>
+          <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{providers.length} total</p>
         </div>
         <div className="p-2">
           {providers.map(provider => (
@@ -319,19 +327,27 @@ const ProviderManagementView = () => {
               onClick={() => setSelectedProvider(provider)}
               className={`w-full text-left p-4 rounded-lg mb-2 transition-all ${
                 selectedProvider?.id === provider.id
-                  ? 'bg-blue-50 border-2 border-blue-500'
-                  : 'bg-white border border-gray-200 hover:border-blue-300'
+                  ? theme === 'dark'
+                    ? 'bg-cyan-900/30 border-2 border-cyan-500'
+                    : 'bg-blue-50 border-2 border-blue-500'
+                  : theme === 'dark'
+                    ? 'bg-slate-700/50 border border-slate-600 hover:border-cyan-400'
+                    : 'bg-white border border-gray-200 hover:border-blue-300'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
+                  theme === 'dark' ? 'bg-cyan-600' : 'bg-blue-600'
+                }`}>
                   {provider.firstName?.[0]}{provider.lastName?.[0]}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">
+                  <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     Dr. {provider.firstName} {provider.lastName}
                   </h3>
-                  <p className="text-sm text-gray-600">{provider.specialization || 'General Practice'}</p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {provider.specialization || 'General Practice'}
+                  </p>
                 </div>
               </div>
             </button>
@@ -344,26 +360,36 @@ const ProviderManagementView = () => {
         {selectedProvider && (
           <div className="p-6">
             {/* Header */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className={`rounded-lg shadow-sm p-6 mb-6 ${
+              theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+            }`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold ${
+                    theme === 'dark' ? 'bg-cyan-600' : 'bg-blue-600'
+                  }`}>
                     {selectedProvider.firstName?.[0]}{selectedProvider.lastName?.[0]}
                   </div>
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
+                    <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       Dr. {selectedProvider.firstName} {selectedProvider.lastName}
                     </h1>
-                    <p className="text-gray-600 mt-1">{selectedProvider.specialization || 'General Practice'}</p>
+                    <p className={`mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {selectedProvider.specialization || 'General Practice'}
+                    </p>
                     <div className="flex items-center gap-4 mt-2">
                       {selectedProvider.email && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <div className={`flex items-center gap-1 text-sm ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                        }`}>
                           <Mail className="w-4 h-4" />
                           {selectedProvider.email}
                         </div>
                       )}
                       {selectedProvider.phone && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <div className={`flex items-center gap-1 text-sm ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                        }`}>
                           <Phone className="w-4 h-4" />
                           {selectedProvider.phone}
                         </div>
@@ -373,7 +399,11 @@ const ProviderManagementView = () => {
                 </div>
                 <button
                   onClick={() => setShowScheduleModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
                 >
                   <Calendar className="w-5 h-5" />
                   Manage Schedule
@@ -382,8 +412,8 @@ const ProviderManagementView = () => {
             </div>
 
             {/* Tabs */}
-            <div className="bg-white rounded-lg shadow-sm mb-6">
-              <div className="border-b border-gray-200">
+            <div className={`rounded-lg shadow-sm mb-6 ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+              <div className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
                 <div className="flex gap-4 px-6">
                   {[
                     { id: 'details', label: 'Details', icon: User },
@@ -396,8 +426,12 @@ const ProviderManagementView = () => {
                       onClick={() => setActiveTab(tab.id)}
                       className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
                         activeTab === tab.id
-                          ? 'border-blue-600 text-blue-600'
-                          : 'border-transparent text-gray-600 hover:text-gray-900'
+                          ? theme === 'dark'
+                            ? 'border-cyan-500 text-cyan-400'
+                            : 'border-blue-600 text-blue-600'
+                          : theme === 'dark'
+                            ? 'border-transparent text-slate-400 hover:text-slate-200'
+                            : 'border-transparent text-gray-600 hover:text-gray-900'
                       }`}
                     >
                       <tab.icon className="w-5 h-5" />
@@ -411,27 +445,49 @@ const ProviderManagementView = () => {
                 {/* Details Tab */}
                 {activeTab === 'details' && (
                   <div>
-                    <h2 className="text-xl font-bold mb-4">Provider Information</h2>
+                    <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Provider Information
+                    </h2>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                        <p className="text-gray-900">{selectedProvider.firstName}</p>
+                        <label className={`block text-sm font-medium mb-1 ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
+                        }`}>First Name</label>
+                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
+                          {selectedProvider.firstName}
+                        </p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                        <p className="text-gray-900">{selectedProvider.lastName}</p>
+                        <label className={`block text-sm font-medium mb-1 ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
+                        }`}>Last Name</label>
+                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
+                          {selectedProvider.lastName}
+                        </p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <p className="text-gray-900">{selectedProvider.email || 'Not provided'}</p>
+                        <label className={`block text-sm font-medium mb-1 ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
+                        }`}>Email</label>
+                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
+                          {selectedProvider.email || 'Not provided'}
+                        </p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                        <p className="text-gray-900">{selectedProvider.phone || 'Not provided'}</p>
+                        <label className={`block text-sm font-medium mb-1 ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
+                        }`}>Phone</label>
+                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
+                          {selectedProvider.phone || 'Not provided'}
+                        </p>
                       </div>
                       <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
-                        <p className="text-gray-900">{selectedProvider.specialization || 'General Practice'}</p>
+                        <label className={`block text-sm font-medium mb-1 ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
+                        }`}>Specialization</label>
+                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
+                          {selectedProvider.specialization || 'General Practice'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -441,11 +497,17 @@ const ProviderManagementView = () => {
                 {activeTab === 'schedule' && (
                   <div>
                     <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-xl font-bold">Weekly Schedule</h2>
+                      <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Weekly Schedule
+                      </h2>
                       {!scheduleMatchesClinicHours() && (
                         <button
                           onClick={() => initializeScheduleWithClinicHours(selectedProvider.id)}
-                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                            theme === 'dark'
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-green-600 hover:bg-green-700 text-white'
+                          }`}
                         >
                           <Clock className="w-5 h-5" />
                           Set Clinic Hours
@@ -453,18 +515,24 @@ const ProviderManagementView = () => {
                       )}
                     </div>
                     {!scheduleMatchesClinicHours() && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                        <p className="text-sm text-blue-800">
+                      <div className={`border rounded-lg p-4 mb-6 ${
+                        theme === 'dark'
+                          ? 'bg-cyan-900/20 border-cyan-500/50'
+                          : 'bg-blue-50 border-blue-200'
+                      }`}>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-cyan-300' : 'text-blue-800'}`}>
                           <strong>Clinic Working Hours:</strong> Monday - Friday, 9:00 AM - 5:00 PM
                         </p>
-                        <p className="text-sm text-blue-700 mt-2">
+                        <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-cyan-400' : 'text-blue-700'}`}>
                           Click "Set Clinic Hours" to automatically configure this provider's schedule to match clinic hours.
                         </p>
                       </div>
                     )}
                     <div className="text-center py-8">
-                      <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">
+                      <Calendar className={`w-16 h-16 mx-auto mb-4 ${
+                        theme === 'dark' ? 'text-slate-600' : 'text-gray-400'
+                      }`} />
+                      <p className={`mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                         Click "Manage Schedule" above to view and edit the detailed weekly schedule
                       </p>
                     </div>
@@ -474,19 +542,29 @@ const ProviderManagementView = () => {
                 {/* Public Booking Tab */}
                 {activeTab === 'booking' && (
                   <div>
-                    <h2 className="text-xl font-bold mb-4">Public Booking Configuration</h2>
+                    <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Public Booking Configuration
+                    </h2>
                     {bookingConfig ? (
                       <div className="space-y-6">
                         {/* Booking URL */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+                        <div className={`border rounded-lg p-6 ${
+                          theme === 'dark'
+                            ? 'bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border-cyan-500/50'
+                            : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+                        }`}>
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900">Public Booking Link</h3>
+                            <h3 className={`text-lg font-semibold ${
+                              theme === 'dark' ? 'text-white' : 'text-gray-900'
+                            }`}>Public Booking Link</h3>
                             <button
                               onClick={togglePublicBooking}
                               className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
                                 bookingConfig.allow_public_booking
                                   ? 'bg-green-600 text-white hover:bg-green-700'
-                                  : 'bg-gray-600 text-white hover:bg-gray-700'
+                                  : theme === 'dark'
+                                    ? 'bg-slate-600 text-white hover:bg-slate-700'
+                                    : 'bg-gray-600 text-white hover:bg-gray-700'
                               }`}
                             >
                               {bookingConfig.allow_public_booking ? (
@@ -502,14 +580,22 @@ const ProviderManagementView = () => {
                               )}
                             </button>
                           </div>
-                          <div className="bg-white rounded-lg p-4 border border-gray-200">
+                          <div className={`rounded-lg p-4 border ${
+                            theme === 'dark'
+                              ? 'bg-slate-800 border-slate-700'
+                              : 'bg-white border-gray-200'
+                          }`}>
                             <div className="flex items-center justify-between">
-                              <code className="text-sm text-gray-700">
+                              <code className={`text-sm ${theme === 'dark' ? 'text-cyan-300' : 'text-gray-700'}`}>
                                 {window.location.origin}/book/{bookingConfig.booking_url_slug}
                               </code>
                               <button
                                 onClick={copyBookingUrl}
-                                className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                                className={`flex items-center gap-2 px-3 py-1 text-sm rounded transition-colors ${
+                                  theme === 'dark'
+                                    ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                }`}
                               >
                                 {copiedUrl ? (
                                   <>
@@ -525,53 +611,71 @@ const ProviderManagementView = () => {
                               </button>
                             </div>
                           </div>
-                          <p className="text-sm text-gray-600 mt-3">
+                          <p className={`text-sm mt-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                             Share this link with patients to allow them to book appointments online.
                           </p>
                         </div>
 
                         {/* Configuration Details */}
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-white border border-gray-200 rounded-lg p-4">
-                            <h4 className="font-semibold text-gray-900 mb-2">Booking Settings</h4>
+                          <div className={`border rounded-lg p-4 ${
+                            theme === 'dark'
+                              ? 'bg-slate-700/50 border-slate-600'
+                              : 'bg-white border-gray-200'
+                          }`}>
+                            <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              Booking Settings
+                            </h4>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Slot Interval:</span>
-                                <span className="font-medium">{bookingConfig.slot_interval_minutes} min</span>
+                                <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Slot Interval:</span>
+                                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  {bookingConfig.slot_interval_minutes} min
+                                </span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Timezone:</span>
-                                <span className="font-medium">{bookingConfig.timezone}</span>
+                                <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Timezone:</span>
+                                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  {bookingConfig.timezone}
+                                </span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Max Concurrent:</span>
-                                <span className="font-medium">{bookingConfig.max_concurrent_bookings}</span>
+                                <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Max Concurrent:</span>
+                                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  {bookingConfig.max_concurrent_bookings}
+                                </span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="bg-white border border-gray-200 rounded-lg p-4">
-                            <h4 className="font-semibold text-gray-900 mb-2">Policies</h4>
+                          <div className={`border rounded-lg p-4 ${
+                            theme === 'dark'
+                              ? 'bg-slate-700/50 border-slate-600'
+                              : 'bg-white border-gray-200'
+                          }`}>
+                            <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              Policies
+                            </h4>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Cancellation:</span>
-                                <span className="font-medium">
+                                <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Cancellation:</span>
+                                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                   {bookingConfig.allow_cancellation
                                     ? `${bookingConfig.cancellation_hours_before}h before`
                                     : 'Not allowed'}
                                 </span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Rescheduling:</span>
-                                <span className="font-medium">
+                                <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Rescheduling:</span>
+                                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                   {bookingConfig.allow_rescheduling
                                     ? `${bookingConfig.reschedule_hours_before}h before`
                                     : 'Not allowed'}
                                 </span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Reminders:</span>
-                                <span className="font-medium">
+                                <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Reminders:</span>
+                                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                   {bookingConfig.send_reminder_email
                                     ? `${bookingConfig.reminder_hours_before}h before`
                                     : 'Disabled'}
@@ -583,11 +687,19 @@ const ProviderManagementView = () => {
                       </div>
                     ) : (
                       <div className="text-center py-12">
-                        <Link2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600 mb-4">No booking configuration found</p>
+                        <Link2 className={`w-16 h-16 mx-auto mb-4 ${
+                          theme === 'dark' ? 'text-slate-600' : 'text-gray-400'
+                        }`} />
+                        <p className={`mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          No booking configuration found
+                        </p>
                         <button
                           onClick={() => initializeScheduleWithClinicHours(selectedProvider.id)}
-                          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                          className={`px-6 py-2 rounded-lg transition-colors ${
+                            theme === 'dark'
+                              ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
                         >
                           Initialize Booking Setup
                         </button>
@@ -600,12 +712,18 @@ const ProviderManagementView = () => {
                 {activeTab === 'appointments' && (
                   <div>
                     <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-xl font-bold">Appointment Types</h2>
+                      <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Appointment Types
+                      </h2>
                     </div>
                     {appointmentTypes.length > 0 ? (
                       <div className="grid gap-4">
                         {appointmentTypes.map(type => (
-                          <div key={type.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div key={type.id} className={`border rounded-lg p-4 transition-shadow ${
+                            theme === 'dark'
+                              ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'
+                              : 'bg-white border-gray-200 hover:shadow-md'
+                          }`}>
                             <div className="flex items-start justify-between">
                               <div className="flex items-start gap-4">
                                 <div
@@ -613,17 +731,23 @@ const ProviderManagementView = () => {
                                   style={{ backgroundColor: type.color }}
                                 ></div>
                                 <div>
-                                  <h3 className="font-semibold text-lg text-gray-900">{type.name}</h3>
+                                  <h3 className={`font-semibold text-lg ${
+                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                  }`}>{type.name}</h3>
                                   {type.description && (
-                                    <p className="text-sm text-gray-600 mt-1">{type.description}</p>
+                                    <p className={`text-sm mt-1 ${
+                                      theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                                    }`}>{type.description}</p>
                                   )}
                                   <div className="flex items-center gap-6 mt-3 text-sm">
-                                    <div className="flex items-center gap-1 text-gray-600">
+                                    <div className={`flex items-center gap-1 ${
+                                      theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                                    }`}>
                                       <Clock className="w-4 h-4" />
                                       <span>{type.duration_minutes} min</span>
                                     </div>
                                     {type.buffer_minutes > 0 && (
-                                      <span className="text-gray-600">
+                                      <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>
                                         Buffer: {type.buffer_minutes} min
                                       </span>
                                     )}
@@ -637,8 +761,10 @@ const ProviderManagementView = () => {
                               </div>
                               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                 type.is_active
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
+                                  ? 'bg-green-600/20 text-green-400 border border-green-500/50'
+                                  : theme === 'dark'
+                                    ? 'bg-slate-600 text-slate-300'
+                                    : 'bg-gray-100 text-gray-800'
                               }`}>
                                 {type.is_active ? 'Active' : 'Inactive'}
                               </span>
@@ -648,11 +774,19 @@ const ProviderManagementView = () => {
                       </div>
                     ) : (
                       <div className="text-center py-12">
-                        <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600 mb-4">No appointment types configured</p>
+                        <Clock className={`w-16 h-16 mx-auto mb-4 ${
+                          theme === 'dark' ? 'text-slate-600' : 'text-gray-400'
+                        }`} />
+                        <p className={`mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          No appointment types configured
+                        </p>
                         <button
                           onClick={() => initializeScheduleWithClinicHours(selectedProvider.id)}
-                          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                          className={`px-6 py-2 rounded-lg transition-colors ${
+                            theme === 'dark'
+                              ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
                         >
                           Set Up Appointment Types
                         </button>
@@ -670,6 +804,7 @@ const ProviderManagementView = () => {
       {showScheduleModal && selectedProvider && (
         <DoctorAvailabilityManager
           providerId={selectedProvider.id}
+          theme={theme}
           onClose={() => {
             setShowScheduleModal(false);
             fetchProviderDetails(selectedProvider.id);
