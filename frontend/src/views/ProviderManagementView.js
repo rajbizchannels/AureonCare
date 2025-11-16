@@ -207,7 +207,7 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
       }
 
       // Create default appointment type
-      await fetch('/api/scheduling/appointment-types', {
+      const appointmentTypeResponse = await fetch('/api/scheduling/appointment-types', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -222,11 +222,20 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
         })
       });
 
+      if (!appointmentTypeResponse.ok) {
+        const contentType = appointmentTypeResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await appointmentTypeResponse.json();
+          throw new Error(errorData.error || 'Failed to create appointment type');
+        }
+        throw new Error(`Failed to create appointment type (${appointmentTypeResponse.status})`);
+      }
+
       // Create booking configuration
       const provider = providers.find(p => p.id === providerId);
       const slug = `${provider.firstName}-${provider.lastName}-${providerId}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
 
-      await fetch('/api/scheduling/booking-config', {
+      const bookingConfigResponse = await fetch('/api/scheduling/booking-config', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -240,6 +249,15 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
           reminderHoursBefore: 24
         })
       });
+
+      if (!bookingConfigResponse.ok) {
+        const contentType = bookingConfigResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await bookingConfigResponse.json();
+          throw new Error(errorData.error || 'Failed to create booking configuration');
+        }
+        throw new Error(`Failed to create booking configuration (${bookingConfigResponse.status})`);
+      }
 
       await fetchProviderDetails(providerId);
       alert('Schedule initialized with clinic working hours!');
@@ -440,7 +458,7 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => setShowScheduleModal(true)}
-                          className={`p-2 rounded-lg transition-colors ${
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                             theme === 'dark'
                               ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
                               : 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -448,6 +466,7 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
                           title="Manage Schedule"
                         >
                           <Settings className="w-5 h-5" />
+                          <span>Manage Schedule</span>
                         </button>
                         {!scheduleMatchesClinicHours() && (
                           <button
