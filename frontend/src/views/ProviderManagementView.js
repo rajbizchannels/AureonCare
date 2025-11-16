@@ -206,57 +206,61 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
         throw new Error(`Failed to initialize schedule (${response.status})`);
       }
 
-      // Create default appointment type
-      const appointmentTypeResponse = await fetch('/api/scheduling/appointment-types', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          providerId,
-          name: 'Office Visit',
-          description: 'Standard in-person consultation',
-          durationMinutes: 30,
-          bufferMinutes: 15,
-          color: '#3B82F6',
-          price: 100.00,
-          isActive: true
-        })
-      });
+      // Create default appointment type only if none exist
+      if (appointmentTypes.length === 0) {
+        const appointmentTypeResponse = await fetch('/api/scheduling/appointment-types', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            providerId,
+            name: 'Office Visit',
+            description: 'Standard in-person consultation',
+            durationMinutes: 30,
+            bufferMinutes: 15,
+            color: '#3B82F6',
+            price: 100.00,
+            isActive: true
+          })
+        });
 
-      if (!appointmentTypeResponse.ok) {
-        const contentType = appointmentTypeResponse.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await appointmentTypeResponse.json();
-          throw new Error(errorData.error || 'Failed to create appointment type');
+        if (!appointmentTypeResponse.ok) {
+          const contentType = appointmentTypeResponse.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await appointmentTypeResponse.json();
+            throw new Error(errorData.error || 'Failed to create appointment type');
+          }
+          throw new Error(`Failed to create appointment type (${appointmentTypeResponse.status})`);
         }
-        throw new Error(`Failed to create appointment type (${appointmentTypeResponse.status})`);
       }
 
-      // Create booking configuration
-      const provider = providers.find(p => p.id === providerId);
-      const slug = `${provider.firstName}-${provider.lastName}-${providerId}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      // Create booking configuration only if it doesn't exist
+      if (!bookingConfig) {
+        const provider = providers.find(p => p.id === providerId);
+        const slug = `${provider.firstName}-${provider.lastName}-${providerId}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
 
-      const bookingConfigResponse = await fetch('/api/scheduling/booking-config', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          providerId,
-          bookingUrlSlug: slug,
-          timezone: 'America/New_York',
-          slotIntervalMinutes: 15,
-          allowPublicBooking: true,
-          sendConfirmationEmail: true,
-          sendReminderEmail: true,
-          reminderHoursBefore: 24
-        })
-      });
+        const bookingConfigResponse = await fetch('/api/scheduling/booking-config', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            providerId,
+            bookingUrlSlug: slug,
+            timezone: 'America/New_York',
+            slotIntervalMinutes: 15,
+            allowPublicBooking: true,
+            sendConfirmationEmail: true,
+            sendReminderEmail: true,
+            reminderHoursBefore: 24
+          })
+        });
 
-      if (!bookingConfigResponse.ok) {
-        const contentType = bookingConfigResponse.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await bookingConfigResponse.json();
-          throw new Error(errorData.error || 'Failed to create booking configuration');
+        if (!bookingConfigResponse.ok) {
+          const contentType = bookingConfigResponse.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await bookingConfigResponse.json();
+            throw new Error(errorData.error || 'Failed to create booking configuration');
+          }
+          throw new Error(`Failed to create booking configuration (${bookingConfigResponse.status})`);
         }
-        throw new Error(`Failed to create booking configuration (${bookingConfigResponse.status})`);
       }
 
       await fetchProviderDetails(providerId);
