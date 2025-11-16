@@ -30,7 +30,7 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('details'); // details, schedule, appointments, booking
+  const [activeTab, setActiveTab] = useState('schedule'); // schedule, appointments, booking
   const [bookingConfig, setBookingConfig] = useState(null);
   const [appointmentTypes, setAppointmentTypes] = useState([]);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -397,17 +397,6 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowScheduleModal(true)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                  }`}
-                >
-                  <Calendar className="w-5 h-5" />
-                  Manage Schedule
-                </button>
               </div>
             </div>
 
@@ -416,7 +405,6 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
               <div className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
                 <div className="flex gap-4 px-6">
                   {[
-                    { id: 'details', label: 'Details', icon: User },
                     { id: 'schedule', label: 'Schedule', icon: Calendar },
                     { id: 'booking', label: 'Public Booking', icon: Link2 },
                     { id: 'appointments', label: 'Appointment Types', icon: Clock }
@@ -442,57 +430,6 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
               </div>
 
               <div className="p-6">
-                {/* Details Tab */}
-                {activeTab === 'details' && (
-                  <div>
-                    <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Provider Information
-                    </h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${
-                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
-                        }`}>First Name</label>
-                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                          {selectedProvider.firstName}
-                        </p>
-                      </div>
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${
-                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
-                        }`}>Last Name</label>
-                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                          {selectedProvider.lastName}
-                        </p>
-                      </div>
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${
-                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
-                        }`}>Email</label>
-                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                          {selectedProvider.email || 'Not provided'}
-                        </p>
-                      </div>
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${
-                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
-                        }`}>Phone</label>
-                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                          {selectedProvider.phone || 'Not provided'}
-                        </p>
-                      </div>
-                      <div className="col-span-2">
-                        <label className={`block text-sm font-medium mb-1 ${
-                          theme === 'dark' ? 'text-slate-400' : 'text-gray-700'
-                        }`}>Specialization</label>
-                        <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                          {selectedProvider.specialization || 'General Practice'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Schedule Tab */}
                 {activeTab === 'schedule' && (
                   <div>
@@ -500,19 +437,32 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
                       <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         Weekly Schedule
                       </h2>
-                      {!scheduleMatchesClinicHours() && (
+                      <div className="flex items-center gap-3">
                         <button
-                          onClick={() => initializeScheduleWithClinicHours(selectedProvider.id)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                          onClick={() => setShowScheduleModal(true)}
+                          className={`p-2 rounded-lg transition-colors ${
                             theme === 'dark'
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'bg-green-600 hover:bg-green-700 text-white'
+                              ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
                           }`}
+                          title="Manage Schedule"
                         >
-                          <Clock className="w-5 h-5" />
-                          Set Clinic Hours
+                          <Settings className="w-5 h-5" />
                         </button>
-                      )}
+                        {!scheduleMatchesClinicHours() && (
+                          <button
+                            onClick={() => initializeScheduleWithClinicHours(selectedProvider.id)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                              theme === 'dark'
+                                ? 'bg-green-600 hover:bg-green-700 text-white'
+                                : 'bg-green-600 hover:bg-green-700 text-white'
+                            }`}
+                          >
+                            <Clock className="w-5 h-5" />
+                            Set Clinic Hours
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {!scheduleMatchesClinicHours() && (
                       <div className={`border rounded-lg p-4 mb-6 ${
