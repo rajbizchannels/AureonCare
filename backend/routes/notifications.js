@@ -28,15 +28,15 @@ router.get('/', async (req, res) => {
 
 // Create new notification
 router.post('/', async (req, res) => {
-  const { type, message, read } = req.body;
-  
+  const { userId, type, message, read } = req.body;
+
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      `INSERT INTO notifications (type, message, read, created_at)
-       VALUES ($1, $2, $3, NOW())
+      `INSERT INTO notifications (user_id, type, message, read, created_at)
+       VALUES ($1, $2, $3, $4, NOW())
        RETURNING *`,
-      [type, message, read || false]
+      [userId, type, message, read || false]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -81,12 +81,23 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Clear all notifications
+// Clear all notifications (optionally filtered by user_id)
 router.delete('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    await pool.query('DELETE FROM notifications');
-    res.json({ message: 'All notifications cleared successfully' });
+    const { userId } = req.query;
+
+    let query = 'DELETE FROM notifications';
+    const params = [];
+
+    // Filter by user_id if provided
+    if (userId) {
+      query += ' WHERE user_id = $1';
+      params.push(userId);
+    }
+
+    await pool.query(query, params);
+    res.json({ message: 'Notifications cleared successfully' });
   } catch (error) {
     console.error('Error clearing notifications:', error);
     res.status(500).json({ error: 'Failed to clear notifications' });
