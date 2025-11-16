@@ -5,6 +5,25 @@ import {
 } from 'lucide-react';
 import { DoctorAvailabilityManager } from '../components/scheduling';
 
+// Helper function to get authentication headers
+const getAuthHeaders = () => {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user && user.id) {
+      headers['x-user-id'] = user.id;
+      headers['x-user-role'] = user.role || 'patient';
+    }
+  } catch (error) {
+    console.error('Error parsing user from localStorage:', error);
+  }
+
+  return headers;
+};
+
 const ProviderManagementView = () => {
   const [providers, setProviders] = useState([]);
   const [selectedProvider, setSelectedProvider] = useState(null);
@@ -29,7 +48,9 @@ const ProviderManagementView = () => {
   const fetchProviders = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/providers');
+      const response = await fetch('/api/providers', {
+        headers: getAuthHeaders()
+      });
       if (!response.ok) {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -54,7 +75,9 @@ const ProviderManagementView = () => {
   const fetchProviderDetails = async (providerId) => {
     try {
       // Fetch booking config
-      const configResponse = await fetch(`/api/scheduling/booking-config/${providerId}`);
+      const configResponse = await fetch(`/api/scheduling/booking-config/${providerId}`, {
+        headers: getAuthHeaders()
+      });
       if (configResponse.ok) {
         const contentType = configResponse.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -70,7 +93,9 @@ const ProviderManagementView = () => {
       }
 
       // Fetch appointment types
-      const typesResponse = await fetch(`/api/scheduling/appointment-types/${providerId}`);
+      const typesResponse = await fetch(`/api/scheduling/appointment-types/${providerId}`, {
+        headers: getAuthHeaders()
+      });
       if (typesResponse.ok) {
         const contentType = typesResponse.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -105,7 +130,7 @@ const ProviderManagementView = () => {
 
       const response = await fetch('/api/scheduling/availability/bulk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           providerId,
           schedules: clinicSchedule
@@ -124,7 +149,7 @@ const ProviderManagementView = () => {
       // Create default appointment type
       await fetch('/api/scheduling/appointment-types', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           providerId,
           name: 'Office Visit',
@@ -143,7 +168,7 @@ const ProviderManagementView = () => {
 
       await fetch('/api/scheduling/booking-config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           providerId,
           bookingUrlSlug: slug,
@@ -176,7 +201,7 @@ const ProviderManagementView = () => {
     try {
       const response = await fetch(`/api/scheduling/booking-config/${selectedProvider.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           allowPublicBooking: !bookingConfig.allow_public_booking
         })
