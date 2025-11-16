@@ -32,8 +32,9 @@ router.get('/', authenticate, async (req, res) => {
     let result;
 
     // Role-based access control
-    if (userRole === 'admin' || userRole === 'receptionist' || userRole === 'nurse') {
-      // Admin, receptionist, and nurses can see all providers
+    if (userRole === 'admin' || userRole === 'receptionist' || userRole === 'nurse' || userRole === 'patient') {
+      // Admin, receptionist, nurses, and patients can see all providers
+      // Patients need this to book appointments
       if (hasUserIdColumn) {
         result = await pool.query(`
           SELECT p.*, u.status, u.role
@@ -73,7 +74,7 @@ router.get('/', authenticate, async (req, res) => {
         }
       }
     } else {
-      // Other roles (patient, etc.) cannot access provider management
+      // Other roles cannot access provider management
       return res.status(403).json({
         error: 'Access denied',
         message: 'You do not have permission to access provider management'
