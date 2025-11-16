@@ -36,6 +36,7 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
     const [error, setError] = useState(null);
     const [editMode, setEditMode] = useState(false);
     const [editedSchedules, setEditedSchedules] = useState([]);
+    const [selectedDayForAdd, setSelectedDayForAdd] = useState(1); // Default to Monday
 
     useEffect(() => {
         if (providerId) {
@@ -66,7 +67,7 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
             ...editedSchedules,
             {
                 providerId,
-                dayOfWeek: 1,
+                dayOfWeek: selectedDayForAdd,
                 startTime: '09:00',
                 endTime: '17:00',
                 timezone: 'America/New_York',
@@ -191,6 +192,27 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                                                 <div key={index} className="flex items-center gap-3">
                                                     {editMode ? (
                                                         <>
+                                                            <select
+                                                                value={schedule.dayOfWeek || schedule.day_of_week}
+                                                                onChange={(e) => {
+                                                                    const globalIndex = editedSchedules.findIndex(
+                                                                        s => (s.dayOfWeek || s.day_of_week) === day.value &&
+                                                                        s === schedule
+                                                                    );
+                                                                    updateSchedule(globalIndex, 'dayOfWeek', Number(e.target.value));
+                                                                }}
+                                                                className={`border rounded px-2 py-2 text-sm ${
+                                                                    theme === 'dark'
+                                                                        ? 'bg-slate-700 border-slate-600 text-white'
+                                                                        : 'bg-white border-gray-300 text-gray-900'
+                                                                }`}
+                                                            >
+                                                                {DAYS_OF_WEEK.map(d => (
+                                                                    <option key={d.value} value={d.value}>
+                                                                        {d.label.substring(0, 3)}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
                                                             <Clock className={`w-5 h-5 ${
                                                                 theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
                                                             }`} />
@@ -282,17 +304,34 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                 }`}>
                     <div>
                         {editMode && (
-                            <button
-                                onClick={addNewSchedule}
-                                className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
-                                    theme === 'dark'
-                                        ? 'text-cyan-400 hover:bg-slate-700'
-                                        : 'text-blue-600 hover:bg-blue-50'
-                                }`}
-                            >
-                                <Plus className="w-5 h-5" />
-                                Add Time Slot
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <select
+                                    value={selectedDayForAdd}
+                                    onChange={(e) => setSelectedDayForAdd(Number(e.target.value))}
+                                    className={`border rounded px-3 py-2 ${
+                                        theme === 'dark'
+                                            ? 'bg-slate-700 border-slate-600 text-white'
+                                            : 'bg-white border-gray-300 text-gray-900'
+                                    }`}
+                                >
+                                    {DAYS_OF_WEEK.map(day => (
+                                        <option key={day.value} value={day.value}>
+                                            {day.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={addNewSchedule}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+                                        theme === 'dark'
+                                            ? 'text-cyan-400 hover:bg-slate-700'
+                                            : 'text-blue-600 hover:bg-blue-50'
+                                    }`}
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    Add Time Slot
+                                </button>
+                            </div>
                         )}
                     </div>
                     <div className="flex gap-3">
