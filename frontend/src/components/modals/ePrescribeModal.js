@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send } from 'lucide-react';
 
 const EPrescribeModal = ({
@@ -30,22 +30,42 @@ const EPrescribeModal = ({
     substitutionAllowed: true
   });
 
-  // Validate required props on mount
+  // Track if we've successfully validated - prevents closing modal on re-renders
+  const isValidatedRef = useRef(false);
+
+  // Validate required props - only close modal on first validation failure
   useEffect(() => {
-    console.log('[ePrescribe] Modal opened with:', { patient, provider, api });
+    console.log('[ePrescribe] Validating modal props:', {
+      hasPatient: !!patient,
+      patientId: patient?.id,
+      hasProvider: !!provider,
+      providerId: provider?.id,
+      isValidated: isValidatedRef.current
+    });
+
     if (!patient || !patient.id) {
-      console.error('[ePrescribe] Patient data is missing or invalid');
-      addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
-      onClose();
+      console.error('[ePrescribe] Patient data is missing or invalid:', patient);
+      if (!isValidatedRef.current) {
+        addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
+        onClose();
+      }
       return;
     }
     if (!provider || !provider.id) {
-      console.error('[ePrescribe] Provider data is missing or invalid');
-      addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
-      onClose();
+      console.error('[ePrescribe] Provider data is missing or invalid:', provider);
+      if (!isValidatedRef.current) {
+        addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
+        onClose();
+      }
       return;
     }
-  }, []);
+
+    // Mark as successfully validated
+    if (!isValidatedRef.current) {
+      isValidatedRef.current = true;
+      console.log('[ePrescribe] Modal opened successfully with valid data');
+    }
+  }, [patient, provider, addNotification, onClose]);
 
   // ESC key handler
   useEffect(() => {
@@ -59,6 +79,19 @@ const EPrescribeModal = ({
     window.addEventListener('keydown', handleEsc, true);
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
+
+  // Debug: Log step changes and render conditions
+  useEffect(() => {
+    console.log('[ePrescribe] ===== RENDER STATE =====');
+    console.log('[ePrescribe] Current step:', step);
+    console.log('[ePrescribe] selectedMedication:', selectedMedication ? {
+      id: selectedMedication.id,
+      drugName: selectedMedication.drugName || selectedMedication.drug_name,
+      ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code
+    } : 'NULL');
+    console.log('[ePrescribe] Step 2 will render:', step === 2 && !!selectedMedication);
+    console.log('[ePrescribe] ======================');
+  }, [step, selectedMedication]);
 
   // Search medications - wrapped in useCallback to prevent unnecessary re-renders
   const handleSearchMedications = useCallback(async () => {
@@ -144,53 +177,95 @@ const EPrescribeModal = ({
   }, [prescriptionDetails.frequency, prescriptionDetails.duration, prescriptionDetails.quantity]);
 
   // Select medication and check safety
-  const handleSelectMedication = (medication) => {
-    console.log('[ePrescribe] Selected medication:', medication);
-    console.log('[ePrescribe] Patient:', patient);
+  const handleSelectMedication = useCallback((medication) => {
+    console.log('[ePrescribe] ========================================');
+    console.log('[ePrescribe] handleSelectMedication called');
+    console.log('[ePrescribe] Medication received:', medication);
+    console.log('[ePrescribe] Current step:', step);
+    console.log('[ePrescribe] Current selectedMedication:', selectedMedication);
 
-    // Pre-fill dosage from medication
-    const dosage = medication.commonDosages && medication.commonDosages.length > 0
-      ? (medication.strength || medication.commonDosages[0])
-      : (medication.strength || '');
+    // Validate medication object
+    if (!medication) {
+      console.error('[ePrescribe] ERROR: Medication is null or undefined');
+      addNotification('alert', 'Invalid medication selected. Please try again.');
+      return;
+    }
 
-    // Update all states synchronously first
-    setPrescriptionDetails(prev => ({
-      ...prev,
-      dosage: dosage
-    }));
-    setSelectedMedication(medication);
+    if (!medication.id && !medication.ndcCode && !medication.ndc_code) {
+      console.error('[ePrescribe] ERROR: Medication missing required identifiers:', medication);
+      addNotification('alert', 'Invalid medication data. Please try a different search.');
+      return;
+    }
 
-    // Advance to step 2 immediately
-    console.log('[ePrescribe] Advancing to step 2');
-    setStep(2);
+    console.log('[ePrescribe] Medication validation passed');
 
-    // Run safety check in background (async, non-blocking)
-    // Use separate loading state to avoid flickering the entire modal
-    (async () => {
-      setSafetyCheckLoading(true);
-      try {
-        const ndcCode = medication.ndcCode || medication.ndc_code;
-        console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
+    try {
+      // Pre-fill dosage from medication
+      const dosage = medication.commonDosages && medication.commonDosages.length > 0
+        ? (medication.strength || medication.commonDosages[0])
+        : (medication.strength || '');
 
-        // Use api service for safety check
-        const safetyData = await api.checkPrescriptionSafety(patient.id, ndcCode);
-        console.log('[ePrescribe] Safety data:', safetyData);
-        setSafetyWarnings(safetyData.warnings || []);
-      } catch (error) {
-        console.error('[ePrescribe] Error in safety check:', error);
+      console.log('[ePrescribe] Calculated dosage:', dosage);
 
-        // Check if it's a "not available" error
-        if (error.message && error.message.includes('501')) {
-          console.log('[ePrescribe] Safety check not available - ePrescribing schema not installed');
+      // Update prescription details with dosage
+      console.log('[ePrescribe] Updating prescription details...');
+      setPrescriptionDetails(prev => ({
+        ...prev,
+        dosage: dosage
+      }));
+
+      // Set selected medication
+      console.log('[ePrescribe] Setting selected medication...');
+      setSelectedMedication(medication);
+
+      // Advance to step 2 immediately - THIS IS THE CRITICAL STEP
+      console.log('[ePrescribe] *** ADVANCING TO STEP 2 ***');
+      setStep(2);
+      console.log('[ePrescribe] Step advancement completed');
+
+      // Run safety check in background (async, non-blocking)
+      // This runs AFTER step advancement, so it won't block the UI
+      console.log('[ePrescribe] Starting background safety check...');
+      (async () => {
+        setSafetyCheckLoading(true);
+        try {
+          const ndcCode = medication.ndcCode || medication.ndc_code;
+          console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
+
+          // Use api service for safety check
+          const safetyData = await api.checkPrescriptionSafety(patient.id, ndcCode);
+          console.log('[ePrescribe] Safety data received:', safetyData);
+          setSafetyWarnings(safetyData.warnings || []);
+        } catch (error) {
+          console.error('[ePrescribe] Error in safety check:', error);
+
+          // Check if it's a "not available" error
+          if (error.message && error.message.includes('501')) {
+            console.log('[ePrescribe] Safety check not available - ePrescribing schema not installed');
+          }
+
+          // Don't show error notification for safety check failures - just log and continue
+          setSafetyWarnings([]);
+        } finally {
+          setSafetyCheckLoading(false);
+          console.log('[ePrescribe] Safety check completed');
         }
+      })(); // End of async IIFE
 
-        // Don't show error notification for safety check failures - just log and continue
-        setSafetyWarnings([]);
-      } finally {
-        setSafetyCheckLoading(false);
-      }
-    })(); // End of async IIFE
-  };
+      console.log('[ePrescribe] handleSelectMedication function completed successfully');
+      console.log('[ePrescribe] ========================================');
+    } catch (error) {
+      console.error('[ePrescribe] CRITICAL ERROR in handleSelectMedication:', error);
+      console.error('[ePrescribe] Error stack:', error.stack);
+
+      // Even if there's an error, try to advance to step 2
+      console.log('[ePrescribe] Attempting step advancement despite error...');
+      setSelectedMedication(medication);
+      setStep(2);
+
+      addNotification('alert', `Error processing medication: ${error.message}. Please check the details.`);
+    }
+  }, [patient, api, addNotification, step, selectedMedication]);
 
   // Load patient's preferred pharmacies
   const loadPharmacies = async () => {
