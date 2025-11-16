@@ -1370,6 +1370,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {rx.medicationName || rx.medication_name}
                   </h3>
+                  {(rx.providerFirstName || rx.providerLastName || rx.providerName) && (
+                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      {t.prescribedBy || 'Prescribed by'}: Dr. {rx.providerFirstName && rx.providerLastName ? `${rx.providerFirstName} ${rx.providerLastName}` : rx.providerName}
+                      {rx.providerSpecialization && ` (${rx.providerSpecialization})`}
+                    </p>
+                  )}
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {t.dosage}: {rx.dosage}
                   </p>
@@ -1660,6 +1666,25 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             </div>
 
             <div className="space-y-4">
+              {/* Provider Information */}
+              {(selectedPrescription.providerFirstName || selectedPrescription.providerLastName || selectedPrescription.providerName) && (
+                <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                  <p className={`text-sm font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.prescribedBy || 'Prescribed by'}
+                  </p>
+                  <p className={`text-base font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Dr. {selectedPrescription.providerFirstName && selectedPrescription.providerLastName
+                      ? `${selectedPrescription.providerFirstName} ${selectedPrescription.providerLastName}`
+                      : selectedPrescription.providerName}
+                  </p>
+                  {selectedPrescription.providerSpecialization && (
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {selectedPrescription.providerSpecialization}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.dosage}</p>
