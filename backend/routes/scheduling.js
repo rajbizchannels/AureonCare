@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
 
 // ============================================================================
 // DOCTOR AVAILABILITY ROUTES
@@ -8,8 +9,9 @@ const router = express.Router();
 /**
  * GET /api/scheduling/availability/:providerId
  * Get all availability schedules for a provider
+ * Optional authentication - public can view, authenticated users get enhanced access
  */
-router.get('/availability/:providerId', async (req, res) => {
+router.get('/availability/:providerId', optionalAuth, async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { providerId } = req.params;
@@ -32,8 +34,9 @@ router.get('/availability/:providerId', async (req, res) => {
  * POST /api/scheduling/availability
  * Create new availability schedule
  * Body: { providerId, dayOfWeek, startTime, endTime, timezone, isAvailable }
+ * Requires authentication - only admin/receptionist/doctor can create availability
  */
-router.post('/availability', async (req, res) => {
+router.post('/availability', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { providerId, dayOfWeek, startTime, endTime, timezone, isAvailable } = req.body;
@@ -65,8 +68,9 @@ router.post('/availability', async (req, res) => {
 /**
  * PUT /api/scheduling/availability/:id
  * Update availability schedule
+ * Requires authentication - only admin/receptionist/doctor can update availability
  */
-router.put('/availability/:id', async (req, res) => {
+router.put('/availability/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { id } = req.params;
@@ -99,8 +103,9 @@ router.put('/availability/:id', async (req, res) => {
 /**
  * DELETE /api/scheduling/availability/:id
  * Delete availability schedule
+ * Requires authentication - only admin/receptionist/doctor can delete availability
  */
-router.delete('/availability/:id', async (req, res) => {
+router.delete('/availability/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { id } = req.params;
@@ -125,8 +130,9 @@ router.delete('/availability/:id', async (req, res) => {
  * POST /api/scheduling/availability/bulk
  * Bulk create/update availability (useful for setting up weekly schedule)
  * Body: { providerId, schedules: [{ dayOfWeek, startTime, endTime, timezone }] }
+ * Requires authentication - only admin/receptionist/doctor can bulk update availability
  */
-router.post('/availability/bulk', async (req, res) => {
+router.post('/availability/bulk', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     const pool = req.app.locals.pool;
     const client = await pool.connect();
     try {
@@ -175,8 +181,9 @@ router.post('/availability/bulk', async (req, res) => {
 /**
  * GET /api/scheduling/time-off/:providerId
  * Get all time-off periods for a provider
+ * Optional authentication - public can view
  */
-router.get('/time-off/:providerId', async (req, res) => {
+router.get('/time-off/:providerId', optionalAuth, async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { providerId } = req.params;
@@ -199,8 +206,9 @@ router.get('/time-off/:providerId', async (req, res) => {
  * POST /api/scheduling/time-off
  * Create time-off period
  * Body: { providerId, startDate, endDate, reason, isRecurring, recurrenceRule }
+ * Requires authentication - only admin/receptionist/doctor can create time-off
  */
-router.post('/time-off', async (req, res) => {
+router.post('/time-off', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { providerId, startDate, endDate, reason, isRecurring, recurrenceRule } = req.body;
@@ -227,8 +235,9 @@ router.post('/time-off', async (req, res) => {
 /**
  * PUT /api/scheduling/time-off/:id
  * Update time-off period
+ * Requires authentication - only admin/receptionist/doctor can update time-off
  */
-router.put('/time-off/:id', async (req, res) => {
+router.put('/time-off/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { id } = req.params;
@@ -261,8 +270,9 @@ router.put('/time-off/:id', async (req, res) => {
 /**
  * DELETE /api/scheduling/time-off/:id
  * Delete time-off period
+ * Requires authentication - only admin/receptionist/doctor can delete time-off
  */
-router.delete('/time-off/:id', async (req, res) => {
+router.delete('/time-off/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { id } = req.params;
@@ -290,8 +300,9 @@ router.delete('/time-off/:id', async (req, res) => {
 /**
  * GET /api/scheduling/appointment-types/:providerId
  * Get all appointment types for a provider
+ * Optional authentication - public can view for booking purposes
  */
-router.get('/appointment-types/:providerId', async (req, res) => {
+router.get('/appointment-types/:providerId', optionalAuth, async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { providerId } = req.params;
@@ -314,8 +325,9 @@ router.get('/appointment-types/:providerId', async (req, res) => {
 /**
  * GET /api/scheduling/appointment-types
  * Get all appointment types (clinic-wide)
+ * Optional authentication - public can view for booking purposes
  */
-router.get('/appointment-types', async (req, res) => {
+router.get('/appointment-types', optionalAuth, async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const result = await pool.query(
@@ -334,8 +346,9 @@ router.get('/appointment-types', async (req, res) => {
 /**
  * POST /api/scheduling/appointment-types
  * Create appointment type
+ * Requires authentication - only admin/receptionist can create appointment types
  */
-router.post('/appointment-types', async (req, res) => {
+router.post('/appointment-types', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const {
@@ -385,8 +398,9 @@ router.post('/appointment-types', async (req, res) => {
 /**
  * PUT /api/scheduling/appointment-types/:id
  * Update appointment type
+ * Requires authentication - only admin/receptionist can update appointment types
  */
-router.put('/appointment-types/:id', async (req, res) => {
+router.put('/appointment-types/:id', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { id } = req.params;
@@ -447,8 +461,9 @@ router.put('/appointment-types/:id', async (req, res) => {
 /**
  * DELETE /api/scheduling/appointment-types/:id
  * Delete appointment type
+ * Requires authentication - only admin can delete appointment types
  */
-router.delete('/appointment-types/:id', async (req, res) => {
+router.delete('/appointment-types/:id', authenticate, authorize('admin'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { id } = req.params;
@@ -476,8 +491,9 @@ router.delete('/appointment-types/:id', async (req, res) => {
 /**
  * GET /api/scheduling/booking-config/:providerId
  * Get booking configuration for a provider
+ * Optional authentication - authenticated users get full config, public gets limited info
  */
-router.get('/booking-config/:providerId', async (req, res) => {
+router.get('/booking-config/:providerId', optionalAuth, async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { providerId } = req.params;
@@ -501,6 +517,7 @@ router.get('/booking-config/:providerId', async (req, res) => {
 /**
  * GET /api/scheduling/booking-config/slug/:slug
  * Get provider by booking URL slug (for public booking page)
+ * No authentication required - public endpoint
  */
 router.get('/booking-config/slug/:slug', async (req, res) => {
     try {
@@ -529,8 +546,9 @@ router.get('/booking-config/slug/:slug', async (req, res) => {
 /**
  * POST /api/scheduling/booking-config
  * Create booking configuration
+ * Requires authentication - only admin/receptionist can create booking config
  */
-router.post('/booking-config', async (req, res) => {
+router.post('/booking-config', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const {
@@ -597,8 +615,9 @@ router.post('/booking-config', async (req, res) => {
 /**
  * PUT /api/scheduling/booking-config/:providerId
  * Update booking configuration
+ * Requires authentication - only admin/receptionist can update booking config
  */
-router.put('/booking-config/:providerId', async (req, res) => {
+router.put('/booking-config/:providerId', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
     try {
         const pool = req.app.locals.pool;
         const { providerId } = req.params;
@@ -682,6 +701,7 @@ router.put('/booking-config/:providerId', async (req, res) => {
  * GET /api/scheduling/slots/:providerId
  * Generate available time slots for a provider
  * Query params: date (YYYY-MM-DD), appointmentTypeId, timezone
+ * No authentication required - public endpoint for booking
  */
 router.get('/slots/:providerId', async (req, res) => {
     try {
@@ -841,6 +861,7 @@ router.get('/slots/:providerId', async (req, res) => {
  * GET /api/scheduling/available-dates/:providerId
  * Get available dates for a provider within a date range
  * Query params: startDate, endDate, appointmentTypeId
+ * No authentication required - public endpoint for booking
  */
 router.get('/available-dates/:providerId', async (req, res) => {
     try {
