@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
@@ -38,6 +38,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     providerId: '',
     reason: ''
   });
+
+  // Appointment editing state
+  const [editingAppointment, setEditingAppointment] = useState(null);
+  const [editAppointmentData, setEditAppointmentData] = useState({
+    date: '',
+    time: '',
+    type: '',
+    providerId: '',
+    reason: ''
+  });
+  const [appointmentToDelete, setAppointmentToDelete] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -269,6 +280,78 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
+  const handleEditAppointment = (appointment) => {
+    // Parse the start_time to get date and time
+    const startTime = new Date(appointment.start_time);
+    const date = startTime.toISOString().split('T')[0];
+    const time = startTime.toTimeString().slice(0, 5);
+
+    setEditingAppointment(appointment);
+    setEditAppointmentData({
+      date: date,
+      time: time,
+      type: appointment.appointment_type || 'General Consultation',
+      providerId: appointment.provider_id || '',
+      reason: appointment.reason || ''
+    });
+  };
+
+  const handleUpdateAppointment = async (e) => {
+    e.preventDefault();
+    try {
+      // Combine date and time into start_time timestamp
+      const startTime = `${editAppointmentData.date.split('T')[0]}T${editAppointmentData.time}:00`;
+      const startDate = new Date(startTime);
+      const endDate = new Date(startDate.getTime() + 30 * 60000); // Default 30 minutes duration
+
+      const appointmentData = {
+        startTime: startDate.toISOString().slice(0, 19).replace('T', ' '),
+        endTime: endDate.toISOString().slice(0, 19).replace('T', ' '),
+        appointmentType: editAppointmentData.type,
+        providerId: editAppointmentData.providerId || null,
+        reason: editAppointmentData.reason
+      };
+
+      await api.updatePatientAppointment(user.id, editingAppointment.id, appointmentData);
+
+      addNotification('success', t.appointmentUpdatedSuccessfully || 'Appointment updated successfully');
+
+      // Show success confirmation
+      setConfirmationMessage('Your appointment has been updated successfully!');
+      setShowConfirmation(true);
+
+      // Reset editing state and refresh data
+      setEditingAppointment(null);
+      setEditAppointmentData({ date: '', time: '', type: '', providerId: '', reason: '' });
+      fetchPatientData();
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      addNotification('alert', t.failedToUpdateAppointment || 'Failed to update appointment');
+    }
+  };
+
+  const handleDeleteAppointment = async () => {
+    if (!appointmentToDelete) return;
+
+    try {
+      await api.deletePatientAppointment(user.id, appointmentToDelete.id);
+
+      addNotification('success', t.appointmentDeletedSuccessfully || 'Appointment deleted successfully');
+
+      // Show success confirmation
+      setConfirmationMessage('Your appointment has been deleted successfully!');
+      setShowConfirmation(true);
+
+      // Reset state and refresh data
+      setAppointmentToDelete(null);
+      fetchPatientData();
+    } catch (error) {
+      console.error('Error deleting appointment:', error);
+      addNotification('alert', t.failedToDeleteAppointment || 'Failed to delete appointment');
+      setAppointmentToDelete(null);
+    }
+  };
+
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
@@ -472,43 +555,159 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               key={apt.id}
               className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                    {t.provider || 'Provider'}
-                  </p>
-                  <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {apt.provider_first_name && apt.provider_last_name
-                      ? `Dr. ${apt.provider_first_name} ${apt.provider_last_name}`
-                      : apt.provider?.first_name && apt.provider?.last_name
-                      ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}`
-                      : apt.doctor || t.providerTBD}
-                  </h3>
-                  {apt.provider_specialization && (
-                    <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                      {apt.provider_specialization}
+              {editingAppointment?.id === apt.id ? (
+                // Edit mode
+                <form onSubmit={handleUpdateAppointment} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.dateRequired}
+                      </label>
+                      <input
+                        type="date"
+                        value={editAppointmentData.date}
+                        onChange={(e) => setEditAppointmentData({...editAppointmentData, date: e.target.value})}
+                        required
+                        min={new Date().toISOString().split('T')[0]}
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.timeRequired}
+                      </label>
+                      <input
+                        type="time"
+                        value={editAppointmentData.time}
+                        onChange={(e) => setEditAppointmentData({...editAppointmentData, time: e.target.value})}
+                        required
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.appointmentTypeRequired}
+                      </label>
+                      <select
+                        value={editAppointmentData.type}
+                        onChange={(e) => setEditAppointmentData({...editAppointmentData, type: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      >
+                        <option value="General Consultation">{t.generalConsultation}</option>
+                        <option value="Follow-up">{t.followUp}</option>
+                        <option value="Check-up">{t.checkUp}</option>
+                        <option value="Physical Exam">{t.physicalExam}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.selectProvider}
+                      </label>
+                      <select
+                        value={editAppointmentData.providerId}
+                        onChange={(e) => setEditAppointmentData({...editAppointmentData, providerId: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      >
+                        <option value="">{t.anyAvailableProvider}</option>
+                        {providers.map(provider => (
+                          <option key={provider.id} value={provider.id}>
+                            Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-span-2">
+                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.reasonForVisit}
+                      </label>
+                      <textarea
+                        value={editAppointmentData.reason}
+                        onChange={(e) => setEditAppointmentData({...editAppointmentData, reason: e.target.value})}
+                        placeholder={t.describeSymptoms}
+                        rows="3"
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-medium transition-colors"
+                    >
+                      <Check className="w-4 h-4" />
+                      {t.saveChanges}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingAppointment(null);
+                        setEditAppointmentData({ date: '', time: '', type: '', providerId: '', reason: '' });
+                      }}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
+                    >
+                      <X className="w-4 h-4" />
+                      {t.cancel}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                // View mode
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      {t.provider || 'Provider'}
                     </p>
-                  )}
-                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {formatDate(apt.start_time)} at {formatTime(apt.start_time)}
-                  </p>
-                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {t.type}: {apt.appointment_type || t.generalConsultation}
-                  </p>
-                  {apt.reason && (
+                    <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {apt.provider_first_name && apt.provider_last_name
+                        ? `Dr. ${apt.provider_first_name} ${apt.provider_last_name}`
+                        : apt.provider?.first_name && apt.provider?.last_name
+                        ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}`
+                        : apt.doctor || t.providerTBD}
+                    </h3>
+                    {apt.provider_specialization && (
+                      <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                        {apt.provider_specialization}
+                      </p>
+                    )}
                     <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      {t.reason}: {apt.reason}
+                      {formatDate(apt.start_time)} at {formatTime(apt.start_time)}
                     </p>
-                  )}
+                    <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.type}: {apt.appointment_type || t.generalConsultation}
+                    </p>
+                    {apt.reason && (
+                      <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.reason}: {apt.reason}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      apt.status === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
+                      apt.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {apt.status === 'scheduled' ? t.scheduled : apt.status}
+                    </span>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => handleEditAppointment(apt)}
+                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-cyan-400' : 'bg-gray-200 hover:bg-gray-300 text-cyan-600'}`}
+                        title="Edit appointment"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setAppointmentToDelete(apt)}
+                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-red-400' : 'bg-gray-200 hover:bg-gray-300 text-red-600'}`}
+                        title="Delete appointment"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  apt.status === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
-                  apt.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                  'bg-yellow-500/20 text-yellow-400'
-                }`}>
-                  {apt.status === 'scheduled' ? t.scheduled : apt.status}
-                </span>
-              </div>
+              )}
             </div>
           ))}
         </div>
@@ -1314,6 +1513,21 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   // Main Portal Layout
   return (
     <>
+      {/* Delete Appointment Confirmation Modal */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!appointmentToDelete}
+        onClose={() => setAppointmentToDelete(null)}
+        onConfirm={handleDeleteAppointment}
+        title={t.confirmDelete || "Confirm Delete"}
+        message={`Are you sure you want to delete this appointment${appointmentToDelete ? ` with ${appointmentToDelete.provider_first_name ? `Dr. ${appointmentToDelete.provider_first_name} ${appointmentToDelete.provider_last_name}` : 'the provider'} on ${formatDate(appointmentToDelete.start_time)}?` : '?'}`}
+        type="warning"
+        confirmText={t.delete || "Delete"}
+        cancelText={t.cancel || "Cancel"}
+        showCancel={true}
+      />
+
+      {/* Success Confirmation Modal */}
       <ConfirmationModal
         theme={theme}
         isOpen={showConfirmation}
