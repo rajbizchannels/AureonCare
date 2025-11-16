@@ -103,9 +103,14 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
         return false;
       }
 
+      // Normalize times (handle both 'HH:MM' and 'HH:MM:SS' formats)
+      const normalizeTime = (time) => time ? time.substring(0, 5) : '';
+      const providerStart = normalizeTime(providerDay.start_time);
+      const providerEnd = normalizeTime(providerDay.end_time);
+
       // Check if times match
-      if (providerDay.start_time !== clinicDay.startTime ||
-          providerDay.end_time !== clinicDay.endTime) {
+      if (providerStart !== clinicDay.startTime ||
+          providerEnd !== clinicDay.endTime) {
         return false;
       }
     }

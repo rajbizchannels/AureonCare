@@ -38,6 +38,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     providerId: '',
     reason: ''
   });
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Appointment editing state
   const [editingAppointment, setEditingAppointment] = useState(null);
@@ -108,6 +110,39 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       addNotification('alert', t.failedToLoadProviders);
     }
   };
+
+  const fetchAvailableSlots = async (providerId, date) => {
+    if (!providerId || !date) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    setLoadingSlots(true);
+    try {
+      const response = await fetch(`/api/scheduling/slots/${providerId}?date=${date}`);
+      if (response.ok) {
+        const slots = await response.json();
+        setAvailableSlots(slots);
+      } else {
+        console.error('Failed to fetch available slots');
+        setAvailableSlots([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available slots:', error);
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  // Fetch available slots when provider or date changes
+  useEffect(() => {
+    if (bookingData.providerId && bookingData.date) {
+      fetchAvailableSlots(bookingData.providerId, bookingData.date);
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [bookingData.providerId, bookingData.date]);
 
   const fetchPharmacyData = async () => {
     try {
@@ -1442,13 +1477,50 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
               {t.timeRequired}
             </label>
-            <input
-              type="time"
-              value={bookingData.time}
-              onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
-              required
-              className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-            />
+            {bookingData.providerId && bookingData.date ? (
+              loadingSlots ? (
+                <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                  Loading available times...
+                </div>
+              ) : availableSlots.length > 0 ? (
+                <select
+                  value={bookingData.time}
+                  onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
+                  required
+                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                >
+                  <option value="">Select a time slot</option>
+                  {availableSlots.map((slot, index) => {
+                    const startTime = new Date(slot.startTime);
+                    const timeString = startTime.toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    });
+                    const isoTime = startTime.toTimeString().substring(0, 5);
+                    return (
+                      <option key={index} value={isoTime}>
+                        {timeString}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                  No available time slots for this date
+                </div>
+              )
+            ) : (
+              <input
+                type="time"
+                value={bookingData.time}
+                onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
+                required
+                disabled={!bookingData.providerId}
+                placeholder="Select provider and date first"
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            )}
           </div>
           <div className="col-span-2">
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>

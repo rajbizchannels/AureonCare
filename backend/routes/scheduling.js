@@ -309,7 +309,7 @@ router.get('/appointment-types/:providerId', optionalAuth, async (req, res) => {
 
         const result = await pool.query(
             `SELECT * FROM appointment_type_config
-             WHERE (provider_id = $1 OR provider_id IS NULL)
+             WHERE provider_id = $1
              AND is_active = true
              ORDER BY name`,
             [providerId]
