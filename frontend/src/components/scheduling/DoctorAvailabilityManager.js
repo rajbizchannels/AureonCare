@@ -94,10 +94,10 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
         setError(null);
         try {
             const schedulesToSave = editedSchedules.map(s => ({
-                dayOfWeek: s.dayOfWeek || s.day_of_week,
-                startTime: s.startTime || s.start_time,
-                endTime: s.endTime || s.end_time,
-                timezone: s.timezone || 'America/New_York',
+                dayOfWeek: s.dayOfWeek ?? s.day_of_week,
+                startTime: s.startTime ?? s.start_time,
+                endTime: s.endTime ?? s.end_time,
+                timezone: s.timezone ?? 'America/New_York',
                 isAvailable: s.isAvailable !== false
             }));
 
