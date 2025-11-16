@@ -1416,25 +1416,35 @@ const ViewEditModal = ({
       </div>
 
       {/* ePrescribe Modal */}
-      {showEPrescribe && type === 'patient' && (
-        <EPrescribeModal
-          theme={theme}
-          patient={editData}
-          provider={user}
-          onClose={() => setShowEPrescribe(false)}
-          api={api}
-          addNotification={addNotification}
-          onSuccess={async (prescription) => {
-            // Refresh prescriptions list after successful prescription creation
-            try {
-              const patientPrescriptions = await api.getPatientActivePrescriptions(editData.id);
+      {showEPrescribe && type === 'patient' && (() => {
+        // Debug logging for ePrescribe modal props
+        console.log('[ViewEditModal] Opening ePrescribe with:');
+        console.log('[ViewEditModal] Patient (editData):', editData);
+        console.log('[ViewEditModal] Patient ID:', editData?.id);
+        console.log('[ViewEditModal] Provider (user):', user);
+        console.log('[ViewEditModal] Provider ID:', user?.id);
+        console.log('[ViewEditModal] Provider user_id:', user?.user_id);
+
+        return (
+          <EPrescribeModal
+            theme={theme}
+            patient={editData}
+            provider={user}
+            onClose={() => setShowEPrescribe(false)}
+            api={api}
+            addNotification={addNotification}
+            onSuccess={async (prescription) => {
+              // Refresh prescriptions list after successful prescription creation
+              try {
+                const patientPrescriptions = await api.getPatientActivePrescriptions(editData.id);
               setPrescriptions(patientPrescriptions);
             } catch (error) {
               console.error('Error refreshing prescriptions:', error);
             }
           }}
         />
-      )}
+        );
+      })()}
 
       {/* Prescription Detail/Edit Modal */}
       {selectedPrescription && (
