@@ -1254,26 +1254,51 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         {t.bookAppointmentTab}
       </h2>
       <form onSubmit={handleBookAppointment} className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          {/* Step 1: Date Selection */}
           <div>
-            <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              {t.dateRequired}
+            <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              1. {t.dateRequired}
             </label>
             <input
               type="date"
               value={bookingData.date}
-              onChange={(e) => setBookingData({...bookingData, date: e.target.value})}
+              onChange={(e) => setBookingData({...bookingData, date: e.target.value, providerId: '', time: ''})}
               required
               min={new Date().toISOString().split('T')[0]}
               className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
             />
           </div>
-          <div>
-            <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              {t.timeRequired}
-            </label>
-            {bookingData.providerId && bookingData.date ? (
-              loadingSlots ? (
+
+          {/* Step 2: Provider Selection (only after date is selected) */}
+          {bookingData.date && (
+            <div>
+              <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                2. {t.selectProvider}
+              </label>
+              <select
+                value={bookingData.providerId}
+                onChange={(e) => setBookingData({...bookingData, providerId: e.target.value, time: ''})}
+                required
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              >
+                <option value="">Select a provider</option>
+                {providers.map(provider => (
+                  <option key={provider.id} value={provider.id}>
+                    Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Step 3: Time Slot Selection (only after provider is selected) */}
+          {bookingData.providerId && bookingData.date && (
+            <div>
+              <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                3. {t.timeRequired}
+              </label>
+              {loadingSlots ? (
                 <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
                   Loading available times...
                 </div>
@@ -1301,23 +1326,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   })}
                 </select>
               ) : (
-                <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
-                  No available time slots for this date
+                <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                  No available time slots for this date. Please select a different date or provider.
                 </div>
-              )
-            ) : (
-              <input
-                type="time"
-                value={bookingData.time}
-                onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
-                required
-                disabled={!bookingData.providerId}
-                placeholder="Select provider and date first"
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              />
-            )}
-          </div>
-          <div className="col-span-2">
+              )}
+            </div>
+          )}
+
+          {/* Appointment Type and Reason */}
+          <div>
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
               {t.appointmentTypeRequired}
             </label>
@@ -1332,24 +1349,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               <option value="Physical Exam">{t.physicalExam}</option>
             </select>
           </div>
-          <div className="col-span-2">
-            <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              {t.selectProvider}
-            </label>
-            <select
-              value={bookingData.providerId}
-              onChange={(e) => setBookingData({...bookingData, providerId: e.target.value})}
-              className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-            >
-              <option value="">{t.anyAvailableProvider}</option>
-              {providers.map(provider => (
-                <option key={provider.id} value={provider.id}>
-                  Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="col-span-2">
+          <div>
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
               {t.reasonForVisit}
             </label>

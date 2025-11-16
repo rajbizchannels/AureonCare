@@ -241,7 +241,7 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
       // Create booking configuration only if it doesn't exist
       if (!bookingConfig) {
         const provider = providers.find(p => p.id === providerId);
-        const slug = `${provider.firstName}-${provider.lastName}-${providerId}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
+        const slug = `dr${providerId}`.toLowerCase();
 
         const bookingConfigResponse = await fetch('/api/scheduling/booking-config', {
           method: 'POST',
