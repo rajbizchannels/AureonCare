@@ -7,8 +7,16 @@ const AppContext = createContext();
 
 // AppProvider component
 const AppProvider = ({ children }) => {
-  // Authentication and UI state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Authentication and UI state - persist authentication status
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Initialize from localStorage if available
+    try {
+      const stored = localStorage.getItem('isAuthenticated');
+      return stored === 'true';
+    } catch (error) {
+      return false;
+    }
+  });
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [currentModule, setCurrentModule] = useState('dashboard');
@@ -37,8 +45,40 @@ const AppProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
 
-  // User state - dynamically loaded from database
-  const [user, setUser] = useState(null);
+  // User state - dynamically loaded from database and persisted to localStorage
+  const [user, setUser] = useState(() => {
+    // Initialize user from localStorage if available
+    try {
+      const storedUser = localStorage.getItem('user');
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (error) {
+      console.error('Error loading user from localStorage:', error);
+      return null;
+    }
+  });
+
+  // Persist authentication status to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('isAuthenticated', String(isAuthenticated));
+    } catch (error) {
+      console.error('Error saving authentication status:', error);
+    }
+  }, [isAuthenticated]);
+
+  // Persist user data to localStorage whenever it changes
+  useEffect(() => {
+    if (user) {
+      try {
+        localStorage.setItem('user', JSON.stringify(user));
+      } catch (error) {
+        console.error('Error saving user to localStorage:', error);
+      }
+    } else {
+      // Clear localStorage when user logs out
+      localStorage.removeItem('user');
+    }
+  }, [user]);
 
   // Sync language and theme when user changes (e.g., after login or profile update)
   useEffect(() => {
