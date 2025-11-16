@@ -32,6 +32,14 @@ const EPrescribeModal = ({
 
   // Track if we've successfully validated - prevents closing modal on re-renders
   const isValidatedRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  const addNotificationRef = useRef(addNotification);
+
+  // Keep refs up to date
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    addNotificationRef.current = addNotification;
+  });
 
   // Validate required props - only run once on mount to prevent flickering
   useEffect(() => {
@@ -49,22 +57,21 @@ const EPrescribeModal = ({
 
     if (!patient || !patient.id) {
       console.error('[ePrescribe] Patient data is missing or invalid:', patient);
-      addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
-      onClose();
+      addNotificationRef.current('alert', 'Cannot open ePrescribe: Patient data is missing');
+      onCloseRef.current();
       return;
     }
     if (!provider || !provider.id) {
       console.error('[ePrescribe] Provider data is missing or invalid:', provider);
-      addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
-      onClose();
+      addNotificationRef.current('alert', 'Cannot open ePrescribe: Provider data is missing');
+      onCloseRef.current();
       return;
     }
 
     // Mark as successfully validated
     isValidatedRef.current = true;
     console.log('[ePrescribe] Modal opened successfully with valid data');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run once on mount
+  }, [patient, provider]); // Only re-validate if patient or provider change
 
   // ESC key handler
   useEffect(() => {
@@ -175,7 +182,17 @@ const EPrescribeModal = ({
     }
   }, [prescriptionDetails.frequency, prescriptionDetails.duration, prescriptionDetails.quantity]);
 
-  // Select medication and check safety
+  // Refs for stable callbacks
+  const patientRef = useRef(patient);
+  const apiRef = useRef(api);
+
+  // Keep refs up to date
+  useEffect(() => {
+    patientRef.current = patient;
+    apiRef.current = api;
+  }, [patient, api]);
+
+  // Select medication and check safety - using refs for stability
   const handleSelectMedication = useCallback((medication) => {
     console.log('[ePrescribe] ========================================');
     console.log('[ePrescribe] handleSelectMedication called');
@@ -184,13 +201,13 @@ const EPrescribeModal = ({
     // Validate medication object
     if (!medication) {
       console.error('[ePrescribe] ERROR: Medication is null or undefined');
-      addNotification('alert', 'Invalid medication selected. Please try again.');
+      addNotificationRef.current('alert', 'Invalid medication selected. Please try again.');
       return;
     }
 
     if (!medication.id && !medication.ndcCode && !medication.ndc_code) {
       console.error('[ePrescribe] ERROR: Medication missing required identifiers:', medication);
-      addNotification('alert', 'Invalid medication data. Please try a different search.');
+      addNotificationRef.current('alert', 'Invalid medication data. Please try a different search.');
       return;
     }
 
@@ -204,21 +221,23 @@ const EPrescribeModal = ({
 
       console.log('[ePrescribe] Calculated dosage:', dosage);
 
+      // CRITICAL FIX: Update all state synchronously in event handler
+      // React 18 automatically batches these updates into a single render
+      console.log('[ePrescribe] *** UPDATING STATE FOR STEP 2 ***');
+
+      // Set selected medication FIRST - this is critical for render condition
+      setSelectedMedication(medication);
+
       // Update prescription details with dosage
-      console.log('[ePrescribe] Updating prescription details...');
       setPrescriptionDetails(prev => ({
         ...prev,
         dosage: dosage
       }));
 
-      // Set selected medication
-      console.log('[ePrescribe] Setting selected medication...');
-      setSelectedMedication(medication);
-
-      // Advance to step 2 immediately - THIS IS THE CRITICAL STEP
-      console.log('[ePrescribe] *** ADVANCING TO STEP 2 ***');
+      // Advance to step 2 LAST - ensures selectedMedication is set when step changes
       setStep(2);
-      console.log('[ePrescribe] Step advancement completed');
+
+      console.log('[ePrescribe] State updates completed - Step 2 should render');
 
       // Run safety check in background (async, non-blocking)
       // This runs AFTER step advancement, so it won't block the UI
@@ -227,10 +246,10 @@ const EPrescribeModal = ({
         setSafetyCheckLoading(true);
         try {
           const ndcCode = medication.ndcCode || medication.ndc_code;
-          console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
+          console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patientRef.current.id);
 
           // Use api service for safety check
-          const safetyData = await api.checkPrescriptionSafety(patient.id, ndcCode);
+          const safetyData = await apiRef.current.checkPrescriptionSafety(patientRef.current.id, ndcCode);
           console.log('[ePrescribe] Safety data received:', safetyData);
           setSafetyWarnings(safetyData.warnings || []);
         } catch (error) {
@@ -260,9 +279,9 @@ const EPrescribeModal = ({
       setSelectedMedication(medication);
       setStep(2);
 
-      addNotification('alert', `Error processing medication: ${error.message}. Please check the details.`);
+      addNotificationRef.current('alert', `Error processing medication: ${error.message}. Please check the details.`);
     }
-  }, [patient, api, addNotification]);
+  }, []); // Empty deps - use refs for all external dependencies
 
   // Load patient's preferred pharmacies
   const loadPharmacies = async () => {
