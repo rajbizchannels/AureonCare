@@ -544,6 +544,13 @@ const api = {
     if (!response.ok) throw new Error('Failed to update appointment');
     return response.json();
   },
+  deletePatientAppointment: async (patientId, appointmentId) => {
+    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete appointment');
+    return response.json();
+  },
   getPatientProfile: async (patientId) => {
     const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`);
     if (!response.ok) throw new Error('Failed to fetch patient profile');

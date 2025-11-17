@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS claims (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS notifications (
   id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   type VARCHAR(50),
   message TEXT NOT NULL,
   read BOOLEAN DEFAULT FALSE,
@@ -280,6 +281,7 @@ CREATE INDEX IF NOT EXISTS idx_appointments_provider ON appointments(provider_id
 CREATE INDEX IF NOT EXISTS idx_claims_patient ON claims(patient_id);
 CREATE INDEX IF NOT EXISTS idx_claims_claim_number ON claims(claim_number);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_patient ON payments(patient_id);
 CREATE INDEX IF NOT EXISTS idx_payments_claim ON payments(claim_id);
 CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_id);
@@ -692,6 +694,7 @@ COMMENT ON TABLE public.medications
 CREATE TABLE IF NOT EXISTS public.notifications
 (
     id serial NOT NULL,
+    user_id uuid,
     type character varying(50) COLLATE pg_catalog."default",
     message text COLLATE pg_catalog."default" NOT NULL,
     read boolean DEFAULT false,
@@ -1911,6 +1914,13 @@ ALTER TABLE IF EXISTS public.social_auth
     ON DELETE NO ACTION;
 CREATE INDEX IF NOT EXISTS idx_social_auth_patient
     ON public.social_auth(patient_id);
+
+
+ALTER TABLE IF EXISTS public.notifications
+    ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id)
+    REFERENCES public.users (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
 
 
 ALTER TABLE IF EXISTS public.telehealth_sessions

@@ -10,6 +10,15 @@ const EPrescribeModal = ({
   onSuccess,
   addNotification
 }) => {
+  // Normalize provider ID early - accept both 'id' and 'user_id'
+  const normalizedProvider = React.useMemo(() => {
+    if (!provider) return null;
+    return {
+      ...provider,
+      id: provider.id || provider.user_id
+    };
+  }, [provider]);
+
   const [step, setStep] = useState(1); // 1: Search Med, 2: Details, 3: Pharmacy, 4: Review
   const [searchQuery, setSearchQuery] = useState('');
   const [medications, setMedications] = useState([]);
@@ -32,39 +41,55 @@ const EPrescribeModal = ({
 
   // Track if we've successfully validated - prevents closing modal on re-renders
   const isValidatedRef = useRef(false);
+  // Track if we've shown error notification to prevent spam
+  const hasShownErrorRef = useRef(false);
 
-  // Validate required props - only run once on mount to prevent flickering
+  // Validate required props - only close modal on first validation failure
   useEffect(() => {
-    // Only validate on first mount
-    if (isValidatedRef.current) {
-      return;
-    }
-
     console.log('[ePrescribe] Validating modal props:', {
       hasPatient: !!patient,
       patientId: patient?.id,
-      hasProvider: !!provider,
-      providerId: provider?.id
+      hasProvider: !!normalizedProvider,
+      providerId: normalizedProvider?.id,
+      providerOriginalId: provider?.id,
+      providerUserId: provider?.user_id,
+      isValidated: isValidatedRef.current
     });
+
+    // Skip validation if already validated successfully
+    if (isValidatedRef.current) {
+      console.log('[ePrescribe] Already validated, skipping validation');
+      return;
+    }
 
     if (!patient || !patient.id) {
       console.error('[ePrescribe] Patient data is missing or invalid:', patient);
-      addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
-      onClose();
+      if (!hasShownErrorRef.current) {
+        hasShownErrorRef.current = true;
+        addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
+        onClose();
+      }
       return;
     }
-    if (!provider || !provider.id) {
-      console.error('[ePrescribe] Provider data is missing or invalid:', provider);
-      addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
-      onClose();
+    if (!normalizedProvider || !normalizedProvider.id) {
+      console.error('[ePrescribe] Provider data is missing or invalid:', {
+        provider,
+        normalizedProvider,
+        hasId: !!provider?.id,
+        hasUserId: !!provider?.user_id
+      });
+      if (!hasShownErrorRef.current) {
+        hasShownErrorRef.current = true;
+        addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
+        onClose();
+      }
       return;
     }
 
     // Mark as successfully validated
     isValidatedRef.current = true;
     console.log('[ePrescribe] Modal opened successfully with valid data');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run once on mount
+  }, [patient, normalizedProvider, provider, addNotification, onClose]);
 
   // ESC key handler
   useEffect(() => {
@@ -94,26 +119,77 @@ const EPrescribeModal = ({
 
   // Search medications - wrapped in useCallback to prevent unnecessary re-renders
   const handleSearchMedications = useCallback(async () => {
-    if (!searchQuery) return;
+    if (!searchQuery) {
+      console.log('[ePrescribe] Search query is empty, skipping search');
+      return;
+    }
 
-    console.log('[ePrescribe] Searching for medications:', searchQuery);
+    if (searchQuery.length < 2) {
+      console.log('[ePrescribe] Search query too short (min 2 chars):', searchQuery);
+      return;
+    }
+
+    console.log('[ePrescribe] ========================================');
+    console.log('[ePrescribe] Starting medication search');
+    console.log('[ePrescribe] Search query:', searchQuery);
+    console.log('[ePrescribe] API object:', api ? 'Available' : 'MISSING');
+
     setLoading(true);
+    setMedications([]); // Clear previous results
+
     try {
+      console.log('[ePrescribe] Calling api.searchMedications...');
+      const startTime = Date.now();
+
       // Use the api service instead of direct fetch
-      const data = await api.searchMedications(searchQuery, null, null, 20);
+      const data = await api.searchMedications(searchQuery, null, null, 50);
 
-      console.log('[ePrescribe] Medications found:', data);
-      setMedications(data);
+      const elapsed = Date.now() - startTime;
+      console.log('[ePrescribe] API response received in', elapsed, 'ms');
+      console.log('[ePrescribe] Response type:', typeof data);
+      console.log('[ePrescribe] Response is array:', Array.isArray(data));
+      console.log('[ePrescribe] Number of medications found:', data?.length || 0);
 
-      if (data && data.length > 0) {
-        console.log('[ePrescribe] First medication structure:', data[0]);
+      if (data && Array.isArray(data)) {
+        setMedications(data);
+
+        if (data.length > 0) {
+          console.log('[ePrescribe] First medication:', data[0]);
+          console.log('[ePrescribe] Sample medication structure:', {
+            id: data[0].id,
+            drugName: data[0].drugName,
+            genericName: data[0].genericName,
+            ndcCode: data[0].ndcCode,
+            strength: data[0].strength
+          });
+        } else {
+          console.log('[ePrescribe] No medications found matching:', searchQuery);
+        }
+      } else {
+        console.error('[ePrescribe] Unexpected response format:', data);
+        setMedications([]);
+        addNotification('alert', 'Received invalid data format from server');
       }
-    } catch (error) {
-      console.error('[ePrescribe] Error searching medications:', error);
 
-      // Check if it's a "not available" error
+      console.log('[ePrescribe] Search completed successfully');
+      console.log('[ePrescribe] ========================================');
+    } catch (error) {
+      console.error('[ePrescribe] ========================================');
+      console.error('[ePrescribe] ERROR in medication search');
+      console.error('[ePrescribe] Error type:', error.constructor.name);
+      console.error('[ePrescribe] Error message:', error.message);
+      console.error('[ePrescribe] Error stack:', error.stack);
+      console.error('[ePrescribe] ========================================');
+
+      // Check for specific error types
       if (error.message && error.message.includes('501')) {
         addNotification('alert', 'ePrescribing functionality requires migration 015 to be run. Please contact your system administrator.');
+      } else if (error.message && error.message.includes('Failed to fetch')) {
+        addNotification('alert', 'Cannot connect to server. Please check if the backend is running.');
+      } else if (error.message && error.message.includes('404')) {
+        addNotification('alert', 'Medication search endpoint not found. Migration 015 may not be installed.');
+      } else if (error.message && error.message.includes('500')) {
+        addNotification('alert', 'Server error while searching medications. Check console for details.');
       } else {
         addNotification('alert', `Failed to search medications: ${error.message}`);
       }
@@ -180,6 +256,8 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] ========================================');
     console.log('[ePrescribe] handleSelectMedication called');
     console.log('[ePrescribe] Medication received:', medication);
+    console.log('[ePrescribe] Current step:', step);
+    console.log('[ePrescribe] Current selectedMedication:', selectedMedication);
 
     // Validate medication object
     if (!medication) {
@@ -217,8 +295,9 @@ const EPrescribeModal = ({
 
       // Advance to step 2 immediately - THIS IS THE CRITICAL STEP
       console.log('[ePrescribe] *** ADVANCING TO STEP 2 ***');
+      console.log('[ePrescribe] Setting step to 2...');
       setStep(2);
-      console.log('[ePrescribe] Step advancement completed');
+      console.log('[ePrescribe] Step state update called - React will batch this with other state updates');
 
       // Run safety check in background (async, non-blocking)
       // This runs AFTER step advancement, so it won't block the UI
@@ -250,6 +329,7 @@ const EPrescribeModal = ({
       })(); // End of async IIFE
 
       console.log('[ePrescribe] handleSelectMedication function completed successfully');
+      console.log('[ePrescribe] Next render should show step 2');
       console.log('[ePrescribe] ========================================');
     } catch (error) {
       console.error('[ePrescribe] CRITICAL ERROR in handleSelectMedication:', error);
@@ -262,7 +342,7 @@ const EPrescribeModal = ({
 
       addNotification('alert', `Error processing medication: ${error.message}. Please check the details.`);
     }
-  }, [patient, api, addNotification]);
+  }, [patient, api, addNotification, step, selectedMedication]);
 
   // Load patient's preferred pharmacies
   const loadPharmacies = async () => {
@@ -327,6 +407,7 @@ const EPrescribeModal = ({
   // Submit prescription
   const handleSubmitPrescription = async () => {
     console.log('[ePrescribe] Submitting prescription...');
+    console.log('[ePrescribe] Using provider:', normalizedProvider);
 
     if (!selectedMedication) {
       addNotification('alert', 'Please select a medication first');
@@ -338,7 +419,7 @@ const EPrescribeModal = ({
       // Create prescription using api service
       const prescriptionPayload = {
         patientId: patient.id,
-        providerId: provider.id,
+        providerId: normalizedProvider.id,
         medicationName: selectedMedication.drugName || selectedMedication.drug_name,
         ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code,
         dosage: prescriptionDetails.dosage,
@@ -355,7 +436,7 @@ const EPrescribeModal = ({
       // Add pharmacy info if selected
       if (selectedPharmacy) {
         prescriptionPayload.pharmacyId = selectedPharmacy.id;
-        prescriptionPayload.prescriberDeaNumber = provider?.deaNumber || provider?.dea_number || '';
+        prescriptionPayload.prescriberDeaNumber = normalizedProvider?.deaNumber || normalizedProvider?.dea_number || '';
       }
 
       console.log('[ePrescribe] Prescription payload:', prescriptionPayload);
@@ -444,14 +525,25 @@ const EPrescribeModal = ({
               </div>
 
               {!loading && searchQuery && searchQuery.length >= 2 && medications.length === 0 && (
-                <div className={`text-center py-8 rounded-lg border-2 border-dashed ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                <div className={`text-center py-8 rounded-lg border-2 border-dashed ${theme === 'dark' ? 'border-slate-700 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
                   <Pill className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
-                  <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  <p className={`font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     No medications found matching "{searchQuery}"
                   </p>
-                  <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Try a different search term or NDC code
                   </p>
+                  <div className={`mt-4 p-3 rounded text-left ${theme === 'dark' ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-gray-200'}`}>
+                    <p className={`text-xs font-mono ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      <strong className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Troubleshooting:</strong>
+                    </p>
+                    <ul className={`text-xs mt-2 space-y-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      <li>• Check browser console (F12) for error details</li>
+                      <li>• Ensure migration 015 has been run on the database</li>
+                      <li>• Verify backend server is running on port 3001</li>
+                      <li>• Try common medications: lisinopril, metformin, atorvastatin</li>
+                    </ul>
+                  </div>
                 </div>
               )}
 

@@ -482,6 +482,9 @@ router.get('/patient/:patientId/active', async (req, res) => {
     if (hasEPrescribing) {
       query = `
         SELECT p.*,
+               prov.first_name as provider_first_name,
+               prov.last_name as provider_last_name,
+               prov.specialization as provider_specialization,
                prov.first_name || ' ' || prov.last_name as provider_name,
                ph.pharmacy_name,
                m.generic_name,
@@ -499,6 +502,9 @@ router.get('/patient/:patientId/active', async (req, res) => {
     } else {
       query = `
         SELECT p.*,
+               prov.first_name as provider_first_name,
+               prov.last_name as provider_last_name,
+               prov.specialization as provider_specialization,
                prov.first_name || ' ' || prov.last_name as provider_name
         FROM prescriptions p
         LEFT JOIN providers prov ON p.provider_id = prov.id
