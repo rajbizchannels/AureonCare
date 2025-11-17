@@ -43,6 +43,14 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
   // Appointment editing state
   const [editingAppointment, setEditingAppointment] = useState(null);
+  const [editData, setEditData] = useState({
+    date: '',
+    time: '',
+    providerId: '',
+    reason: ''
+  });
+  const [availableSlotsForEdit, setAvailableSlotsForEdit] = useState([]);
+  const [loadingSlotsForEdit, setLoadingSlotsForEdit] = useState(false);
   const [editAppointmentData, setEditAppointmentData] = useState({
     date: '',
     time: '',
@@ -143,6 +151,40 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setAvailableSlots([]);
     }
   }, [bookingData.providerId, bookingData.date]);
+
+  // Fetch available slots for editing appointment
+  const fetchAvailableSlotsForEdit = async (providerId, date) => {
+    if (!providerId || !date) {
+      setAvailableSlotsForEdit([]);
+      return;
+    }
+
+    setLoadingSlotsForEdit(true);
+    try {
+      const response = await fetch(`/api/scheduling/slots/${providerId}?date=${date}`);
+      if (response.ok) {
+        const slots = await response.json();
+        setAvailableSlotsForEdit(slots);
+      } else {
+        console.error('Failed to fetch available slots for edit');
+        setAvailableSlotsForEdit([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available slots for edit:', error);
+      setAvailableSlotsForEdit([]);
+    } finally {
+      setLoadingSlotsForEdit(false);
+    }
+  };
+
+  // Fetch slots when editing appointment and provider/date changes
+  useEffect(() => {
+    if (editingAppointment && editData.providerId && editData.date) {
+      fetchAvailableSlotsForEdit(editData.providerId, editData.date);
+    } else {
+      setAvailableSlotsForEdit([]);
+    }
+  }, [editingAppointment, editData.providerId, editData.date]);
 
   const fetchPharmacyData = async () => {
     try {
@@ -316,6 +358,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   };
 
   const handleEditAppointment = (appointment) => {
+    const startDate = new Date(appointment.start_time);
+    const dateStr = startDate.toISOString().split('T')[0];
+    const timeStr = startDate.toTimeString().substring(0, 5);
+
+    setEditingAppointment(appointment);
+    setEditData({
+      date: dateStr,
+      time: timeStr,
+      providerId: appointment.provider_id?.toString() || '',
     // Parse the start_time to get date and time
     const startTime = new Date(appointment.start_time);
     const date = startTime.toISOString().split('T')[0];
@@ -331,6 +382,50 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     });
   };
 
+  const handleCancelEdit = () => {
+    setEditingAppointment(null);
+    setEditData({
+      date: '',
+      time: '',
+      providerId: '',
+      reason: ''
+    });
+    setAvailableSlotsForEdit([]);
+  };
+
+  const handleRescheduleAppointment = async (e) => {
+    e.preventDefault();
+    try {
+      const startTime = `${editData.date.split('T')[0]}T${editData.time}:00`;
+
+      const response = await fetch(`/api/scheduling/reschedule/${editingAppointment.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          newStartTime: startTime,
+          reason: editData.reason || 'Patient requested reschedule'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reschedule appointment');
+      }
+
+      addNotification('success', 'Appointment rescheduled successfully!');
+      setConfirmationMessage('Your appointment has been rescheduled successfully!');
+      setShowConfirmation(true);
+
+      // Reset and refresh
+      setTimeout(() => {
+        handleCancelEdit();
+        fetchPatientData();
+      }, 2000);
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error);
+      addNotification('alert', error.message || 'Failed to reschedule appointment');
   const handleUpdateAppointment = async (e) => {
     e.preventDefault();
     try {
@@ -590,6 +685,21 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               key={apt.id}
               className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}
             >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    {t.provider || 'Provider'}
+                  </p>
+                  <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {apt.provider_first_name && apt.provider_last_name
+                      ? `Dr. ${apt.provider_first_name} ${apt.provider_last_name}`
+                      : apt.provider?.first_name && apt.provider?.last_name
+                      ? `Dr. ${apt.provider.first_name} ${apt.provider.last_name}`
+                      : apt.doctor || t.providerTBD}
+                  </h3>
+                  {apt.provider_specialization && (
+                    <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      {apt.provider_specialization}
               {editingAppointment?.id === apt.id ? (
                 // Edit mode
                 <form onSubmit={handleUpdateAppointment} className="space-y-4">
@@ -742,6 +852,29 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     </div>
                   </div>
                 </div>
+                <div className="flex flex-col gap-2 items-end">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    apt.status === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
+                    apt.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                    'bg-yellow-500/20 text-yellow-400'
+                  }`}>
+                    {apt.status === 'scheduled' ? t.scheduled : apt.status}
+                  </span>
+                  {(apt.status === 'scheduled' || apt.status === 'Scheduled') && new Date(apt.start_time) > new Date() && (
+                    <button
+                      onClick={() => handleEditAppointment(apt)}
+                      className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        theme === 'dark'
+                          ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      }`}
+                    >
+                      <Edit className="w-3 h-3" />
+                      Reschedule
+                    </button>
+                  )}
+                </div>
+              </div>
               )}
             </div>
           ))}
@@ -1800,6 +1933,163 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Appointment Modal */}
+      {editingAppointment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
+            theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+          }`}>
+            <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <div className="flex justify-between items-center">
+                <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Reschedule Appointment
+                </h2>
+                <button
+                  onClick={handleCancelEdit}
+                  className={`p-2 rounded-lg transition-colors ${
+                    theme === 'dark'
+                      ? 'hover:bg-slate-700 text-slate-400'
+                      : 'hover:bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleRescheduleAppointment} className="p-6">
+              <div className="space-y-4">
+                {/* Current appointment details */}
+                <div className={`p-4 rounded-lg ${
+                  theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'
+                }`}>
+                  <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Current Appointment
+                  </p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {formatDate(editingAppointment.start_time)} at {formatTime(editingAppointment.start_time)}
+                  </p>
+                </div>
+
+                {/* Step 1: Date Selection */}
+                <div>
+                  <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    1. Select New Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editData.date}
+                    onChange={(e) => setEditData({...editData, date: e.target.value, providerId: '', time: ''})}
+                    required
+                    min={new Date().toISOString().split('T')[0]}
+                    className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                  />
+                </div>
+
+                {/* Step 2: Provider Selection */}
+                {editData.date && (
+                  <div>
+                    <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      2. Select Provider
+                    </label>
+                    <select
+                      value={editData.providerId}
+                      onChange={(e) => setEditData({...editData, providerId: e.target.value, time: ''})}
+                      required
+                      className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    >
+                      <option value="">Select a provider</option>
+                      {providers.map(provider => (
+                        <option key={provider.id} value={provider.id}>
+                          Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Step 3: Time Slot Selection */}
+                {editData.providerId && editData.date && (
+                  <div>
+                    <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      3. Select New Time
+                    </label>
+                    {loadingSlotsForEdit ? (
+                      <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                        Loading available times...
+                      </div>
+                    ) : availableSlotsForEdit.length > 0 ? (
+                      <select
+                        value={editData.time}
+                        onChange={(e) => setEditData({...editData, time: e.target.value})}
+                        required
+                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      >
+                        <option value="">Select a time slot</option>
+                        {availableSlotsForEdit.map((slot, index) => {
+                          const startTime = new Date(slot.startTime);
+                          const timeString = startTime.toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          });
+                          const isoTime = startTime.toTimeString().substring(0, 5);
+                          return (
+                            <option key={index} value={isoTime}>
+                              {timeString}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    ) : (
+                      <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                        No available time slots for this date. Please select a different date or provider.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Reason */}
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Reason for Rescheduling (Optional)
+                  </label>
+                  <textarea
+                    value={editData.reason}
+                    onChange={(e) => setEditData({...editData, reason: e.target.value})}
+                    placeholder="Enter reason for rescheduling..."
+                    rows="3"
+                    className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="submit"
+                  disabled={!editData.date || !editData.providerId || !editData.time}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
+                >
+                  <Check className="w-5 h-5" />
+                  Confirm Reschedule
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                  }`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
