@@ -52,6 +52,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     providerId: '',
     reason: ''
   });
+  const [editAvailableSlots, setEditAvailableSlots] = useState([]);
+  const [loadingEditSlots, setLoadingEditSlots] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
   const [appointmentToCancel, setAppointmentToCancel] = useState(null);
   const [cancellationReason, setCancellationReason] = useState('');
@@ -159,7 +161,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
-  // Fetch available slots when provider or date changes
+  // Fetch available slots when provider or date changes (booking)
   useEffect(() => {
     if (bookingData.providerId && bookingData.date) {
       fetchAvailableSlots(bookingData.providerId, bookingData.date);
@@ -167,6 +169,39 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setAvailableSlots([]);
     }
   }, [bookingData.providerId, bookingData.date]);
+
+  // Fetch available slots when provider or date changes (editing)
+  useEffect(() => {
+    if (editingAppointment && editAppointmentData.providerId && editAppointmentData.date) {
+      fetchEditAvailableSlots(editAppointmentData.providerId, editAppointmentData.date);
+    } else {
+      setEditAvailableSlots([]);
+    }
+  }, [editAppointmentData.providerId, editAppointmentData.date, editingAppointment]);
+
+  const fetchEditAvailableSlots = async (providerId, date) => {
+    if (!providerId || !date) {
+      setEditAvailableSlots([]);
+      return;
+    }
+
+    setLoadingEditSlots(true);
+    try {
+      const response = await fetch(`/api/scheduling/slots/${providerId}?date=${date}`);
+      if (response.ok) {
+        const slots = await response.json();
+        setEditAvailableSlots(slots);
+      } else {
+        console.error('Failed to fetch available slots for editing');
+        setEditAvailableSlots([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available slots for editing:', error);
+      setEditAvailableSlots([]);
+    } finally {
+      setLoadingEditSlots(false);
+    }
+  };
 
   const fetchPharmacyData = async () => {
     try {
@@ -382,6 +417,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       // Reset editing state and refresh data
       setEditingAppointment(null);
       setEditAppointmentData({ date: '', time: '', type: '', providerId: '', reason: '' });
+      setEditAvailableSlots([]);
       fetchPatientData();
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -665,21 +701,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       <input
                         type="date"
                         value={editAppointmentData.date}
-                        onChange={(e) => setEditAppointmentData({...editAppointmentData, date: e.target.value})}
+                        onChange={(e) => setEditAppointmentData({...editAppointmentData, date: e.target.value, providerId: '', time: ''})}
                         required
                         min={new Date().toISOString().split('T')[0]}
-                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        {t.timeRequired}
-                      </label>
-                      <input
-                        type="time"
-                        value={editAppointmentData.time}
-                        onChange={(e) => setEditAppointmentData({...editAppointmentData, time: e.target.value})}
-                        required
                         className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                       />
                     </div>
@@ -698,6 +722,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                         <option value="Physical Exam">{t.physicalExam}</option>
                       </select>
                     </div>
+                  </div>
+
+                  {/* Provider Selection - shown after date */}
+                  {editAppointmentData.date && (
                     <div>
                       <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                         {t.selectProvider}
@@ -713,10 +741,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       ) : (
                         <select
                           value={editAppointmentData.providerId}
-                          onChange={(e) => setEditAppointmentData({...editAppointmentData, providerId: e.target.value})}
+                          onChange={(e) => setEditAppointmentData({...editAppointmentData, providerId: e.target.value, time: ''})}
+                          required
                           className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                         >
-                          <option value="">{t.anyAvailableProvider}</option>
+                          <option value="">Select a provider</option>
                           {providers.map(provider => (
                             <option key={provider.id} value={provider.id}>
                               Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
@@ -725,18 +754,61 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                         </select>
                       )}
                     </div>
-                    <div className="col-span-2">
+                  )}
+
+                  {/* Time Slot Selection - shown after provider */}
+                  {editAppointmentData.providerId && editAppointmentData.date && (
+                    <div>
                       <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        {t.reasonForVisit}
+                        {t.timeRequired}
                       </label>
-                      <textarea
-                        value={editAppointmentData.reason}
-                        onChange={(e) => setEditAppointmentData({...editAppointmentData, reason: e.target.value})}
-                        placeholder={t.describeSymptoms}
-                        rows="3"
-                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                      />
+                      {loadingEditSlots ? (
+                        <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                          Loading available times...
+                        </div>
+                      ) : editAvailableSlots.length > 0 ? (
+                        <select
+                          value={editAppointmentData.time}
+                          onChange={(e) => setEditAppointmentData({...editAppointmentData, time: e.target.value})}
+                          required
+                          className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        >
+                          <option value="">Select a time slot</option>
+                          {editAvailableSlots.map((slot, index) => {
+                            const startTime = new Date(slot.startTime);
+                            const timeString = startTime.toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            });
+                            const isoTime = startTime.toTimeString().substring(0, 5);
+                            return (
+                              <option key={index} value={isoTime}>
+                                {timeString}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      ) : (
+                        <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                          No available time slots for this date. Please select a different date or provider.
+                        </div>
+                      )}
                     </div>
+                  )}
+
+                  {/* Reason for Visit */}
+                  <div>
+                    <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.reasonForVisit}
+                    </label>
+                    <textarea
+                      value={editAppointmentData.reason}
+                      onChange={(e) => setEditAppointmentData({...editAppointmentData, reason: e.target.value})}
+                      placeholder={t.describeSymptoms}
+                      rows="3"
+                      className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    />
                   </div>
                   <div className="flex gap-3">
                     <button
@@ -751,6 +823,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       onClick={() => {
                         setEditingAppointment(null);
                         setEditAppointmentData({ date: '', time: '', type: '', providerId: '', reason: '' });
+                        setEditAvailableSlots([]);
                       }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
                     >
