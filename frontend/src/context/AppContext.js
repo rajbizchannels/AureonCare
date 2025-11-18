@@ -7,11 +7,11 @@ const AppContext = createContext();
 
 // AppProvider component
 const AppProvider = ({ children }) => {
-  // Authentication and UI state - persist authentication status
+  // Authentication and UI state - use sessionStorage for authentication (clears on tab/window close)
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Initialize from localStorage if available
+    // Initialize from sessionStorage (NOT localStorage) - clears on tab close
     try {
-      const stored = localStorage.getItem('isAuthenticated');
+      const stored = sessionStorage.getItem('isAuthenticated');
       return stored === 'true';
     } catch (error) {
       return false;
@@ -45,10 +45,18 @@ const AppProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
 
-  // User state - dynamically loaded from database and persisted to localStorage
+  // User state - requires both sessionStorage and localStorage
   const [user, setUser] = useState(() => {
-    // Initialize user from localStorage if available
+    // Check session validity first (sessionStorage clears on tab close)
     try {
+      const isSessionValid = sessionStorage.getItem('isAuthenticated') === 'true';
+      if (!isSessionValid) {
+        // Clear stale localStorage data
+        localStorage.removeItem('user');
+        return null;
+      }
+
+      // Load user from localStorage only if session is valid
       const storedUser = localStorage.getItem('user');
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (error) {
@@ -57,10 +65,16 @@ const AppProvider = ({ children }) => {
     }
   });
 
-  // Persist authentication status to localStorage
+  // Persist authentication status to sessionStorage (clears on tab/window close)
   useEffect(() => {
     try {
-      localStorage.setItem('isAuthenticated', String(isAuthenticated));
+      if (isAuthenticated) {
+        sessionStorage.setItem('isAuthenticated', 'true');
+      } else {
+        sessionStorage.removeItem('isAuthenticated');
+        // Also clear user data on logout
+        sessionStorage.removeItem('sessionUser');
+      }
     } catch (error) {
       console.error('Error saving authentication status:', error);
     }

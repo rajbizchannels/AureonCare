@@ -1101,6 +1101,55 @@ const api = {
     const response = await fetch(`${API_BASE_URL}/offerings/statistics/overview`);
     if (!response.ok) throw new Error('Failed to fetch offering statistics');
     return response.json();
+  },
+
+  // Appointment Types
+  getAppointmentTypes: async () => {
+    const response = await fetch(`${API_BASE_URL}/appointment-types`);
+    if (!response.ok) throw new Error('Failed to fetch appointment types');
+    return response.json();
+  },
+  getAllAppointmentTypes: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types/all`);
+    if (!response.ok) throw new Error('Failed to fetch all appointment types');
+    return response.json();
+  },
+  getAppointmentType: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/appointment-types/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch appointment type');
+    return response.json();
+  },
+  createAppointmentType: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create appointment type');
+    }
+    return response.json();
+  },
+  updateAppointmentType: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update appointment type');
+    }
+    return response.json();
+  },
+  deleteAppointmentType: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to delete appointment type');
+    }
+    return response.json();
   }
 };
 

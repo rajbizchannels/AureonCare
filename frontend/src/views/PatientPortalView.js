@@ -17,6 +17,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [providers, setProviders] = useState([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [providersError, setProvidersError] = useState(null);
+  const [appointmentTypes, setAppointmentTypes] = useState([]);
+  const [loadingAppointmentTypes, setLoadingAppointmentTypes] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState(user || {});
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -93,6 +95,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       fetchProviders();
       fetchPharmacyData();
     }
+    // Fetch appointment types on component mount (doesn't require user)
+    fetchAppointmentTypes();
   }, [user]);
 
   // Handle ESC key to close prescription modal
@@ -134,6 +138,30 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       addNotification('alert', t.failedToLoadProviders || errorMsg);
     } finally {
       setLoadingProviders(false);
+    }
+  };
+
+  const fetchAppointmentTypes = async () => {
+    setLoadingAppointmentTypes(true);
+    try {
+      const types = await api.getAppointmentTypes();
+      setAppointmentTypes(types || []);
+      // Set default type if types are loaded and current type is default
+      if (types && types.length > 0 && bookingData.type === 'General Consultation') {
+        const defaultType = types.find(t => t.name === 'General Consultation') || types[0];
+        setBookingData(prev => ({ ...prev, type: defaultType.name }));
+      }
+    } catch (error) {
+      console.error('Error fetching appointment types:', error);
+      // Fallback to default types if API fails
+      setAppointmentTypes([
+        { id: 1, name: 'General Consultation' },
+        { id: 2, name: 'Follow-up' },
+        { id: 3, name: 'Check-up' },
+        { id: 4, name: 'Physical Exam' }
+      ]);
+    } finally {
+      setLoadingAppointmentTypes(false);
     }
   };
 
@@ -716,10 +744,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                         onChange={(e) => setEditAppointmentData({...editAppointmentData, type: e.target.value})}
                         className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                       >
-                        <option value="General Consultation">{t.generalConsultation}</option>
-                        <option value="Follow-up">{t.followUp}</option>
-                        <option value="Check-up">{t.checkUp}</option>
-                        <option value="Physical Exam">{t.physicalExam}</option>
+                        {appointmentTypes.map(type => (
+                          <option key={type.id} value={type.name}>{type.name}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -1711,10 +1738,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               onChange={(e) => setBookingData({...bookingData, type: e.target.value})}
               className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
             >
-              <option value="General Consultation">{t.generalConsultation}</option>
-              <option value="Follow-up">{t.followUp}</option>
-              <option value="Check-up">{t.checkUp}</option>
-              <option value="Physical Exam">{t.physicalExam}</option>
+              {appointmentTypes.map(type => (
+                <option key={type.id} value={type.name}>{type.name}</option>
+              ))}
             </select>
           </div>
           <div>

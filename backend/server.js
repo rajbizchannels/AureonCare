@@ -96,6 +96,7 @@ app.get('/api/test', (req, res) => {
 // Import and use routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/appointments', require('./routes/appointments'));
+app.use('/api/appointment-types', require('./routes/appointment-types'));
 app.use('/api/patients', require('./routes/patients'));
 app.use('/api/claims', require('./routes/claims'));
 app.use('/api/payments', require('./routes/payments'));
