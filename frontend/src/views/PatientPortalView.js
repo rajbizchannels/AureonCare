@@ -110,6 +110,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     setProvidersError(null);
     try {
       console.log('Fetching providers for patient portal...');
+      console.log('User data:', { id: user?.id, role: user?.role });
+
+      // Ensure user is in localStorage for authentication
+      if (user && user.id) {
+        localStorage.setItem('user', JSON.stringify(user));
+      } else {
+        throw new Error('User not authenticated');
+      }
+
       const providersList = await api.getProviders();
       console.log('Providers loaded:', providersList?.length || 0);
       setProviders(providersList || []);
