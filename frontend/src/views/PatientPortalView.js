@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2 } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
@@ -15,6 +15,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
   const [providers, setProviders] = useState([]);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+  const [providersError, setProvidersError] = useState(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState(user || {});
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -51,6 +53,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     reason: ''
   });
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
+  const [appointmentToCancel, setAppointmentToCancel] = useState(null);
+  const [cancellationReason, setCancellationReason] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -102,12 +106,23 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   }, [selectedPrescription]);
 
   const fetchProviders = async () => {
+    setLoadingProviders(true);
+    setProvidersError(null);
     try {
+      console.log('Fetching providers for patient portal...');
       const providersList = await api.getProviders();
-      setProviders(providersList);
+      console.log('Providers loaded:', providersList?.length || 0);
+      setProviders(providersList || []);
+      if (!providersList || providersList.length === 0) {
+        setProvidersError('No providers available');
+      }
     } catch (error) {
       console.error('Error fetching providers:', error);
-      addNotification('alert', t.failedToLoadProviders);
+      const errorMsg = error.message || 'Failed to load providers';
+      setProvidersError(errorMsg);
+      addNotification('alert', t.failedToLoadProviders || errorMsg);
+    } finally {
+      setLoadingProviders(false);
     }
   };
 
@@ -387,6 +402,46 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
+  const handleCancelAppointment = async () => {
+    if (!appointmentToCancel) return;
+
+    try {
+      const response = await fetch(`/api/scheduling/cancel/${appointmentToCancel.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cancellationReason: cancellationReason || 'Patient cancelled',
+          cancelledBy: user.id
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel appointment');
+      }
+
+      const result = await response.json();
+
+      addNotification('success', result.message || 'Appointment cancelled successfully');
+
+      // Show success confirmation
+      setConfirmationMessage('Your appointment has been cancelled successfully!');
+      setShowConfirmation(true);
+
+      // Reset state and refresh data
+      setAppointmentToCancel(null);
+      setCancellationReason('');
+      fetchPatientData();
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      addNotification('alert', error.message || 'Failed to cancel appointment');
+      setAppointmentToCancel(null);
+      setCancellationReason('');
+    }
+  };
+
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
@@ -638,18 +693,28 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                         {t.selectProvider}
                       </label>
-                      <select
-                        value={editAppointmentData.providerId}
-                        onChange={(e) => setEditAppointmentData({...editAppointmentData, providerId: e.target.value})}
-                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                      >
-                        <option value="">{t.anyAvailableProvider}</option>
-                        {providers.map(provider => (
-                          <option key={provider.id} value={provider.id}>
-                            Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
-                          </option>
-                        ))}
-                      </select>
+                      {loadingProviders ? (
+                        <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                          Loading providers...
+                        </div>
+                      ) : providersError ? (
+                        <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border-red-700 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                          {providersError}
+                        </div>
+                      ) : (
+                        <select
+                          value={editAppointmentData.providerId}
+                          onChange={(e) => setEditAppointmentData({...editAppointmentData, providerId: e.target.value})}
+                          className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        >
+                          <option value="">{t.anyAvailableProvider}</option>
+                          {providers.map(provider => (
+                            <option key={provider.id} value={provider.id}>
+                              Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                     <div className="col-span-2">
                       <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -720,9 +785,13 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       apt.status === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
                       apt.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                      apt.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
                       'bg-yellow-500/20 text-yellow-400'
                     }`}>
-                      {apt.status === 'scheduled' ? t.scheduled : apt.status}
+                      {apt.status === 'scheduled' ? t.scheduled :
+                       apt.status === 'cancelled' ? 'Cancelled' :
+                       apt.status === 'completed' ? 'Completed' :
+                       apt.status}
                     </span>
                     <div className="flex gap-2 mt-2">
                       <button
@@ -732,13 +801,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => setAppointmentToDelete(apt)}
-                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-red-400' : 'bg-gray-200 hover:bg-gray-300 text-red-600'}`}
-                        title="Delete appointment"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+                        <button
+                          onClick={() => setAppointmentToCancel(apt)}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-orange-400' : 'bg-gray-200 hover:bg-gray-300 text-orange-600'}`}
+                          title="Cancel appointment"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1481,19 +1552,29 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 2. {t.selectProvider}
               </label>
-              <select
-                value={bookingData.providerId}
-                onChange={(e) => setBookingData({...bookingData, providerId: e.target.value, time: ''})}
-                required
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              >
-                <option value="">Select a provider</option>
-                {providers.map(provider => (
-                  <option key={provider.id} value={provider.id}>
-                    Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
-                  </option>
-                ))}
-              </select>
+              {loadingProviders ? (
+                <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                  Loading providers...
+                </div>
+              ) : providersError ? (
+                <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border-red-700 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                  {providersError}. Please refresh the page or contact support.
+                </div>
+              ) : (
+                <select
+                  value={bookingData.providerId}
+                  onChange={(e) => setBookingData({...bookingData, providerId: e.target.value, time: ''})}
+                  required
+                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                >
+                  <option value="">Select a provider</option>
+                  {providers.map(provider => (
+                    <option key={provider.id} value={provider.id}>
+                      Dr. {provider.firstName} {provider.lastName} {provider.specialization ? `- ${provider.specialization}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
@@ -1604,6 +1685,59 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         cancelText={t.cancel || "Cancel"}
         showCancel={true}
       />
+
+      {/* Cancel Appointment Modal */}
+      {appointmentToCancel && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`max-w-md w-full rounded-xl shadow-xl ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+            <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Cancel Appointment
+              </h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Are you sure you want to cancel your appointment with{' '}
+                {appointmentToCancel.provider_first_name ? (
+                  `Dr. ${appointmentToCancel.provider_first_name} ${appointmentToCancel.provider_last_name}`
+                ) : (
+                  'the provider'
+                )}{' '}
+                on {formatDate(appointmentToCancel.start_time)} at {formatTime(appointmentToCancel.start_time)}?
+              </p>
+              <div>
+                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Reason for cancellation (optional)
+                </label>
+                <textarea
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="Please provide a reason for cancelling..."
+                  rows="3"
+                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'}`}
+                />
+              </div>
+            </div>
+            <div className={`p-6 border-t flex gap-3 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <button
+                onClick={handleCancelAppointment}
+                className="flex-1 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Cancel Appointment
+              </button>
+              <button
+                onClick={() => {
+                  setAppointmentToCancel(null);
+                  setCancellationReason('');
+                }}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
+              >
+                Keep Appointment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Success Confirmation Modal */}
       <ConfirmationModal
