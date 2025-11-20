@@ -6,11 +6,11 @@
 -- Drop existing table if it exists
 DROP TABLE IF EXISTS appointment_waitlist CASCADE;
 
--- Create the table with UUID foreign keys (matching your users table)
+-- Create the table with UUID for all ID fields
 CREATE TABLE appointment_waitlist (
-  id SERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
+  provider_id UUID REFERENCES providers(id) ON DELETE SET NULL,
   preferred_date DATE NOT NULL,
   preferred_time_start TIME,
   preferred_time_end TIME,
