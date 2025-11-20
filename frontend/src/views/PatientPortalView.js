@@ -17,6 +17,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [providers, setProviders] = useState([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [providersError, setProvidersError] = useState(null);
+  const [appointmentTypes, setAppointmentTypes] = useState([]);
+  const [loadingAppointmentTypes, setLoadingAppointmentTypes] = useState(false);
+  const [waitlistEntries, setWaitlistEntries] = useState([]);
+  const [loadingWaitlist, setLoadingWaitlist] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState(user || {});
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -92,7 +96,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       fetchPatientData();
       fetchProviders();
       fetchPharmacyData();
+      fetchWaitlist();
     }
+    // Fetch appointment types on component mount (doesn't require user)
+    fetchAppointmentTypes();
   }, [user]);
 
   // Handle ESC key to close prescription modal
@@ -134,6 +141,79 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       addNotification('alert', t.failedToLoadProviders || errorMsg);
     } finally {
       setLoadingProviders(false);
+    }
+  };
+
+  const fetchAppointmentTypes = async () => {
+    setLoadingAppointmentTypes(true);
+    try {
+      const types = await api.getAppointmentTypes();
+      setAppointmentTypes(types || []);
+      // Set default type if types are loaded and current type is default
+      if (types && types.length > 0 && bookingData.type === 'General Consultation') {
+        const defaultType = types.find(t => t.name === 'General Consultation') || types[0];
+        setBookingData(prev => ({ ...prev, type: defaultType.name }));
+      }
+    } catch (error) {
+      console.error('Error fetching appointment types:', error);
+      // Fallback to default types if API fails
+      setAppointmentTypes([
+        { id: 1, name: 'General Consultation' },
+        { id: 2, name: 'Follow-up' },
+        { id: 3, name: 'Check-up' },
+        { id: 4, name: 'Physical Exam' }
+      ]);
+    } finally {
+      setLoadingAppointmentTypes(false);
+    }
+  };
+
+  const fetchWaitlist = async () => {
+    setLoadingWaitlist(true);
+    try {
+      const entries = await api.getMyWaitlist();
+      setWaitlistEntries(entries || []);
+    } catch (error) {
+      console.error('Error fetching waitlist:', error);
+    } finally {
+      setLoadingWaitlist(false);
+    }
+  };
+
+  const handleJoinWaitlist = async () => {
+    if (!bookingData.date || !bookingData.providerId) {
+      addNotification('alert', 'Please select a date and provider first');
+      return;
+    }
+
+    try {
+      const result = await api.addToWaitlist({
+        providerId: bookingData.providerId,
+        preferredDate: bookingData.date,
+        appointmentType: bookingData.type,
+        reason: bookingData.reason
+      });
+
+      addNotification('success', result.message || 'Added to waitlist successfully!');
+      fetchWaitlist();
+
+      // Optionally reset form
+      setBookingData({ date: '', time: '', type: appointmentTypes[0]?.name || 'General Consultation', providerId: '', reason: '' });
+      setAvailableSlots([]);
+    } catch (error) {
+      console.error('Error joining waitlist:', error);
+      addNotification('alert', error.message || 'Failed to join waitlist');
+    }
+  };
+
+  const handleRemoveFromWaitlist = async (id) => {
+    try {
+      const result = await api.removeFromWaitlist(id);
+      addNotification('success', result.message || 'Removed from waitlist');
+      fetchWaitlist();
+    } catch (error) {
+      console.error('Error removing from waitlist:', error);
+      addNotification('alert', error.message || 'Failed to remove from waitlist');
     }
   };
 
@@ -716,10 +796,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                         onChange={(e) => setEditAppointmentData({...editAppointmentData, type: e.target.value})}
                         className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                       >
-                        <option value="General Consultation">{t.generalConsultation}</option>
-                        <option value="Follow-up">{t.followUp}</option>
-                        <option value="Check-up">{t.checkUp}</option>
-                        <option value="Physical Exam">{t.physicalExam}</option>
+                        {appointmentTypes.map(type => (
+                          <option key={type.id} value={type.name}>{type.name}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -898,6 +977,66 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Waitlist Entries */}
+      {waitlistEntries.length > 0 && (
+        <div className="mt-8">
+          <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Waitlist Requests
+          </h3>
+          <div className="space-y-3">
+            {waitlistEntries.map((entry) => (
+              <div
+                key={entry.id}
+                className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-orange-50/50 border-orange-200'}`}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        entry.status === 'active' ? 'bg-orange-500/20 text-orange-400' :
+                        entry.status === 'notified' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {entry.status === 'active' ? 'Waiting' :
+                         entry.status === 'notified' ? 'Notified' :
+                         entry.status}
+                      </span>
+                    </div>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {entry.providerFirstName && entry.providerLastName
+                        ? `Dr. ${entry.providerFirstName} ${entry.providerLastName}`
+                        : 'Any Available Provider'}
+                    </p>
+                    <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Preferred Date: {formatDate(entry.preferredDate)}
+                    </p>
+                    {entry.appointmentType && (
+                      <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Type: {entry.appointmentType}
+                      </p>
+                    )}
+                    {entry.notifiedAt && (
+                      <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                        Notified: {formatDate(entry.notifiedAt)}
+                      </p>
+                    )}
+                  </div>
+                  {entry.status === 'active' && (
+                    <button
+                      onClick={() => handleRemoveFromWaitlist(entry.id)}
+                      className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-red-400' : 'bg-white hover:bg-gray-100 text-red-600'}`}
+                      title="Remove from waitlist"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -1694,8 +1833,20 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   })}
                 </select>
               ) : (
-                <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
-                  No available time slots for this date. Please select a different date or provider.
+                <div className="space-y-3">
+                  <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                    No available time slots for this date. Please select a different date or provider.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleJoinWaitlist}
+                    className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'}`}
+                  >
+                    Join Waitlist - Get notified when a slot opens
+                  </button>
+                  <p className={`text-xs text-center ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    You'll be notified via email if this slot becomes available
+                  </p>
                 </div>
               )}
             </div>
@@ -1711,10 +1862,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               onChange={(e) => setBookingData({...bookingData, type: e.target.value})}
               className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
             >
-              <option value="General Consultation">{t.generalConsultation}</option>
-              <option value="Follow-up">{t.followUp}</option>
-              <option value="Check-up">{t.checkUp}</option>
-              <option value="Physical Exam">{t.physicalExam}</option>
+              {appointmentTypes.map(type => (
+                <option key={type.id} value={type.name}>{type.name}</option>
+              ))}
             </select>
           </div>
           <div>

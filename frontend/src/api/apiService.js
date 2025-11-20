@@ -1101,6 +1101,110 @@ const api = {
     const response = await fetch(`${API_BASE_URL}/offerings/statistics/overview`);
     if (!response.ok) throw new Error('Failed to fetch offering statistics');
     return response.json();
+  },
+
+  // Appointment Types
+  getAppointmentTypes: async () => {
+    const response = await fetch(`${API_BASE_URL}/appointment-types`);
+    if (!response.ok) throw new Error('Failed to fetch appointment types');
+    return response.json();
+  },
+  getAllAppointmentTypes: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types/all`);
+    if (!response.ok) throw new Error('Failed to fetch all appointment types');
+    return response.json();
+  },
+  getAppointmentType: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/appointment-types/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch appointment type');
+    return response.json();
+  },
+  createAppointmentType: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create appointment type');
+    }
+    return response.json();
+  },
+  updateAppointmentType: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update appointment type');
+    }
+    return response.json();
+  },
+  deleteAppointmentType: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to delete appointment type');
+    }
+    return response.json();
+  },
+
+  // Waitlist
+  addToWaitlist: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/waitlist`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to add to waitlist');
+    }
+    return response.json();
+  },
+  getMyWaitlist: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/waitlist/my-waitlist`);
+    if (!response.ok) throw new Error('Failed to fetch waitlist');
+    return response.json();
+  },
+  removeFromWaitlist: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/waitlist/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to remove from waitlist');
+    }
+    return response.json();
+  },
+  getAllWaitlist: async (params) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/waitlist/admin/all${queryParams ? `?${queryParams}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch all waitlist entries');
+    return response.json();
+  },
+  notifyNextWaitlist: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/waitlist/admin/notify-next`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.message || 'Failed to notify next person');
+    }
+    return response.json();
+  },
+  markWaitlistScheduled: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/waitlist/admin/${id}/scheduled`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to mark as scheduled');
+    }
+    return response.json();
   }
 };
 
