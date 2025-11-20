@@ -404,18 +404,26 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const handleBookAppointment = async (e) => {
     e.preventDefault();
     try {
-      // Combine date and time into start_time timestamp
-      const startTime = `${bookingData.date.split('T')[0]}T${bookingData.time}:00`;
-      const startDate = new Date(startTime);
-      const endDate = new Date(startDate.getTime() + 30 * 60000); // Default 30 minutes duration
+      // Format date and time without timezone conversion
+      // User selects local time, we should send exactly what they selected
+      const dateStr = bookingData.date.split('T')[0]; // YYYY-MM-DD
+      const timeStr = bookingData.time; // HH:MM
+      const startTimeStr = `${dateStr} ${timeStr}:00`; // YYYY-MM-DD HH:MM:SS
+
+      // Calculate end time (30 minutes later) without timezone conversion
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const endMinutes = minutes + 30;
+      const endHours = hours + Math.floor(endMinutes / 60);
+      const endMins = endMinutes % 60;
+      const endTimeStr = `${dateStr} ${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}:00`;
 
       const appointmentData = {
         // Send the user's id as both patient_id and user_id for backend to resolve
         patient_id: user.id,
         user_id: user.id,
         provider_id: bookingData.providerId || null,
-        start_time: startDate.toISOString().slice(0, 19).replace('T', ' '),
-        end_time: endDate.toISOString().slice(0, 19).replace('T', ' '),
+        start_time: startTimeStr,
+        end_time: endTimeStr,
         duration_minutes: 30,
         appointment_type: bookingData.type,
         reason: bookingData.reason,
@@ -473,14 +481,22 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const handleUpdateAppointment = async (e) => {
     e.preventDefault();
     try {
-      // Combine date and time into start_time timestamp
-      const startTime = `${editAppointmentData.date.split('T')[0]}T${editAppointmentData.time}:00`;
-      const startDate = new Date(startTime);
-      const endDate = new Date(startDate.getTime() + 30 * 60000); // Default 30 minutes duration
+      // Format date and time without timezone conversion
+      // User selects local time, we should send exactly what they selected
+      const dateStr = editAppointmentData.date.split('T')[0]; // YYYY-MM-DD
+      const timeStr = editAppointmentData.time; // HH:MM
+      const startTimeStr = `${dateStr} ${timeStr}:00`; // YYYY-MM-DD HH:MM:SS
+
+      // Calculate end time (30 minutes later) without timezone conversion
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const endMinutes = minutes + 30;
+      const endHours = hours + Math.floor(endMinutes / 60);
+      const endMins = endMinutes % 60;
+      const endTimeStr = `${dateStr} ${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}:00`;
 
       const appointmentData = {
-        startTime: startDate.toISOString().slice(0, 19).replace('T', ' '),
-        endTime: endDate.toISOString().slice(0, 19).replace('T', ' '),
+        startTime: startTimeStr,
+        endTime: endTimeStr,
         appointmentType: editAppointmentData.type,
         providerId: editAppointmentData.providerId || null,
         reason: editAppointmentData.reason
