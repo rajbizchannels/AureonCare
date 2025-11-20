@@ -5,13 +5,14 @@
 ```
 ❌ ERROR: column "preferred_date" does not exist
 ❌ ERROR: relation "appointment_types" does not exist
+❌ ERROR: foreign key constraint cannot be implemented (integer vs uuid)
 ```
 
 ## Quick Fix (Copy & Paste SQL)
 
-### Option 1: Run Both Fixes at Once
+### IMPORTANT: Your database uses UUID for user IDs
 
-**Open pgAdmin or psql and run this:**
+Run this SQL in pgAdmin or psql:
 
 ```sql
 -- Fix 1: Create appointment_types table
@@ -39,12 +40,12 @@ ON CONFLICT (name) DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_appointment_types_active ON appointment_types(is_active);
 CREATE INDEX IF NOT EXISTS idx_appointment_types_order ON appointment_types(display_order);
 
--- Fix 2: Create appointment_waitlist table
+-- Fix 2: Create appointment_waitlist table (WITH UUID SUPPORT)
 DROP TABLE IF EXISTS appointment_waitlist CASCADE;
 
 CREATE TABLE appointment_waitlist (
   id SERIAL PRIMARY KEY,
-  patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
   preferred_date DATE NOT NULL,
   preferred_time_start TIME,
@@ -73,8 +74,8 @@ CREATE INDEX idx_waitlist_active_lookup ON appointment_waitlist(provider_id, pre
 1. **For appointment_types error:**
    - Run: `backend/migrations/FIX_APPOINTMENT_TYPES_TABLE.sql`
 
-2. **For preferred_date error:**
-   - Run: `backend/migrations/FIX_WAITLIST_TABLE.sql`
+2. **For preferred_date & UUID error:**
+   - Run: `backend/migrations/FIX_WAITLIST_TABLE_UUID.sql` ⭐ (USE THIS ONE)
 
 ## How to Run SQL
 
