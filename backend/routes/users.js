@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -106,7 +107,7 @@ router.post('/', async (req, res) => {
 
 // Update user
 router.put('/:id', async (req, res) => {
-  const { firstName, lastName, first_name, last_name, role, avatar, email, phone, license, specialty, preferences, status, language } = req.body;
+  const { firstName, lastName, first_name, last_name, role, avatar, email, phone, license, specialty, preferences, status, language, country } = req.body;
 
   try {
     const pool = req.app.locals.pool;
@@ -114,6 +115,12 @@ router.put('/:id', async (req, res) => {
     // Accept both camelCase and snake_case
     const finalFirstName = first_name || firstName;
     const finalLastName = last_name || lastName;
+
+    // Calculate timezone from country if country is provided
+    let timezone = null;
+    if (country) {
+      timezone = getTimezoneFromCountry(country);
+    }
 
     // Get current user data to check for role changes
     const currentUserResult = await pool.query(
@@ -142,8 +149,10 @@ router.put('/:id', async (req, res) => {
            preferences = COALESCE($9, preferences),
            status = COALESCE($10, status),
            language = COALESCE($11, language),
+           country = COALESCE($12, country),
+           timezone = COALESCE($13, timezone),
            updated_at = NOW()
-       WHERE id::text = $12::text
+       WHERE id::text = $14::text
        RETURNING *`,
       [
         finalFirstName,
@@ -157,6 +166,8 @@ router.put('/:id', async (req, res) => {
         preferences ? JSON.stringify(preferences) : null,
         status,
         language,
+        country,
+        timezone,
         req.params.id
       ]
     );

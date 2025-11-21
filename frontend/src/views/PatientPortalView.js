@@ -610,6 +610,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         family_history: profileData.family_history,
         current_medications: profileData.current_medications,
         language: profileData.language,
+        country: profileData.country,
         email_notifications: profileData.email_notifications || false,
         sms_notifications: profileData.sms_notifications || false
       });
@@ -1270,6 +1271,48 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 <option value="French">French</option>
                 <option value="German">German</option>
                 <option value="Arabic">Arabic</option>
+              </select>
+            </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</label>
+              <select
+                value={profileData.country || ''}
+                onChange={(e) => setProfileData({...profileData, country: e.target.value})}
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              >
+                <option value="">Select Country</option>
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
+                <option value="AU">Australia</option>
+                <option value="DE">Germany</option>
+                <option value="FR">France</option>
+                <option value="ES">Spain</option>
+                <option value="IT">Italy</option>
+                <option value="NL">Netherlands</option>
+                <option value="BE">Belgium</option>
+                <option value="CH">Switzerland</option>
+                <option value="AT">Austria</option>
+                <option value="SE">Sweden</option>
+                <option value="NO">Norway</option>
+                <option value="DK">Denmark</option>
+                <option value="FI">Finland</option>
+                <option value="IE">Ireland</option>
+                <option value="PT">Portugal</option>
+                <option value="PL">Poland</option>
+                <option value="CZ">Czech Republic</option>
+                <option value="GR">Greece</option>
+                <option value="JP">Japan</option>
+                <option value="CN">China</option>
+                <option value="IN">India</option>
+                <option value="BR">Brazil</option>
+                <option value="MX">Mexico</option>
+                <option value="AR">Argentina</option>
+                <option value="ZA">South Africa</option>
+                <option value="NZ">New Zealand</option>
+                <option value="SG">Singapore</option>
+                <option value="HK">Hong Kong</option>
+                <option value="KR">South Korea</option>
               </select>
             </div>
             <div className="col-span-2">

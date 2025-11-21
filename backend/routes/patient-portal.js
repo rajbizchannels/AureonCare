@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 
 // Patient portal login
 router.post('/login', async (req, res) => {
@@ -197,10 +198,12 @@ router.get('/:patientId/profile', async (req, res) => {
     const pool = req.app.locals.pool;
     const { patientId } = req.params;
 
-    // Join with users table to get language preference
+    // Join with users table to get language preference, country, and timezone
     // Note: patient.id now directly equals user.id (no separate user_id column)
     const result = await pool.query(`
-      SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
+      SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name,
+             COALESCE(p.country, u.country) as country,
+             COALESCE(p.timezone, u.timezone) as timezone
       FROM patients p
       LEFT JOIN users u ON p.id = u.id
       WHERE p.id = $1
@@ -223,13 +226,19 @@ router.put('/:patientId/profile', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { patientId } = req.params;
-    const { first_name, last_name, phone, email, address, date_of_birth, emergencyContact, language } = req.body;
+    const { first_name, last_name, phone, email, address, date_of_birth, emergencyContact, language, country } = req.body;
 
     // Handle address - it should be plain TEXT, not JSON
     // If address is an object, convert it to a string; otherwise keep it as is
     const addressValue = typeof address === 'object' && address !== null
       ? `${address.street || ''}, ${address.city || ''}, ${address.state || ''} ${address.zip || ''}`.trim()
       : address;
+
+    // Calculate timezone from country if country is provided
+    let timezone = null;
+    if (country) {
+      timezone = getTimezoneFromCountry(country);
+    }
 
     const result = await pool.query(`
       UPDATE patients
@@ -241,8 +250,10 @@ router.put('/:patientId/profile', async (req, res) => {
         address = COALESCE($5, address),
         date_of_birth = COALESCE($6, date_of_birth),
         emergency_contact = COALESCE($7, emergency_contact),
+        country = COALESCE($8, country),
+        timezone = COALESCE($9, timezone),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
+      WHERE id = $10
       RETURNING *
     `, [
       first_name,
@@ -252,6 +263,8 @@ router.put('/:patientId/profile', async (req, res) => {
       addressValue,
       date_of_birth,
       emergencyContact ? JSON.stringify(emergencyContact) : null,
+      country,
+      timezone,
       patientId
     ]);
 
@@ -292,6 +305,18 @@ router.put('/:patientId/profile', async (req, res) => {
 
       // Add language to the response
       updatedPatient.language = language;
+    }
+
+    // Update country and timezone if provided
+    if (country) {
+      updateFields.push(`country = $${paramIndex++}`);
+      updateValues.push(country);
+      updatedPatient.country = country;
+    }
+    if (timezone) {
+      updateFields.push(`timezone = $${paramIndex++}`);
+      updateValues.push(timezone);
+      updatedPatient.timezone = timezone;
     }
 
     // Execute update if there are fields to update
