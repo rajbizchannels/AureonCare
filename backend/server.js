@@ -118,6 +118,10 @@ app.use('/api/medications', require('./routes/medications'));
 app.use('/api/pharmacies', require('./routes/pharmacies'));
 app.use('/api/scheduling', require('./routes/scheduling'));
 app.use('/api/offerings', require('./routes/offerings'));
+app.use('/api/calendar-sync', require('./routes/calendar-sync'));
+
+// Serve uploaded files
+app.use('/uploads', express.static('uploads'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
