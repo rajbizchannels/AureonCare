@@ -1250,6 +1250,21 @@ const api = {
       throw new Error(error.error || 'Provider test failed');
     }
     return response.json();
+  },
+
+  // Notification Preferences
+  getNotificationPreferences: async (patientId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/notification-preferences/${patientId}`);
+    if (!response.ok) throw new Error('Failed to fetch notification preferences');
+    return response.json();
+  },
+  updateNotificationPreference: async (patientId, channelType, isEnabled, contactInfo = null) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/notification-preferences/${patientId}`, {
+      method: 'POST',
+      body: JSON.stringify({ channel_type: channelType, is_enabled: isEnabled, contact_info: contactInfo })
+    });
+    if (!response.ok) throw new Error('Failed to update notification preference');
+    return response.json();
   }
 };
 
