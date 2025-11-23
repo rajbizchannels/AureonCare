@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const TelehealthProviderManager = require('../services/telehealthProviders');
 
 // Get all telehealth sessions
 router.get('/', async (req, res) => {
@@ -84,13 +85,37 @@ router.post('/', async (req, res) => {
       providerId,
       startTime,
       duration,
-      recordingEnabled = false
+      recordingEnabled = false,
+      providerType = null // Optional: specify provider (zoom, google_meet, webex)
     } = req.body;
 
-    // Generate unique room ID
-    const roomId = `room-${crypto.randomBytes(16).toString('hex')}`;
-    const meetingUrl = `https://meet.medflow.com/${roomId}`;
+    // Get patient and provider details for meeting creation
+    const patientResult = await pool.query(
+      'SELECT first_name, last_name FROM patients WHERE id = $1',
+      [patientId]
+    );
+    const providerResult = await pool.query(
+      'SELECT first_name, last_name FROM users WHERE id = $1',
+      [providerId]
+    );
 
+    const patient = patientResult.rows[0];
+    const provider = providerResult.rows[0];
+
+    // Use TelehealthProviderManager to create meeting
+    const manager = new TelehealthProviderManager(pool);
+    const sessionData = {
+      patientName: `${patient.first_name} ${patient.last_name}`,
+      providerName: `${provider.first_name} ${provider.last_name}`,
+      topic: `Telehealth Session - ${patient.first_name} ${patient.last_name}`,
+      startTime: startTime,
+      duration: duration || 30,
+      recordingEnabled: recordingEnabled
+    };
+
+    const meetingResult = await manager.createMeeting(sessionData, providerType);
+
+    // Store session in database
     const result = await pool.query(`
       INSERT INTO telehealth_sessions (
         appointment_id,
@@ -101,16 +126,30 @@ router.post('/', async (req, res) => {
         meeting_url,
         start_time,
         duration_minutes,
-        recording_enabled
+        recording_enabled,
+        provider_type
       )
-      VALUES ($1, $2, $3, 'scheduled', $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, 'scheduled', $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [appointmentId, patientId, providerId, roomId, meetingUrl, startTime, duration, recordingEnabled]);
+    `, [
+      appointmentId,
+      patientId,
+      providerId,
+      meetingResult.roomId,
+      meetingResult.meetingUrl,
+      startTime,
+      duration,
+      recordingEnabled,
+      meetingResult.provider
+    ]);
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json({
+      ...result.rows[0],
+      meetingDetails: meetingResult
+    });
   } catch (error) {
     console.error('Error creating telehealth session:', error);
-    res.status(500).json({ error: 'Failed to create telehealth session' });
+    res.status(500).json({ error: 'Failed to create telehealth session: ' + error.message });
   }
 });
 

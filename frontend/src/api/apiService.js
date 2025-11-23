@@ -1205,6 +1205,51 @@ const api = {
       throw new Error(error.error || 'Failed to mark as scheduled');
     }
     return response.json();
+  },
+
+  // Telehealth Settings
+  getTelehealthSettings: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings`);
+    if (!response.ok) throw new Error('Failed to fetch telehealth settings');
+    return response.json();
+  },
+  getTelehealthSetting: async (providerType) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/${providerType}`);
+    if (!response.ok) throw new Error(`Failed to fetch ${providerType} settings`);
+    return response.json();
+  },
+  saveTelehealthSettings: async (providerType, settings) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/${providerType}`, {
+      method: 'POST',
+      body: JSON.stringify(settings)
+    });
+    if (!response.ok) throw new Error(`Failed to save ${providerType} settings`);
+    return response.json();
+  },
+  toggleTelehealthProvider: async (providerType, isEnabled) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/${providerType}/toggle`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_enabled: isEnabled })
+    });
+    if (!response.ok) throw new Error(`Failed to toggle ${providerType}`);
+    return response.json();
+  },
+  deleteTelehealthSettings: async (providerType) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/${providerType}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error(`Failed to delete ${providerType} settings`);
+    return response.json();
+  },
+  testTelehealthProvider: async (providerType) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/${providerType}/test`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Provider test failed');
+    }
+    return response.json();
   }
 };
 

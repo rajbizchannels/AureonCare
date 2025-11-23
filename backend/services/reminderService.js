@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const pool = require('../db');
+const WhatsAppService = require('./whatsappService');
 
 // Create nodemailer transporter
 const transporter = nodemailer.createTransporter({
@@ -11,6 +12,41 @@ const transporter = nodemailer.createTransporter({
         pass: process.env.SMTP_PASS
     }
 });
+
+// Initialize WhatsApp service
+let whatsappService = null;
+
+/**
+ * Initialize WhatsApp service with configuration from database
+ */
+async function initWhatsAppService() {
+    try {
+        const config = await WhatsAppService.getConfig(pool);
+        if (config && config.enabled) {
+            whatsappService = new WhatsAppService(config);
+            console.log('WhatsApp service initialized');
+        }
+    } catch (error) {
+        console.error('Error initializing WhatsApp service:', error);
+    }
+}
+
+/**
+ * Check if patient has WhatsApp enabled
+ */
+async function isWhatsAppEnabled(patientId) {
+    try {
+        const result = await pool.query(
+            `SELECT is_enabled FROM notification_preferences
+             WHERE patient_id = $1 AND channel_type = 'whatsapp'`,
+            [patientId]
+        );
+        return result.rows.length > 0 && result.rows[0].is_enabled;
+    } catch (error) {
+        console.error('Error checking WhatsApp preference:', error);
+        return false;
+    }
+}
 
 /**
  * Send appointment confirmation email
@@ -185,6 +221,17 @@ async function sendConfirmationEmail(appointment, patient, provider) {
              AND scheduled_for <= CURRENT_TIMESTAMP + INTERVAL '5 minutes'`,
             [appointment.id]
         );
+
+        // Also send WhatsApp if enabled
+        if (whatsappService && await isWhatsAppEnabled(patient.id)) {
+            try {
+                await whatsappService.sendAppointmentConfirmation(appointment, patient, provider);
+                console.log('WhatsApp confirmation sent to patient:', patient.id);
+            } catch (whatsappError) {
+                console.error('Error sending WhatsApp confirmation:', whatsappError);
+                // Don't fail the whole operation if WhatsApp fails
+            }
+        }
 
         return { success: true, messageId: info.messageId };
     } catch (error) {
@@ -378,6 +425,17 @@ async function sendReminderEmail(appointment, patient, provider) {
              WHERE appointment_id = $1 AND reminder_type = 'email' AND delivery_status = 'pending'`,
             [appointment.id]
         );
+
+        // Also send WhatsApp reminder if enabled
+        if (whatsappService && await isWhatsAppEnabled(patient.id)) {
+            try {
+                await whatsappService.sendAppointmentReminder(appointment, patient, provider);
+                console.log('WhatsApp reminder sent to patient:', patient.id);
+            } catch (whatsappError) {
+                console.error('Error sending WhatsApp reminder:', whatsappError);
+                // Don't fail the whole operation if WhatsApp fails
+            }
+        }
 
         return { success: true, messageId: info.messageId };
     } catch (error) {
@@ -615,9 +673,13 @@ async function processPendingReminders() {
     }
 }
 
+// Initialize WhatsApp service on module load
+initWhatsAppService();
+
 module.exports = {
     sendConfirmationEmail,
     sendReminderEmail,
     sendCancellationEmail,
-    processPendingReminders
+    processPendingReminders,
+    initWhatsAppService
 };
