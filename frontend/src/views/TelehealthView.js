@@ -1,15 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft } from 'lucide-react';
+import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft, Settings } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
+import { getTranslations } from '../config/translations';
+import { useApp } from '../context/AppContext';
 
-const TelehealthView = ({ theme, api, appointments, patients, addNotification, setCurrentModule, t }) => {
+const TelehealthView = ({ theme, api, appointments, patients, addNotification, setCurrentModule }) => {
+  const { language } = useApp();
+  const t = getTranslations(language);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNewSessionForm, setShowNewSessionForm] = useState(false);
+  const [activeProvider, setActiveProvider] = useState(null);
+  const [checkingProvider, setCheckingProvider] = useState(true);
 
   useEffect(() => {
     fetchSessions();
+    checkActiveProvider();
   }, []);
+
+  const checkActiveProvider = async () => {
+    try {
+      setCheckingProvider(true);
+      const response = await api.getTelehealthSettings();
+      const enabledProvider = response.find(p => p.is_enabled);
+      setActiveProvider(enabledProvider || null);
+    } catch (error) {
+      console.error('Error checking active provider:', error);
+      setActiveProvider(null);
+    } finally {
+      setCheckingProvider(false);
+    }
+  };
 
   const fetchSessions = async () => {
     try {
@@ -119,6 +140,58 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
           {t.newSession || 'New Session'}
         </button>
       </div>
+
+      {/* No Provider Configured Warning */}
+      {!checkingProvider && !activeProvider && (
+        <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-yellow-50 border-yellow-200'}`}>
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <Settings className="w-6 h-6 text-yellow-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'}`}>
+                No Video Conferencing Provider Configured
+              </h3>
+              <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-yellow-300/80' : 'text-yellow-700'}`}>
+                To use telehealth features, you need to configure a video conferencing provider (Zoom, Google Meet, or Webex) in the Admin Panel.
+              </p>
+              <button
+                onClick={() => setCurrentModule && setCurrentModule('admin')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400'
+                    : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  Configure Provider in Admin Panel
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Provider Info */}
+      {!checkingProvider && activeProvider && (
+        <div className={`rounded-lg border p-4 ${theme === 'dark' ? 'bg-green-500/10 border-green-500/30' : 'bg-green-50 border-green-200'}`}>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
+                Active Provider:
+              </span>
+            </div>
+            <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {activeProvider.provider_type === 'zoom' && 'Zoom'}
+              {activeProvider.provider_type === 'google_meet' && 'Google Meet'}
+              {activeProvider.provider_type === 'webex' && 'Webex'}
+              {activeProvider.provider_type === 'medflow' && 'MedFlow (Default)'}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
