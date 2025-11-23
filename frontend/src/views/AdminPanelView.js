@@ -215,12 +215,37 @@ const AdminPanelView = ({
         if (settings && settings.length > 0) {
           const settingsMap = {};
           settings.forEach(s => {
-            settingsMap[s.provider_type] = s;
+            // Parse settings if it's a string
+            const parsedSettings = typeof s.settings === 'string'
+              ? JSON.parse(s.settings)
+              : (s.settings || {});
+
+            settingsMap[s.provider_type] = {
+              is_enabled: s.is_enabled || false,
+              api_key: s.api_key || '',
+              api_secret: s.api_secret || '',
+              client_id: s.client_id || '',
+              client_secret: s.client_secret || '',
+              webhook_secret: s.webhook_secret || '',
+              settings: parsedSettings
+            };
           });
-          setTelehealthSettings(prev => ({
-            ...prev,
-            ...settingsMap
-          }));
+
+          // Merge with existing state to preserve default structure
+          setTelehealthSettings(prev => {
+            const merged = { ...prev };
+            Object.keys(settingsMap).forEach(key => {
+              merged[key] = {
+                ...prev[key],
+                ...settingsMap[key],
+                settings: {
+                  ...(prev[key]?.settings || {}),
+                  ...(settingsMap[key]?.settings || {})
+                }
+              };
+            });
+            return merged;
+          });
         }
       } catch (error) {
         console.error('Error loading telehealth settings:', error);
@@ -340,12 +365,19 @@ const AdminPanelView = ({
 
   const handleToggleTelehealthProvider = async (providerType, isEnabled) => {
     try {
-      // Optimistically update UI
+      // Store previous state for rollback
+      const previousState = { ...telehealthSettings[providerType] };
+
+      // Optimistically update UI - preserve all existing fields
       setTelehealthSettings(prev => ({
         ...prev,
         [providerType]: {
           ...prev[providerType],
-          is_enabled: isEnabled
+          is_enabled: isEnabled,
+          // Ensure settings object is preserved
+          settings: {
+            ...(prev[providerType]?.settings || {})
+          }
         }
       }));
 
@@ -354,13 +386,10 @@ const AdminPanelView = ({
       await addNotification('success', `${providerName} ${isEnabled ? 'enabled' : 'disabled'} successfully`);
     } catch (error) {
       console.error('Error toggling telehealth provider:', error);
-      // Revert on error
+      // Revert to previous state on error
       setTelehealthSettings(prev => ({
         ...prev,
-        [providerType]: {
-          ...prev[providerType],
-          is_enabled: !isEnabled
-        }
+        [providerType]: previousState
       }));
       await addNotification('alert', `Failed to toggle ${providerType}`);
     }
@@ -909,7 +938,7 @@ const AdminPanelView = ({
               </div>
 
               {telehealthSettings.zoom?.is_enabled && (
-                <div className="mt-4 space-y-4">
+                <div className="mt-4 space-y-4 animate-fadeIn">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -1021,7 +1050,7 @@ const AdminPanelView = ({
               </div>
 
               {telehealthSettings.google_meet?.is_enabled && (
-                <div className="mt-4 space-y-4">
+                <div className="mt-4 space-y-4 animate-fadeIn">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -1103,7 +1132,7 @@ const AdminPanelView = ({
               </div>
 
               {telehealthSettings.webex?.is_enabled && (
-                <div className="mt-4 space-y-4">
+                <div className="mt-4 space-y-4 animate-fadeIn">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
