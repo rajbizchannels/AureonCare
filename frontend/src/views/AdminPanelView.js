@@ -199,6 +199,7 @@ const AdminPanelView = ({
       }
     }
   });
+  const [telehealthDbMissing, setTelehealthDbMissing] = useState(false);
 
   // Sync currentPlan with planTier from context
   useEffect(() => {
@@ -249,6 +250,11 @@ const AdminPanelView = ({
         }
       } catch (error) {
         console.error('Error loading telehealth settings:', error);
+        // Show helpful message if tables don't exist
+        if (error.message && (error.message.includes('telehealth_provider_settings') || error.message.includes('503'))) {
+          console.warn('Telehealth provider settings table does not exist. Please run the database migration: node backend/scripts/migrate-telehealth.js');
+          setTelehealthDbMissing(true);
+        }
       }
     };
     loadTelehealthSettings();
@@ -898,6 +904,33 @@ const AdminPanelView = ({
           <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             {t.telehealthIntegrationsDescription || 'Configure video conferencing providers for telehealth sessions. Enable one or more providers based on your needs.'}
           </p>
+
+          {/* Database Migration Warning */}
+          {telehealthDbMissing && (
+            <div className="mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className={`text-sm font-semibold mb-1 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                    Database Migration Required
+                  </h4>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-yellow-300/80' : 'text-yellow-700'}`}>
+                    The telehealth provider settings tables haven't been created yet. Please run the following command in your backend directory:
+                  </p>
+                  <code className={`block mt-2 p-2 rounded text-xs font-mono ${theme === 'dark' ? 'bg-slate-800 text-green-400' : 'bg-white text-green-600'}`}>
+                    node backend/scripts/migrate-telehealth.js
+                  </code>
+                  <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-yellow-300/60' : 'text-yellow-600'}`}>
+                    After running the migration, refresh this page to enable the telehealth integrations.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-6">
             {/* Zoom Integration */}

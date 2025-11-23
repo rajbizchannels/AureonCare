@@ -18,6 +18,13 @@ router.get('/', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching telehealth settings:', error);
+    // Check if the error is due to missing table
+    if (error.code === '42P01') {
+      return res.status(503).json({
+        error: 'Telehealth provider settings table does not exist. Please run database migration.',
+        hint: 'Run: node backend/scripts/migrate-telehealth.js'
+      });
+    }
     res.status(500).json({ error: 'Failed to fetch telehealth settings' });
   }
 });
