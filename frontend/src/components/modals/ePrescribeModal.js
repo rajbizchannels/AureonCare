@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send } from 'lucide-react';
+import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer } from 'lucide-react';
 
 const EPrescribeModal = ({
   theme,
@@ -476,6 +476,271 @@ const EPrescribeModal = ({
     }
   };
 
+  // Print prescription
+  const handlePrintPrescription = () => {
+    console.log('[ePrescribe] Printing prescription...');
+
+    // Create a print-friendly HTML document
+    const printWindow = window.open('', '_blank');
+
+    if (!printWindow) {
+      addNotification('alert', 'Pop-up blocked. Please allow pop-ups to print prescriptions.');
+      return;
+    }
+
+    const patientName = `${patient.firstName || patient.first_name || ''} ${patient.lastName || patient.last_name || ''}`.trim();
+    const providerName = normalizedProvider ? `Dr. ${normalizedProvider.firstName || normalizedProvider.first_name || ''} ${normalizedProvider.lastName || normalizedProvider.last_name || ''}`.trim() : 'N/A';
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Prescription - ${patientName}</title>
+          <style>
+            @page {
+              size: letter;
+              margin: 0.5in;
+            }
+
+            body {
+              font-family: 'Arial', 'Helvetica', sans-serif;
+              margin: 0;
+              padding: 20px;
+              color: #000;
+              background: #fff;
+              font-size: 12pt;
+            }
+
+            .prescription-container {
+              max-width: 7.5in;
+              margin: 0 auto;
+              border: 2px solid #000;
+              padding: 30px;
+            }
+
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #000;
+              padding-bottom: 20px;
+              margin-bottom: 20px;
+            }
+
+            .header h1 {
+              margin: 0 0 10px 0;
+              font-size: 24pt;
+              font-weight: bold;
+            }
+
+            .header p {
+              margin: 5px 0;
+              font-size: 11pt;
+            }
+
+            .section {
+              margin: 20px 0;
+              padding: 15px;
+              border: 1px solid #ccc;
+              background: #f9f9f9;
+            }
+
+            .section-title {
+              font-weight: bold;
+              font-size: 14pt;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 5px;
+            }
+
+            .info-row {
+              display: flex;
+              margin: 8px 0;
+              padding: 5px 0;
+            }
+
+            .info-label {
+              font-weight: bold;
+              width: 150px;
+              flex-shrink: 0;
+            }
+
+            .info-value {
+              flex: 1;
+            }
+
+            .medication-box {
+              background: #fff;
+              border: 2px solid #000;
+              padding: 20px;
+              margin: 20px 0;
+              font-size: 13pt;
+            }
+
+            .rx-symbol {
+              font-size: 36pt;
+              font-weight: bold;
+              margin-bottom: 10px;
+            }
+
+            .footer {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 1px solid #000;
+              font-size: 10pt;
+            }
+
+            .signature-line {
+              margin-top: 40px;
+              border-top: 2px solid #000;
+              width: 300px;
+              padding-top: 10px;
+            }
+
+            @media print {
+              body {
+                padding: 0;
+              }
+
+              .prescription-container {
+                border: none;
+              }
+
+              .no-print {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="prescription-container">
+            <div class="header">
+              <h1>℞ PRESCRIPTION</h1>
+              <p><strong>Date:</strong> ${currentDate}</p>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Patient Information</div>
+              <div class="info-row">
+                <span class="info-label">Patient Name:</span>
+                <span class="info-value">${patientName}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Date of Birth:</span>
+                <span class="info-value">${patient.dateOfBirth || patient.date_of_birth || 'N/A'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Address:</span>
+                <span class="info-value">${patient.address || patient.addressLine1 || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Prescriber Information</div>
+              <div class="info-row">
+                <span class="info-label">Prescriber:</span>
+                <span class="info-value">${providerName}</span>
+              </div>
+              ${normalizedProvider?.deaNumber || normalizedProvider?.dea_number ? `
+              <div class="info-row">
+                <span class="info-label">DEA Number:</span>
+                <span class="info-value">${normalizedProvider.deaNumber || normalizedProvider.dea_number}</span>
+              </div>
+              ` : ''}
+            </div>
+
+            <div class="medication-box">
+              <div class="rx-symbol">℞</div>
+              <div class="info-row">
+                <span class="info-label">Medication:</span>
+                <span class="info-value"><strong>${selectedMedication?.drugName || 'N/A'}</strong></span>
+              </div>
+              ${selectedMedication?.ndcCode || selectedMedication?.ndc_code ? `
+              <div class="info-row">
+                <span class="info-label">NDC Code:</span>
+                <span class="info-value">${selectedMedication.ndcCode || selectedMedication.ndc_code}</span>
+              </div>
+              ` : ''}
+              <div class="info-row">
+                <span class="info-label">Dosage:</span>
+                <span class="info-value"><strong>${prescriptionDetails.dosage}</strong></span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Frequency:</span>
+                <span class="info-value"><strong>${prescriptionDetails.frequency}</strong></span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Duration:</span>
+                <span class="info-value"><strong>${prescriptionDetails.duration}</strong></span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Quantity:</span>
+                <span class="info-value"><strong>${prescriptionDetails.quantity}</strong></span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Refills:</span>
+                <span class="info-value"><strong>${prescriptionDetails.refills}</strong></span>
+              </div>
+              ${prescriptionDetails.instructions ? `
+              <div class="info-row" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
+                <span class="info-label">Instructions:</span>
+                <span class="info-value">${prescriptionDetails.instructions}</span>
+              </div>
+              ` : ''}
+              <div class="info-row" style="margin-top: 10px;">
+                <span class="info-label">Generic Substitution:</span>
+                <span class="info-value">${prescriptionDetails.substitutionAllowed ? 'Allowed' : 'Not Allowed (Dispense as Written)'}</span>
+              </div>
+            </div>
+
+            ${selectedPharmacy ? `
+            <div class="section">
+              <div class="section-title">Pharmacy Information</div>
+              <div class="info-row">
+                <span class="info-label">Pharmacy Name:</span>
+                <span class="info-value">${selectedPharmacy.pharmacyName}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Address:</span>
+                <span class="info-value">${selectedPharmacy.addressLine1}, ${selectedPharmacy.city}, ${selectedPharmacy.state} ${selectedPharmacy.zipCode}</span>
+              </div>
+              ${selectedPharmacy.phone ? `
+              <div class="info-row">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">${selectedPharmacy.phone}</span>
+              </div>
+              ` : ''}
+            </div>
+            ` : ''}
+
+            <div class="signature-line">
+              <strong>Provider Signature</strong>
+            </div>
+
+            <div class="footer">
+              <p style="margin: 5px 0; font-size: 9pt; color: #666;">
+                <strong>Note:</strong> This prescription is valid for ${prescriptionDetails.refills > 0 ? `${prescriptionDetails.refills} refill(s)` : 'no refills'}.
+                Contact your healthcare provider if you have any questions or concerns about this medication.
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+
+    // Wait for content to load, then print
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      // Close window after printing (optional - user may want to keep it open)
+      // printWindow.close();
+    };
+
+    console.log('[ePrescribe] Print window opened successfully');
+  };
+
   return (
     <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
       <div className={`rounded-xl border max-w-5xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
@@ -920,6 +1185,14 @@ const EPrescribeModal = ({
                   className={`px-6 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
                 >
                   Back
+                </button>
+                <button
+                  onClick={handlePrintPrescription}
+                  className={`px-6 py-2 rounded-lg flex items-center gap-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
+                  title="Print Prescription"
+                >
+                  <Printer className="w-5 h-5" />
+                  Print
                 </button>
                 <button
                   onClick={handleSubmitPrescription}
