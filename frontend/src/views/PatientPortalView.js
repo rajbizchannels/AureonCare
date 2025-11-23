@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Printer } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Printer, MessageCircle } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
@@ -35,6 +35,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     newPassword: '',
     confirmPassword: ''
   });
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -100,7 +102,28 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
     // Fetch appointment types on component mount (doesn't require user)
     fetchAppointmentTypes();
+    // Load WhatsApp preference
+    loadWhatsAppPreference();
   }, [user]);
+
+  // Load WhatsApp notification preference
+  const loadWhatsAppPreference = async () => {
+    if (user && user.id) {
+      try {
+        const preferences = await api.getNotificationPreferences(user.id);
+        const whatsappPref = preferences.find(p => p.channel_type === 'whatsapp');
+        if (whatsappPref) {
+          setWhatsappEnabled(whatsappPref.is_enabled);
+        }
+      } catch (error) {
+        console.error('Error loading WhatsApp preference:', error);
+      } finally {
+        setLoadingWhatsApp(false);
+      }
+    } else {
+      setLoadingWhatsApp(false);
+    }
+  };
 
   // Handle ESC key to close prescription modal
   useEffect(() => {
@@ -711,6 +734,20 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         [notificationType]: !updatedValue
       });
       addNotification('alert', 'Failed to update notification preference');
+    }
+  };
+
+  const handleWhatsAppToggle = async () => {
+    const newValue = !whatsappEnabled;
+    setWhatsappEnabled(newValue);
+
+    try {
+      await api.updateNotificationPreference(user.id, 'whatsapp', newValue);
+      addNotification('success', `WhatsApp notifications ${newValue ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Error updating WhatsApp preference:', error);
+      setWhatsappEnabled(!newValue); // Revert on error
+      addNotification('alert', 'Failed to update WhatsApp preference');
     }
   };
 
@@ -1615,7 +1652,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 </div>
 
                 {/* SMS Notifications Toggle */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-3">
                   <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {t.smsAlerts || 'SMS Alerts'}
                   </label>
@@ -1630,6 +1667,31 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                         profileData.sms_notifications ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* WhatsApp Notifications Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-green-500" />
+                    <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {t.whatsappNotifications || 'WhatsApp Notifications'}
+                    </label>
+                  </div>
+                  <button
+                    disabled={loadingWhatsApp}
+                    onClick={handleWhatsAppToggle}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                      whatsappEnabled
+                        ? 'bg-green-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>
