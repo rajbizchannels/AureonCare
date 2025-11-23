@@ -364,10 +364,10 @@ const AdminPanelView = ({
   };
 
   const handleToggleTelehealthProvider = async (providerType, isEnabled) => {
-    try {
-      // Store previous state for rollback
-      const previousState = { ...telehealthSettings[providerType] };
+    // Store previous state for rollback (outside try block so catch can access it)
+    const previousState = { ...telehealthSettings[providerType] };
 
+    try {
       // Optimistically update UI - preserve all existing fields
       setTelehealthSettings(prev => ({
         ...prev,
