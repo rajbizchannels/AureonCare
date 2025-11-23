@@ -477,22 +477,58 @@ const EPrescribeModal = ({
   };
 
   // Print prescription
-  const handlePrintPrescription = () => {
+  const handlePrintPrescription = async () => {
     console.log('[ePrescribe] Printing prescription...');
 
-    // Create a print-friendly HTML document
-    const printWindow = window.open('', '_blank');
-
-    if (!printWindow) {
-      addNotification('alert', 'Pop-up blocked. Please allow pop-ups to print prescriptions.');
+    if (!selectedMedication) {
+      addNotification('alert', 'Please select a medication first');
       return;
     }
 
-    const patientName = `${patient.firstName || patient.first_name || ''} ${patient.lastName || patient.last_name || ''}`.trim();
-    const providerName = normalizedProvider ? `Dr. ${normalizedProvider.firstName || normalizedProvider.first_name || ''} ${normalizedProvider.lastName || normalizedProvider.last_name || ''}`.trim() : 'N/A';
-    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    setLoading(true);
+    try {
+      // Create prescription using api service
+      const prescriptionPayload = {
+        patientId: patient.id,
+        providerId: normalizedProvider.id,
+        medicationName: selectedMedication.drugName || selectedMedication.drug_name,
+        ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code,
+        dosage: prescriptionDetails.dosage,
+        frequency: prescriptionDetails.frequency,
+        duration: prescriptionDetails.duration,
+        quantity: parseInt(prescriptionDetails.quantity) || 0,
+        refills: parseInt(prescriptionDetails.refills) || 0,
+        instructions: prescriptionDetails.instructions,
+        substitutionAllowed: prescriptionDetails.substitutionAllowed,
+        status: 'Active',
+        prescribedDate: new Date().toISOString().split('T')[0]
+      };
 
-    const printContent = `
+      // Add pharmacy info if selected
+      if (selectedPharmacy) {
+        prescriptionPayload.pharmacyId = selectedPharmacy.id;
+        prescriptionPayload.prescriberDeaNumber = normalizedProvider?.deaNumber || normalizedProvider?.dea_number || '';
+      }
+
+      console.log('[ePrescribe] Creating prescription before printing:', prescriptionPayload);
+
+      const prescription = await api.createPrescription(prescriptionPayload);
+      console.log('[ePrescribe] Prescription created successfully:', prescription);
+
+      // Now generate the print document
+      const printWindow = window.open('', '_blank');
+
+      if (!printWindow) {
+        addNotification('alert', 'Pop-up blocked. Please allow pop-ups to print prescriptions.');
+        setLoading(false);
+        return;
+      }
+
+      const patientName = `${patient.firstName || patient.first_name || ''} ${patient.lastName || patient.last_name || ''}`.trim();
+      const providerName = normalizedProvider ? `Dr. ${normalizedProvider.firstName || normalizedProvider.first_name || ''} ${normalizedProvider.lastName || normalizedProvider.last_name || ''}`.trim() : 'N/A';
+      const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -727,18 +763,29 @@ const EPrescribeModal = ({
       </html>
     `;
 
-    printWindow.document.write(printContent);
-    printWindow.document.close();
+      printWindow.document.write(printContent);
+      printWindow.document.close();
 
-    // Wait for content to load, then print
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
-      // Close window after printing (optional - user may want to keep it open)
-      // printWindow.close();
-    };
+      // Wait for content to load, then print
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+        // Close window after printing (optional - user may want to keep it open)
+        // printWindow.close();
+      };
 
-    console.log('[ePrescribe] Print window opened successfully');
+      console.log('[ePrescribe] Print window opened successfully');
+      addNotification('success', 'Prescription saved and printed successfully');
+
+      // Call onSuccess callback and close modal
+      if (onSuccess) onSuccess(prescription);
+      onClose();
+    } catch (error) {
+      console.error('[ePrescribe] Error creating prescription for print:', error);
+      addNotification('alert', `Failed to save prescription: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
