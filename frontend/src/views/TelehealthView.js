@@ -132,13 +132,16 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
             {t.videoConsultations || 'Video Consultations'}
           </h2>
         </div>
-        <button
-          onClick={() => setShowNewSessionForm(!showNewSessionForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg text-white font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          {t.newSession || 'New Session'}
-        </button>
+        {/* Only show New Session button if provider is configured */}
+        {!checkingProvider && activeProvider && (
+          <button
+            onClick={() => setShowNewSessionForm(!showNewSessionForm)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg text-white font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            {t.newSession || 'New Session'}
+          </button>
+        )}
       </div>
 
       {/* No Provider Configured Warning */}
@@ -173,27 +176,28 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         </div>
       )}
 
-      {/* Active Provider Info */}
+      {/* Only show content when provider is configured */}
       {!checkingProvider && activeProvider && (
-        <div className={`rounded-lg border p-4 ${theme === 'dark' ? 'bg-green-500/10 border-green-500/30' : 'bg-green-50 border-green-200'}`}>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
-                Active Provider:
+        <>
+          {/* Active Provider Info */}
+          <div className={`rounded-lg border p-4 ${theme === 'dark' ? 'bg-green-500/10 border-green-500/30' : 'bg-green-50 border-green-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
+                  Active Provider:
+                </span>
+              </div>
+              <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {activeProvider.provider_type === 'zoom' && 'Zoom'}
+                {activeProvider.provider_type === 'google_meet' && 'Google Meet'}
+                {activeProvider.provider_type === 'webex' && 'Webex'}
+                {activeProvider.provider_type === 'medflow' && 'MedFlow (Default)'}
               </span>
             </div>
-            <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {activeProvider.provider_type === 'zoom' && 'Zoom'}
-              {activeProvider.provider_type === 'google_meet' && 'Google Meet'}
-              {activeProvider.provider_type === 'webex' && 'Webex'}
-              {activeProvider.provider_type === 'medflow' && 'MedFlow (Default)'}
-            </span>
           </div>
-        </div>
-      )}
 
-      {/* Stats Cards */}
+          {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
           <div className="flex items-center justify-between mb-2">
@@ -312,25 +316,27 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         </div>
       )}
 
-      {/* Empty State */}
-      {sessions.length === 0 && (
-        <div className={`bg-gradient-to-br rounded-xl p-12 border text-center ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
-          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-            <Video className="w-10 h-10 text-white" />
-          </div>
-          <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t.noTelehealthSessionsYet || 'No Telehealth Sessions Yet'}
-          </h3>
-          <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            {t.createFirstTelehealthSession || 'Create your first telehealth session to start video consultations with patients'}
-          </p>
-          <button
-            onClick={() => setShowNewSessionForm(true)}
-            className="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-colors text-white"
-          >
-            {t.createFirstSession || 'Create First Session'}
-          </button>
-        </div>
+          {/* Empty State */}
+          {sessions.length === 0 && (
+            <div className={`bg-gradient-to-br rounded-xl p-12 border text-center ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                <Video className="w-10 h-10 text-white" />
+              </div>
+              <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {t.noTelehealthSessionsYet || 'No Telehealth Sessions Yet'}
+              </h3>
+              <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                {t.createFirstTelehealthSession || 'Create your first telehealth session to start video consultations with patients'}
+              </p>
+              <button
+                onClick={() => setShowNewSessionForm(true)}
+                className="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-colors text-white"
+              >
+                {t.createFirstSession || 'Create First Session'}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
