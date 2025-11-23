@@ -109,6 +109,7 @@ app.use('/api/roles', require('./routes/roles'));
 app.use('/api/plans', require('./routes/plans'));
 app.use('/api/permissions', require('./routes/permissions'));
 app.use('/api/telehealth', require('./routes/telehealth'));
+app.use('/api/telehealth-settings', require('./routes/telehealthSettings'));
 app.use('/api/fhir', require('./routes/fhir'));
 app.use('/api/patient-portal', require('./routes/patient-portal'));
 app.use('/api/medical-records', require('./routes/medical-records'));
