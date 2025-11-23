@@ -145,15 +145,28 @@ router.patch('/:providerType/toggle', async (req, res) => {
     const { providerType } = req.params;
     const { is_enabled } = req.body;
 
-    const result = await pool.query(`
-      UPDATE telehealth_provider_settings
-      SET is_enabled = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE provider_type = $2
-      RETURNING *
-    `, [is_enabled, providerType]);
+    // Check if provider settings exist
+    const existing = await pool.query(
+      'SELECT id FROM telehealth_provider_settings WHERE provider_type = $1',
+      [providerType]
+    );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Provider settings not found' });
+    let result;
+    if (existing.rows.length > 0) {
+      // Update existing record
+      result = await pool.query(`
+        UPDATE telehealth_provider_settings
+        SET is_enabled = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE provider_type = $2
+        RETURNING *
+      `, [is_enabled, providerType]);
+    } else {
+      // Create new record with just is_enabled set
+      result = await pool.query(`
+        INSERT INTO telehealth_provider_settings (provider_type, is_enabled)
+        VALUES ($1, $2)
+        RETURNING *
+      `, [providerType, is_enabled]);
     }
 
     res.json(result.rows[0]);
