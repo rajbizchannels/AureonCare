@@ -340,7 +340,7 @@ const AdminPanelView = ({
 
   const handleToggleTelehealthProvider = async (providerType, isEnabled) => {
     try {
-      await api.toggleTelehealthProvider(providerType, isEnabled);
+      // Optimistically update UI
       setTelehealthSettings(prev => ({
         ...prev,
         [providerType]: {
@@ -348,9 +348,20 @@ const AdminPanelView = ({
           is_enabled: isEnabled
         }
       }));
-      await addNotification('success', `${providerType} ${isEnabled ? 'enabled' : 'disabled'} successfully`);
+
+      await api.toggleTelehealthProvider(providerType, isEnabled);
+      const providerName = providerType.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      await addNotification('success', `${providerName} ${isEnabled ? 'enabled' : 'disabled'} successfully`);
     } catch (error) {
       console.error('Error toggling telehealth provider:', error);
+      // Revert on error
+      setTelehealthSettings(prev => ({
+        ...prev,
+        [providerType]: {
+          ...prev[providerType],
+          is_enabled: !isEnabled
+        }
+      }));
       await addNotification('alert', `Failed to toggle ${providerType}`);
     }
   };
@@ -876,17 +887,25 @@ const AdminPanelView = ({
                     </p>
                   </div>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={telehealthSettings.zoom?.is_enabled || false}
-                    onChange={(e) => handleToggleTelehealthProvider('zoom', e.target.checked)}
-                    className="form-checkbox h-5 w-5 text-blue-500"
-                  />
-                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${telehealthSettings.zoom?.is_enabled ? 'text-green-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                     {telehealthSettings.zoom?.is_enabled ? 'Enabled' : 'Disabled'}
                   </span>
-                </label>
+                  <button
+                    onClick={() => handleToggleTelehealthProvider('zoom', !telehealthSettings.zoom?.is_enabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      telehealthSettings.zoom?.is_enabled
+                        ? 'bg-blue-500'
+                        : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        telehealthSettings.zoom?.is_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               {telehealthSettings.zoom?.is_enabled && (
@@ -980,17 +999,25 @@ const AdminPanelView = ({
                     </p>
                   </div>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={telehealthSettings.google_meet?.is_enabled || false}
-                    onChange={(e) => handleToggleTelehealthProvider('google_meet', e.target.checked)}
-                    className="form-checkbox h-5 w-5 text-green-500"
-                  />
-                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${telehealthSettings.google_meet?.is_enabled ? 'text-green-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                     {telehealthSettings.google_meet?.is_enabled ? 'Enabled' : 'Disabled'}
                   </span>
-                </label>
+                  <button
+                    onClick={() => handleToggleTelehealthProvider('google_meet', !telehealthSettings.google_meet?.is_enabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                      telehealthSettings.google_meet?.is_enabled
+                        ? 'bg-green-500'
+                        : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        telehealthSettings.google_meet?.is_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               {telehealthSettings.google_meet?.is_enabled && (
@@ -1054,17 +1081,25 @@ const AdminPanelView = ({
                     </p>
                   </div>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={telehealthSettings.webex?.is_enabled || false}
-                    onChange={(e) => handleToggleTelehealthProvider('webex', e.target.checked)}
-                    className="form-checkbox h-5 w-5 text-cyan-500"
-                  />
-                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${telehealthSettings.webex?.is_enabled ? 'text-cyan-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                     {telehealthSettings.webex?.is_enabled ? 'Enabled' : 'Disabled'}
                   </span>
-                </label>
+                  <button
+                    onClick={() => handleToggleTelehealthProvider('webex', !telehealthSettings.webex?.is_enabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${
+                      telehealthSettings.webex?.is_enabled
+                        ? 'bg-cyan-500'
+                        : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        telehealthSettings.webex?.is_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               {telehealthSettings.webex?.is_enabled && (
