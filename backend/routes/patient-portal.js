@@ -366,6 +366,28 @@ router.get('/:patientId/medical-records', async (req, res) => {
   }
 });
 
+// Delete patient medical record
+router.delete('/:patientId/medical-records/:recordId', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { patientId, recordId } = req.params;
+
+    const result = await pool.query(
+      'DELETE FROM medical_records WHERE id = $1 AND patient_id = $2 RETURNING *',
+      [recordId, patientId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Medical record not found or not authorized to delete' });
+    }
+
+    res.json({ message: 'Medical record deleted successfully', record: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting medical record:', error);
+    res.status(500).json({ error: 'Failed to delete medical record' });
+  }
+});
+
 // Link social auth to patient
 router.post('/:patientId/link-social', async (req, res) => {
   try {
