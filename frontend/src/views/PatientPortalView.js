@@ -1486,6 +1486,58 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             </div>
           </div>
 
+          {/* Preferred Pharmacy Section */}
+          <div className="mt-6 pt-6 border-t border-slate-600/50">
+            <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.preferredPharmacy || 'Preferred Pharmacy'}</h4>
+            <div className="space-y-4">
+              <div>
+                <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {t.selectPharmacy || 'Select Pharmacy'}
+                </label>
+                <select
+                  value={selectedPharmacyId}
+                  onChange={(e) => setSelectedPharmacyId(e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                >
+                  <option value="">Select a pharmacy</option>
+                  {pharmacies.map((pharmacy) => (
+                    <option key={pharmacy.id} value={pharmacy.id}>
+                      {pharmacy.name} - {pharmacy.address}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedPharmacyId && (
+                <button
+                  type="button"
+                  onClick={handlePharmacySelection}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                      : 'bg-cyan-500 hover:bg-cyan-600 text-white'
+                  }`}
+                >
+                  {preferredPharmacies.length > 0 ? t.updatePreferredPharmacy || 'Update Preferred Pharmacy' : t.setPreferredPharmacy || 'Set Preferred Pharmacy'}
+                </button>
+              )}
+              {preferredPharmacies.length > 0 && (
+                <div className="mt-4">
+                  <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Preferred Pharmacy:</p>
+                  {preferredPharmacies.map((pp) => {
+                    const pharmacy = pharmacies.find(p => p.id === pp.pharmacy_id);
+                    return pharmacy ? (
+                      <div key={pp.id} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                        <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{pharmacy.name}</p>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{pharmacy.address}</p>
+                        {pharmacy.phone && <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{pharmacy.phone}</p>}
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Settings Section */}
           <div className="mt-6 pt-6 border-t border-slate-600/50">
             <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.settings || 'Settings'}</h4>
@@ -1724,20 +1776,56 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <div className="col-span-2">
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.address}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {profileData?.address || user?.address || t.notProvided}
+              </p>
+            </div>
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {(() => {
-                  // If there's a full address string, use it
-                  if (profileData.address) {
-                    return profileData.address;
-                  }
-                  // Otherwise, build from components
-                  const parts = [
-                    profileData.address_street,
-                    profileData.address_city,
-                    [profileData.address_state, profileData.address_zip].filter(Boolean).join(' ')
-                  ].filter(part => part && part.trim());
-
-                  return parts.length > 0 ? parts.join(', ') : t.notProvided;
+                  const countryMap = {
+                    'US': 'United States',
+                    'CA': 'Canada',
+                    'GB': 'United Kingdom',
+                    'AU': 'Australia',
+                    'DE': 'Germany',
+                    'FR': 'France',
+                    'ES': 'Spain',
+                    'IT': 'Italy',
+                    'NL': 'Netherlands',
+                    'BE': 'Belgium',
+                    'CH': 'Switzerland',
+                    'AT': 'Austria',
+                    'SE': 'Sweden',
+                    'NO': 'Norway',
+                    'DK': 'Denmark',
+                    'FI': 'Finland',
+                    'IE': 'Ireland',
+                    'PT': 'Portugal',
+                    'PL': 'Poland',
+                    'CZ': 'Czech Republic',
+                    'GR': 'Greece',
+                    'JP': 'Japan',
+                    'CN': 'China',
+                    'IN': 'India',
+                    'BR': 'Brazil',
+                    'MX': 'Mexico',
+                    'AR': 'Argentina',
+                    'ZA': 'South Africa',
+                    'NZ': 'New Zealand',
+                    'SG': 'Singapore',
+                    'HK': 'Hong Kong',
+                    'KR': 'South Korea'
+                  };
+                  const country = profileData?.country || user?.country;
+                  return country ? (countryMap[country] || country) : t.notProvided;
                 })()}
+              </p>
+            </div>
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.languagePreference || 'Language'}</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {profileData?.language || user?.language || t.notProvided}
               </p>
             </div>
             <div>
