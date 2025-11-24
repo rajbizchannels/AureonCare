@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const WhatsAppService = require('../services/whatsappService');
 
 // Get all appointments
 router.get('/', async (req, res) => {
@@ -233,6 +234,18 @@ router.put('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 
+    // Get old appointment data for comparison
+    const oldAppointmentResult = await pool.query(
+      'SELECT * FROM appointments WHERE id::text = $1::text',
+      [req.params.id]
+    );
+
+    if (oldAppointmentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    const oldAppointment = oldAppointmentResult.rows[0];
+
     // Check for scheduling conflicts with the same doctor (excluding current appointment)
     const conflictCheck = await pool.query(
       `SELECT a.id,
@@ -265,10 +278,59 @@ router.put('/:id', async (req, res) => {
       [patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
        duration_minutes, reason, notes, status, req.params.id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Appointment not found' });
+
+    const updatedAppointment = result.rows[0];
+
+    // Send WhatsApp notification if appointment was rescheduled or cancelled
+    try {
+      const whatsappPref = await WhatsAppService.isEnabledForPatient(pool, patient_id);
+
+      if (whatsappPref.enabled) {
+        // Check if appointment was rescheduled or cancelled
+        const timeChanged = new Date(oldAppointment.start_time).getTime() !== new Date(start_time).getTime();
+        const statusChanged = oldAppointment.status !== status;
+        const wasCancelled = status === 'cancelled' || status === 'canceled';
+
+        if (timeChanged || wasCancelled) {
+          // Get patient and provider details
+          const patientResult = await pool.query(
+            'SELECT id, first_name, last_name, phone FROM patients WHERE id::text = $1::text',
+            [patient_id]
+          );
+          const providerResult = await pool.query(
+            'SELECT id, first_name, last_name FROM providers WHERE id::text = $1::text',
+            [provider_id]
+          );
+
+          if (patientResult.rows.length > 0 && providerResult.rows.length > 0) {
+            const patient = {
+              ...patientResult.rows[0],
+              phone: whatsappPref.phoneNumber || patientResult.rows[0].phone
+            };
+            const provider = providerResult.rows[0];
+
+            // Get WhatsApp config
+            const whatsappConfig = await WhatsAppService.getConfig(pool);
+
+            if (whatsappConfig) {
+              const whatsappService = new WhatsAppService(whatsappConfig);
+              const updateType = wasCancelled ? 'cancelled' : 'rescheduled';
+              await whatsappService.sendScheduleUpdateNotification(
+                updatedAppointment,
+                patient,
+                provider,
+                updateType
+              );
+            }
+          }
+        }
+      }
+    } catch (whatsappError) {
+      console.error('Error sending WhatsApp notification for appointment update:', whatsappError);
+      // Don't fail the request if notification fails
     }
-    res.json(result.rows[0]);
+
+    res.json(updatedAppointment);
   } catch (error) {
     console.error('Error updating appointment:', error);
     res.status(500).json({ error: 'Failed to update appointment' });
@@ -286,6 +348,50 @@ router.delete('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Appointment not found' });
     }
+
+    const deletedAppointment = result.rows[0];
+
+    // Send WhatsApp notification about cancelled appointment
+    try {
+      const whatsappPref = await WhatsAppService.isEnabledForPatient(pool, deletedAppointment.patient_id);
+
+      if (whatsappPref.enabled) {
+        // Get patient and provider details
+        const patientResult = await pool.query(
+          'SELECT id, first_name, last_name, phone FROM patients WHERE id::text = $1::text',
+          [deletedAppointment.patient_id]
+        );
+        const providerResult = await pool.query(
+          'SELECT id, first_name, last_name FROM providers WHERE id::text = $1::text',
+          [deletedAppointment.provider_id]
+        );
+
+        if (patientResult.rows.length > 0 && providerResult.rows.length > 0) {
+          const patient = {
+            ...patientResult.rows[0],
+            phone: whatsappPref.phoneNumber || patientResult.rows[0].phone
+          };
+          const provider = providerResult.rows[0];
+
+          // Get WhatsApp config
+          const whatsappConfig = await WhatsAppService.getConfig(pool);
+
+          if (whatsappConfig) {
+            const whatsappService = new WhatsAppService(whatsappConfig);
+            await whatsappService.sendScheduleUpdateNotification(
+              deletedAppointment,
+              patient,
+              provider,
+              'cancelled'
+            );
+          }
+        }
+      }
+    } catch (whatsappError) {
+      console.error('Error sending WhatsApp notification for appointment deletion:', whatsappError);
+      // Don't fail the request if notification fails
+    }
+
     res.json({ message: 'Appointment deleted successfully' });
   } catch (error) {
     console.error('Error deleting appointment:', error);

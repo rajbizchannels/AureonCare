@@ -22,6 +22,7 @@ const SettingsModal = ({
   const t = getTranslations(language);
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
+  const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
 
   // Load WhatsApp notification preference
   useEffect(() => {
@@ -32,9 +33,15 @@ const SettingsModal = ({
           const whatsappPref = preferences.find(p => p.channel_type === 'whatsapp');
           if (whatsappPref) {
             setWhatsappEnabled(whatsappPref.is_enabled);
+            setWhatsappPhoneNumber(whatsappPref.contact_info || user.phone || '');
+          } else {
+            // Default to user's phone number if no preference exists
+            setWhatsappPhoneNumber(user.phone || '');
           }
         } catch (error) {
           console.error('Error loading WhatsApp preference:', error);
+          // Default to user's phone number on error
+          setWhatsappPhoneNumber(user.phone || '');
         } finally {
           setLoadingWhatsApp(false);
         }
@@ -43,7 +50,7 @@ const SettingsModal = ({
       }
     };
     loadWhatsAppPreference();
-  }, [user.id, user.role, api]);
+  }, [user.id, user.role, user.phone, api]);
 
   // ESC key handler
   useEffect(() => {
@@ -57,6 +64,16 @@ const SettingsModal = ({
     window.addEventListener('keydown', handleEsc, true); // Use capture phase
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
+
+  const handleWhatsAppPhoneUpdate = async () => {
+    try {
+      await api.updateNotificationPreference(user.id, 'whatsapp', whatsappEnabled, whatsappPhoneNumber);
+      await addNotification('success', 'WhatsApp phone number updated');
+    } catch (error) {
+      console.error('Error updating WhatsApp phone:', error);
+      await addNotification('alert', 'Failed to update WhatsApp phone number');
+    }
+  };
 
   return (
     <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
@@ -143,7 +160,7 @@ const SettingsModal = ({
                         const newValue = !whatsappEnabled;
                         setWhatsappEnabled(newValue);
                         try {
-                          await api.updateNotificationPreference(user.id, 'whatsapp', newValue);
+                          await api.updateNotificationPreference(user.id, 'whatsapp', newValue, whatsappPhoneNumber);
                           await addNotification('success', `WhatsApp notifications ${newValue ? 'enabled' : 'disabled'}`);
                         } catch (error) {
                           console.error('Error updating WhatsApp preference:', error);
@@ -164,6 +181,30 @@ const SettingsModal = ({
                       />
                     </button>
                   </div>
+
+                  {/* WhatsApp Phone Number Input */}
+                  {whatsappEnabled && (
+                    <div className="ml-14 mt-3 animate-fadeIn">
+                      <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.whatsappPhoneNumber || 'WhatsApp Phone Number'}
+                      </label>
+                      <input
+                        type="tel"
+                        value={whatsappPhoneNumber}
+                        onChange={(e) => setWhatsappPhoneNumber(e.target.value)}
+                        onBlur={handleWhatsAppPhoneUpdate}
+                        placeholder="+1 (555) 123-4567"
+                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                        }`}
+                      />
+                      <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                        {t.whatsappPhoneHint || 'Include country code (e.g., +1 for US)'}
+                      </p>
+                    </div>
+                  )}
                 )}
                 <div className="flex items-center justify-between">
                   <div>
