@@ -366,20 +366,84 @@ router.get('/:patientId/medical-records', async (req, res) => {
   }
 });
 
+// Update patient medical record
+router.put('/:patientId/medical-records/:recordId', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { patientId, recordId} = req.params;
+    const { title, description, providerId } = req.body;
+
+    const result = await pool.query(`
+      UPDATE medical_records
+      SET
+        title = COALESCE($1, title),
+        description = COALESCE($2, description),
+        provider_id = COALESCE($3, provider_id),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4 AND patient_id = $5
+      RETURNING *
+    `, [title, description, providerId, recordId, patientId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Medical record not found or not authorized to update' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating medical record:', error);
+    res.status(500).json({ error: 'Failed to update medical record' });
+  }
+});
+
 // Delete patient medical record
 router.delete('/:patientId/medical-records/:recordId', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { patientId, recordId } = req.params;
+    const fs = require('fs');
+    const path = require('path');
 
+    // First get the record to find associated files
+    const recordResult = await pool.query(
+      'SELECT * FROM medical_records WHERE id = $1 AND patient_id = $2',
+      [recordId, patientId]
+    );
+
+    if (recordResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Medical record not found or not authorized to delete' });
+    }
+
+    const record = recordResult.rows[0];
+
+    // Delete associated files if they exist
+    if (record.attachments) {
+      try {
+        const attachments = typeof record.attachments === 'string'
+          ? JSON.parse(record.attachments)
+          : record.attachments;
+
+        if (Array.isArray(attachments)) {
+          attachments.forEach(attachment => {
+            if (attachment.filename) {
+              const filePath = path.join(__dirname, '../uploads/medical-records', attachment.filename);
+              if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+                console.log('Deleted file:', filePath);
+              }
+            }
+          });
+        }
+      } catch (fileError) {
+        console.error('Error deleting attached files:', fileError);
+        // Continue with database deletion even if file deletion fails
+      }
+    }
+
+    // Delete the database record
     const result = await pool.query(
       'DELETE FROM medical_records WHERE id = $1 AND patient_id = $2 RETURNING *',
       [recordId, patientId]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Medical record not found or not authorized to delete' });
-    }
 
     res.json({ message: 'Medical record deleted successfully', record: result.rows[0] });
   } catch (error) {
