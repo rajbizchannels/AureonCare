@@ -1510,7 +1510,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               {selectedPharmacyId && (
                 <button
                   type="button"
-                  onClick={handlePharmacySelection}
+                  onClick={handleAddPreferredPharmacy}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     theme === 'dark'
                       ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
