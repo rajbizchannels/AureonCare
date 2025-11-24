@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Upload, X, FileText, Image, File } from 'lucide-react';
 
-const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'light' }) => {
+const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'light', providers = [] }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     classification: 'General',
+    providerId: '',
     file: null
   });
   const [uploading, setUploading] = useState(false);
@@ -83,6 +84,9 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
       uploadFormData.append('description', formData.description);
       uploadFormData.append('classification', formData.classification);
       uploadFormData.append('recordDate', new Date().toISOString().split('T')[0]);
+      if (formData.providerId) {
+        uploadFormData.append('providerId', formData.providerId);
+      }
 
       const response = await fetch('/api/medical-records/with-file', {
         method: 'POST',
@@ -101,6 +105,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
         title: '',
         description: '',
         classification: 'General',
+        providerId: '',
         file: null
       });
       setPreview(null);
@@ -235,6 +240,29 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
             ))}
           </select>
         </div>
+
+        {/* Provider Selection */}
+        {providers && providers.length > 0 && (
+          <div>
+            <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              Provider (Optional)
+            </label>
+            <select
+              value={formData.providerId}
+              onChange={(e) => setFormData({ ...formData, providerId: e.target.value })}
+              className={`w-full px-4 py-2 border rounded-lg ${
+                theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+              }`}
+            >
+              <option value="">Select a provider</option>
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  Dr. {provider.first_name} {provider.last_name}{provider.specialty ? ` - ${provider.specialty}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Description */}
         <div>
