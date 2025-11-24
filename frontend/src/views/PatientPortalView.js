@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Printer, MessageCircle } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
@@ -36,6 +37,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     newPassword: '',
     confirmPassword: ''
   });
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
+  const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -102,7 +106,34 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
     // Fetch appointment types on component mount (doesn't require user)
     fetchAppointmentTypes();
+    // Load WhatsApp preference
+    loadWhatsAppPreference();
   }, [user]);
+
+  // Load WhatsApp notification preference
+  const loadWhatsAppPreference = async () => {
+    if (user && user.id) {
+      try {
+        const preferences = await api.getNotificationPreferences(user.id);
+        const whatsappPref = preferences.find(p => p.channel_type === 'whatsapp');
+        if (whatsappPref) {
+          setWhatsappEnabled(whatsappPref.is_enabled);
+          setWhatsappPhoneNumber(whatsappPref.contact_info || user.phone || '');
+        } else {
+          // Default to user's phone number if no preference exists
+          setWhatsappPhoneNumber(user.phone || '');
+        }
+      } catch (error) {
+        console.error('Error loading WhatsApp preference:', error);
+        // Default to user's phone number on error
+        setWhatsappPhoneNumber(user.phone || '');
+      } finally {
+        setLoadingWhatsApp(false);
+      }
+    } else {
+      setLoadingWhatsApp(false);
+    }
+  };
 
   // Handle ESC key to close prescription modal
   useEffect(() => {
@@ -723,6 +754,30 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         [notificationType]: !updatedValue
       });
       addNotification('alert', 'Failed to update notification preference');
+    }
+  };
+
+  const handleWhatsAppToggle = async () => {
+    const newValue = !whatsappEnabled;
+    setWhatsappEnabled(newValue);
+
+    try {
+      await api.updateNotificationPreference(user.id, 'whatsapp', newValue, whatsappPhoneNumber);
+      addNotification('success', `WhatsApp notifications ${newValue ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Error updating WhatsApp preference:', error);
+      setWhatsappEnabled(!newValue); // Revert on error
+      addNotification('alert', 'Failed to update WhatsApp preference');
+    }
+  };
+
+  const handleWhatsAppPhoneUpdate = async () => {
+    try {
+      await api.updateNotificationPreference(user.id, 'whatsapp', whatsappEnabled, whatsappPhoneNumber);
+      addNotification('success', 'WhatsApp phone number updated');
+    } catch (error) {
+      console.error('Error updating WhatsApp phone:', error);
+      addNotification('alert', 'Failed to update WhatsApp phone number');
     }
   };
 
@@ -1652,7 +1707,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 </div>
 
                 {/* SMS Notifications Toggle */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-3">
                   <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {t.smsAlerts || 'SMS Alerts'}
                   </label>
@@ -1670,6 +1725,57 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       }`}
                     />
                   </button>
+                </div>
+
+                {/* WhatsApp Notifications Toggle */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4 text-green-500" />
+                      <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        {t.whatsappNotifications || 'WhatsApp Notifications'}
+                      </label>
+                    </div>
+                    <button
+                      disabled={loadingWhatsApp}
+                      onClick={handleWhatsAppToggle}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                        whatsappEnabled
+                          ? 'bg-green-500'
+                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                      } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* WhatsApp Phone Number Input */}
+                  {whatsappEnabled && (
+                    <div className="ml-6 animate-fadeIn">
+                      <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.whatsappPhoneNumber || 'WhatsApp Phone Number'}
+                      </label>
+                      <input
+                        type="tel"
+                        value={whatsappPhoneNumber}
+                        onChange={(e) => setWhatsappPhoneNumber(e.target.value)}
+                        onBlur={handleWhatsAppPhoneUpdate}
+                        placeholder="+1 (555) 123-4567"
+                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                        }`}
+                      />
+                      <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                        {t.whatsappPhoneHint || 'Include country code (e.g., +1 for US)'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1769,6 +1875,310 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     </div>
   );
 
+  // Print prescription handler
+  const handlePrintPrescription = (rx) => {
+    console.log('[PatientPortal] Printing prescription:', rx);
+
+    // Create a print-friendly HTML document
+    const printWindow = window.open('', '_blank');
+
+    if (!printWindow) {
+      addNotification('alert', 'Pop-up blocked. Please allow pop-ups to print prescriptions.');
+      return;
+    }
+
+    const patientName = `${user.firstName || user.first_name || ''} ${user.lastName || user.last_name || ''}`.trim();
+    const providerName = rx.providerFirstName && rx.providerLastName
+      ? `Dr. ${rx.providerFirstName} ${rx.providerLastName}`
+      : rx.providerName
+      ? `Dr. ${rx.providerName}`
+      : 'N/A';
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const prescribedDate = rx.prescribedDate || rx.prescribed_date
+      ? new Date(rx.prescribedDate || rx.prescribed_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      : currentDate;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Prescription - ${patientName}</title>
+          <style>
+            @page {
+              size: letter;
+              margin: 0.5in;
+            }
+
+            body {
+              font-family: 'Arial', 'Helvetica', sans-serif;
+              margin: 0;
+              padding: 20px;
+              color: #000;
+              background: #fff;
+              font-size: 12pt;
+            }
+
+            .prescription-container {
+              max-width: 7.5in;
+              margin: 0 auto;
+              border: 2px solid #000;
+              padding: 30px;
+            }
+
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #000;
+              padding-bottom: 20px;
+              margin-bottom: 20px;
+            }
+
+            .header h1 {
+              margin: 0 0 10px 0;
+              font-size: 24pt;
+              font-weight: bold;
+            }
+
+            .header p {
+              margin: 5px 0;
+              font-size: 11pt;
+            }
+
+            .section {
+              margin: 20px 0;
+              padding: 15px;
+              border: 1px solid #ccc;
+              background: #f9f9f9;
+            }
+
+            .section-title {
+              font-weight: bold;
+              font-size: 14pt;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 5px;
+            }
+
+            .info-row {
+              display: flex;
+              margin: 8px 0;
+              padding: 5px 0;
+            }
+
+            .info-label {
+              font-weight: bold;
+              width: 150px;
+              flex-shrink: 0;
+            }
+
+            .info-value {
+              flex: 1;
+            }
+
+            .medication-box {
+              background: #fff;
+              border: 2px solid #000;
+              padding: 20px;
+              margin: 20px 0;
+              font-size: 13pt;
+            }
+
+            .rx-symbol {
+              font-size: 36pt;
+              font-weight: bold;
+              margin-bottom: 10px;
+            }
+
+            .footer {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 1px solid #000;
+              font-size: 10pt;
+            }
+
+            .signature-line {
+              margin-top: 40px;
+              border-top: 2px solid #000;
+              width: 300px;
+              padding-top: 10px;
+            }
+
+            .status-badge {
+              display: inline-block;
+              padding: 5px 10px;
+              border-radius: 15px;
+              font-size: 10pt;
+              font-weight: bold;
+              margin-top: 10px;
+            }
+
+            .status-active {
+              background: #e8f5e9;
+              color: #2e7d32;
+            }
+
+            .status-inactive {
+              background: #f5f5f5;
+              color: #666;
+            }
+
+            @media print {
+              body {
+                padding: 0;
+              }
+
+              .prescription-container {
+                border: none;
+              }
+
+              .no-print {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="prescription-container">
+            <div class="header">
+              <h1>℞ PRESCRIPTION</h1>
+              <p><strong>Date Prescribed:</strong> ${prescribedDate}</p>
+              <p><strong>Printed:</strong> ${currentDate}</p>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Patient Information</div>
+              <div class="info-row">
+                <span class="info-label">Patient Name:</span>
+                <span class="info-value">${patientName}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Date of Birth:</span>
+                <span class="info-value">${user.dateOfBirth || user.date_of_birth || 'N/A'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Address:</span>
+                <span class="info-value">${user.address || user.addressLine1 || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Prescriber Information</div>
+              <div class="info-row">
+                <span class="info-label">Prescriber:</span>
+                <span class="info-value">${providerName}</span>
+              </div>
+              ${rx.providerSpecialization ? `
+              <div class="info-row">
+                <span class="info-label">Specialization:</span>
+                <span class="info-value">${rx.providerSpecialization}</span>
+              </div>
+              ` : ''}
+            </div>
+
+            <div class="medication-box">
+              <div class="rx-symbol">℞</div>
+              <div class="info-row">
+                <span class="info-label">Medication:</span>
+                <span class="info-value"><strong>${rx.medicationName || rx.medication_name || 'N/A'}</strong></span>
+              </div>
+              ${rx.ndcCode || rx.ndc_code ? `
+              <div class="info-row">
+                <span class="info-label">NDC Code:</span>
+                <span class="info-value">${rx.ndcCode || rx.ndc_code}</span>
+              </div>
+              ` : ''}
+              <div class="info-row">
+                <span class="info-label">Dosage:</span>
+                <span class="info-value"><strong>${rx.dosage || 'N/A'}</strong></span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Frequency:</span>
+                <span class="info-value"><strong>${rx.frequency || 'N/A'}</strong></span>
+              </div>
+              ${rx.duration ? `
+              <div class="info-row">
+                <span class="info-label">Duration:</span>
+                <span class="info-value"><strong>${rx.duration}</strong></span>
+              </div>
+              ` : ''}
+              <div class="info-row">
+                <span class="info-label">Quantity:</span>
+                <span class="info-value"><strong>${rx.quantity || 'N/A'}</strong></span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Refills:</span>
+                <span class="info-value"><strong>${rx.refills || rx.refillsRemaining || 0}</strong></span>
+              </div>
+              ${rx.instructions ? `
+              <div class="info-row" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
+                <span class="info-label">Instructions:</span>
+                <span class="info-value">${rx.instructions}</span>
+              </div>
+              ` : ''}
+              ${rx.substitutionAllowed !== undefined ? `
+              <div class="info-row" style="margin-top: 10px;">
+                <span class="info-label">Generic Substitution:</span>
+                <span class="info-value">${rx.substitutionAllowed || rx.substitution_allowed ? 'Allowed' : 'Not Allowed (Dispense as Written)'}</span>
+              </div>
+              ` : ''}
+            </div>
+
+            ${rx.pharmacyName || rx.pharmacy_name ? `
+            <div class="section">
+              <div class="section-title">Pharmacy Information</div>
+              <div class="info-row">
+                <span class="info-label">Pharmacy Name:</span>
+                <span class="info-value">${rx.pharmacyName || rx.pharmacy_name}</span>
+              </div>
+              ${rx.pharmacyAddress ? `
+              <div class="info-row">
+                <span class="info-label">Address:</span>
+                <span class="info-value">${rx.pharmacyAddress}</span>
+              </div>
+              ` : ''}
+              ${rx.pharmacyPhone ? `
+              <div class="info-row">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">${rx.pharmacyPhone}</span>
+              </div>
+              ` : ''}
+            </div>
+            ` : ''}
+
+            <div class="signature-line">
+              <strong>Provider Signature</strong>
+            </div>
+
+            <div class="footer">
+              <div class="status-badge ${rx.status === 'Active' ? 'status-active' : 'status-inactive'}">
+                Status: ${rx.status || 'N/A'}
+              </div>
+              <p style="margin: 15px 0 5px 0; font-size: 9pt; color: #666;">
+                <strong>Note:</strong> This prescription is valid for ${rx.refills || rx.refillsRemaining || 0} refill(s).
+                Contact your healthcare provider if you have any questions or concerns about this medication.
+              </p>
+              <p style="margin: 5px 0; font-size: 8pt; color: #999;">
+                This is a printed copy of your prescription. Please present this to your pharmacy as needed.
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+
+    // Wait for content to load, then print
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      // Close window after printing (optional - user may want to keep it open)
+      // printWindow.close();
+    };
+
+    console.log('[PatientPortal] Print window opened successfully');
+  };
+
   // Prescriptions View
   const renderPrescriptions = () => (
     <div className="space-y-6">
@@ -1827,11 +2237,28 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     </p>
                   )}
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  rx.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-                }`}>
-                  {rx.status}
-                </span>
+                <div className="flex flex-col items-end gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    rx.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                  }`}>
+                    {rx.status}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrintPrescription(rx);
+                    }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                        : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                    }`}
+                    title="Print Prescription"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span className="text-xs font-medium">Print</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))}

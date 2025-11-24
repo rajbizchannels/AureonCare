@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft, CreditCard, Check } from 'lucide-react';
+import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft, CreditCard, Check, Video } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const AdminPanelView = ({
@@ -167,12 +167,98 @@ const AdminPanelView = ({
 
   const [currentPlan, setCurrentPlan] = useState(planTier || 'professional');
 
+  // Telehealth integrations state
+  const [telehealthSettings, setTelehealthSettings] = useState({
+    zoom: {
+      is_enabled: false,
+      api_key: '',
+      api_secret: '',
+      client_id: '',
+      client_secret: '',
+      settings: {
+        user_id: '',
+        account_id: '',
+        use_oauth: false
+      }
+    },
+    google_meet: {
+      is_enabled: false,
+      client_id: '',
+      client_secret: '',
+      settings: {
+        refresh_token: '',
+        access_token: '',
+        redirect_uri: ''
+      }
+    },
+    webex: {
+      is_enabled: false,
+      api_key: '',
+      settings: {
+        site_url: ''
+      }
+    }
+  });
+  const [telehealthDbMissing, setTelehealthDbMissing] = useState(false);
+
   // Sync currentPlan with planTier from context
   useEffect(() => {
     if (planTier) {
       setCurrentPlan(planTier);
     }
   }, [planTier]);
+
+  // Load telehealth settings
+  useEffect(() => {
+    const loadTelehealthSettings = async () => {
+      try {
+        const settings = await api.getTelehealthSettings();
+        if (settings && settings.length > 0) {
+          const settingsMap = {};
+          settings.forEach(s => {
+            // Parse settings if it's a string
+            const parsedSettings = typeof s.settings === 'string'
+              ? JSON.parse(s.settings)
+              : (s.settings || {});
+
+            settingsMap[s.provider_type] = {
+              is_enabled: s.is_enabled || false,
+              api_key: s.api_key || '',
+              api_secret: s.api_secret || '',
+              client_id: s.client_id || '',
+              client_secret: s.client_secret || '',
+              webhook_secret: s.webhook_secret || '',
+              settings: parsedSettings
+            };
+          });
+
+          // Merge with existing state to preserve default structure
+          setTelehealthSettings(prev => {
+            const merged = { ...prev };
+            Object.keys(settingsMap).forEach(key => {
+              merged[key] = {
+                ...prev[key],
+                ...settingsMap[key],
+                settings: {
+                  ...(prev[key]?.settings || {}),
+                  ...(settingsMap[key]?.settings || {})
+                }
+              };
+            });
+            return merged;
+          });
+        }
+      } catch (error) {
+        console.error('Error loading telehealth settings:', error);
+        // Show helpful message if tables don't exist
+        if (error.message && (error.message.includes('telehealth_provider_settings') || error.message.includes('503'))) {
+          console.warn('Telehealth provider settings table does not exist. Please run the database migration: node backend/scripts/migrate-telehealth.js');
+          setTelehealthDbMissing(true);
+        }
+      }
+    };
+    loadTelehealthSettings();
+  }, [api]);
 
   const handleSaveClinicSettings = async () => {
     try {
@@ -272,11 +358,55 @@ const AdminPanelView = ({
     });
   };
 
+  const handleSaveTelehealthSettings = async (providerType) => {
+    try {
+      const settings = telehealthSettings[providerType];
+      await api.saveTelehealthSettings(providerType, settings);
+      await addNotification('success', `${providerType} settings saved successfully`);
+    } catch (error) {
+      console.error('Error saving telehealth settings:', error);
+      await addNotification('alert', `Failed to save ${providerType} settings`);
+    }
+  };
+
+  const handleToggleTelehealthProvider = async (providerType, isEnabled) => {
+    // Store previous state for rollback (outside try block so catch can access it)
+    const previousState = { ...telehealthSettings[providerType] };
+
+    try {
+      // Optimistically update UI - preserve all existing fields
+      setTelehealthSettings(prev => ({
+        ...prev,
+        [providerType]: {
+          ...prev[providerType],
+          is_enabled: isEnabled,
+          // Ensure settings object is preserved
+          settings: {
+            ...(prev[providerType]?.settings || {})
+          }
+        }
+      }));
+
+      await api.toggleTelehealthProvider(providerType, isEnabled);
+      const providerName = providerType.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      await addNotification('success', `${providerName} ${isEnabled ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+      console.error('Error toggling telehealth provider:', error);
+      // Revert to previous state on error
+      setTelehealthSettings(prev => ({
+        ...prev,
+        [providerType]: previousState
+      }));
+      await addNotification('alert', `Failed to toggle ${providerType}`);
+    }
+  };
+
   const tabs = [
     { id: 'clinic', label: t.clinicSettings || 'Clinic Settings', icon: Building2 },
     { id: 'users', label: t.userManagement || 'User Management', icon: Users },
     { id: 'roles', label: t.rolesPermissions || 'Roles & Permissions', icon: Shield },
     { id: 'plans', label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard },
+    { id: 'telehealth', label: t.telehealthIntegrations || 'Telehealth Integrations', icon: Video },
     { id: 'hours', label: t.workingHours || 'Working Hours', icon: Clock },
     { id: 'appointments', label: t.appointmentSettings || 'Appointment Settings', icon: Settings }
   ];
@@ -761,6 +891,348 @@ const AdminPanelView = ({
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Telehealth Integrations Tab */}
+      {activeTab === 'telehealth' && (
+        <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {t.telehealthIntegrations || 'Telehealth Integrations'}
+          </h2>
+          <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            {t.telehealthIntegrationsDescription || 'Configure video conferencing providers for telehealth sessions. Enable one or more providers based on your needs.'}
+          </p>
+
+          {/* Database Migration Warning */}
+          {telehealthDbMissing && (
+            <div className="mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className={`text-sm font-semibold mb-1 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                    Database Migration Required
+                  </h4>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-yellow-300/80' : 'text-yellow-700'}`}>
+                    The telehealth provider settings tables haven't been created yet. Please run the following command in your backend directory:
+                  </p>
+                  <code className={`block mt-2 p-2 rounded text-xs font-mono ${theme === 'dark' ? 'bg-slate-800 text-green-400' : 'bg-white text-green-600'}`}>
+                    node backend/scripts/migrate-telehealth.js
+                  </code>
+                  <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-yellow-300/60' : 'text-yellow-600'}`}>
+                    After running the migration, refresh this page to enable the telehealth integrations.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-6">
+            {/* Zoom Integration */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <Video className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Zoom
+                    </h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Professional video conferencing
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${telehealthSettings.zoom?.is_enabled ? 'text-green-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {telehealthSettings.zoom?.is_enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <button
+                    onClick={() => handleToggleTelehealthProvider('zoom', !telehealthSettings.zoom?.is_enabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      telehealthSettings.zoom?.is_enabled
+                        ? 'bg-blue-500'
+                        : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        telehealthSettings.zoom?.is_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {telehealthSettings.zoom?.is_enabled && (
+                <div className="mt-4 space-y-4 animate-fadeIn">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        API Key
+                      </label>
+                      <input
+                        type="text"
+                        value={telehealthSettings.zoom?.api_key || ''}
+                        onChange={(e) => setTelehealthSettings(prev => ({
+                          ...prev,
+                          zoom: { ...prev.zoom, api_key: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Enter Zoom API Key"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        API Secret
+                      </label>
+                      <input
+                        type="password"
+                        value={telehealthSettings.zoom?.api_secret || ''}
+                        onChange={(e) => setTelehealthSettings(prev => ({
+                          ...prev,
+                          zoom: { ...prev.zoom, api_secret: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Enter Zoom API Secret"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Client ID (for OAuth)
+                      </label>
+                      <input
+                        type="text"
+                        value={telehealthSettings.zoom?.client_id || ''}
+                        onChange={(e) => setTelehealthSettings(prev => ({
+                          ...prev,
+                          zoom: { ...prev.zoom, client_id: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Optional - for OAuth"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Client Secret (for OAuth)
+                      </label>
+                      <input
+                        type="password"
+                        value={telehealthSettings.zoom?.client_secret || ''}
+                        onChange={(e) => setTelehealthSettings(prev => ({
+                          ...prev,
+                          zoom: { ...prev.zoom, client_secret: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Optional - for OAuth"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleSaveTelehealthSettings('zoom')}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Zoom Settings
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Google Meet Integration */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                    <Video className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Google Meet
+                    </h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Google Workspace integration
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${telehealthSettings.google_meet?.is_enabled ? 'text-green-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {telehealthSettings.google_meet?.is_enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <button
+                    onClick={() => handleToggleTelehealthProvider('google_meet', !telehealthSettings.google_meet?.is_enabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                      telehealthSettings.google_meet?.is_enabled
+                        ? 'bg-green-500'
+                        : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        telehealthSettings.google_meet?.is_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {telehealthSettings.google_meet?.is_enabled && (
+                <div className="mt-4 space-y-4 animate-fadeIn">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Client ID
+                      </label>
+                      <input
+                        type="text"
+                        value={telehealthSettings.google_meet?.client_id || ''}
+                        onChange={(e) => setTelehealthSettings(prev => ({
+                          ...prev,
+                          google_meet: { ...prev.google_meet, client_id: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Enter Google OAuth Client ID"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Client Secret
+                      </label>
+                      <input
+                        type="password"
+                        value={telehealthSettings.google_meet?.client_secret || ''}
+                        onChange={(e) => setTelehealthSettings(prev => ({
+                          ...prev,
+                          google_meet: { ...prev.google_meet, client_secret: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Enter Google OAuth Client Secret"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleSaveTelehealthSettings('google_meet')}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Google Meet Settings
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Webex Integration */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-cyan-500 rounded-lg flex items-center justify-center">
+                    <Video className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Webex
+                    </h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Cisco Webex Meetings
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${telehealthSettings.webex?.is_enabled ? 'text-cyan-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {telehealthSettings.webex?.is_enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <button
+                    onClick={() => handleToggleTelehealthProvider('webex', !telehealthSettings.webex?.is_enabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 ${
+                      telehealthSettings.webex?.is_enabled
+                        ? 'bg-cyan-500'
+                        : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        telehealthSettings.webex?.is_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {telehealthSettings.webex?.is_enabled && (
+                <div className="mt-4 space-y-4 animate-fadeIn">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Access Token
+                      </label>
+                      <input
+                        type="password"
+                        value={telehealthSettings.webex?.api_key || ''}
+                        onChange={(e) => setTelehealthSettings(prev => ({
+                          ...prev,
+                          webex: { ...prev.webex, api_key: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Enter Webex Access Token"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Site URL (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={telehealthSettings.webex?.settings?.site_url || ''}
+                        onChange={(e) => setTelehealthSettings(prev => ({
+                          ...prev,
+                          webex: {
+                            ...prev.webex,
+                            settings: { ...prev.webex.settings, site_url: e.target.value }
+                          }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="e.g., yourcompany.webex.com"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleSaveTelehealthSettings('webex')}
+                    className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Webex Settings
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* WhatsApp Notifications */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">💬</span>
+                </div>
+                <div>
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    WhatsApp Notifications
+                  </h3>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Send appointment reminders via WhatsApp
+                  </p>
+                </div>
+              </div>
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
+                  WhatsApp notification settings will be configured per patient in their profile. Supported providers: Twilio, WhatsApp Business API.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
