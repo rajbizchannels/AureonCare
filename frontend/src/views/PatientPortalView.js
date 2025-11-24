@@ -752,6 +752,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         setLanguage(languageCode);
       }
 
+      // Refresh profile data from database to ensure all fields are up to date
+      await fetchPatientData();
+
       // Show success confirmation
       setConfirmationMessage('Your profile has been updated successfully!');
       setShowConfirmation(true);
@@ -1101,13 +1104,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                        apt.status}
                     </span>
                     <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={() => handleEditAppointment(apt)}
-                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-cyan-400' : 'bg-gray-200 hover:bg-gray-300 text-cyan-600'}`}
-                        title="Edit appointment"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                      {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+                        <button
+                          onClick={() => handleEditAppointment(apt)}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-cyan-400' : 'bg-gray-200 hover:bg-gray-300 text-cyan-600'}`}
+                          title="Edit appointment"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
                       {apt.status !== 'cancelled' && apt.status !== 'completed' && (
                         <button
                           onClick={() => setAppointmentToCancel(apt)}
