@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
 
 const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const { language, setLanguage, setTheme } = useApp();
@@ -61,6 +62,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
   const [appointmentToCancel, setAppointmentToCancel] = useState(null);
   const [cancellationReason, setCancellationReason] = useState('');
+  const [showUploadForm, setShowUploadForm] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -326,6 +328,16 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     } catch (error) {
       console.error('Error adding preferred pharmacy:', error);
       addNotification('alert', t.failedToUpdatePharmacy);
+    }
+  };
+
+  const fetchMedicalRecords = async () => {
+    try {
+      const patientId = user.id;
+      const records = await (api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]));
+      setMedicalRecords(records);
+    } catch (error) {
+      console.error('Error fetching medical records:', error);
     }
   };
 
@@ -1062,9 +1074,34 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   // Medical Records View
   const renderMedicalRecords = () => (
     <div className="space-y-6">
-      <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        {t.medicalRecords}
-      </h2>
+      <div className="flex justify-between items-center">
+        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          {t.medicalRecords}
+        </h2>
+        {!showUploadForm && (
+          <button
+            onClick={() => setShowUploadForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-lg text-white font-medium transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Upload Record
+          </button>
+        )}
+      </div>
+
+      {showUploadForm && (
+        <MedicalRecordUploadForm
+          patientId={user.id}
+          theme={theme}
+          onSuccess={(record) => {
+            setShowUploadForm(false);
+            fetchMedicalRecords();
+            addNotification('success', 'Medical record uploaded successfully!');
+          }}
+          onCancel={() => setShowUploadForm(false)}
+        />
+      )}
+
       {medicalRecords.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <FileText className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
