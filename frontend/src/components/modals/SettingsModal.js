@@ -144,67 +144,69 @@ const SettingsModal = ({
                 </div>
                 {/* WhatsApp Notifications - Patient only */}
                 {user.role === 'patient' && (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                        <MessageCircle className="w-5 h-5 text-green-500" />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                          <MessageCircle className="w-5 h-5 text-green-500" />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>WhatsApp Notifications</p>
+                          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Get appointment reminders via WhatsApp</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>WhatsApp Notifications</p>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Get appointment reminders via WhatsApp</p>
-                      </div>
+                      <button
+                        disabled={loadingWhatsApp}
+                        onClick={async () => {
+                          const newValue = !whatsappEnabled;
+                          setWhatsappEnabled(newValue);
+                          try {
+                            await api.updateNotificationPreference(user.id, 'whatsapp', newValue, whatsappPhoneNumber);
+                            await addNotification('success', `WhatsApp notifications ${newValue ? 'enabled' : 'disabled'}`);
+                          } catch (error) {
+                            console.error('Error updating WhatsApp preference:', error);
+                            setWhatsappEnabled(!newValue); // Revert on error
+                            await addNotification('alert', 'Failed to update WhatsApp preference');
+                          }
+                        }}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                          whatsappEnabled
+                            ? 'bg-green-500'
+                            : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                        } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
                     </div>
-                    <button
-                      disabled={loadingWhatsApp}
-                      onClick={async () => {
-                        const newValue = !whatsappEnabled;
-                        setWhatsappEnabled(newValue);
-                        try {
-                          await api.updateNotificationPreference(user.id, 'whatsapp', newValue, whatsappPhoneNumber);
-                          await addNotification('success', `WhatsApp notifications ${newValue ? 'enabled' : 'disabled'}`);
-                        } catch (error) {
-                          console.error('Error updating WhatsApp preference:', error);
-                          setWhatsappEnabled(!newValue); // Revert on error
-                          await addNotification('alert', 'Failed to update WhatsApp preference');
-                        }
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
-                        whatsappEnabled
-                          ? 'bg-green-500'
-                          : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                      } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
 
-                  {/* WhatsApp Phone Number Input */}
-                  {whatsappEnabled && (
-                    <div className="ml-14 mt-3 animate-fadeIn">
-                      <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        {t.whatsappPhoneNumber || 'WhatsApp Phone Number'}
-                      </label>
-                      <input
-                        type="tel"
-                        value={whatsappPhoneNumber}
-                        onChange={(e) => setWhatsappPhoneNumber(e.target.value)}
-                        onBlur={handleWhatsAppPhoneUpdate}
-                        placeholder="+1 (555) 123-4567"
-                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                          theme === 'dark'
-                            ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                        }`}
-                      />
-                      <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                        {t.whatsappPhoneHint || 'Include country code (e.g., +1 for US)'}
-                      </p>
-                    </div>
-                  )}
+                    {/* WhatsApp Phone Number Input */}
+                    {whatsappEnabled && (
+                      <div className="ml-14 mt-3 animate-fadeIn">
+                        <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          {t.whatsappPhoneNumber || 'WhatsApp Phone Number'}
+                        </label>
+                        <input
+                          type="tel"
+                          value={whatsappPhoneNumber}
+                          onChange={(e) => setWhatsappPhoneNumber(e.target.value)}
+                          onBlur={handleWhatsAppPhoneUpdate}
+                          placeholder="+1 (555) 123-4567"
+                          className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                            theme === 'dark'
+                              ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                          }`}
+                        />
+                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                          {t.whatsappPhoneHint || 'Include country code (e.g., +1 for US)'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
                 <div className="flex items-center justify-between">
                   <div>
