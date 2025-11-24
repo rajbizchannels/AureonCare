@@ -78,6 +78,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       // Always preserve the original address field (even if null/empty)
       parsedUser.address = user.address || '';
 
+      // Ensure country is preserved
+      parsedUser.country = user.country || '';
+
       // Convert language code to full name for display
       const codeToNameMap = {
         'en': 'English',
@@ -324,7 +327,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         // Set the primary preferred pharmacy as selected
         const primary = patientPreferred?.find(p => p.isPreferred || p.is_preferred);
         if (primary) {
-          setSelectedPharmacyId(primary.id || primary.pharmacyId);
+          setSelectedPharmacyId(primary.pharmacy_id || primary.pharmacyId || primary.id);
         }
       }
     } catch (error) {
@@ -416,6 +419,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         }
         updatedProfile.address = profile.address || '';
 
+        // Ensure country is preserved
+        updatedProfile.country = profile.country || '';
+
         // Convert language code to full name for display
         const codeToNameMap = {
           'en': 'English',
@@ -500,6 +506,16 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   };
 
   const handleEditAppointment = (appointment) => {
+    // Prevent editing canceled or completed appointments
+    if (appointment.status === 'cancelled' || appointment.status === 'canceled') {
+      addNotification('alert', 'Cannot edit a cancelled appointment');
+      return;
+    }
+    if (appointment.status === 'completed') {
+      addNotification('alert', 'Cannot edit a completed appointment');
+      return;
+    }
+
     // Parse the start_time to get date and time
     const startTime = new Date(appointment.start_time);
     const date = startTime.toISOString().split('T')[0];
@@ -714,9 +730,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         updatedProfile.language = profileData.language || 'English'; // Preserve the language that was set
       }
 
-      // Ensure country is preserved if it was set
-      if (!updatedProfile.country && profileData.country) {
-        updatedProfile.country = profileData.country;
+      // Ensure country is preserved - use the value we just sent if backend doesn't return it
+      if (!updatedProfile.country) {
+        updatedProfile.country = profileData.country || '';
       }
 
       setProfileData(updatedProfile);
