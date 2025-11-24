@@ -66,6 +66,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [appointmentToCancel, setAppointmentToCancel] = useState(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -79,6 +80,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         const stateZip = (addressParts[2] || '').split(' ');
         parsedUser.address_state = stateZip[0] || '';
         parsedUser.address_zip = stateZip[1] || '';
+      } else {
+        // Initialize address fields with empty strings if address is null/empty
+        parsedUser.address_street = '';
+        parsedUser.address_city = '';
+        parsedUser.address_state = '';
+        parsedUser.address_zip = '';
       }
       // Always preserve the original address field (even if null/empty)
       parsedUser.address = user.address || '';
@@ -582,6 +589,31 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       console.error('Error deleting appointment:', error);
       addNotification('alert', t.failedToDeleteAppointment || 'Failed to delete appointment');
       setAppointmentToDelete(null);
+    }
+  };
+
+  const handleDeleteRecord = async () => {
+    if (!recordToDelete) return;
+
+    try {
+      const response = await fetch(`/api/patient-portal/${user.id}/medical-records/${recordToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete record');
+      }
+
+      addNotification('success', 'Medical record deleted successfully');
+      setRecordToDelete(null);
+      fetchMedicalRecords();
+    } catch (error) {
+      console.error('Error deleting medical record:', error);
+      addNotification('alert', 'Failed to delete medical record');
+      setRecordToDelete(null);
     }
   };
 
@@ -1147,6 +1179,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         <MedicalRecordUploadForm
           patientId={user.id}
           theme={theme}
+          providers={providers}
           onSuccess={(record) => {
             setShowUploadForm(false);
             fetchMedicalRecords();
@@ -1168,9 +1201,20 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               key={record.id}
               className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}
             >
-              <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {record.title || record.record_type}
-              </h3>
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {record.title || record.record_type}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setRecordToDelete(record)}
+                  className={`p-2 rounded-lg hover:bg-red-100 transition-colors ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
+                  title="Delete record"
+                >
+                  <Trash2 className="w-5 h-5 text-red-500" />
+                </button>
+              </div>
               <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                 {t.date}: {formatDate(record.record_date)}
               </p>
@@ -2434,6 +2478,20 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         onConfirm={handleDeleteAppointment}
         title={t.confirmDelete || "Confirm Delete"}
         message={`Are you sure you want to delete this appointment${appointmentToDelete ? ` with ${appointmentToDelete.provider_first_name ? `Dr. ${appointmentToDelete.provider_first_name} ${appointmentToDelete.provider_last_name}` : 'the provider'} on ${formatDate(appointmentToDelete.start_time)}?` : '?'}`}
+        type="warning"
+        confirmText={t.delete || "Delete"}
+        cancelText={t.cancel || "Cancel"}
+        showCancel={true}
+      />
+
+      {/* Delete Record Confirmation Modal */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!recordToDelete}
+        onClose={() => setRecordToDelete(null)}
+        onConfirm={handleDeleteRecord}
+        title={t.confirmDelete || "Confirm Delete"}
+        message={`Are you sure you want to delete this medical record${recordToDelete ? ` "${recordToDelete.title || recordToDelete.record_type}"?` : '?'} This action cannot be undone.`}
         type="warning"
         confirmText={t.delete || "Delete"}
         cancelText={t.cancel || "Cancel"}
