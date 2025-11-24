@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload } from 'lucide-react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Printer, MessageCircle } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
