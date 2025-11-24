@@ -67,26 +67,14 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [cancellationReason, setCancellationReason] = useState('');
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editRecordData, setEditRecordData] = useState({ title: '', description: '', providerId: '' });
 
   useEffect(() => {
     if (user) {
-      // Parse address if it's a string
+      // Initialize profile data from user
       let parsedUser = { ...user };
-      if (user.address && typeof user.address === 'string') {
-        // Try to parse address string into components
-        const addressParts = user.address.split(',').map(p => p.trim());
-        parsedUser.address_street = addressParts[0] || '';
-        parsedUser.address_city = addressParts[1] || '';
-        const stateZip = (addressParts[2] || '').split(' ');
-        parsedUser.address_state = stateZip[0] || '';
-        parsedUser.address_zip = stateZip[1] || '';
-      } else {
-        // Initialize address fields with empty strings if address is null/empty
-        parsedUser.address_street = '';
-        parsedUser.address_city = '';
-        parsedUser.address_state = '';
-        parsedUser.address_zip = '';
-      }
+
       // Always preserve the original address field (even if null/empty)
       parsedUser.address = user.address || '';
 
@@ -617,6 +605,37 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
+  const handleUpdateRecord = async (e) => {
+    e.preventDefault();
+    if (!editingRecord) return;
+
+    try {
+      const response = await fetch(`/api/patient-portal/${user.id}/medical-records/${editingRecord.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editRecordData.title,
+          description: editRecordData.description,
+          providerId: editRecordData.providerId || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update record');
+      }
+
+      addNotification('success', 'Medical record updated successfully');
+      setEditingRecord(null);
+      setEditRecordData({ title: '', description: '', providerId: '' });
+      fetchMedicalRecords();
+    } catch (error) {
+      console.error('Error updating medical record:', error);
+      addNotification('alert', 'Failed to update medical record');
+    }
+  };
+
   const handleCancelAppointment = async () => {
     if (!appointmentToCancel) return;
 
@@ -660,21 +679,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
-      // Combine address fields into a single string
-      const addressParts = [
-        profileData.address_street,
-        profileData.address_city,
-        `${profileData.address_state || ''} ${profileData.address_zip || ''}`.trim()
-      ].filter(part => part && part.trim());
-
-      const combinedAddress = addressParts.join(', ');
-
       const updated = await api.updatePatient(user.id, {
         first_name: profileData.first_name,
         last_name: profileData.last_name,
         phone: profileData.phone,
         email: profileData.email,
-        address: combinedAddress || profileData.address, // Use combined or fall back to original
+        address: profileData.address,
         date_of_birth: profileData.date_of_birth || profileData.dob,
         height: profileData.height,
         weight: profileData.weight,
@@ -1207,13 +1217,29 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     {record.title || record.record_type}
                   </h3>
                 </div>
-                <button
-                  onClick={() => setRecordToDelete(record)}
-                  className={`p-2 rounded-lg hover:bg-red-100 transition-colors ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
-                  title="Delete record"
-                >
-                  <Trash2 className="w-5 h-5 text-red-500" />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setEditingRecord(record);
+                      setEditRecordData({
+                        title: record.title || '',
+                        description: record.description || '',
+                        providerId: record.provider?.id || '',
+                      });
+                    }}
+                    className={`p-2 rounded-lg hover:bg-blue-100 transition-colors ${theme === 'dark' ? 'hover:bg-blue-900/20' : ''}`}
+                    title="Edit record"
+                  >
+                    <Edit className="w-5 h-5 text-blue-500" />
+                  </button>
+                  <button
+                    onClick={() => setRecordToDelete(record)}
+                    className={`p-2 rounded-lg hover:bg-red-100 transition-colors ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
+                    title="Delete record"
+                  >
+                    <Trash2 className="w-5 h-5 text-red-500" />
+                  </button>
+                </div>
               </div>
               <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                 {t.date}: {formatDate(record.record_date)}
@@ -1314,44 +1340,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               />
             </div>
             <div className="col-span-2">
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.streetAddress}</label>
-              <input
-                type="text"
-                value={profileData.address_street || ''}
-                onChange={(e) => setProfileData({ ...profileData, address_street: e.target.value })}
-                placeholder="123 Main Street"
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              />
-            </div>
-            <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.city}</label>
-              <input
-                type="text"
-                value={profileData.address_city || ''}
-                onChange={(e) => setProfileData({ ...profileData, address_city: e.target.value })}
-                placeholder="City"
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              />
-            </div>
-            <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.state}</label>
-              <input
-                type="text"
-                value={profileData.address_state || ''}
-                onChange={(e) => setProfileData({ ...profileData, address_state: e.target.value })}
-                placeholder="State"
-                maxLength="2"
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              />
-            </div>
-            <div>
-              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.zipCode}</label>
-              <input
-                type="text"
-                value={profileData.address_zip || ''}
-                onChange={(e) => setProfileData({ ...profileData, address_zip: e.target.value })}
-                placeholder="12345"
-                maxLength="10"
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.address || 'Address'}</label>
+              <textarea
+                value={profileData.address || ''}
+                onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+                placeholder="Enter your full address"
+                rows="3"
                 className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               />
             </div>
@@ -1491,6 +1485,192 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               />
             </div>
           </div>
+
+          {/* Settings Section */}
+          <div className="mt-6 pt-6 border-t border-slate-600/50">
+            <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.settings || 'Settings'}</h4>
+
+            {/* Notification Preferences */}
+            <div className="space-y-3 mb-4">
+              <h5 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.notifications || 'Notifications'}</h5>
+
+              {/* Email Notifications Toggle */}
+              <div className="flex items-center justify-between">
+                <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.emailNotifications || 'Email Notifications'}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleNotificationToggle('email_notifications')}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    profileData.email_notifications
+                      ? 'bg-cyan-500'
+                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      profileData.email_notifications ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* SMS Notifications Toggle */}
+              <div className="flex items-center justify-between">
+                <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.smsAlerts || 'SMS Alerts'}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleNotificationToggle('sms_notifications')}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    profileData.sms_notifications
+                      ? 'bg-cyan-500'
+                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      profileData.sms_notifications ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* WhatsApp Notifications Toggle */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-green-500" />
+                    <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {t.whatsappNotifications || 'WhatsApp Notifications'}
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={loadingWhatsApp}
+                    onClick={handleWhatsAppToggle}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                      whatsappEnabled
+                        ? 'bg-green-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {whatsappEnabled && (
+                  <div className="ml-6 animate-fadeIn">
+                    <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.whatsappPhoneNumber || 'WhatsApp Phone Number'}
+                    </label>
+                    <input
+                      type="tel"
+                      value={whatsappPhoneNumber}
+                      onChange={(e) => setWhatsappPhoneNumber(e.target.value)}
+                      onBlur={handleWhatsAppPhoneUpdate}
+                      placeholder="+1 (555) 123-4567"
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Security Section */}
+          <div className="mt-6 pt-6 border-t border-slate-600/50">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.security || 'Security'}</h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowChangePassword(!showChangePassword);
+                  if (!showChangePassword) {
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  }
+                }}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  showChangePassword
+                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
+                    : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400'
+                }`}
+              >
+                {showChangePassword ? (t.cancel || 'Cancel') : (t.changePassword || 'Change Password')}
+              </button>
+            </div>
+
+            {showChangePassword && (
+              <div className="space-y-4 mb-4">
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.currentPassword || 'Current Password'}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.newPassword || 'New Password'}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    minLength={6}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.confirmNewPassword || 'Confirm New Password'}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    minLength={6}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleChangePassword}
+                  className="w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2"
+                >
+                  <Lock className="w-4 h-4" />
+                  {t.updatePassword || 'Update Password'}
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-3 mt-6">
             <button
               type="submit"
@@ -1671,246 +1851,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   {preferredPharmacies.length > 0 ? t.updatePreferredPharmacy : t.setPreferredPharmacy}
                 </button>
               </div>
-            )}
-          </div>
-
-          {/* Settings Section */}
-          <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
-            <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.settings || 'Settings'}</h4>
-            <div className="space-y-4">
-              <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.languagePreference || 'Language Preference'}</p>
-                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {profileData?.language || user?.language || 'English'}
-                </p>
-              </div>
-
-              {/* Theme Preference */}
-              <div className="pt-4 border-t border-slate-600/50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Theme</p>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      {theme === 'dark' ? t.darkMode || 'Dark Mode' : t.lightMode || 'Light Mode'}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const newTheme = theme === 'dark' ? 'light' : 'dark';
-                      setTheme(newTheme);
-                      localStorage.setItem('theme', newTheme);
-                      if (editingProfile) {
-                        setProfileData({
-                          ...profileData,
-                          theme: newTheme
-                        });
-                      }
-                    }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      theme === 'dark' ? 'bg-cyan-500' : 'bg-gray-300'
-                    } cursor-pointer`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              {/* Notification Preferences */}
-              <div className="pt-4 border-t border-slate-600/50">
-                <div className="mb-3">
-                  <h5 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.notifications || 'Notifications'}</h5>
-                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Toggle to enable or disable notifications (changes save automatically)
-                  </p>
-                </div>
-
-                {/* Email Notifications Toggle */}
-                <div className="flex items-center justify-between mb-3">
-                  <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {t.emailNotifications || 'Email Notifications'}
-                  </label>
-                  <button
-                    onClick={() => handleNotificationToggle('email_notifications')}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                      profileData.email_notifications
-                        ? 'bg-cyan-500'
-                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        profileData.email_notifications ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* SMS Notifications Toggle */}
-                <div className="flex items-center justify-between mb-3">
-                  <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {t.smsAlerts || 'SMS Alerts'}
-                  </label>
-                  <button
-                    onClick={() => handleNotificationToggle('sms_notifications')}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                      profileData.sms_notifications
-                        ? 'bg-cyan-500'
-                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        profileData.sms_notifications ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* WhatsApp Notifications Toggle */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="w-4 h-4 text-green-500" />
-                      <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                        {t.whatsappNotifications || 'WhatsApp Notifications'}
-                      </label>
-                    </div>
-                    <button
-                      disabled={loadingWhatsApp}
-                      onClick={handleWhatsAppToggle}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                        whatsappEnabled
-                          ? 'bg-green-500'
-                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                      } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* WhatsApp Phone Number Input */}
-                  {whatsappEnabled && (
-                    <div className="ml-6 animate-fadeIn">
-                      <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        {t.whatsappPhoneNumber || 'WhatsApp Phone Number'}
-                      </label>
-                      <input
-                        type="tel"
-                        value={whatsappPhoneNumber}
-                        onChange={(e) => setWhatsappPhoneNumber(e.target.value)}
-                        onBlur={handleWhatsAppPhoneUpdate}
-                        placeholder="+1 (555) 123-4567"
-                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                          theme === 'dark'
-                            ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                        }`}
-                      />
-                      <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                        {t.whatsappPhoneHint || 'Include country code (e.g., +1 for US)'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Security Section */}
-          <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
-            <div className="flex items-center justify-between mb-4">
-              <h4 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.security || 'Security'}</h4>
-              <button
-                onClick={() => {
-                  setShowChangePassword(!showChangePassword);
-                  if (!showChangePassword) {
-                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                  }
-                }}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  showChangePassword
-                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
-                    : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400'
-                }`}
-              >
-                {showChangePassword ? (t.cancel || 'Cancel') : (t.changePassword || 'Change Password')}
-              </button>
-            </div>
-
-            {showChangePassword && (
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div>
-                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {t.currentPassword || 'Current Password'}
-                  </label>
-                  <input
-                    type="password"
-                    value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
-                      theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {t.newPassword || 'New Password'}
-                  </label>
-                  <input
-                    type="password"
-                    value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
-                      theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                    required
-                    minLength={6}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {t.confirmNewPassword || 'Confirm New Password'}
-                  </label>
-                  <input
-                    type="password"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${
-                      theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                    required
-                    minLength={6}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2"
-                >
-                  <Lock className="w-4 h-4" />
-                  {t.updatePassword || 'Update Password'}
-                </button>
-              </form>
-            )}
-
-            {!showChangePassword && (
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                {t.passwordLastChanged || 'Click "Change Password" to update your password'}
-              </p>
             )}
           </div>
         </div>
@@ -2497,6 +2437,105 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         cancelText={t.cancel || "Cancel"}
         showCancel={true}
       />
+
+      {/* Edit Record Modal */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`max-w-2xl w-full rounded-xl shadow-xl ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+            <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <div className="flex justify-between items-center">
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Edit Medical Record
+                </h3>
+                <button
+                  onClick={() => {
+                    setEditingRecord(null);
+                    setEditRecordData({ title: '', description: '', providerId: '' });
+                  }}
+                  className={`p-2 rounded-lg hover:bg-gray-100 ${theme === 'dark' ? 'hover:bg-slate-700' : ''}`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <form onSubmit={handleUpdateRecord} className="p-6 space-y-4">
+              <div>
+                <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={editRecordData.title}
+                  onChange={(e) => setEditRecordData({ ...editRecordData, title: e.target.value })}
+                  className={`w-full px-4 py-2 border rounded-lg ${
+                    theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Description
+                </label>
+                <textarea
+                  value={editRecordData.description}
+                  onChange={(e) => setEditRecordData({ ...editRecordData, description: e.target.value })}
+                  rows="4"
+                  className={`w-full px-4 py-2 border rounded-lg ${
+                    theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                />
+              </div>
+
+              {providers && providers.length > 0 && (
+                <div>
+                  <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Provider
+                  </label>
+                  <select
+                    value={editRecordData.providerId}
+                    onChange={(e) => setEditRecordData({ ...editRecordData, providerId: e.target.value })}
+                    className={`w-full px-4 py-2 border rounded-lg ${
+                      theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  >
+                    <option value="">Select a provider</option>
+                    {providers.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        Dr. {provider.first_name} {provider.last_name}{provider.specialty ? ` - ${provider.specialty}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 py-2 px-4 rounded-lg font-medium transition-colors bg-cyan-500 hover:bg-cyan-600 text-white"
+                >
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingRecord(null);
+                    setEditRecordData({ title: '', description: '', providerId: '' });
+                  }}
+                  className={`px-6 py-2 rounded-lg font-medium ${
+                    theme === 'dark'
+                      ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                  }`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Cancel Appointment Modal */}
       {appointmentToCancel && (
