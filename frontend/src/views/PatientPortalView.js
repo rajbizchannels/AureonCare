@@ -714,6 +714,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         updatedProfile.language = profileData.language || 'English'; // Preserve the language that was set
       }
 
+      // Ensure country is preserved if it was set
+      if (!updatedProfile.country && profileData.country) {
+        updatedProfile.country = profileData.country;
+      }
+
       setProfileData(updatedProfile);
       setEditingProfile(false);
       addNotification('success', t.profileUpdatedSuccessfully);
@@ -1502,7 +1507,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   <option value="">Select a pharmacy</option>
                   {pharmacies.map((pharmacy) => (
                     <option key={pharmacy.id} value={pharmacy.id}>
-                      {pharmacy.name} - {pharmacy.address}
+                      {pharmacy.pharmacyName || pharmacy.name || pharmacy.chain_name} - {pharmacy.address}
                     </option>
                   ))}
                 </select>
@@ -1527,7 +1532,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     const pharmacy = pharmacies.find(p => p.id === pp.pharmacy_id);
                     return pharmacy ? (
                       <div key={pp.id} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
-                        <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{pharmacy.name}</p>
+                        <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{pharmacy.pharmacyName || pharmacy.name || pharmacy.chain_name}</p>
                         <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{pharmacy.address}</p>
                         {pharmacy.phone && <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{pharmacy.phone}</p>}
                       </div>
