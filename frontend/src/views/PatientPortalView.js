@@ -327,7 +327,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         // Set the primary preferred pharmacy as selected
         const primary = patientPreferred?.find(p => p.isPreferred || p.is_preferred);
         if (primary) {
-          setSelectedPharmacyId(primary.pharmacy_id || primary.pharmacyId || primary.id);
+          // The API returns the full pharmacy object with the pharmacy's ID as 'id'
+          setSelectedPharmacyId(primary.id);
         }
       }
     } catch (error) {
@@ -1431,7 +1432,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</label>
               <select
-                value={profileData.country || ''}
+                value={String(profileData.country || '')}
                 onChange={(e) => setProfileData({...profileData, country: e.target.value})}
                 className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               >
@@ -1528,7 +1529,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   <option value="">Select a pharmacy</option>
                   {pharmacies.map((pharmacy) => (
                     <option key={pharmacy.id} value={pharmacy.id}>
-                      {pharmacy.pharmacyName || pharmacy.name || pharmacy.chain_name} - {pharmacy.address}
+                      {pharmacy.pharmacyName || pharmacy.name || pharmacy.chainName} - {pharmacy.addressLine1 || pharmacy.address_line1}, {pharmacy.city}, {pharmacy.state}
                     </option>
                   ))}
                 </select>
@@ -1549,16 +1550,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               {preferredPharmacies.length > 0 && (
                 <div className="mt-4">
                   <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Preferred Pharmacy:</p>
-                  {preferredPharmacies.map((pp) => {
-                    const pharmacy = pharmacies.find(p => p.id === pp.pharmacy_id);
-                    return pharmacy ? (
-                      <div key={pp.id} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
-                        <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{pharmacy.pharmacyName || pharmacy.name || pharmacy.chain_name}</p>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{pharmacy.address}</p>
-                        {pharmacy.phone && <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{pharmacy.phone}</p>}
-                      </div>
-                    ) : null;
-                  })}
+                  {preferredPharmacies.map((pharmacy) => (
+                    <div key={pharmacy.id} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{pharmacy.pharmacyName || pharmacy.name || pharmacy.chainName}</p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {pharmacy.addressLine1 || pharmacy.address_line1}
+                        {pharmacy.addressLine2 && `, ${pharmacy.addressLine2}`}
+                        {`, ${pharmacy.city}, ${pharmacy.state} ${pharmacy.zipCode || pharmacy.zip_code || ''}`}
+                      </p>
+                      {pharmacy.phone && <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{pharmacy.phone}</p>}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
