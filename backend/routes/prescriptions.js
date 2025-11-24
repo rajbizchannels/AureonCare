@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const WhatsAppService = require('../services/whatsappService');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -181,7 +182,51 @@ router.post('/', async (req, res) => {
         prescribedDate || new Date().toISOString().split('T')[0]
       ]
     );
-    res.status(201).json(toCamelCase(result.rows[0]));
+
+    const prescription = result.rows[0];
+
+    // Send WhatsApp notification if enabled
+    try {
+      const whatsappPref = await WhatsAppService.isEnabledForPatient(pool, patientId);
+
+      if (whatsappPref.enabled) {
+        // Get patient and provider details
+        const patientResult = await pool.query(
+          'SELECT id, first_name, last_name, phone FROM patients WHERE id = $1',
+          [patientId]
+        );
+        const providerResult = await pool.query(
+          'SELECT id, first_name, last_name FROM providers WHERE id = $1',
+          [providerId]
+        );
+
+        if (patientResult.rows.length > 0 && providerResult.rows.length > 0) {
+          const patient = {
+            ...patientResult.rows[0],
+            phone: whatsappPref.phoneNumber || patientResult.rows[0].phone
+          };
+          const provider = providerResult.rows[0];
+
+          // Get WhatsApp config
+          const whatsappConfig = await WhatsAppService.getConfig(pool);
+
+          if (whatsappConfig) {
+            const whatsappService = new WhatsAppService(whatsappConfig);
+            await whatsappService.sendPrescriptionNotification(
+              prescription,
+              patient,
+              provider,
+              null // pharmacy info not available at creation time
+            );
+          }
+        }
+      }
+    } catch (whatsappError) {
+      console.error('Error sending WhatsApp notification for prescription:', whatsappError);
+      // Don't fail the request if notification fails
+    }
+
+    res.status(201).json(toCamelCase(prescription));
   } catch (error) {
     console.error('Error creating prescription:', error);
     res.status(500).json({ error: 'Failed to create prescription' });
@@ -314,6 +359,52 @@ router.post('/:id/send-erx', async (req, res) => {
       JSON.stringify({ prescriptionId: req.params.id, erxMessageId }),
       'pending'
     ]);
+
+    // Send WhatsApp notification if enabled
+    try {
+      const whatsappPref = await WhatsAppService.isEnabledForPatient(pool, prescription.patient_id);
+
+      if (whatsappPref.enabled) {
+        // Get patient, provider, and pharmacy details
+        const patientResult = await pool.query(
+          'SELECT id, first_name, last_name, phone FROM patients WHERE id = $1',
+          [prescription.patient_id]
+        );
+        const providerResult = await pool.query(
+          'SELECT id, first_name, last_name FROM providers WHERE id = $1',
+          [prescription.provider_id]
+        );
+        const pharmacyResult = await pool.query(
+          'SELECT id, pharmacy_name as name, address, phone FROM pharmacies WHERE id = $1',
+          [pharmacyId]
+        );
+
+        if (patientResult.rows.length > 0 && providerResult.rows.length > 0) {
+          const patient = {
+            ...patientResult.rows[0],
+            phone: whatsappPref.phoneNumber || patientResult.rows[0].phone
+          };
+          const provider = providerResult.rows[0];
+          const pharmacy = pharmacyResult.rows.length > 0 ? pharmacyResult.rows[0] : null;
+
+          // Get WhatsApp config
+          const whatsappConfig = await WhatsAppService.getConfig(pool);
+
+          if (whatsappConfig) {
+            const whatsappService = new WhatsAppService(whatsappConfig);
+            await whatsappService.sendPrescriptionNotification(
+              prescription,
+              patient,
+              provider,
+              pharmacy
+            );
+          }
+        }
+      }
+    } catch (whatsappError) {
+      console.error('Error sending WhatsApp notification for eRx:', whatsappError);
+      // Don't fail the request if notification fails
+    }
 
     res.json({
       ...toCamelCase(result.rows[0]),

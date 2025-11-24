@@ -37,6 +37,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   });
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
+  const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -114,9 +115,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         const whatsappPref = preferences.find(p => p.channel_type === 'whatsapp');
         if (whatsappPref) {
           setWhatsappEnabled(whatsappPref.is_enabled);
+          setWhatsappPhoneNumber(whatsappPref.contact_info || user.phone || '');
+        } else {
+          // Default to user's phone number if no preference exists
+          setWhatsappPhoneNumber(user.phone || '');
         }
       } catch (error) {
         console.error('Error loading WhatsApp preference:', error);
+        // Default to user's phone number on error
+        setWhatsappPhoneNumber(user.phone || '');
       } finally {
         setLoadingWhatsApp(false);
       }
@@ -742,12 +749,22 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     setWhatsappEnabled(newValue);
 
     try {
-      await api.updateNotificationPreference(user.id, 'whatsapp', newValue);
+      await api.updateNotificationPreference(user.id, 'whatsapp', newValue, whatsappPhoneNumber);
       addNotification('success', `WhatsApp notifications ${newValue ? 'enabled' : 'disabled'}`);
     } catch (error) {
       console.error('Error updating WhatsApp preference:', error);
       setWhatsappEnabled(!newValue); // Revert on error
       addNotification('alert', 'Failed to update WhatsApp preference');
+    }
+  };
+
+  const handleWhatsAppPhoneUpdate = async () => {
+    try {
+      await api.updateNotificationPreference(user.id, 'whatsapp', whatsappEnabled, whatsappPhoneNumber);
+      addNotification('success', 'WhatsApp phone number updated');
+    } catch (error) {
+      console.error('Error updating WhatsApp phone:', error);
+      addNotification('alert', 'Failed to update WhatsApp phone number');
     }
   };
 
@@ -1673,28 +1690,54 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 </div>
 
                 {/* WhatsApp Notifications Toggle */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-green-500" />
-                    <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      {t.whatsappNotifications || 'WhatsApp Notifications'}
-                    </label>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4 text-green-500" />
+                      <label className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        {t.whatsappNotifications || 'WhatsApp Notifications'}
+                      </label>
+                    </div>
+                    <button
+                      disabled={loadingWhatsApp}
+                      onClick={handleWhatsAppToggle}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                        whatsappEnabled
+                          ? 'bg-green-500'
+                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                      } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
-                  <button
-                    disabled={loadingWhatsApp}
-                    onClick={handleWhatsAppToggle}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                      whatsappEnabled
-                        ? 'bg-green-500'
-                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                    } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
+
+                  {/* WhatsApp Phone Number Input */}
+                  {whatsappEnabled && (
+                    <div className="ml-6 animate-fadeIn">
+                      <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.whatsappPhoneNumber || 'WhatsApp Phone Number'}
+                      </label>
+                      <input
+                        type="tel"
+                        value={whatsappPhoneNumber}
+                        onChange={(e) => setWhatsappPhoneNumber(e.target.value)}
+                        onBlur={handleWhatsAppPhoneUpdate}
+                        placeholder="+1 (555) 123-4567"
+                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                        }`}
+                      />
+                      <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                        {t.whatsappPhoneHint || 'Include country code (e.g., +1 for US)'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
