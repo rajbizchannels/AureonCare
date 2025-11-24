@@ -257,7 +257,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
               <option value="">Select a provider</option>
               {providers.map((provider) => (
                 <option key={provider.id} value={provider.id}>
-                  Dr. {provider.first_name} {provider.last_name}{provider.specialty ? ` - ${provider.specialty}` : ''}
+                  Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name}{provider.specialty || provider.specialization ? ` - ${provider.specialty || provider.specialization}` : ''}
                 </option>
               ))}
             </select>
