@@ -128,29 +128,42 @@ router.get('/patient/:patientId/preferred', async (req, res) => {
 
 // Add pharmacy to patient's list
 router.post('/patient/:patientId/preferred', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const client = await pool.connect();
+
   try {
-    const pool = req.app.locals.pool;
     const { pharmacyId, isPreferred } = req.body;
+
+    // Use transaction to ensure atomicity
+    await client.query('BEGIN');
 
     // If marking as preferred, delete all existing pharmacies for this patient
     // This ensures only one preferred pharmacy exists at a time
     if (isPreferred) {
-      await pool.query(
+      await client.query(
         'DELETE FROM patient_pharmacies WHERE patient_id = $1',
         [req.params.patientId]
       );
     }
 
-    const result = await pool.query(`
+    // Insert new preferred pharmacy
+    const result = await client.query(`
       INSERT INTO patient_pharmacies (patient_id, pharmacy_id, is_preferred)
       VALUES ($1, $2, $3)
+      ON CONFLICT (patient_id, pharmacy_id)
+      DO UPDATE SET is_preferred = $3, added_date = CURRENT_TIMESTAMP
       RETURNING *
     `, [req.params.patientId, pharmacyId, isPreferred || false]);
 
+    await client.query('COMMIT');
+
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error adding patient pharmacy:', error);
     res.status(500).json({ error: 'Failed to add patient pharmacy' });
+  } finally {
+    client.release();
   }
 });
 
