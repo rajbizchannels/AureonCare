@@ -706,6 +706,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
+      // Update patient profile
       const updated = await api.updatePatient(user.id, {
         first_name: profileData.first_name,
         last_name: profileData.last_name,
@@ -725,6 +726,20 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         email_notifications: profileData.email_notifications || false,
         sms_notifications: profileData.sms_notifications || false
       });
+
+      // Update preferred pharmacy if one is selected
+      if (selectedPharmacyId && user?.id) {
+        try {
+          await api.addPreferredPharmacy(user.id, selectedPharmacyId, true);
+          // Clear and refresh pharmacy data
+          setPreferredPharmacies([]);
+          await fetchPharmacyData();
+        } catch (pharmacyError) {
+          console.error('Error updating preferred pharmacy:', pharmacyError);
+          // Don't fail the whole save if just pharmacy update fails
+          addNotification('alert', 'Profile saved but pharmacy update failed');
+        }
+      }
 
       // Convert language code to full name for display (in case backend returns code)
       const codeToNameMap = {
@@ -1544,19 +1559,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   ))}
                 </select>
               </div>
-              {selectedPharmacyId && (
-                <button
-                  type="button"
-                  onClick={handleAddPreferredPharmacy}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
-                      : 'bg-cyan-500 hover:bg-cyan-600 text-white'
-                  }`}
-                >
-                  {preferredPharmacies.length > 0 ? t.updatePreferredPharmacy || 'Update Preferred Pharmacy' : t.setPreferredPharmacy || 'Set Preferred Pharmacy'}
-                </button>
-              )}
               {preferredPharmacies.length > 0 && (
                 <div className="mt-4">
                   <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Preferred Pharmacy:</p>
