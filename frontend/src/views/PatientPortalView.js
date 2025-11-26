@@ -325,16 +325,21 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         setPreferredPharmacies(patientPreferred || []);
 
         // Set the primary preferred pharmacy as selected
+        // Reset to empty if no preferred pharmacy exists
         const primary = patientPreferred?.find(p => p.isPreferred || p.is_preferred);
         if (primary) {
           // The API returns the full pharmacy object with the pharmacy's ID as 'id'
           setSelectedPharmacyId(primary.id);
+        } else {
+          // No preferred pharmacy found, reset selection
+          setSelectedPharmacyId('');
         }
       }
     } catch (error) {
       console.error('Error fetching pharmacy data:', error);
       setPharmacies([]);
       setPreferredPharmacies([]);
+      setSelectedPharmacyId('');
     }
   };
 
@@ -345,11 +350,16 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
 
     try {
+      // Save the new preferred pharmacy (backend will delete old ones and insert new one)
       await api.addPreferredPharmacy(user.id, selectedPharmacyId, true);
-      addNotification('success', t.preferredPharmacyUpdated);
 
-      // Refresh preferred pharmacies list
+      // Clear current preferred pharmacies immediately to prevent showing stale data
+      setPreferredPharmacies([]);
+
+      // Refresh preferred pharmacies list from database
       await fetchPharmacyData();
+
+      addNotification('success', t.preferredPharmacyUpdated);
 
       // Show success confirmation
       setConfirmationMessage('Your preferred pharmacy has been updated successfully!');
