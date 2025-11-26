@@ -132,10 +132,11 @@ router.post('/patient/:patientId/preferred', async (req, res) => {
     const pool = req.app.locals.pool;
     const { pharmacyId, isPreferred } = req.body;
 
-    // If marking as preferred, unmark all others
+    // If marking as preferred, delete all existing pharmacies for this patient
+    // This ensures only one preferred pharmacy exists at a time
     if (isPreferred) {
       await pool.query(
-        'UPDATE patient_pharmacies SET is_preferred = false WHERE patient_id = $1',
+        'DELETE FROM patient_pharmacies WHERE patient_id = $1',
         [req.params.patientId]
       );
     }
@@ -143,8 +144,6 @@ router.post('/patient/:patientId/preferred', async (req, res) => {
     const result = await pool.query(`
       INSERT INTO patient_pharmacies (patient_id, pharmacy_id, is_preferred)
       VALUES ($1, $2, $3)
-      ON CONFLICT (patient_id, pharmacy_id)
-      DO UPDATE SET is_preferred = $3, added_date = CURRENT_TIMESTAMP
       RETURNING *
     `, [req.params.patientId, pharmacyId, isPreferred || false]);
 

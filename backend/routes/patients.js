@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 
 // Get all patients
 router.get('/', async (req, res) => {
@@ -125,7 +126,7 @@ router.put('/:id', async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
     address, city, state, zip, insurance, insurance_id, status,
-    height, weight, blood_type, allergies, past_history, family_history, current_medications, language
+    height, weight, blood_type, allergies, past_history, family_history, current_medications, language, country
   } = req.body;
 
   try {
@@ -151,12 +152,13 @@ router.put('/:id', async (req, res) => {
            past_history = COALESCE($14, past_history),
            family_history = COALESCE($15, family_history),
            current_medications = COALESCE($16, current_medications),
+           country = COALESCE($17, country),
            updated_at = NOW()
-       WHERE id::text = $17::text
+       WHERE id::text = $18::text
        RETURNING *`,
       [first_name, last_name, mrn, birthDate, gender, phone, email,
        address, status, height, weight, blood_type, allergies,
-       past_history, family_history, current_medications, req.params.id]
+       past_history, family_history, current_medications, country, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });
@@ -165,6 +167,19 @@ router.put('/:id', async (req, res) => {
     const updatedPatient = result.rows[0];
 
     // Update the users table since patient.id = user.id (no separate user_id)
+    // Build dynamic update for users table
+    const userUpdateFields = [];
+    const userUpdateValues = [];
+    let paramIndex = 1;
+
+    if (first_name) {
+      userUpdateFields.push(`first_name = $${paramIndex++}`);
+      userUpdateValues.push(first_name);
+    }
+    if (last_name) {
+      userUpdateFields.push(`last_name = $${paramIndex++}`);
+      userUpdateValues.push(last_name);
+    }
     if (language) {
       // Convert full language name to code if needed
       const languageMap = {
@@ -175,28 +190,23 @@ router.put('/:id', async (req, res) => {
         'Arabic': 'ar'
       };
       const languageCode = languageMap[language] || language;
+      userUpdateFields.push(`language = $${paramIndex++}`);
+      userUpdateValues.push(languageCode);
+    }
+    if (country) {
+      userUpdateFields.push(`country = $${paramIndex++}`);
+      userUpdateValues.push(country);
 
-      await pool.query(
-        'UPDATE users SET language = $1, updated_at = NOW() WHERE id = $2',
-        [languageCode, req.params.id] // patient.id = user.id
-      );
+      // Calculate and update timezone from country
+      const timezone = getTimezoneFromCountry(country);
+      if (timezone) {
+        userUpdateFields.push(`timezone = $${paramIndex++}`);
+        userUpdateValues.push(timezone);
+      }
     }
 
-    // Also update first_name and last_name in users table if provided
-    if (first_name || last_name) {
-      const userUpdateFields = [];
-      const userUpdateValues = [];
-      let paramIndex = 1;
-
-      if (first_name) {
-        userUpdateFields.push(`first_name = $${paramIndex++}`);
-        userUpdateValues.push(first_name);
-      }
-      if (last_name) {
-        userUpdateFields.push(`last_name = $${paramIndex++}`);
-        userUpdateValues.push(last_name);
-      }
-
+    // Execute users table update if there are fields to update
+    if (userUpdateFields.length > 0) {
       userUpdateFields.push(`updated_at = NOW()`);
       userUpdateValues.push(req.params.id);
 
