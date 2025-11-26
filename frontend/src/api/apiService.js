@@ -734,7 +734,7 @@ const api = {
     const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pharmacyId, isPrimary })
+      body: JSON.stringify({ pharmacyId, isPreferred: isPrimary })
     });
     if (!response.ok) throw new Error('Failed to add preferred pharmacy');
     return response.json();
