@@ -13,7 +13,7 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
  * - Delete diagnoses with confirmation
  * - Search and filter capabilities
  */
-const PatientDiagnosisView = ({ theme, api, addNotification }) => {
+const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
   const [diagnoses, setDiagnoses] = useState([]);
   const [patients, setPatients] = useState([]);
   const [providers, setProviders] = useState([]);
@@ -427,7 +427,9 @@ const PatientDiagnosisView = ({ theme, api, addNotification }) => {
           theme={theme}
           api={api}
           patient={selectedPatient}
+          patients={patients}
           providers={providers}
+          user={user}
           editDiagnosis={editingDiagnosis}
           onClose={() => {
             setShowDiagnosisForm(false);

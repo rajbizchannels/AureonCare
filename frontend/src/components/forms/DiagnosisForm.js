@@ -6,8 +6,10 @@ import ConfirmationModal from '../modals/ConfirmationModal';
 const DiagnosisForm = ({
   theme,
   api,
-  patient,
+  patient, // Optional - if provided, patient dropdown will be pre-selected
+  patients = [], // List of all patients for dropdown
   providers = [],
+  user, // Logged-in user
   onClose,
   onSuccess,
   addNotification,
@@ -16,7 +18,7 @@ const DiagnosisForm = ({
 }) => {
   const [formData, setFormData] = useState({
     patientId: patient?.id || '',
-    providerId: '',
+    providerId: user?.id || '', // Default to logged-in user
     icdCodes: [],
     cptCodes: [],
     diagnosisName: '',
@@ -34,7 +36,7 @@ const DiagnosisForm = ({
     if (editDiagnosis) {
       setFormData({
         patientId: editDiagnosis.patientId || patient?.id || '',
-        providerId: editDiagnosis.providerId || '',
+        providerId: editDiagnosis.providerId || user?.id || '',
         icdCodes: editDiagnosis.icdCodes || [],
         cptCodes: editDiagnosis.cptCodes || [],
         diagnosisName: editDiagnosis.diagnosisName || '',
@@ -44,8 +46,11 @@ const DiagnosisForm = ({
         diagnosedDate: editDiagnosis.diagnosedDate || new Date().toISOString().split('T')[0],
         notes: editDiagnosis.notes || ''
       });
+    } else if (user?.id) {
+      // Default provider to logged-in user for new diagnoses
+      setFormData(prev => ({ ...prev, providerId: user.id }));
     }
-  }, [editDiagnosis, patient]);
+  }, [editDiagnosis, patient, user]);
 
   // ESC key handler
   useEffect(() => {
@@ -117,7 +122,9 @@ const DiagnosisForm = ({
         result = await api.createDiagnosis(diagnosisData);
       }
 
-      const patientName = patient ? `${patient.first_name || patient.firstName || ''} ${patient.last_name || patient.lastName || ''}`.trim() : 'patient';
+      // Find patient name from patients array or use provided patient
+      const selectedPatient = patients.find(p => p.id === formData.patientId) || patient;
+      const patientName = selectedPatient ? `${selectedPatient.first_name || selectedPatient.firstName || ''} ${selectedPatient.last_name || selectedPatient.lastName || ''}`.trim() : 'patient';
       const action = editDiagnosis ? 'updated' : 'created';
       await addNotification('diagnosis', `Diagnosis ${action} for ${patientName}`);
 
@@ -194,15 +201,28 @@ const DiagnosisForm = ({
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
             <div className="space-y-4">
-              {/* Patient Info (Read-only) */}
-              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-50'}`}>
-                <div className="text-sm font-medium mb-1">Patient</div>
-                <div className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {patient?.first_name || patient?.firstName || ''} {patient?.last_name || patient?.lastName || ''}
-                </div>
-                <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  MRN: {patient?.mrn || 'N/A'}
-                </div>
+              {/* Patient Dropdown */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Patient <span className="text-red-500 ml-1">*</span>
+                </label>
+                <select
+                  value={formData.patientId}
+                  onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                  required
+                  className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                  }`}
+                >
+                  <option value="">Select Patient</option>
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.first_name || p.firstName} {p.last_name || p.lastName} - MRN: {p.mrn || 'N/A'}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* ICD Codes */}

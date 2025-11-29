@@ -266,6 +266,7 @@ function App() {
             theme={theme}
             api={api}
             addNotification={addNotification}
+            user={user}
           />
         );
       case 'telehealth':
@@ -679,7 +680,9 @@ function App() {
           theme={theme}
           api={api}
           patient={editingItem?.patient || null}
+          patients={patients}
           providers={providers}
+          user={user}
           editDiagnosis={editingItem?.diagnosis || null}
           onClose={() => {
             setShowForm(null);
