@@ -1,0 +1,450 @@
+import React, { useState, useEffect } from 'react';
+import {
+  User, Calendar, Activity, FileText, Pill, ArrowLeft,
+  Edit, Trash2, Plus, Clock, MapPin, Phone, Mail
+} from 'lucide-react';
+import { formatDate, formatTime } from '../utils/formatters';
+import DiagnosisForm from '../components/forms/DiagnosisForm';
+import ConfirmationModal from '../components/modals/ConfirmationModal';
+
+const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack }) => {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
+
+  // Data states
+  const [patientData, setPatientData] = useState(patient || {});
+  const [appointments, setAppointments] = useState([]);
+  const [diagnoses, setDiagnoses] = useState([]);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [medicalRecords, setMedicalRecords] = useState([]);
+  const [providers, setProviders] = useState([]);
+  const [patients, setPatients] = useState([]);
+
+  // Modal states
+  const [showDiagnosisForm, setShowDiagnosisForm] = useState(false);
+  const [editingDiagnosis, setEditingDiagnosis] = useState(null);
+  const [deletingDiagnosis, setDeletingDiagnosis] = useState(null);
+
+  useEffect(() => {
+    if (patient?.id) {
+      fetchPatientHistory();
+      fetchProviders();
+      fetchPatients();
+    }
+  }, [patient?.id]);
+
+  const fetchProviders = async () => {
+    try {
+      const data = await api.getProviders();
+      setProviders(data);
+    } catch (error) {
+      console.error('Error fetching providers:', error);
+    }
+  };
+
+  const fetchPatients = async () => {
+    try {
+      const data = await api.getPatients();
+      setPatients(data);
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+    }
+  };
+
+  const fetchPatientHistory = async () => {
+    setLoading(true);
+    try {
+      const patientId = patient.id;
+
+      // Fetch all patient data in parallel
+      const [appts, diags, presc, records, fullPatient] = await Promise.all([
+        api.getAppointments().then(all => all.filter(a => a.patient_id?.toString() === patientId?.toString())),
+        api.getDiagnoses ? api.getDiagnoses(patientId) : Promise.resolve([]),
+        api.getPatientActivePrescriptions ? api.getPatientActivePrescriptions(patientId).catch(() => []) : Promise.resolve([]),
+        api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
+        api.getPatientProfile ? api.getPatientProfile(patientId).catch(() => patient) : Promise.resolve(patient)
+      ]);
+
+      setAppointments(appts);
+      setDiagnoses(diags);
+      setPrescriptions(presc);
+      setMedicalRecords(records);
+      setPatientData(fullPatient || patient);
+    } catch (error) {
+      console.error('Error fetching patient history:', error);
+      addNotification('error', 'Failed to load patient history');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteDiagnosis = async () => {
+    if (!deletingDiagnosis) return;
+
+    try {
+      await api.deleteDiagnosis(deletingDiagnosis.id);
+      addNotification('success', 'Diagnosis deleted successfully');
+      setDeletingDiagnosis(null);
+      fetchPatientHistory();
+    } catch (error) {
+      console.error('Error deleting diagnosis:', error);
+      addNotification('error', 'Failed to delete diagnosis');
+    }
+  };
+
+  const renderOverview = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Patient Info Card */}
+      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+            {patientData.first_name?.charAt(0)}{patientData.last_name?.charAt(0)}
+          </div>
+          <div>
+            <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.first_name} {patientData.last_name}
+            </h3>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              MRN: {patientData.mrn || 'N/A'}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {patientData.date_of_birth && (
+            <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <Calendar className="w-4 h-4" />
+              <span>DOB: {formatDate(patientData.date_of_birth)}</span>
+            </div>
+          )}
+          {patientData.phone && (
+            <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <Phone className="w-4 h-4" />
+              <span>{patientData.phone}</span>
+            </div>
+          )}
+          {patientData.email && (
+            <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <Mail className="w-4 h-4" />
+              <span>{patientData.email}</span>
+            </div>
+          )}
+          {patientData.address && (
+            <div className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <MapPin className="w-4 h-4" />
+              <span>{patientData.address}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <Activity className="w-8 h-8 text-teal-500" />
+          <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {diagnoses.length}
+          </span>
+        </div>
+        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Active Diagnoses
+        </p>
+      </div>
+
+      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <Calendar className="w-8 h-8 text-blue-500" />
+          <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {appointments.length}
+          </span>
+        </div>
+        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Total Appointments
+        </p>
+      </div>
+
+      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <Pill className="w-8 h-8 text-green-500" />
+          <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {prescriptions.length}
+          </span>
+        </div>
+        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Active Prescriptions
+        </p>
+      </div>
+
+      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <FileText className="w-8 h-8 text-purple-500" />
+          <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {medicalRecords.length}
+          </span>
+        </div>
+        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Medical Records
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderDiagnoses = () => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Diagnoses
+        </h3>
+        <button
+          onClick={() => {
+            setEditingDiagnosis(null);
+            setShowDiagnosisForm(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-lg text-white font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Diagnosis
+        </button>
+      </div>
+
+      {diagnoses.length === 0 ? (
+        <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+          <Activity className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No diagnoses found</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {diagnoses.map((diagnosis) => (
+            <div
+              key={diagnosis.id}
+              className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h4 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {diagnosis.diagnosisName || diagnosis.diagnosis_name || 'Diagnosis'}
+                  </h4>
+                  {diagnosis.diagnosisCode && (
+                    <p className={`text-sm mt-1 font-mono ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                      Code: {diagnosis.diagnosisCode || diagnosis.diagnosis_code}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {diagnosis.severity && (
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      diagnosis.severity === 'Severe'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        : diagnosis.severity === 'Moderate'
+                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    }`}>
+                      {diagnosis.severity}
+                    </span>
+                  )}
+                  {diagnosis.status && (
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      diagnosis.status === 'Active'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        : diagnosis.status === 'Resolved'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                    }`}>
+                      {diagnosis.status}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setEditingDiagnosis(diagnosis);
+                      setShowDiagnosisForm(true);
+                    }}
+                    className={`p-2 rounded-lg hover:bg-blue-100 transition-colors ${theme === 'dark' ? 'hover:bg-blue-900/20' : ''}`}
+                    title="Edit diagnosis"
+                  >
+                    <Edit className="w-4 h-4 text-blue-500" />
+                  </button>
+                  <button
+                    onClick={() => setDeletingDiagnosis(diagnosis)}
+                    className={`p-2 rounded-lg hover:bg-red-100 transition-colors ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
+                    title="Delete diagnosis"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  <strong>Date:</strong> {formatDate(diagnosis.diagnosedDate || diagnosis.diagnosed_date)}
+                </p>
+                {diagnosis.provider && (
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    <strong>Provider:</strong> Dr. {diagnosis.provider.first_name || diagnosis.provider.firstName} {diagnosis.provider.last_name || diagnosis.provider.lastName}
+                  </p>
+                )}
+              </div>
+
+              {diagnosis.description && (
+                <p className={`text-sm mt-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  <strong>Description:</strong> {diagnosis.description}
+                </p>
+              )}
+
+              {diagnosis.notes && (
+                <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  <strong>Notes:</strong> {diagnosis.notes}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderAppointments = () => (
+    <div className="space-y-4">
+      <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        Appointments
+      </h3>
+      {appointments.length === 0 ? (
+        <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+          <Calendar className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No appointments found</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {appointments.map((appt) => (
+            <div
+              key={appt.id}
+              className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {appt.type || 'Appointment'}
+                  </h4>
+                  <div className={`flex items-center gap-2 mt-1 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    <Clock className="w-4 h-4" />
+                    <span>{formatDate(appt.start_time)} at {formatTime(appt.start_time)}</span>
+                  </div>
+                  {appt.reason && (
+                    <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {appt.reason}
+                    </p>
+                  )}
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  appt.status === 'Completed'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : appt.status === 'Cancelled'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                }`}>
+                  {appt.status}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={onBack}
+          className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : ''}`}
+        >
+          <ArrowLeft className={`w-6 h-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+        </button>
+        <div>
+          <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Patient History
+          </h1>
+          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            {patientData.first_name} {patientData.last_name}
+          </p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+        {[
+          { id: 'overview', label: 'Overview', icon: User },
+          { id: 'diagnoses', label: 'Diagnoses', icon: Activity },
+          { id: 'appointments', label: 'Appointments', icon: Calendar }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors ${
+              activeTab === tab.id
+                ? `border-b-2 ${theme === 'dark' ? 'border-blue-500 text-blue-500' : 'border-blue-600 text-blue-600'}`
+                : `${theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-600 hover:text-gray-900'}`
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="mt-6">
+        {activeTab === 'overview' && renderOverview()}
+        {activeTab === 'diagnoses' && renderDiagnoses()}
+        {activeTab === 'appointments' && renderAppointments()}
+      </div>
+
+      {/* Diagnosis Form Modal */}
+      {showDiagnosisForm && (
+        <DiagnosisForm
+          theme={theme}
+          api={api}
+          patient={patientData}
+          patients={patients}
+          providers={providers}
+          user={user}
+          editDiagnosis={editingDiagnosis}
+          onClose={() => {
+            setShowDiagnosisForm(false);
+            setEditingDiagnosis(null);
+          }}
+          onSuccess={() => {
+            setShowDiagnosisForm(false);
+            setEditingDiagnosis(null);
+            fetchPatientHistory();
+          }}
+          addNotification={addNotification}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingDiagnosis}
+        onClose={() => setDeletingDiagnosis(null)}
+        onConfirm={handleDeleteDiagnosis}
+        title="Delete Diagnosis"
+        message={`Are you sure you want to delete this diagnosis? This action cannot be undone.`}
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+    </div>
+  );
+};
+
+export default PatientHistoryView;

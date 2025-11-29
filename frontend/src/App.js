@@ -33,6 +33,7 @@ import PatientPortalView from './views/PatientPortalView';
 import AdminPanelView from './views/AdminPanelView';
 import OfferingManagementView from './views/OfferingManagementView';
 import PatientDiagnosisView from './views/PatientDiagnosisView';
+import PatientHistoryView from './views/PatientHistoryView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -142,6 +143,9 @@ function App() {
   const t = getTranslations(language);
   const modules = getModules(t);
   const hasModuleAccess = (moduleId) => hasAccess(planTier, moduleId);
+
+  // Local state for patient history
+  const [selectedPatient, setSelectedPatient] = React.useState(null);
 
   // Modal management: close other modals when opening a new one
   const handleSetEditingItem = (item) => {
@@ -267,6 +271,20 @@ function App() {
             api={api}
             addNotification={addNotification}
             user={user}
+          />
+        );
+      case 'patientHistory':
+        return (
+          <PatientHistoryView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            user={user}
+            patient={selectedPatient}
+            onBack={() => {
+              setCurrentModule('dashboard');
+              setSelectedPatient(null);
+            }}
           />
         );
       case 'telehealth':
@@ -812,6 +830,10 @@ function App() {
           }}
           setEditingItem={handleSetEditingItem}
           setCurrentView={setCurrentView}
+          onViewHistory={(patient) => {
+            setSelectedPatient(patient);
+            setCurrentModule('patientHistory');
+          }}
         />
       )}
 
