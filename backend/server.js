@@ -121,6 +121,7 @@ app.use('/api/pharmacies', require('./routes/pharmacies'));
 app.use('/api/scheduling', require('./routes/scheduling'));
 app.use('/api/offerings', require('./routes/offerings'));
 app.use('/api/calendar-sync', require('./routes/calendar-sync'));
+app.use('/api/medical-codes', require('./routes/medical-codes'));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

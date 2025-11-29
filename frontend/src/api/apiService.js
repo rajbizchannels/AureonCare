@@ -1265,7 +1265,75 @@ const api = {
     });
     if (!response.ok) throw new Error('Failed to update notification preference');
     return response.json();
-  }
+  },
+
+  // Medical Codes
+  searchMedicalCodes: async (query, type = 'all') => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-codes/search?query=${encodeURIComponent(query)}&type=${type}`);
+    if (!response.ok) throw new Error('Failed to search medical codes');
+    return response.json();
+  },
+  getICD10Codes: async (limit = null) => {
+    const url = limit ? `${API_BASE_URL}/medical-codes/icd10?limit=${limit}` : `${API_BASE_URL}/medical-codes/icd10`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) throw new Error('Failed to fetch ICD-10 codes');
+    return response.json();
+  },
+  getCPTCodes: async (limit = null) => {
+    const url = limit ? `${API_BASE_URL}/medical-codes/cpt?limit=${limit}` : `${API_BASE_URL}/medical-codes/cpt`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) throw new Error('Failed to fetch CPT codes');
+    return response.json();
+  },
+  getMedicalCodeByCode: async (code) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-codes/code/${code}`);
+    if (!response.ok) throw new Error('Failed to fetch medical code');
+    return response.json();
+  },
+
+  // Diagnosis
+  getDiagnoses: async (patientId = null) => {
+    const url = patientId ? `${API_BASE_URL}/diagnosis?patient_id=${patientId}` : `${API_BASE_URL}/diagnosis`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) throw new Error('Failed to fetch diagnoses');
+    return response.json();
+  },
+  getDiagnosis: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/diagnosis/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch diagnosis');
+    return response.json();
+  },
+  createDiagnosis: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/diagnosis`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create diagnosis' }));
+      const error = new Error(errorData.error || 'Failed to create diagnosis');
+      error.response = { data: errorData };
+      throw error;
+    }
+    return response.json();
+  },
+  updateDiagnosis: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/diagnosis/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update diagnosis');
+    return response.json();
+  },
+  deleteDiagnosis: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/diagnosis/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete diagnosis');
+    return response.json();
+  },
+
+  // Add baseURL property for components that need it
+  baseURL: API_BASE_URL
 };
 
 export default api;
