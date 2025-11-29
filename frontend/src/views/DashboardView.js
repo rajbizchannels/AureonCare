@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Shield, Calendar, Clock, DollarSign, Users, Video, FileText, ChevronRight, Check, Settings } from 'lucide-react';
+import { Bot, Shield, Calendar, Clock, DollarSign, Users, Video, FileText, ChevronRight, Check, Settings, Activity } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
@@ -45,6 +45,7 @@ const DashboardView = ({
   const allQuickActions = [
     { id: 'appointment', label: t.newAppointment, icon: Calendar, color: 'blue' },
     { id: 'patient', label: t.addPatient, icon: FileText, color: 'purple' },
+    { id: 'diagnosis', label: t.newDiagnosis || 'New Diagnosis', icon: Activity, color: 'teal' },
     { id: 'task', label: t.newTask, icon: Check, color: 'green' },
     { id: 'claim', label: t.newClaim, icon: DollarSign, color: 'yellow' }
   ];
