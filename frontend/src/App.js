@@ -265,8 +265,11 @@ function App() {
           <PatientDiagnosisView
             theme={theme}
             api={api}
+            appointments={appointments}
+            patients={patients}
             addNotification={addNotification}
             user={user}
+            setCurrentModule={setCurrentModule}
           />
         );
       case 'telehealth':
