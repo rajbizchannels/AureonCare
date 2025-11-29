@@ -1,8 +1,8 @@
 import React from 'react';
-import { X, Calendar, Phone } from 'lucide-react';
+import { X, Calendar, Phone, History } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
 
-const PatientsQuickView = ({ theme, t, patients, onClose, onViewAll, setEditingItem, setCurrentView }) => (
+const PatientsQuickView = ({ theme, t, patients, onClose, onViewAll, setEditingItem, setCurrentView, onViewHistory }) => (
   <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
     <div className={`rounded-xl border max-w-4xl w-full max-h-[80vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
       <div className={`p-6 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
@@ -20,25 +20,18 @@ const PatientsQuickView = ({ theme, t, patients, onClose, onViewAll, setEditingI
             return (
               <div
                 key={patient.id}
-                onClick={() => {
-                  if (setEditingItem && setCurrentView) {
-                    setEditingItem({ type: 'patient', data: patient });
-                    setCurrentView('view');
-                    onClose();
-                  }
-                }}
-                className={`p-4 rounded-lg transition-colors cursor-pointer ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
+                className={`p-4 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className={`w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {initials}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{displayName}</h3>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{patient.mrn}</p>
                   </div>
                 </div>
-                <div className="space-y-1 text-sm">
+                <div className="space-y-1 text-sm mb-3">
                   <div className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     <Calendar className="w-4 h-4" />
                     <span>{t.dateOfBirth || 'DOB'}: {formatDate(patient.date_of_birth || patient.dob)}</span>
@@ -48,6 +41,23 @@ const PatientsQuickView = ({ theme, t, patients, onClose, onViewAll, setEditingI
                     <span>{patient.phone || t.noPhone || 'No phone'}</span>
                   </div>
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onViewHistory) {
+                      onViewHistory(patient);
+                      onClose();
+                    }
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400'
+                      : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                  }`}
+                >
+                  <History className="w-4 h-4" />
+                  View History
+                </button>
               </div>
             );
           })}
