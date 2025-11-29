@@ -261,6 +261,14 @@ function App() {
             setCurrentView={setCurrentView}
             setEditingItem={handleSetEditingItem}
             setCurrentModule={setCurrentModule}
+            onViewHistory={(patient) => {
+              setSelectedPatient(patient);
+              setCurrentModule('patientHistory');
+            }}
+            onViewPrescriptions={(patient) => {
+              // TODO: Implement prescription view
+              addNotification('info', `Prescription view for ${patient.first_name} ${patient.last_name} - Coming soon`);
+            }}
           />
         );
       case 'diagnosis':
