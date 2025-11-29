@@ -40,7 +40,7 @@ const MedicalCodeMultiSelect = ({
 
   // Search for codes
   const searchCodes = async (query) => {
-    if (!query || query.length < 1) {
+    if (!query || query.length < 2) {
       setSearchResults([]);
       return;
     }
@@ -73,7 +73,7 @@ const MedicalCodeMultiSelect = ({
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (searchTerm.length >= 1) {
+    if (searchTerm.length >= 2) {
       searchTimeoutRef.current = setTimeout(() => {
         searchCodes(searchTerm);
         setIsDropdownOpen(true);
@@ -336,7 +336,7 @@ const MedicalCodeMultiSelect = ({
         )}
 
         {/* No results message */}
-        {isDropdownOpen && !isLoading && searchResults.length === 0 && getSearchTerm().length >= 1 && (
+        {isDropdownOpen && !isLoading && searchResults.length === 0 && getSearchTerm().length >= 2 && (
           <div
             ref={dropdownRef}
             className={`absolute z-50 w-full mt-1 rounded-lg border shadow-lg p-4 text-center ${
@@ -352,7 +352,7 @@ const MedicalCodeMultiSelect = ({
 
       {/* Helper text */}
       <div className={`mt-1 text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-        Type to search, or enter codes separated by commas. Selected: {value.length}
+        Type to search (min 2 characters), or enter codes separated by commas. Selected: {value.length}
       </div>
     </div>
   );

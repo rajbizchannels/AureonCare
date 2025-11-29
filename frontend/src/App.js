@@ -268,6 +268,7 @@ function App() {
             appointments={appointments}
             patients={patients}
             addNotification={addNotification}
+            user={user}
             setCurrentModule={setCurrentModule}
           />
         );
@@ -682,7 +683,9 @@ function App() {
           theme={theme}
           api={api}
           patient={editingItem?.patient || null}
+          patients={patients}
           providers={providers}
+          user={user}
           editDiagnosis={editingItem?.diagnosis || null}
           onClose={() => {
             setShowForm(null);
