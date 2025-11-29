@@ -32,6 +32,7 @@ import FHIRView from './views/FHIRView';
 import PatientPortalView from './views/PatientPortalView';
 import AdminPanelView from './views/AdminPanelView';
 import OfferingManagementView from './views/OfferingManagementView';
+import PatientDiagnosisView from './views/PatientDiagnosisView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -255,6 +256,15 @@ function App() {
             setCurrentView={setCurrentView}
             setEditingItem={handleSetEditingItem}
             setCurrentModule={setCurrentModule}
+          />
+        );
+      case 'diagnosis':
+      case 'patientDiagnosis':
+        return (
+          <PatientDiagnosisView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
           />
         );
       case 'telehealth':
