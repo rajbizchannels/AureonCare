@@ -50,6 +50,7 @@ import NewClaimForm from './components/forms/NewClaimForm';
 import NewPaymentForm from './components/forms/NewPaymentForm';
 import NewTaskForm from './components/forms/NewTaskForm';
 import NewUserForm from './components/forms/NewUserForm';
+import DiagnosisForm from './components/forms/DiagnosisForm';
 
 // Panels
 import NotificationsPanel from './components/panels/NotificationsPanel';
@@ -667,6 +668,26 @@ function App() {
           onSuccess={(newTask) => {
             setTasks([...tasks, newTask]);
             setShowForm(null);
+          }}
+          addNotification={addNotification}
+          t={t}
+        />
+      )}
+
+      {showForm === 'diagnosis' && (
+        <DiagnosisForm
+          theme={theme}
+          api={api}
+          patient={editingItem?.patient || null}
+          providers={providers}
+          editDiagnosis={editingItem?.diagnosis || null}
+          onClose={() => {
+            setShowForm(null);
+            setEditingItem(null);
+          }}
+          onSuccess={(newDiagnosis) => {
+            setShowForm(null);
+            setEditingItem(null);
           }}
           addNotification={addNotification}
           t={t}
