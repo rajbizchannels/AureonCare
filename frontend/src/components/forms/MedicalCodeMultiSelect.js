@@ -48,7 +48,7 @@ const MedicalCodeMultiSelect = ({
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${api.baseURL || 'http://localhost:3000'}/api/medical-codes/search?query=${encodeURIComponent(query)}&type=${codeType}`
+        `${api.baseURL || 'http://localhost:3001/api'}/medical-codes/search?query=${encodeURIComponent(query)}&type=${codeType}`
       );
       const data = await response.json();
 
