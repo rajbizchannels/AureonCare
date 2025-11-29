@@ -14,6 +14,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   // Data states
   const [appointments, setAppointments] = useState([]);
   const [medicalRecords, setMedicalRecords] = useState([]);
+  const [diagnoses, setDiagnoses] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
   const [providers, setProviders] = useState([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
@@ -387,8 +388,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
       console.log('Fetching patient data for ID:', patientId);
 
-      // Fetch appointments, medical records, prescriptions, and full profile for the patient
-      const [appts, records, presc, profile] = await Promise.all([
+      // Fetch appointments, medical records, diagnoses, prescriptions, and full profile for the patient
+      const [appts, records, diags, presc, profile] = await Promise.all([
         api.getAppointments().then(all => {
           console.log('All appointments:', all);
           console.log('Looking for appointments with patient_id:', patientId);
@@ -409,11 +410,13 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           return filtered;
         }),
         api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
+        api.getDiagnoses ? api.getDiagnoses(patientId) : Promise.resolve([]),
         api.getPatientActivePrescriptions(patientId).catch(() => []),
         api.getPatientProfile(patientId).catch(() => null)
       ]);
       setAppointments(appts);
       setMedicalRecords(records);
+      setDiagnoses(diags);
       setPrescriptions(presc);
 
       // Update profileData with the full profile from database
@@ -1315,6 +1318,88 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           ))}
         </div>
       )}
+
+      {/* Diagnoses Section */}
+      <div className="mt-8">
+        <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Diagnoses
+        </h3>
+        {diagnoses.length === 0 ? (
+          <div className={`text-center py-8 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+            <FileText className={`w-10 h-10 mx-auto mb-3 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+            <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No diagnoses found</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {diagnoses.map((diagnosis) => (
+              <div
+                key={diagnosis.id}
+                className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h4 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {diagnosis.diagnosisName || diagnosis.diagnosis_name || 'Diagnosis'}
+                    </h4>
+                    {diagnosis.diagnosisCode && (
+                      <p className={`text-sm mt-1 font-mono ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                        Code: {diagnosis.diagnosisCode || diagnosis.diagnosis_code}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {diagnosis.severity && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        diagnosis.severity === 'Severe'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : diagnosis.severity === 'Moderate'
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      }`}>
+                        {diagnosis.severity}
+                      </span>
+                    )}
+                    {diagnosis.status && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        diagnosis.status === 'Active'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          : diagnosis.status === 'Resolved'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                      }`}>
+                        {diagnosis.status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    <strong>Date:</strong> {formatDate(diagnosis.diagnosedDate || diagnosis.diagnosed_date)}
+                  </p>
+                  {diagnosis.provider && (
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      <strong>Provider:</strong> Dr. {diagnosis.provider.first_name || diagnosis.provider.firstName} {diagnosis.provider.last_name || diagnosis.provider.lastName}
+                    </p>
+                  )}
+                </div>
+
+                {diagnosis.description && (
+                  <p className={`text-sm mt-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    <strong>Description:</strong> {diagnosis.description}
+                  </p>
+                )}
+
+                {diagnosis.notes && (
+                  <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    <strong>Notes:</strong> {diagnosis.notes}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 

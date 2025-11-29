@@ -286,28 +286,18 @@ const DiagnosisForm = ({
 
               {/* Row: Provider, Date */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Provider */}
+                {/* Provider (Read-only, shows logged-in user) */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Provider
                   </label>
-                  <select
-                    value={formData.providerId}
-                    onChange={(e) => setFormData({ ...formData, providerId: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
-                  >
-                    <option value="">Select Provider</option>
-                    {providers.map((provider) => (
-                      <option key={provider.id} value={provider.id}>
-                        {provider.first_name || provider.firstName} {provider.last_name || provider.lastName}
-                        {provider.specialization && ` - ${provider.specialization}`}
-                      </option>
-                    ))}
-                  </select>
+                  <div className={`w-full px-3 py-2 border rounded-lg ${
+                    theme === 'dark'
+                      ? 'bg-slate-800/50 border-slate-600 text-gray-300'
+                      : 'bg-gray-50 border-gray-300 text-gray-700'
+                  }`}>
+                    {user ? `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || 'Current User' : 'Not specified'}
+                  </div>
                 </div>
 
                 {/* Diagnosis Date */}
