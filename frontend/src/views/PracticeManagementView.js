@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ArrowLeft, Search, Filter, X } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 
 const PracticeManagementView = ({
@@ -25,6 +25,12 @@ const PracticeManagementView = ({
   const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week, -1 = last week, +1 = next week
   const [selectedDay, setSelectedDay] = useState(new Date());
 
+  // Filter states
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+
   // Filter appointments based on user role
   // Doctors/providers should only see their own appointments
   // Admins and other roles see all appointments
@@ -37,12 +43,47 @@ const PracticeManagementView = ({
 
     // If user is a doctor, only show appointments where they are the provider
     if (isDoctorRole) {
-      return apt.provider_id === user.id;
+      if (apt.provider_id !== user.id) return false;
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      const patient = patients.find(p => p.id === apt.patient_id);
+      const patientName = apt.patient || patient?.name || (patient?.first_name && patient?.last_name ? `${patient.first_name} ${patient.last_name}` : '');
+      if (!patientName.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      const aptStatus = (apt.status || '').toLowerCase();
+      if (aptStatus !== statusFilter.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Apply type filter
+    if (typeFilter !== 'all') {
+      const aptType = (apt.type || apt.appointment_type || '').toLowerCase();
+      if (aptType !== typeFilter.toLowerCase()) {
+        return false;
+      }
     }
 
     // For admins and other roles, show all appointments
     return true;
   });
+
+  // Get unique appointment types for filter dropdown
+  const appointmentTypes = [...new Set(appointments.map(apt => apt.type || apt.appointment_type).filter(Boolean))];
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setTypeFilter('all');
+  };
 
   // Helper function to parse appointment date/time
   const getAppointmentDateTime = (apt) => {
@@ -150,6 +191,25 @@ const PracticeManagementView = ({
           )}
 
           <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              showFilters
+                ? 'bg-purple-500 text-white'
+                : theme === 'dark'
+                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            {t.filters || 'Filters'}
+            {(searchQuery || statusFilter !== 'all' || typeFilter !== 'all') && (
+              <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                {[searchQuery, statusFilter !== 'all', typeFilter !== 'all'].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setShowForm('appointment')}
             className={`flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
@@ -158,6 +218,101 @@ const PracticeManagementView = ({
           </button>
         </div>
       </div>
+
+      {/* Filters Panel */}
+      {showFilters && (
+        <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {t.filterAppointments || 'Filter Appointments'}
+            </h3>
+            {(searchQuery || statusFilter !== 'all' || typeFilter !== 'all') && (
+              <button
+                onClick={clearFilters}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <X className="w-4 h-4" />
+                {t.clearFilters || 'Clear Filters'}
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Search by Patient Name */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.searchPatient || 'Search Patient'}
+              </label>
+              <div className="relative">
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t.searchByPatientName || 'Search by patient name...'}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg ${
+                    theme === 'dark'
+                      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                  } focus:outline-none focus:ring-2 focus:ring-cyan-500`}
+                />
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.status || 'Status'}
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:outline-none focus:ring-2 focus:ring-cyan-500`}
+              >
+                <option value="all">{t.allStatuses || 'All Statuses'}</option>
+                <option value="confirmed">{t.confirmed || 'Confirmed'}</option>
+                <option value="pending">{t.pending || 'Pending'}</option>
+                <option value="cancelled">{t.cancelled || 'Cancelled'}</option>
+                <option value="completed">{t.completed || 'Completed'}</option>
+              </select>
+            </div>
+
+            {/* Appointment Type Filter */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.type || 'Type'}
+              </label>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:outline-none focus:ring-2 focus:ring-cyan-500`}
+              >
+                <option value="all">{t.allTypes || 'All Types'}</option>
+                {appointmentTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Results count */}
+          <div className={`mt-4 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            {t.showing || 'Showing'} <span className="font-semibold">{filteredAppointments.length}</span> {t.of || 'of'} <span className="font-semibold">{appointments.length}</span> {t.appointments || 'appointments'}
+          </div>
+        </div>
+      )}
 
       {/* List View */}
       {appointmentViewType === 'list' && (
