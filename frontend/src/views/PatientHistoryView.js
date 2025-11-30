@@ -189,112 +189,236 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     </div>
   );
 
-  const renderDiagnoses = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Diagnoses
+  const renderRecords = () => (
+    <div className="space-y-8">
+      {/* Medical Records Section */}
+      <div>
+        <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Medical Records
         </h3>
-        <button
-          onClick={() => {
-            setEditingDiagnosis(null);
-            setShowDiagnosisForm(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-lg text-white font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          New Diagnosis
-        </button>
+        {medicalRecords.length === 0 ? (
+          <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+            <FileText className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+            <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No medical records found</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {medicalRecords.map((record) => (
+              <div
+                key={record.id}
+                className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h4 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {record.title || record.record_type}
+                    </h4>
+                  </div>
+                </div>
+                <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Date: {formatDate(record.record_date)}
+                </p>
+                {record.provider && (
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Provider: Dr. {record.provider.first_name} {record.provider.last_name}
+                  </p>
+                )}
+                {record.description && (
+                  <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {record.description}
+                  </p>
+                )}
+                {record.diagnosis && (
+                  <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    <strong>Diagnosis:</strong> {record.diagnosis}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {diagnoses.length === 0 ? (
+      {/* Diagnoses Section */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Diagnoses
+          </h3>
+          <button
+            onClick={() => {
+              setEditingDiagnosis(null);
+              setShowDiagnosisForm(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-lg text-white font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Diagnosis
+          </button>
+        </div>
+
+        {diagnoses.length === 0 ? (
+          <div className={`text-center py-8 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+            <FileText className={`w-10 h-10 mx-auto mb-3 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+            <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No diagnoses found</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {diagnoses.map((diagnosis) => (
+              <div
+                key={diagnosis.id}
+                className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h4 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {diagnosis.diagnosisName || diagnosis.diagnosis_name || 'Diagnosis'}
+                    </h4>
+                    {diagnosis.diagnosisCode && (
+                      <p className={`text-sm mt-1 font-mono ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                        Code: {diagnosis.diagnosisCode || diagnosis.diagnosis_code}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {diagnosis.severity && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        diagnosis.severity === 'Severe'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : diagnosis.severity === 'Moderate'
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      }`}>
+                        {diagnosis.severity}
+                      </span>
+                    )}
+                    {diagnosis.status && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        diagnosis.status === 'Active'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          : diagnosis.status === 'Resolved'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                      }`}>
+                        {diagnosis.status}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => {
+                        setEditingDiagnosis(diagnosis);
+                        setShowDiagnosisForm(true);
+                      }}
+                      className={`p-2 rounded-lg hover:bg-blue-100 transition-colors ${theme === 'dark' ? 'hover:bg-blue-900/20' : ''}`}
+                      title="Edit diagnosis"
+                    >
+                      <Edit className="w-4 h-4 text-blue-500" />
+                    </button>
+                    <button
+                      onClick={() => setDeletingDiagnosis(diagnosis)}
+                      className={`p-2 rounded-lg hover:bg-red-100 transition-colors ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
+                      title="Delete diagnosis"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    <strong>Date:</strong> {formatDate(diagnosis.diagnosedDate || diagnosis.diagnosed_date)}
+                  </p>
+                  {diagnosis.provider && (
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      <strong>Provider:</strong> Dr. {diagnosis.provider.first_name || diagnosis.provider.firstName} {diagnosis.provider.last_name || diagnosis.provider.lastName}
+                    </p>
+                  )}
+                </div>
+
+                {diagnosis.description && (
+                  <p className={`text-sm mt-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    <strong>Description:</strong> {diagnosis.description}
+                  </p>
+                )}
+
+                {diagnosis.notes && (
+                  <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    <strong>Notes:</strong> {diagnosis.notes}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderPrescriptions = () => (
+    <div className="space-y-4">
+      <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        Prescriptions
+      </h3>
+      {prescriptions.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-          <Activity className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
-          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No diagnoses found</p>
+          <Pill className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No active prescriptions found</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {diagnoses.map((diagnosis) => (
+          {prescriptions.map((rx) => (
             <div
-              key={diagnosis.id}
+              key={rx.id}
               className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <h4 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {diagnosis.diagnosisName || diagnosis.diagnosis_name || 'Diagnosis'}
+                    {rx.medicationName || rx.medication_name}
                   </h4>
-                  {diagnosis.diagnosisCode && (
-                    <p className={`text-sm mt-1 font-mono ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
-                      Code: {diagnosis.diagnosisCode || diagnosis.diagnosis_code}
+                  {(rx.providerFirstName || rx.providerLastName || rx.providerName) && (
+                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      Prescribed by: Dr. {rx.providerFirstName && rx.providerLastName ? `${rx.providerFirstName} ${rx.providerLastName}` : rx.providerName}
+                      {rx.providerSpecialization && ` (${rx.providerSpecialization})`}
+                    </p>
+                  )}
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Dosage: {rx.dosage}
+                  </p>
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Frequency: {rx.frequency}
+                  </p>
+                  {rx.duration && (
+                    <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Duration: {rx.duration}
+                    </p>
+                  )}
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Quantity: {rx.quantity || 'N/A'}
+                  </p>
+                  {rx.instructions && (
+                    <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Instructions: {rx.instructions}
+                    </p>
+                  )}
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Refills: {rx.refills || rx.refillsRemaining || 'N/A'}
+                  </p>
+                  {(rx.pharmacyName || rx.pharmacy_name) && (
+                    <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Pharmacy: {rx.pharmacyName || rx.pharmacy_name}
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  {diagnosis.severity && (
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      diagnosis.severity === 'Severe'
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        : diagnosis.severity === 'Moderate'
-                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    }`}>
-                      {diagnosis.severity}
-                    </span>
-                  )}
-                  {diagnosis.status && (
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      diagnosis.status === 'Active'
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        : diagnosis.status === 'Resolved'
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                    }`}>
-                      {diagnosis.status}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => {
-                      setEditingDiagnosis(diagnosis);
-                      setShowDiagnosisForm(true);
-                    }}
-                    className={`p-2 rounded-lg hover:bg-blue-100 transition-colors ${theme === 'dark' ? 'hover:bg-blue-900/20' : ''}`}
-                    title="Edit diagnosis"
-                  >
-                    <Edit className="w-4 h-4 text-blue-500" />
-                  </button>
-                  <button
-                    onClick={() => setDeletingDiagnosis(diagnosis)}
-                    className={`p-2 rounded-lg hover:bg-red-100 transition-colors ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
-                    title="Delete diagnosis"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </button>
+                <div className="flex flex-col items-end gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    rx.status === 'Active'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                  }`}>
+                    {rx.status}
+                  </span>
                 </div>
               </div>
-
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  <strong>Date:</strong> {formatDate(diagnosis.diagnosedDate || diagnosis.diagnosed_date)}
-                </p>
-                {diagnosis.provider && (
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    <strong>Provider:</strong> Dr. {diagnosis.provider.first_name || diagnosis.provider.firstName} {diagnosis.provider.last_name || diagnosis.provider.lastName}
-                  </p>
-                )}
-              </div>
-
-              {diagnosis.description && (
-                <p className={`text-sm mt-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  <strong>Description:</strong> {diagnosis.description}
-                </p>
-              )}
-
-              {diagnosis.notes && (
-                <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  <strong>Notes:</strong> {diagnosis.notes}
-                </p>
-              )}
             </div>
           ))}
         </div>
@@ -383,7 +507,8 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
           { id: 'overview', label: 'Overview', icon: User },
-          { id: 'diagnoses', label: 'Diagnoses', icon: Activity },
+          { id: 'records', label: 'Records', icon: FileText },
+          { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
           { id: 'appointments', label: 'Appointments', icon: Calendar }
         ].map((tab) => (
           <button
@@ -404,7 +529,8 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       {/* Tab Content */}
       <div className="mt-6">
         {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'diagnoses' && renderDiagnoses()}
+        {activeTab === 'records' && renderRecords()}
+        {activeTab === 'prescriptions' && renderPrescriptions()}
         {activeTab === 'appointments' && renderAppointments()}
       </div>
 

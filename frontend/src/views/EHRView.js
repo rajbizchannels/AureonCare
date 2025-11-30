@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, FileText, Calendar, Phone, Mail, Edit, ArrowLeft, History, Pill, User, Search } from 'lucide-react';
+import { Plus, FileText, Calendar, Phone, Mail, Edit, ArrowLeft, History, Pill, User, Search, Video } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 
 const EHRView = ({
@@ -10,7 +10,8 @@ const EHRView = ({
   setEditingItem,
   setCurrentModule,
   onViewHistory,
-  onViewPrescriptions
+  onViewPrescriptions,
+  onViewTelehealth
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -208,6 +209,23 @@ const EHRView = ({
                             title="View Prescriptions"
                           >
                             <Pill className="w-4 h-4" />
+                          </button>
+
+                          {/* Telehealth */}
+                          <button
+                            onClick={() => {
+                              if (onViewTelehealth) {
+                                onViewTelehealth(patient);
+                              }
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${
+                              theme === 'dark'
+                                ? 'hover:bg-purple-500/20 text-purple-400'
+                                : 'hover:bg-purple-100 text-purple-600'
+                            }`}
+                            title="Start Telehealth Session"
+                          >
+                            <Video className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
