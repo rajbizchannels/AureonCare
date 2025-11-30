@@ -283,7 +283,16 @@ const DashboardView = ({
             <ChevronRight className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </div>
           <div className="space-y-3">
-            {appointments.filter(apt => apt.status !== 'Cancelled' && apt.status !== 'Completed').slice(0, 3).map(apt => {
+            {appointments
+              .filter(apt => {
+                const status = (apt.status || '').toLowerCase().trim();
+                return status !== 'cancelled' &&
+                       status !== 'canceled' &&
+                       status !== 'completed' &&
+                       status !== 'complete';
+              })
+              .slice(0, 3)
+              .map(apt => {
               const patient = patients.find(p => p.id === apt.patient_id);
               const patientName = apt.patient || (patient?.first_name && patient?.last_name ? `${patient.first_name} ${patient.last_name}` : patient?.first_name || patient?.last_name || 'Unknown Patient');
 
