@@ -210,12 +210,21 @@ const DashboardView = ({
                     <Icon className={`w-5 h-5 text-${action.color}-400`} />
                     <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{action.label}</span>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={isEnabled}
-                    onChange={() => toggleQuickAction(action.id)}
-                    className="form-checkbox h-5 w-5 text-blue-500"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleQuickAction(action.id)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                      isEnabled
+                        ? 'bg-blue-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        isEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
               );
             })}
@@ -274,7 +283,7 @@ const DashboardView = ({
             <ChevronRight className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </div>
           <div className="space-y-3">
-            {appointments.slice(0, 3).map(apt => {
+            {appointments.filter(apt => apt.status !== 'Cancelled' && apt.status !== 'Completed').slice(0, 3).map(apt => {
               const patient = patients.find(p => p.id === apt.patient_id);
               const patientName = apt.patient || (patient?.first_name && patient?.last_name ? `${patient.first_name} ${patient.last_name}` : patient?.first_name || patient?.last_name || 'Unknown Patient');
 
