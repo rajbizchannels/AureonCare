@@ -270,6 +270,10 @@ function App() {
               setCurrentModule('patientHistory');
               addNotification('info', 'Viewing patient history. Prescription management coming soon.');
             }}
+            onViewTelehealth={(patient) => {
+              setCurrentModule('telehealth');
+              addNotification('info', `Starting telehealth session with ${patient.first_name} ${patient.last_name}`);
+            }}
           />
         );
       case 'diagnosis':
