@@ -33,24 +33,83 @@ const DiagnosisForm = ({
 
   // If editing, populate form with existing diagnosis data
   useEffect(() => {
-    if (editDiagnosis) {
-      setFormData({
-        patientId: editDiagnosis.patientId || patient?.id || '',
-        providerId: editDiagnosis.providerId || user?.id || '',
-        icdCodes: editDiagnosis.icdCodes || [],
-        cptCodes: editDiagnosis.cptCodes || [],
-        diagnosisName: editDiagnosis.diagnosisName || '',
-        description: editDiagnosis.description || '',
-        severity: editDiagnosis.severity || 'Moderate',
-        status: editDiagnosis.status || 'Active',
-        diagnosedDate: editDiagnosis.diagnosedDate || new Date().toISOString().split('T')[0],
-        notes: editDiagnosis.notes || ''
-      });
-    } else if (user?.id) {
-      // Default provider to logged-in user for new diagnoses
-      setFormData(prev => ({ ...prev, providerId: user.id }));
-    }
-  }, [editDiagnosis, patient, user]);
+    const loadCodesFromDiagnosis = async () => {
+      if (editDiagnosis) {
+        // Start with basic form data
+        const newFormData = {
+          patientId: editDiagnosis.patientId || patient?.id || '',
+          providerId: editDiagnosis.providerId || user?.id || '',
+          icdCodes: [],
+          cptCodes: [],
+          diagnosisName: editDiagnosis.diagnosisName || '',
+          description: editDiagnosis.description || '',
+          severity: editDiagnosis.severity || 'Moderate',
+          status: editDiagnosis.status || 'Active',
+          diagnosedDate: editDiagnosis.diagnosedDate || new Date().toISOString().split('T')[0],
+          notes: editDiagnosis.notes || ''
+        };
+
+        // Parse and load ICD codes from comma-separated diagnosisCode string
+        if (editDiagnosis.diagnosisCode && typeof editDiagnosis.diagnosisCode === 'string') {
+          const icdCodeStrings = editDiagnosis.diagnosisCode.split(',').map(c => c.trim()).filter(Boolean);
+
+          // Fetch full code objects for each ICD code
+          const icdCodePromises = icdCodeStrings.map(async (codeStr) => {
+            try {
+              const codeData = await api.getMedicalCodeByCode(codeStr);
+              return codeData;
+            } catch (err) {
+              console.warn(`Could not load ICD code ${codeStr}:`, err);
+              return null;
+            }
+          });
+
+          const icdCodesData = await Promise.all(icdCodePromises);
+          newFormData.icdCodes = icdCodesData.filter(Boolean);
+        }
+
+        // Parse CPT codes from notes field if present
+        // Notes format: "CPT Codes: 99213 (Description); 85025 (Description)"
+        if (editDiagnosis.notes && typeof editDiagnosis.notes === 'string') {
+          const cptMatch = editDiagnosis.notes.match(/CPT Codes:\s*([^]*?)(?:\n\n|$)/);
+          if (cptMatch) {
+            // Extract code strings from format "99213 (Description); 85025 (Description)"
+            const cptSection = cptMatch[1];
+            const cptCodeMatches = cptSection.matchAll(/(\d+)\s*\(/g);
+            const cptCodeStrings = Array.from(cptCodeMatches).map(match => match[1]).filter(Boolean);
+
+            // Fetch full code objects for each CPT code
+            const cptCodePromises = cptCodeStrings.map(async (codeStr) => {
+              try {
+                const codeData = await api.getMedicalCodeByCode(codeStr);
+                return codeData;
+              } catch (err) {
+                console.warn(`Could not load CPT code ${codeStr}:`, err);
+                return null;
+              }
+            });
+
+            const cptCodesData = await Promise.all(cptCodePromises);
+            newFormData.cptCodes = cptCodesData.filter(Boolean);
+          }
+
+          // Clean up notes to remove metadata section for editing
+          // Remove "ICD Codes: ..." and "CPT Codes: ..." sections
+          let cleanedNotes = editDiagnosis.notes;
+          cleanedNotes = cleanedNotes.replace(/\n*ICD Codes:\s*[^]*?(?=\n\n|CPT Codes:|$)/g, '');
+          cleanedNotes = cleanedNotes.replace(/\n*CPT Codes:\s*[^]*?$/g, '');
+          newFormData.notes = cleanedNotes.trim();
+        }
+
+        setFormData(newFormData);
+      } else if (user?.id) {
+        // Default provider to logged-in user for new diagnoses
+        setFormData(prev => ({ ...prev, providerId: user.id }));
+      }
+    };
+
+    loadCodesFromDiagnosis();
+  }, [editDiagnosis, patient, user, api]);
 
   // ESC key handler
   useEffect(() => {
