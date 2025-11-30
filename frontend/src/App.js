@@ -266,8 +266,9 @@ function App() {
               setCurrentModule('patientHistory');
             }}
             onViewPrescriptions={(patient) => {
-              // TODO: Implement prescription view
-              addNotification('info', `Prescription view for ${patient.first_name} ${patient.last_name} - Coming soon`);
+              setSelectedPatient(patient);
+              setCurrentModule('patientHistory');
+              addNotification('info', 'Viewing patient history. Prescription management coming soon.');
             }}
           />
         );

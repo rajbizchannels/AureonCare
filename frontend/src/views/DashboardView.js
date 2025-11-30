@@ -177,7 +177,7 @@ const DashboardView = ({
             return `+${recentPatients} ${t.thisWeek}`;
           })()}
           color="from-yellow-500 to-orange-500"
-          onClick={() => setSelectedItem('patients')}
+          onClick={() => setCurrentModule('ehr')}
         />
       </div>
 
