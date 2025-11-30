@@ -93,8 +93,8 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   };
 
   const renderOverview = () => (
-    <div className="max-w-2xl mx-auto">
-      {/* Patient Profile Card */}
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Patient Header Card */}
       <div className={`p-8 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
         <div className="flex items-center gap-4 mb-6">
           <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
@@ -110,43 +110,115 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           </div>
         </div>
 
+        {/* Personal Information */}
+        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Personal Information</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.first_name || 'Not provided'}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.last_name || 'Not provided'}
+            </p>
+          </div>
+        </div>
+
+        {/* Contact Information */}
+        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Contact Information</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.email || 'Not provided'}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.phone || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.address || 'Not provided'}
+            </p>
+          </div>
+          {patientData.country && (
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {patientData.country || 'Not provided'}
+              </p>
+            </div>
+          )}
+          {patientData.language && (
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {patientData.language || 'Not provided'}
+              </p>
+            </div>
+          )}
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.date_of_birth ? formatDate(patientData.date_of_birth) : patientData.dob ? formatDate(patientData.dob) : 'Not provided'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Medical Information Card */}
+      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
+        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Medical Information</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {patientData.date_of_birth && (
-            <div className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-              <Calendar className="w-5 h-5" />
-              <div>
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Date of Birth</p>
-                <p className="font-medium">{formatDate(patientData.date_of_birth)}</p>
-              </div>
-            </div>
-          )}
-          {patientData.phone && (
-            <div className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-              <Phone className="w-5 h-5" />
-              <div>
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Phone</p>
-                <p className="font-medium">{patientData.phone}</p>
-              </div>
-            </div>
-          )}
-          {patientData.email && (
-            <div className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-              <Mail className="w-5 h-5" />
-              <div>
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Email</p>
-                <p className="font-medium">{patientData.email}</p>
-              </div>
-            </div>
-          )}
-          {patientData.address && (
-            <div className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-              <MapPin className="w-5 h-5" />
-              <div>
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Address</p>
-                <p className="font-medium">{patientData.address}</p>
-              </div>
-            </div>
-          )}
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.height || 'Not provided'}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.weight || 'Not provided'}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.blood_type || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.allergies || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.past_history || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Family History</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.family_history || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {patientData.current_medications || 'Not provided'}
+            </p>
+          </div>
         </div>
       </div>
     </div>
