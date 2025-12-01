@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
@@ -2825,80 +2825,38 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         </p>
       </div>
 
-      {/* Navigation */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => setCurrentView('dashboard')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            currentView === 'dashboard'
-              ? 'bg-cyan-500 text-white'
-              : theme === 'dark'
-              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          {t.dashboardTab}
-        </button>
-        <button
-          onClick={() => setCurrentView('appointments')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            currentView === 'appointments'
-              ? 'bg-cyan-500 text-white'
-              : theme === 'dark'
-              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          {t.appointmentsTab}
-        </button>
-        <button
-          onClick={() => setCurrentView('bookAppointment')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            currentView === 'bookAppointment'
-              ? 'bg-cyan-500 text-white'
-              : theme === 'dark'
-              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          {t.bookAppointmentTab}
-        </button>
-        <button
-          onClick={() => setCurrentView('prescriptions')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            currentView === 'prescriptions'
-              ? 'bg-cyan-500 text-white'
-              : theme === 'dark'
-              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          {t.prescriptionsTab}
-        </button>
-        <button
-          onClick={() => setCurrentView('records')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            currentView === 'records'
-              ? 'bg-cyan-500 text-white'
-              : theme === 'dark'
-              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          {t.recordsTab}
-        </button>
-        <button
-          onClick={() => setCurrentView('profile')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            currentView === 'profile'
-              ? 'bg-cyan-500 text-white'
-              : theme === 'dark'
-              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          {t.profileTab}
-        </button>
+      {/* Navigation Tabs */}
+      <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+        {[
+          { id: 'dashboard', label: t.dashboardTab || 'Dashboard', icon: Home, count: null },
+          { id: 'appointments', label: t.appointmentsTab || 'Appointments', icon: Calendar, count: appointments.length },
+          { id: 'bookAppointment', label: t.bookAppointmentTab || 'Book Appointment', icon: Plus, count: null },
+          { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
+          { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
+          { id: 'profile', label: t.profileTab || 'Profile', icon: User, count: null }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setCurrentView(tab.id)}
+            className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors ${
+              currentView === tab.id
+                ? `border-b-2 ${theme === 'dark' ? 'border-blue-500 text-blue-500' : 'border-blue-600 text-blue-600'}`
+                : `${theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-600 hover:text-gray-900'}`
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+            {tab.count !== null && (
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                currentView === tab.id
+                  ? `${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`
+                  : `${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`
+              }`}>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
