@@ -201,6 +201,17 @@ const AdminPanelView = ({
   });
   const [telehealthDbMissing, setTelehealthDbMissing] = useState(false);
 
+  // Custom role creation state
+  const [showCustomRoleForm, setShowCustomRoleForm] = useState(false);
+  const [customRoleName, setCustomRoleName] = useState('');
+  const [customRolePermissions, setCustomRolePermissions] = useState({
+    patients: { view: false, create: false, edit: false, delete: false },
+    appointments: { view: false, create: false, edit: false, delete: false },
+    billing: { view: false, create: false, edit: false, delete: false },
+    reports: { view: false, create: false, edit: false, delete: false },
+    settings: { view: false, create: false, edit: false, delete: false }
+  });
+
   // Sync currentPlan with planTier from context
   useEffect(() => {
     if (planTier) {
@@ -358,6 +369,42 @@ const AdminPanelView = ({
     });
   };
 
+  const handleDeleteCustomRole = async (roleName) => {
+    if (window.confirm(`Are you sure you want to delete the "${roleName}" role? This action cannot be undone.`)) {
+      try {
+        // Remove from rolePermissions state
+        const updatedPermissions = { ...rolePermissions };
+        delete updatedPermissions[roleName];
+        setRolePermissions(updatedPermissions);
+
+        // Delete from API/database
+        await api.deleteRole(roleName);
+        await addNotification('success', `Custom role "${roleName}" deleted successfully`);
+      } catch (error) {
+        console.error('Error deleting custom role:', error);
+        await addNotification('alert', 'Failed to delete custom role');
+      }
+    }
+  };
+
+  const handleCreateCustomRole = async (roleName, permissions) => {
+    try {
+      // Add to rolePermissions state
+      setRolePermissions({
+        ...rolePermissions,
+        [roleName]: permissions
+      });
+
+      // Save to API/database
+      await api.createRole({ name: roleName, permissions });
+      await addNotification('success', `Custom role "${roleName}" created successfully`);
+      setShowForm(null);
+    } catch (error) {
+      console.error('Error creating custom role:', error);
+      await addNotification('alert', 'Failed to create custom role');
+    }
+  };
+
   const handleSaveTelehealthSettings = async (providerType) => {
     try {
       const settings = telehealthSettings[providerType];
@@ -411,9 +458,143 @@ const AdminPanelView = ({
     { id: 'appointments', label: t.appointmentSettings || 'Appointment Settings', icon: Settings }
   ];
 
+  // Handle custom role form submission
+  const handleSubmitCustomRole = async () => {
+    if (!customRoleName.trim()) {
+      await addNotification('alert', 'Please enter a role name');
+      return;
+    }
+
+    await handleCreateCustomRole(customRoleName.toLowerCase().replace(/\s+/g, '_'), customRolePermissions);
+    setShowCustomRoleForm(false);
+  };
+
+  const handleToggleCustomRolePermission = (module, action) => {
+    setCustomRolePermissions({
+      ...customRolePermissions,
+      [module]: {
+        ...customRolePermissions[module],
+        [action]: !customRolePermissions[module][action]
+      }
+    });
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <>
+      {/* Custom Role Creation/Edit Modal */}
+      {showCustomRoleForm && (
+        <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => setShowCustomRoleForm(false)}>
+          <div className={`rounded-xl border max-w-4xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
+            <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-pink-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+              <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {customRoleName ? 'Edit Custom Role' : 'Create Custom Role'}
+              </h2>
+              <button onClick={() => setShowCustomRoleForm(false)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
+                <Edit className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-160px)]">
+              <div className="space-y-6">
+                {/* Role Name */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Role Name
+                  </label>
+                  <input
+                    type="text"
+                    value={customRoleName}
+                    onChange={(e) => setCustomRoleName(e.target.value)}
+                    placeholder="e.g., Medical Assistant, Lab Technician"
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                  />
+                </div>
+
+                {/* Permissions */}
+                <div>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Permissions
+                  </h3>
+                  <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Configure what this role can do in the system. Toggle permissions for each module.
+                  </p>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                          <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                            Module
+                          </th>
+                          <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                            View
+                          </th>
+                          <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                            Create
+                          </th>
+                          <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                            Edit
+                          </th>
+                          <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                            Delete
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(customRolePermissions).map(([module, actions]) => (
+                          <tr key={module} className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'}`}>
+                            <td className={`px-4 py-3 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {module}
+                            </td>
+                            {['view', 'create', 'edit', 'delete'].map(action => (
+                              <td key={action} className="px-4 py-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleCustomRolePermission(module, action)}
+                                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                                    actions[action]
+                                      ? 'bg-purple-500'
+                                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                                  }`}
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      actions[action] ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 p-6 pt-0 border-t">
+              <button
+                onClick={() => setShowCustomRoleForm(false)}
+                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitCustomRole}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2"
+              >
+                <Save className="w-5 h-5" />
+                {customRoleName ? 'Update Role' : 'Create Role'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setCurrentModule && setCurrentModule('dashboard')}
@@ -748,6 +929,140 @@ const AdminPanelView = ({
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Custom Roles Section */}
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {t.customRoles || 'Custom Roles'}
+                </h3>
+                <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {t.customRolesDescription || 'Create custom roles with specific permissions tailored to your organization\'s needs.'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCustomRoleForm(true);
+                  setCustomRoleName('');
+                  setCustomRolePermissions({
+                    patients: { view: false, create: false, edit: false, delete: false },
+                    appointments: { view: false, create: false, edit: false, delete: false },
+                    billing: { view: false, create: false, edit: false, delete: false },
+                    reports: { view: false, create: false, edit: false, delete: false },
+                    settings: { view: false, create: false, edit: false, delete: false }
+                  });
+                }}
+                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                {t.createCustomRole || 'Create Custom Role'}
+              </button>
+            </div>
+
+            {/* Custom Roles List */}
+            <div className="space-y-4">
+              {Object.entries(rolePermissions)
+                .filter(([role]) => !['admin', 'doctor', 'nurse', 'staff', 'patient'].includes(role))
+                .map(([role, permissions]) => (
+                  <div key={role} className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <Shield className="w-6 h-6 text-purple-400" />
+                      <h3 className={`text-lg font-semibold capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {role}
+                      </h3>
+                      <span className="ml-auto px-3 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
+                        Custom Role
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400`}>
+                        {Object.values(permissions).reduce((count, perms) =>
+                          count + Object.values(perms).filter(Boolean).length, 0
+                        )} {t.permissions || 'permissions'}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setShowCustomRoleForm(true);
+                          setCustomRoleName(role);
+                          setCustomRolePermissions(permissions);
+                        }}
+                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                        title="Edit Role"
+                      >
+                        <Edit className="w-4 h-4 text-blue-400" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCustomRole(role)}
+                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                        title="Delete Role"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                            <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                              {t.module || 'Module'}
+                            </th>
+                            <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                              {t.view || 'View'}
+                            </th>
+                            <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                              {t.create || 'Create'}
+                            </th>
+                            <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                              {t.edit || 'Edit'}
+                            </th>
+                            <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                              {t.delete || 'Delete'}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(permissions).map(([module, actions]) => (
+                            <tr key={module} className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'}`}>
+                              <td className={`px-4 py-3 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                {t[module] || module}
+                              </td>
+                              {['view', 'create', 'edit', 'delete'].map(action => (
+                                <td key={action} className="px-4 py-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTogglePermission(role, module, action)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                                      actions[action]
+                                        ? 'bg-purple-500'
+                                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                        actions[action] ? 'translate-x-6' : 'translate-x-1'
+                                      }`}
+                                    />
+                                  </button>
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+
+              {Object.keys(rolePermissions).filter(role => !['admin', 'doctor', 'nurse', 'staff', 'patient'].includes(role)).length === 0 && (
+                <div className={`text-center py-12 rounded-lg border ${theme === 'dark' ? 'border-slate-700 bg-slate-800/30' : 'border-gray-200 bg-gray-50'}`}>
+                  <Shield className={`w-12 h-12 mx-auto mb-3 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+                  <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.noCustomRoles || 'No custom roles created yet. Click "Create Custom Role" to get started.'}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end">
