@@ -406,7 +406,7 @@ const AdminPanelView = ({
     { id: 'users', label: t.userManagement || 'User Management', icon: Users },
     { id: 'roles', label: t.rolesPermissions || 'Roles & Permissions', icon: Shield },
     { id: 'plans', label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard },
-    { id: 'telehealth', label: t.telehealthIntegrations || 'Telehealth Integrations', icon: Video },
+    { id: 'telehealth', label: t.integrations || 'Integrations', icon: Video },
     { id: 'hours', label: t.workingHours || 'Working Hours', icon: Clock },
     { id: 'appointments', label: t.appointmentSettings || 'Appointment Settings', icon: Settings }
   ];
@@ -908,10 +908,10 @@ const AdminPanelView = ({
       {activeTab === 'telehealth' && (
         <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
           <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t.telehealthIntegrations || 'Telehealth Integrations'}
+            {t.integrations || 'Integrations'}
           </h2>
           <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            {t.telehealthIntegrationsDescription || 'Configure video conferencing providers for telehealth sessions. Enable one or more providers based on your needs.'}
+            {t.integrationsDescription || 'Configure video conferencing providers for telehealth sessions. Enable one or more providers based on your needs.'}
           </p>
 
           {/* Database Migration Warning */}

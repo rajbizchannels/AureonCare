@@ -119,28 +119,48 @@ const SettingsModal = ({
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.notifications}</p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.receiveEmailUpdates}</p>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={user.preferences?.emailNotifications ?? true}
-                    onChange={async (e) => {
-                      await updateUserPreferences({ emailNotifications: e.target.checked });
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const newValue = !(user.preferences?.emailNotifications ?? true);
+                      await updateUserPreferences({ emailNotifications: newValue });
                     }}
-                    className="form-checkbox h-5 w-5 text-cyan-500"
-                  />
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                      (user.preferences?.emailNotifications ?? true)
+                        ? 'bg-blue-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        (user.preferences?.emailNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>SMS Alerts</p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.getTextReminders}</p>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={user.preferences?.smsAlerts ?? true}
-                    onChange={async (e) => {
-                      await updateUserPreferences({ smsAlerts: e.target.checked });
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const newValue = !(user.preferences?.smsAlerts ?? true);
+                      await updateUserPreferences({ smsAlerts: newValue });
                     }}
-                    className="form-checkbox h-5 w-5 text-cyan-500"
-                  />
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                      (user.preferences?.smsAlerts ?? true)
+                        ? 'bg-blue-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        (user.preferences?.smsAlerts ?? true) ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
                 {/* WhatsApp Notifications - Patient only */}
                 {user.role === 'patient' && (
@@ -213,14 +233,24 @@ const SettingsModal = ({
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.pushNotifications}</p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.browserNotifications}</p>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={user.preferences?.pushNotifications ?? true}
-                    onChange={async (e) => {
-                      await updateUserPreferences({ pushNotifications: e.target.checked });
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const newValue = !(user.preferences?.pushNotifications ?? true);
+                      await updateUserPreferences({ pushNotifications: newValue });
                     }}
-                    className="form-checkbox h-5 w-5 text-cyan-500"
-                  />
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                      (user.preferences?.pushNotifications ?? true)
+                        ? 'bg-blue-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        (user.preferences?.pushNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -234,16 +264,25 @@ const SettingsModal = ({
                     <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.darkMode}</p>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.useDarkTheme}</p>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={theme === 'dark'}
-                    onChange={async (e) => {
-                      const isDark = e.target.checked;
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const isDark = theme !== 'dark';
                       setTheme(isDark ? 'dark' : 'light');
                       await updateUserPreferences({ darkMode: isDark });
                     }}
-                    className="form-checkbox h-5 w-5 text-cyan-500"
-                  />
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                      theme === 'dark'
+                        ? 'bg-blue-500'
+                        : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -272,43 +311,6 @@ const SettingsModal = ({
                     </select>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Integration Settings - Admin Only */}
-            {user.role === 'admin' && (
-              <div className={`rounded-lg p-6 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.integrations}</h3>
-              <div className="space-y-3">
-                <div className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-200/50'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                      <Zap className="w-5 h-5 text-blue-400" />
-                    </div>
-                    <div>
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.calendarSync}</p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.googleCalendarIntegration}</p>
-                    </div>
-                  </div>
-                  <button className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors">
-                    {t.connected}
-                  </button>
-                </div>
-                <div className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-200/50'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                      <Mail className="w-5 h-5 text-purple-400" />
-                    </div>
-                    <div>
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.emailProvider}</p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.gmailIntegration}</p>
-                    </div>
-                  </div>
-                  <button className={`px-4 py-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}>
-                    {t.connect}
-                  </button>
-                </div>
-              </div>
               </div>
             )}
           </div>
