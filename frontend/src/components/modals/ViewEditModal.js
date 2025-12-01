@@ -41,11 +41,35 @@ const ViewEditModal = ({
   // Fetch available roles for user editing (including system roles for assignment)
   useEffect(() => {
     const fetchRoles = async () => {
+      // Set system roles as default
+      const systemRoles = [
+        { id: 'admin', name: 'admin', display_name: 'Admin', is_system: true },
+        { id: 'doctor', name: 'doctor', display_name: 'Doctor', is_system: true },
+        { id: 'nurse', name: 'nurse', display_name: 'Nurse', is_system: true },
+        { id: 'staff', name: 'staff', display_name: 'Staff', is_system: true },
+        { id: 'patient', name: 'patient', display_name: 'Patient', is_system: true }
+      ];
+
       try {
         const roles = await api.getRoles(false); // false = include all roles (system + custom)
-        setAvailableRoles(roles);
+        // Merge system roles with custom roles from API
+        const allRoles = [...systemRoles];
+
+        // Add custom roles from API if they exist
+        if (roles && Array.isArray(roles)) {
+          roles.forEach(role => {
+            // Only add if not already in system roles
+            if (!allRoles.find(r => r.name === role.name)) {
+              allRoles.push(role);
+            }
+          });
+        }
+
+        setAvailableRoles(allRoles);
       } catch (error) {
         console.error('Error fetching roles:', error);
+        // Use system roles as fallback
+        setAvailableRoles(systemRoles);
       } finally {
         setLoadingRoles(false);
       }
