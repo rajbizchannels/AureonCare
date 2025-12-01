@@ -9,7 +9,7 @@ import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm
 const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const { language, setLanguage, setTheme } = useApp();
   const t = getTranslations(language);
-  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, appointments, records, profile, prescriptions, bookAppointment, payments
+  const [currentView, setCurrentView] = useState('overview'); // overview, appointments, records, profile, prescriptions, bookAppointment, diagnoses
 
   // Data states
   const [appointments, setAppointments] = useState([]);
@@ -875,56 +875,132 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
-  // Dashboard View
-  const renderDashboard = () => (
-    <div className="space-y-6">
-      <div>
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t.welcomeBack}, {profileData?.first_name || user?.first_name} {profileData?.last_name || user?.last_name}!
-        </h2>
-        <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-          {t.email}: {profileData?.email || user?.email}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div
-          onClick={() => setCurrentView('appointments')}
-          className={`bg-gradient-to-br rounded-xl p-6 border cursor-pointer hover:shadow-lg transition-all ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-cyan-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-cyan-600/50'}`}
-        >
-          <Calendar className={`w-8 h-8 mb-4 ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-600'}`} />
-          <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t.myAppointments}
-          </h3>
-          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {appointments.length}
-          </p>
+  // Overview View - Complete Patient Profile
+  const renderOverview = () => (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Patient Header Card */}
+      <div className={`p-8 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+            {profileData.first_name?.charAt(0)}{profileData.last_name?.charAt(0)}
+          </div>
+          <div>
+            <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.first_name} {profileData.last_name}
+            </h3>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              {profileData.email}
+            </p>
+          </div>
         </div>
 
-        <div
-          onClick={() => setCurrentView('records')}
-          className={`bg-gradient-to-br rounded-xl p-6 border cursor-pointer hover:shadow-lg transition-all ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-cyan-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-cyan-600/50'}`}
-        >
-          <FileText className={`w-8 h-8 mb-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
-          <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t.medicalRecords}
-          </h3>
-          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {medicalRecords.length}
-          </p>
+        {/* Personal Information */}
+        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Personal Information</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.first_name || 'Not provided'}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.last_name || 'Not provided'}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.date_of_birth ? formatDate(profileData.date_of_birth) : profileData.dob ? formatDate(profileData.dob) : 'Not provided'}
+            </p>
+          </div>
         </div>
 
-        <div
-          onClick={() => setCurrentView('profile')}
-          className={`bg-gradient-to-br rounded-xl p-6 border cursor-pointer hover:shadow-lg transition-all ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-cyan-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-cyan-600/50'}`}
-        >
-          <User className={`w-8 h-8 mb-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
-          <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t.myProfile}
-          </h3>
-          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            {t.viewAndEdit}
-          </p>
+        {/* Contact Information */}
+        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Contact Information</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.email || 'Not provided'}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.phone || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.address || 'Not provided'}
+            </p>
+          </div>
+          {profileData.country && (
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {profileData.country || 'Not provided'}
+              </p>
+            </div>
+          )}
+          {profileData.language && (
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {profileData.language || 'Not provided'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Medical Information */}
+        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Medical Information</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.height || 'Not provided'}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.weight || 'Not provided'}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.blood_type || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.allergies || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.past_history || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Family History</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.family_history || 'Not provided'}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</p>
+            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {profileData.current_medications || 'Not provided'}
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -933,9 +1009,18 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   // Appointments View
   const renderAppointments = () => (
     <div className="space-y-6">
-      <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        {t.myAppointments}
-      </h2>
+      <div className="flex justify-between items-center">
+        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          {t.myAppointments}
+        </h2>
+        <button
+          onClick={() => setCurrentView('bookAppointment')}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          {t.bookAppointmentTab || 'Book Appointment'}
+        </button>
+      </div>
       {appointments.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <Calendar className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
@@ -1222,6 +1307,80 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     </div>
   );
 
+  // Diagnoses View
+  const renderDiagnoses = () => (
+    <div className="space-y-6">
+      <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        {t.diagnoses || 'Diagnoses'}
+      </h2>
+      {diagnoses.length === 0 ? (
+        <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+          <Activity className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.noDiagnosesFound || 'No diagnoses found'}</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {diagnoses.map((diagnosis) => (
+            <div
+              key={diagnosis.id}
+              className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h3 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {diagnosis.diagnosisName || diagnosis.diagnosis_name}
+                  </h3>
+                  {diagnosis.diagnosisCode && (
+                    <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      <strong>Code:</strong> {diagnosis.diagnosisCode || diagnosis.diagnosis_code}
+                    </p>
+                  )}
+                  {diagnosis.description && (
+                    <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {diagnosis.description}
+                    </p>
+                  )}
+                  <div className="flex gap-4 mt-3">
+                    {diagnosis.severity && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        diagnosis.severity === 'Severe'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : diagnosis.severity === 'Moderate'
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      }`}>
+                        {diagnosis.severity}
+                      </span>
+                    )}
+                    {diagnosis.status && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        diagnosis.status === 'Active'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          : diagnosis.status === 'Resolved'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                      }`}>
+                        {diagnosis.status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <p className={`text-sm mt-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                {t.diagnosedDate || 'Diagnosed'}: {formatDate(diagnosis.diagnosedDate || diagnosis.diagnosed_date)}
+              </p>
+              {diagnosis.providerName && (
+                <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {t.provider || 'Provider'}: {diagnosis.providerName || diagnosis.provider_name}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   // Medical Records View
   const renderMedicalRecords = () => (
     <div className="space-y-6">
@@ -1307,11 +1466,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               {record.description && (
                 <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {record.description}
-                </p>
-              )}
-              {record.diagnosis && (
-                <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  <strong>{t.diagnosis}:</strong> {record.diagnosis}
                 </p>
               )}
             </div>
@@ -2828,12 +2982,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       {/* Navigation Tabs */}
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
-          { id: 'dashboard', label: t.dashboardTab || 'Dashboard', icon: Home, count: null },
+          { id: 'overview', label: t.overviewTab || 'Overview', icon: User, count: null },
           { id: 'appointments', label: t.appointmentsTab || 'Appointments', icon: Calendar, count: appointments.length },
-          { id: 'bookAppointment', label: t.bookAppointmentTab || 'Book Appointment', icon: Plus, count: null },
+          { id: 'diagnoses', label: t.diagnosesTab || 'Diagnoses', icon: Activity, count: diagnoses.length },
           { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
           { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
-          { id: 'profile', label: t.profileTab || 'Profile', icon: User, count: null }
+          { id: 'profile', label: t.profileTab || 'Profile', icon: Edit, count: null }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -2860,9 +3014,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       </div>
 
       {/* Content */}
-      {currentView === 'dashboard' && renderDashboard()}
+      {currentView === 'overview' && renderOverview()}
       {currentView === 'appointments' && renderAppointments()}
       {currentView === 'bookAppointment' && renderBookAppointment()}
+      {currentView === 'diagnoses' && renderDiagnoses()}
       {currentView === 'prescriptions' && renderPrescriptions()}
       {currentView === 'records' && renderMedicalRecords()}
       {currentView === 'profile' && renderProfile()}
