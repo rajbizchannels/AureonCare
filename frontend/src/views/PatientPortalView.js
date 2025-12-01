@@ -9,7 +9,7 @@ import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm
 const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const { language, setLanguage, setTheme } = useApp();
   const t = getTranslations(language);
-  const [currentView, setCurrentView] = useState('overview'); // overview, appointments, records, profile, prescriptions, bookAppointment, diagnoses
+  const [currentView, setCurrentView] = useState('profile'); // profile (overview), appointments, diagnoses, prescriptions, records, bookAppointment
 
   // Data states
   const [appointments, setAppointments] = useState([]);
@@ -874,137 +874,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       addNotification('alert', 'Failed to update WhatsApp phone number');
     }
   };
-
-  // Overview View - Complete Patient Profile
-  const renderOverview = () => (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Patient Header Card */}
-      <div className={`p-8 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
-            {profileData.first_name?.charAt(0)}{profileData.last_name?.charAt(0)}
-          </div>
-          <div>
-            <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.first_name} {profileData.last_name}
-            </h3>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              {profileData.email}
-            </p>
-          </div>
-        </div>
-
-        {/* Personal Information */}
-        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Personal Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.first_name || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.last_name || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.date_of_birth ? formatDate(profileData.date_of_birth) : profileData.dob ? formatDate(profileData.dob) : 'Not provided'}
-            </p>
-          </div>
-        </div>
-
-        {/* Contact Information */}
-        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Contact Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.email || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.phone || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.address || 'Not provided'}
-            </p>
-          </div>
-          {profileData.country && (
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {profileData.country || 'Not provided'}
-              </p>
-            </div>
-          )}
-          {profileData.language && (
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {profileData.language || 'Not provided'}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Medical Information */}
-        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Medical Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.height || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.weight || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.blood_type || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.allergies || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.past_history || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Family History</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.family_history || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {profileData.current_medications || 'Not provided'}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   // Appointments View
   const renderAppointments = () => (
@@ -2900,12 +2769,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       {/* Navigation Tabs */}
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
-          { id: 'overview', label: t.overviewTab || 'Overview', icon: User, count: null },
+          { id: 'profile', label: t.overviewTab || 'Overview', icon: User, count: null },
           { id: 'appointments', label: t.appointmentsTab || 'Appointments', icon: Calendar, count: appointments.length },
           { id: 'diagnoses', label: t.diagnosesTab || 'Diagnoses', icon: Activity, count: diagnoses.length },
           { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
-          { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
-          { id: 'profile', label: t.profileTab || 'Profile', icon: Edit, count: null }
+          { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -2932,13 +2800,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       </div>
 
       {/* Content */}
-      {currentView === 'overview' && renderOverview()}
+      {currentView === 'profile' && renderProfile()}
       {currentView === 'appointments' && renderAppointments()}
       {currentView === 'bookAppointment' && renderBookAppointment()}
       {currentView === 'diagnoses' && renderDiagnoses()}
       {currentView === 'prescriptions' && renderPrescriptions()}
       {currentView === 'records' && renderMedicalRecords()}
-      {currentView === 'profile' && renderProfile()}
 
       {/* Prescription Details Modal */}
       {selectedPrescription && (
