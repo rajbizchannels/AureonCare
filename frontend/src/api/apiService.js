@@ -1332,6 +1332,50 @@ const api = {
     return response.json();
   },
 
+  // Insurance Payers
+  getInsurancePayers: async (activeOnly = true) => {
+    const url = activeOnly ? `${API_BASE_URL}/insurance-payers?active_only=true` : `${API_BASE_URL}/insurance-payers`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) throw new Error('Failed to fetch insurance payers');
+    return response.json();
+  },
+  getInsurancePayer: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/insurance-payers/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch insurance payer');
+    return response.json();
+  },
+  getInsurancePayerByPayerId: async (payerId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/insurance-payers/payer/${payerId}`);
+    if (!response.ok) throw new Error('Failed to fetch insurance payer');
+    return response.json();
+  },
+  createInsurancePayer: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/insurance-payers`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create insurance payer' }));
+      throw new Error(errorData.error || 'Failed to create insurance payer');
+    }
+    return response.json();
+  },
+  updateInsurancePayer: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/insurance-payers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update insurance payer');
+    return response.json();
+  },
+  deleteInsurancePayer: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/insurance-payers/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete insurance payer');
+    return response.json();
+  },
+
   // Add baseURL property for components that need it
   baseURL: API_BASE_URL
 };

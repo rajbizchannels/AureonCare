@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, X, Save, Bot } from 'lucide-react';
+import { DollarSign, X, Save, Bot, Search, Plus, Trash2 } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNotification, t }) => {
@@ -7,20 +7,82 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
     patientId: '',
     payerId: '',
     serviceDate: '',
-    diagnosisCodes: '',
-    procedureCodes: '',
     amount: '',
     notes: ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [insurancePayers, setInsurancePayers] = useState([]);
+  const [loadingPayers, setLoadingPayers] = useState(true);
+  const [selectedDiagnoses, setSelectedDiagnoses] = useState([]);
+  const [selectedProcedures, setSelectedProcedures] = useState([]);
+  const [diagnosisSearch, setDiagnosisSearch] = useState('');
+  const [procedureSearch, setProcedureSearch] = useState('');
+  const [diagnosisResults, setDiagnosisResults] = useState([]);
+  const [procedureResults, setProcedureResults] = useState([]);
+  const [searchingDiagnosis, setSearchingDiagnosis] = useState(false);
+  const [searchingProcedure, setSearchingProcedure] = useState(false);
 
-  const payers = [
-    { id: 'BC001', name: 'Blue Cross' },
-    { id: 'AE001', name: 'Aetna' },
-    { id: 'UH001', name: 'UnitedHealth' },
-    { id: 'CG001', name: 'Cigna' },
-    { id: 'HU001', name: 'Humana' }
-  ];
+  // Load insurance payers on mount
+  useEffect(() => {
+    const loadPayers = async () => {
+      try {
+        const payers = await api.getInsurancePayers(true); // active_only=true
+        setInsurancePayers(payers);
+      } catch (error) {
+        console.error('Error loading insurance payers:', error);
+        addNotification('alert', 'Failed to load insurance payers');
+      } finally {
+        setLoadingPayers(false);
+      }
+    };
+    loadPayers();
+  }, [api, addNotification]);
+
+  // Search diagnoses (ICD codes) with debounce
+  useEffect(() => {
+    const searchDiagnoses = async () => {
+      if (!diagnosisSearch || diagnosisSearch.length < 2) {
+        setDiagnosisResults([]);
+        return;
+      }
+
+      setSearchingDiagnosis(true);
+      try {
+        const results = await api.searchMedicalCodes(diagnosisSearch, 'icd');
+        setDiagnosisResults(results);
+      } catch (error) {
+        console.error('Error searching diagnoses:', error);
+      } finally {
+        setSearchingDiagnosis(false);
+      }
+    };
+
+    const timer = setTimeout(searchDiagnoses, 300);
+    return () => clearTimeout(timer);
+  }, [diagnosisSearch, api]);
+
+  // Search procedures (CPT codes) with debounce
+  useEffect(() => {
+    const searchProcedures = async () => {
+      if (!procedureSearch || procedureSearch.length < 2) {
+        setProcedureResults([]);
+        return;
+      }
+
+      setSearchingProcedure(true);
+      try {
+        const results = await api.searchMedicalCodes(procedureSearch, 'cpt');
+        setProcedureResults(results);
+      } catch (error) {
+        console.error('Error searching procedures:', error);
+      } finally {
+        setSearchingProcedure(false);
+      }
+    };
+
+    const timer = setTimeout(searchProcedures, 300);
+    return () => clearTimeout(timer);
+  }, [procedureSearch, api]);
 
   // ESC key handler
   useEffect(() => {
@@ -31,17 +93,51 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
         onClose();
       }
     };
-    window.addEventListener('keydown', handleEsc, true); // Use capture phase
+    window.addEventListener('keydown', handleEsc, true);
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
+
+  const handleAddDiagnosis = (diagnosis) => {
+    if (!selectedDiagnoses.find(d => d.code === diagnosis.code)) {
+      setSelectedDiagnoses([...selectedDiagnoses, diagnosis]);
+      setDiagnosisSearch('');
+      setDiagnosisResults([]);
+    }
+  };
+
+  const handleRemoveDiagnosis = (code) => {
+    setSelectedDiagnoses(selectedDiagnoses.filter(d => d.code !== code));
+  };
+
+  const handleAddProcedure = (procedure) => {
+    if (!selectedProcedures.find(p => p.code === procedure.code)) {
+      setSelectedProcedures([...selectedProcedures, procedure]);
+      setProcedureSearch('');
+      setProcedureResults([]);
+    }
+  };
+
+  const handleRemoveProcedure = (code) => {
+    setSelectedProcedures(selectedProcedures.filter(p => p.code !== code));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (selectedDiagnoses.length === 0) {
+      addNotification('alert', 'Please add at least one diagnosis code');
+      return;
+    }
+
+    if (selectedProcedures.length === 0) {
+      addNotification('alert', 'Please add at least one procedure code');
+      return;
+    }
+
     try {
       const claimNo = `CLM-2024-${String(claims.length + 1).padStart(3, '0')}`;
       const patient = patients.find(p => p.id.toString() === formData.patientId);
-      const payer = payers.find(p => p.id === formData.payerId);
+      const payer = insurancePayers.find(p => p.id.toString() === formData.payerId);
 
       const claimData = {
         claim_number: claimNo,
@@ -50,8 +146,8 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
         amount: parseFloat(formData.amount),
         status: 'pending',
         service_date: formData.serviceDate,
-        diagnosis_codes: formData.diagnosisCodes.split(',').map(c => c.trim()),
-        procedure_codes: formData.procedureCodes.split(',').map(c => c.trim()),
+        diagnosis_codes: selectedDiagnoses.map(d => d.code),
+        procedure_codes: selectedProcedures.map(p => p.code),
         notes: formData.notes
       };
 
@@ -91,7 +187,7 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
         showCancel={false}
       />
       <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
-        <div className={`rounded-xl border max-w-3xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
+        <div className={`rounded-xl border max-w-4xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-yellow-500/10 to-orange-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
@@ -105,7 +201,8 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Patient and Payer Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -132,11 +229,12 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
                   required
                   value={formData.payerId}
                   onChange={(e) => setFormData({...formData, payerId: e.target.value})}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                  disabled={loadingPayers}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingPayers ? 'opacity-50' : ''}`}
                 >
-                  <option value="">{t.selectPayer || 'Select Payer'}</option>
-                  {payers.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                  <option value="">{loadingPayers ? 'Loading...' : (t.selectPayer || 'Select Payer')}</option>
+                  {insurancePayers.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.payer_id})</option>
                   ))}
                 </select>
               </div>
@@ -171,36 +269,147 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
               </div>
             </div>
 
+            {/* Diagnosis Codes Search and Selection */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.diagnosisCodes || 'Diagnosis Codes (ICD-10)'} <span className="text-red-400">*</span>
               </label>
-              <input
-                type="text"
-                required
-                value={formData.diagnosisCodes}
-                onChange={(e) => setFormData({...formData, diagnosisCodes: e.target.value})}
-                placeholder={t.diagnosisCodesPlaceholder || 'e.g., Z00.00, I10 (comma-separated)'}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
-              />
-              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{t.enterMultipleCodesSeparatedByCommas || 'Enter multiple codes separated by commas'}</p>
+
+              {/* Search Input */}
+              <div className="relative mb-3">
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                <input
+                  type="text"
+                  value={diagnosisSearch}
+                  onChange={(e) => setDiagnosisSearch(e.target.value)}
+                  placeholder={t.searchDiagnosisCodes || 'Search diagnosis codes or descriptions...'}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+                />
+                {searchingDiagnosis && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-500"></div>
+                  </div>
+                )}
+              </div>
+
+              {/* Search Results Dropdown */}
+              {diagnosisResults.length > 0 && (
+                <div className={`mb-3 max-h-48 overflow-y-auto border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+                  {diagnosisResults.map((diagnosis) => (
+                    <button
+                      key={diagnosis.code}
+                      type="button"
+                      onClick={() => handleAddDiagnosis(diagnosis)}
+                      className={`w-full text-left px-4 py-2 hover:bg-yellow-500/10 transition-colors border-b last:border-b-0 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className={`font-mono text-sm ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>{diagnosis.code}</span>
+                          <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{diagnosis.description}</p>
+                        </div>
+                        <Plus className="w-5 h-5 text-yellow-500" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Selected Diagnoses */}
+              <div className="space-y-2">
+                {selectedDiagnoses.map((diagnosis) => (
+                  <div key={diagnosis.code} className={`flex items-center justify-between p-3 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-yellow-50 border-yellow-200'}`}>
+                    <div>
+                      <span className={`font-mono text-sm font-medium ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'}`}>{diagnosis.code}</span>
+                      <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{diagnosis.description}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDiagnosis(diagnosis.code)}
+                      className={`p-1 rounded transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-yellow-200'}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {selectedDiagnoses.length === 0 && (
+                <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  {t.searchAndSelectDiagnoses || 'Search and select diagnosis codes above'}
+                </p>
+              )}
             </div>
 
+            {/* Procedure Codes Search and Selection */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.procedureCodes || 'Procedure Codes (CPT)'} <span className="text-red-400">*</span>
               </label>
-              <input
-                type="text"
-                required
-                value={formData.procedureCodes}
-                onChange={(e) => setFormData({...formData, procedureCodes: e.target.value})}
-                placeholder={t.procedureCodesPlaceholder || 'e.g., 99213, 99214 (comma-separated)'}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
-              />
-              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{t.enterMultipleCodesSeparatedByCommas || 'Enter multiple codes separated by commas'}</p>
+
+              {/* Search Input */}
+              <div className="relative mb-3">
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                <input
+                  type="text"
+                  value={procedureSearch}
+                  onChange={(e) => setProcedureSearch(e.target.value)}
+                  placeholder={t.searchProcedureCodes || 'Search procedure codes or descriptions...'}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+                />
+                {searchingProcedure && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-500"></div>
+                  </div>
+                )}
+              </div>
+
+              {/* Search Results Dropdown */}
+              {procedureResults.length > 0 && (
+                <div className={`mb-3 max-h-48 overflow-y-auto border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+                  {procedureResults.map((procedure) => (
+                    <button
+                      key={procedure.code}
+                      type="button"
+                      onClick={() => handleAddProcedure(procedure)}
+                      className={`w-full text-left px-4 py-2 hover:bg-yellow-500/10 transition-colors border-b last:border-b-0 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className={`font-mono text-sm ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>{procedure.code}</span>
+                          <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{procedure.description}</p>
+                        </div>
+                        <Plus className="w-5 h-5 text-yellow-500" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Selected Procedures */}
+              <div className="space-y-2">
+                {selectedProcedures.map((procedure) => (
+                  <div key={procedure.code} className={`flex items-center justify-between p-3 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-yellow-50 border-yellow-200'}`}>
+                    <div>
+                      <span className={`font-mono text-sm font-medium ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'}`}>{procedure.code}</span>
+                      <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{procedure.description}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveProcedure(procedure.code)}
+                      className={`p-1 rounded transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-yellow-200'}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {selectedProcedures.length === 0 && (
+                <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  {t.searchAndSelectProcedures || 'Search and select procedure codes above'}
+                </p>
+              )}
             </div>
 
+            {/* Clinical Notes */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.clinicalNotes || 'Clinical Notes'}
@@ -214,13 +423,14 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
               />
             </div>
 
+            {/* AI Assistant Info */}
             <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
               <div className="flex items-start gap-3">
                 <Bot className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-cyan-400 text-sm font-medium mb-1">{t.aiCodingAssistant || 'AI Coding Assistant'}</p>
                   <p className={`text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {t.aiCodingAssistantDescription || 'Based on the selected patient and service date, AI can suggest appropriate diagnosis and procedure codes.'}
+                    {t.aiCodingAssistantDescription || 'Search for diagnosis and procedure codes by description or code. Codes are automatically populated from the medical codes database.'}
                   </p>
                 </div>
               </div>

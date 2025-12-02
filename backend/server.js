@@ -122,6 +122,7 @@ app.use('/api/scheduling', require('./routes/scheduling'));
 app.use('/api/offerings', require('./routes/offerings'));
 app.use('/api/calendar-sync', require('./routes/calendar-sync'));
 app.use('/api/medical-codes', require('./routes/medical-codes'));
+app.use('/api/insurance-payers', require('./routes/insurance-payers'));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
