@@ -141,8 +141,11 @@ function App() {
 
   // Get translations and modules
   const t = getTranslations(language);
-  const modules = getModules(t);
-  const hasModuleAccess = (moduleId) => hasAccess(planTier, moduleId);
+  const allModules = getModules(t);
+  // Check both plan-based and role-based access
+  const hasModuleAccess = (moduleId) => hasAccess(planTier, moduleId, user);
+  // Filter modules based on user's role and plan permissions
+  const modules = allModules.filter(module => hasModuleAccess(module.id));
 
   // Local state for patient history
   const [selectedPatient, setSelectedPatient] = React.useState(null);

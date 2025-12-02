@@ -22,16 +22,43 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
   // Fetch available roles (including system roles for assignment)
   useEffect(() => {
     const fetchRoles = async () => {
+      // Set system roles as default fallback (must match database roles table)
+      const systemRoles = [
+        { id: 'admin', name: 'admin', display_name: 'Administrator', is_system: true },
+        { id: 'doctor', name: 'doctor', display_name: 'Doctor/Provider', is_system: true },
+        { id: 'patient', name: 'patient', display_name: 'Patient', is_system: true },
+        { id: 'nurse', name: 'nurse', display_name: 'Nurse', is_system: true },
+        { id: 'receptionist', name: 'receptionist', display_name: 'Receptionist', is_system: true },
+        { id: 'billing_manager', name: 'billing_manager', display_name: 'Billing Manager', is_system: true },
+        { id: 'crm_manager', name: 'crm_manager', display_name: 'CRM Manager', is_system: true },
+        { id: 'staff', name: 'staff', display_name: 'Staff', is_system: true }
+      ];
+
       try {
         const roles = await api.getRoles(false); // false = include all roles (system + custom)
-        setAvailableRoles(roles);
-        // Set default role to first available role
-        if (roles.length > 0 && !formData.role) {
-          setFormData(prev => ({ ...prev, role: roles[0].name }));
+
+        // If API returns roles, use them; otherwise use system roles as fallback
+        if (roles && Array.isArray(roles) && roles.length > 0) {
+          setAvailableRoles(roles);
+          // Set default role to first available role
+          if (!formData.role) {
+            setFormData(prev => ({ ...prev, role: roles[0].name }));
+          }
+        } else {
+          // Use system roles as fallback
+          setAvailableRoles(systemRoles);
+          if (!formData.role) {
+            setFormData(prev => ({ ...prev, role: systemRoles[0].name }));
+          }
         }
       } catch (error) {
         console.error('Error fetching roles:', error);
-        addNotification('alert', 'Failed to load roles');
+        // Use system roles as fallback on error
+        setAvailableRoles(systemRoles);
+        if (!formData.role) {
+          setFormData(prev => ({ ...prev, role: systemRoles[0].name }));
+        }
+        addNotification('alert', 'Failed to load roles from server, using defaults');
       } finally {
         setLoadingRoles(false);
       }
