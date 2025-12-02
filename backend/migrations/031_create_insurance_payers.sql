@@ -1,6 +1,9 @@
+-- Enable UUID extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Create insurance payers table for claims management
 CREATE TABLE IF NOT EXISTS insurance_payers (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     payer_id VARCHAR(50) UNIQUE NOT NULL, -- e.g., BC001, AE001
     name VARCHAR(255) NOT NULL,
     payer_type VARCHAR(50) DEFAULT 'insurance', -- 'insurance', 'government', 'self-pay'
