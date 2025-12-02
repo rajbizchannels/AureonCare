@@ -1690,6 +1690,7 @@ const AdminPanelView = ({
         </div>
       )}
     </div>
+    </>
   );
 };
 
