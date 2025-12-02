@@ -41,34 +41,31 @@ const ViewEditModal = ({
   // Fetch available roles for user editing (including system roles for assignment)
   useEffect(() => {
     const fetchRoles = async () => {
-      // Set system roles as default
+      // Set system roles as default (must match database roles table)
       const systemRoles = [
-        { id: 'admin', name: 'admin', display_name: 'Admin', is_system: true },
-        { id: 'doctor', name: 'doctor', display_name: 'Doctor', is_system: true },
+        { id: 'admin', name: 'admin', display_name: 'Administrator', is_system: true },
+        { id: 'doctor', name: 'doctor', display_name: 'Doctor/Provider', is_system: true },
+        { id: 'patient', name: 'patient', display_name: 'Patient', is_system: true },
         { id: 'nurse', name: 'nurse', display_name: 'Nurse', is_system: true },
-        { id: 'staff', name: 'staff', display_name: 'Staff', is_system: true },
-        { id: 'patient', name: 'patient', display_name: 'Patient', is_system: true }
+        { id: 'receptionist', name: 'receptionist', display_name: 'Receptionist', is_system: true },
+        { id: 'billing_manager', name: 'billing_manager', display_name: 'Billing Manager', is_system: true },
+        { id: 'crm_manager', name: 'crm_manager', display_name: 'CRM Manager', is_system: true },
+        { id: 'staff', name: 'staff', display_name: 'Staff', is_system: true }
       ];
 
       try {
         const roles = await api.getRoles(false); // false = include all roles (system + custom)
-        // Merge system roles with custom roles from API
-        const allRoles = [...systemRoles];
 
-        // Add custom roles from API if they exist
-        if (roles && Array.isArray(roles)) {
-          roles.forEach(role => {
-            // Only add if not already in system roles
-            if (!allRoles.find(r => r.name === role.name)) {
-              allRoles.push(role);
-            }
-          });
+        // If API returns roles, use them; otherwise use system roles as fallback
+        if (roles && Array.isArray(roles) && roles.length > 0) {
+          setAvailableRoles(roles);
+        } else {
+          // Use system roles as fallback
+          setAvailableRoles(systemRoles);
         }
-
-        setAvailableRoles(allRoles);
       } catch (error) {
         console.error('Error fetching roles:', error);
-        // Use system roles as fallback
+        // Use system roles as fallback on error
         setAvailableRoles(systemRoles);
       } finally {
         setLoadingRoles(false);
@@ -77,6 +74,9 @@ const ViewEditModal = ({
 
     if (editingItem?.type === 'user') {
       fetchRoles();
+    } else {
+      // If not editing a user, set loadingRoles to false to prevent infinite loading state
+      setLoadingRoles(false);
     }
   }, [api, editingItem?.type]);
 
