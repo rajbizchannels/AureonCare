@@ -16,10 +16,29 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
     zip: '',
     insurance: '',
     insuranceId: '',
+    insurancePayerId: '',
     emergencyContact: '',
     emergencyPhone: ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [insurancePayers, setInsurancePayers] = useState([]);
+  const [loadingPayers, setLoadingPayers] = useState(true);
+
+  // Load insurance payers on mount
+  useEffect(() => {
+    const loadPayers = async () => {
+      try {
+        const payers = await api.getInsurancePayers(true);
+        setInsurancePayers(payers);
+      } catch (error) {
+        console.error('Error loading insurance payers:', error);
+        addNotification('alert', 'Failed to load insurance payers');
+      } finally {
+        setLoadingPayers(false);
+      }
+    };
+    loadPayers();
+  }, [api, addNotification]);
 
   // ESC key handler
   useEffect(() => {
@@ -55,6 +74,7 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
         zip: formData.zip,
         insurance: formData.insurance,
         insurance_id: formData.insuranceId,
+        insurance_payer_id: formData.insurancePayerId || null,
         status: 'Active'
       };
 
@@ -266,6 +286,25 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
             <div>
               <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.insuranceInformation || 'Insurance Information'}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.insurancePayer || 'Insurance Payer'}
+                  </label>
+                  <select
+                    value={formData.insurancePayerId}
+                    onChange={(e) => setFormData({...formData, insurancePayerId: e.target.value})}
+                    disabled={loadingPayers}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                  >
+                    <option value="">{loadingPayers ? 'Loading insurance payers...' : (t.selectInsurancePayer || 'Select Insurance Payer')}</option>
+                    {insurancePayers.map(payer => (
+                      <option key={payer.id} value={payer.id}>
+                        {payer.name} ({payer.payer_id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {t.insuranceProvider || 'Insurance Provider'}

@@ -849,6 +849,13 @@ const api = {
     return response.json();
   },
 
+  // Diagnoses
+  getPatientDiagnoses: async (patientId) => {
+    const response = await fetch(`${API_BASE_URL}/diagnosis/patient/${patientId}`);
+    if (!response.ok) throw new Error('Failed to fetch patient diagnoses');
+    return response.json();
+  },
+
   // Healthcare Offerings
   // Service Categories
   getServiceCategories: async () => {
