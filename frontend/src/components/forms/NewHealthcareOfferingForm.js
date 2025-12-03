@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Heart, Clock, Tag, Shield, AlertCircle } from 'lucide-react';
+import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 
-const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => {
+const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotification, t, editingOffering = null }) => {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -16,8 +17,8 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
     isFeatured: false,
     availableOnline: true,
     requiresReferral: false,
-    cptCodes: '',
-    icdCodes: '',
+    cptCodes: [],
+    icdCodes: [],
     minAge: '',
     maxAge: '',
     genderRestriction: 'any',
@@ -42,6 +43,62 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
     loadCategories();
   }, [api, addNotification]);
 
+  // Populate form when editing
+  useEffect(() => {
+    const loadOfferingData = async () => {
+      if (editingOffering) {
+        // Load ICD and CPT codes as code objects
+        const icdCodeObjects = [];
+        const cptCodeObjects = [];
+
+        if (editingOffering.icdCodes && Array.isArray(editingOffering.icdCodes)) {
+          for (const code of editingOffering.icdCodes) {
+            try {
+              const codeData = await api.getMedicalCodeByCode(code);
+              if (codeData) icdCodeObjects.push(codeData);
+            } catch (err) {
+              console.warn(`Could not load ICD code ${code}:`, err);
+            }
+          }
+        }
+
+        if (editingOffering.cptCodes && Array.isArray(editingOffering.cptCodes)) {
+          for (const code of editingOffering.cptCodes) {
+            try {
+              const codeData = await api.getMedicalCodeByCode(code);
+              if (codeData) cptCodeObjects.push(codeData);
+            } catch (err) {
+              console.warn(`Could not load CPT code ${code}:`, err);
+            }
+          }
+        }
+
+        setFormData({
+          name: editingOffering.name || '',
+          description: editingOffering.description || '',
+          categoryId: editingOffering.categoryId || '',
+          durationMinutes: editingOffering.durationMinutes || 30,
+          requiresPreparation: editingOffering.requiresPreparation || false,
+          preparationInstructions: editingOffering.preparationInstructions || '',
+          isActive: editingOffering.isActive !== undefined ? editingOffering.isActive : true,
+          isFeatured: editingOffering.isFeatured || false,
+          availableOnline: editingOffering.availableOnline !== undefined ? editingOffering.availableOnline : true,
+          requiresReferral: editingOffering.requiresReferral || false,
+          cptCodes: cptCodeObjects,
+          icdCodes: icdCodeObjects,
+          minAge: editingOffering.minAge || '',
+          maxAge: editingOffering.maxAge || '',
+          genderRestriction: editingOffering.genderRestriction || 'any',
+          contraindications: editingOffering.contraindications || '',
+          imageUrl: editingOffering.imageUrl || '',
+          consentFormRequired: editingOffering.consentFormRequired || false,
+          consentFormUrl: editingOffering.consentFormUrl || ''
+        });
+      }
+    };
+    loadOfferingData();
+  }, [editingOffering, api]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -52,13 +109,9 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
 
     setLoading(true);
     try {
-      // Convert comma-separated codes to arrays
-      const cptCodesArray = formData.cptCodes
-        ? formData.cptCodes.split(',').map(code => code.trim()).filter(Boolean)
-        : [];
-      const icdCodesArray = formData.icdCodes
-        ? formData.icdCodes.split(',').map(code => code.trim()).filter(Boolean)
-        : [];
+      // Extract code strings from code objects
+      const cptCodesArray = formData.cptCodes.map(code => code.code);
+      const icdCodesArray = formData.icdCodes.map(code => code.code);
 
       const offeringData = {
         name: formData.name.trim(),
@@ -82,12 +135,18 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
         consentFormUrl: formData.consentFormRequired ? formData.consentFormUrl.trim() || null : null
       };
 
-      const newOffering = await api.createOffering(offeringData);
-      addNotification('success', t.offeringCreatedSuccessfully || 'Healthcare offering created successfully');
-      onSuccess(newOffering);
+      let result;
+      if (editingOffering) {
+        result = await api.updateOffering(editingOffering.id, offeringData);
+        addNotification('success', t.offeringUpdatedSuccessfully || 'Healthcare offering updated successfully');
+      } else {
+        result = await api.createOffering(offeringData);
+        addNotification('success', t.offeringCreatedSuccessfully || 'Healthcare offering created successfully');
+      }
+      onSuccess(result);
     } catch (error) {
-      console.error('Error creating healthcare offering:', error);
-      addNotification('alert', error.message || 'Failed to create healthcare offering');
+      console.error(`Error ${editingOffering ? 'updating' : 'creating'} healthcare offering:`, error);
+      addNotification('alert', error.message || `Failed to ${editingOffering ? 'update' : 'create'} healthcare offering`);
     } finally {
       setLoading(false);
     }
@@ -100,7 +159,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
           <div className="flex items-center gap-3">
             <Heart className="w-6 h-6 text-teal-400" />
             <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t.addHealthcareOffering || 'Add Healthcare Offering'}
+              {editingOffering ? (t.editHealthcareOffering || 'Edit Healthcare Offering') : (t.addHealthcareOffering || 'Add Healthcare Offering')}
             </h3>
           </div>
           <button
@@ -201,32 +260,26 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                 <Tag className="w-5 h-5 inline mr-2" />
                 {t.medicalCodes || 'Medical Codes'}
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {t.cptCodes || 'CPT Codes'}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.cptCodes}
-                    onChange={(e) => setFormData({...formData, cptCodes: e.target.value})}
-                    className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                    placeholder={t.enterCptCodes || 'e.g., 99213, 99214 (comma-separated)'}
-                  />
-                </div>
+              <div className="space-y-4">
+                <MedicalCodeMultiSelect
+                  theme={theme}
+                  api={api}
+                  value={formData.cptCodes}
+                  onChange={(codes) => setFormData({...formData, cptCodes: codes})}
+                  codeType="cpt"
+                  label={t.cptCodes || 'CPT Procedure Codes'}
+                  placeholder={t.searchCptCodes || 'Search for CPT codes by code or description...'}
+                />
 
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {t.icdCodes || 'ICD-10 Codes'}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.icdCodes}
-                    onChange={(e) => setFormData({...formData, icdCodes: e.target.value})}
-                    className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                    placeholder={t.enterIcdCodes || 'e.g., Z00.00, E11.9 (comma-separated)'}
-                  />
-                </div>
+                <MedicalCodeMultiSelect
+                  theme={theme}
+                  api={api}
+                  value={formData.icdCodes}
+                  onChange={(codes) => setFormData({...formData, icdCodes: codes})}
+                  codeType="icd"
+                  label={t.icdCodes || 'ICD-10 Diagnosis Codes'}
+                  placeholder={t.searchIcdCodes || 'Search for ICD codes by code or description...'}
+                />
               </div>
             </div>
 
@@ -470,7 +523,10 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
               className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50"
               disabled={loading}
             >
-              {loading ? (t.creating || 'Creating...') : (t.createOffering || 'Create Offering')}
+              {loading
+                ? (editingOffering ? (t.updating || 'Updating...') : (t.creating || 'Creating...'))
+                : (editingOffering ? (t.updateOffering || 'Update Offering') : (t.createOffering || 'Create Offering'))
+              }
             </button>
           </div>
         </form>
