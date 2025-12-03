@@ -1,18 +1,27 @@
 import React from 'react';
-import { Mail, MessageSquare, Phone, ArrowLeft } from 'lucide-react';
+import { Mail, MessageSquare, Phone, ArrowLeft, Calendar, Plus } from 'lucide-react';
 
 const CRMView = ({ theme, setShowForm, setCurrentModule, t }) => {
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
+            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+            title={t.backToDashboard || 'Back to Dashboard'}
+          >
+            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          </button>
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.patientCommunications || 'Patient Communications'}</h2>
+        </div>
         <button
-          onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-          title={t.backToDashboard || 'Back to Dashboard'}
+          onClick={() => setShowForm('appointmentType')}
+          className={`flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
         >
-          <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          <Plus className="w-4 h-4" />
+          {t.addAppointmentType || 'Add Appointment Type'}
         </button>
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.patientCommunications || 'Patient Communications'}</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

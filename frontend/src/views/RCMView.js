@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const RCMView = ({
@@ -28,6 +28,13 @@ const RCMView = ({
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Revenue Cycle Management</h2>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={() => setShowForm('insurancePayer')}
+            className={`flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+          >
+            <Shield className="w-4 h-4" />
+            Add Insurance Payer
+          </button>
           <button
             onClick={() => setShowForm('payment')}
             className={`flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}

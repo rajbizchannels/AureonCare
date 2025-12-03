@@ -375,6 +375,19 @@ const ViewEditModal = ({
         setPatients(prev => prev.map(patient =>
           patient.id === editData.id ? {...updated, name: updated.name || `${updated.first_name} ${updated.last_name}`} : patient
         ));
+
+        // Also update preferred pharmacy if selected
+        if (selectedPharmacyId) {
+          try {
+            await api.addPreferredPharmacy(editData.id, selectedPharmacyId, true);
+            // Refresh preferred pharmacies list
+            const patientPreferred = await api.getPatientPreferredPharmacies(editData.id);
+            setPreferredPharmacies(patientPreferred || []);
+          } catch (error) {
+            console.error('Error updating preferred pharmacy:', error);
+            // Don't fail the save if pharmacy update fails
+          }
+        }
       } else if (type === 'userProfile') {
         // Update user profile - ensure we send firstName and lastName
         const firstName = editData.first_name || editData.firstName || '';
@@ -811,35 +824,25 @@ const ViewEditModal = ({
 
                     {/* Add/Change Preferred Pharmacy */}
                     {!isView && (
-                      <div className="space-y-3">
-                        <div>
-                          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            {preferredPharmacies.length > 0 ? (t.changePreferredPharmacy || 'Change Preferred Pharmacy') : (t.selectPreferredPharmacy || 'Select Preferred Pharmacy')}
-                          </label>
-                          <select
-                            value={selectedPharmacyId}
-                            onChange={(e) => setSelectedPharmacyId(e.target.value)}
-                            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                          >
-                            <option value="">{t.selectAPharmacy || 'Select a pharmacy...'}</option>
-                            {pharmacies.map((pharmacy) => (
-                              <option key={pharmacy.id} value={pharmacy.id}>
-                                {pharmacy.pharmacyName || pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <button
-                          onClick={handleAddPreferredPharmacy}
-                          disabled={!selectedPharmacyId}
-                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                            selectedPharmacyId
-                              ? 'bg-purple-500 hover:bg-purple-600 text-white'
-                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          }`}
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          {preferredPharmacies.length > 0 ? (t.changePreferredPharmacy || 'Change Preferred Pharmacy') : (t.selectPreferredPharmacy || 'Select Preferred Pharmacy')}
+                        </label>
+                        <select
+                          value={selectedPharmacyId}
+                          onChange={(e) => setSelectedPharmacyId(e.target.value)}
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                         >
-                          {preferredPharmacies.length > 0 ? (t.updatePreferredPharmacy || 'Update Preferred Pharmacy') : (t.setPreferredPharmacy || 'Set Preferred Pharmacy')}
-                        </button>
+                          <option value="">{t.selectAPharmacy || 'Select a pharmacy...'}</option>
+                          {pharmacies.map((pharmacy) => (
+                            <option key={pharmacy.id} value={pharmacy.id}>
+                              {pharmacy.pharmacyName || pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
+                            </option>
+                          ))}
+                        </select>
+                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                          {t.pharmacyWillBeSaved || 'Pharmacy will be saved with your other changes'}
+                        </p>
                       </div>
                     )}
 
