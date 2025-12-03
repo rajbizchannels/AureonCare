@@ -61,16 +61,24 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, t }) => {
           </button>
         </div>
 
-        <div className={`bg-gradient-to-br rounded-xl p-6 border text-center transition-all cursor-pointer ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-teal-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-teal-600/50'}`}>
+        <div className={`bg-gradient-to-br rounded-xl p-6 border text-center transition-all ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
           <Heart className="w-12 h-12 mx-auto mb-4 text-teal-400" />
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.healthcareOfferings || 'Healthcare Offerings'}</h3>
           <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.manageServices || 'Manage healthcare services and offerings'}</p>
-          <button
-            onClick={() => setShowForm('healthcareOffering')}
-            className="w-full px-4 py-2 bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 rounded-lg transition-colors"
-          >
-            {t.addOffering || 'Add Offering'}
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => setCurrentModule && setCurrentModule('offerings')}
+              className="w-full px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
+            >
+              {t.manageOfferings || 'Manage Offerings'}
+            </button>
+            <button
+              onClick={() => setShowForm('healthcareOffering')}
+              className="w-full px-4 py-2 bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 rounded-lg transition-colors"
+            >
+              {t.addOffering || 'Add Offering'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
