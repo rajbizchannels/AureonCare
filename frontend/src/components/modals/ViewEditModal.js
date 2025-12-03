@@ -34,6 +34,8 @@ const ViewEditModal = ({
   const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
   const [selectedPrescription, setSelectedPrescription] = useState(null);
   const [editingPrescription, setEditingPrescription] = useState(null);
+  const [insurancePayers, setInsurancePayers] = useState([]);
+  const [loadingInsurancePayers, setLoadingInsurancePayers] = useState(false);
 
   // Get setLanguage from AppContext for updating language preference
   const { setLanguage } = useApp();
@@ -133,6 +135,26 @@ const ViewEditModal = ({
 
     fetchPharmacyData();
   }, [api, editingItem?.type, editingItem?.data?.id]);
+
+  // Fetch insurance payers for patient
+  useEffect(() => {
+    const fetchInsurancePayers = async () => {
+      if (editingItem?.type === 'patient') {
+        setLoadingInsurancePayers(true);
+        try {
+          const payers = await api.getInsurancePayers(true); // active_only=true
+          setInsurancePayers(payers || []);
+        } catch (error) {
+          console.error('Error fetching insurance payers:', error);
+          setInsurancePayers([]);
+        } finally {
+          setLoadingInsurancePayers(false);
+        }
+      }
+    };
+
+    fetchInsurancePayers();
+  }, [api, editingItem?.type]);
 
   // Update editData when editingItem changes
   useEffect(() => {
@@ -776,6 +798,45 @@ const ViewEditModal = ({
                     />
                   )}
                 </div>
+              </div>
+
+              {/* Insurance Payer Section */}
+              <div className={`mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {t.insuranceInformation || 'Insurance Information'}
+                </h3>
+
+                {loadingInsurancePayers ? (
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.loadingInsurancePayers || 'Loading insurance payers...'}
+                  </p>
+                ) : (
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.insurancePayer || 'Insurance Payer'}
+                    </label>
+                    {isView ? (
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {editData.insurance_payer_id
+                          ? insurancePayers.find(p => p.id === editData.insurance_payer_id)?.name || t.notApplicable || 'N/A'
+                          : t.notApplicable || 'N/A'}
+                      </p>
+                    ) : (
+                      <select
+                        value={editData.insurance_payer_id || ''}
+                        onChange={(e) => setEditData({...editData, insurance_payer_id: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                      >
+                        <option value="">{t.selectInsurancePayer || 'Select Insurance Payer'}</option>
+                        {insurancePayers.map((payer) => (
+                          <option key={payer.id} value={payer.id}>
+                            {payer.name} ({payer.payer_id})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Preferred Pharmacy Section */}
