@@ -21,6 +21,40 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
   const [procedureResults, setProcedureResults] = useState([]);
   const [searchingDiagnosis, setSearchingDiagnosis] = useState(false);
   const [searchingProcedure, setSearchingProcedure] = useState(false);
+  const [existingDiagnoses, setExistingDiagnoses] = useState([]);
+  const [loadingDiagnoses, setLoadingDiagnoses] = useState(false);
+
+  // Auto-load insurance payer from patient profile when patient is selected
+  useEffect(() => {
+    if (formData.patientId) {
+      const selectedPatient = patients.find(p => p.id.toString() === formData.patientId);
+      if (selectedPatient && selectedPatient.insurance_payer_id) {
+        setFormData(prev => ({...prev, payerId: selectedPatient.insurance_payer_id}));
+      }
+    }
+  }, [formData.patientId, patients]);
+
+  // Load existing diagnoses when patient is selected
+  useEffect(() => {
+    const loadPatientDiagnoses = async () => {
+      if (!formData.patientId) {
+        setExistingDiagnoses([]);
+        return;
+      }
+
+      setLoadingDiagnoses(true);
+      try {
+        const diagnoses = await api.getPatientDiagnoses(formData.patientId);
+        setExistingDiagnoses(diagnoses || []);
+      } catch (error) {
+        console.error('Error loading patient diagnoses:', error);
+        setExistingDiagnoses([]);
+      } finally {
+        setLoadingDiagnoses(false);
+      }
+    };
+    loadPatientDiagnoses();
+  }, [formData.patientId, api]);
 
   // Load insurance payers on mount
   useEffect(() => {
@@ -274,6 +308,36 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.diagnosisCodes || 'Diagnosis Codes (ICD-10)'} <span className="text-red-400">*</span>
               </label>
+
+              {/* Existing Patient Diagnoses Dropdown */}
+              {formData.patientId && existingDiagnoses.length > 0 && (
+                <div className="mb-3">
+                  <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.selectFromExistingDiagnoses || 'Select from existing diagnoses'}
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const diagnosis = existingDiagnoses.find(d => d.diagnosisCode === e.target.value);
+                      if (diagnosis) {
+                        handleAddDiagnosis({
+                          code: diagnosis.diagnosisCode,
+                          description: diagnosis.diagnosisName
+                        });
+                        e.target.value = '';
+                      }
+                    }}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                    disabled={loadingDiagnoses}
+                  >
+                    <option value="">{loadingDiagnoses ? 'Loading...' : (t.selectDiagnosis || 'Select a previous diagnosis')}</option>
+                    {existingDiagnoses.map((d) => (
+                      <option key={d.id} value={d.diagnosisCode}>
+                        {d.diagnosisCode} - {d.diagnosisName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Search Input */}
               <div className="relative mb-3">

@@ -43,6 +43,28 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get diagnoses for a specific patient
+router.get('/patient/:patientId', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(
+      `SELECT d.*,
+              prov.first_name || ' ' || prov.last_name as provider_name
+       FROM diagnosis d
+       LEFT JOIN providers prov ON d.provider_id = prov.id
+       WHERE d.patient_id = $1
+       ORDER BY d.diagnosed_date DESC, d.id DESC`,
+      [req.params.patientId]
+    );
+
+    const diagnoses = result.rows.map(toCamelCase);
+    res.json(diagnoses);
+  } catch (error) {
+    console.error('Error fetching patient diagnoses:', error);
+    res.status(500).json({ error: 'Failed to fetch patient diagnoses' });
+  }
+});
+
 // Get single diagnosis
 router.get('/:id', async (req, res) => {
   try {

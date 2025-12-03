@@ -41,7 +41,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
-    address, city, state, zip, insurance, insurance_id, status, createUserAccount
+    address, city, state, zip, insurance, insurance_id, insurance_payer_id, status, createUserAccount
   } = req.body;
 
   const pool = req.app.locals.pool;
@@ -94,18 +94,18 @@ router.post('/', async (req, res) => {
     const patientInsertQuery = userId
       ? `INSERT INTO patients
          (id, first_name, last_name, mrn, date_of_birth, gender, phone, email,
-          address, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+          address, insurance_payer_id, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
          RETURNING *`
       : `INSERT INTO patients
          (first_name, last_name, mrn, date_of_birth, gender, phone, email,
-          address, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+          address, insurance_payer_id, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
          RETURNING *`;
 
     const patientInsertParams = userId
-      ? [userId, first_name, last_name, mrn, birthDate, gender, phone, email, address, status || 'active']
-      : [first_name, last_name, mrn, birthDate, gender, phone, email, address, status || 'active'];
+      ? [userId, first_name, last_name, mrn, birthDate, gender, phone, email, address, insurance_payer_id || null, status || 'active']
+      : [first_name, last_name, mrn, birthDate, gender, phone, email, address, insurance_payer_id || null, status || 'active'];
 
     const patientResult = await client.query(patientInsertQuery, patientInsertParams);
     const newPatient = patientResult.rows[0];
@@ -125,7 +125,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
-    address, city, state, zip, insurance, insurance_id, status,
+    address, city, state, zip, insurance, insurance_id, insurance_payer_id, status,
     height, weight, blood_type, allergies, past_history, family_history, current_medications, language, country
   } = req.body;
 
@@ -153,12 +153,13 @@ router.put('/:id', async (req, res) => {
            family_history = COALESCE($15, family_history),
            current_medications = COALESCE($16, current_medications),
            country = COALESCE($17, country),
+           insurance_payer_id = COALESCE($18, insurance_payer_id),
            updated_at = NOW()
-       WHERE id::text = $18::text
+       WHERE id::text = $19::text
        RETURNING *`,
       [first_name, last_name, mrn, birthDate, gender, phone, email,
        address, status, height, weight, blood_type, allergies,
-       past_history, family_history, current_medications, country, req.params.id]
+       past_history, family_history, current_medications, country, insurance_payer_id, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });
