@@ -25,16 +25,24 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, t }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className={`bg-gradient-to-br rounded-xl p-6 border text-center transition-all cursor-pointer ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-red-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-red-600/50'}`}>
+        <div className={`bg-gradient-to-br rounded-xl p-6 border text-center transition-all ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
           <Mail className="w-12 h-12 mx-auto mb-4 text-red-400" />
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.emailCampaign || 'Email Campaign'}</h3>
           <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.sendBulkEmailsToPatients || 'Send bulk emails to patients'}</p>
-          <button
-            onClick={() => setShowForm('campaign')}
-            className="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
-          >
-            {t.createCampaign || 'Create Campaign'}
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => setCurrentModule && setCurrentModule('campaigns')}
+              className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+            >
+              {t.manageCampaigns || 'Manage Campaigns'}
+            </button>
+            <button
+              onClick={() => setShowForm('campaign')}
+              className="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+            >
+              {t.createCampaign || 'Create Campaign'}
+            </button>
+          </div>
         </div>
 
         <div className={`bg-gradient-to-br rounded-xl p-6 border text-center transition-all cursor-pointer ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-green-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-green-600/50'}`}>

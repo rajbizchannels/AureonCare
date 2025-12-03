@@ -54,6 +54,7 @@ import NewUserForm from './components/forms/NewUserForm';
 import NewInsurancePayerForm from './components/forms/NewInsurancePayerForm';
 import NewAppointmentTypeForm from './components/forms/NewAppointmentTypeForm';
 import NewHealthcareOfferingForm from './components/forms/NewHealthcareOfferingForm';
+import NewCampaignForm from './components/forms/NewCampaignForm';
 import DiagnosisForm from './components/forms/DiagnosisForm';
 
 // Panels
@@ -721,6 +722,20 @@ function App() {
           onClose={() => setShowForm(null)}
           onSuccess={(newOffering) => {
             // Refresh healthcare offerings list if needed
+            setShowForm(null);
+          }}
+          addNotification={addNotification}
+          t={t}
+        />
+      )}
+
+      {showForm === 'campaign' && (
+        <NewCampaignForm
+          theme={theme}
+          api={api}
+          onClose={() => setShowForm(null)}
+          onSuccess={(newCampaign) => {
+            // Refresh campaigns list if needed
             setShowForm(null);
           }}
           addNotification={addNotification}

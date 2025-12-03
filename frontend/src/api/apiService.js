@@ -1383,6 +1383,48 @@ const api = {
     return response.json();
   },
 
+  // Campaigns
+  getCampaigns: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status', filters.status);
+    if (filters.offeringId) params.append('offeringId', filters.offeringId);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/campaigns${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch campaigns');
+    return response.json();
+  },
+  getCampaign: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/campaigns/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch campaign');
+    return response.json();
+  },
+  createCampaign: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/campaigns`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create campaign' }));
+      throw new Error(errorData.error || 'Failed to create campaign');
+    }
+    return response.json();
+  },
+  updateCampaign: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/campaigns/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update campaign');
+    return response.json();
+  },
+  deleteCampaign: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/campaigns/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete campaign');
+    return response.json();
+  },
+
   // Add baseURL property for components that need it
   baseURL: API_BASE_URL
 };
