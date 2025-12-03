@@ -367,30 +367,44 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
                   />
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.priorAuthorizationRequired}
-                      onChange={(e) => setFormData({...formData, priorAuthorizationRequired: e.target.checked})}
-                      className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       {t.priorAuthorizationRequired || 'Prior Authorization Required'}
                     </span>
-                  </label>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, priorAuthorizationRequired: !formData.priorAuthorizationRequired})}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        formData.priorAuthorizationRequired ? 'bg-blue-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          formData.priorAuthorizationRequired ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
 
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.acceptsAssignment}
-                      onChange={(e) => setFormData({...formData, acceptsAssignment: e.target.checked})}
-                      className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       {t.acceptsAssignment || 'Accepts Assignment'}
                     </span>
-                  </label>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, acceptsAssignment: !formData.acceptsAssignment})}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        formData.acceptsAssignment ? 'bg-blue-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          formData.acceptsAssignment ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
