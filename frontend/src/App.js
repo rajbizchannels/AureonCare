@@ -51,6 +51,8 @@ import NewClaimForm from './components/forms/NewClaimForm';
 import NewPaymentForm from './components/forms/NewPaymentForm';
 import NewTaskForm from './components/forms/NewTaskForm';
 import NewUserForm from './components/forms/NewUserForm';
+import NewInsurancePayerForm from './components/forms/NewInsurancePayerForm';
+import NewAppointmentTypeForm from './components/forms/NewAppointmentTypeForm';
 import DiagnosisForm from './components/forms/DiagnosisForm';
 
 // Panels
@@ -345,7 +347,7 @@ function App() {
           />
         );
       case 'crm':
-        return <CRMView theme={theme} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} />;
+        return <CRMView theme={theme} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} t={t} />;
       case 'integrations':
         return <IntegrationsView theme={theme} setCurrentModule={setCurrentModule} />;
       case 'fhir':
@@ -676,6 +678,34 @@ function App() {
           onClose={() => setShowForm(null)}
           onSuccess={(newPayment) => {
             setPayments([...payments, newPayment]);
+            setShowForm(null);
+          }}
+          addNotification={addNotification}
+          t={t}
+        />
+      )}
+
+      {showForm === 'insurancePayer' && (
+        <NewInsurancePayerForm
+          theme={theme}
+          api={api}
+          onClose={() => setShowForm(null)}
+          onSuccess={(newPayer) => {
+            // Refresh insurance payers list if needed
+            setShowForm(null);
+          }}
+          addNotification={addNotification}
+          t={t}
+        />
+      )}
+
+      {showForm === 'appointmentType' && (
+        <NewAppointmentTypeForm
+          theme={theme}
+          api={api}
+          onClose={() => setShowForm(null)}
+          onSuccess={(newType) => {
+            // Refresh appointment types list if needed
             setShowForm(null);
           }}
           addNotification={addNotification}
