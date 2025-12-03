@@ -195,18 +195,23 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
               </div>
 
               {/* Active Status */}
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
-                    className="w-4 h-4 text-purple-500 rounded focus:ring-2 focus:ring-purple-500"
+              <div className="flex items-center justify-between">
+                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.activeStatus || 'Active (visible to patients when booking)'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, isActive: !formData.isActive})}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                    formData.isActive ? 'bg-purple-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      formData.isActive ? 'translate-x-6' : 'translate-x-1'
+                    }`}
                   />
-                  <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {t.activeStatus || 'Active (visible to patients when booking)'}
-                  </span>
-                </label>
+                </button>
               </div>
             </div>
           </div>
