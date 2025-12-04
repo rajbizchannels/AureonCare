@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus, Heart, Star, Clock } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
@@ -40,6 +40,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
   const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
+  const [featuredOfferings, setFeaturedOfferings] = useState([]);
+  const [loadingOfferings, setLoadingOfferings] = useState(false);
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -101,6 +103,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       fetchProviders();
       fetchPharmacyData();
       fetchWaitlist();
+      loadFeaturedOfferings();
     }
     // Fetch appointment types on component mount (doesn't require user)
     fetchAppointmentTypes();
@@ -378,6 +381,18 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setMedicalRecords(records);
     } catch (error) {
       console.error('Error fetching medical records:', error);
+    }
+  };
+
+  const loadFeaturedOfferings = async () => {
+    try {
+      setLoadingOfferings(true);
+      const offerings = await api.getOfferings({ featured: true, active: true });
+      setFeaturedOfferings(offerings || []);
+    } catch (error) {
+      console.error('Error loading featured offerings:', error);
+    } finally {
+      setLoadingOfferings(false);
     }
   };
 
@@ -1936,6 +1951,72 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               </div>
             </div>
           </div>
+
+          {/* Featured Healthcare Offerings */}
+          {!loadingOfferings && featuredOfferings.length > 0 && (
+            <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <Star className="w-6 h-6 text-yellow-400" />
+                <h4 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {t.featuredOfferings || 'Featured Healthcare Services'}
+                </h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {featuredOfferings.slice(0, 4).map(offering => (
+                  <div
+                    key={offering.id}
+                    className={`p-4 rounded-lg border transition-all hover:scale-105 cursor-pointer ${
+                      theme === 'dark'
+                        ? 'bg-slate-800/50 border-slate-600 hover:border-teal-500/50'
+                        : 'bg-white border-gray-300 hover:border-teal-600/50'
+                    }`}
+                    onClick={() => setCurrentView('bookAppointment')}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Heart className="w-6 h-6 text-teal-400" />
+                        <Star className="w-3 h-3 text-yellow-400" />
+                      </div>
+                      {offering.durationMinutes && (
+                        <div className={`flex items-center gap-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          <Clock className="w-3 h-3" />
+                          {offering.durationMinutes} min
+                        </div>
+                      )}
+                    </div>
+                    <h5 className={`font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {offering.name}
+                    </h5>
+                    <p className={`text-xs mb-3 line-clamp-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {offering.description || t.noDescription || 'Learn more about this service'}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {offering.availableOnline && (
+                        <span className={`px-2 py-0.5 text-xs rounded ${theme === 'dark' ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                          {t.availableOnline || 'Online'}
+                        </span>
+                      )}
+                      {offering.cptCodes && offering.cptCodes.length > 0 && (
+                        <span className={`px-2 py-0.5 text-xs rounded ${theme === 'dark' ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+                          CPT
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setCurrentView('bookAppointment')}
+                className={`mt-4 w-full px-4 py-2 rounded-lg font-medium transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-teal-500/20 hover:bg-teal-500/30 text-teal-400'
+                    : 'bg-teal-100 hover:bg-teal-200 text-teal-700'
+                }`}
+              >
+                {t.bookAppointment || 'Book an Appointment'}
+              </button>
+            </div>
+          )}
 
           {/* Preferred Pharmacy Section */}
           <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
