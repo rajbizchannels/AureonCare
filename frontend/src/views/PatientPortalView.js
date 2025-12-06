@@ -42,6 +42,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
   const [featuredOfferings, setFeaturedOfferings] = useState([]);
   const [loadingOfferings, setLoadingOfferings] = useState(false);
+  const [hidesFeaturedOfferings, setHidesFeaturedOfferings] = useState(false);
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -109,7 +110,30 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     fetchAppointmentTypes();
     // Load WhatsApp preference
     loadWhatsAppPreference();
+    // Load featured offerings hide preference
+    loadFeaturedOfferingsPreference();
   }, [user]);
+
+  // Load featured offerings hide preference
+  const loadFeaturedOfferingsPreference = () => {
+    try {
+      const hidden = localStorage.getItem('hideFeaturedOfferings');
+      setHidesFeaturedOfferings(hidden === 'true');
+    } catch (error) {
+      console.error('Error loading featured offerings preference:', error);
+    }
+  };
+
+  const handleDismissFeaturedOfferings = () => {
+    try {
+      localStorage.setItem('hideFeaturedOfferings', 'true');
+      setHidesFeaturedOfferings(true);
+      addNotification('success', 'Featured offerings hidden. You can clear browser data to show them again.');
+    } catch (error) {
+      console.error('Error saving featured offerings preference:', error);
+      addNotification('alert', 'Failed to save preference');
+    }
+  };
 
   // Load WhatsApp notification preference
   const loadWhatsAppPreference = async () => {
@@ -1385,6 +1409,79 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         )}
       </div>
 
+      {/* Featured Healthcare Offerings - Top Priority */}
+      {!editingProfile && !loadingOfferings && !hidesFeaturedOfferings && featuredOfferings.length > 0 && (
+        <div className={`p-6 rounded-xl border relative ${theme === 'dark' ? 'bg-gradient-to-br from-teal-900/20 to-blue-900/20 border-teal-700/50' : 'bg-gradient-to-br from-teal-50 to-blue-50 border-teal-200'}`}>
+          <button
+            onClick={handleDismissFeaturedOfferings}
+            className={`absolute top-4 right-4 p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-200 text-gray-600'}`}
+            title="Hide featured offerings"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-3 mb-4">
+            <Star className="w-6 h-6 text-yellow-400" />
+            <h4 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {t.featuredOfferings || 'Featured Healthcare Services'}
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {featuredOfferings.slice(0, 4).map(offering => (
+              <div
+                key={offering.id}
+                className={`p-4 rounded-lg border transition-all hover:scale-105 cursor-pointer ${
+                  theme === 'dark'
+                    ? 'bg-slate-800/50 border-slate-600 hover:border-teal-500/50'
+                    : 'bg-white border-gray-300 hover:border-teal-600/50'
+                }`}
+                onClick={() => setCurrentView('bookAppointment')}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Heart className="w-6 h-6 text-teal-400" />
+                    <Star className="w-3 h-3 text-yellow-400" />
+                  </div>
+                  {offering.durationMinutes && (
+                    <div className={`flex items-center gap-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      <Clock className="w-3 h-3" />
+                      {offering.durationMinutes} min
+                    </div>
+                  )}
+                </div>
+                <h5 className={`font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {offering.name}
+                </h5>
+                <p className={`text-xs mb-3 line-clamp-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {offering.description || t.noDescription || 'Learn more about this service'}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {offering.availableOnline && (
+                    <span className={`px-2 py-0.5 text-xs rounded ${theme === 'dark' ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                      {t.availableOnline || 'Online'}
+                    </span>
+                  )}
+                  {offering.cptCodes && offering.cptCodes.length > 0 && (
+                    <span className={`px-2 py-0.5 text-xs rounded ${theme === 'dark' ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+                      CPT
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => setCurrentView('bookAppointment')}
+            className={`mt-4 w-full px-4 py-2 rounded-lg font-medium transition-colors ${
+              theme === 'dark'
+                ? 'bg-teal-500/20 hover:bg-teal-500/30 text-teal-400'
+                : 'bg-teal-100 hover:bg-teal-200 text-teal-700'
+            }`}
+          >
+            {t.bookAppointment || 'Book an Appointment'}
+          </button>
+        </div>
+      )}
+
       {editingProfile ? (
         <form onSubmit={handleUpdateProfile} className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1951,72 +2048,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               </div>
             </div>
           </div>
-
-          {/* Featured Healthcare Offerings */}
-          {!loadingOfferings && featuredOfferings.length > 0 && (
-            <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
-              <div className="flex items-center gap-3 mb-4">
-                <Star className="w-6 h-6 text-yellow-400" />
-                <h4 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {t.featuredOfferings || 'Featured Healthcare Services'}
-                </h4>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {featuredOfferings.slice(0, 4).map(offering => (
-                  <div
-                    key={offering.id}
-                    className={`p-4 rounded-lg border transition-all hover:scale-105 cursor-pointer ${
-                      theme === 'dark'
-                        ? 'bg-slate-800/50 border-slate-600 hover:border-teal-500/50'
-                        : 'bg-white border-gray-300 hover:border-teal-600/50'
-                    }`}
-                    onClick={() => setCurrentView('bookAppointment')}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Heart className="w-6 h-6 text-teal-400" />
-                        <Star className="w-3 h-3 text-yellow-400" />
-                      </div>
-                      {offering.durationMinutes && (
-                        <div className={`flex items-center gap-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          <Clock className="w-3 h-3" />
-                          {offering.durationMinutes} min
-                        </div>
-                      )}
-                    </div>
-                    <h5 className={`font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {offering.name}
-                    </h5>
-                    <p className={`text-xs mb-3 line-clamp-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      {offering.description || t.noDescription || 'Learn more about this service'}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {offering.availableOnline && (
-                        <span className={`px-2 py-0.5 text-xs rounded ${theme === 'dark' ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
-                          {t.availableOnline || 'Online'}
-                        </span>
-                      )}
-                      {offering.cptCodes && offering.cptCodes.length > 0 && (
-                        <span className={`px-2 py-0.5 text-xs rounded ${theme === 'dark' ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
-                          CPT
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => setCurrentView('bookAppointment')}
-                className={`mt-4 w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-                  theme === 'dark'
-                    ? 'bg-teal-500/20 hover:bg-teal-500/30 text-teal-400'
-                    : 'bg-teal-100 hover:bg-teal-200 text-teal-700'
-                }`}
-              >
-                {t.bookAppointment || 'Book an Appointment'}
-              </button>
-            </div>
-          )}
 
           {/* Preferred Pharmacy Section */}
           <div className={`mt-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
