@@ -43,6 +43,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [featuredOfferings, setFeaturedOfferings] = useState([]);
   const [loadingOfferings, setLoadingOfferings] = useState(false);
   const [hidesFeaturedOfferings, setHidesFeaturedOfferings] = useState(false);
+  const [insurancePayers, setInsurancePayers] = useState([]);
+  const [loadingPayers, setLoadingPayers] = useState(true);
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -105,6 +107,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       fetchPharmacyData();
       fetchWaitlist();
       loadFeaturedOfferings();
+      fetchInsurancePayers();
     }
     // Fetch appointment types on component mount (doesn't require user)
     fetchAppointmentTypes();
@@ -235,6 +238,19 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       console.error('Error fetching waitlist:', error);
     } finally {
       setLoadingWaitlist(false);
+    }
+  };
+
+  const fetchInsurancePayers = async () => {
+    setLoadingPayers(true);
+    try {
+      const payers = await api.getInsurancePayers(true); // true = only active payers
+      setInsurancePayers(payers || []);
+    } catch (error) {
+      console.error('Error fetching insurance payers:', error);
+      addNotification('alert', 'Failed to load insurance payers');
+    } finally {
+      setLoadingPayers(false);
     }
   };
 
@@ -765,6 +781,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         current_medications: profileData.current_medications,
         language: profileData.language,
         country: profileData.country,
+        insurance_payer_id: profileData.insurance_payer_id || null,
         email_notifications: profileData.email_notifications || false,
         sms_notifications: profileData.sms_notifications || false
       });
@@ -1634,6 +1651,25 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 <option value="KR">South Korea</option>
               </select>
             </div>
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                {t.insurancePayer || 'Insurance Payer'}
+              </label>
+              <select
+                value={profileData.insurance_payer_id || ''}
+                onChange={(e) => setProfileData({...profileData, insurance_payer_id: e.target.value})}
+                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              >
+                <option value="">
+                  {loadingPayers ? 'Loading insurance payers...' : (t.selectInsurancePayer || 'Select Insurance Payer')}
+                </option>
+                {insurancePayers.map(payer => (
+                  <option key={payer.id} value={payer.id}>
+                    {payer.name} ({payer.payer_id})
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="col-span-2">
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.allergies}</label>
               <textarea
@@ -2004,6 +2040,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.languagePreference || 'Language'}</p>
               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {profileData?.language || user?.language || t.notProvided}
+              </p>
+            </div>
+            <div>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.insurancePayer || 'Insurance Payer'}</p>
+              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {(() => {
+                  const payerId = profileData?.insurance_payer_id || user?.insurance_payer_id;
+                  if (!payerId) return t.notProvided;
+                  const payer = insurancePayers.find(p => p.id === payerId);
+                  return payer ? `${payer.name} (${payer.payer_id})` : t.notProvided;
+                })()}
               </p>
             </div>
             <div>
