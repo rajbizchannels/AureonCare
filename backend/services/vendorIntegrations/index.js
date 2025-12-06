@@ -104,7 +104,7 @@ module.exports = {
   verifyEligibility,
   getRemittanceAdvice
 };
- * Vendor Integration Manager
+ /* Vendor Integration Manager
  * Central manager for all healthcare vendor integrations
  * Handles Surescripts (ePrescribe), Labcorp (Lab Orders), and Optum (Clearinghouse)
  */
