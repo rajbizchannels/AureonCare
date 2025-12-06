@@ -225,6 +225,7 @@ function App() {
             completeTask={completeTask}
             updateUserPreferences={updateUserPreferences}
             addNotification={addNotification}
+            api={api}
           />
         );
       case 'practiceManagement':

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Shield, Calendar, Clock, DollarSign, Users, Video, FileText, ChevronRight, Check, Settings, Activity } from 'lucide-react';
+import { Bot, Shield, Calendar, Clock, DollarSign, Users, Video, FileText, ChevronRight, Check, Settings, Activity, Heart, Star } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
@@ -22,10 +22,13 @@ const DashboardView = ({
   setCalendarViewType,
   completeTask,
   updateUserPreferences,
-  addNotification
+  addNotification,
+  api
 }) => {
   const [showQuickActionsSettings, setShowQuickActionsSettings] = useState(false);
   const [clinicName, setClinicName] = useState('Medical Practice');
+  const [featuredOfferings, setFeaturedOfferings] = useState([]);
+  const [loadingOfferings, setLoadingOfferings] = useState(false);
 
   // Load clinic name from localStorage
   useEffect(() => {
@@ -41,6 +44,24 @@ const DashboardView = ({
       console.error('Error loading clinic name:', error);
     }
   }, []);
+
+  // Load featured offerings
+  useEffect(() => {
+    const loadFeaturedOfferings = async () => {
+      if (!api) return;
+
+      try {
+        setLoadingOfferings(true);
+        const offerings = await api.getOfferings({ featured: true, active: true });
+        setFeaturedOfferings(offerings || []);
+      } catch (error) {
+        console.error('Error loading featured offerings:', error);
+      } finally {
+        setLoadingOfferings(false);
+      }
+    };
+    loadFeaturedOfferings();
+  }, [api]);
 
   // Define all available quick actions with permission requirements
   const allQuickActions = [
@@ -272,6 +293,71 @@ const DashboardView = ({
               })}
           </div>
         )}
+        </div>
+      )}
+
+      {/* Featured Healthcare Offerings */}
+      {!loadingOfferings && featuredOfferings.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Star className="w-6 h-6 text-yellow-400" />
+              <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {t.featuredOfferings || 'Featured Healthcare Offerings'}
+              </h2>
+            </div>
+            <button
+              onClick={() => setCurrentModule('offerings')}
+              className={`text-sm font-medium flex items-center gap-1 ${theme === 'dark' ? 'text-teal-400 hover:text-teal-300' : 'text-teal-600 hover:text-teal-700'}`}
+            >
+              {t.viewAll || 'View All'}
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featuredOfferings.slice(0, 3).map(offering => (
+              <div
+                key={offering.id}
+                className={`bg-gradient-to-br rounded-xl p-6 border transition-all hover:scale-105 cursor-pointer ${
+                  theme === 'dark'
+                    ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-teal-500/50'
+                    : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-teal-600/50'
+                }`}
+                onClick={() => setCurrentModule('offerings')}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Heart className="w-8 h-8 text-teal-400" />
+                    <Star className="w-4 h-4 text-yellow-400" />
+                  </div>
+                  {offering.durationMinutes && (
+                    <div className={`flex items-center gap-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      <Clock className="w-4 h-4" />
+                      {offering.durationMinutes} min
+                    </div>
+                  )}
+                </div>
+                <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {offering.name}
+                </h3>
+                <p className={`text-sm mb-4 line-clamp-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {offering.description || t.noDescription || 'No description available'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {offering.cptCodes && offering.cptCodes.length > 0 && (
+                    <span className={`px-2 py-1 text-xs rounded ${theme === 'dark' ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+                      CPT: {offering.cptCodes.slice(0, 2).join(', ')}
+                    </span>
+                  )}
+                  {offering.availableOnline && (
+                    <span className={`px-2 py-1 text-xs rounded ${theme === 'dark' ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                      {t.availableOnline || 'Available Online'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
