@@ -112,7 +112,6 @@ module.exports = {
 const SurescriptsService = require('./surescriptsService');
 const LabcorpService = require('./labcorpService');
 const OptumService = require('./optumService');
-const pool = require('../../db');
 
 class VendorIntegrationManager {
   constructor() {
