@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const WhatsAppService = require('../services/whatsappService');
+const vendorIntegrationManager = require('../services/vendorIntegrations');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -224,6 +225,100 @@ router.post('/', async (req, res) => {
     } catch (whatsappError) {
       console.error('Error sending WhatsApp notification for prescription:', whatsappError);
       // Don't fail the request if notification fails
+    }
+
+    // Send to Surescripts if enabled and send_to_vendor is requested
+    if (req.body.sendToVendor && vendorIntegrationManager.isVendorEnabled('surescripts')) {
+      try {
+        // Get full patient and provider details for Surescripts
+        const patientResult = await pool.query(
+          'SELECT * FROM users WHERE id = $1',
+          [patientId]
+        );
+        const providerResult = await pool.query(
+          'SELECT * FROM users WHERE id = $1',
+          [providerId]
+        );
+
+        // Get pharmacy details if pharmacy_id is provided
+        let pharmacyInfo = null;
+        if (req.body.pharmacyId) {
+          const pharmacyResult = await pool.query(
+            'SELECT * FROM pharmacies WHERE id = $1',
+            [req.body.pharmacyId]
+          );
+          if (pharmacyResult.rows.length > 0) {
+            pharmacyInfo = pharmacyResult.rows[0];
+          }
+        }
+
+        const surescripts = vendorIntegrationManager.getSurescripts();
+
+        const vendorPrescription = {
+          ...prescription,
+          patient_id: patientId,
+          provider_id: providerId,
+          patient: patientResult.rows[0],
+          provider: providerResult.rows[0],
+          pharmacy: pharmacyInfo,
+          ndc_code: ndcCode,
+          medication_name: medicationName,
+          quantity: quantity,
+          refills: refills,
+          instructions: instructions,
+          allow_substitutions: substitutionAllowed
+        };
+
+        const vendorResponse = await surescripts.sendPrescription(vendorPrescription);
+
+        if (vendorResponse.success) {
+          // Update prescription with vendor information
+          await pool.query(`
+            UPDATE prescriptions
+            SET
+              vendor_prescription_id = $1,
+              vendor_status = $2,
+              sent_to_vendor_at = $3,
+              vendor_response = $4
+            WHERE id = $5
+          `, [
+            vendorResponse.vendorId,
+            vendorResponse.status,
+            vendorResponse.sentAt,
+            JSON.stringify(vendorResponse.response),
+            prescription.id
+          ]);
+
+          prescription.vendor_prescription_id = vendorResponse.vendorId;
+          prescription.vendor_status = vendorResponse.status;
+
+          // Log transaction
+          await vendorIntegrationManager.logTransaction('surescripts', 'prescription_send', {
+            request: vendorPrescription,
+            response: vendorResponse.response,
+            status: 'success',
+            externalId: vendorResponse.vendorId,
+            internalReferenceId: prescription.id,
+            patientId: patientId
+          });
+        } else {
+          // Log failed transaction
+          await vendorIntegrationManager.logTransaction('surescripts', 'prescription_send', {
+            request: vendorPrescription,
+            response: vendorResponse.response,
+            status: 'failed',
+            error: vendorResponse.error,
+            internalReferenceId: prescription.id,
+            patientId: patientId
+          });
+
+          prescription.vendor_error = vendorResponse.error;
+        }
+      } catch (vendorError) {
+        console.error('Error sending prescription to Surescripts:', vendorError);
+        prescription.vendor_error = vendorError.message;
+        // Don't fail the request if vendor integration fails
+      }
     }
 
     res.status(201).json(toCamelCase(prescription));
