@@ -201,6 +201,48 @@ const AdminPanelView = ({
   });
   const [telehealthDbMissing, setTelehealthDbMissing] = useState(false);
 
+  // Vendor integrations state (Surescripts, Labcorp, Optum)
+  const [vendorSettings, setVendorSettings] = useState({
+    surescripts: {
+      is_enabled: false,
+      client_id: '',
+      client_secret: '',
+      username: '',
+      password: '',
+      sandbox_mode: true,
+      settings: {
+        spi: '',
+        account_id: ''
+      }
+    },
+    labcorp: {
+      is_enabled: false,
+      client_id: '',
+      client_secret: '',
+      api_key: '',
+      api_secret: '',
+      sandbox_mode: true,
+      settings: {
+        account_number: '',
+        facility_id: ''
+      }
+    },
+    optum: {
+      is_enabled: false,
+      client_id: '',
+      client_secret: '',
+      api_key: '',
+      api_secret: '',
+      sandbox_mode: true,
+      settings: {
+        submitter_id: '',
+        receiver_id: '',
+        trading_partner_id: ''
+      }
+    }
+  });
+  const [vendorDbMissing, setVendorDbMissing] = useState(false);
+
   // Custom role creation state
   const [showCustomRoleForm, setShowCustomRoleForm] = useState(false);
   const [customRoleName, setCustomRoleName] = useState('');
@@ -269,6 +311,61 @@ const AdminPanelView = ({
       }
     };
     loadTelehealthSettings();
+  }, [api]);
+
+  // Load vendor integration settings
+  useEffect(() => {
+    const loadVendorSettings = async () => {
+      try {
+        const settings = await api.getVendorIntegrationSettings();
+        if (settings && settings.length > 0) {
+          const settingsMap = {};
+          settings.forEach(s => {
+            // Parse settings if it's a string
+            const parsedSettings = typeof s.settings === 'string'
+              ? JSON.parse(s.settings)
+              : (s.settings || {});
+
+            settingsMap[s.vendor_type] = {
+              is_enabled: s.is_enabled || false,
+              api_key: s.api_key || '',
+              api_secret: s.api_secret || '',
+              client_id: s.client_id || '',
+              client_secret: s.client_secret || '',
+              username: s.username || '',
+              password: s.password || '',
+              base_url: s.base_url || '',
+              sandbox_mode: s.sandbox_mode !== undefined ? s.sandbox_mode : true,
+              settings: parsedSettings
+            };
+          });
+
+          // Merge with existing state to preserve default structure
+          setVendorSettings(prev => {
+            const merged = { ...prev };
+            Object.keys(settingsMap).forEach(key => {
+              merged[key] = {
+                ...prev[key],
+                ...settingsMap[key],
+                settings: {
+                  ...(prev[key]?.settings || {}),
+                  ...(settingsMap[key]?.settings || {})
+                }
+              };
+            });
+            return merged;
+          });
+        }
+      } catch (error) {
+        console.error('Error loading vendor integration settings:', error);
+        // Show helpful message if tables don't exist
+        if (error.message && (error.message.includes('vendor_integration_settings') || error.message.includes('503'))) {
+          console.warn('Vendor integration settings table does not exist. Please run the database migration: 033_add_vendor_integrations.sql');
+          setVendorDbMissing(true);
+        }
+      }
+    };
+    loadVendorSettings();
   }, [api]);
 
   const handleSaveClinicSettings = async () => {
@@ -445,6 +542,50 @@ const AdminPanelView = ({
         [providerType]: previousState
       }));
       await addNotification('alert', `Failed to toggle ${providerType}`);
+    }
+  };
+
+  // Vendor integration handlers
+  const handleSaveVendorSettings = async (vendorType) => {
+    try {
+      const settings = vendorSettings[vendorType];
+      await api.saveVendorIntegrationSettings(vendorType, settings);
+      const vendorName = vendorType.charAt(0).toUpperCase() + vendorType.slice(1);
+      await addNotification('success', `${vendorName} settings saved successfully`);
+    } catch (error) {
+      console.error('Error saving vendor settings:', error);
+      await addNotification('alert', `Failed to save ${vendorType} settings`);
+    }
+  };
+
+  const handleToggleVendorIntegration = async (vendorType, isEnabled) => {
+    // Store previous state for rollback
+    const previousState = { ...vendorSettings[vendorType] };
+
+    try {
+      // Optimistically update UI
+      setVendorSettings(prev => ({
+        ...prev,
+        [vendorType]: {
+          ...prev[vendorType],
+          is_enabled: isEnabled,
+          settings: {
+            ...(prev[vendorType]?.settings || {})
+          }
+        }
+      }));
+
+      await api.toggleVendorIntegration(vendorType, isEnabled);
+      const vendorName = vendorType.charAt(0).toUpperCase() + vendorType.slice(1);
+      await addNotification('success', `${vendorName} ${isEnabled ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+      console.error('Error toggling vendor integration:', error);
+      // Revert to previous state on error
+      setVendorSettings(prev => ({
+        ...prev,
+        [vendorType]: previousState
+      }));
+      await addNotification('alert', `Failed to toggle ${vendorType}`);
     }
   };
 
@@ -1531,6 +1672,407 @@ const AdminPanelView = ({
                   >
                     <Save className="w-4 h-4" />
                     Save Webex Settings
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Vendor Integrations Section Header */}
+            <div className={`mt-8 mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <h2 className="text-2xl font-bold">Healthcare Vendor Integrations</h2>
+              <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Configure integrations with Surescripts (ePrescribe), Labcorp (Lab Orders), and Optum (Claims Clearinghouse)
+              </p>
+            </div>
+
+            {/* Surescripts Integration */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">💊</span>
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Surescripts ePrescribe
+                    </h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Electronic prescription transmission to pharmacies
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={vendorSettings.surescripts?.is_enabled || false}
+                    onChange={(e) => handleToggleVendorIntegration('surescripts', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+              {vendorSettings.surescripts?.is_enabled && (
+                <div className="space-y-4 mt-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Client ID
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.surescripts?.client_id || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          surescripts: { ...prev.surescripts, client_id: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your Surescripts Client ID"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Client Secret
+                      </label>
+                      <input
+                        type="password"
+                        value={vendorSettings.surescripts?.client_secret || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          surescripts: { ...prev.surescripts, client_secret: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your Surescripts Client Secret"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        SPI (Surescripts Provider Identifier)
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.surescripts?.settings?.spi || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          surescripts: {
+                            ...prev.surescripts,
+                            settings: { ...prev.surescripts.settings, spi: e.target.value }
+                          }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your SPI Number"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Account ID
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.surescripts?.settings?.account_id || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          surescripts: {
+                            ...prev.surescripts,
+                            settings: { ...prev.surescripts.settings, account_id: e.target.value }
+                          }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your Account ID"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={vendorSettings.surescripts?.sandbox_mode || false}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          surescripts: { ...prev.surescripts, sandbox_mode: e.target.checked }
+                        }))}
+                        className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                      />
+                      <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Use Sandbox Mode (for testing)
+                      </span>
+                    </label>
+                  </div>
+                  <button
+                    onClick={() => handleSaveVendorSettings('surescripts')}
+                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Surescripts Settings
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Labcorp Integration */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">🧪</span>
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Labcorp Laboratory Integration
+                    </h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Laboratory test ordering and results
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={vendorSettings.labcorp?.is_enabled || false}
+                    onChange={(e) => handleToggleVendorIntegration('labcorp', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              {vendorSettings.labcorp?.is_enabled && (
+                <div className="space-y-4 mt-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Client ID
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.labcorp?.client_id || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          labcorp: { ...prev.labcorp, client_id: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your Labcorp Client ID"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Client Secret
+                      </label>
+                      <input
+                        type="password"
+                        value={vendorSettings.labcorp?.client_secret || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          labcorp: { ...prev.labcorp, client_secret: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your Labcorp Client Secret"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Account Number
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.labcorp?.settings?.account_number || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          labcorp: {
+                            ...prev.labcorp,
+                            settings: { ...prev.labcorp.settings, account_number: e.target.value }
+                          }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your Labcorp Account Number"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Facility ID
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.labcorp?.settings?.facility_id || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          labcorp: {
+                            ...prev.labcorp,
+                            settings: { ...prev.labcorp.settings, facility_id: e.target.value }
+                          }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your Facility ID"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={vendorSettings.labcorp?.sandbox_mode || false}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          labcorp: { ...prev.labcorp, sandbox_mode: e.target.checked }
+                        }))}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      />
+                      <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Use Sandbox Mode (for testing)
+                      </span>
+                    </label>
+                  </div>
+                  <button
+                    onClick={() => handleSaveVendorSettings('labcorp')}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Labcorp Settings
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Optum Clearinghouse Integration */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">💰</span>
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Optum Clearinghouse
+                    </h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Claims submission and eligibility verification
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={vendorSettings.optum?.is_enabled || false}
+                    onChange={(e) => handleToggleVendorIntegration('optum', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600"></div>
+                </label>
+              </div>
+              {vendorSettings.optum?.is_enabled && (
+                <div className="space-y-4 mt-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Client ID
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.optum?.client_id || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          optum: { ...prev.optum, client_id: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-orange-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your Optum Client ID"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Client Secret
+                      </label>
+                      <input
+                        type="password"
+                        value={vendorSettings.optum?.client_secret || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          optum: { ...prev.optum, client_secret: e.target.value }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-orange-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Your Optum Client Secret"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Submitter ID
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.optum?.settings?.submitter_id || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          optum: {
+                            ...prev.optum,
+                            settings: { ...prev.optum.settings, submitter_id: e.target.value }
+                          }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-orange-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Submitter ID"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Receiver ID
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.optum?.settings?.receiver_id || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          optum: {
+                            ...prev.optum,
+                            settings: { ...prev.optum.settings, receiver_id: e.target.value }
+                          }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-orange-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Receiver ID"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Trading Partner ID
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorSettings.optum?.settings?.trading_partner_id || ''}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          optum: {
+                            ...prev.optum,
+                            settings: { ...prev.optum.settings, trading_partner_id: e.target.value }
+                          }
+                        }))}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-orange-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                        placeholder="Trading Partner ID"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={vendorSettings.optum?.sandbox_mode || false}
+                        onChange={(e) => setVendorSettings(prev => ({
+                          ...prev,
+                          optum: { ...prev.optum, sandbox_mode: e.target.checked }
+                        }))}
+                        className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                      />
+                      <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Use Sandbox Mode (for testing)
+                      </span>
+                    </label>
+                  </div>
+                  <button
+                    onClick={() => handleSaveVendorSettings('optum')}
+                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Optum Settings
                   </button>
                 </div>
               )}

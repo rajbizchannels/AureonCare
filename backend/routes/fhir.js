@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const vendorIntegrationManager = require('../services/vendorIntegrations');
 
 // Get all FHIR resources
 router.get('/resources', async (req, res) => {
@@ -81,7 +82,131 @@ router.post('/resources', async (req, res) => {
       RETURNING *
     `, [resourceType, resourceId, patientId, fhirVersion, JSON.stringify(resourceData)]);
 
-    res.status(201).json(result.rows[0]);
+    const fhirResource = result.rows[0];
+
+    // If this is a ServiceRequest (lab order) and Labcorp is enabled, create lab order and send to vendor
+    if (resourceType === 'ServiceRequest' && vendorIntegrationManager.isVendorEnabled('labcorp')) {
+      try {
+        // Extract lab order details from FHIR ServiceRequest
+        const labOrderData = {
+          patient_id: patientId,
+          provider_id: resourceData.requester?.reference?.split('/')[1], // Extract from Practitioner/ID
+          order_type: 'lab_test',
+          priority: resourceData.priority || 'routine',
+          diagnosis_codes: (resourceData.reasonCode || []).map(rc => ({
+            code: rc.coding?.[0]?.code,
+            display: rc.coding?.[0]?.display
+          })),
+          test_codes: (resourceData.code?.coding || []).map(c => ({
+            system: c.system,
+            code: c.code,
+            display: c.display
+          })),
+          clinical_notes: resourceData.note?.[0]?.text || '',
+          specimen_type: resourceData.specimen?.[0]?.type?.coding?.[0]?.code,
+          collection_date: resourceData.occurrence?.occurrenceDateTime || new Date().toISOString()
+        };
+
+        // Generate order number
+        const orderNumber = `LO-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+        // Insert lab order
+        const labOrderResult = await pool.query(`
+          INSERT INTO lab_orders (
+            patient_id,
+            provider_id,
+            order_number,
+            order_type,
+            priority,
+            status,
+            diagnosis_codes,
+            test_codes,
+            clinical_notes,
+            specimen_type,
+            collection_date
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          RETURNING *
+        `, [
+          labOrderData.patient_id,
+          labOrderData.provider_id,
+          orderNumber,
+          labOrderData.order_type,
+          labOrderData.priority,
+          'pending',
+          JSON.stringify(labOrderData.diagnosis_codes),
+          JSON.stringify(labOrderData.test_codes),
+          labOrderData.clinical_notes,
+          labOrderData.specimen_type,
+          labOrderData.collection_date
+        ]);
+
+        const labOrder = labOrderResult.rows[0];
+
+        // Send to Labcorp
+        const patientResult = await pool.query('SELECT * FROM users WHERE id = $1', [patientId]);
+        const providerResult = await pool.query('SELECT * FROM users WHERE id = $1', [labOrderData.provider_id]);
+
+        const labcorp = vendorIntegrationManager.getLabcorp();
+
+        const vendorOrder = {
+          ...labOrder,
+          patient: patientResult.rows[0],
+          provider: providerResult.rows[0]
+        };
+
+        const vendorResponse = await labcorp.submitLabOrder(vendorOrder);
+
+        if (vendorResponse.success) {
+          // Update lab order with vendor information
+          await pool.query(`
+            UPDATE lab_orders
+            SET
+              vendor_order_id = $1,
+              vendor_status = $2,
+              sent_to_vendor_at = $3,
+              vendor_response = $4,
+              status = 'sent_to_lab'
+            WHERE id = $5
+          `, [
+            vendorResponse.vendorOrderId,
+            vendorResponse.status,
+            vendorResponse.submittedAt,
+            JSON.stringify(vendorResponse.response),
+            labOrder.id
+          ]);
+
+          // Log transaction
+          await vendorIntegrationManager.logTransaction('labcorp', 'lab_order_submit_fhir', {
+            request: vendorOrder,
+            response: vendorResponse.response,
+            status: 'success',
+            externalId: vendorResponse.vendorOrderId,
+            internalReferenceId: labOrder.id,
+            patientId: patientId
+          });
+
+          // Add reference to lab order in FHIR resource
+          fhirResource.lab_order_id = labOrder.id;
+          fhirResource.vendor_order_id = vendorResponse.vendorOrderId;
+        } else {
+          // Log failed transaction
+          await vendorIntegrationManager.logTransaction('labcorp', 'lab_order_submit_fhir', {
+            request: vendorOrder,
+            response: vendorResponse.response,
+            status: 'failed',
+            error: vendorResponse.error,
+            internalReferenceId: labOrder.id,
+            patientId: patientId
+          });
+        }
+      } catch (labOrderError) {
+        console.error('Error creating lab order from FHIR ServiceRequest:', labOrderError);
+        // Don't fail the FHIR resource creation if lab order fails
+      }
+    }
+
+    res.status(201).json(fhirResource);
   } catch (error) {
     console.error('Error creating FHIR resource:', error);
     res.status(500).json({ error: 'Failed to create FHIR resource' });

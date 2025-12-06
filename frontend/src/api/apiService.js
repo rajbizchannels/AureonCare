@@ -1259,6 +1259,98 @@ const api = {
     return response.json();
   },
 
+  // Vendor Integration Settings (Surescripts, Labcorp, Optum)
+  getVendorIntegrationSettings: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings`);
+    if (!response.ok) throw new Error('Failed to fetch vendor integration settings');
+    return response.json();
+  },
+  getVendorIntegrationSetting: async (vendorType) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings/${vendorType}`);
+    if (!response.ok) throw new Error(`Failed to fetch ${vendorType} settings`);
+    return response.json();
+  },
+  saveVendorIntegrationSettings: async (vendorType, settings) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings/${vendorType}`, {
+      method: 'POST',
+      body: JSON.stringify(settings)
+    });
+    if (!response.ok) throw new Error(`Failed to save ${vendorType} settings`);
+    return response.json();
+  },
+  toggleVendorIntegration: async (vendorType, isEnabled) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings/${vendorType}/toggle`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_enabled: isEnabled })
+    });
+    if (!response.ok) throw new Error(`Failed to toggle ${vendorType}`);
+    return response.json();
+  },
+  deleteVendorIntegrationSettings: async (vendorType) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings/${vendorType}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error(`Failed to delete ${vendorType} settings`);
+    return response.json();
+  },
+  testVendorIntegration: async (vendorType) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings/${vendorType}/test`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Vendor test failed');
+    }
+    return response.json();
+  },
+  getVendorStatuses: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings/status/all`);
+    if (!response.ok) throw new Error('Failed to fetch vendor statuses');
+    return response.json();
+  },
+
+  // Lab Orders
+  getLabOrders: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await authenticatedFetch(`${API_BASE_URL}/lab-orders?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch lab orders');
+    return response.json();
+  },
+  getLabOrder: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/lab-orders/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch lab order');
+    return response.json();
+  },
+  createLabOrder: async (labOrder) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/lab-orders`, {
+      method: 'POST',
+      body: JSON.stringify(labOrder)
+    });
+    if (!response.ok) throw new Error('Failed to create lab order');
+    return response.json();
+  },
+  updateLabOrder: async (id, updates) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/lab-orders/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+    if (!response.ok) throw new Error('Failed to update lab order');
+    return response.json();
+  },
+  cancelLabOrder: async (id, reason) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/lab-orders/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason })
+    });
+    if (!response.ok) throw new Error('Failed to cancel lab order');
+    return response.json();
+  },
+  getLabResults: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/lab-orders/${id}/results`);
+    if (!response.ok) throw new Error('Failed to fetch lab results');
+    return response.json();
+  },
+
   // Notification Preferences
   getNotificationPreferences: async (patientId) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/notification-preferences/${patientId}`);
