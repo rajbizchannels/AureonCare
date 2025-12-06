@@ -35,7 +35,8 @@
     "redis": "^4.6.10",
     "socket.io": "^4.6.2",
     "speakeasy": "^2.0.0",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
