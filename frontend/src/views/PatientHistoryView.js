@@ -8,7 +8,7 @@ import DiagnosisForm from '../components/forms/DiagnosisForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack }) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('prescriptions');
   const [loading, setLoading] = useState(true);
 
   // Data states
@@ -24,6 +24,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   const [showDiagnosisForm, setShowDiagnosisForm] = useState(false);
   const [editingDiagnosis, setEditingDiagnosis] = useState(null);
   const [deletingDiagnosis, setDeletingDiagnosis] = useState(null);
+
+  // Prescription modal states
+  const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
+  const [editingPrescription, setEditingPrescription] = useState(null);
+  const [deletingPrescription, setDeletingPrescription] = useState(null);
 
   useEffect(() => {
     if (patient?.id) {
@@ -89,6 +94,38 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     } catch (error) {
       console.error('Error deleting diagnosis:', error);
       addNotification('error', 'Failed to delete diagnosis');
+    }
+  };
+
+  const handleDeletePrescription = async () => {
+    if (!deletingPrescription) return;
+
+    try {
+      await api.deletePrescription(deletingPrescription.id);
+      addNotification('success', 'Prescription deleted successfully');
+      setDeletingPrescription(null);
+      fetchPatientHistory();
+    } catch (error) {
+      console.error('Error deleting prescription:', error);
+      addNotification('error', 'Failed to delete prescription');
+    }
+  };
+
+  const handleSavePrescription = async (prescriptionData) => {
+    try {
+      if (editingPrescription) {
+        await api.updatePrescription(editingPrescription.id, prescriptionData);
+        addNotification('success', 'Prescription updated successfully');
+      } else {
+        await api.createPrescription({ ...prescriptionData, patient_id: patient.id });
+        addNotification('success', 'Prescription created successfully');
+      }
+      setShowPrescriptionForm(false);
+      setEditingPrescription(null);
+      fetchPatientHistory();
+    } catch (error) {
+      console.error('Error saving prescription:', error);
+      addNotification('error', 'Failed to save prescription');
     }
   };
 
@@ -388,9 +425,21 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   const renderPrescriptions = () => (
     <div className="space-y-4">
-      <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Prescriptions
-      </h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Prescriptions
+        </h3>
+        <button
+          onClick={() => {
+            setEditingPrescription(null);
+            setShowPrescriptionForm(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg text-white font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Prescription
+        </button>
+      </div>
       {prescriptions.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <Pill className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
@@ -450,6 +499,25 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                   }`}>
                     {rx.status}
                   </span>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      onClick={() => {
+                        setEditingPrescription(rx);
+                        setShowPrescriptionForm(true);
+                      }}
+                      className={`p-2 rounded-lg hover:bg-blue-100 transition-colors ${theme === 'dark' ? 'hover:bg-blue-900/20' : ''}`}
+                      title="Edit prescription"
+                    >
+                      <Edit className="w-4 h-4 text-blue-500" />
+                    </button>
+                    <button
+                      onClick={() => setDeletingPrescription(rx)}
+                      className={`p-2 rounded-lg hover:bg-red-100 transition-colors ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
+                      title="Delete prescription"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -601,7 +669,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         />
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Diagnosis Confirmation Modal */}
       <ConfirmationModal
         theme={theme}
         isOpen={!!deletingDiagnosis}
@@ -613,6 +681,272 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         confirmText="Delete"
         cancelText="Cancel"
       />
+
+      {/* Delete Prescription Confirmation Modal */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingPrescription}
+        onClose={() => setDeletingPrescription(null)}
+        onConfirm={handleDeletePrescription}
+        title="Delete Prescription"
+        message={`Are you sure you want to delete this prescription? This action cannot be undone.`}
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      {/* Prescription Form Modal */}
+      {showPrescriptionForm && (
+        <PrescriptionFormModal
+          theme={theme}
+          prescription={editingPrescription}
+          patient={patientData}
+          user={user}
+          onClose={() => {
+            setShowPrescriptionForm(false);
+            setEditingPrescription(null);
+          }}
+          onSave={handleSavePrescription}
+        />
+      )}
+    </div>
+  );
+};
+
+// Prescription Form Modal Component
+const PrescriptionFormModal = ({ theme, prescription, patient, user, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    medication_name: prescription?.medicationName || prescription?.medication_name || '',
+    dosage: prescription?.dosage || '',
+    frequency: prescription?.frequency || '',
+    duration: prescription?.duration || '',
+    quantity: prescription?.quantity || '',
+    refills: prescription?.refills || prescription?.refillsRemaining || 0,
+    instructions: prescription?.instructions || '',
+    pharmacy_name: prescription?.pharmacyName || prescription?.pharmacy_name || '',
+    status: prescription?.status || 'Active'
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <div
+        className={`max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl ${
+          theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+          <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {prescription ? 'Edit Prescription' : 'New Prescription'}
+          </h3>
+          <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Patient: {patient.first_name} {patient.last_name}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Medication Name */}
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              Medication Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.medication_name}
+              onChange={(e) => handleChange('medication_name', e.target.value)}
+              required
+              className={`w-full px-3 py-2 rounded-lg border ${
+                theme === 'dark'
+                  ? 'bg-slate-700 border-slate-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="Enter medication name"
+            />
+          </div>
+
+          {/* Dosage and Frequency */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Dosage <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.dosage}
+                onChange={(e) => handleChange('dosage', e.target.value)}
+                required
+                className={`w-full px-3 py-2 rounded-lg border ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                placeholder="e.g., 10mg"
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Frequency <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.frequency}
+                onChange={(e) => handleChange('frequency', e.target.value)}
+                required
+                className={`w-full px-3 py-2 rounded-lg border ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                placeholder="e.g., Once daily"
+              />
+            </div>
+          </div>
+
+          {/* Duration and Quantity */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Duration
+              </label>
+              <input
+                type="text"
+                value={formData.duration}
+                onChange={(e) => handleChange('duration', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                placeholder="e.g., 30 days"
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Quantity <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={formData.quantity}
+                onChange={(e) => handleChange('quantity', e.target.value)}
+                required
+                className={`w-full px-3 py-2 rounded-lg border ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                placeholder="e.g., 30"
+              />
+            </div>
+          </div>
+
+          {/* Refills and Status */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Refills
+              </label>
+              <input
+                type="number"
+                value={formData.refills}
+                onChange={(e) => handleChange('refills', e.target.value)}
+                min="0"
+                className={`w-full px-3 py-2 rounded-lg border ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Status
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => handleChange('status', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Pharmacy Name */}
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              Pharmacy Name
+            </label>
+            <input
+              type="text"
+              value={formData.pharmacy_name}
+              onChange={(e) => handleChange('pharmacy_name', e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg border ${
+                theme === 'dark'
+                  ? 'bg-slate-700 border-slate-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="Enter pharmacy name"
+            />
+          </div>
+
+          {/* Instructions */}
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              Instructions
+            </label>
+            <textarea
+              value={formData.instructions}
+              onChange={(e) => handleChange('instructions', e.target.value)}
+              rows="3"
+              className={`w-full px-3 py-2 rounded-lg border ${
+                theme === 'dark'
+                  ? 'bg-slate-700 border-slate-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="Enter special instructions"
+            />
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={onClose}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                theme === 'dark'
+                  ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+              }`}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg text-white font-medium transition-colors"
+            >
+              {prescription ? 'Update Prescription' : 'Create Prescription'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
