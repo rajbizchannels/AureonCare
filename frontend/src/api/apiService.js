@@ -841,6 +841,11 @@ const api = {
     if (!response.ok) throw new Error('Failed to fetch patient active prescriptions');
     return response.json();
   },
+  getPrescriptionsByDiagnosisId: async (diagnosisId) => {
+    const response = await fetch(`${API_BASE_URL}/prescriptions/diagnosis/${diagnosisId}`);
+    if (!response.ok) throw new Error('Failed to fetch prescriptions for diagnosis');
+    return response.json();
+  },
   refillPrescription: async (id) => {
     const response = await fetch(`${API_BASE_URL}/prescriptions/${id}/refill`, {
       method: 'POST'
