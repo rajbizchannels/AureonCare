@@ -742,15 +742,35 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
   // Load existing medication when editing
   useEffect(() => {
     const loadExistingMedication = async () => {
-      if (prescription?.ndc_code) {
+      if (!prescription) return;
+
+      // Try to load full medication details by NDC code
+      if (prescription.ndc_code || prescription.ndcCode) {
         try {
-          const medication = await api.getMedicationByNdc(prescription.ndc_code);
+          const ndcCode = prescription.ndc_code || prescription.ndcCode;
+          const medication = await api.getMedicationByNdc(ndcCode);
           if (medication) {
             setSelectedMedications([medication]);
+            return; // Successfully loaded, exit
           }
         } catch (err) {
-          console.log('Could not load medication details:', err);
+          console.log('Could not load medication by NDC:', err);
         }
+      }
+
+      // Fallback: Create a basic medication object from prescription data
+      // This ensures the medication name is shown even if NDC lookup fails
+      const medicationName = prescription.medicationName || prescription.medication_name;
+      if (medicationName) {
+        const basicMedication = {
+          ndc_code: prescription.ndc_code || prescription.ndcCode || '',
+          drug_name: medicationName,
+          strength: prescription.dosage || '',
+          dosage_form: '',
+          generic_name: '',
+          brand_name: ''
+        };
+        setSelectedMedications([basicMedication]);
       }
     };
     loadExistingMedication();
