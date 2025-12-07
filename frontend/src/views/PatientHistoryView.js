@@ -726,14 +726,68 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
     refills: prescription?.refills || prescription?.refillsRemaining || 0,
     instructions: prescription?.instructions || '',
     pharmacy_name: prescription?.pharmacyName || prescription?.pharmacy_name || '',
-    status: prescription?.status || 'Active'
+    status: prescription?.status || 'Active',
+    ndc_code: prescription?.ndc_code || ''
   });
 
   const [selectedMedications, setSelectedMedications] = useState([]);
+  const [createDiagnosis, setCreateDiagnosis] = useState(!prescription); // Auto-check for new prescriptions
+  const [diagnosisData, setDiagnosisData] = useState({
+    diagnosisName: '',
+    icdCode: '',
+    severity: 'Moderate',
+    status: 'Active'
+  });
 
-  const handleSubmit = (e) => {
+  // Load existing medication when editing
+  useEffect(() => {
+    const loadExistingMedication = async () => {
+      if (prescription?.ndc_code) {
+        try {
+          const medication = await api.getMedicationByNdc(prescription.ndc_code);
+          if (medication) {
+            setSelectedMedications([medication]);
+          }
+        } catch (err) {
+          console.log('Could not load medication details:', err);
+        }
+      }
+    };
+    loadExistingMedication();
+  }, [prescription, api]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
+
+    let diagnosisId = prescription?.diagnosis_id;
+
+    // Create diagnosis if checkbox is checked
+    if (createDiagnosis && !prescription) {
+      try {
+        const newDiagnosis = await api.createDiagnosis({
+          patientId: patient.id,
+          providerId: user.id,
+          diagnosisName: diagnosisData.diagnosisName || `Condition requiring ${formData.medication_name}`,
+          diagnosisCode: diagnosisData.icdCode || '',
+          severity: diagnosisData.severity,
+          status: diagnosisData.status,
+          diagnosedDate: new Date().toISOString().split('T')[0],
+          description: `Diagnosis created for prescription: ${formData.medication_name}`
+        });
+        diagnosisId = newDiagnosis.id;
+      } catch (err) {
+        console.error('Error creating diagnosis:', err);
+        // Continue with prescription creation even if diagnosis fails
+      }
+    }
+
+    // Add diagnosis_id to prescription data
+    const prescriptionData = {
+      ...formData,
+      diagnosis_id: diagnosisId
+    };
+
+    onSave(prescriptionData);
   };
 
   const handleChange = (field, value) => {
@@ -749,6 +803,15 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
         ...prev,
         medication_name: med.drug_name || med.brand_name || '',
         dosage: med.strength || prev.dosage,
+        ndc_code: med.ndc_code || ''
+      }));
+    } else {
+      // Clear medication fields if no medication selected
+      setFormData(prev => ({
+        ...prev,
+        medication_name: '',
+        dosage: '',
+        ndc_code: ''
       }));
     }
   };
@@ -771,36 +834,94 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Medication Search */}
-          {!prescription && (
-            <MedicationMultiSelect
-              theme={theme}
-              api={api}
-              value={selectedMedications}
-              onChange={handleMedicationSelect}
-              label="Search Medication (optional)"
-              placeholder="Search to auto-fill medication details..."
-            />
-          )}
+          {/* Medication Search - Required for both new and edit */}
+          <MedicationMultiSelect
+            theme={theme}
+            api={api}
+            value={selectedMedications}
+            onChange={handleMedicationSelect}
+            label={`Select Medication ${!formData.medication_name ? '*' : ''}`}
+            placeholder="Search medication by name..."
+            required={!formData.medication_name}
+          />
 
-          {/* Medication Name */}
-          <div>
-            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-              Medication Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.medication_name}
-              onChange={(e) => handleChange('medication_name', e.target.value)}
-              required
-              className={`w-full px-3 py-2 rounded-lg border ${
-                theme === 'dark'
-                  ? 'bg-slate-700 border-slate-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-900'
-              }`}
-              placeholder="Enter medication name or search above"
-            />
-          </div>
+          {/* Create Diagnosis Option - Only for new prescriptions */}
+          {!prescription && (
+            <div className={`p-4 rounded-lg border ${
+              theme === 'dark' ? 'border-slate-600 bg-slate-800/50' : 'border-gray-300 bg-gray-50'
+            }`}>
+              <label className="flex items-center gap-3 cursor-pointer group mb-3">
+                <input
+                  type="checkbox"
+                  checked={createDiagnosis}
+                  onChange={(e) => setCreateDiagnosis(e.target.checked)}
+                  className="w-4 h-4 rounded border-2 border-purple-500 text-purple-600 focus:ring-purple-500 focus:ring-2 cursor-pointer"
+                />
+                <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
+                  Create diagnosis for this prescription
+                </span>
+              </label>
+
+              {createDiagnosis && (
+                <div className="space-y-3 ml-7">
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Diagnosis Name
+                    </label>
+                    <input
+                      type="text"
+                      value={diagnosisData.diagnosisName}
+                      onChange={(e) => setDiagnosisData(prev => ({ ...prev, diagnosisName: e.target.value }))}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 border-slate-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                      placeholder={`Condition requiring ${formData.medication_name || 'medication'}`}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        ICD Code (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={diagnosisData.icdCode}
+                        onChange={(e) => setDiagnosisData(prev => ({ ...prev, icdCode: e.target.value }))}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                        placeholder="e.g., I10"
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Severity
+                      </label>
+                      <select
+                        value={diagnosisData.severity}
+                        onChange={(e) => setDiagnosisData(prev => ({ ...prev, severity: e.target.value }))}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                      >
+                        <option value="Mild">Mild</option>
+                        <option value="Moderate">Moderate</option>
+                        <option value="Severe">Severe</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Dosage and Frequency */}
           <div className="grid grid-cols-2 gap-4">
