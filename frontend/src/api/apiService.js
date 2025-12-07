@@ -730,6 +730,10 @@ const api = {
     if (!response.ok) throw new Error('Failed to fetch patient preferred pharmacies');
     return response.json();
   },
+  getPatientPreferredPharmacy: async (patientId) => {
+    const pharmacies = await apiService.getPatientPreferredPharmacies(patientId);
+    return pharmacies && pharmacies.length > 0 ? pharmacies[0] : null;
+  },
   addPreferredPharmacy: async (patientId, pharmacyId, isPrimary) => {
     const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`, {
       method: 'POST',

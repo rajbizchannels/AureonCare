@@ -717,6 +717,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
 // Prescription Form Modal Component
 const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClose, onSave }) => {
+  // For edit mode, we still handle single prescription
   const [formData, setFormData] = useState({
     medication_name: prescription?.medicationName || prescription?.medication_name || '',
     dosage: prescription?.dosage || '',
@@ -725,19 +726,53 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
     quantity: prescription?.quantity || '',
     refills: prescription?.refills || prescription?.refillsRemaining || 0,
     instructions: prescription?.instructions || '',
-    pharmacy_name: prescription?.pharmacyName || prescription?.pharmacy_name || '',
+    pharmacy_id: prescription?.pharmacy_id || '',
     status: prescription?.status || 'Active',
     ndc_code: prescription?.ndc_code || ''
   });
 
+  // For new prescriptions, support multiple medications (master-detail)
+  const [medications, setMedications] = useState([]);
   const [selectedMedications, setSelectedMedications] = useState([]);
-  const [createDiagnosis, setCreateDiagnosis] = useState(!prescription); // Auto-check for new prescriptions
+  const [pharmacies, setPharmacies] = useState([]);
+  const [loadingPharmacies, setLoadingPharmacies] = useState(false);
+  const [createDiagnosis, setCreateDiagnosis] = useState(!prescription);
   const [diagnosisData, setDiagnosisData] = useState({
     diagnosisName: '',
     icdCode: '',
     severity: 'Moderate',
     status: 'Active'
   });
+
+  // Load pharmacies on mount
+  useEffect(() => {
+    const loadPharmacies = async () => {
+      setLoadingPharmacies(true);
+      try {
+        const pharmaciesData = await api.getPharmacies?.();
+        if (pharmaciesData) {
+          setPharmacies(pharmaciesData);
+
+          // Load patient's preferred pharmacy
+          if (patient?.id && !prescription) {
+            try {
+              const preferredPharmacy = await api.getPatientPreferredPharmacy?.(patient.id);
+              if (preferredPharmacy?.pharmacy_id) {
+                setFormData(prev => ({ ...prev, pharmacy_id: preferredPharmacy.pharmacy_id }));
+              }
+            } catch (err) {
+              console.log('Could not load preferred pharmacy:', err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error loading pharmacies:', err);
+      } finally {
+        setLoadingPharmacies(false);
+      }
+    };
+    loadPharmacies();
+  }, [api, patient, prescription]);
 
   // Load existing medication when editing
   useEffect(() => {
@@ -751,7 +786,7 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
           const medication = await api.getMedicationByNdc(ndcCode);
           if (medication) {
             setSelectedMedications([medication]);
-            return; // Successfully loaded, exit
+            return;
           }
         } catch (err) {
           console.log('Could not load medication by NDC:', err);
@@ -759,15 +794,14 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
       }
 
       // Fallback: Create a basic medication object from prescription data
-      // This ensures the medication name is shown even if NDC lookup fails
       const medicationName = prescription.medicationName || prescription.medication_name;
       if (medicationName) {
         const basicMedication = {
           ndc_code: prescription.ndc_code || prescription.ndcCode || '',
           drug_name: medicationName,
+          generic_name: '',
           strength: prescription.dosage || '',
           dosage_form: '',
-          generic_name: '',
           brand_name: ''
         };
         setSelectedMedications([basicMedication]);
@@ -782,56 +816,108 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
     let diagnosisId = prescription?.diagnosis_id;
 
     // Create diagnosis if checkbox is checked
-    if (createDiagnosis && !prescription) {
+    if (createDiagnosis && !prescription && medications.length > 0) {
       try {
+        const firstMed = medications[0];
         const newDiagnosis = await api.createDiagnosis({
           patientId: patient.id,
           providerId: user.id,
-          diagnosisName: diagnosisData.diagnosisName || `Condition requiring ${formData.medication_name}`,
+          diagnosisName: diagnosisData.diagnosisName || `Condition requiring ${firstMed.medication_name}`,
           diagnosisCode: diagnosisData.icdCode || '',
           severity: diagnosisData.severity,
           status: diagnosisData.status,
           diagnosedDate: new Date().toISOString().split('T')[0],
-          description: `Diagnosis created for prescription: ${formData.medication_name}`
+          description: `Diagnosis created for prescription(s)`
         });
         diagnosisId = newDiagnosis.id;
       } catch (err) {
         console.error('Error creating diagnosis:', err);
-        // Continue with prescription creation even if diagnosis fails
       }
     }
 
-    // Add diagnosis_id to prescription data
-    const prescriptionData = {
-      ...formData,
-      diagnosis_id: diagnosisId
-    };
-
-    onSave(prescriptionData);
+    // Edit mode: Update single prescription
+    if (prescription) {
+      const prescriptionData = {
+        ...formData,
+        diagnosis_id: diagnosisId
+      };
+      onSave(prescriptionData);
+    } else {
+      // New mode: Create multiple prescriptions
+      try {
+        for (const med of medications) {
+          const prescriptionData = {
+            patient_id: patient.id,
+            provider_id: user.id,
+            medication_name: med.medication_name,
+            dosage: med.dosage,
+            frequency: med.frequency,
+            duration: med.duration,
+            quantity: med.quantity,
+            refills: med.refills,
+            instructions: med.instructions,
+            pharmacy_id: formData.pharmacy_id,
+            status: 'Active',
+            ndc_code: med.ndc_code,
+            diagnosis_id: diagnosisId
+          };
+          await api.createPrescription(prescriptionData);
+        }
+        onClose();
+        window.location.reload(); // Refresh to show new prescriptions
+      } catch (err) {
+        console.error('Error creating prescriptions:', err);
+      }
+    }
   };
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // When medication is selected from search, populate form fields
-  const handleMedicationSelect = (medications) => {
-    setSelectedMedications(medications);
-    if (medications.length > 0) {
-      const med = medications[0]; // Take first selected medication
+  // Add medication to the list
+  const handleAddMedication = () => {
+    if (selectedMedications.length === 0) return;
+
+    const med = selectedMedications[0];
+    const newMed = {
+      id: Date.now(),
+      medication_name: med.drug_name || med.generic_name || med.brand_name || '',
+      ndc_code: med.ndc_code || '',
+      dosage: med.strength || '',
+      frequency: 'Once daily',
+      duration: '30 days',
+      quantity: 30,
+      refills: 0,
+      instructions: ''
+    };
+
+    setMedications([...medications, newMed]);
+    setSelectedMedications([]);
+  };
+
+  // Remove medication from list
+  const handleRemoveMedication = (id) => {
+    setMedications(medications.filter(m => m.id !== id));
+  };
+
+  // Update medication in list
+  const handleUpdateMedication = (id, field, value) => {
+    setMedications(medications.map(m =>
+      m.id === id ? { ...m, [field]: value } : m
+    ));
+  };
+
+  // When medication is selected from search (edit mode)
+  const handleMedicationSelect = (meds) => {
+    setSelectedMedications(meds);
+    if (prescription && meds.length > 0) {
+      const med = meds[0];
       setFormData(prev => ({
         ...prev,
-        medication_name: med.drug_name || med.brand_name || '',
+        medication_name: med.drug_name || med.generic_name || med.brand_name || '',
         dosage: med.strength || prev.dosage,
         ndc_code: med.ndc_code || ''
-      }));
-    } else {
-      // Clear medication fields if no medication selected
-      setFormData(prev => ({
-        ...prev,
-        medication_name: '',
-        dosage: '',
-        ndc_code: ''
       }));
     }
   };
@@ -839,34 +925,342 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
       <div
-        className={`max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl ${
+        className={`max-w-5xl w-full max-h-[90vh] overflow-hidden rounded-xl shadow-2xl ${
           theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-        }`}
+        } flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {prescription ? 'Edit Prescription' : 'New Prescription'}
+            {prescription ? 'Edit Prescription' : 'New Prescriptions'}
           </h3>
           <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             Patient: {patient.first_name} {patient.last_name}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Medication Search - Required for both new and edit */}
-          <MedicationMultiSelect
-            theme={theme}
-            api={api}
-            value={selectedMedications}
-            onChange={handleMedicationSelect}
-            label={`Select Medication ${!formData.medication_name ? '*' : ''}`}
-            placeholder="Search medication by name..."
-            required={!formData.medication_name}
-          />
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-4">
+            {/* Edit Mode: Single Prescription */}
+            {prescription ? (
+              <>
+                {/* Medication Search */}
+                <MedicationMultiSelect
+                  theme={theme}
+                  api={api}
+                  value={selectedMedications}
+                  onChange={handleMedicationSelect}
+                  label="Select Medication *"
+                  placeholder="Search medication by name..."
+                />
 
-          {/* Create Diagnosis Option - Only for new prescriptions */}
-          {!prescription && (
+                {/* Prescription Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Dosage <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.dosage}
+                      onChange={(e) => handleChange('dosage', e.target.value)}
+                      required
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                      placeholder="e.g., 10mg"
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Frequency <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.frequency}
+                      onChange={(e) => handleChange('frequency', e.target.value)}
+                      required
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                      placeholder="e.g., Once daily"
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Duration
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.duration}
+                      onChange={(e) => handleChange('duration', e.target.value)}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                      placeholder="e.g., 30 days"
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Quantity <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.quantity}
+                      onChange={(e) => handleChange('quantity', e.target.value)}
+                      required
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                      placeholder="e.g., 30"
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Refills
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.refills}
+                      onChange={(e) => handleChange('refills', e.target.value)}
+                      min="0"
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Status
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => handleChange('status', e.target.value)}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Pharmacy Dropdown */}
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Pharmacy
+                  </label>
+                  <select
+                    value={formData.pharmacy_id}
+                    onChange={(e) => handleChange('pharmacy_id', e.target.value)}
+                    className={`w-full px-3 py-2 rounded-lg border ${
+                      theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    disabled={loadingPharmacies}
+                  >
+                    <option value="">Select pharmacy...</option>
+                    {pharmacies.map(pharmacy => (
+                      <option key={pharmacy.id} value={pharmacy.id}>
+                        {pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Instructions */}
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Instructions
+                  </label>
+                  <textarea
+                    value={formData.instructions}
+                    onChange={(e) => handleChange('instructions', e.target.value)}
+                    rows="3"
+                    className={`w-full px-3 py-2 rounded-lg border ${
+                      theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    placeholder="Enter special instructions"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* New Mode: Master-Detail Layout */}
+                <div className="grid grid-cols-3 gap-6">
+                  {/* Left: Master - Add Medications */}
+                  <div className={`col-span-1 p-4 rounded-lg border ${
+                    theme === 'dark' ? 'border-slate-600 bg-slate-800/50' : 'border-gray-300 bg-gray-50'
+                  }`}>
+                    <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Add Medications
+                    </h4>
+
+                    {/* Medication Search */}
+                    <MedicationMultiSelect
+                      theme={theme}
+                      api={api}
+                      value={selectedMedications}
+                      onChange={setSelectedMedications}
+                      label="Search Medication"
+                      placeholder="Search medication..."
+                    />
+
+                    {/* Add Button */}
+                    <button
+                      type="button"
+                      onClick={handleAddMedication}
+                      disabled={selectedMedications.length === 0}
+                      className={`w-full mt-3 px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 ${
+                        selectedMedications.length === 0
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                      }`}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Medication
+                    </button>
+
+                    {/* Pharmacy Selection */}
+                    <div className="mt-4">
+                      <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Pharmacy (for all)
+                      </label>
+                      <select
+                        value={formData.pharmacy_id}
+                        onChange={(e) => setFormData(prev => ({ ...prev, pharmacy_id: e.target.value }))}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                        disabled={loadingPharmacies}
+                      >
+                        <option value="">Select pharmacy...</option>
+                        {pharmacies.map(pharmacy => (
+                          <option key={pharmacy.id} value={pharmacy.id}>
+                            {pharmacy.pharmacy_name}
+                          </option>
+                        ))}
+                      </select>
+                      {formData.pharmacy_id && (
+                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                          From patient's preferred pharmacy
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Detail - Medications List */}
+                  <div className="col-span-2">
+                    <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Medications to Prescribe ({medications.length})
+                    </h4>
+
+                    {medications.length === 0 ? (
+                      <div className={`text-center py-12 rounded-lg border-2 border-dashed ${
+                        theme === 'dark' ? 'border-slate-600' : 'border-gray-300'
+                      }`}>
+                        <Pill className={`w-12 h-12 mx-auto mb-3 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+                        <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          No medications added yet
+                        </p>
+                        <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                          Search and add medications from the left panel
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {medications.map((med) => (
+                          <div
+                            key={med.id}
+                            className={`p-4 rounded-lg border ${
+                              theme === 'dark' ? 'bg-slate-800/50 border-slate-600' : 'bg-white border-gray-200'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex-1">
+                                <h5 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  {med.medication_name}
+                                </h5>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                  NDC: {med.ndc_code || 'N/A'}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMedication(med.id)}
+                                className={`p-1 rounded hover:bg-red-100 ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                value={med.dosage}
+                                onChange={(e) => handleUpdateMedication(med.id, 'dosage', e.target.value)}
+                                placeholder="Dosage"
+                                className={`px-2 py-1 text-sm rounded border ${
+                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              />
+                              <input
+                                type="text"
+                                value={med.frequency}
+                                onChange={(e) => handleUpdateMedication(med.id, 'frequency', e.target.value)}
+                                placeholder="Frequency"
+                                className={`px-2 py-1 text-sm rounded border ${
+                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              />
+                              <input
+                                type="text"
+                                value={med.duration}
+                                onChange={(e) => handleUpdateMedication(med.id, 'duration', e.target.value)}
+                                placeholder="Duration"
+                                className={`px-2 py-1 text-sm rounded border ${
+                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              />
+                              <input
+                                type="number"
+                                value={med.quantity}
+                                onChange={(e) => handleUpdateMedication(med.id, 'quantity', e.target.value)}
+                                placeholder="Quantity"
+                                className={`px-2 py-1 text-sm rounded border ${
+                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              />
+                              <input
+                                type="number"
+                                value={med.refills}
+                                onChange={(e) => handleUpdateMedication(med.id, 'refills', e.target.value)}
+                                placeholder="Refills"
+                                className={`px-2 py-1 text-sm rounded border ${
+                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              />
+                              <input
+                                type="text"
+                                value={med.instructions}
+                                onChange={(e) => handleUpdateMedication(med.id, 'instructions', e.target.value)}
+                                placeholder="Instructions"
+                                className={`px-2 py-1 text-sm rounded border ${
+                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Create Diagnosis Option - Only for new prescriptions */}
+                <div className="mt-4">
             <div className={`p-4 rounded-lg border ${
               theme === 'dark' ? 'border-slate-600 bg-slate-800/50' : 'border-gray-300 bg-gray-50'
             }`}>
@@ -941,158 +1335,9 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
                 </div>
               )}
             </div>
-          )}
-
-          {/* Dosage and Frequency */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Dosage <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.dosage}
-                onChange={(e) => handleChange('dosage', e.target.value)}
-                required
-                className={`w-full px-3 py-2 rounded-lg border ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-                placeholder="e.g., 10mg"
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Frequency <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.frequency}
-                onChange={(e) => handleChange('frequency', e.target.value)}
-                required
-                className={`w-full px-3 py-2 rounded-lg border ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-                placeholder="e.g., Once daily"
-              />
-            </div>
-          </div>
-
-          {/* Duration and Quantity */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Duration
-              </label>
-              <input
-                type="text"
-                value={formData.duration}
-                onChange={(e) => handleChange('duration', e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg border ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-                placeholder="e.g., 30 days"
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Quantity <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={formData.quantity}
-                onChange={(e) => handleChange('quantity', e.target.value)}
-                required
-                className={`w-full px-3 py-2 rounded-lg border ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-                placeholder="e.g., 30"
-              />
-            </div>
-          </div>
-
-          {/* Refills and Status */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Refills
-              </label>
-              <input
-                type="number"
-                value={formData.refills}
-                onChange={(e) => handleChange('refills', e.target.value)}
-                min="0"
-                className={`w-full px-3 py-2 rounded-lg border ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => handleChange('status', e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg border ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Pharmacy Name */}
-          <div>
-            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-              Pharmacy Name
-            </label>
-            <input
-              type="text"
-              value={formData.pharmacy_name}
-              onChange={(e) => handleChange('pharmacy_name', e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg border ${
-                theme === 'dark'
-                  ? 'bg-slate-700 border-slate-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-900'
-              }`}
-              placeholder="Enter pharmacy name"
-            />
-          </div>
-
-          {/* Instructions */}
-          <div>
-            <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-              Instructions
-            </label>
-            <textarea
-              value={formData.instructions}
-              onChange={(e) => handleChange('instructions', e.target.value)}
-              rows="3"
-              className={`w-full px-3 py-2 rounded-lg border ${
-                theme === 'dark'
-                  ? 'bg-slate-700 border-slate-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-900'
-              }`}
-              placeholder="Enter special instructions"
-            />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Form Actions */}
@@ -1110,9 +1355,14 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg text-white font-medium transition-colors"
+              disabled={!prescription && medications.length === 0}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                !prescription && medications.length === 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+              }`}
             >
-              {prescription ? 'Update Prescription' : 'Create Prescription'}
+              {prescription ? 'Update Prescription' : `Create ${medications.length} Prescription${medications.length !== 1 ? 's' : ''}`}
             </button>
           </div>
         </form>
