@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, X, Save, Calendar, FileText, Pill } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
+import MedicationMultiSelect from './MedicationMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
 const DiagnosisForm = ({
@@ -22,6 +23,7 @@ const DiagnosisForm = ({
     providerId: user?.id || '', // Default to logged-in user
     icdCodes: [],
     cptCodes: [],
+    medications: [], // Selected medications for automatic prescription creation
     diagnosisName: '',
     description: '',
     severity: 'Moderate',
@@ -33,6 +35,7 @@ const DiagnosisForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prescribeAfterSave, setPrescribeAfterSave] = useState(false);
   const [savedDiagnosisResult, setSavedDiagnosisResult] = useState(null);
+  const [linkedPrescriptions, setLinkedPrescriptions] = useState([]);
 
   // If editing, populate form with existing diagnosis data
   useEffect(() => {
@@ -105,6 +108,18 @@ const DiagnosisForm = ({
         }
 
         setFormData(newFormData);
+
+        // Load linked prescriptions for this diagnosis
+        if (editDiagnosis.id) {
+          try {
+            const prescriptions = await api.getPrescriptionsByDiagnosisId?.(editDiagnosis.id);
+            if (prescriptions && prescriptions.length > 0) {
+              setLinkedPrescriptions(prescriptions);
+            }
+          } catch (err) {
+            console.log('Could not load linked prescriptions:', err);
+          }
+        }
       } else if (user?.id) {
         // Default provider to logged-in user for new diagnoses
         setFormData(prev => ({ ...prev, providerId: user.id }));
@@ -190,8 +205,39 @@ const DiagnosisForm = ({
       const action = editDiagnosis ? 'updated' : 'created';
       await addNotification('diagnosis', `Diagnosis ${action} for ${patientName}`);
 
+      // Auto-create prescriptions for selected medications
+      const createdPrescriptions = [];
+      if (formData.medications && formData.medications.length > 0 && !editDiagnosis) {
+        for (const medication of formData.medications) {
+          try {
+            const prescriptionData = {
+              patient_id: formData.patientId,
+              provider_id: formData.providerId,
+              medication_name: medication.drug_name || medication.brand_name,
+              dosage: medication.strength || '',
+              frequency: 'As directed',
+              duration: '30 days',
+              quantity: 30,
+              refills: 0,
+              instructions: `For ${diagnosisData.diagnosisName || 'diagnosis'}`,
+              status: 'Active',
+              diagnosis_id: result.id, // Link to diagnosis
+              ndc_code: medication.ndc_code
+            };
+            const prescription = await api.createPrescription(prescriptionData);
+            createdPrescriptions.push(prescription);
+          } catch (err) {
+            console.error('Error creating prescription for medication:', medication.drug_name, err);
+          }
+        }
+
+        if (createdPrescriptions.length > 0) {
+          await addNotification('success', `Created ${createdPrescriptions.length} prescription(s) from selected medications`);
+        }
+      }
+
       // Save result for potential prescription creation
-      setSavedDiagnosisResult({ result, selectedPatient });
+      setSavedDiagnosisResult({ result, selectedPatient, createdPrescriptions });
 
       // Show success confirmation
       setShowConfirmation(true);
@@ -328,6 +374,16 @@ const DiagnosisForm = ({
                 placeholder="Search for CPT codes by code or description..."
               />
 
+              {/* Medications */}
+              <MedicationMultiSelect
+                theme={theme}
+                api={api}
+                value={formData.medications}
+                onChange={(medications) => setFormData({ ...formData, medications })}
+                label="Medications (Optional - Will auto-create prescriptions)"
+                placeholder="Search medications to prescribe..."
+              />
+
               {/* Diagnosis Name */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -461,6 +517,44 @@ const DiagnosisForm = ({
               </div>
             </div>
           </form>
+
+          {/* Linked Prescriptions (shown when editing) */}
+          {editDiagnosis && linkedPrescriptions.length > 0 && (
+            <div className={`px-6 py-4 border-t ${theme === 'dark' ? 'border-slate-700 bg-slate-900/30' : 'border-gray-300 bg-gray-50'}`}>
+              <h4 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <Pill className="w-4 h-4" />
+                Prescriptions Created from this Diagnosis ({linkedPrescriptions.length})
+              </h4>
+              <div className="space-y-2">
+                {linkedPrescriptions.map((rx) => (
+                  <div
+                    key={rx.id}
+                    className={`p-3 rounded-lg border ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {rx.medicationName || rx.medication_name}
+                        </p>
+                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          {rx.dosage} • {rx.frequency}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        rx.status === 'Active'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                      }`}>
+                        {rx.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Prescribe After Save Option */}
           {!editDiagnosis && onPrescribe && (

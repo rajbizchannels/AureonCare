@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
+import MedicationMultiSelect from '../components/forms/MedicationMultiSelect';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack }) => {
@@ -699,6 +700,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       {showPrescriptionForm && (
         <PrescriptionFormModal
           theme={theme}
+          api={api}
           prescription={editingPrescription}
           patient={patientData}
           user={user}
@@ -714,7 +716,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 };
 
 // Prescription Form Modal Component
-const PrescriptionFormModal = ({ theme, prescription, patient, user, onClose, onSave }) => {
+const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     medication_name: prescription?.medicationName || prescription?.medication_name || '',
     dosage: prescription?.dosage || '',
@@ -727,6 +729,8 @@ const PrescriptionFormModal = ({ theme, prescription, patient, user, onClose, on
     status: prescription?.status || 'Active'
   });
 
+  const [selectedMedications, setSelectedMedications] = useState([]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave(formData);
@@ -734,6 +738,19 @@ const PrescriptionFormModal = ({ theme, prescription, patient, user, onClose, on
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // When medication is selected from search, populate form fields
+  const handleMedicationSelect = (medications) => {
+    setSelectedMedications(medications);
+    if (medications.length > 0) {
+      const med = medications[0]; // Take first selected medication
+      setFormData(prev => ({
+        ...prev,
+        medication_name: med.drug_name || med.brand_name || '',
+        dosage: med.strength || prev.dosage,
+      }));
+    }
   };
 
   return (
@@ -754,6 +771,18 @@ const PrescriptionFormModal = ({ theme, prescription, patient, user, onClose, on
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Medication Search */}
+          {!prescription && (
+            <MedicationMultiSelect
+              theme={theme}
+              api={api}
+              value={selectedMedications}
+              onChange={handleMedicationSelect}
+              label="Search Medication (optional)"
+              placeholder="Search to auto-fill medication details..."
+            />
+          )}
+
           {/* Medication Name */}
           <div>
             <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -769,7 +798,7 @@ const PrescriptionFormModal = ({ theme, prescription, patient, user, onClose, on
                   ? 'bg-slate-700 border-slate-600 text-white'
                   : 'bg-white border-gray-300 text-gray-900'
               }`}
-              placeholder="Enter medication name"
+              placeholder="Enter medication name or search above"
             />
           </div>
 

@@ -137,6 +137,16 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
       setDiagnosisSearch('');
       setDiagnosisResults([]);
 
+      // Auto-populate service date from diagnosis date if not already set
+      if (diagnosis.diagnosedDate || diagnosis.diagnosed_date) {
+        if (!formData.serviceDate) {
+          const diagnosisDate = diagnosis.diagnosedDate || diagnosis.diagnosed_date;
+          // Format date to YYYY-MM-DD if needed
+          const formattedDate = diagnosisDate.split('T')[0];
+          setFormData(prev => ({ ...prev, serviceDate: formattedDate }));
+        }
+      }
+
       // If diagnosis has associated CPT codes in notes, extract and add them
       // Only do this when selecting from existing patient diagnoses
       if (diagnosis.notes && typeof diagnosis.notes === 'string') {

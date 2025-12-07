@@ -708,6 +708,53 @@ router.get('/patient/:patientId/active', async (req, res) => {
   }
 });
 
+// Get prescriptions by diagnosis ID
+router.get('/diagnosis/:diagnosisId', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const hasEPrescribing = await checkEPrescribingSchema(pool);
+
+    let query;
+    if (hasEPrescribing) {
+      query = `
+        SELECT p.*,
+               prov.first_name as provider_first_name,
+               prov.last_name as provider_last_name,
+               prov.specialization as provider_specialization,
+               prov.first_name || ' ' || prov.last_name as provider_name,
+               ph.pharmacy_name,
+               m.generic_name,
+               m.brand_name,
+               m.drug_class
+        FROM prescriptions p
+        LEFT JOIN providers prov ON p.provider_id = prov.id
+        LEFT JOIN pharmacies ph ON p.pharmacy_id = ph.id
+        LEFT JOIN medications m ON p.ndc_code = m.ndc_code
+        WHERE p.diagnosis_id = $1
+        ORDER BY p.prescribed_date DESC
+      `;
+    } else {
+      query = `
+        SELECT p.*,
+               prov.first_name as provider_first_name,
+               prov.last_name as provider_last_name,
+               prov.specialization as provider_specialization,
+               prov.first_name || ' ' || prov.last_name as provider_name
+        FROM prescriptions p
+        LEFT JOIN providers prov ON p.provider_id = prov.id
+        WHERE p.diagnosis_id = $1
+        ORDER BY p.prescribed_date DESC
+      `;
+    }
+
+    const result = await pool.query(query, [req.params.diagnosisId]);
+    res.json(result.rows.map(toCamelCase));
+  } catch (error) {
+    console.error('Error fetching prescriptions for diagnosis:', error);
+    res.status(500).json({ error: 'Failed to fetch prescriptions for diagnosis' });
+  }
+});
+
 // Request refill
 router.post('/:id/refill', async (req, res) => {
   try {
