@@ -136,6 +136,29 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
       setSelectedDiagnoses([...selectedDiagnoses, diagnosis]);
       setDiagnosisSearch('');
       setDiagnosisResults([]);
+
+      // If diagnosis has associated CPT codes in notes, extract and add them
+      // Only do this when selecting from existing patient diagnoses
+      if (diagnosis.notes && typeof diagnosis.notes === 'string') {
+        const cptMatch = diagnosis.notes.match(/CPT Codes:\s*([^]*?)(?:\n\n|$)/);
+        if (cptMatch) {
+          const cptSection = cptMatch[1];
+          // Extract codes from format "99213 (Description); 85025 (Description)"
+          const cptEntries = cptSection.split(';').map(entry => entry.trim()).filter(Boolean);
+
+          for (const entry of cptEntries) {
+            // Parse "99213 (Description)" format
+            const match = entry.match(/^(\d+)\s*\(([^)]+)\)/);
+            if (match) {
+              const [, code, description] = match;
+              // Check if this procedure is not already added
+              if (!selectedProcedures.find(p => p.code === code)) {
+                setSelectedProcedures(prev => [...prev, { code, description }]);
+              }
+            }
+          }
+        }
+      }
     }
   };
 
@@ -313,7 +336,7 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
               {formData.patientId && existingDiagnoses.length > 0 && (
                 <div className="mb-3">
                   <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {t.selectFromExistingDiagnoses || 'Select from existing diagnoses'}
+                    {t.selectFromExistingDiagnoses || 'Select from existing diagnoses (also loads related CPT codes)'}
                   </label>
                   <select
                     onChange={(e) => {
@@ -321,7 +344,8 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
                       if (diagnosis) {
                         handleAddDiagnosis({
                           code: diagnosis.diagnosisCode,
-                          description: diagnosis.diagnosisName
+                          description: diagnosis.diagnosisName,
+                          notes: diagnosis.notes // Include notes to extract CPT codes
                         });
                         e.target.value = '';
                       }
