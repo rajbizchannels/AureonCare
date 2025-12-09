@@ -351,6 +351,7 @@ const EPrescribeModal = ({
     try {
       // First try to get patient's preferred pharmacies using api service
       let data = await api.getPatientPreferredPharmacies(patient.id);
+      let isPreferredList = data && data.length > 0;
 
       console.log('[ePrescribe] Preferred pharmacies:', data);
 
@@ -383,10 +384,15 @@ const EPrescribeModal = ({
       setPharmacies(data || []);
 
       // Auto-select preferred pharmacy if exists
+      // First try to find explicitly preferred pharmacy
       const preferred = data?.find(p => p.isPreferred || p.is_preferred);
       if (preferred) {
-        console.log('[ePrescribe] Auto-selecting preferred pharmacy:', preferred);
+        console.log('[ePrescribe] Auto-selecting explicitly preferred pharmacy:', preferred);
         setSelectedPharmacy(preferred);
+      } else if (isPreferredList && data && data.length > 0) {
+        // If we loaded pharmacies from patient's preferred list, auto-select the first one
+        console.log('[ePrescribe] Auto-selecting first pharmacy from patient preferred list:', data[0]);
+        setSelectedPharmacy(data[0]);
       }
     } catch (error) {
       console.error('[ePrescribe] Error loading pharmacies:', error);
@@ -688,7 +694,7 @@ const EPrescribeModal = ({
               <div class="rx-symbol">℞</div>
               <div class="info-row">
                 <span class="info-label">Medication:</span>
-                <span class="info-value"><strong>${selectedMedication?.drugName || 'N/A'}</strong></span>
+                <span class="info-value"><strong>${selectedMedication?.genericName || selectedMedication?.brandName || selectedMedication?.drugName || 'N/A'}</strong></span>
               </div>
               ${selectedMedication?.ndcCode || selectedMedication?.ndc_code ? `
               <div class="info-row">
@@ -879,10 +885,10 @@ const EPrescribeModal = ({
                           <Pill className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
                           <div>
                             <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                              {med.drugName}
+                              {med.genericName || med.brandName || med.drugName}
                             </h4>
                             <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              {med.genericName && med.genericName !== med.drugName && `Generic: ${med.genericName} • `}
+                              {med.brandName && med.genericName && med.brandName !== med.genericName && `Brand: ${med.brandName} • `}
                               {med.strength} {med.dosageForm}
                             </p>
                           </div>
@@ -945,7 +951,7 @@ const EPrescribeModal = ({
 
               <div>
                 <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {selectedMedication.drugName} - {selectedMedication.strength}
+                  {selectedMedication.genericName || selectedMedication.brandName || selectedMedication.drugName} - {selectedMedication.strength}
                 </h3>
               </div>
 
@@ -1122,7 +1128,7 @@ const EPrescribeModal = ({
                           <div>
                             <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                               {pharmacy.pharmacyName}
-                              {pharmacy.isPreferred && (
+                              {(pharmacy.isPreferred || pharmacy.is_preferred) && (
                                 <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
                                   Preferred
                                 </span>
@@ -1180,7 +1186,7 @@ const EPrescribeModal = ({
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Medication:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{selectedMedication?.drugName || 'N/A'}</span>
+                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{selectedMedication?.genericName || selectedMedication?.brandName || selectedMedication?.drugName || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Dosage:</span>
