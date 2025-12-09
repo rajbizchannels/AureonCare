@@ -6,6 +6,7 @@ import {
 import { formatDate, formatTime } from '../utils/formatters';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import MedicationMultiSelect from '../components/forms/MedicationMultiSelect';
+import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack }) => {
@@ -739,7 +740,7 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
   const [createDiagnosis, setCreateDiagnosis] = useState(!prescription);
   const [diagnosisData, setDiagnosisData] = useState({
     diagnosisName: '',
-    icdCode: '',
+    icdCodes: [], // Array of ICD code objects
     severity: 'Moderate',
     status: 'Active'
   });
@@ -819,11 +820,14 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
     if (createDiagnosis && !prescription && medications.length > 0) {
       try {
         const firstMed = medications[0];
+        // Get ICD codes as comma-separated string
+        const icdCodeString = diagnosisData.icdCodes.map(c => c.code).join(', ');
+
         const newDiagnosis = await api.createDiagnosis({
           patientId: patient.id,
           providerId: user.id,
           diagnosisName: diagnosisData.diagnosisName || `Condition requiring ${firstMed.medication_name}`,
-          diagnosisCode: diagnosisData.icdCode || '',
+          diagnosisCode: icdCodeString,
           severity: diagnosisData.severity,
           status: diagnosisData.status,
           diagnosedDate: new Date().toISOString().split('T')[0],
@@ -1295,42 +1299,35 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                        ICD Code (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={diagnosisData.icdCode}
-                        onChange={(e) => setDiagnosisData(prev => ({ ...prev, icdCode: e.target.value }))}
-                        className={`w-full px-3 py-2 rounded-lg border ${
-                          theme === 'dark'
-                            ? 'bg-slate-700 border-slate-600 text-white'
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        placeholder="e.g., I10"
-                      />
-                    </div>
+                  {/* ICD Codes Multiselect */}
+                  <MedicalCodeMultiSelect
+                    theme={theme}
+                    api={api}
+                    value={diagnosisData.icdCodes}
+                    onChange={(codes) => setDiagnosisData(prev => ({ ...prev, icdCodes: codes }))}
+                    codeType="icd"
+                    label="ICD-10 Diagnosis Codes (Optional)"
+                    placeholder="Search for ICD codes..."
+                  />
 
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                        Severity
-                      </label>
-                      <select
-                        value={diagnosisData.severity}
-                        onChange={(e) => setDiagnosisData(prev => ({ ...prev, severity: e.target.value }))}
-                        className={`w-full px-3 py-2 rounded-lg border ${
-                          theme === 'dark'
-                            ? 'bg-slate-700 border-slate-600 text-white'
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      >
-                        <option value="Mild">Mild</option>
-                        <option value="Moderate">Moderate</option>
-                        <option value="Severe">Severe</option>
-                      </select>
-                    </div>
+                  {/* Severity */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Severity
+                    </label>
+                    <select
+                      value={diagnosisData.severity}
+                      onChange={(e) => setDiagnosisData(prev => ({ ...prev, severity: e.target.value }))}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 border-slate-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    >
+                      <option value="Mild">Mild</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Severe">Severe</option>
+                    </select>
                   </div>
                 </div>
               )}
