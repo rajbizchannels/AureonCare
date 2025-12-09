@@ -731,8 +731,15 @@ const api = {
     return response.json();
   },
   getPatientPreferredPharmacy: async (patientId) => {
-    const pharmacies = await apiService.getPatientPreferredPharmacies(patientId);
-    return pharmacies && pharmacies.length > 0 ? pharmacies[0] : null;
+    try {
+      const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`);
+      if (!response.ok) throw new Error('Failed to fetch patient preferred pharmacies');
+      const pharmacies = await response.json();
+      return pharmacies && pharmacies.length > 0 ? pharmacies[0] : null;
+    } catch (error) {
+      console.error('Error fetching preferred pharmacy:', error);
+      return null;
+    }
   },
   addPreferredPharmacy: async (patientId, pharmacyId, isPrimary) => {
     const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`, {
