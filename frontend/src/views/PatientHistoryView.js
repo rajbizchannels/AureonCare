@@ -504,7 +504,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                     <button
                       onClick={() => {
                         setEditingPrescription(rx);
-                        setShowPrescriptionForm(true);
+                        setShowEPrescribeModal(true);
                       }}
                       className={`p-2 rounded-lg hover:bg-blue-100 transition-colors ${theme === 'dark' ? 'hover:bg-blue-900/20' : ''}`}
                       title="Edit prescription"
@@ -719,10 +719,15 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           patient={patientData}
           provider={user}
           api={api}
-          onClose={() => setShowEPrescribeModal(false)}
+          prescription={editingPrescription}
+          onClose={() => {
+            setShowEPrescribeModal(false);
+            setEditingPrescription(null);
+          }}
           onSuccess={(prescription) => {
             setShowEPrescribeModal(false);
-            addNotification('success', 'Prescription created successfully');
+            setEditingPrescription(null);
+            addNotification('success', editingPrescription ? 'Prescription updated successfully' : 'Prescription created successfully');
             fetchPatientHistory(); // Refresh the prescriptions list
           }}
           addNotification={addNotification}
