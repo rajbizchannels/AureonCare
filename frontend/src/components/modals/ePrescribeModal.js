@@ -128,6 +128,16 @@ const EPrescribeModal = ({
       setSelectedMedication(medication);
       console.log('[ePrescribe] Loaded medication for edit:', medication);
 
+      // Prefill search query with medication name
+      const medicationName = medication.genericName || medication.brandName || medication.drugName;
+      if (medicationName) {
+        setSearchQuery(medicationName);
+        console.log('[ePrescribe] Prefilled search query:', medicationName);
+
+        // Add the current medication to search results so it's visible/selectable
+        setMedications([medication]);
+      }
+
       // Load pharmacy if available
       if (prescription.pharmacyId || prescription.pharmacy_id) {
         try {
