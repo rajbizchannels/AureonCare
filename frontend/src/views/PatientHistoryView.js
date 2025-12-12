@@ -8,6 +8,7 @@ import DiagnosisForm from '../components/forms/DiagnosisForm';
 import MedicationMultiSelect from '../components/forms/MedicationMultiSelect';
 import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import EPrescribeModal from '../components/modals/ePrescribeModal';
 
 const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack }) => {
   const [activeTab, setActiveTab] = useState('prescriptions');
@@ -31,6 +32,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
   const [editingPrescription, setEditingPrescription] = useState(null);
   const [deletingPrescription, setDeletingPrescription] = useState(null);
+  const [showEPrescribeModal, setShowEPrescribeModal] = useState(false);
 
   useEffect(() => {
     if (patient?.id) {
@@ -432,14 +434,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           Prescriptions
         </h3>
         <button
-          onClick={() => {
-            setEditingPrescription(null);
-            setShowPrescriptionForm(true);
-          }}
+          onClick={() => setShowEPrescribeModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg text-white font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
-          New Prescription
+          New ePrescription
         </button>
       </div>
       {prescriptions.length === 0 ? (
@@ -710,6 +709,23 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
             setEditingPrescription(null);
           }}
           onSave={handleSavePrescription}
+        />
+      )}
+
+      {/* ePrescribe Modal */}
+      {showEPrescribeModal && (
+        <EPrescribeModal
+          theme={theme}
+          patient={patientData}
+          provider={user}
+          api={api}
+          onClose={() => setShowEPrescribeModal(false)}
+          onSuccess={(prescription) => {
+            setShowEPrescribeModal(false);
+            addNotification('success', 'Prescription created successfully');
+            fetchPatientHistory(); // Refresh the prescriptions list
+          }}
+          addNotification={addNotification}
         />
       )}
     </div>
