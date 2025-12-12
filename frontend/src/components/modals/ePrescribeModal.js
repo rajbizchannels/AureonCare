@@ -6,6 +6,7 @@ const EPrescribeModal = ({
   patient,
   provider,
   api,
+  prescription,
   onClose,
   onSuccess,
   addNotification
@@ -19,7 +20,7 @@ const EPrescribeModal = ({
     };
   }, [provider]);
 
-  const [step, setStep] = useState(1); // 1: Search Med, 2: Details, 3: Pharmacy, 4: Review
+  const [step, setStep] = useState(prescription ? 2 : 1); // Skip to step 2 if editing
   const [searchQuery, setSearchQuery] = useState('');
   const [medications, setMedications] = useState([]);
   const [selectedMedication, setSelectedMedication] = useState(null);
@@ -30,13 +31,13 @@ const EPrescribeModal = ({
   const [safetyWarnings, setSafetyWarnings] = useState([]);
 
   const [prescriptionDetails, setPrescriptionDetails] = useState({
-    dosage: '',
-    frequency: '',
-    duration: '',
-    quantity: '',
-    refills: 0,
-    instructions: '',
-    substitutionAllowed: true
+    dosage: prescription?.dosage || '',
+    frequency: prescription?.frequency || '',
+    duration: prescription?.duration || '',
+    quantity: prescription?.quantity?.toString() || '',
+    refills: prescription?.refills || prescription?.refillsRemaining || 0,
+    instructions: prescription?.instructions || '',
+    substitutionAllowed: prescription?.substitutionAllowed !== undefined ? prescription.substitutionAllowed : true
   });
 
   // Track if we've successfully validated - prevents closing modal on re-renders
@@ -103,6 +104,47 @@ const EPrescribeModal = ({
     window.addEventListener('keydown', handleEsc, true);
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
+
+  // Load existing prescription data when in edit mode
+  useEffect(() => {
+    if (!prescription) return;
+
+    const loadPrescriptionData = async () => {
+      console.log('[ePrescribe] Loading prescription for edit:', prescription);
+
+      // Create medication object from prescription data
+      const medication = {
+        id: prescription.id,
+        drugName: prescription.medicationName || prescription.medication_name || '',
+        drug_name: prescription.medicationName || prescription.medication_name || '',
+        genericName: prescription.genericName || prescription.generic_name || '',
+        brandName: prescription.brandName || prescription.brand_name || '',
+        ndcCode: prescription.ndcCode || prescription.ndc_code || '',
+        ndc_code: prescription.ndcCode || prescription.ndc_code || '',
+        strength: prescription.dosage || '',
+        dosageForm: prescription.dosageForm || prescription.dosage_form || ''
+      };
+
+      setSelectedMedication(medication);
+      console.log('[ePrescribe] Loaded medication for edit:', medication);
+
+      // Load pharmacy if available
+      if (prescription.pharmacyId || prescription.pharmacy_id) {
+        try {
+          const pharmacyId = prescription.pharmacyId || prescription.pharmacy_id;
+          const pharmacy = await api.getPharmacy(pharmacyId);
+          if (pharmacy) {
+            setSelectedPharmacy(pharmacy);
+            console.log('[ePrescribe] Loaded pharmacy for edit:', pharmacy);
+          }
+        } catch (error) {
+          console.error('[ePrescribe] Error loading pharmacy:', error);
+        }
+      }
+    };
+
+    loadPrescriptionData();
+  }, [prescription, api]);
 
   // Debug: Log step changes and render conditions
   useEffect(() => {
@@ -413,6 +455,7 @@ const EPrescribeModal = ({
   // Submit prescription
   const handleSubmitPrescription = async () => {
     console.log('[ePrescribe] Submitting prescription...');
+    console.log('[ePrescribe] Edit mode:', !!prescription);
     console.log('[ePrescribe] Using provider:', normalizedProvider);
 
     if (!selectedMedication) {
@@ -422,7 +465,7 @@ const EPrescribeModal = ({
 
     setLoading(true);
     try {
-      // Create prescription using api service
+      // Build prescription payload
       const prescriptionPayload = {
         patientId: patient.id,
         providerId: normalizedProvider.id,
@@ -436,7 +479,7 @@ const EPrescribeModal = ({
         instructions: prescriptionDetails.instructions,
         substitutionAllowed: prescriptionDetails.substitutionAllowed,
         status: 'Active',
-        prescribedDate: new Date().toISOString().split('T')[0]
+        prescribedDate: prescription?.prescribedDate || prescription?.prescribed_date || new Date().toISOString().split('T')[0]
       };
 
       // Add pharmacy info if selected
@@ -447,14 +490,23 @@ const EPrescribeModal = ({
 
       console.log('[ePrescribe] Prescription payload:', prescriptionPayload);
 
-      const prescription = await api.createPrescription(prescriptionPayload);
-      console.log('[ePrescribe] Prescription created:', prescription);
+      let resultPrescription;
+      if (prescription) {
+        // Update existing prescription
+        console.log('[ePrescribe] Updating prescription ID:', prescription.id);
+        resultPrescription = await api.updatePrescription(prescription.id, prescriptionPayload);
+        console.log('[ePrescribe] Prescription updated:', resultPrescription);
+      } else {
+        // Create new prescription
+        resultPrescription = await api.createPrescription(prescriptionPayload);
+        console.log('[ePrescribe] Prescription created:', resultPrescription);
+      }
 
-      // Send electronically to pharmacy if selected
-      if (selectedPharmacy) {
+      // Send electronically to pharmacy if selected (only for new prescriptions)
+      if (selectedPharmacy && !prescription) {
         console.log('[ePrescribe] Sending to pharmacy:', selectedPharmacy);
         try {
-          await api.sendErx(prescription.id);
+          await api.sendErx(resultPrescription.id);
           console.log('[ePrescribe] Successfully sent to pharmacy');
           addNotification('success', 'Prescription sent to pharmacy successfully');
         } catch (erxError) {
@@ -467,12 +519,15 @@ const EPrescribeModal = ({
             addNotification('alert', 'Prescription created but failed to send electronically');
           }
         }
-      } else {
+      } else if (!prescription) {
         console.log('[ePrescribe] No pharmacy selected, prescription created only');
         addNotification('success', 'Prescription created successfully');
+      } else {
+        // Edit mode success message
+        addNotification('success', 'Prescription updated successfully');
       }
 
-      if (onSuccess) onSuccess(prescription);
+      if (onSuccess) onSuccess(resultPrescription);
       onClose();
     } catch (error) {
       console.error('[ePrescribe] Error submitting prescription:', error);
@@ -800,10 +855,10 @@ const EPrescribeModal = ({
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <div>
             <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              ePrescribe for {patient.firstName || patient.first_name || 'Patient'} {patient.lastName || patient.last_name || ''}
+              {prescription ? 'Edit Prescription' : 'ePrescribe'} for {patient.firstName || patient.first_name || 'Patient'} {patient.lastName || patient.last_name || ''}
             </h2>
             <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Step {step} of 4
+              {prescription ? `Editing: ${selectedMedication?.genericName || selectedMedication?.brandName || selectedMedication?.drugName || 'Medication'}` : `Step ${step} of 4`}
             </p>
           </div>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
@@ -1253,7 +1308,10 @@ const EPrescribeModal = ({
                   className="flex-1 px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Send className="w-5 h-5" />
-                  {selectedPharmacy ? 'Send to Pharmacy Electronically' : 'Create Prescription'}
+                  {prescription
+                    ? 'Update Prescription'
+                    : (selectedPharmacy ? 'Send to Pharmacy Electronically' : 'Create Prescription')
+                  }
                 </button>
               </div>
             </div>
