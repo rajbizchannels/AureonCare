@@ -11,10 +11,47 @@ const toCamelCase = (obj) => {
   return newObj;
 };
 
+// Helper function to ensure campaigns table exists
+const ensureTableExists = async (pool) => {
+  try {
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'campaigns'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      // Create campaigns table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS campaigns (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          subject VARCHAR(500),
+          email_content TEXT,
+          target_audience VARCHAR(100),
+          status VARCHAR(50) DEFAULT 'draft',
+          scheduled_date TIMESTAMP,
+          offering_id TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log('✓ Campaigns table created successfully');
+    }
+  } catch (error) {
+    console.error('Error ensuring campaigns table exists:', error);
+    throw error;
+  }
+};
+
 // Get all campaigns
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    await ensureTableExists(pool);
+
     const { status, offeringId } = req.query;
 
     let query = 'SELECT * FROM campaigns WHERE 1=1';
@@ -37,7 +74,7 @@ router.get('/', async (req, res) => {
     res.json(campaigns);
   } catch (error) {
     console.error('Error fetching campaigns:', error);
-    res.status(500).json({ error: 'Failed to fetch campaigns' });
+    res.status(500).json({ error: 'Failed to fetch campaigns', details: error.message });
   }
 });
 
@@ -45,6 +82,8 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    await ensureTableExists(pool);
+
     const result = await pool.query(
       'SELECT * FROM campaigns WHERE id = $1',
       [req.params.id]
@@ -75,33 +114,7 @@ router.post('/', async (req, res) => {
 
   try {
     const pool = req.app.locals.pool;
-
-    // First, check if campaigns table exists, if not create it
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = 'campaigns'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      // Create campaigns table
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS campaigns (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          subject VARCHAR(500),
-          email_content TEXT,
-          target_audience VARCHAR(100),
-          status VARCHAR(50) DEFAULT 'draft',
-          scheduled_date TIMESTAMP,
-          offering_id INTEGER,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-    }
+    await ensureTableExists(pool);
 
     const result = await pool.query(
       `INSERT INTO campaigns (
@@ -115,8 +128,8 @@ router.post('/', async (req, res) => {
         emailContent,
         targetAudience || 'all',
         status || 'draft',
-        scheduledDate,
-        offeringId
+        scheduledDate || null,
+        offeringId || null
       ]
     );
 
@@ -141,6 +154,8 @@ router.put('/:id', async (req, res) => {
 
   try {
     const pool = req.app.locals.pool;
+    await ensureTableExists(pool);
+
     const result = await pool.query(
       `UPDATE campaigns
        SET name = COALESCE($1, name),
@@ -171,6 +186,8 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    await ensureTableExists(pool);
+
     const result = await pool.query(
       'DELETE FROM campaigns WHERE id = $1 RETURNING *',
       [req.params.id]
