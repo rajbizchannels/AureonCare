@@ -34,6 +34,8 @@ import AdminPanelView from './views/AdminPanelView';
 import OfferingManagementView from './views/OfferingManagementView';
 import PatientDiagnosisView from './views/PatientDiagnosisView';
 import PatientHistoryView from './views/PatientHistoryView';
+import CampaignsManagementView from './views/CampaignsManagementView';
+import AppointmentTypesManagementView from './views/AppointmentTypesManagementView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -153,6 +155,10 @@ function App() {
 
   // Local state for patient history
   const [selectedPatient, setSelectedPatient] = React.useState(null);
+
+  // Local state for campaigns and appointment types
+  const [editingCampaign, setEditingCampaign] = React.useState(null);
+  const [editingAppointmentType, setEditingAppointmentType] = React.useState(null);
 
   // Modal management: close other modals when opening a new one
   const handleSetEditingItem = (item) => {
@@ -394,6 +400,30 @@ function App() {
             user={user}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+          />
+        );
+      case 'campaigns':
+        return (
+          <CampaignsManagementView
+            theme={theme}
+            api={api}
+            setShowForm={handleSetShowForm}
+            setEditingCampaign={setEditingCampaign}
+            setCurrentModule={setCurrentModule}
+            addNotification={addNotification}
+            t={t}
+          />
+        );
+      case 'appointmentTypes':
+        return (
+          <AppointmentTypesManagementView
+            theme={theme}
+            api={api}
+            setShowForm={handleSetShowForm}
+            setEditingAppointmentType={setEditingAppointmentType}
+            setCurrentModule={setCurrentModule}
+            addNotification={addNotification}
+            t={t}
           />
         );
       default:
