@@ -332,7 +332,7 @@ const OfferingManagementView = () => {
 
       {/* Filters and Search */}
       {activeTab !== 'statistics' && (
-        <div className="mb-6 flex flex-wrap gap-4 items-center justify-between">
+        <div className="mb-6 flex flex-wrap gap-4 items-center">
           <div className="flex gap-4 items-center">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -380,19 +380,6 @@ const OfferingManagementView = () => {
               {showActiveOnly ? 'Active Only' : 'Show All'}
             </button>
           </div>
-
-          <button
-            onClick={() => openModal(
-              activeTab === 'offerings' ? 'offering' :
-              activeTab === 'packages' ? 'package' :
-              activeTab === 'categories' ? 'category' :
-              activeTab === 'promotions' ? 'promotion' : ''
-            )}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg flex items-center gap-2 hover:bg-blue-600"
-          >
-            <Plus className="w-5 h-5" />
-            Add New {activeTab.slice(0, -1).charAt(0).toUpperCase() + activeTab.slice(1, -1)}
-          </button>
         </div>
       )}
 
