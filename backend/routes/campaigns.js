@@ -39,6 +39,25 @@ const ensureTableExists = async (pool) => {
         );
       `);
       console.log('✓ Campaigns table created successfully');
+    } else {
+      // Check if offering_id column needs to be migrated from INTEGER to TEXT
+      const columnCheck = await pool.query(`
+        SELECT data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'campaigns'
+        AND column_name = 'offering_id';
+      `);
+
+      if (columnCheck.rows.length > 0 && columnCheck.rows[0].data_type === 'integer') {
+        // Migrate offering_id from INTEGER to TEXT
+        console.log('Migrating campaigns.offering_id from INTEGER to TEXT...');
+        await pool.query(`
+          ALTER TABLE campaigns
+          ALTER COLUMN offering_id TYPE TEXT USING offering_id::TEXT;
+        `);
+        console.log('✓ Campaigns table migrated successfully');
+      }
     }
   } catch (error) {
     console.error('Error ensuring campaigns table exists:', error);
