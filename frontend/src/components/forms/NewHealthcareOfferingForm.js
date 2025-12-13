@@ -33,7 +33,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const cats = await api.getOfferingCategories();
+        const cats = await api.getServiceCategories();
         setCategories(cats || []);
       } catch (error) {
         console.error('Error loading service categories:', error);
