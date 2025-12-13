@@ -6,7 +6,9 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, api, t }) => {
   const [offeringCount, setOfferingCount] = useState(0);
   const [appointmentTypeCount, setAppointmentTypeCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  // Fetch counts on mount and whenever refreshKey changes
   useEffect(() => {
     const fetchCounts = async () => {
       try {
@@ -30,7 +32,12 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, api, t }) => {
     };
 
     fetchCounts();
-  }, [api]);
+  }, [api, refreshKey]);
+
+  // Force refresh on mount
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
 
   return (
     <div className="space-y-6">
