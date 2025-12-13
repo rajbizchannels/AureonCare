@@ -12,6 +12,7 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
     displayOrder: '0'
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
 
   // ESC key handler
   useEffect(() => {
@@ -29,6 +30,14 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validation - form is already validated by HTML5 required attributes
+    // Show confirmation modal before submitting
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
+    setShowConfirmation(false);
+
     try {
       const appointmentTypeData = {
         name: formData.name,
@@ -43,7 +52,7 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
       await addNotification('success', `${t.newAppointmentTypeAdded || 'New appointment type added'}: ${newAppointmentType.name}`);
 
       // Show success confirmation
-      setShowConfirmation(true);
+      setShowSuccessConfirmation(true);
 
       // Auto-close after 2 seconds
       setTimeout(() => {
@@ -73,8 +82,19 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
         theme={theme}
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title="Add Appointment Type"
+        message="Are you sure you want to add this appointment type?"
+        type="confirm"
+        confirmText="Add"
+        cancelText="Cancel"
+      />
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showSuccessConfirmation}
+        onClose={() => setShowSuccessConfirmation(false)}
         onConfirm={() => {
-          setShowConfirmation(false);
+          setShowSuccessConfirmation(false);
           onClose();
         }}
         title={t.success || 'Success!'}

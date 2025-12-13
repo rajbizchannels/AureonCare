@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import ConfirmationModal from './ConfirmationModal';
 
 const UserProfileModal = ({
   theme,
@@ -21,6 +22,7 @@ const UserProfileModal = ({
     newPassword: '',
     confirmPassword: ''
   });
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // ESC key handler
   useEffect(() => {
@@ -55,6 +57,13 @@ const UserProfileModal = ({
       return;
     }
 
+    // Show confirmation modal before changing password
+    setShowConfirmation(true);
+  };
+
+  const handleActualPasswordChange = async () => {
+    setShowConfirmation(false);
+
     try {
       await api.changePassword(user.id, localPasswordData.currentPassword, localPasswordData.newPassword);
       await addNotification('success', t.passwordChanged);
@@ -66,8 +75,20 @@ const UserProfileModal = ({
   };
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
-      <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualPasswordChange}
+        title={t.confirmPasswordChange || 'Confirm Password Change'}
+        message={t.confirmPasswordChangeMessage || 'Are you sure you want to change your password?'}
+        type="confirm"
+        confirmText={t.updatePassword || 'Update Password'}
+        cancelText={t.cancel || 'Cancel'}
+      />
+      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
+        <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`flex items-center justify-between p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.userProfile || 'User Profile'}</h2>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
@@ -268,6 +289,7 @@ const UserProfileModal = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
 

@@ -10,6 +10,7 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
     amount: '',
     notes: ''
   });
+  const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingPayers, setLoadingPayers] = useState(true);
@@ -201,6 +202,13 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
       return;
     }
 
+    // Show confirmation before submitting
+    setShowSubmitConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
+    setShowSubmitConfirmation(false);
+
     try {
       const claimNo = `CLM-2024-${String(claims.length + 1).padStart(3, '0')}`;
       const patient = patients.find(p => p.id.toString() === formData.patientId);
@@ -239,6 +247,17 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
 
   return (
     <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showSubmitConfirmation}
+        onClose={() => setShowSubmitConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title={t.createClaim || 'Create Claim'}
+        message="Are you sure you want to create this claim?"
+        type="confirm"
+        confirmText={t.createClaim || 'Create Claim'}
+        cancelText={t.cancel || 'Cancel'}
+      />
       <ConfirmationModal
         theme={theme}
         isOpen={showConfirmation}

@@ -3,6 +3,7 @@ import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft, Set
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
+import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 const TelehealthView = ({ theme, api, appointments, patients, addNotification, setCurrentModule }) => {
   const { language } = useApp();
@@ -12,6 +13,12 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
   const [showNewSessionForm, setShowNewSessionForm] = useState(false);
   const [activeProvider, setActiveProvider] = useState(null);
   const [checkingProvider, setCheckingProvider] = useState(true);
+
+  // Confirmation modal states
+  const [showCreateConfirmation, setShowCreateConfirmation] = useState(false);
+  const [showJoinConfirmation, setShowJoinConfirmation] = useState(false);
+  const [pendingCreateData, setPendingCreateData] = useState(null);
+  const [pendingJoinSessionId, setPendingJoinSessionId] = useState(null);
 
   useEffect(() => {
     fetchSessions();
@@ -46,7 +53,19 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
   };
 
   const handleCreateSession = async (appointmentId, patientId, providerId) => {
+    // Show confirmation before creating session
+    const appointment = appointments.find(a => a.id === appointmentId);
+    if (!appointment) return;
+
+    setPendingCreateData({ appointmentId, patientId, providerId });
+    setShowCreateConfirmation(true);
+  };
+
+  const handleActualCreateSession = async () => {
+    if (!pendingCreateData) return;
+
     try {
+      const { appointmentId, patientId, providerId } = pendingCreateData;
       const appointment = appointments.find(a => a.id === appointmentId);
       if (!appointment) return;
 
@@ -70,11 +89,19 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
   };
 
   const handleJoinSession = async (sessionId) => {
+    // Show confirmation before joining session
+    setPendingJoinSessionId(sessionId);
+    setShowJoinConfirmation(true);
+  };
+
+  const handleActualJoinSession = async () => {
+    if (!pendingJoinSessionId) return;
+
     try {
-      const session = sessions.find(s => s.id === sessionId);
+      const session = sessions.find(s => s.id === pendingJoinSessionId);
       if (session && session.meeting_url) {
         window.open(session.meeting_url, '_blank');
-        await api.updateTelehealthSession(sessionId, {
+        await api.updateTelehealthSession(pendingJoinSessionId, {
           sessionStatus: 'in-progress',
           startTime: new Date().toISOString()
         });
@@ -118,7 +145,40 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* Confirmation Modal for Creating Session */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showCreateConfirmation}
+        onClose={() => {
+          setShowCreateConfirmation(false);
+          setPendingCreateData(null);
+        }}
+        onConfirm={handleActualCreateSession}
+        title="Create Telehealth Session"
+        message="Are you sure you want to create this telehealth session? This will generate a meeting link for the appointment."
+        type="confirm"
+        confirmText="Create Session"
+        cancelText="Cancel"
+      />
+
+      {/* Confirmation Modal for Joining Session */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showJoinConfirmation}
+        onClose={() => {
+          setShowJoinConfirmation(false);
+          setPendingJoinSessionId(null);
+        }}
+        onConfirm={handleActualJoinSession}
+        title="Join Telehealth Session"
+        message="Are you sure you want to join this session? This will open the meeting in a new window and mark the session as in-progress."
+        type="warning"
+        confirmText="Join Session"
+        cancelText="Cancel"
+      />
+
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
@@ -338,7 +398,8 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
           )}
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 

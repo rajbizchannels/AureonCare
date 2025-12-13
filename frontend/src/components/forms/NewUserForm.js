@@ -16,6 +16,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
     practice: user?.practice || 'Medical Practice'
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [availableRoles, setAvailableRoles] = useState([]);
   const [loadingRoles, setLoadingRoles] = useState(true);
 
@@ -93,6 +94,13 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
       return;
     }
 
+    // Show confirmation before submitting
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
+    setShowConfirmation(false);
+
     try {
       const initials = `${formData.firstName.charAt(0)}${formData.lastName.charAt(0)}`.toUpperCase();
 
@@ -119,7 +127,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
       await addNotification('alert', 'User created successfully');
 
       // Show success confirmation
-      setShowConfirmation(true);
+      setShowSuccessConfirmation(true);
 
       // Auto-close after 2 seconds
       setTimeout(() => {
@@ -138,8 +146,19 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
         theme={theme}
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title="Create User"
+        message="Are you sure you want to create this user?"
+        type="confirm"
+        confirmText="Create"
+        cancelText="Cancel"
+      />
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showSuccessConfirmation}
+        onClose={() => setShowSuccessConfirmation(false)}
         onConfirm={() => {
-          setShowConfirmation(false);
+          setShowSuccessConfirmation(false);
           onClose();
         }}
         title="Success!"

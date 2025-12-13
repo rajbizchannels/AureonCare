@@ -43,6 +43,11 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Show confirmation before submitting
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
     try {
       const payerData = {
         payer_id: formData.payerId,
@@ -71,14 +76,8 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
       const newPayer = await api.createInsurancePayer(payerData);
       await addNotification('success', `${t.newInsurancePayerAdded || 'New insurance payer added'}: ${newPayer.name}`);
 
-      // Show success confirmation
-      setShowConfirmation(true);
-
-      // Auto-close after 2 seconds
-      setTimeout(() => {
-        onSuccess(newPayer);
-        onClose();
-      }, 2000);
+      onSuccess(newPayer);
+      onClose();
     } catch (err) {
       console.error('Error creating insurance payer:', err);
       addNotification('alert', t.failedToCreateInsurancePayer || 'Failed to create insurance payer. Please try again.');
@@ -91,15 +90,12 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
         theme={theme}
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
-        onConfirm={() => {
-          setShowConfirmation(false);
-          onClose();
-        }}
-        title={t.success || 'Success!'}
-        message={t.insurancePayerAddedSuccess || 'Insurance payer has been added successfully.'}
-        type="success"
-        confirmText={t.ok || 'OK'}
-        showCancel={false}
+        onConfirm={handleActualSubmit}
+        title="Add Insurance Payer"
+        message="Are you sure you want to add this insurance payer?"
+        type="confirm"
+        confirmText="Add Payer"
+        cancelText="Cancel"
       />
       <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
         <div className={`rounded-xl border max-w-4xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>

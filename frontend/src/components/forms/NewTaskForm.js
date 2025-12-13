@@ -12,6 +12,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
     assignedTo: ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
 
   // ESC key handler
   useEffect(() => {
@@ -29,10 +30,18 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validation
     if (!formData.title.trim()) {
       alert(t.pleaseEnterTaskTitle || 'Please enter a task title');
       return;
     }
+
+    // Show confirmation before submitting
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
+    setShowConfirmation(false);
 
     try {
       const taskData = {
@@ -49,7 +58,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
       await addNotification('task', `${t.newTaskCreated || 'New task created'}: ${formData.title}`);
 
       // Show success confirmation
-      setShowConfirmation(true);
+      setShowSuccessConfirmation(true);
 
       // Auto-close after 2 seconds
       setTimeout(() => {
@@ -68,8 +77,19 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
         theme={theme}
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title="Create Task"
+        message="Are you sure you want to create this task?"
+        type="confirm"
+        confirmText="Create"
+        cancelText="Cancel"
+      />
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showSuccessConfirmation}
+        onClose={() => setShowSuccessConfirmation(false)}
         onConfirm={() => {
-          setShowConfirmation(false);
+          setShowSuccessConfirmation(false);
           onClose();
         }}
         title={t.success || 'Success!'}

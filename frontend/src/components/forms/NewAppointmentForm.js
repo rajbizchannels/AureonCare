@@ -15,6 +15,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
     offeringId: ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [offerings, setOfferings] = useState([]);
 
   // Fetch active offerings
@@ -64,6 +65,14 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validation - form is already validated by HTML5 required attributes
+    // Show confirmation modal before submitting
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
+    setShowConfirmation(false);
+
     try {
       // Combine date and time into start_time timestamp
       const startTime = `${formData.date}T${formData.time}:00`;
@@ -95,7 +104,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
       await addNotification('appointment', `${t.newAppointmentScheduledWith || 'New appointment scheduled with'} ${patientName}`);
 
       // Show success confirmation
-      setShowConfirmation(true);
+      setShowSuccessConfirmation(true);
 
       // Auto-close confirmation and form after 2 seconds
       setTimeout(() => {
@@ -119,8 +128,19 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
         theme={theme}
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title="Schedule Appointment"
+        message="Are you sure you want to schedule this appointment?"
+        type="confirm"
+        confirmText="Schedule"
+        cancelText="Cancel"
+      />
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showSuccessConfirmation}
+        onClose={() => setShowSuccessConfirmation(false)}
         onConfirm={() => {
-          setShowConfirmation(false);
+          setShowSuccessConfirmation(false);
           onClose();
         }}
         title={t.success || 'Success!'}

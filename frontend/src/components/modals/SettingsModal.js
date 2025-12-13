@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Zap, Mail, MessageCircle } from 'lucide-react';
 import { getTranslations } from '../../config/translations';
+import ConfirmationModal from './ConfirmationModal';
 
 const SettingsModal = ({
   theme,
@@ -23,6 +24,7 @@ const SettingsModal = ({
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
   const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Load WhatsApp notification preference
   useEffect(() => {
@@ -75,7 +77,30 @@ const SettingsModal = ({
     }
   };
 
+  const handleSubmit = () => {
+    // Show confirmation modal before saving settings
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
+    setShowConfirmation(false);
+    await addNotification('success', t.settingsSaved);
+    onClose();
+  };
+
   return (
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title={t.confirmSaveSettings || 'Confirm Save Settings'}
+        message={t.confirmSaveSettingsMessage || 'Are you sure you want to save these settings?'}
+        type="confirm"
+        confirmText={t.saveChanges || 'Save Changes'}
+        cancelText={t.cancel || 'Cancel'}
+      />
     <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
       <div className={`rounded-xl border max-w-3xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
@@ -324,10 +349,7 @@ const SettingsModal = ({
             {t.close}
           </button>
           <button
-            onClick={async () => {
-              await addNotification('success', t.settingsSaved);
-              onClose();
-            }}
+            onClick={handleSubmit}
             className={`flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
             {t.saveChanges}
@@ -335,6 +357,7 @@ const SettingsModal = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
 

@@ -3,6 +3,7 @@ import { X, Save, Pill } from 'lucide-react';
 import { formatDate, formatTime, formatCurrency } from '../../utils/formatters';
 import EPrescribeModal from './ePrescribeModal';
 import { useApp } from '../../context/AppContext';
+import ConfirmationModal from './ConfirmationModal';
 
 const ViewEditModal = ({
   theme,
@@ -36,6 +37,7 @@ const ViewEditModal = ({
   const [editingPrescription, setEditingPrescription] = useState(null);
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingInsurancePayers, setLoadingInsurancePayers] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Get setLanguage from AppContext for updating language preference
   const { setLanguage } = useApp();
@@ -326,7 +328,14 @@ const ViewEditModal = ({
     }
   };
 
-  const handleSave = async () => {
+  const handleSubmit = () => {
+    // Show confirmation modal before saving
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
+    setShowConfirmation(false);
+
     try {
       if (type === 'appointment') {
         // Prepare appointment data with proper start_time and end_time
@@ -492,8 +501,20 @@ const ViewEditModal = ({
   };
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose} style={{ zIndex: 60 }}>
-      <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title={t.confirmSaveChanges || 'Confirm Save Changes'}
+        message={t.confirmSaveChangesMessage || `Are you sure you want to save changes to this ${type}?`}
+        type="confirm"
+        confirmText={t.saveChanges || 'Save Changes'}
+        cancelText={t.cancel || 'Cancel'}
+      />
+      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose} style={{ zIndex: 60 }}>
+        <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {isView ? (t.view || 'View') : (t.edit || 'Edit')} {
@@ -1492,7 +1513,7 @@ const ViewEditModal = ({
             )}
             {!isView && (
               <button
-                onClick={handleSave}
+                onClick={handleSubmit}
                 className={`flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
               >
                 <Save className="w-5 h-5" />
@@ -1718,6 +1739,7 @@ const ViewEditModal = ({
         </div>
       )}
     </div>
+    </>
   );
 };
 
