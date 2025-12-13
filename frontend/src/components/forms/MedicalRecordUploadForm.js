@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, X, FileText, Image, File } from 'lucide-react';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'light', providers = [] }) => {
   const [formData, setFormData] = useState({
@@ -12,6 +13,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const classifications = [
     'General',
@@ -73,6 +75,11 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
       return;
     }
 
+    // Show confirmation before uploading
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
     setUploading(true);
     setError('');
 
@@ -135,7 +142,19 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
   };
 
   return (
-    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title="Upload Medical Record"
+        message="Are you sure you want to upload this medical record?"
+        type="confirm"
+        confirmText="Upload"
+        cancelText="Cancel"
+      />
+      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
       <div className="flex justify-between items-center mb-6">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Upload Medical Record
@@ -316,6 +335,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
         </div>
       </form>
     </div>
+    </>
   );
 };
 

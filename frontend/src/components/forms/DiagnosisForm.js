@@ -32,10 +32,12 @@ const DiagnosisForm = ({
     notes: ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prescribeAfterSave, setPrescribeAfterSave] = useState(false);
   const [savedDiagnosisResult, setSavedDiagnosisResult] = useState(null);
   const [linkedPrescriptions, setLinkedPrescriptions] = useState([]);
+  const [pendingSubmit, setPendingSubmit] = useState(null);
 
   // If editing, populate form with existing diagnosis data
   useEffect(() => {
@@ -156,6 +158,12 @@ const DiagnosisForm = ({
       return;
     }
 
+    // Show confirmation before submitting
+    setPendingSubmit(e);
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
     setIsSubmitting(true);
 
     try {
@@ -240,7 +248,7 @@ const DiagnosisForm = ({
       setSavedDiagnosisResult({ result, selectedPatient, createdPrescriptions });
 
       // Show success confirmation
-      setShowConfirmation(true);
+      setShowSuccessConfirmation(true);
 
       // If not prescribing, auto-close after 2 seconds
       if (!prescribeAfterSave) {
@@ -260,12 +268,29 @@ const DiagnosisForm = ({
 
   return (
     <>
+      {/* Confirmation before submit */}
       <ConfirmationModal
         theme={theme}
         isOpen={showConfirmation}
-        onClose={() => setShowConfirmation(false)}
-        onConfirm={() => {
+        onClose={() => {
           setShowConfirmation(false);
+          setPendingSubmit(null);
+        }}
+        onConfirm={handleActualSubmit}
+        title={editDiagnosis ? 'Update Diagnosis' : 'Create Diagnosis'}
+        message={editDiagnosis ? 'Are you sure you want to update this diagnosis?' : 'Are you sure you want to create this diagnosis?'}
+        type="confirm"
+        confirmText={editDiagnosis ? 'Update' : 'Create'}
+        cancelText="Cancel"
+      />
+
+      {/* Success confirmation after submit */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showSuccessConfirmation}
+        onClose={() => setShowSuccessConfirmation(false)}
+        onConfirm={() => {
+          setShowSuccessConfirmation(false);
 
           // If prescribe after save is enabled and callback is provided
           if (prescribeAfterSave && onPrescribe && savedDiagnosisResult) {

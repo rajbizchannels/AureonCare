@@ -71,6 +71,12 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Show confirmation before submitting
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
     setProcessing(true);
 
     try {
@@ -111,14 +117,8 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
       const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
       await addNotification('success', `Payment ${paymentNo} processed successfully for ${patientName}`);
 
-      // Show success confirmation
-      setShowConfirmation(true);
-
-      // Auto-close after 2 seconds
-      setTimeout(() => {
-        onSuccess(newPayment);
-        onClose();
-      }, 2000);
+      onSuccess(newPayment);
+      onClose();
     } catch (err) {
       console.error('Error processing payment:', err);
       await addNotification('alert', 'Payment processing failed. Please try again.');
@@ -135,15 +135,12 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
         theme={theme}
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
-        onConfirm={() => {
-          setShowConfirmation(false);
-          onClose();
-        }}
-        title="Success!"
-        message="Payment has been processed successfully."
-        type="success"
-        confirmText="OK"
-        showCancel={false}
+        onConfirm={handleActualSubmit}
+        title="Process Payment"
+        message="Are you sure you want to process this payment?"
+        type="confirm"
+        confirmText="Process Payment"
+        cancelText="Cancel"
       />
       <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={!processing ? onClose : undefined}>
         <div className={`rounded-xl border max-w-3xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>

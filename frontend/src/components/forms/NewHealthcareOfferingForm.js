@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, Heart, Clock, Tag, Shield, AlertCircle } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotification, t, editingOffering = null }) => {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -107,7 +109,14 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
       return;
     }
 
+    // Show confirmation before submitting
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
     setLoading(true);
+    setShowConfirmation(false);
+
     try {
       // Extract code strings from code objects
       const cptCodesArray = formData.cptCodes.map(code => code.code);
@@ -153,7 +162,19 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title={editingOffering ? (t.updateOffering || 'Update Offering') : (t.createOffering || 'Create Offering')}
+        message={editingOffering ? 'Are you sure you want to update this healthcare offering?' : 'Are you sure you want to create this healthcare offering?'}
+        type="confirm"
+        confirmText={editingOffering ? (t.updateOffering || 'Update Offering') : (t.createOffering || 'Create Offering')}
+        cancelText={t.cancel || 'Cancel'}
+      />
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className={`rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
         <div className={`flex items-center justify-between p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
@@ -532,6 +553,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
         </form>
       </div>
     </div>
+    </>
   );
 };
 

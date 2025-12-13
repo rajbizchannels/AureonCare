@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Send, Users, Calendar } from 'lucide-react';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, editingCampaign = null }) => {
   const [loading, setLoading] = useState(false);
   const [offerings, setOfferings] = useState([]);
   const [loadingOfferings, setLoadingOfferings] = useState(true);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     subject: '',
@@ -58,7 +60,14 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
       return;
     }
 
+    // Show confirmation before submitting
+    setShowConfirmation(true);
+  };
+
+  const handleActualSubmit = async () => {
     setLoading(true);
+    setShowConfirmation(false);
+
     try {
       const campaignData = {
         name: formData.name.trim(),
@@ -88,7 +97,19 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={handleActualSubmit}
+        title={editingCampaign ? (t.updateCampaign || 'Update Campaign') : (t.createCampaign || 'Create Campaign')}
+        message={editingCampaign ? 'Are you sure you want to update this campaign?' : 'Are you sure you want to create this campaign?'}
+        type="confirm"
+        confirmText={editingCampaign ? (t.updateCampaign || 'Update Campaign') : (t.createCampaign || 'Create Campaign')}
+        cancelText={t.cancel || 'Cancel'}
+      />
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className={`rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
         <div className={`flex items-center justify-between p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
@@ -255,6 +276,7 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
         </form>
       </div>
     </div>
+    </>
   );
 };
 
