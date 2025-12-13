@@ -42,6 +42,13 @@ const ViewEditModal = ({
   // Get setLanguage from AppContext for updating language preference
   const { setLanguage } = useApp();
 
+  // Update editData when editingItem changes
+  useEffect(() => {
+    if (editingItem?.data) {
+      setEditData(editingItem.data);
+    }
+  }, [editingItem]);
+
   // Fetch available roles for user editing (including system roles for assignment)
   useEffect(() => {
     const fetchRoles = async () => {
