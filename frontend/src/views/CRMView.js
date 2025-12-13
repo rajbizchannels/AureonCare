@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, MessageSquare, Phone, ArrowLeft, Calendar, Plus, Heart, Clock, Edit } from 'lucide-react';
 
-const CRMView = ({ theme, setShowForm, setCurrentModule, api, t }) => {
+const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, api, t }) => {
   const [campaignCount, setCampaignCount] = useState(0);
   const [offeringCount, setOfferingCount] = useState(0);
   const [appointmentTypeCount, setAppointmentTypeCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch counts on mount and whenever refreshKey changes
+  // Fetch counts whenever we navigate to CRM view
   useEffect(() => {
+    // Only fetch if we're on the CRM module
+    if (currentModule !== 'crm') return;
+
     const fetchCounts = async () => {
       try {
         setLoading(true);
@@ -32,12 +34,7 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, api, t }) => {
     };
 
     fetchCounts();
-  }, [api, refreshKey]);
-
-  // Force refresh on mount
-  useEffect(() => {
-    setRefreshKey(prev => prev + 1);
-  }, []);
+  }, [api, currentModule]);
 
   return (
     <div className="space-y-6">
