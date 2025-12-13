@@ -25,11 +25,12 @@ import {
   Award,
   BarChart3,
   ShoppingCart,
-  Percent
+  Percent,
+  ArrowLeft
 } from 'lucide-react';
 
 const OfferingManagementView = () => {
-  const { user, theme } = useApp();
+  const { user, theme, setCurrentModule } = useApp();
   const [activeTab, setActiveTab] = useState('offerings');
   const [offerings, setOfferings] = useState([]);
   const [packages, setPackages] = useState([]);
@@ -261,8 +262,19 @@ const OfferingManagementView = () => {
     <div className={`p-6 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Healthcare Offering Management</h1>
-        <p className="text-gray-500">Manage your healthcare services, packages, and promotions</p>
+        <div className="flex items-center gap-3 mb-2">
+          <button
+            onClick={() => setCurrentModule('dashboard')}
+            className={`p-2 rounded-lg transition-colors ${
+              theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-200'
+            }`}
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-3xl font-bold">Healthcare Offering Management</h1>
+        </div>
+        <p className="text-gray-500 ml-14">Manage your healthcare services, packages, and promotions</p>
       </div>
 
       {/* Tabs */}
