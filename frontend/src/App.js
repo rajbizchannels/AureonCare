@@ -349,7 +349,7 @@ function App() {
           />
         );
       case 'crm':
-        return <CRMView theme={theme} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} t={t} />;
+        return <CRMView theme={theme} api={api} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} t={t} />;
       case 'integrations':
         return <IntegrationsView theme={theme} setCurrentModule={setCurrentModule} />;
       case 'fhir':
