@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import api from '../api/apiService';
+import ConfirmationModal from '../components/modals/ConfirmationModal';
 import {
   Package,
   FolderTree,
@@ -45,6 +46,8 @@ const OfferingManagementView = () => {
   const [modalType, setModalType] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState({ id: null, type: null });
 
   useEffect(() => {
     fetchData();
@@ -197,10 +200,13 @@ const OfferingManagementView = () => {
     }
   };
 
-  const handleDelete = async (id, type) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) {
-      return;
-    }
+  const handleDeleteClick = (id, type) => {
+    setDeleteInfo({ id, type });
+    setShowDeleteConfirmation(true);
+  };
+
+  const handleDelete = async () => {
+    const { id, type } = deleteInfo;
 
     try {
       setLoading(true);
@@ -216,9 +222,11 @@ const OfferingManagementView = () => {
       fetchData();
     } catch (error) {
       console.error('Error deleting:', error);
-      alert('Failed to delete: ' + error.message);
+      // Error will be shown via notification if api service throws
     } finally {
       setLoading(false);
+      setShowDeleteConfirmation(false);
+      setDeleteInfo({ id: null, type: null });
     }
   };
 
@@ -259,8 +267,24 @@ const OfferingManagementView = () => {
   );
 
   return (
-    <div className={`p-6 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
-      {/* Header */}
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showDeleteConfirmation}
+        onClose={() => {
+          setShowDeleteConfirmation(false);
+          setDeleteInfo({ id: null, type: null });
+        }}
+        onConfirm={handleDelete}
+        title="Delete Item"
+        message={`Are you sure you want to delete this ${deleteInfo.type}? This action cannot be undone.`}
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      <div className={`p-6 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+        {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <button
@@ -388,7 +412,7 @@ const OfferingManagementView = () => {
                   offering={offering}
                   theme={theme}
                   onEdit={() => openModal('offering', offering)}
-                  onDelete={() => handleDelete(offering.id, 'offering')}
+                  onDelete={() => handleDeleteClick(offering.id, 'offering')}
                   onToggleStatus={() => toggleStatus(offering.id, 'offering', offering.is_active)}
                 />
               ))}
@@ -409,7 +433,7 @@ const OfferingManagementView = () => {
                   package={pkg}
                   theme={theme}
                   onEdit={() => openModal('package', pkg)}
-                  onDelete={() => handleDelete(pkg.id, 'package')}
+                  onDelete={() => handleDeleteClick(pkg.id, 'package')}
                   onToggleStatus={() => toggleStatus(pkg.id, 'package', pkg.is_active)}
                 />
               ))}
@@ -430,7 +454,7 @@ const OfferingManagementView = () => {
                   category={category}
                   theme={theme}
                   onEdit={() => openModal('category', category)}
-                  onDelete={() => handleDelete(category.id, 'category')}
+                  onDelete={() => handleDeleteClick(category.id, 'category')}
                   onToggleStatus={() => toggleStatus(category.id, 'category', category.is_active)}
                 />
               ))}
@@ -483,6 +507,7 @@ const OfferingManagementView = () => {
         />
       )}
     </div>
+    </>
   );
 };
 

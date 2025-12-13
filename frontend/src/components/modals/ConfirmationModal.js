@@ -58,7 +58,7 @@ const ConfirmationModal = ({
 
   return (
     <div
-      className={`fixed inset-0 backdrop-blur-sm z-[60] flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`}
+      className={`fixed inset-0 backdrop-blur-sm z-[70] flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`}
       onClick={onClose}
     >
       <div

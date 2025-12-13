@@ -426,6 +426,8 @@ const ViewEditModal = ({
             // Don't fail the save if pharmacy update fails
           }
         }
+
+        await addNotification('success', t.patientUpdatedSuccessfully || 'Patient updated successfully');
       } else if (type === 'userProfile') {
         // Update user profile - ensure we send firstName and lastName
         const firstName = editData.first_name || editData.firstName || '';
