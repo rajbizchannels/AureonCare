@@ -160,6 +160,9 @@ function App() {
   const [editingCampaign, setEditingCampaign] = React.useState(null);
   const [editingAppointmentType, setEditingAppointmentType] = React.useState(null);
 
+  // CRM refresh trigger - increment this to force CRM counts to refresh
+  const [crmRefreshKey, setCrmRefreshKey] = React.useState(0);
+
   // Modal management: close other modals when opening a new one
   const handleSetEditingItem = (item) => {
     setEditingItem(item);
@@ -355,7 +358,7 @@ function App() {
           />
         );
       case 'crm':
-        return <CRMView theme={theme} api={api} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} currentModule={currentModule} t={t} />;
+        return <CRMView theme={theme} api={api} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} currentModule={currentModule} crmRefreshKey={crmRefreshKey} t={t} />;
       case 'integrations':
         return <IntegrationsView theme={theme} setCurrentModule={setCurrentModule} />;
       case 'fhir':
@@ -737,7 +740,8 @@ function App() {
           api={api}
           onClose={() => setShowForm(null)}
           onSuccess={(newType) => {
-            // Refresh appointment types list if needed
+            // Refresh CRM counts
+            setCrmRefreshKey(prev => prev + 1);
             setShowForm(null);
           }}
           addNotification={addNotification}
@@ -751,7 +755,8 @@ function App() {
           api={api}
           onClose={() => setShowForm(null)}
           onSuccess={(newOffering) => {
-            // Refresh healthcare offerings list if needed
+            // Refresh CRM counts
+            setCrmRefreshKey(prev => prev + 1);
             setShowForm(null);
           }}
           addNotification={addNotification}
@@ -765,7 +770,8 @@ function App() {
           api={api}
           onClose={() => setShowForm(null)}
           onSuccess={(newCampaign) => {
-            // Refresh campaigns list if needed
+            // Refresh CRM counts
+            setCrmRefreshKey(prev => prev + 1);
             setShowForm(null);
           }}
           addNotification={addNotification}
