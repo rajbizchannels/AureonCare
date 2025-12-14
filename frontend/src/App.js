@@ -36,6 +36,9 @@ import PatientDiagnosisView from './views/PatientDiagnosisView';
 import PatientHistoryView from './views/PatientHistoryView';
 import CampaignsManagementView from './views/CampaignsManagementView';
 import AppointmentTypesManagementView from './views/AppointmentTypesManagementView';
+import PharmacyManagementView from './views/PharmacyManagementView';
+import LaboratoryManagementView from './views/LaboratoryManagementView';
+import WaitlistManagementView from './views/WaitlistManagementView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -58,6 +61,8 @@ import NewAppointmentTypeForm from './components/forms/NewAppointmentTypeForm';
 import NewHealthcareOfferingForm from './components/forms/NewHealthcareOfferingForm';
 import NewCampaignForm from './components/forms/NewCampaignForm';
 import DiagnosisForm from './components/forms/DiagnosisForm';
+import NewPharmacyForm from './components/forms/NewPharmacyForm';
+import NewLaboratoryForm from './components/forms/NewLaboratoryForm';
 
 // Panels
 import NotificationsPanel from './components/panels/NotificationsPanel';
@@ -429,6 +434,36 @@ function App() {
             t={t}
           />
         );
+      case 'pharmacies':
+        return (
+          <PharmacyManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            t={t}
+          />
+        );
+      case 'laboratories':
+        return (
+          <LaboratoryManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            t={t}
+          />
+        );
+      case 'waitlist':
+        return (
+          <WaitlistManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            t={t}
+          />
+        );
       default:
         return null;
     }
@@ -772,6 +807,32 @@ function App() {
           onSuccess={(newCampaign) => {
             // Refresh CRM counts
             setCrmRefreshKey(prev => prev + 1);
+            setShowForm(null);
+          }}
+          addNotification={addNotification}
+          t={t}
+        />
+      )}
+
+      {showForm === 'pharmacy' && (
+        <NewPharmacyForm
+          theme={theme}
+          api={api}
+          onClose={() => setShowForm(null)}
+          onSuccess={() => {
+            setShowForm(null);
+          }}
+          addNotification={addNotification}
+          t={t}
+        />
+      )}
+
+      {showForm === 'laboratory' && (
+        <NewLaboratoryForm
+          theme={theme}
+          api={api}
+          onClose={() => setShowForm(null)}
+          onSuccess={() => {
             setShowForm(null);
           }}
           addNotification={addNotification}
