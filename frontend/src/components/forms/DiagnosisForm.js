@@ -353,28 +353,26 @@ const DiagnosisForm = ({
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
             <div className="space-y-4">
-              {/* Patient Dropdown */}
+              {/* Patient (Read-only, pre-filled) */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Patient <span className="text-red-500 ml-1">*</span>
+                  Patient
                 </label>
-                <select
-                  value={formData.patientId}
-                  onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-                  required
-                  className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                  }`}
-                >
-                  <option value="">Select Patient</option>
-                  {patients.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.first_name || p.firstName} {p.last_name || p.lastName} - MRN: {p.mrn || 'N/A'}
-                    </option>
-                  ))}
-                </select>
+                <div className={`w-full px-3 py-2 border rounded-lg ${
+                  theme === 'dark'
+                    ? 'bg-slate-800/50 border-slate-600 text-gray-300'
+                    : 'bg-gray-50 border-gray-300 text-gray-700'
+                }`}>
+                  {(() => {
+                    const selectedPatient = patients.find(p => p.id === formData.patientId) || patient;
+                    if (selectedPatient) {
+                      const patientName = `${selectedPatient.first_name || selectedPatient.firstName || ''} ${selectedPatient.last_name || selectedPatient.lastName || ''}`.trim();
+                      const mrn = selectedPatient.mrn || 'N/A';
+                      return `${patientName} - MRN: ${mrn}`;
+                    }
+                    return 'No patient selected';
+                  })()}
+                </div>
               </div>
 
               {/* ICD Codes */}
