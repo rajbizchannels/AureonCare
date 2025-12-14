@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   User, Calendar, Activity, FileText, Pill, ArrowLeft,
-  Edit, Trash2, Plus, Clock, MapPin, Phone, Mail
+  Edit, Trash2, Plus, Clock, MapPin, Phone, Mail, Microscope, Printer
 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
@@ -19,6 +19,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   const [appointments, setAppointments] = useState([]);
   const [diagnoses, setDiagnoses] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
+  const [labOrders, setLabOrders] = useState([]);
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [providers, setProviders] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -66,10 +67,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       const patientId = patient.id;
 
       // Fetch all patient data in parallel
-      const [appts, diags, presc, records, fullPatient] = await Promise.all([
+      const [appts, diags, presc, labOrds, records, fullPatient] = await Promise.all([
         api.getAppointments().then(all => all.filter(a => a.patient_id?.toString() === patientId?.toString())),
         api.getDiagnoses ? api.getDiagnoses(patientId) : Promise.resolve([]),
         api.getPatientActivePrescriptions ? api.getPatientActivePrescriptions(patientId).catch(() => []) : Promise.resolve([]),
+        api.getLabOrders ? api.getLabOrders({ patient_id: patientId }).catch(() => []) : Promise.resolve([]),
         api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
         api.getPatientProfile ? api.getPatientProfile(patientId).catch(() => patient) : Promise.resolve(patient)
       ]);
@@ -77,6 +79,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       setAppointments(appts);
       setDiagnoses(diags);
       setPrescriptions(presc);
+      setLabOrders(labOrds);
       setMedicalRecords(records);
       setPatientData(fullPatient || patient);
     } catch (error) {
@@ -528,6 +531,276 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     </div>
   );
 
+  const printLabOrder = (order) => {
+    const printWindow = window.open('', '_blank');
+    const testCodes = order.test_codes ? (typeof order.test_codes === 'string' ? JSON.parse(order.test_codes) : order.test_codes) : [];
+    const diagnosisCodes = order.diagnosis_codes ? (typeof order.diagnosis_codes === 'string' ? JSON.parse(order.diagnosis_codes) : order.diagnosis_codes) : [];
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Lab Order - ${order.order_number}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #000; }
+          .header { border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .header p { margin: 5px 0; color: #555; }
+          .section { margin: 20px 0; }
+          .section-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+          .field { margin: 8px 0; }
+          .field-label { font-weight: bold; display: inline-block; width: 150px; }
+          .field-value { display: inline; }
+          .badge { display: inline-block; padding: 4px 8px; background: #e5e7eb; border-radius: 4px; font-size: 12px; margin: 2px; }
+          .badge-priority { background: #fef3c7; }
+          .badge-urgent { background: #fecaca; }
+          .footer { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 20px; font-size: 12px; color: #666; }
+          @media print {
+            body { padding: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Laboratory Order</h1>
+          <p>Order Number: ${order.order_number}</p>
+          <p>Order Date: ${formatDate(order.created_at)}</p>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Patient Information</div>
+          <div class="field">
+            <span class="field-label">Name:</span>
+            <span class="field-value">${patientData.first_name} ${patientData.last_name}</span>
+          </div>
+          <div class="field">
+            <span class="field-label">MRN:</span>
+            <span class="field-value">${patientData.mrn || 'N/A'}</span>
+          </div>
+          <div class="field">
+            <span class="field-label">Date of Birth:</span>
+            <span class="field-value">${patientData.date_of_birth ? formatDate(patientData.date_of_birth) : patientData.dob ? formatDate(patientData.dob) : 'N/A'}</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Order Details</div>
+          <div class="field">
+            <span class="field-label">Priority:</span>
+            <span class="badge ${order.priority === 'urgent' || order.priority === 'stat' ? 'badge-urgent' : 'badge-priority'}">${(order.priority || 'routine').toUpperCase()}</span>
+          </div>
+          ${order.order_status ? `
+          <div class="field">
+            <span class="field-label">Status:</span>
+            <span class="field-value">${order.order_status.replace('-', ' ').toUpperCase()}</span>
+          </div>` : ''}
+          ${order.order_status_date ? `
+          <div class="field">
+            <span class="field-label">${order.order_status === 'future' ? 'Scheduled Date:' : 'Latest Date:'}</span>
+            <span class="field-value">${formatDate(order.order_status_date)}</span>
+          </div>` : ''}
+          ${order.frequency ? `
+          <div class="field">
+            <span class="field-label">Frequency:</span>
+            <span class="field-value">${order.frequency.toUpperCase()}</span>
+          </div>` : ''}
+          ${order.collection_class ? `
+          <div class="field">
+            <span class="field-label">Collection Class:</span>
+            <span class="field-value">${order.collection_class.replace('-', ' ').toUpperCase()}</span>
+          </div>` : ''}
+          ${order.result_recipients ? `
+          <div class="field">
+            <span class="field-label">Result Recipients:</span>
+            <span class="field-value">${order.result_recipients.replace('-', ', ').toUpperCase()}</span>
+          </div>` : ''}
+        </div>
+
+        <div class="section">
+          <div class="section-title">Laboratory Tests</div>
+          ${testCodes.length > 0 ? testCodes.map(code => `<div class="badge">${code}</div>`).join('') : '<p>No test codes specified</p>'}
+        </div>
+
+        ${diagnosisCodes.length > 0 ? `
+        <div class="section">
+          <div class="section-title">Diagnosis Codes</div>
+          ${diagnosisCodes.map(code => `<div class="badge">${code}</div>`).join('')}
+        </div>` : ''}
+
+        ${order.clinical_notes ? `
+        <div class="section">
+          <div class="section-title">Clinical Notes</div>
+          <p>${order.clinical_notes}</p>
+        </div>` : ''}
+
+        ${order.special_instructions ? `
+        <div class="section">
+          <div class="section-title">Special Instructions</div>
+          <p>${order.special_instructions}</p>
+        </div>` : ''}
+
+        <div class="footer">
+          <p>Printed on: ${new Date().toLocaleString()}</p>
+          <p>This is an official laboratory order. Please retain for your records.</p>
+        </div>
+
+        <script>
+          window.onload = () => {
+            window.print();
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const renderLabOrders = () => (
+    <div className="space-y-4">
+      <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        Lab Orders
+      </h3>
+      {labOrders.length === 0 ? (
+        <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+          <Microscope className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No lab orders found</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {labOrders.map((order) => {
+            const testCodes = order.test_codes ? (typeof order.test_codes === 'string' ? JSON.parse(order.test_codes) : order.test_codes) : [];
+            const diagnosisCodes = order.diagnosis_codes ? (typeof order.diagnosis_codes === 'string' ? JSON.parse(order.diagnosis_codes) : order.diagnosis_codes) : [];
+
+            return (
+              <div
+                key={order.id}
+                className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h4 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {order.order_number}
+                      </h4>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        order.status === 'completed'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : order.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            : order.status === 'sent_to_lab'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                      }`}>
+                        {order.status?.replace('_', ' ').toUpperCase()}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        order.priority === 'stat'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : order.priority === 'urgent'
+                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                      }`}>
+                        {(order.priority || 'routine').toUpperCase()}
+                      </span>
+                    </div>
+
+                    <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Order Date: {formatDate(order.created_at)}
+                    </p>
+
+                    {order.provider_name && (
+                      <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                        Ordered by: Dr. {order.provider_name}
+                      </p>
+                    )}
+
+                    {testCodes.length > 0 && (
+                      <div className="mb-2">
+                        <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          Test Codes (CPT):
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {testCodes.map((code, idx) => (
+                            <span
+                              key={idx}
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                theme === 'dark' ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
+                              }`}
+                            >
+                              {code}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {diagnosisCodes.length > 0 && (
+                      <div className="mb-2">
+                        <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          Diagnosis Codes (ICD):
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {diagnosisCodes.map((code, idx) => (
+                            <span
+                              key={idx}
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                theme === 'dark' ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-700'
+                              }`}
+                            >
+                              {code}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {order.order_status && (
+                      <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Order Type: <span className="font-medium">{order.order_status.replace('-', ' ').toUpperCase()}</span>
+                        {order.order_status_date && ` - ${order.order_status === 'future' ? 'Scheduled' : 'By'}: ${formatDate(order.order_status_date)}`}
+                        {order.frequency && ` - Frequency: ${order.frequency.toUpperCase()}`}
+                      </p>
+                    )}
+
+                    {order.collection_class && (
+                      <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Collection: <span className="font-medium">{order.collection_class.replace('-', ' ').toUpperCase()}</span>
+                      </p>
+                    )}
+
+                    {order.result_recipients && (
+                      <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Recipients: <span className="font-medium">{order.result_recipients.replace(/-/g, ', ').toUpperCase()}</span>
+                      </p>
+                    )}
+
+                    {order.special_instructions && (
+                      <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Instructions: {order.special_instructions}
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => printLabOrder(order)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      theme === 'dark'
+                        ? 'hover:bg-blue-900/30 text-blue-400'
+                        : 'hover:bg-blue-50 text-blue-600'
+                    }`}
+                    title="Print Lab Order"
+                  >
+                    <Printer className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   const renderAppointments = () => (
     <div className="space-y-4">
       <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -612,6 +885,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           { id: 'records', label: 'Records', icon: FileText, count: medicalRecords.length },
           { id: 'diagnoses', label: 'Diagnoses', icon: Activity, count: diagnoses.length },
           { id: 'prescriptions', label: 'Prescriptions', icon: Pill, count: prescriptions.length },
+          { id: 'labOrders', label: 'Lab Orders', icon: Microscope, count: labOrders.length },
           { id: 'appointments', label: 'Appointments', icon: Calendar, count: appointments.length }
         ].map((tab) => (
           <button
@@ -644,6 +918,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         {activeTab === 'records' && renderRecords()}
         {activeTab === 'diagnoses' && renderDiagnoses()}
         {activeTab === 'prescriptions' && renderPrescriptions()}
+        {activeTab === 'labOrders' && renderLabOrders()}
         {activeTab === 'appointments' && renderAppointments()}
       </div>
 

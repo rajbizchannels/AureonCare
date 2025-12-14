@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Activity, X, Save, Calendar, FileText, Pill, Microscope, Plus, Trash2 } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import MedicationMultiSelect from './MedicationMultiSelect';
+import LabCPTMultiSelect from './LabCPTMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import Toggle from '../Toggle';
 
@@ -25,7 +26,7 @@ const DiagnosisForm = ({
     icdCodes: [],
     cptCodes: [],
     medications: [], // Selected medications for automatic prescription creation
-    labOrders: [], // Lab tests to order: [{testName, laboratoryId, priority, instructions}]
+    labOrders: [], // Lab tests to order: [{cptCodes, laboratoryId, priority, instructions, status, statusDate, frequency, class, recipient}]
     diagnosisName: '',
     description: '',
     severity: 'Moderate',
@@ -275,15 +276,20 @@ const DiagnosisForm = ({
               order_type: 'lab_test',
               priority: labOrder.priority || 'routine',
               diagnosis_codes: formData.icdCodes.map(c => c.code),
-              test_codes: [labOrder.testName],
+              test_codes: labOrder.cptCodes ? labOrder.cptCodes.map(c => c.code) : [],
               clinical_notes: `For ${diagnosisData.diagnosisName || 'diagnosis'}`,
               special_instructions: labOrder.instructions || null,
+              order_status: labOrder.status || 'one-time',
+              order_status_date: labOrder.statusDate || null,
+              frequency: labOrder.frequency || null,
+              collection_class: labOrder.class || 'clinic-collect',
+              result_recipients: labOrder.recipient || 'doctors',
               send_to_vendor: false
             };
             const createdLabOrder = await api.createLabOrder(labOrderData);
             createdLabOrders.push(createdLabOrder);
           } catch (err) {
-            console.error('Error creating lab order:', labOrder.testName, err);
+            console.error('Error creating lab order:', err);
           }
         }
 
@@ -472,85 +478,222 @@ const DiagnosisForm = ({
                           theme === 'dark' ? 'bg-slate-800/50 border-slate-600' : 'bg-gray-50 border-gray-300'
                         }`}
                       >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-3">
+                          {/* CPT Codes Multiselect */}
                           <div>
-                            <label className={`block text-xs font-medium mb-1 ${
-                              theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                            }`}>
-                              Test Name *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={labOrder.testName}
-                              onChange={(e) => {
+                            <LabCPTMultiSelect
+                              theme={theme}
+                              api={api}
+                              value={labOrder.cptCodes || []}
+                              onChange={(codes) => {
                                 const updated = [...formData.labOrders];
-                                updated[index].testName = e.target.value;
+                                updated[index].cptCodes = codes;
                                 setFormData({ ...formData, labOrders: updated });
                               }}
-                              placeholder="e.g., Complete Blood Count (CBC)"
-                              className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
-                                theme === 'dark'
-                                  ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
-                                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
-                              }`}
+                              label="Lab Tests (CPT Codes) *"
+                              placeholder="Select lab test CPT codes..."
                             />
                           </div>
 
-                          <div>
-                            <label className={`block text-xs font-medium mb-1 ${
-                              theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                            }`}>
-                              Laboratory *
-                            </label>
-                            <select
-                              required
-                              value={labOrder.laboratoryId}
-                              onChange={(e) => {
-                                const updated = [...formData.labOrders];
-                                updated[index].laboratoryId = e.target.value;
-                                setFormData({ ...formData, labOrders: updated });
-                              }}
-                              className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
-                                theme === 'dark'
-                                  ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                              }`}
-                            >
-                              <option value="">Select Laboratory</option>
-                              {laboratories.map((lab) => (
-                                <option key={lab.id} value={lab.id}>
-                                  {lab.labName}
-                                </option>
-                              ))}
-                            </select>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Laboratory */}
+                            <div>
+                              <label className={`block text-xs font-medium mb-1 ${
+                                theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                              }`}>
+                                Laboratory *
+                              </label>
+                              <select
+                                required
+                                value={labOrder.laboratoryId}
+                                onChange={(e) => {
+                                  const updated = [...formData.labOrders];
+                                  updated[index].laboratoryId = e.target.value;
+                                  setFormData({ ...formData, labOrders: updated });
+                                }}
+                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                  theme === 'dark'
+                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                                }`}
+                              >
+                                <option value="">Select Laboratory</option>
+                                {laboratories.map((lab) => (
+                                  <option key={lab.id} value={lab.id}>
+                                    {lab.labName}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Priority */}
+                            <div>
+                              <label className={`block text-xs font-medium mb-1 ${
+                                theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                              }`}>
+                                Priority
+                              </label>
+                              <select
+                                value={labOrder.priority || 'routine'}
+                                onChange={(e) => {
+                                  const updated = [...formData.labOrders];
+                                  updated[index].priority = e.target.value;
+                                  setFormData({ ...formData, labOrders: updated });
+                                }}
+                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                  theme === 'dark'
+                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                                }`}
+                              >
+                                <option value="routine">Routine</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="stat">STAT</option>
+                              </select>
+                            </div>
+
+                            {/* Status */}
+                            <div>
+                              <label className={`block text-xs font-medium mb-1 ${
+                                theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                              }`}>
+                                Status *
+                              </label>
+                              <select
+                                required
+                                value={labOrder.status || 'one-time'}
+                                onChange={(e) => {
+                                  const updated = [...formData.labOrders];
+                                  updated[index].status = e.target.value;
+                                  setFormData({ ...formData, labOrders: updated });
+                                }}
+                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                  theme === 'dark'
+                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                                }`}
+                              >
+                                <option value="one-time">One-Time</option>
+                                <option value="recurring">Recurring</option>
+                                <option value="future">Future</option>
+                              </select>
+                            </div>
+
+                            {/* Conditional Date or Frequency based on Status */}
+                            <div>
+                              {labOrder.status === 'recurring' ? (
+                                <>
+                                  <label className={`block text-xs font-medium mb-1 ${
+                                    theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                                  }`}>
+                                    Frequency *
+                                  </label>
+                                  <select
+                                    required
+                                    value={labOrder.frequency || ''}
+                                    onChange={(e) => {
+                                      const updated = [...formData.labOrders];
+                                      updated[index].frequency = e.target.value;
+                                      setFormData({ ...formData, labOrders: updated });
+                                    }}
+                                    className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                      theme === 'dark'
+                                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                                    }`}
+                                  >
+                                    <option value="">Select Frequency</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="biweekly">Bi-Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="quarterly">Quarterly</option>
+                                    <option value="annually">Annually</option>
+                                  </select>
+                                </>
+                              ) : (
+                                <>
+                                  <label className={`block text-xs font-medium mb-1 ${
+                                    theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                                  }`}>
+                                    {labOrder.status === 'future' ? 'Scheduled Date *' : 'Latest Date'}
+                                  </label>
+                                  <input
+                                    type="date"
+                                    required={labOrder.status === 'future'}
+                                    value={labOrder.statusDate || ''}
+                                    min={new Date().toISOString().split('T')[0]}
+                                    max={new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]}
+                                    onChange={(e) => {
+                                      const updated = [...formData.labOrders];
+                                      updated[index].statusDate = e.target.value;
+                                      setFormData({ ...formData, labOrders: updated });
+                                    }}
+                                    className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                      theme === 'dark'
+                                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                                    }`}
+                                  />
+                                </>
+                              )}
+                            </div>
+
+                            {/* Class */}
+                            <div>
+                              <label className={`block text-xs font-medium mb-1 ${
+                                theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                              }`}>
+                                Collection Class *
+                              </label>
+                              <select
+                                required
+                                value={labOrder.class || 'clinic-collect'}
+                                onChange={(e) => {
+                                  const updated = [...formData.labOrders];
+                                  updated[index].class = e.target.value;
+                                  setFormData({ ...formData, labOrders: updated });
+                                }}
+                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                  theme === 'dark'
+                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                                }`}
+                              >
+                                <option value="clinic-collect">Clinic Collect</option>
+                                <option value="lab-collect">Lab Collect</option>
+                              </select>
+                            </div>
+
+                            {/* Recipient */}
+                            <div>
+                              <label className={`block text-xs font-medium mb-1 ${
+                                theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                              }`}>
+                                Result Recipients *
+                              </label>
+                              <select
+                                required
+                                value={labOrder.recipient || 'doctors'}
+                                onChange={(e) => {
+                                  const updated = [...formData.labOrders];
+                                  updated[index].recipient = e.target.value;
+                                  setFormData({ ...formData, labOrders: updated });
+                                }}
+                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                  theme === 'dark'
+                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                                }`}
+                              >
+                                <option value="doctors">Doctors Only</option>
+                                <option value="doctors-staff">Doctors & Staff</option>
+                                <option value="doctors-staff-patient">Doctors, Staff & Patient</option>
+                              </select>
+                            </div>
                           </div>
 
-                          <div>
-                            <label className={`block text-xs font-medium mb-1 ${
-                              theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                            }`}>
-                              Priority
-                            </label>
-                            <select
-                              value={labOrder.priority || 'routine'}
-                              onChange={(e) => {
-                                const updated = [...formData.labOrders];
-                                updated[index].priority = e.target.value;
-                                setFormData({ ...formData, labOrders: updated });
-                              }}
-                              className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
-                                theme === 'dark'
-                                  ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                              }`}
-                            >
-                              <option value="routine">Routine</option>
-                              <option value="urgent">Urgent</option>
-                              <option value="stat">STAT</option>
-                            </select>
-                          </div>
-
+                          {/* Special Instructions */}
                           <div>
                             <label className={`block text-xs font-medium mb-1 ${
                               theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
@@ -600,7 +743,17 @@ const DiagnosisForm = ({
                           ...formData,
                           labOrders: [
                             ...formData.labOrders,
-                            { testName: '', laboratoryId: '', priority: 'routine', instructions: '' }
+                            {
+                              cptCodes: [],
+                              laboratoryId: '',
+                              priority: 'routine',
+                              instructions: '',
+                              status: 'one-time',
+                              statusDate: new Date().toISOString().split('T')[0],
+                              frequency: '',
+                              class: 'clinic-collect',
+                              recipient: 'doctors'
+                            }
                           ]
                         });
                       }}
