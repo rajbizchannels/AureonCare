@@ -113,6 +113,7 @@ router.post('/', async (req, res) => {
     const {
       patient_id,
       provider_id,
+      laboratory_id,
       order_type,
       priority,
       diagnosis_codes,
@@ -121,17 +122,39 @@ router.post('/', async (req, res) => {
       special_instructions,
       specimen_type,
       collection_date,
+      order_status,
+      order_status_date,
+      frequency,
+      collection_class,
+      result_recipients,
       send_to_vendor
     } = req.body;
 
     // Generate order number
     const orderNumber = `LO-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
+    // Check if new columns exist, if not add them
+    try {
+      await pool.query(`
+        ALTER TABLE lab_orders
+        ADD COLUMN IF NOT EXISTS laboratory_id UUID REFERENCES laboratories(id),
+        ADD COLUMN IF NOT EXISTS order_status VARCHAR(20) DEFAULT 'one-time',
+        ADD COLUMN IF NOT EXISTS order_status_date DATE,
+        ADD COLUMN IF NOT EXISTS frequency VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS collection_class VARCHAR(20) DEFAULT 'clinic-collect',
+        ADD COLUMN IF NOT EXISTS result_recipients VARCHAR(50) DEFAULT 'doctors'
+      `);
+    } catch (err) {
+      // Column might already exist, continue
+      console.log('Lab orders table columns already exist or error:', err.message);
+    }
+
     // Insert lab order
     const result = await pool.query(`
       INSERT INTO lab_orders (
         patient_id,
         provider_id,
+        laboratory_id,
         order_number,
         order_type,
         priority,
@@ -141,13 +164,19 @@ router.post('/', async (req, res) => {
         clinical_notes,
         special_instructions,
         specimen_type,
-        collection_date
+        collection_date,
+        order_status,
+        order_status_date,
+        frequency,
+        collection_class,
+        result_recipients
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *
     `, [
       patient_id,
       provider_id,
+      laboratory_id || null,
       orderNumber,
       order_type || 'lab_test',
       priority || 'routine',
@@ -157,7 +186,12 @@ router.post('/', async (req, res) => {
       clinical_notes,
       special_instructions,
       specimen_type,
-      collection_date
+      collection_date,
+      order_status || 'one-time',
+      order_status_date || null,
+      frequency || null,
+      collection_class || 'clinic-collect',
+      result_recipients || 'doctors'
     ]);
 
     const labOrder = result.rows[0];
@@ -251,10 +285,16 @@ router.put('/:id', async (req, res) => {
     const {
       status,
       priority,
+      laboratory_id,
       diagnosis_codes,
       test_codes,
       clinical_notes,
       special_instructions,
+      order_status,
+      order_status_date,
+      frequency,
+      collection_class,
+      result_recipients,
       results_data,
       results_reviewed_by
     } = req.body;
@@ -264,24 +304,36 @@ router.put('/:id', async (req, res) => {
       SET
         status = COALESCE($1, status),
         priority = COALESCE($2, priority),
-        diagnosis_codes = COALESCE($3, diagnosis_codes),
-        test_codes = COALESCE($4, test_codes),
-        clinical_notes = COALESCE($5, clinical_notes),
-        special_instructions = COALESCE($6, special_instructions),
-        results_data = COALESCE($7, results_data),
-        results_received_at = CASE WHEN $7 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE results_received_at END,
-        results_reviewed_by = COALESCE($8, results_reviewed_by),
-        results_reviewed_at = CASE WHEN $8 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE results_reviewed_at END,
+        laboratory_id = COALESCE($3, laboratory_id),
+        diagnosis_codes = COALESCE($4, diagnosis_codes),
+        test_codes = COALESCE($5, test_codes),
+        clinical_notes = COALESCE($6, clinical_notes),
+        special_instructions = COALESCE($7, special_instructions),
+        order_status = COALESCE($8, order_status),
+        order_status_date = COALESCE($9, order_status_date),
+        frequency = COALESCE($10, frequency),
+        collection_class = COALESCE($11, collection_class),
+        result_recipients = COALESCE($12, result_recipients),
+        results_data = COALESCE($13, results_data),
+        results_received_at = CASE WHEN $13 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE results_received_at END,
+        results_reviewed_by = COALESCE($14, results_reviewed_by),
+        results_reviewed_at = CASE WHEN $14 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE results_reviewed_at END,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $9
+      WHERE id = $15
       RETURNING *
     `, [
       status,
       priority,
+      laboratory_id,
       diagnosis_codes ? JSON.stringify(diagnosis_codes) : null,
       test_codes ? JSON.stringify(test_codes) : null,
       clinical_notes,
       special_instructions,
+      order_status,
+      order_status_date,
+      frequency,
+      collection_class,
+      result_recipients,
       results_data ? JSON.stringify(results_data) : null,
       results_reviewed_by,
       id
