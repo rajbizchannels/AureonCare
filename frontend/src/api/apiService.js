@@ -775,6 +775,53 @@ const api = {
     if (!response.ok) throw new Error('Failed to update pharmacy');
     return response.json();
   },
+  deletePharmacy: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/pharmacies/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete pharmacy');
+    return response.json();
+  },
+
+  // Laboratories
+  getLaboratories: async (isActive = null) => {
+    const params = new URLSearchParams();
+    if (isActive !== null) params.append('is_active', isActive);
+    const queryString = params.toString();
+    const response = await fetch(`${API_BASE_URL}/laboratories${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch laboratories');
+    return response.json();
+  },
+  getLaboratory: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/laboratories/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch laboratory');
+    return response.json();
+  },
+  createLaboratory: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/laboratories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create laboratory');
+    return response.json();
+  },
+  updateLaboratory: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/laboratories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update laboratory');
+    return response.json();
+  },
+  deleteLaboratory: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/laboratories/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete laboratory');
+    return response.json();
+  },
 
   // Prescriptions (ePrescribing)
   getPrescriptions: async (patientId, providerId, status, erxStatus) => {

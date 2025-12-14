@@ -120,6 +120,7 @@ app.use('/api/lab-orders', require('./routes/lab-orders'));
 app.use('/api/diagnosis', require('./routes/diagnosis'));
 app.use('/api/medications', require('./routes/medications'));
 app.use('/api/pharmacies', require('./routes/pharmacies'));
+app.use('/api/laboratories', require('./routes/laboratories'));
 app.use('/api/scheduling', require('./routes/scheduling'));
 app.use('/api/offerings', require('./routes/offerings'));
 app.use('/api/campaigns', require('./routes/campaigns'));
