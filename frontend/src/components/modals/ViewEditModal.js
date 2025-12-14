@@ -4,6 +4,7 @@ import { formatDate, formatTime, formatCurrency } from '../../utils/formatters';
 import EPrescribeModal from './ePrescribeModal';
 import { useApp } from '../../context/AppContext';
 import ConfirmationModal from './ConfirmationModal';
+import Toggle from '../Toggle';
 
 const ViewEditModal = ({
   theme,
@@ -1128,22 +1129,20 @@ const ViewEditModal = ({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.emailNotifications || 'Email Notifications'}</span>
-                    <input
-                      type="checkbox"
+                    <Toggle
                       checked={editData.emailNotifications !== false}
-                      onChange={(e) => setEditData({...editData, emailNotifications: e.target.checked})}
+                      onChange={(checked) => setEditData({...editData, emailNotifications: checked})}
                       disabled={isView}
-                      className="form-checkbox h-5 w-5 text-cyan-500"
+                      theme={theme}
                     />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
-                    <input
-                      type="checkbox"
+                    <Toggle
                       checked={editData.smsAlerts !== false}
-                      onChange={(e) => setEditData({...editData, smsAlerts: e.target.checked})}
+                      onChange={(checked) => setEditData({...editData, smsAlerts: checked})}
                       disabled={isView}
-                      className="form-checkbox h-5 w-5 text-cyan-500"
+                      theme={theme}
                     />
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { Activity, X, Save, Calendar, FileText, Pill } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import MedicationMultiSelect from './MedicationMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import Toggle from '../Toggle';
 
 const DiagnosisForm = ({
   theme,
@@ -582,22 +583,22 @@ const DiagnosisForm = ({
           {/* Prescribe After Save Option */}
           {!editDiagnosis && onPrescribe && (
             <div className={`px-6 py-4 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
+              <div className="flex items-center gap-3">
+                <Toggle
                   checked={prescribeAfterSave}
-                  onChange={(e) => setPrescribeAfterSave(e.target.checked)}
-                  className="w-5 h-5 rounded border-2 border-purple-500 text-purple-600 focus:ring-purple-500 focus:ring-2 cursor-pointer"
+                  onChange={setPrescribeAfterSave}
+                  theme={theme}
+                  size="md"
                 />
                 <div className="flex items-center gap-2">
                   <Pill className={`w-5 h-5 ${prescribeAfterSave ? 'text-purple-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'} transition-colors`} />
-                  <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'} group-hover:text-purple-500 transition-colors`}>
+                  <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                     Prescribe medication after saving diagnosis
                   </span>
                 </div>
-              </label>
+              </div>
               {prescribeAfterSave && (
-                <p className={`text-xs mt-2 ml-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                <p className={`text-xs mt-2 ml-14 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   The prescription form will open automatically after the diagnosis is saved.
                 </p>
               )}
