@@ -19,13 +19,13 @@ const getPATypeLabel = (paType) => {
 
   switch (paType) {
     case 0:
-      return 'Standard (no PA)';
+      return 'Standard (no Pre-Approval)';
     case 1:
-      return 'PA Required';
+      return 'Pre-Approval Required';
     case 2:
-      return 'PA Level 2';
+      return 'Pre-Approval Level 2';
     case 3:
-      return 'PA Level 3';
+      return 'Pre-Approval Level 3';
     default:
       return null;
   }
@@ -279,7 +279,7 @@ const MedicalCodeMultiSelect = ({
               {item.type === 'CPT' && getPATypeLabel(item.pa_type) && (
                 <span className={`px-1 py-0.5 rounded text-xs flex items-center gap-0.5 ${getPATypeColor(item.pa_type, theme)}`}>
                   <Shield className="w-2.5 h-2.5" />
-                  {item.pa_type === 0 ? 'Std' : `PA${item.pa_type > 1 ? ` L${item.pa_type}` : ''}`}
+                  {item.pa_type === 0 ? 'Std' : `Appr${item.pa_type > 1 ? ` L${item.pa_type}` : ''}`}
                 </span>
               )}
               {!disabled && (
