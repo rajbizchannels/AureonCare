@@ -310,11 +310,22 @@ const DashboardView = ({
           <div className="space-y-3">
             {appointments
               .filter(apt => {
+                // Only show scheduled appointments
                 const status = (apt.status || '').toLowerCase().trim();
-                return status !== 'cancelled' &&
-                       status !== 'canceled' &&
-                       status !== 'completed' &&
-                       status !== 'complete';
+                if (status !== 'scheduled') return false;
+
+                // Only show appointments from today onwards
+                if (apt.start_time) {
+                  const startTimeStr = apt.start_time.replace(' ', 'T');
+                  const startDate = new Date(startTimeStr);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+                  // Return true only if appointment is today or later
+                  return startDate >= today;
+                }
+
+                return false;
               })
               .slice(0, 3)
               .map(apt => {
