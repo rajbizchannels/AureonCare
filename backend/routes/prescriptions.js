@@ -38,6 +38,40 @@ const checkEPrescribingSchema = async (pool) => {
   }
 };
 
+// Helper function to ensure diagnosis_id column exists
+let diagnosisIdColumnChecked = false;
+const ensureDiagnosisIdColumn = async (pool) => {
+  if (diagnosisIdColumnChecked) {
+    return;
+  }
+
+  try {
+    // Check if diagnosis_id column exists
+    const columnCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'prescriptions'
+        AND column_name = 'diagnosis_id'
+      );
+    `);
+
+    if (!columnCheck.rows[0].exists) {
+      console.log('Adding diagnosis_id column to prescriptions table...');
+      await pool.query(`
+        ALTER TABLE prescriptions
+        ADD COLUMN diagnosis_id UUID REFERENCES diagnosis(id) ON DELETE SET NULL;
+      `);
+      console.log('✓ diagnosis_id column added successfully');
+    }
+
+    diagnosisIdColumnChecked = true;
+  } catch (error) {
+    console.error('Error ensuring diagnosis_id column:', error);
+    diagnosisIdColumnChecked = true; // Mark as checked to avoid repeated attempts
+  }
+};
+
 // Get all prescriptions
 router.get('/', async (req, res) => {
   try {
@@ -153,18 +187,20 @@ router.post('/', async (req, res) => {
     refills,
     substitutionAllowed,
     status,
-    prescribedDate
+    prescribedDate,
+    diagnosisId
   } = req.body;
 
   try {
     const pool = req.app.locals.pool;
+    await ensureDiagnosisIdColumn(pool);
     const result = await pool.query(
       `INSERT INTO prescriptions (
         patient_id, provider_id, appointment_id, medication_name, ndc_code,
         dosage, frequency, duration, quantity, instructions, refills,
-        substitution_allowed, status, prescribed_date
+        substitution_allowed, status, prescribed_date, diagnosis_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
       [
         patientId,
@@ -180,7 +216,8 @@ router.post('/', async (req, res) => {
         refills || 0,
         substitutionAllowed !== undefined ? substitutionAllowed : true,
         status || 'Active',
-        prescribedDate || new Date().toISOString().split('T')[0]
+        prescribedDate || new Date().toISOString().split('T')[0],
+        diagnosisId || null
       ]
     );
 
@@ -338,11 +375,13 @@ router.put('/:id', async (req, res) => {
     quantity,
     instructions,
     refills,
-    status
+    status,
+    diagnosisId
   } = req.body;
 
   try {
     const pool = req.app.locals.pool;
+    await ensureDiagnosisIdColumn(pool);
     const result = await pool.query(
       `UPDATE prescriptions SET
         medication_name = COALESCE($1, medication_name),
@@ -353,10 +392,11 @@ router.put('/:id', async (req, res) => {
         instructions = COALESCE($6, instructions),
         refills = COALESCE($7, refills),
         status = COALESCE($8, status),
+        diagnosis_id = COALESCE($9, diagnosis_id),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $9
+      WHERE id = $10
       RETURNING *`,
-      [medicationName, dosage, frequency, duration, quantity, instructions, refills, status, req.params.id]
+      [medicationName, dosage, frequency, duration, quantity, instructions, refills, status, diagnosisId, req.params.id]
     );
 
     if (result.rows.length === 0) {
@@ -712,6 +752,7 @@ router.get('/patient/:patientId/active', async (req, res) => {
 router.get('/diagnosis/:diagnosisId', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    await ensureDiagnosisIdColumn(pool);
     const hasEPrescribing = await checkEPrescribingSchema(pool);
 
     let query;
