@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, X, Save, Calendar, FileText, Pill } from 'lucide-react';
+import { Activity, X, Save, Calendar, FileText, Pill, Microscope, Plus, Trash2 } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import MedicationMultiSelect from './MedicationMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
@@ -25,6 +25,7 @@ const DiagnosisForm = ({
     icdCodes: [],
     cptCodes: [],
     medications: [], // Selected medications for automatic prescription creation
+    labOrders: [], // Lab tests to order: [{testName, laboratoryId, priority, instructions}]
     diagnosisName: '',
     description: '',
     severity: 'Moderate',
@@ -32,6 +33,8 @@ const DiagnosisForm = ({
     diagnosedDate: new Date().toISOString().split('T')[0],
     notes: ''
   });
+  const [laboratories, setLaboratories] = useState([]);
+  const [loadingLaboratories, setLoadingLaboratories] = useState(true);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,6 +42,21 @@ const DiagnosisForm = ({
   const [savedDiagnosisResult, setSavedDiagnosisResult] = useState(null);
   const [linkedPrescriptions, setLinkedPrescriptions] = useState([]);
   const [pendingSubmit, setPendingSubmit] = useState(null);
+
+  // Load laboratories on mount
+  useEffect(() => {
+    const loadLaboratories = async () => {
+      try {
+        const labs = await api.getLaboratories(true); // Only active laboratories
+        setLaboratories(labs);
+      } catch (error) {
+        console.error('Error loading laboratories:', error);
+      } finally {
+        setLoadingLaboratories(false);
+      }
+    };
+    loadLaboratories();
+  }, [api]);
 
   // If editing, populate form with existing diagnosis data
   useEffect(() => {
@@ -245,6 +263,35 @@ const DiagnosisForm = ({
         }
       }
 
+      // Auto-create lab orders if specified
+      const createdLabOrders = [];
+      if (formData.labOrders && formData.labOrders.length > 0 && !editDiagnosis) {
+        for (const labOrder of formData.labOrders) {
+          try {
+            const labOrderData = {
+              patient_id: formData.patientId,
+              provider_id: formData.providerId,
+              laboratory_id: labOrder.laboratoryId,
+              order_type: 'lab_test',
+              priority: labOrder.priority || 'routine',
+              diagnosis_codes: formData.icdCodes.map(c => c.code),
+              test_codes: [labOrder.testName],
+              clinical_notes: `For ${diagnosisData.diagnosisName || 'diagnosis'}`,
+              special_instructions: labOrder.instructions || null,
+              send_to_vendor: false
+            };
+            const createdLabOrder = await api.createLabOrder(labOrderData);
+            createdLabOrders.push(createdLabOrder);
+          } catch (err) {
+            console.error('Error creating lab order:', labOrder.testName, err);
+          }
+        }
+
+        if (createdLabOrders.length > 0) {
+          await addNotification('success', `Created ${createdLabOrders.length} lab order(s)`);
+        }
+      }
+
       // Save result for potential prescription creation
       setSavedDiagnosisResult({ result, selectedPatient, createdPrescriptions });
 
@@ -407,6 +454,168 @@ const DiagnosisForm = ({
                 label="Medications (Optional - Will auto-create prescriptions)"
                 placeholder="Search medications to prescribe..."
               />
+
+              {/* Lab Orders */}
+              {!editDiagnosis && (
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Microscope className="w-4 h-4" />
+                      Lab Orders (Optional - Will create orders)
+                    </div>
+                  </label>
+                  <div className="space-y-3">
+                    {formData.labOrders.map((labOrder, index) => (
+                      <div
+                        key={index}
+                        className={`p-4 rounded-lg border ${
+                          theme === 'dark' ? 'bg-slate-800/50 border-slate-600' : 'bg-gray-50 border-gray-300'
+                        }`}
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${
+                              theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                            }`}>
+                              Test Name *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={labOrder.testName}
+                              onChange={(e) => {
+                                const updated = [...formData.labOrders];
+                                updated[index].testName = e.target.value;
+                                setFormData({ ...formData, labOrders: updated });
+                              }}
+                              placeholder="e.g., Complete Blood Count (CBC)"
+                              className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                theme === 'dark'
+                                  ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
+                                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+                              }`}
+                            />
+                          </div>
+
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${
+                              theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                            }`}>
+                              Laboratory *
+                            </label>
+                            <select
+                              required
+                              value={labOrder.laboratoryId}
+                              onChange={(e) => {
+                                const updated = [...formData.labOrders];
+                                updated[index].laboratoryId = e.target.value;
+                                setFormData({ ...formData, labOrders: updated });
+                              }}
+                              className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                theme === 'dark'
+                                  ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                              }`}
+                            >
+                              <option value="">Select Laboratory</option>
+                              {laboratories.map((lab) => (
+                                <option key={lab.id} value={lab.id}>
+                                  {lab.labName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${
+                              theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                            }`}>
+                              Priority
+                            </label>
+                            <select
+                              value={labOrder.priority || 'routine'}
+                              onChange={(e) => {
+                                const updated = [...formData.labOrders];
+                                updated[index].priority = e.target.value;
+                                setFormData({ ...formData, labOrders: updated });
+                              }}
+                              className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                theme === 'dark'
+                                  ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                              }`}
+                            >
+                              <option value="routine">Routine</option>
+                              <option value="urgent">Urgent</option>
+                              <option value="stat">STAT</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${
+                              theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                            }`}>
+                              Special Instructions
+                            </label>
+                            <input
+                              type="text"
+                              value={labOrder.instructions || ''}
+                              onChange={(e) => {
+                                const updated = [...formData.labOrders];
+                                updated[index].instructions = e.target.value;
+                                setFormData({ ...formData, labOrders: updated });
+                              }}
+                              placeholder="Fasting required, etc."
+                              className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+                                theme === 'dark'
+                                  ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
+                                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+                              }`}
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = formData.labOrders.filter((_, i) => i !== index);
+                            setFormData({ ...formData, labOrders: updated });
+                          }}
+                          className={`mt-3 flex items-center gap-2 text-xs font-medium transition-colors ${
+                            theme === 'dark'
+                              ? 'text-red-400 hover:text-red-300'
+                              : 'text-red-600 hover:text-red-700'
+                          }`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Remove Lab Order
+                        </button>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          labOrders: [
+                            ...formData.labOrders,
+                            { testName: '', laboratoryId: '', priority: 'routine', instructions: '' }
+                          ]
+                        });
+                      }}
+                      className={`w-full px-4 py-3 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center gap-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/5'
+                          : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
+                      }`}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Lab Order
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Diagnosis Name */}
               <div>
