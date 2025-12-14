@@ -7,6 +7,7 @@ import { formatDate, formatTime } from '../utils/formatters';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import MedicationMultiSelect from '../components/forms/MedicationMultiSelect';
 import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
+import NewLabOrderForm from '../components/forms/NewLabOrderForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
 
@@ -34,6 +35,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   const [editingPrescription, setEditingPrescription] = useState(null);
   const [deletingPrescription, setDeletingPrescription] = useState(null);
   const [showEPrescribeModal, setShowEPrescribeModal] = useState(false);
+
+  // Lab order modal states
+  const [showLabOrderForm, setShowLabOrderForm] = useState(false);
+  const [editingLabOrder, setEditingLabOrder] = useState(null);
+  const [deletingLabOrder, setDeletingLabOrder] = useState(null);
 
   useEffect(() => {
     if (patient?.id) {
@@ -115,6 +121,20 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     } catch (error) {
       console.error('Error deleting prescription:', error);
       addNotification('error', 'Failed to delete prescription');
+    }
+  };
+
+  const handleDeleteLabOrder = async () => {
+    if (!deletingLabOrder) return;
+
+    try {
+      await api.deleteLabOrder(deletingLabOrder.id);
+      addNotification('success', 'Lab order cancelled successfully');
+      setDeletingLabOrder(null);
+      fetchPatientHistory();
+    } catch (error) {
+      console.error('Error deleting lab order:', error);
+      addNotification('error', 'Failed to cancel lab order');
     }
   };
 
@@ -657,9 +677,21 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   const renderLabOrders = () => (
     <div className="space-y-4">
-      <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Lab Orders
-      </h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Lab Orders
+        </h3>
+        <button
+          onClick={() => {
+            setEditingLabOrder(null);
+            setShowLabOrderForm(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg text-white font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Lab Order
+        </button>
+      </div>
       {labOrders.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <Microscope className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
@@ -781,17 +813,44 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                     )}
                   </div>
 
-                  <button
-                    onClick={() => printLabOrder(order)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      theme === 'dark'
-                        ? 'hover:bg-blue-900/30 text-blue-400'
-                        : 'hover:bg-blue-50 text-blue-600'
-                    }`}
-                    title="Print Lab Order"
-                  >
-                    <Printer className="w-5 h-5" />
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingLabOrder(order);
+                        setShowLabOrderForm(true);
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        theme === 'dark'
+                          ? 'hover:bg-blue-900/30 text-blue-400'
+                          : 'hover:bg-blue-50 text-blue-600'
+                      }`}
+                      title="Edit Lab Order"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setDeletingLabOrder(order)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        theme === 'dark'
+                          ? 'hover:bg-red-900/30 text-red-400'
+                          : 'hover:bg-red-50 text-red-600'
+                      }`}
+                      title="Cancel Lab Order"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => printLabOrder(order)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        theme === 'dark'
+                          ? 'hover:bg-green-900/30 text-green-400'
+                          : 'hover:bg-green-50 text-green-600'
+                      }`}
+                      title="Print Lab Order"
+                    >
+                      <Printer className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -1008,9 +1067,75 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           addNotification={addNotification}
         />
       )}
+
+      {/* Lab Order Form Modal */}
+      {showLabOrderForm && (
+        <NewLabOrderForm
+          theme={theme}
+          api={api}
+          patient={patientData}
+          patients={patients}
+          providers={providers}
+          user={user}
+          editLabOrder={editingLabOrder}
+          onClose={() => {
+            setShowLabOrderForm(false);
+            setEditingLabOrder(null);
+          }}
+          onSuccess={() => {
+            setShowLabOrderForm(false);
+            setEditingLabOrder(null);
+            fetchPatientHistory();
+          }}
+          addNotification={addNotification}
+          t={{}}
+          createDiagnosisOption={false}
+        />
+      )}
+
+      {/* Delete Lab Order Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingLabOrder}
+        onClose={() => setDeletingLabOrder(null)}
+        onConfirm={handleDeleteLabOrder}
+        title="Cancel Lab Order"
+        message="Are you sure you want to cancel this lab order? This action cannot be undone."
+        type="danger"
+        confirmText="Cancel Order"
+        cancelText="Keep Order"
+      />
+
+      {/* Delete Prescription Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingPrescription}
+        onClose={() => setDeletingPrescription(null)}
+        onConfirm={handleDeletePrescription}
+        title="Delete Prescription"
+        message="Are you sure you want to delete this prescription? This action cannot be undone."
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      {/* Delete Diagnosis Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingDiagnosis}
+        onClose={() => setDeletingDiagnosis(null)}
+        onConfirm={handleDeleteDiagnosis}
+        title="Delete Diagnosis"
+        message="Are you sure you want to delete this diagnosis? This action cannot be undone."
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
+
+export default PatientHistoryView;
 
 // Prescription Form Modal Component
 const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClose, onSave }) => {
