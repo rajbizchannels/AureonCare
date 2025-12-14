@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Shield } from 'lucide-react';
 
 /**
  * MedicalCodeMultiSelect Component
@@ -12,6 +12,43 @@ import { Search, X } from 'lucide-react';
  * - Previously selected items visible in input, separated by commas
  * - Keyboard navigation (Arrow keys, Enter, Escape)
  */
+
+// Helper function to get PA type label
+const getPATypeLabel = (paType) => {
+  if (paType === null || paType === undefined) return null;
+
+  switch (paType) {
+    case 0:
+      return 'Standard (no PA)';
+    case 1:
+      return 'PA Required';
+    case 2:
+      return 'PA Level 2';
+    case 3:
+      return 'PA Level 3';
+    default:
+      return null;
+  }
+};
+
+// Helper function to get PA type color
+const getPATypeColor = (paType, theme) => {
+  if (paType === null || paType === undefined) return null;
+
+  switch (paType) {
+    case 0:
+      return theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700';
+    case 1:
+      return theme === 'dark' ? 'bg-yellow-900/50 text-yellow-300' : 'bg-yellow-100 text-yellow-700';
+    case 2:
+      return theme === 'dark' ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700';
+    case 3:
+      return theme === 'dark' ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700';
+    default:
+      return theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700';
+  }
+};
+
 const MedicalCodeMultiSelect = ({
   theme,
   value = [], // Array of selected codes: [{code: 'I10', description: '...', type: 'ICD-10'}]
@@ -239,6 +276,12 @@ const MedicalCodeMultiSelect = ({
             >
               <span className="font-bold">{item.code}</span>
               <span className="text-xs opacity-75">({item.type})</span>
+              {item.type === 'CPT' && getPATypeLabel(item.pa_type) && (
+                <span className={`px-1 py-0.5 rounded text-xs flex items-center gap-0.5 ${getPATypeColor(item.pa_type, theme)}`}>
+                  <Shield className="w-2.5 h-2.5" />
+                  {item.pa_type === 0 ? 'Std' : `PA${item.pa_type > 1 ? ` L${item.pa_type}` : ''}`}
+                </span>
+              )}
               {!disabled && (
                 <button
                   type="button"
@@ -307,7 +350,7 @@ const MedicalCodeMultiSelect = ({
                     : 'hover:bg-gray-50'
                 }`}
               >
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-2 flex-wrap">
                   <span className={`font-bold text-sm ${
                     theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                   }`}>
@@ -324,6 +367,12 @@ const MedicalCodeMultiSelect = ({
                   }`}>
                     {item.type}
                   </span>
+                  {item.type === 'CPT' && getPATypeLabel(item.pa_type) && (
+                    <span className={`px-1.5 py-0.5 text-xs rounded flex items-center gap-1 ${getPATypeColor(item.pa_type, theme)}`}>
+                      <Shield className="w-3 h-3" />
+                      {getPATypeLabel(item.pa_type)}
+                    </span>
+                  )}
                 </div>
                 <div className={`text-sm mt-1 ${
                   theme === 'dark' ? 'text-gray-300' : 'text-gray-600'

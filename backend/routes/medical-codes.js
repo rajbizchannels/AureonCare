@@ -17,7 +17,8 @@ router.get('/search', async (req, res) => {
         code,
         description,
         code_type as type,
-        category
+        category,
+        pa_type
       FROM medical_codes
       WHERE is_active = true
         AND (
@@ -75,7 +76,8 @@ router.get('/icd10', async (req, res) => {
         code,
         description,
         code_type as type,
-        category
+        category,
+        pa_type
       FROM medical_codes
       WHERE code_type = 'ICD-10' AND is_active = true
       ORDER BY code
@@ -106,7 +108,8 @@ router.get('/cpt', async (req, res) => {
         code,
         description,
         code_type as type,
-        category
+        category,
+        pa_type
       FROM medical_codes
       WHERE code_type = 'CPT' AND is_active = true
       ORDER BY code
@@ -137,7 +140,8 @@ router.get('/code/:code', async (req, res) => {
         code,
         description,
         code_type as type,
-        category
+        category,
+        pa_type
       FROM medical_codes
       WHERE UPPER(code) = UPPER($1) AND is_active = true
       LIMIT 1`,
