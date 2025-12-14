@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
+import Toggle from '../Toggle';
 
 const UserProfileModal = ({
   theme,
@@ -144,46 +145,42 @@ const UserProfileModal = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.emailNotifications || 'Email Notifications'}</span>
-                <input
-                  type="checkbox"
+                <Toggle
                   checked={user.preferences?.emailNotifications ?? true}
-                  onChange={async (e) => {
-                    const success = await updateUserPreferences({ emailNotifications: e.target.checked });
+                  onChange={async (checked) => {
+                    const success = await updateUserPreferences({ emailNotifications: checked });
                     if (success) {
                       await addNotification('success', t.preferenceSaved);
                     }
                   }}
-                  className="form-checkbox h-5 w-5 text-cyan-500"
+                  theme={theme}
                 />
               </div>
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
-                <input
-                  type="checkbox"
+                <Toggle
                   checked={user.preferences?.smsAlerts ?? true}
-                  onChange={async (e) => {
-                    const success = await updateUserPreferences({ smsAlerts: e.target.checked });
+                  onChange={async (checked) => {
+                    const success = await updateUserPreferences({ smsAlerts: checked });
                     if (success) {
                       await addNotification('success', t.preferenceSaved);
                     }
                   }}
-                  className="form-checkbox h-5 w-5 text-cyan-500"
+                  theme={theme}
                 />
               </div>
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.darkMode || 'Dark Mode'}</span>
-                <input
-                  type="checkbox"
+                <Toggle
                   checked={theme === 'dark'}
-                  onChange={async (e) => {
-                    const isDark = e.target.checked;
-                    setTheme(isDark ? 'dark' : 'light');
-                    const success = await updateUserPreferences({ darkMode: isDark });
+                  onChange={async (checked) => {
+                    setTheme(checked ? 'dark' : 'light');
+                    const success = await updateUserPreferences({ darkMode: checked });
                     if (success) {
                       await addNotification('success', t.themePreferenceSaved);
                     }
                   }}
-                  className="form-checkbox h-5 w-5 text-cyan-500"
+                  theme={theme}
                 />
               </div>
             </div>
