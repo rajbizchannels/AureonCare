@@ -1,4 +1,4 @@
-import { Activity, FileText, Video, DollarSign, Users, Plug, Database, UserCheck, BarChart3, Stethoscope, Package, Pill, Microscope, Clock } from 'lucide-react';
+import { Activity, FileText, Video, DollarSign, Users, Plug, Database, UserCheck, BarChart3, Stethoscope, Package, Pill, Microscope } from 'lucide-react';
 
 export const getModules = (t) => [
   { id: 'practiceManagement', name: t.practiceManagement, icon: Activity, color: 'from-blue-500 to-cyan-500' },
@@ -9,7 +9,6 @@ export const getModules = (t) => [
   { id: 'offerings', name: t.offerings || 'Healthcare Offerings', icon: Package, color: 'from-violet-500 to-purple-500' },
   { id: 'pharmacies', name: t.pharmacies || 'Pharmacy Management', icon: Pill, color: 'from-green-500 to-emerald-500' },
   { id: 'laboratories', name: t.laboratories || 'Laboratory Management', icon: Microscope, color: 'from-blue-500 to-cyan-500' },
-  { id: 'waitlist', name: t.waitlist || 'Waitlist Management', icon: Clock, color: 'from-orange-500 to-amber-500' },
   { id: 'reports', name: t.reports || 'Reports & Analytics', icon: BarChart3, color: 'from-cyan-500 to-blue-500' },
   { id: 'crm', name: t.crm, icon: Users, color: 'from-red-500 to-rose-500' },
   { id: 'integrations', name: t.integrations, icon: Plug, color: 'from-indigo-500 to-blue-500' },

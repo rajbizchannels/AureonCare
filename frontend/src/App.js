@@ -454,16 +454,6 @@ function App() {
             t={t}
           />
         );
-      case 'waitlist':
-        return (
-          <WaitlistManagementView
-            theme={theme}
-            api={api}
-            addNotification={addNotification}
-            setCurrentModule={setCurrentModule}
-            t={t}
-          />
-        );
       default:
         return null;
     }
