@@ -1329,39 +1329,27 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
                       Add Medication
                     </button>
 
-                    {/* Pharmacy Selection */}
-                    <div className="mt-4">
-                      <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                        Pharmacy (for all)
-                      </label>
-                      <select
-                        value={formData.pharmacy_id}
-                        onChange={(e) => setFormData(prev => ({ ...prev, pharmacy_id: e.target.value }))}
-                        className={`w-full px-3 py-2 rounded-lg border ${
-                          theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        disabled={loadingPharmacies}
-                      >
-                        <option value="">Select pharmacy...</option>
-                        {pharmacies.map(pharmacy => (
-                          <option key={pharmacy.id} value={pharmacy.id}>
-                            {pharmacy.pharmacy_name}
-                          </option>
-                        ))}
-                      </select>
-                      {formData.pharmacy_id && (
-                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                          From patient's preferred pharmacy
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right: Detail - Medications List */}
-                  <div className="col-span-2">
-                    <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Medications to Prescribe ({medications.length})
-                    </h4>
+      {/* ePrescribe Modal */}
+      {showEPrescribeModal && (
+        <EPrescribeModal
+          theme={theme}
+          patient={patientData}
+          provider={user}
+          api={api}
+          prescription={editingPrescription}
+          onClose={() => {
+            setShowEPrescribeModal(false);
+            setEditingPrescription(null);
+          }}
+          onSuccess={(prescription) => {
+            setShowEPrescribeModal(false);
+            setEditingPrescription(null);
+            addNotification('success', editingPrescription ? 'Prescription updated successfully' : 'Prescription created successfully');
+            fetchPatientHistory(); // Refresh the prescriptions list
+          }}
+          addNotification={addNotification}
+        />
+      )}
 
                     {medications.length === 0 ? (
                       <div className={`text-center py-12 rounded-lg border-2 border-dashed ${
