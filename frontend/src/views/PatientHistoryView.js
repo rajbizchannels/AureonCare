@@ -1004,48 +1004,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         />
       )}
 
-      {/* Delete Diagnosis Confirmation Modal */}
-      <ConfirmationModal
-        theme={theme}
-        isOpen={!!deletingDiagnosis}
-        onClose={() => setDeletingDiagnosis(null)}
-        onConfirm={handleDeleteDiagnosis}
-        title="Delete Diagnosis"
-        message={`Are you sure you want to delete this diagnosis? This action cannot be undone.`}
-        type="danger"
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
-
-      {/* Delete Prescription Confirmation Modal */}
-      <ConfirmationModal
-        theme={theme}
-        isOpen={!!deletingPrescription}
-        onClose={() => setDeletingPrescription(null)}
-        onConfirm={handleDeletePrescription}
-        title="Delete Prescription"
-        message={`Are you sure you want to delete this prescription? This action cannot be undone.`}
-        type="danger"
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
-
-      {/* Prescription Form Modal */}
-      {showPrescriptionForm && (
-        <PrescriptionFormModal
-          theme={theme}
-          api={api}
-          prescription={editingPrescription}
-          patient={patientData}
-          user={user}
-          onClose={() => {
-            setShowPrescriptionForm(false);
-            setEditingPrescription(null);
-          }}
-          onSave={handleSavePrescription}
-        />
-      )}
-
       {/* ePrescribe Modal */}
       {showEPrescribeModal && (
         <EPrescribeModal
