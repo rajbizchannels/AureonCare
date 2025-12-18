@@ -42,6 +42,7 @@ const DiagnosisForm = ({
   const [prescribeAfterSave, setPrescribeAfterSave] = useState(false);
   const [savedDiagnosisResult, setSavedDiagnosisResult] = useState(null);
   const [linkedPrescriptions, setLinkedPrescriptions] = useState([]);
+  const [linkedLabOrders, setLinkedLabOrders] = useState([]);
   const [pendingSubmit, setPendingSubmit] = useState(null);
 
   // Load laboratories on mount
@@ -140,6 +141,31 @@ const DiagnosisForm = ({
             }
           } catch (err) {
             console.log('Could not load linked prescriptions:', err);
+          }
+        }
+
+        // Load linked lab orders for this diagnosis (by matching patient and diagnosis codes)
+        if (editDiagnosis.id && editDiagnosis.patientId) {
+          try {
+            const labOrders = await api.getLabOrders?.({ patient_id: editDiagnosis.patientId });
+            if (labOrders && labOrders.length > 0) {
+              // Filter lab orders that contain any of the diagnosis codes from this diagnosis
+              const diagnosisCodesList = editDiagnosis.diagnosisCode
+                ? editDiagnosis.diagnosisCode.split(',').map(c => c.trim()).filter(Boolean)
+                : [];
+
+              if (diagnosisCodesList.length > 0) {
+                const relatedLabOrders = labOrders.filter(order => {
+                  const orderDiagCodes = order.diagnosis_codes
+                    ? (typeof order.diagnosis_codes === 'string' ? JSON.parse(order.diagnosis_codes) : order.diagnosis_codes)
+                    : [];
+                  return orderDiagCodes.some(code => diagnosisCodesList.includes(code));
+                });
+                setLinkedLabOrders(relatedLabOrders);
+              }
+            }
+          } catch (err) {
+            console.log('Could not load linked lab orders:', err);
           }
         }
       } else if (user?.id) {
@@ -938,6 +964,66 @@ const DiagnosisForm = ({
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Linked Lab Orders (shown when editing) */}
+          {editDiagnosis && linkedLabOrders.length > 0 && (
+            <div className={`px-6 py-4 border-t ${theme === 'dark' ? 'border-slate-700 bg-slate-900/30' : 'border-gray-300 bg-gray-50'}`}>
+              <h4 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <Microscope className="w-4 h-4" />
+                Lab Orders Created from this Diagnosis ({linkedLabOrders.length})
+              </h4>
+              <div className="space-y-2">
+                {linkedLabOrders.map((order) => {
+                  const testCodes = order.test_codes ? (typeof order.test_codes === 'string' ? JSON.parse(order.test_codes) : order.test_codes) : [];
+                  return (
+                    <div
+                      key={order.id}
+                      className={`p-3 rounded-lg border ${
+                        theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {order.order_number}
+                          </p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {testCodes.slice(0, 3).map((code, idx) => (
+                              <span
+                                key={idx}
+                                className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                  theme === 'dark' ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
+                                }`}
+                              >
+                                {code}
+                              </span>
+                            ))}
+                            {testCodes.length > 3 && (
+                              <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                +{testCodes.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            Priority: {(order.priority || 'routine').toUpperCase()}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          order.status === 'completed'
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                            : order.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                        }`}>
+                          {order.status?.replace('_', ' ').toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
