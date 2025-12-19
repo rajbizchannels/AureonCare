@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Microscope, X, Save } from 'lucide-react';
 import LabCPTMultiSelect from './LabCPTMultiSelect';
+import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewLabOrderForm = ({
@@ -27,7 +28,7 @@ const NewLabOrderForm = ({
     statusDate: new Date().toISOString().split('T')[0],
     frequency: '',
     class: 'clinic-collect',
-    recipient: 'doctors',
+    recipients: [],
     instructions: '',
     clinicalNotes: '',
     diagnosisCodes: []
@@ -64,6 +65,9 @@ const NewLabOrderForm = ({
       const diagCodes = editLabOrder.diagnosis_codes
         ? (typeof editLabOrder.diagnosis_codes === 'string' ? JSON.parse(editLabOrder.diagnosis_codes) : editLabOrder.diagnosis_codes)
         : [];
+      const resultRecipients = editLabOrder.result_recipients
+        ? (typeof editLabOrder.result_recipients === 'string' ? JSON.parse(editLabOrder.result_recipients) : editLabOrder.result_recipients)
+        : [];
 
       setFormData({
         patientId: editLabOrder.patient_id || patient?.id || '',
@@ -75,7 +79,7 @@ const NewLabOrderForm = ({
         statusDate: editLabOrder.order_status_date || new Date().toISOString().split('T')[0],
         frequency: editLabOrder.frequency || '',
         class: editLabOrder.collection_class || 'clinic-collect',
-        recipient: editLabOrder.result_recipients || 'doctors',
+        recipients: Array.isArray(resultRecipients) ? resultRecipients : [],
         instructions: editLabOrder.special_instructions || '',
         clinicalNotes: editLabOrder.clinical_notes || '',
         diagnosisCodes: diagCodes
@@ -133,6 +137,11 @@ const NewLabOrderForm = ({
     setShowConfirmation(false);
 
     try {
+      // Convert recipients array to JSON
+      const recipientIds = formData.recipients && formData.recipients.length > 0
+        ? formData.recipients.map(r => ({ id: r.id, name: r.name, type: r.type }))
+        : [];
+
       const labOrderData = {
         patient_id: formData.patientId,
         provider_id: formData.providerId,
@@ -147,7 +156,7 @@ const NewLabOrderForm = ({
         order_status_date: formData.statusDate || null,
         frequency: formData.frequency || null,
         collection_class: formData.class,
-        result_recipients: formData.recipient,
+        result_recipients: JSON.stringify(recipientIds),
         send_to_vendor: false
       };
 
@@ -457,23 +466,17 @@ const NewLabOrderForm = ({
                 </div>
 
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Result Recipients *
-                  </label>
-                  <select
-                    required
-                    value={formData.recipient}
-                    onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
-                  >
-                    <option value="doctors">Doctors Only</option>
-                    <option value="doctors-staff">Doctors & Staff</option>
-                    <option value="doctors-staff-patient">Doctors, Staff & Patient</option>
-                  </select>
+                  <ResultRecipientsMultiSelect
+                    theme={theme}
+                    value={formData.recipients || []}
+                    onChange={(recipients) => setFormData({ ...formData, recipients })}
+                    label="Result Recipients *"
+                    placeholder="Select who should receive the lab results..."
+                    required={true}
+                    doctor={user}
+                    staff={providers.filter(p => p.role === 'staff')}
+                    patient={patient || (formData.patientId && patients.find(p => p.id === formData.patientId))}
+                  />
                 </div>
               </div>
 

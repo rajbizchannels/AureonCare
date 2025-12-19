@@ -971,27 +971,43 @@ const DiagnosisForm = ({
                 <Microscope className="w-4 h-4" />
                 Lab Orders Created from this Diagnosis ({linkedLabOrders.length})
               </h4>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {linkedLabOrders.map((order) => {
                   const testCodes = order.test_codes ? (typeof order.test_codes === 'string' ? JSON.parse(order.test_codes) : order.test_codes) : [];
+                  const recipients = order.result_recipients ? (typeof order.result_recipients === 'string' ? JSON.parse(order.result_recipients) : order.result_recipients) : [];
+
+                  // Helper function to get color for recipient type
+                  const getRecipientColor = (type) => {
+                    switch (type) {
+                      case 'doctor':
+                        return theme === 'dark' ? 'bg-blue-900/50 text-blue-200 border-blue-700' : 'bg-blue-100 text-blue-800 border-blue-300';
+                      case 'staff':
+                        return theme === 'dark' ? 'bg-green-900/50 text-green-200 border-green-700' : 'bg-green-100 text-green-800 border-green-300';
+                      case 'patient':
+                        return theme === 'dark' ? 'bg-orange-900/50 text-orange-200 border-orange-700' : 'bg-orange-100 text-orange-800 border-orange-300';
+                      default:
+                        return theme === 'dark' ? 'bg-gray-900/50 text-gray-200 border-gray-700' : 'bg-gray-100 text-gray-800 border-gray-300';
+                    }
+                  };
+
                   return (
                     <div
                       key={order.id}
-                      className={`p-3 rounded-lg border ${
+                      className={`p-4 rounded-lg border ${
                         theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-200'
                       }`}
                     >
-                      <div className="flex justify-between items-start">
+                      <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
                           <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {order.order_number}
                           </p>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <div className="flex flex-wrap gap-1 mt-2">
                             {testCodes.slice(0, 3).map((code, idx) => (
                               <span
                                 key={idx}
                                 className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                  theme === 'dark' ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
+                                  theme === 'dark' ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-700'
                                 }`}
                               >
                                 {code}
@@ -1003,8 +1019,8 @@ const DiagnosisForm = ({
                               </span>
                             )}
                           </div>
-                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            Priority: {(order.priority || 'routine').toUpperCase()}
+                          <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            Priority: {(order.priority || 'routine').toUpperCase()} • Class: {(order.collection_class || 'clinic-collect').replace('-', ' ').toUpperCase()}
                           </p>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1017,6 +1033,26 @@ const DiagnosisForm = ({
                           {order.status?.replace('_', ' ').toUpperCase()}
                         </span>
                       </div>
+
+                      {/* Result Recipients */}
+                      {recipients && recipients.length > 0 && (
+                        <div className="mt-2 pt-2 border-t" style={{borderColor: theme === 'dark' ? '#475569' : '#e5e7eb'}}>
+                          <p className={`text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            Result Recipients:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {recipients.map((recipient, idx) => (
+                              <span
+                                key={idx}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${getRecipientColor(recipient.type)}`}
+                              >
+                                <span>{recipient.name}</span>
+                                <span className="opacity-75">({recipient.type})</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
