@@ -71,6 +71,8 @@ const DiagnosisForm = ({
           providerId: editDiagnosis.providerId || user?.id || '',
           icdCodes: [],
           cptCodes: [],
+          medications: [], // Initialize for edit mode
+          labOrders: [], // Initialize for edit mode
           diagnosisName: editDiagnosis.diagnosisName || '',
           description: editDiagnosis.description || '',
           severity: editDiagnosis.severity || 'Moderate',
