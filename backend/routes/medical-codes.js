@@ -84,9 +84,15 @@ router.get('/icd10', async (req, res) => {
     `;
 
     if (limit) {
-      query += ` LIMIT $1`;
-      const result = await pool.query(query, [parseInt(limit)]);
-      res.json(result.rows);
+      const parsedLimit = parseInt(limit, 10);
+      if (!isNaN(parsedLimit) && parsedLimit > 0) {
+        query += ` LIMIT $1`;
+        const result = await pool.query(query, [parsedLimit]);
+        res.json(result.rows);
+      } else {
+        const result = await pool.query(query);
+        res.json(result.rows);
+      }
     } else {
       const result = await pool.query(query);
       res.json(result.rows);
@@ -116,9 +122,15 @@ router.get('/cpt', async (req, res) => {
     `;
 
     if (limit) {
-      query += ` LIMIT $1`;
-      const result = await pool.query(query, [parseInt(limit)]);
-      res.json(result.rows);
+      const parsedLimit = parseInt(limit, 10);
+      if (!isNaN(parsedLimit) && parsedLimit > 0) {
+        query += ` LIMIT $1`;
+        const result = await pool.query(query, [parsedLimit]);
+        res.json(result.rows);
+      } else {
+        const result = await pool.query(query);
+        res.json(result.rows);
+      }
     } else {
       const result = await pool.query(query);
       res.json(result.rows);
