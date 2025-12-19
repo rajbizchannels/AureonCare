@@ -157,6 +157,7 @@ const DiagnosisForm = ({
                 ? editDiagnosis.diagnosisCode.split(',').map(c => c.trim()).filter(Boolean)
                 : [];
 
+              // If we have diagnosis codes, filter by matching codes; otherwise show all patient's lab orders
               if (diagnosisCodesList.length > 0) {
                 const relatedLabOrders = labOrders.filter(order => {
                   const orderDiagCodes = order.diagnosis_codes
@@ -165,6 +166,9 @@ const DiagnosisForm = ({
                   return orderDiagCodes.some(code => diagnosisCodesList.includes(code));
                 });
                 setLinkedLabOrders(relatedLabOrders);
+              } else {
+                // No diagnosis codes yet, show all lab orders for this patient
+                setLinkedLabOrders(labOrders);
               }
             }
           } catch (err) {
@@ -710,7 +714,7 @@ const DiagnosisForm = ({
                                 placeholder="Select who should receive the lab results..."
                                 required={true}
                                 doctor={user}
-                                staff={providers.filter(p => p.role !== 'doctor')}
+                                staff={providers.filter(p => p.role === 'staff')}
                                 patient={patient || (formData.patientId && patients.find(p => p.id === formData.patientId))}
                               />
                             </div>
