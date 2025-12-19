@@ -31,10 +31,13 @@ const NewLabOrderForm = ({
     recipients: [],
     instructions: '',
     clinicalNotes: '',
-    diagnosisCodes: []
+    diagnosisCodes: [],
+    linkedDiagnosisId: ''
   });
   const [laboratories, setLaboratories] = useState([]);
   const [loadingLaboratories, setLoadingLaboratories] = useState(true);
+  const [diagnoses, setDiagnoses] = useState([]);
+  const [loadingDiagnoses, setLoadingDiagnoses] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,6 +58,28 @@ const NewLabOrderForm = ({
     };
     loadLaboratories();
   }, [api]);
+
+  // Load diagnoses when patient changes
+  useEffect(() => {
+    const loadDiagnoses = async () => {
+      if (!formData.patientId) {
+        setDiagnoses([]);
+        return;
+      }
+
+      setLoadingDiagnoses(true);
+      try {
+        const patientDiagnoses = await api.getDiagnoses?.(formData.patientId);
+        setDiagnoses(patientDiagnoses || []);
+      } catch (error) {
+        console.error('Error loading diagnoses:', error);
+        setDiagnoses([]);
+      } finally {
+        setLoadingDiagnoses(false);
+      }
+    };
+    loadDiagnoses();
+  }, [formData.patientId, api]);
 
   // If editing, populate form
   useEffect(() => {
@@ -99,6 +124,59 @@ const NewLabOrderForm = ({
     window.addEventListener('keydown', handleEsc, true);
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
+
+  // Handle diagnosis selection
+  const handleDiagnosisChange = async (diagnosisId) => {
+    setFormData({ ...formData, linkedDiagnosisId: diagnosisId });
+
+    if (!diagnosisId) {
+      // Clear diagnosis codes if no diagnosis selected
+      setFormData(prev => ({ ...prev, diagnosisCodes: [], linkedDiagnosisId: '' }));
+      return;
+    }
+
+    // Find the selected diagnosis
+    const selectedDiagnosis = diagnoses.find(d => d.id === diagnosisId);
+    if (!selectedDiagnosis) return;
+
+    // Extract ICD codes from diagnosisCode field
+    const diagnosisCodes = selectedDiagnosis.diagnosisCode
+      ? selectedDiagnosis.diagnosisCode.split(',').map(c => c.trim()).filter(Boolean)
+      : [];
+
+    // Extract CPT codes from notes if present
+    let cptCodes = [];
+    if (selectedDiagnosis.notes && typeof selectedDiagnosis.notes === 'string') {
+      const cptMatch = selectedDiagnosis.notes.match(/CPT Codes:\s*([^]*?)(?:\n\n|$)/);
+      if (cptMatch) {
+        const cptSection = cptMatch[1];
+        const cptCodeMatches = cptSection.matchAll(/(\d+)\s*\(/g);
+        const cptCodeStrings = Array.from(cptCodeMatches).map(match => match[1]).filter(Boolean);
+
+        // Fetch full CPT code objects
+        const cptCodePromises = cptCodeStrings.map(async (codeStr) => {
+          try {
+            const codeData = await api.getMedicalCodeByCode(codeStr);
+            return codeData;
+          } catch (err) {
+            console.warn(`Could not load CPT code ${codeStr}:`, err);
+            return { code: codeStr, description: '' };
+          }
+        });
+
+        cptCodes = await Promise.all(cptCodePromises);
+        cptCodes = cptCodes.filter(Boolean);
+      }
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      linkedDiagnosisId: diagnosisId,
+      diagnosisCodes: diagnosisCodes,
+      cptCodes: cptCodes.length > 0 ? cptCodes : prev.cptCodes,
+      clinicalNotes: selectedDiagnosis.description || prev.clinicalNotes
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -317,6 +395,68 @@ const NewLabOrderForm = ({
                   }`}>
                     {patient.first_name || patient.firstName} {patient.last_name || patient.lastName} - MRN: {patient.mrn || 'N/A'}
                   </div>
+                </div>
+              )}
+
+              {/* Linked Diagnosis (Optional) */}
+              {formData.patientId && (
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Linked Diagnosis (Optional)
+                  </label>
+                  {loadingDiagnoses ? (
+                    <div className={`w-full px-3 py-2 border rounded-lg ${
+                      theme === 'dark'
+                        ? 'bg-slate-800 border-slate-600 text-gray-400'
+                        : 'bg-gray-50 border-gray-300 text-gray-600'
+                    }`}>
+                      Loading diagnoses...
+                    </div>
+                  ) : diagnoses.length > 0 ? (
+                    <select
+                      value={formData.linkedDiagnosisId}
+                      onChange={(e) => handleDiagnosisChange(e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
+                        theme === 'dark'
+                          ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                          : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                      }`}
+                    >
+                      <option value="">No linked diagnosis</option>
+                      {diagnoses.map((diagnosis) => (
+                        <option key={diagnosis.id} value={diagnosis.id}>
+                          {diagnosis.diagnosisName || diagnosis.diagnosisCode || 'Unnamed Diagnosis'} - {diagnosis.diagnosedDate ? new Date(diagnosis.diagnosedDate).toLocaleDateString() : 'N/A'}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className={`w-full px-3 py-2 border rounded-lg ${
+                      theme === 'dark'
+                        ? 'bg-slate-800/50 border-slate-600 text-gray-400'
+                        : 'bg-gray-50 border-gray-300 text-gray-600'
+                    }`}>
+                      No diagnoses found for this patient
+                    </div>
+                  )}
+                  {formData.linkedDiagnosisId && formData.diagnosisCodes.length > 0 && (
+                    <div className="mt-2">
+                      <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        ICD-10 Codes from Diagnosis:
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {formData.diagnosisCodes.map((code, idx) => (
+                          <span
+                            key={idx}
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              theme === 'dark' ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
+                            }`}
+                          >
+                            {code}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
