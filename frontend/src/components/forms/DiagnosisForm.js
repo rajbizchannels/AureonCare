@@ -3,6 +3,7 @@ import { Activity, X, Save, Calendar, FileText, Pill, Microscope, Plus, Trash2 }
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import MedicationMultiSelect from './MedicationMultiSelect';
 import LabCPTMultiSelect from './LabCPTMultiSelect';
+import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import Toggle from '../Toggle';
 
@@ -295,6 +296,11 @@ const DiagnosisForm = ({
       if (formData.labOrders && formData.labOrders.length > 0 && !editDiagnosis) {
         for (const labOrder of formData.labOrders) {
           try {
+            // Convert recipients array to JSON
+            const recipientIds = labOrder.recipients && labOrder.recipients.length > 0
+              ? labOrder.recipients.map(r => ({ id: r.id, name: r.name, type: r.type }))
+              : [];
+
             const labOrderData = {
               patient_id: formData.patientId,
               provider_id: formData.providerId,
@@ -309,7 +315,7 @@ const DiagnosisForm = ({
               order_status_date: labOrder.statusDate || null,
               frequency: labOrder.frequency || null,
               collection_class: labOrder.class || 'clinic-collect',
-              result_recipients: labOrder.recipient || 'doctors',
+              result_recipients: JSON.stringify(recipientIds),
               send_to_vendor: false
             };
             const createdLabOrder = await api.createLabOrder(labOrderData);
@@ -488,12 +494,11 @@ const DiagnosisForm = ({
               />
 
               {/* Lab Orders */}
-              {!editDiagnosis && (
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    <div className="flex items-center gap-2">
-                      <Microscope className="w-4 h-4" />
-                      Lab Orders (Optional - Will create orders)
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <div className="flex items-center gap-2">
+                    <Microscope className="w-4 h-4" />
+                    Lab Orders (Optional - Will create orders)
                     </div>
                   </label>
                   <div className="space-y-3">
@@ -601,7 +606,6 @@ const DiagnosisForm = ({
                               >
                                 <option value="one-time">One-Time</option>
                                 <option value="recurring">Recurring</option>
-                                <option value="future">Future</option>
                               </select>
                             </div>
 
@@ -642,11 +646,10 @@ const DiagnosisForm = ({
                                   <label className={`block text-xs font-medium mb-1 ${
                                     theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
                                   }`}>
-                                    {labOrder.status === 'future' ? 'Scheduled Date *' : 'Latest Date'}
+                                    Collection Date
                                   </label>
                                   <input
                                     type="date"
-                                    required={labOrder.status === 'future'}
                                     value={labOrder.statusDate || ''}
                                     min={new Date().toISOString().split('T')[0]}
                                     max={new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]}
@@ -691,31 +694,23 @@ const DiagnosisForm = ({
                               </select>
                             </div>
 
-                            {/* Recipient */}
-                            <div>
-                              <label className={`block text-xs font-medium mb-1 ${
-                                theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                              }`}>
-                                Result Recipients *
-                              </label>
-                              <select
-                                required
-                                value={labOrder.recipient || 'doctors'}
-                                onChange={(e) => {
+                            {/* Result Recipients */}
+                            <div className="md:col-span-2">
+                              <ResultRecipientsMultiSelect
+                                theme={theme}
+                                value={labOrder.recipients || []}
+                                onChange={(recipients) => {
                                   const updated = [...formData.labOrders];
-                                  updated[index].recipient = e.target.value;
+                                  updated[index].recipients = recipients;
                                   setFormData({ ...formData, labOrders: updated });
                                 }}
-                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
-                                  theme === 'dark'
-                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                                }`}
-                              >
-                                <option value="doctors">Doctors Only</option>
-                                <option value="doctors-staff">Doctors & Staff</option>
-                                <option value="doctors-staff-patient">Doctors, Staff & Patient</option>
-                              </select>
+                                label="Result Recipients *"
+                                placeholder="Select who should receive the lab results..."
+                                required={true}
+                                doctor={user}
+                                staff={providers.filter(p => p.role !== 'doctor')}
+                                patient={patient || (formData.patientId && patients.find(p => p.id === formData.patientId))}
+                              />
                             </div>
                           </div>
 
@@ -778,7 +773,7 @@ const DiagnosisForm = ({
                               statusDate: new Date().toISOString().split('T')[0],
                               frequency: '',
                               class: 'clinic-collect',
-                              recipient: 'doctors'
+                              recipients: []
                             }
                           ]
                         });
@@ -794,7 +789,7 @@ const DiagnosisForm = ({
                     </button>
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Diagnosis Name */}
               <div>

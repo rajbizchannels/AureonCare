@@ -142,11 +142,30 @@ router.post('/', async (req, res) => {
         ADD COLUMN IF NOT EXISTS order_status_date DATE,
         ADD COLUMN IF NOT EXISTS frequency VARCHAR(20),
         ADD COLUMN IF NOT EXISTS collection_class VARCHAR(20) DEFAULT 'clinic-collect',
-        ADD COLUMN IF NOT EXISTS result_recipients VARCHAR(50) DEFAULT 'doctors'
+        ADD COLUMN IF NOT EXISTS result_recipients JSONB DEFAULT '[]'::jsonb
       `);
     } catch (err) {
       // Column might already exist, continue
       console.log('Lab orders table columns already exist or error:', err.message);
+    }
+
+    // Also update existing VARCHAR result_recipients column to JSONB if it exists
+    try {
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'lab_orders'
+            AND column_name = 'result_recipients'
+            AND data_type = 'character varying'
+          ) THEN
+            ALTER TABLE lab_orders ALTER COLUMN result_recipients TYPE JSONB USING result_recipients::jsonb;
+          END IF;
+        END $$;
+      `);
+    } catch (err) {
+      console.log('Could not convert result_recipients to JSONB:', err.message);
     }
 
     // Insert lab order
@@ -191,7 +210,7 @@ router.post('/', async (req, res) => {
       order_status_date || null,
       frequency || null,
       collection_class || 'clinic-collect',
-      result_recipients || 'doctors'
+      result_recipients || '[]'
     ]);
 
     const labOrder = result.rows[0];
