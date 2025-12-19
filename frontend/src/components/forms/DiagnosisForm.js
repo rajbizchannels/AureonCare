@@ -788,7 +788,6 @@ const DiagnosisForm = ({
                       Add Lab Order
                     </button>
                   </div>
-                </div>
               </div>
 
               {/* Diagnosis Name */}
