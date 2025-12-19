@@ -120,8 +120,8 @@ const NewLabOrderForm = ({
       return;
     }
 
-    if (formData.status === 'future' && !formData.statusDate) {
-      addNotification('alert', 'Please select a scheduled date for future orders.');
+    if (formData.status === 'one-time' && !formData.statusDate) {
+      addNotification('alert', 'Please select a scheduled date for One-Time orders.');
       return;
     }
 
@@ -384,7 +384,6 @@ const NewLabOrderForm = ({
                   >
                     <option value="one-time">One-Time</option>
                     <option value="recurring">Recurring</option>
-                    <option value="future">Future</option>
                   </select>
                 </div>
 
@@ -416,11 +415,11 @@ const NewLabOrderForm = ({
                   ) : (
                     <>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {formData.status === 'future' ? 'Scheduled Date *' : 'Latest Date'}
+                        {formData.status === 'one-time' ? 'Scheduled Date *' : 'Latest Date'}
                       </label>
                       <input
                         type="date"
-                        required={formData.status === 'future'}
+                        required={formData.status === 'one-time'}
                         value={formData.statusDate}
                         min={new Date().toISOString().split('T')[0]}
                         max={new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]}
