@@ -32,7 +32,7 @@ const ResultRecipientsMultiSelect = ({
   const allRecipients = React.useMemo(() => {
     const recipients = [];
 
-    // Add doctor
+    // Add ONLY the current signed-in doctor (not other doctors)
     if (doctor) {
       const doctorName = `${doctor.first_name || doctor.firstName || ''} ${doctor.last_name || doctor.lastName || ''}`.trim() || 'Doctor';
       recipients.push({
@@ -43,16 +43,19 @@ const ResultRecipientsMultiSelect = ({
       });
     }
 
-    // Add staff
+    // Add staff (only users with staff role, excluding doctors)
     if (staff && staff.length > 0) {
       staff.forEach(s => {
-        const staffName = `${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim() || 'Staff Member';
-        recipients.push({
-          id: s.id,
-          name: staffName,
-          type: 'staff',
-          displayName: `${staffName} (Staff)`
-        });
+        // Only add if they have staff role and are not doctors
+        if (s.role === 'staff' || (s.role !== 'doctor' && s.role !== 'admin')) {
+          const staffName = `${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim() || 'Staff Member';
+          recipients.push({
+            id: s.id,
+            name: staffName,
+            type: 'staff',
+            displayName: `${staffName} (Staff)`
+          });
+        }
       });
     }
 
