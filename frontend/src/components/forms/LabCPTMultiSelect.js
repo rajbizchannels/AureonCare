@@ -1,158 +1,217 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, ChevronDown } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 /**
- * Multi-select component specifically for Laboratory CPT codes (80000-89999 range)
+ * Multi-select component for Laboratory CPT codes with live search
+ * Similar to MedicalCodeMultiSelect but specifically for lab CPT codes (80000-89999 range)
+ * Features:
+ * - Live search as you type
+ * - Comma-separated input support
+ * - Selected codes shown as chips
+ * - Keyboard navigation
  */
-const LabCPTMultiSelect = ({ theme, api, value = [], onChange, label, placeholder }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [cptCodes, setCptCodes] = useState([]);
-  const [loading, setLoading] = useState(false);
+const LabCPTMultiSelect = ({
+  theme,
+  api,
+  value = [], // Array of selected codes: [{code: '80047', description: '...'}]
+  onChange,
+  label,
+  placeholder = 'Search lab CPT codes or type codes separated by commas...',
+  required = false,
+  disabled = false
+}) => {
+  const [inputValue, setInputValue] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
-  // Load CPT codes in 8xxxx range (laboratory procedures)
+  // Get the search term (last term after last comma)
+  const getSearchTerm = () => {
+    const parts = inputValue.split(',');
+    return parts[parts.length - 1].trim();
+  };
+
+  // Search for lab CPT codes
+  const searchCodes = async (query) => {
+    if (!query || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Search CPT codes in 80000-89999 range (lab procedures)
+      const response = await fetch(
+        `${api.baseURL || 'http://localhost:3001/api'}/medical-codes/search?query=${encodeURIComponent(query)}&type=cpt`
+      );
+      const data = await response.json();
+
+      // Filter for lab CPT codes (80000-89999) and exclude already selected
+      const selectedCodes = value.map(v => v.code.toUpperCase());
+      const filtered = data
+        .filter(item => {
+          const codeNum = parseInt(item.code);
+          return codeNum >= 80000 && codeNum <= 89999 && !selectedCodes.includes(item.code.toUpperCase());
+        });
+
+      setSearchResults(filtered);
+    } catch (error) {
+      console.error('Error searching CPT codes:', error);
+      // Fallback to common lab CPT codes if API fails
+      const commonLabCPTCodes = [
+        { code: '80047', description: 'Basic metabolic panel (Calcium, total)', type: 'CPT' },
+        { code: '80048', description: 'Basic metabolic panel (Calcium, ionized)', type: 'CPT' },
+        { code: '80050', description: 'General health panel', type: 'CPT' },
+        { code: '80053', description: 'Comprehensive metabolic panel', type: 'CPT' },
+        { code: '80061', description: 'Lipid panel', type: 'CPT' },
+        { code: '81000', description: 'Urinalysis, by dip stick or tablet reagent', type: 'CPT' },
+        { code: '81001', description: 'Urinalysis, automated with microscopy', type: 'CPT' },
+        { code: '81002', description: 'Urinalysis, non-automated, with microscopy', type: 'CPT' },
+        { code: '81003', description: 'Urinalysis, automated, without microscopy', type: 'CPT' },
+        { code: '82947', description: 'Glucose; quantitative, blood', type: 'CPT' },
+        { code: '83036', description: 'Hemoglobin; glycosylated (A1C)', type: 'CPT' },
+        { code: '84439', description: 'Thyroid stimulating hormone (TSH)', type: 'CPT' },
+        { code: '85025', description: 'Blood count; complete (CBC), automated', type: 'CPT' },
+        { code: '85027', description: 'Blood count; complete (CBC) with differential', type: 'CPT' }
+      ];
+
+      const selectedCodes = value.map(v => v.code.toUpperCase());
+      const search = query.toLowerCase();
+      const filtered = commonLabCPTCodes.filter(item =>
+        !selectedCodes.includes(item.code.toUpperCase()) &&
+        (item.code.toLowerCase().includes(search) || item.description.toLowerCase().includes(search))
+      );
+
+      setSearchResults(filtered);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Debounced search
   useEffect(() => {
-    const loadCPTCodes = async () => {
-      setLoading(true);
-      try {
-        // Fetch CPT codes from API, filtering for 8xxxx range (laboratory procedures)
-        const codes = await api.getCPTCodes({ codeRange: '80000-89999' });
-        setCptCodes(codes);
-      } catch (error) {
-        console.error('Error loading CPT codes:', error);
-        // Fallback to common lab CPT codes if API fails
-        setCptCodes([
-          { code: '80047', description: 'Basic metabolic panel (Calcium, total)' },
-          { code: '80048', description: 'Basic metabolic panel (Calcium, ionized)' },
-          { code: '80050', description: 'General health panel' },
-          { code: '80053', description: 'Comprehensive metabolic panel' },
-          { code: '80061', description: 'Lipid panel' },
-          { code: '80069', description: 'Renal function panel' },
-          { code: '80074', description: 'Acute hepatitis panel' },
-          { code: '80076', description: 'Hepatic function panel' },
-          { code: '80162', description: 'Digoxin' },
-          { code: '81000', description: 'Urinalysis, by dip stick or tablet reagent' },
-          { code: '81001', description: 'Urinalysis, automated with microscopy' },
-          { code: '81002', description: 'Urinalysis, non-automated, with microscopy' },
-          { code: '81003', description: 'Urinalysis, automated, without microscopy' },
-          { code: '81025', description: 'Urine pregnancy test, visual color comparison' },
-          { code: '82043', description: 'Albumin; urine' },
-          { code: '82247', description: 'Bilirubin; total' },
-          { code: '82248', description: 'Bilirubin; direct' },
-          { code: '82270', description: 'Blood, occult, by peroxidase activity' },
-          { code: '82306', description: 'Vitamin D; 25 hydroxy' },
-          { code: '82330', description: 'Calcium; total' },
-          { code: '82374', description: 'Carbon dioxide (bicarbonate)' },
-          { code: '82465', description: 'Cholesterol, serum or whole blood, total' },
-          { code: '82565', description: 'Creatinine; blood' },
-          { code: '82570', description: 'Creatinine; urine' },
-          { code: '82607', description: 'Vitamin B-12' },
-          { code: '82728', description: 'Ferritin' },
-          { code: '82746', description: 'Folic acid; serum' },
-          { code: '82947', description: 'Glucose; quantitative, blood' },
-          { code: '82950', description: 'Glucose; post glucose dose' },
-          { code: '82951', description: 'Glucose tolerance test (GTT), 3 specimens' },
-          { code: '83036', description: 'Hemoglobin; glycosylated (A1C)' },
-          { code: '83540', description: 'Iron' },
-          { code: '83550', description: 'Iron binding capacity' },
-          { code: '83605', description: 'Lactic acid' },
-          { code: '83615', description: 'Lactate dehydrogenase (LD), (LDH)' },
-          { code: '83655', description: 'Lead' },
-          { code: '83718', description: 'Lipoprotein, direct measurement; high density cholesterol (HDL)' },
-          { code: '83719', description: 'Lipoprotein, direct measurement; VLDL cholesterol' },
-          { code: '83721', description: 'Lipoprotein, direct measurement; LDL cholesterol' },
-          { code: '83735', description: 'Magnesium' },
-          { code: '83880', description: 'Natriuretic peptide' },
-          { code: '83970', description: 'Parathyroid hormone (PTH)' },
-          { code: '84100', description: 'Phosphorus inorganic (phosphate)' },
-          { code: '84132', description: 'Potassium; serum, plasma or whole blood' },
-          { code: '84133', description: 'Potassium; urine' },
-          { code: '84144', description: 'Progesterone' },
-          { code: '84153', description: 'Prostate specific antigen (PSA); total' },
-          { code: '84154', description: 'Prostate specific antigen (PSA); free' },
-          { code: '84155', description: 'Protein, total, except by refractometry; serum, plasma or whole blood' },
-          { code: '84156', description: 'Protein, total, except by refractometry; urine' },
-          { code: '84295', description: 'Sodium; serum, plasma or whole blood' },
-          { code: '84433', description: 'Thyroxine; total' },
-          { code: '84436', description: 'Thyroxine; free' },
-          { code: '84439', description: 'Thyroid stimulating hormone (TSH)' },
-          { code: '84443', description: 'Thyroid stimulating immune globulins (TSI)' },
-          { code: '84479', description: 'Thyroid hormone (T3 or T4) uptake' },
-          { code: '84480', description: 'Triiodothyronine T3; total' },
-          { code: '84481', description: 'Triiodothyronine T3; free' },
-          { code: '84520', description: 'Urea nitrogen; quantitative' },
-          { code: '84550', description: 'Uric acid; blood' },
-          { code: '84702', description: 'Gonadotropin, chorionic (hCG); quantitative' },
-          { code: '85004', description: 'Blood count; automated differential WBC count' },
-          { code: '85007', description: 'Blood count; manual differential WBC count, buffy coat' },
-          { code: '85013', description: 'Blood count; spun microhematocrit' },
-          { code: '85014', description: 'Blood count; hematocrit (Hct)' },
-          { code: '85018', description: 'Blood count; hemoglobin (Hgb)' },
-          { code: '85025', description: 'Blood count; complete (CBC), automated (Hgb, Hct, RBC, WBC and platelet count)' },
-          { code: '85027', description: 'Blood count; complete (CBC), automated (Hgb, Hct, RBC, WBC and platelet count) and automated differential WBC count' },
-          { code: '85048', description: 'Blood count; leukocyte (WBC), automated' },
-          { code: '85610', description: 'Prothrombin time' },
-          { code: '85730', description: 'Thromboplastin time, partial (PTT)' },
-          { code: '86003', description: 'Allergen specific IgE; quantitative or semiquantitative, crude allergen extract, each' },
-          { code: '86140', description: 'C-reactive protein' },
-          { code: '86592', description: 'Syphilis test, non-treponemal antibody' },
-          { code: '86593', description: 'Syphilis test, treponemal antibody' },
-          { code: '86701', description: 'Antibody; HIV-1' },
-          { code: '86702', description: 'Antibody; HIV-2' },
-          { code: '86703', description: 'Antibody; HIV-1 and HIV-2, single result' },
-          { code: '86762', description: 'Antibody; rubella' },
-          { code: '86780', description: 'Antibody; Treponema pallidum' },
-          { code: '87040', description: 'Culture, bacterial; blood, aerobic, with isolation and presumptive identification' },
-          { code: '87045', description: 'Culture, bacterial; stool, aerobic, with isolation and preliminary examination' },
-          { code: '87070', description: 'Culture, bacterial; any other source except urine, blood or stool, aerobic' },
-          { code: '87086', description: 'Culture, bacterial; quantitative colony count, urine' },
-          { code: '87088', description: 'Culture, bacterial; with isolation and presumptive identification, urine' },
-          { code: '87205', description: 'Smear, primary source with interpretation; Gram or Giemsa stain for bacteria, fungi, or cell types' },
-          { code: '87491', description: 'Chlamydia trachomatis, amplified probe technique' },
-          { code: '87591', description: 'Neisseria gonorrhoeae, amplified probe technique' },
-          { code: '87798', description: 'Detection of infectious agent by nucleic acid (DNA or RNA); Enterovirus, amplified probe technique' },
-          { code: '87880', description: 'Streptococcus, group A, direct probe technique' },
-          { code: '88142', description: 'Cytopathology, cervical or vaginal (any reporting system), collected in preservative fluid, automated thin layer preparation' },
-          { code: '88175', description: 'Cytopathology, cervical or vaginal (any reporting system), collected in preservative fluid, automated thin layer preparation, requiring interpretation by physician' }
-        ]);
-      } finally {
-        setLoading(false);
+    const searchTerm = getSearchTerm();
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (searchTerm.length >= 2) {
+      searchTimeoutRef.current = setTimeout(() => {
+        searchCodes(searchTerm);
+        setIsDropdownOpen(true);
+      }, 300);
+    } else {
+      setSearchResults([]);
+      setIsDropdownOpen(false);
+    }
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
       }
     };
-    loadCPTCodes();
-  }, [api]);
+  }, [inputValue]);
+
+  // Reset highlighted index when results change
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [searchResults]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        !inputRef.current.contains(event.target)
+      ) {
+        setIsDropdownOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredCodes = cptCodes.filter(code => {
-    const search = searchQuery.toLowerCase();
-    return (
-      code.code.toLowerCase().includes(search) ||
-      code.description.toLowerCase().includes(search)
-    );
-  });
+  // Handle selecting a code from dropdown
+  const selectCode = (code) => {
+    const newValue = [...value, code];
+    onChange(newValue);
 
-  const toggleCode = (code) => {
-    const isSelected = value.some(c => c.code === code.code);
-    if (isSelected) {
-      onChange(value.filter(c => c.code !== code.code));
-    } else {
-      onChange([...value, code]);
+    // Clear the last search term from input
+    const parts = inputValue.split(',');
+    parts.pop(); // Remove last term
+    const newInput = parts.length > 0 ? parts.join(', ') + ', ' : '';
+    setInputValue(newInput);
+
+    setIsDropdownOpen(false);
+    setSearchResults([]);
+    inputRef.current?.focus();
+  };
+
+  // Handle removing a selected code
+  const removeCode = (codeToRemove) => {
+    const newValue = value.filter(item => item.code !== codeToRemove.code);
+    onChange(newValue);
+  };
+
+  // Handle input change
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e) => {
+    if (!isDropdownOpen && searchResults.length === 0) {
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev =>
+          prev < searchResults.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => prev > 0 ? prev - 1 : 0);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (searchResults.length > 0 && highlightedIndex >= 0) {
+          selectCode(searchResults[highlightedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsDropdownOpen(false);
+        setSearchResults([]);
+        break;
+      case 'Backspace':
+        // If input is empty or ends with comma+space, remove last selected item
+        if ((inputValue === '' || inputValue === ', ') && value.length > 0) {
+          e.preventDefault();
+          removeCode(value[value.length - 1]);
+        }
+        break;
+      default:
+        break;
     }
   };
 
-  const removeCode = (codeToRemove) => {
-    onChange(value.filter(c => c.code !== codeToRemove.code));
+  // Handle input focus
+  const handleFocus = () => {
+    const searchTerm = getSearchTerm();
+    if (searchTerm.length >= 2) {
+      setIsDropdownOpen(true);
+    }
   };
 
   return (
@@ -160,110 +219,144 @@ const LabCPTMultiSelect = ({ theme, api, value = [], onChange, label, placeholde
       {label && (
         <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
           {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
 
-      {/* Selected codes */}
-      {value.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {value.map((code) => (
-            <span
-              key={code.code}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-                theme === 'dark' ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
+      <div className="relative">
+        {/* Input container with selected chips */}
+        <div
+          className={`min-h-[42px] border rounded-lg p-2 flex flex-wrap items-center gap-2 ${
+            theme === 'dark'
+              ? 'bg-slate-800 border-slate-600 text-white'
+              : 'bg-white border-gray-300 text-gray-900'
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-text'}`}
+          onClick={() => !disabled && inputRef.current?.focus()}
+        >
+          {/* Selected code chips */}
+          {value.map((item, index) => (
+            <div
+              key={`${item.code}-${index}`}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+                theme === 'dark'
+                  ? 'bg-purple-900/50 text-purple-200 border border-purple-700'
+                  : 'bg-purple-100 text-purple-800 border border-purple-300'
               }`}
             >
-              {code.code} - {code.description.length > 40 ? code.description.substring(0, 40) + '...' : code.description}
-              <button
-                type="button"
-                onClick={() => removeCode(code)}
-                className="ml-1 hover:text-red-400 transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Dropdown */}
-      <div ref={dropdownRef} className="relative">
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors flex items-center justify-between ${
-            theme === 'dark'
-              ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-              : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-          }`}
-        >
-          <span className={value.length === 0 ? 'text-gray-500' : ''}>
-            {value.length === 0 ? (placeholder || 'Select CPT codes...') : `${value.length} code(s) selected`}
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-
-        {isOpen && (
-          <div className={`absolute z-50 w-full mt-1 rounded-lg border shadow-lg max-h-96 overflow-hidden ${
-            theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-300'
-          }`}>
-            {/* Search */}
-            <div className={`p-2 border-b ${theme === 'dark' ? 'border-slate-600' : 'border-gray-300'}`}>
-              <div className="relative">
-                <Search className={`absolute left-2 top-2.5 w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by code or description..."
-                  className={`w-full pl-8 pr-3 py-2 text-sm border rounded outline-none ${
-                    theme === 'dark'
-                      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-                      : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
+              <span className="font-bold">{item.code}</span>
+              <span className="text-xs opacity-75 max-w-[200px] truncate">
+                {item.description}
+              </span>
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeCode(item);
+                  }}
+                  className={`ml-1 hover:bg-red-500 hover:text-white rounded-full p-0.5 transition-colors ${
+                    theme === 'dark' ? 'text-purple-300' : 'text-purple-600'
                   }`}
-                />
-              </div>
-            </div>
-
-            {/* Options */}
-            <div className="overflow-y-auto max-h-80">
-              {loading ? (
-                <div className="p-4 text-center text-sm text-gray-500">Loading CPT codes...</div>
-              ) : filteredCodes.length === 0 ? (
-                <div className="p-4 text-center text-sm text-gray-500">No CPT codes found</div>
-              ) : (
-                filteredCodes.map((code) => {
-                  const isSelected = value.some(c => c.code === code.code);
-                  return (
-                    <button
-                      key={code.code}
-                      type="button"
-                      onClick={() => toggleCode(code)}
-                      className={`w-full px-3 py-2 text-left text-sm transition-colors flex items-start gap-2 ${
-                        isSelected
-                          ? theme === 'dark' ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
-                          : theme === 'dark' ? 'hover:bg-slate-700 text-white' : 'hover:bg-gray-100 text-gray-900'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        readOnly
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium">{code.code}</div>
-                        <div className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          {code.description}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })
+                >
+                  <X className="w-3 h-3" />
+                </button>
               )}
             </div>
+          ))}
+
+          {/* Input field */}
+          <div className="flex-1 flex items-center min-w-[200px]">
+            <Search className={`w-4 h-4 mr-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onFocus={handleFocus}
+              placeholder={value.length === 0 ? placeholder : ''}
+              disabled={disabled}
+              className={`flex-1 outline-none bg-transparent ${
+                theme === 'dark' ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'
+              }`}
+            />
+            {isLoading && (
+              <div className="ml-2">
+                <div className={`animate-spin rounded-full h-4 w-4 border-b-2 ${
+                  theme === 'dark' ? 'border-purple-400' : 'border-purple-600'
+                }`}></div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Dropdown with search results */}
+        {isDropdownOpen && searchResults.length > 0 && (
+          <div
+            ref={dropdownRef}
+            className={`absolute z-50 w-full mt-1 max-h-60 overflow-auto rounded-lg border shadow-lg ${
+              theme === 'dark'
+                ? 'bg-slate-800 border-slate-600'
+                : 'bg-white border-gray-300'
+            }`}
+          >
+            {searchResults.map((item, index) => (
+              <div
+                key={`${item.code}-${index}`}
+                onClick={() => selectCode(item)}
+                onMouseEnter={() => setHighlightedIndex(index)}
+                className={`px-4 py-2 cursor-pointer transition-colors ${
+                  highlightedIndex === index
+                    ? theme === 'dark'
+                      ? 'bg-purple-900/50'
+                      : 'bg-purple-50'
+                    : theme === 'dark'
+                    ? 'hover:bg-slate-700'
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <span className={`font-bold text-sm ${
+                    theme === 'dark' ? 'text-purple-400' : 'text-purple-600'
+                  }`}>
+                    {item.code}
+                  </span>
+                  <span className={`px-1.5 py-0.5 text-xs rounded ${
+                    theme === 'dark'
+                      ? 'bg-purple-900/50 text-purple-300'
+                      : 'bg-purple-100 text-purple-700'
+                  }`}>
+                    Lab CPT
+                  </span>
+                </div>
+                <div className={`text-sm mt-1 ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {item.description}
+                </div>
+              </div>
+            ))}
           </div>
         )}
+
+        {/* No results message */}
+        {isDropdownOpen && !isLoading && searchResults.length === 0 && getSearchTerm().length >= 2 && (
+          <div
+            ref={dropdownRef}
+            className={`absolute z-50 w-full mt-1 rounded-lg border shadow-lg p-4 text-center ${
+              theme === 'dark'
+                ? 'bg-slate-800 border-slate-600 text-gray-400'
+                : 'bg-white border-gray-300 text-gray-500'
+            }`}
+          >
+            No lab CPT codes found matching "{getSearchTerm()}"
+          </div>
+        )}
+      </div>
+
+      {/* Helper text */}
+      <div className={`mt-1 text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+        Type to search lab tests (min 2 characters), or enter codes separated by commas. Selected: {value.length}
       </div>
     </div>
   );
