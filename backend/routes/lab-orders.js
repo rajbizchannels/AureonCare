@@ -114,6 +114,7 @@ router.post('/', async (req, res) => {
       patient_id,
       provider_id,
       laboratory_id,
+      linked_diagnosis_id,
       order_type,
       priority,
       diagnosis_codes,
@@ -138,6 +139,7 @@ router.post('/', async (req, res) => {
       await pool.query(`
         ALTER TABLE lab_orders
         ADD COLUMN IF NOT EXISTS laboratory_id UUID REFERENCES laboratories(id),
+        ADD COLUMN IF NOT EXISTS linked_diagnosis_id UUID REFERENCES diagnoses(id),
         ADD COLUMN IF NOT EXISTS order_status VARCHAR(20) DEFAULT 'one-time',
         ADD COLUMN IF NOT EXISTS order_status_date DATE,
         ADD COLUMN IF NOT EXISTS frequency VARCHAR(20),
@@ -174,6 +176,7 @@ router.post('/', async (req, res) => {
         patient_id,
         provider_id,
         laboratory_id,
+        linked_diagnosis_id,
         order_number,
         order_type,
         priority,
@@ -190,12 +193,13 @@ router.post('/', async (req, res) => {
         collection_class,
         result_recipients
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *
     `, [
       patient_id,
       provider_id,
       laboratory_id || null,
+      linked_diagnosis_id || null,
       orderNumber,
       order_type || 'lab_test',
       priority || 'routine',
@@ -305,6 +309,7 @@ router.put('/:id', async (req, res) => {
       status,
       priority,
       laboratory_id,
+      linked_diagnosis_id,
       diagnosis_codes,
       test_codes,
       clinical_notes,
@@ -324,26 +329,28 @@ router.put('/:id', async (req, res) => {
         status = COALESCE($1, status),
         priority = COALESCE($2, priority),
         laboratory_id = COALESCE($3, laboratory_id),
-        diagnosis_codes = COALESCE($4, diagnosis_codes),
-        test_codes = COALESCE($5, test_codes),
-        clinical_notes = COALESCE($6, clinical_notes),
-        special_instructions = COALESCE($7, special_instructions),
-        order_status = COALESCE($8, order_status),
-        order_status_date = COALESCE($9, order_status_date),
-        frequency = COALESCE($10, frequency),
-        collection_class = COALESCE($11, collection_class),
-        result_recipients = COALESCE($12, result_recipients),
-        results_data = COALESCE($13, results_data),
-        results_received_at = CASE WHEN $13 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE results_received_at END,
-        results_reviewed_by = COALESCE($14, results_reviewed_by),
-        results_reviewed_at = CASE WHEN $14 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE results_reviewed_at END,
+        linked_diagnosis_id = COALESCE($4, linked_diagnosis_id),
+        diagnosis_codes = COALESCE($5, diagnosis_codes),
+        test_codes = COALESCE($6, test_codes),
+        clinical_notes = COALESCE($7, clinical_notes),
+        special_instructions = COALESCE($8, special_instructions),
+        order_status = COALESCE($9, order_status),
+        order_status_date = COALESCE($10, order_status_date),
+        frequency = COALESCE($11, frequency),
+        collection_class = COALESCE($12, collection_class),
+        result_recipients = COALESCE($13, result_recipients),
+        results_data = COALESCE($14, results_data),
+        results_received_at = CASE WHEN $14 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE results_received_at END,
+        results_reviewed_by = COALESCE($15, results_reviewed_by),
+        results_reviewed_at = CASE WHEN $15 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE results_reviewed_at END,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $15
+      WHERE id = $16
       RETURNING *
     `, [
       status,
       priority,
       laboratory_id,
+      linked_diagnosis_id,
       diagnosis_codes ? JSON.stringify(diagnosis_codes) : null,
       test_codes ? JSON.stringify(test_codes) : null,
       clinical_notes,

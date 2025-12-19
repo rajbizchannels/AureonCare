@@ -224,6 +224,7 @@ const NewLabOrderForm = ({
         patient_id: formData.patientId,
         provider_id: formData.providerId,
         laboratory_id: formData.laboratoryId,
+        linked_diagnosis_id: formData.linkedDiagnosisId || null,
         order_type: 'lab_test',
         priority: formData.priority,
         diagnosis_codes: formData.diagnosisCodes,
