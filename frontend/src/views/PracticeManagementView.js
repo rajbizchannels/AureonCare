@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ArrowLeft, Search, Filter, X, Clock, User, CheckCircle, Bell } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import NewAppointmentForm from '../components/forms/NewAppointmentForm';
+import ViewEditModal from '../components/modals/ViewEditModal';
 
 const PracticeManagementView = ({
   theme,
@@ -12,10 +14,17 @@ const PracticeManagementView = ({
   calendarViewType,
   setAppointmentViewType,
   setCalendarViewType,
+  showForm,
   setShowForm,
+  editingItem,
   setEditingItem,
+  currentView,
   setCurrentView,
   setAppointments,
+  setClaims,
+  setUsers,
+  setPatients,
+  setUser,
   api,
   addNotification,
   setCurrentModule,
@@ -429,6 +438,51 @@ const PracticeManagementView = ({
           <div className={`mt-4 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             {t.showing || 'Showing'} <span className="font-semibold">{filteredAppointments.length}</span> {t.of || 'of'} <span className="font-semibold">{appointments.length}</span> {t.appointments || 'appointments'}
           </div>
+        </div>
+      )}
+
+      {/* Appointment Form */}
+      {showForm === 'appointment' && (
+        <div className="mb-6">
+          <NewAppointmentForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            users={users}
+            onClose={() => setShowForm(null)}
+            onSuccess={(newAppointment) => {
+              setAppointments([...appointments, newAppointment]);
+              setShowForm(null);
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
+      {/* Edit Appointment Form */}
+      {editingItem && editingItem.type === 'appointment' && (
+        <div className="mb-6">
+          <ViewEditModal
+            theme={theme}
+            editingItem={editingItem}
+            currentView={currentView}
+            onClose={() => {
+              setEditingItem(null);
+              setCurrentView('list');
+            }}
+            patients={patients}
+            users={users}
+            api={api}
+            addNotification={addNotification}
+            setAppointments={setAppointments}
+            setPatients={setPatients}
+            setClaims={setClaims}
+            setUsers={setUsers}
+            setUser={setUser}
+            user={user}
+            t={t}
+          />
         </div>
       )}
 
