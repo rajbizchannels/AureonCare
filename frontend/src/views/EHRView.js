@@ -1,14 +1,29 @@
 import React, { useState } from 'react';
 import { Plus, FileText, Calendar, Phone, Mail, Edit, ArrowLeft, History, Pill, User, Search, Video } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
+import NewPatientForm from '../components/forms/NewPatientForm';
+import ViewEditModal from '../components/modals/ViewEditModal';
 
 const EHRView = ({
   theme,
   patients,
+  users,
+  showForm,
   setShowForm,
-  setCurrentView,
+  editingItem,
   setEditingItem,
+  currentView,
+  setCurrentView,
   setCurrentModule,
+  setPatients,
+  setAppointments,
+  setClaims,
+  setUsers,
+  setUser,
+  api,
+  addNotification,
+  user,
+  t,
   onViewHistory,
   onViewPrescriptions,
   onViewTelehealth
@@ -69,6 +84,48 @@ const EHRView = ({
           }`}
         />
       </div>
+
+      {/* Patient Form */}
+      {showForm === 'patient' && (
+        <div className="mb-6">
+          <NewPatientForm
+            theme={theme}
+            api={api}
+            onClose={() => setShowForm(null)}
+            onSuccess={(newPatient) => {
+              setPatients([...patients, newPatient]);
+              setShowForm(null);
+            }}
+            addNotification={addNotification}
+          />
+        </div>
+      )}
+
+      {/* Edit Patient Form */}
+      {editingItem && editingItem.type === 'patient' && (
+        <div className="mb-6">
+          <ViewEditModal
+            theme={theme}
+            editingItem={editingItem}
+            currentView={currentView}
+            onClose={() => {
+              setEditingItem(null);
+              setCurrentView('list');
+            }}
+            patients={patients}
+            users={users}
+            api={api}
+            addNotification={addNotification}
+            setAppointments={setAppointments}
+            setPatients={setPatients}
+            setClaims={setClaims}
+            setUsers={setUsers}
+            setUser={setUser}
+            user={user}
+            t={t}
+          />
+        </div>
+      )}
 
       {/* Patient List */}
       <div className={`rounded-xl border overflow-hidden ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>

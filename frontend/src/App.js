@@ -252,13 +252,20 @@ function App() {
             calendarViewType={calendarViewType}
             setAppointmentViewType={setAppointmentViewType}
             setCalendarViewType={setCalendarViewType}
+            showForm={showForm}
             setShowForm={handleSetShowForm}
+            editingItem={editingItem}
             setEditingItem={handleSetEditingItem}
+            currentView={currentView}
             setCurrentView={setCurrentView}
             setAppointments={setAppointments}
             api={api}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            setClaims={setClaims}
+            setUsers={setUsers}
+            setPatients={setPatients}
+            setUser={setUser}
             t={t}
             user={user}
           />
@@ -278,10 +285,23 @@ function App() {
           <EHRView
             theme={theme}
             patients={patients}
+            users={users}
+            showForm={showForm}
             setShowForm={handleSetShowForm}
-            setCurrentView={setCurrentView}
+            editingItem={editingItem}
             setEditingItem={handleSetEditingItem}
+            currentView={currentView}
+            setCurrentView={setCurrentView}
             setCurrentModule={setCurrentModule}
+            setPatients={setPatients}
+            setAppointments={setAppointments}
+            setClaims={setClaims}
+            setUsers={setUsers}
+            setUser={setUser}
+            api={api}
+            addNotification={addNotification}
+            user={user}
+            t={t}
             onViewHistory={(patient) => {
               setSelectedPatient(patient);
               setCurrentModule('patientHistory');
@@ -668,41 +688,7 @@ function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Forms - Displayed at top, pushing content down */}
-        {showForm === 'appointment' && (
-          <div className="mb-8">
-            <NewAppointmentForm
-              theme={theme}
-              api={api}
-              patients={patients}
-              users={users}
-              onClose={() => setShowForm(null)}
-              onSuccess={(newAppointment) => {
-                setAppointments([...appointments, newAppointment]);
-                setShowForm(null);
-              }}
-              addNotification={addNotification}
-              t={t}
-            />
-          </div>
-        )}
-
-        {showForm === 'patient' && (
-          <div className="mb-8">
-            <NewPatientForm
-              theme={theme}
-              api={api}
-              patients={patients}
-              onClose={() => setShowForm(null)}
-              onSuccess={(newPatient) => {
-                setPatients([...patients, newPatient]);
-                setShowForm(null);
-              }}
-              addNotification={addNotification}
-              t={t}
-            />
-          </div>
-        )}
+        {/* Forms - Displayed within views, positioned between search/tabs and list content */}
 
         {showForm === 'claim' && (
           <div className="mb-8">
@@ -881,7 +867,8 @@ function App() {
           </div>
         )}
 
-        {editingItem && (
+        {/* Edit Forms for other types (appointment and patient are now handled in their respective views) */}
+        {editingItem && editingItem.type !== 'appointment' && editingItem.type !== 'patient' && (
           <div className="mb-8">
             <ViewEditModal
               theme={theme}
