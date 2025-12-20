@@ -668,6 +668,245 @@ function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Forms - Displayed at top, pushing content down */}
+        {showForm === 'appointment' && (
+          <div className="mb-8">
+            <NewAppointmentForm
+              theme={theme}
+              api={api}
+              patients={patients}
+              users={users}
+              onClose={() => setShowForm(null)}
+              onSuccess={(newAppointment) => {
+                setAppointments([...appointments, newAppointment]);
+                setShowForm(null);
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'patient' && (
+          <div className="mb-8">
+            <NewPatientForm
+              theme={theme}
+              api={api}
+              patients={patients}
+              onClose={() => setShowForm(null)}
+              onSuccess={(newPatient) => {
+                setPatients([...patients, newPatient]);
+                setShowForm(null);
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'claim' && (
+          <div className="mb-8">
+            <NewClaimForm
+              theme={theme}
+              api={api}
+              patients={patients}
+              claims={claims}
+              onClose={() => setShowForm(null)}
+              onSuccess={(newClaim) => {
+                setClaims([...claims, newClaim]);
+                setShowForm(null);
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'payment' && (
+          <div className="mb-8">
+            <NewPaymentForm
+              theme={theme}
+              api={api}
+              patients={patients}
+              claims={claims}
+              onClose={() => setShowForm(null)}
+              onSuccess={(newPayment) => {
+                addNotification('success', t.paymentRecordedSuccessfully || 'Payment recorded successfully');
+                setShowForm(null);
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'insurancePayer' && (
+          <div className="mb-8">
+            <NewInsurancePayerForm
+              theme={theme}
+              api={api}
+              onClose={() => setShowForm(null)}
+              onSuccess={() => setShowForm(null)}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'appointmentType' && (
+          <div className="mb-8">
+            <NewAppointmentTypeForm
+              theme={theme}
+              api={api}
+              onClose={() => setShowForm(null)}
+              onSuccess={() => {
+                setShowForm(null);
+                addNotification('success', t.appointmentTypeCreated || 'Appointment type created successfully');
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'healthcareOffering' && (
+          <div className="mb-8">
+            <NewHealthcareOfferingForm
+              theme={theme}
+              api={api}
+              onClose={() => setShowForm(null)}
+              onSuccess={() => {
+                setShowForm(null);
+                addNotification('success', t.offeringCreated || 'Healthcare offering created successfully');
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'campaign' && (
+          <div className="mb-8">
+            <NewCampaignForm
+              theme={theme}
+              api={api}
+              onClose={() => setShowForm(null)}
+              onSuccess={() => {
+                setShowForm(null);
+                addNotification('success', t.campaignCreated || 'Campaign created successfully');
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'pharmacy' && (
+          <div className="mb-8">
+            <NewPharmacyForm
+              theme={theme}
+              api={api}
+              onClose={() => setShowForm(null)}
+              onSuccess={() => setShowForm(null)}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'laboratory' && (
+          <div className="mb-8">
+            <NewLaboratoryForm
+              theme={theme}
+              api={api}
+              onClose={() => setShowForm(null)}
+              onSuccess={() => setShowForm(null)}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'user' && (
+          <div className="mb-8">
+            <NewUserForm
+              theme={theme}
+              api={api}
+              onClose={() => setShowForm(null)}
+              onSuccess={(newUser) => {
+                setUsers([...users, newUser]);
+                setShowForm(null);
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'task' && (
+          <div className="mb-8">
+            <NewTaskForm
+              theme={theme}
+              api={api}
+              users={users}
+              patients={patients}
+              onClose={() => setShowForm(null)}
+              onSuccess={(newTask) => {
+                setTasks([...tasks, newTask]);
+                setShowForm(null);
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {showForm === 'diagnosis' && (
+          <div className="mb-8">
+            <DiagnosisForm
+              theme={theme}
+              api={api}
+              patient={null}
+              patients={patients}
+              providers={users}
+              user={user}
+              onClose={() => setShowForm(null)}
+              onSuccess={() => {
+                setShowForm(null);
+                addNotification('success', t.diagnosisCreated || 'Diagnosis created successfully');
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
+
+        {editingItem && (
+          <div className="mb-8">
+            <ViewEditModal
+              theme={theme}
+              editingItem={editingItem}
+              currentView={currentView}
+              onClose={() => {
+                setEditingItem(null);
+                setCurrentView('list');
+              }}
+              patients={patients}
+              users={users}
+              api={api}
+              addNotification={addNotification}
+              setAppointments={setAppointments}
+              setPatients={setPatients}
+              setClaims={setClaims}
+              setUsers={setUsers}
+              setUser={setUser}
+              user={user}
+              t={t}
+            />
+          </div>
+        )}
+
+        {/* Main View Content */}
         {renderModule()}
       </main>
 
@@ -679,266 +918,6 @@ function App() {
         >
           <Bot className="w-6 h-6" />
         </button>
-      )}
-
-      {/* Modals and Forms */}
-      {showForm === 'appointment' && (
-        <NewAppointmentForm
-          theme={theme}
-          api={api}
-          patients={patients}
-          users={users}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newAppointment) => {
-            setAppointments([...appointments, newAppointment]);
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'patient' && (
-        <NewPatientForm
-          theme={theme}
-          api={api}
-          patients={patients}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newPatient) => {
-            setPatients([...patients, newPatient]);
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'claim' && (
-        <NewClaimForm
-          theme={theme}
-          api={api}
-          patients={patients}
-          claims={claims}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newClaim) => {
-            setClaims([...claims, newClaim]);
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'payment' && (
-        <NewPaymentForm
-          theme={theme}
-          api={api}
-          patients={patients}
-          claims={claims}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newPayment) => {
-            setPayments([...payments, newPayment]);
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'insurancePayer' && (
-        <NewInsurancePayerForm
-          theme={theme}
-          api={api}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newPayer) => {
-            // Refresh insurance payers list if needed
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'appointmentType' && (
-        <NewAppointmentTypeForm
-          theme={theme}
-          api={api}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newType) => {
-            // Refresh CRM counts
-            setCrmRefreshKey(prev => prev + 1);
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'healthcareOffering' && (
-        <NewHealthcareOfferingForm
-          theme={theme}
-          api={api}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newOffering) => {
-            // Refresh CRM counts
-            setCrmRefreshKey(prev => prev + 1);
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'campaign' && (
-        <NewCampaignForm
-          theme={theme}
-          api={api}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newCampaign) => {
-            // Refresh CRM counts
-            setCrmRefreshKey(prev => prev + 1);
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'pharmacy' && (
-        <NewPharmacyForm
-          theme={theme}
-          api={api}
-          onClose={() => setShowForm(null)}
-          onSuccess={() => {
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'laboratory' && (
-        <NewLaboratoryForm
-          theme={theme}
-          api={api}
-          onClose={() => setShowForm(null)}
-          onSuccess={() => {
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'user' && (
-        <NewUserForm
-          theme={theme}
-          api={api}
-          user={user}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newUser) => {
-            setUsers([...users, newUser]);
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'task' && (
-        <NewTaskForm
-          theme={theme}
-          api={api}
-          onClose={() => setShowForm(null)}
-          onSuccess={(newTask) => {
-            setTasks([...tasks, newTask]);
-            setShowForm(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'diagnosis' && (
-        <DiagnosisForm
-          theme={theme}
-          api={api}
-          patient={editingItem?.patient || null}
-          patients={patients}
-          providers={providers}
-          user={user}
-          editDiagnosis={editingItem?.diagnosis || null}
-          onClose={() => {
-            setShowForm(null);
-            setEditingItem(null);
-          }}
-          onSuccess={(newDiagnosis) => {
-            setShowForm(null);
-            setEditingItem(null);
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'userProfile' && (
-        <UserProfileModal
-          theme={theme}
-          user={user}
-          onClose={() => setShowForm(null)}
-          setCurrentView={setCurrentView}
-          setEditingItem={handleSetEditingItem}
-          showChangePassword={showChangePassword}
-          setShowChangePassword={setShowChangePassword}
-          updateUserPreferences={updateUserPreferences}
-          setTheme={setTheme}
-          api={api}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
-      {showForm === 'settings' && (
-        <SettingsModal
-          theme={theme}
-          user={user}
-          users={users}
-          language={language}
-          onClose={() => setShowForm(null)}
-          setCurrentView={setCurrentView}
-          updateUserPreferences={updateUserPreferences}
-          setTheme={setTheme}
-          setLanguage={setLanguage}
-          setShowForm={handleSetShowForm}
-          setEditingItem={handleSetEditingItem}
-          setUsers={setUsers}
-          setCurrentModule={setCurrentModule}
-          api={api}
-          addNotification={addNotification}
-        />
-      )}
-
-      {editingItem && (
-        <ViewEditModal
-          theme={theme}
-          editingItem={editingItem}
-          currentView={currentView}
-          onClose={() => {
-            setEditingItem(null);
-            setCurrentView('list');
-          }}
-          patients={patients}
-          users={users}
-          api={api}
-          addNotification={addNotification}
-          setAppointments={setAppointments}
-          setPatients={setPatients}
-          setClaims={setClaims}
-          setUsers={setUsers}
-          setUser={setUser}
-          user={user}
-          t={t}
-        />
       )}
 
       {/* Quick Views */}
