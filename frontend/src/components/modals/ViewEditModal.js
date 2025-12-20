@@ -522,9 +522,8 @@ const ViewEditModal = ({
         confirmText={t.saveChanges || 'Save Changes'}
         cancelText={t.cancel || 'Cancel'}
       />
-      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose} style={{ zIndex: 60 }}>
-        <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
-        <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+      <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+        <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-white'}`}>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {isView ? (t.view || 'View') : (t.edit || 'Edit')} {
               type === 'appointment' ? (t.appointment || 'Appointment') :
@@ -540,7 +539,7 @@ const ViewEditModal = ({
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+        <div className="flex-1 overflow-y-auto p-6">
           {type === 'appointment' ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -1769,7 +1768,6 @@ const ViewEditModal = ({
           </div>
         </div>
       )}
-    </div>
     </>
   );
 };
