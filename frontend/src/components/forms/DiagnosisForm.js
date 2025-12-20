@@ -405,22 +405,11 @@ const DiagnosisForm = ({
         showCancel={false}
       />
 
-      <div
-        className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${
-          theme === 'dark' ? 'bg-black/50' : 'bg-black/30'
-        }`}
-        onClick={onClose}
-      >
-        <div
-          className={`rounded-xl border max-w-4xl w-full max-h-[90vh] overflow-hidden ${
-            theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'
-          }`}
-          onClick={e => e.stopPropagation()}
-        >
+      <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
           {/* Header */}
           <div
-            className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-green-500/10 to-teal-500/10 ${
-              theme === 'dark' ? 'border-slate-700' : 'border-gray-300'
+            className={`p-6 border-b flex items-center justify-between ${
+              theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -442,7 +431,7 @@ const DiagnosisForm = ({
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
             <div className="space-y-4">
               {/* Patient (Read-only, pre-filled) */}
               <div>
@@ -1144,7 +1133,6 @@ const DiagnosisForm = ({
               )}
             </button>
           </div>
-        </div>
       </div>
     </>
   );
