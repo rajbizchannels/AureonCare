@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft, CreditCard, Check, Video, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 const AdminPanelView = ({
   theme,
@@ -254,6 +255,10 @@ const AdminPanelView = ({
     settings: { view: false, create: false, edit: false, delete: false }
   });
 
+  // Confirmation modal state
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [pendingSaveAction, setPendingSaveAction] = useState(null);
+
   // Sync currentPlan with planTier from context
   useEffect(() => {
     if (planTier) {
@@ -368,6 +373,15 @@ const AdminPanelView = ({
     loadVendorSettings();
   }, [api]);
 
+  // Confirmation handler
+  const handleConfirmSave = () => {
+    if (pendingSaveAction) {
+      pendingSaveAction();
+    }
+    setShowSaveConfirmation(false);
+    setPendingSaveAction(null);
+  };
+
   const handleSaveClinicSettings = async () => {
     try {
       // Save to localStorage for now (until backend endpoint is created)
@@ -377,6 +391,11 @@ const AdminPanelView = ({
       console.error('Error saving clinic settings:', error);
       await addNotification('alert', t.failedToSaveClinicSettings);
     }
+  };
+
+  const handleSaveClinicSettingsClick = () => {
+    setPendingSaveAction(() => handleSaveClinicSettings);
+    setShowSaveConfirmation(true);
   };
 
   const handleDeleteUser = async (userId) => {
@@ -453,6 +472,11 @@ const AdminPanelView = ({
     }
   };
 
+  const handleSaveRolePermissionsClick = () => {
+    setPendingSaveAction(() => handleSaveRolePermissions);
+    setShowSaveConfirmation(true);
+  };
+
   const handleTogglePermission = (role, module, action) => {
     setRolePermissions({
       ...rolePermissions,
@@ -513,6 +537,11 @@ const AdminPanelView = ({
     }
   };
 
+  const handleSaveTelehealthSettingsClick = (providerType) => {
+    setPendingSaveAction(() => () => handleSaveTelehealthSettings(providerType));
+    setShowSaveConfirmation(true);
+  };
+
   const handleToggleTelehealthProvider = async (providerType, isEnabled) => {
     // Store previous state for rollback (outside try block so catch can access it)
     const previousState = { ...telehealthSettings[providerType] };
@@ -556,6 +585,37 @@ const AdminPanelView = ({
       console.error('Error saving vendor settings:', error);
       await addNotification('alert', `Failed to save ${vendorType} settings`);
     }
+  };
+
+  const handleSaveVendorSettingsClick = (vendorType) => {
+    setPendingSaveAction(() => () => handleSaveVendorSettings(vendorType));
+    setShowSaveConfirmation(true);
+  };
+
+  const handleSaveWorkingHours = async () => {
+    try {
+      await addNotification('success', t.workingHoursSaved);
+    } catch (error) {
+      await addNotification('alert', 'Failed to save working hours');
+    }
+  };
+
+  const handleSaveWorkingHoursClick = () => {
+    setPendingSaveAction(() => handleSaveWorkingHours);
+    setShowSaveConfirmation(true);
+  };
+
+  const handleSaveAppointmentSettings = async () => {
+    try {
+      await addNotification('success', t.appointmentSettingsSaved);
+    } catch (error) {
+      await addNotification('alert', 'Failed to save appointment settings');
+    }
+  };
+
+  const handleSaveAppointmentSettingsClick = () => {
+    setPendingSaveAction(() => handleSaveAppointmentSettings);
+    setShowSaveConfirmation(true);
   };
 
   const handleToggleVendorIntegration = async (vendorType, isEnabled) => {
@@ -862,7 +922,7 @@ const AdminPanelView = ({
           </div>
           <div className="mt-6 flex justify-end">
             <button
-              onClick={handleSaveClinicSettings}
+              onClick={handleSaveClinicSettingsClick}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
               <Save className="w-5 h-5" />
@@ -1208,7 +1268,7 @@ const AdminPanelView = ({
 
           <div className="mt-6 flex justify-end">
             <button
-              onClick={handleSaveRolePermissions}
+              onClick={handleSaveRolePermissionsClick}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
               <Save className="w-5 h-5" />
@@ -1500,7 +1560,7 @@ const AdminPanelView = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => handleSaveTelehealthSettings('zoom')}
+                    onClick={() => handleSaveTelehealthSettingsClick('zoom')}
                     className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
@@ -1582,7 +1642,7 @@ const AdminPanelView = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => handleSaveTelehealthSettings('google_meet')}
+                    onClick={() => handleSaveTelehealthSettingsClick('google_meet')}
                     className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
@@ -1667,7 +1727,7 @@ const AdminPanelView = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => handleSaveTelehealthSettings('webex')}
+                    onClick={() => handleSaveTelehealthSettingsClick('webex')}
                     className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
@@ -1806,7 +1866,7 @@ const AdminPanelView = ({
                     </label>
                   </div>
                   <button
-                    onClick={() => handleSaveVendorSettings('surescripts')}
+                    onClick={() => handleSaveVendorSettingsClick('surescripts')}
                     className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
@@ -1937,7 +1997,7 @@ const AdminPanelView = ({
                     </label>
                   </div>
                   <button
-                    onClick={() => handleSaveVendorSettings('labcorp')}
+                    onClick={() => handleSaveVendorSettingsClick('labcorp')}
                     className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
@@ -2086,7 +2146,7 @@ const AdminPanelView = ({
                     </label>
                   </div>
                   <button
-                    onClick={() => handleSaveVendorSettings('optum')}
+                    onClick={() => handleSaveVendorSettingsClick('optum')}
                     className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
@@ -2172,9 +2232,7 @@ const AdminPanelView = ({
           </div>
           <div className="mt-6 flex justify-end">
             <button
-              onClick={async () => {
-                await addNotification('success', t.workingHoursSaved);
-              }}
+              onClick={handleSaveWorkingHoursClick}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
               <Save className="w-5 h-5" />
@@ -2238,9 +2296,7 @@ const AdminPanelView = ({
           </div>
           <div className="mt-6 flex justify-end">
             <button
-              onClick={async () => {
-                await addNotification('success', t.appointmentSettingsSaved);
-              }}
+              onClick={handleSaveAppointmentSettingsClick}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg font-medium transition-colors text-white flex items-center gap-2"
             >
               <Save className="w-5 h-5" />
@@ -2250,6 +2306,22 @@ const AdminPanelView = ({
         </div>
       )}
     </div>
+
+    {/* Save Confirmation Modal */}
+    <ConfirmationModal
+      theme={theme}
+      isOpen={showSaveConfirmation}
+      onClose={() => {
+        setShowSaveConfirmation(false);
+        setPendingSaveAction(null);
+      }}
+      onConfirm={handleConfirmSave}
+      title="Confirm Save"
+      message="Are you sure you want to save these settings?"
+      type="confirm"
+      confirmText="Save"
+      cancelText="Cancel"
+    />
     </>
   );
 };
