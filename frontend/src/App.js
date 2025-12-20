@@ -229,13 +229,20 @@ function App() {
             tasks={tasks}
             claims={claims}
             patients={patients}
+            users={users}
             modules={modules}
             hasAccess={hasModuleAccess}
             setSelectedItem={handleSetSelectedItem}
+            showForm={showForm}
             setShowForm={handleSetShowForm}
             setCurrentModule={setCurrentModule}
             setAppointmentViewType={setAppointmentViewType}
             setCalendarViewType={setCalendarViewType}
+            setAppointments={setAppointments}
+            setPatients={setPatients}
+            setTasks={setTasks}
+            setClaims={setClaims}
+            api={api}
             completeTask={completeTask}
             updateUserPreferences={updateUserPreferences}
             addNotification={addNotification}
@@ -688,25 +695,8 @@ function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Forms - Displayed within views, positioned between search/tabs and list content */}
-
-        {showForm === 'claim' && (
-          <div className="mb-8">
-            <NewClaimForm
-              theme={theme}
-              api={api}
-              patients={patients}
-              claims={claims}
-              onClose={() => setShowForm(null)}
-              onSuccess={(newClaim) => {
-                setClaims([...claims, newClaim]);
-                setShowForm(null);
-              }}
-              addNotification={addNotification}
-              t={t}
-            />
-          </div>
-        )}
+        {/* Forms - appointment, patient, task, claim, diagnosis are now handled in their respective views */}
+        {/* Only forms not handled by specific views are rendered here */}
 
         {showForm === 'payment' && (
           <div className="mb-8">
@@ -829,43 +819,7 @@ function App() {
           </div>
         )}
 
-        {showForm === 'task' && (
-          <div className="mb-8">
-            <NewTaskForm
-              theme={theme}
-              api={api}
-              users={users}
-              patients={patients}
-              onClose={() => setShowForm(null)}
-              onSuccess={(newTask) => {
-                setTasks([...tasks, newTask]);
-                setShowForm(null);
-              }}
-              addNotification={addNotification}
-              t={t}
-            />
-          </div>
-        )}
-
-        {showForm === 'diagnosis' && (
-          <div className="mb-8">
-            <DiagnosisForm
-              theme={theme}
-              api={api}
-              patient={null}
-              patients={patients}
-              providers={users}
-              user={user}
-              onClose={() => setShowForm(null)}
-              onSuccess={() => {
-                setShowForm(null);
-                addNotification('success', t.diagnosisCreated || 'Diagnosis created successfully');
-              }}
-              addNotification={addNotification}
-              t={t}
-            />
-          </div>
-        )}
+        {/* task, diagnosis forms are now handled in DashboardView */}
 
         {/* Edit Forms for other types (appointment and patient are now handled in their respective views) */}
         {editingItem && editingItem.type !== 'appointment' && editingItem.type !== 'patient' && (

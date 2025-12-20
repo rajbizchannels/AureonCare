@@ -97,6 +97,7 @@ const EHRView = ({
               setShowForm(null);
             }}
             addNotification={addNotification}
+            t={t}
           />
         </div>
       )}
