@@ -660,17 +660,26 @@ const NewLabOrderForm = ({
               {/* Create Diagnosis Option */}
               {!editLabOrder && createDiagnosisOption && (
                 <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={createDiagnosis}
-                      onChange={(e) => setCreateDiagnosis(e.target.checked)}
-                      className="w-4 h-4 rounded"
-                    />
+                  <div className="flex items-center justify-between">
                     <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                       Create diagnosis record for this lab order
                     </span>
-                  </label>
+                    <button
+                      type="button"
+                      onClick={() => setCreateDiagnosis(!createDiagnosis)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                        createDiagnosis
+                          ? 'bg-blue-500'
+                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          createDiagnosis ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                   {createDiagnosis && (
                     <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                       A diagnosis will be automatically created with this lab order information.
