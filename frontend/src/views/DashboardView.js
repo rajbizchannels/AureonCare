@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check } from 'lucide-react';
+import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check, FileText, Activity, ChevronDown, Zap } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
@@ -37,6 +37,7 @@ const DashboardView = ({
   addNotification
 }) => {
   const [clinicName, setClinicName] = useState('Medical Practice');
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   // Load clinic name from localStorage
   useEffect(() => {
@@ -52,6 +53,26 @@ const DashboardView = ({
       console.error('Error loading clinic name:', error);
     }
   }, []);
+
+  // Define all available quick actions with permission requirements
+  const allQuickActions = [
+    { id: 'appointment', label: t.newAppointment, icon: Calendar, color: 'blue', module: 'appointments', action: 'create' },
+    { id: 'patient', label: t.addPatient, icon: FileText, color: 'purple', module: 'patients', action: 'create' },
+    { id: 'diagnosis', label: t.newDiagnosis || 'New Diagnosis', icon: Activity, color: 'orange', module: 'ehr', action: 'create' },
+    { id: 'task', label: t.newTask, icon: Check, color: 'green', module: null, action: null }, // All roles can create tasks
+    { id: 'claim', label: t.newClaim, icon: DollarSign, color: 'yellow', module: 'billing', action: 'create' }
+  ];
+
+  // Filter quick actions based on user role permissions
+  const permittedQuickActions = allQuickActions.filter(action => {
+    // If no permission requirement, allow for all users
+    if (!action.module || !action.action) return true;
+    // Check if user has required permission
+    return hasPermission(user, action.module, action.action);
+  });
+
+  // Get enabled actions from user preferences or default to all permitted actions
+  const enabledQuickActions = user?.preferences?.quickActions || permittedQuickActions.map(a => a.id);
 
   return (
     <div className="space-y-6">
@@ -79,6 +100,71 @@ const DashboardView = ({
           </div>
         </div>
       </div>
+
+      {/* Quick Actions Dropdown */}
+      {permittedQuickActions.length > 0 && (
+        <div className="relative">
+          <button
+            onClick={() => setShowQuickActions(!showQuickActions)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              showQuickActions
+                ? 'bg-blue-500 text-white'
+                : theme === 'dark'
+                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            <span className="font-medium text-sm">Quick Actions</span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showQuickActions ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Dropdown Menu */}
+          {showQuickActions && (
+            <>
+              {/* Backdrop to close dropdown */}
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowQuickActions(false)}
+              />
+
+              {/* Dropdown Content */}
+              <div className={`absolute left-0 mt-2 w-64 rounded-lg shadow-lg border z-20 ${
+                theme === 'dark'
+                  ? 'bg-slate-800 border-slate-700'
+                  : 'bg-white border-gray-200'
+              }`}>
+                <div className="p-2">
+                  {permittedQuickActions
+                    .filter(action => enabledQuickActions.includes(action.id))
+                    .map(action => {
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.id}
+                          onClick={() => {
+                            setShowForm(action.id);
+                            setShowQuickActions(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
+                            theme === 'dark'
+                              ? 'hover:bg-slate-700 text-slate-200'
+                              : 'hover:bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-${action.color}-500/10`}>
+                            <Icon className={`w-4 h-4 text-${action.color}-500`} />
+                          </div>
+                          <span className="font-medium text-sm">{action.label}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Today's Appointments - Show if user can view appointments */}

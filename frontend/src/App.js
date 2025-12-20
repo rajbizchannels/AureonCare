@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Sun, Moon, LogOut, Calendar, FileText, Activity, Check, DollarSign, ChevronDown, Zap } from 'lucide-react';
+import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Sun, Moon, LogOut } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -17,7 +17,6 @@ import api from './api/apiService';
 import { getTranslations } from './config/translations';
 import { getModules } from './config/modules';
 import { hasAccess } from './config/planFeatures';
-import { hasPermission } from './utils/rolePermissions';
 
 // Views
 import DashboardView from './views/DashboardView';
@@ -168,29 +167,6 @@ function App() {
 
   // CRM refresh trigger - increment this to force CRM counts to refresh
   const [crmRefreshKey, setCrmRefreshKey] = React.useState(0);
-
-  // Quick actions dropdown state
-  const [showQuickActions, setShowQuickActions] = React.useState(false);
-
-  // Define all available quick actions with permission requirements
-  const allQuickActions = [
-    { id: 'appointment', label: t.newAppointment, icon: Calendar, color: 'blue', module: 'appointments', action: 'create' },
-    { id: 'patient', label: t.addPatient, icon: FileText, color: 'purple', module: 'patients', action: 'create' },
-    { id: 'diagnosis', label: t.newDiagnosis || 'New Diagnosis', icon: Activity, color: 'orange', module: 'ehr', action: 'create' },
-    { id: 'task', label: t.newTask, icon: Check, color: 'green', module: null, action: null }, // All roles can create tasks
-    { id: 'claim', label: t.newClaim, icon: DollarSign, color: 'yellow', module: 'billing', action: 'create' }
-  ];
-
-  // Filter quick actions based on user role permissions
-  const permittedQuickActions = allQuickActions.filter(action => {
-    // If no permission requirement, allow for all users
-    if (!action.module || !action.action) return true;
-    // Check if user has required permission
-    return hasPermission(user, action.module, action.action);
-  });
-
-  // Get enabled actions from user preferences or default to all permitted actions
-  const enabledQuickActions = user?.preferences?.quickActions || permittedQuickActions.map(a => a.id);
 
   // Modal management: close other modals when opening a new one
   const handleSetEditingItem = (item) => {
@@ -622,79 +598,6 @@ function App() {
                 )}
               </div>
             </button>
-
-            {/* HIPAA Badge and Quick Actions Dropdown */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
-                <Shield className="w-4 h-4 text-green-500" />
-                <span className={`text-xs font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>HIPAA Compliant</span>
-              </div>
-
-              {/* Quick Actions Dropdown */}
-              {permittedQuickActions.length > 0 && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowQuickActions(!showQuickActions)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                      showQuickActions
-                        ? 'bg-blue-500 text-white'
-                        : theme === 'dark'
-                          ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    <Zap className="w-4 h-4" />
-                    <span className="font-medium text-sm">Quick Actions</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${showQuickActions ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {showQuickActions && (
-                    <>
-                      {/* Backdrop to close dropdown */}
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setShowQuickActions(false)}
-                      />
-
-                      {/* Dropdown Content */}
-                      <div className={`absolute left-0 mt-2 w-64 rounded-lg shadow-lg border z-20 ${
-                        theme === 'dark'
-                          ? 'bg-slate-800 border-slate-700'
-                          : 'bg-white border-gray-200'
-                      }`}>
-                        <div className="p-2">
-                          {permittedQuickActions
-                            .filter(action => enabledQuickActions.includes(action.id))
-                            .map(action => {
-                              const Icon = action.icon;
-                              return (
-                                <button
-                                  key={action.id}
-                                  onClick={() => {
-                                    handleSetShowForm(action.id);
-                                    setShowQuickActions(false);
-                                  }}
-                                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
-                                    theme === 'dark'
-                                      ? 'hover:bg-slate-700 text-slate-200'
-                                      : 'hover:bg-gray-100 text-gray-700'
-                                  }`}
-                                >
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-${action.color}-500/10`}>
-                                    <Icon className={`w-4 h-4 text-${action.color}-500`} />
-                                  </div>
-                                  <span className="font-medium text-sm">{action.label}</span>
-                                </button>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
 
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
