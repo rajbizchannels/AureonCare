@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Shield, Users, Video, ChevronRight } from 'lucide-react';
+import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
