@@ -98,73 +98,73 @@ const DashboardView = ({
               <span className="text-sm text-green-400 font-medium">HIPAA Compliant</span>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Quick Actions Dropdown */}
-      {permittedQuickActions.length > 0 && (
-        <div className="relative">
-          <button
-            onClick={() => setShowQuickActions(!showQuickActions)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              showQuickActions
-                ? 'bg-blue-500 text-white'
-                : theme === 'dark'
-                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            <Zap className="w-4 h-4" />
-            <span className="font-medium text-sm">Quick Actions</span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${showQuickActions ? 'rotate-180' : ''}`} />
-          </button>
+          {/* Quick Actions Dropdown */}
+          {permittedQuickActions.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowQuickActions(!showQuickActions)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  showQuickActions
+                    ? 'bg-blue-500 text-white'
+                    : theme === 'dark'
+                      ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <Zap className="w-4 h-4" />
+                <span className="font-medium text-sm">Quick Actions</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${showQuickActions ? 'rotate-180' : ''}`} />
+              </button>
 
-          {/* Dropdown Menu */}
-          {showQuickActions && (
-            <>
-              {/* Backdrop to close dropdown */}
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setShowQuickActions(false)}
-              />
+              {/* Dropdown Menu */}
+              {showQuickActions && (
+                <>
+                  {/* Backdrop to close dropdown */}
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowQuickActions(false)}
+                  />
 
-              {/* Dropdown Content */}
-              <div className={`absolute left-0 mt-2 w-64 rounded-lg shadow-lg border z-20 ${
-                theme === 'dark'
-                  ? 'bg-slate-800 border-slate-700'
-                  : 'bg-white border-gray-200'
-              }`}>
-                <div className="p-2">
-                  {permittedQuickActions
-                    .filter(action => enabledQuickActions.includes(action.id))
-                    .map(action => {
-                      const Icon = action.icon;
-                      return (
-                        <button
-                          key={action.id}
-                          onClick={() => {
-                            setShowForm(action.id);
-                            setShowQuickActions(false);
-                          }}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
-                            theme === 'dark'
-                              ? 'hover:bg-slate-700 text-slate-200'
-                              : 'hover:bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-${action.color}-500/10`}>
-                            <Icon className={`w-4 h-4 text-${action.color}-500`} />
-                          </div>
-                          <span className="font-medium text-sm">{action.label}</span>
-                        </button>
-                      );
-                    })}
-                </div>
-              </div>
-            </>
+                  {/* Dropdown Content */}
+                  <div className={`absolute left-0 mt-2 w-64 rounded-lg shadow-lg border z-20 ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700'
+                      : 'bg-white border-gray-200'
+                  }`}>
+                    <div className="p-2">
+                      {permittedQuickActions
+                        .filter(action => enabledQuickActions.includes(action.id))
+                        .map(action => {
+                          const Icon = action.icon;
+                          return (
+                            <button
+                              key={action.id}
+                              onClick={() => {
+                                setShowForm(action.id);
+                                setShowQuickActions(false);
+                              }}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
+                                theme === 'dark'
+                                  ? 'hover:bg-slate-700 text-slate-200'
+                                  : 'hover:bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-${action.color}-500/10`}>
+                                <Icon className={`w-4 h-4 text-${action.color}-500`} />
+                              </div>
+                              <span className="font-medium text-sm">{action.label}</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Today's Appointments - Show if user can view appointments */}
