@@ -4,6 +4,11 @@ import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
 import { hasPermission } from '../utils/rolePermissions';
+import NewAppointmentForm from '../components/forms/NewAppointmentForm';
+import NewPatientForm from '../components/forms/NewPatientForm';
+import NewTaskForm from '../components/forms/NewTaskForm';
+import NewClaimForm from '../components/forms/NewClaimForm';
+import DiagnosisForm from '../components/forms/DiagnosisForm';
 
 const DashboardView = ({
   theme,
@@ -13,13 +18,20 @@ const DashboardView = ({
   tasks,
   claims,
   patients,
+  users,
   modules,
   hasAccess,
   setSelectedItem,
+  showForm,
   setShowForm,
   setCurrentModule,
   setAppointmentViewType,
   setCalendarViewType,
+  setAppointments,
+  setPatients,
+  setTasks,
+  setClaims,
+  api,
   completeTask,
   updateUserPreferences,
   addNotification
@@ -272,6 +284,97 @@ const DashboardView = ({
               })}
           </div>
         )}
+        </div>
+      )}
+
+      {/* Forms - Displayed below quick actions */}
+      {showForm === 'appointment' && (
+        <div className="mb-6">
+          <NewAppointmentForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            users={users}
+            onClose={() => setShowForm(null)}
+            onSuccess={(newAppointment) => {
+              setAppointments([...appointments, newAppointment]);
+              setShowForm(null);
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
+      {showForm === 'patient' && (
+        <div className="mb-6">
+          <NewPatientForm
+            theme={theme}
+            api={api}
+            onClose={() => setShowForm(null)}
+            onSuccess={(newPatient) => {
+              setPatients([...patients, newPatient]);
+              setShowForm(null);
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
+      {showForm === 'task' && (
+        <div className="mb-6">
+          <NewTaskForm
+            theme={theme}
+            api={api}
+            users={users}
+            patients={patients}
+            onClose={() => setShowForm(null)}
+            onSuccess={(newTask) => {
+              setTasks([...tasks, newTask]);
+              setShowForm(null);
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
+      {showForm === 'claim' && (
+        <div className="mb-6">
+          <NewClaimForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            claims={claims}
+            onClose={() => setShowForm(null)}
+            onSuccess={(newClaim) => {
+              setClaims([...claims, newClaim]);
+              setShowForm(null);
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
+      {showForm === 'diagnosis' && (
+        <div className="mb-6">
+          <DiagnosisForm
+            theme={theme}
+            api={api}
+            patient={null}
+            patients={patients}
+            providers={users}
+            user={user}
+            onClose={() => setShowForm(null)}
+            onSuccess={() => {
+              setShowForm(null);
+              addNotification('success', t.diagnosisCreated || 'Diagnosis created successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
         </div>
       )}
 
