@@ -4,7 +4,6 @@ import { formatDate, formatTime, formatCurrency } from '../../utils/formatters';
 import EPrescribeModal from './ePrescribeModal';
 import { useApp } from '../../context/AppContext';
 import ConfirmationModal from './ConfirmationModal';
-import Toggle from '../Toggle';
 
 const ViewEditModal = ({
   theme,
@@ -1129,21 +1128,45 @@ const ViewEditModal = ({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.emailNotifications || 'Email Notifications'}</span>
-                    <Toggle
-                      checked={editData.emailNotifications !== false}
-                      onChange={(checked) => setEditData({...editData, emailNotifications: checked})}
+                    <button
+                      type="button"
+                      onClick={() => setEditData({...editData, emailNotifications: !(editData.emailNotifications !== false)})}
                       disabled={isView}
-                      theme={theme}
-                    />
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                        isView ? 'opacity-50 cursor-not-allowed' : ''
+                      } ${
+                        (editData.emailNotifications !== false)
+                          ? 'bg-blue-500'
+                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          (editData.emailNotifications !== false) ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
-                    <Toggle
-                      checked={editData.smsAlerts !== false}
-                      onChange={(checked) => setEditData({...editData, smsAlerts: checked})}
+                    <button
+                      type="button"
+                      onClick={() => setEditData({...editData, smsAlerts: !(editData.smsAlerts !== false)})}
                       disabled={isView}
-                      theme={theme}
-                    />
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                        isView ? 'opacity-50 cursor-not-allowed' : ''
+                      } ${
+                        (editData.smsAlerts !== false)
+                          ? 'bg-blue-500'
+                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          (editData.smsAlerts !== false) ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
                 </div>
               </div>
