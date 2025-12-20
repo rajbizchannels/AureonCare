@@ -270,7 +270,7 @@ const DashboardView = ({
 
       {/* Forms - Quick actions are now in header dropdown */}
       {showForm === 'appointment' && (
-        <div className="mb-6">
+        <div className={`mb-6 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <NewAppointmentForm
             theme={theme}
             api={api}
@@ -288,7 +288,7 @@ const DashboardView = ({
       )}
 
       {showForm === 'patient' && (
-        <div className="mb-6">
+        <div className={`mb-6 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <NewPatientForm
             theme={theme}
             api={api}
@@ -304,7 +304,7 @@ const DashboardView = ({
       )}
 
       {showForm === 'task' && (
-        <div className="mb-6">
+        <div className={`mb-6 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <NewTaskForm
             theme={theme}
             api={api}
@@ -322,7 +322,7 @@ const DashboardView = ({
       )}
 
       {showForm === 'claim' && (
-        <div className="mb-6">
+        <div className={`mb-6 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <NewClaimForm
             theme={theme}
             api={api}
@@ -340,7 +340,7 @@ const DashboardView = ({
       )}
 
       {showForm === 'diagnosis' && (
-        <div className="mb-6">
+        <div className={`mb-6 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <DiagnosisForm
             theme={theme}
             api={api}
