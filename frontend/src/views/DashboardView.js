@@ -127,7 +127,7 @@ const DashboardView = ({
                   />
 
                   {/* Dropdown Content */}
-                  <div className={`absolute left-0 mt-2 w-64 rounded-lg shadow-lg border z-20 ${
+                  <div className={`absolute right-0 mt-2 w-64 rounded-lg shadow-lg border z-20 ${
                     theme === 'dark'
                       ? 'bg-slate-800 border-slate-700'
                       : 'bg-white border-gray-200'
