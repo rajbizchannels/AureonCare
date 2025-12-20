@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
-import Toggle from '../Toggle';
 
 const UserProfileModal = ({
   theme,
@@ -145,43 +144,76 @@ const UserProfileModal = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.emailNotifications || 'Email Notifications'}</span>
-                <Toggle
-                  checked={user.preferences?.emailNotifications ?? true}
-                  onChange={async (checked) => {
-                    const success = await updateUserPreferences({ emailNotifications: checked });
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const newValue = !(user.preferences?.emailNotifications ?? true);
+                    const success = await updateUserPreferences({ emailNotifications: newValue });
                     if (success) {
                       await addNotification('success', t.preferenceSaved);
                     }
                   }}
-                  theme={theme}
-                />
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    (user.preferences?.emailNotifications ?? true)
+                      ? 'bg-blue-500'
+                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (user.preferences?.emailNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
-                <Toggle
-                  checked={user.preferences?.smsAlerts ?? true}
-                  onChange={async (checked) => {
-                    const success = await updateUserPreferences({ smsAlerts: checked });
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const newValue = !(user.preferences?.smsAlerts ?? true);
+                    const success = await updateUserPreferences({ smsAlerts: newValue });
                     if (success) {
                       await addNotification('success', t.preferenceSaved);
                     }
                   }}
-                  theme={theme}
-                />
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    (user.preferences?.smsAlerts ?? true)
+                      ? 'bg-blue-500'
+                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (user.preferences?.smsAlerts ?? true) ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.darkMode || 'Dark Mode'}</span>
-                <Toggle
-                  checked={theme === 'dark'}
-                  onChange={async (checked) => {
-                    setTheme(checked ? 'dark' : 'light');
-                    const success = await updateUserPreferences({ darkMode: checked });
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const isDark = theme !== 'dark';
+                    setTheme(isDark ? 'dark' : 'light');
+                    const success = await updateUserPreferences({ darkMode: isDark });
                     if (success) {
                       await addNotification('success', t.themePreferenceSaved);
                     }
                   }}
-                  theme={theme}
-                />
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    theme === 'dark'
+                      ? 'bg-blue-500'
+                      : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
           </div>

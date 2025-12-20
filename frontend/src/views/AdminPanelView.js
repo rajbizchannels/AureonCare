@@ -1701,15 +1701,21 @@ const AdminPanelView = ({
                     </p>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={vendorSettings.surescripts?.is_enabled || false}
-                    onChange={(e) => handleToggleVendorIntegration('surescripts', e.target.checked)}
-                    className="sr-only peer"
+                <button
+                  type="button"
+                  onClick={() => handleToggleVendorIntegration('surescripts', !(vendorSettings.surescripts?.is_enabled || false))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    (vendorSettings.surescripts?.is_enabled || false)
+                      ? 'bg-purple-500'
+                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (vendorSettings.surescripts?.is_enabled || false) ? 'translate-x-6' : 'translate-x-1'
+                    }`}
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
-                </label>
+                </button>
               </div>
               {vendorSettings.surescripts?.is_enabled && (
                 <div className="space-y-4 mt-6">
@@ -1826,15 +1832,21 @@ const AdminPanelView = ({
                     </p>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={vendorSettings.labcorp?.is_enabled || false}
-                    onChange={(e) => handleToggleVendorIntegration('labcorp', e.target.checked)}
-                    className="sr-only peer"
+                <button
+                  type="button"
+                  onClick={() => handleToggleVendorIntegration('labcorp', !(vendorSettings.labcorp?.is_enabled || false))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    (vendorSettings.labcorp?.is_enabled || false)
+                      ? 'bg-blue-500'
+                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (vendorSettings.labcorp?.is_enabled || false) ? 'translate-x-6' : 'translate-x-1'
+                    }`}
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                </label>
+                </button>
               </div>
               {vendorSettings.labcorp?.is_enabled && (
                 <div className="space-y-4 mt-6">
@@ -1951,15 +1963,21 @@ const AdminPanelView = ({
                     </p>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={vendorSettings.optum?.is_enabled || false}
-                    onChange={(e) => handleToggleVendorIntegration('optum', e.target.checked)}
-                    className="sr-only peer"
+                <button
+                  type="button"
+                  onClick={() => handleToggleVendorIntegration('optum', !(vendorSettings.optum?.is_enabled || false))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    (vendorSettings.optum?.is_enabled || false)
+                      ? 'bg-orange-500'
+                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (vendorSettings.optum?.is_enabled || false) ? 'translate-x-6' : 'translate-x-1'
+                    }`}
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600"></div>
-                </label>
+                </button>
               </div>
               {vendorSettings.optum?.is_enabled && (
                 <div className="space-y-4 mt-6">

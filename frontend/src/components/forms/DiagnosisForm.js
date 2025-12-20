@@ -5,7 +5,6 @@ import MedicationMultiSelect from './MedicationMultiSelect';
 import LabCPTMultiSelect from './LabCPTMultiSelect';
 import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
-import Toggle from '../Toggle';
 
 const DiagnosisForm = ({
   theme,
@@ -1068,12 +1067,21 @@ const DiagnosisForm = ({
           {!editDiagnosis && onPrescribe && (
             <div className={`px-6 py-4 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
               <div className="flex items-center gap-3">
-                <Toggle
-                  checked={prescribeAfterSave}
-                  onChange={setPrescribeAfterSave}
-                  theme={theme}
-                  size="md"
-                />
+                <button
+                  type="button"
+                  onClick={() => setPrescribeAfterSave(!prescribeAfterSave)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    prescribeAfterSave
+                      ? 'bg-purple-500'
+                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      prescribeAfterSave ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
                 <div className="flex items-center gap-2">
                   <Pill className={`w-5 h-5 ${prescribeAfterSave ? 'text-purple-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'} transition-colors`} />
                   <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
