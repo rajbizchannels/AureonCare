@@ -18,7 +18,8 @@ const DiagnosisForm = ({
   onPrescribe, // Optional callback to open prescription modal
   addNotification,
   t = {},
-  editDiagnosis = null // If provided, we're editing an existing diagnosis
+  editDiagnosis = null, // If provided, we're editing an existing diagnosis
+  allowPatientSelection = false // If true, show patient dropdown; if false, show patient name as label
 }) => {
   const [formData, setFormData] = useState({
     patientId: patient?.id || '',
@@ -433,26 +434,50 @@ const DiagnosisForm = ({
           {/* Form */}
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
             <div className="space-y-4">
-              {/* Patient (Read-only, pre-filled) */}
+              {/* Patient - Dropdown if allowPatientSelection, otherwise read-only label */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Patient
+                  Patient {allowPatientSelection && <span className="text-red-500">*</span>}
                 </label>
-                <div className={`w-full px-3 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-slate-800/50 border-slate-600 text-gray-300'
-                    : 'bg-gray-50 border-gray-300 text-gray-700'
-                }`}>
-                  {(() => {
-                    const selectedPatient = patients.find(p => p.id === formData.patientId) || patient;
-                    if (selectedPatient) {
-                      const patientName = `${selectedPatient.first_name || selectedPatient.firstName || ''} ${selectedPatient.last_name || selectedPatient.lastName || ''}`.trim();
-                      const mrn = selectedPatient.mrn || 'N/A';
-                      return `${patientName} - MRN: ${mrn}`;
-                    }
-                    return 'No patient selected';
-                  })()}
-                </div>
+                {allowPatientSelection ? (
+                  <select
+                    value={formData.patientId}
+                    onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                    className={`w-full px-3 py-2 border rounded-lg ${
+                      theme === 'dark'
+                        ? 'bg-slate-800 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    required
+                  >
+                    <option value="">Select a patient...</option>
+                    {patients.map((p) => {
+                      const patientName = `${p.first_name || p.firstName || ''} ${p.last_name || p.lastName || ''}`.trim();
+                      const mrn = p.mrn || 'N/A';
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {patientName} - MRN: {mrn}
+                        </option>
+                      );
+                    })}
+                  </select>
+                ) : (
+                  <div className={`w-full px-3 py-2 border rounded-lg ${
+                    theme === 'dark'
+                      ? 'bg-slate-800/50 border-slate-600 text-gray-300'
+                      : 'bg-gray-50 border-gray-300 text-gray-700'
+                  }`}>
+                    {(() => {
+                      const selectedPatient = patients.find(p => p.id === formData.patientId) || patient;
+                      if (selectedPatient) {
+                        const patientName = `${selectedPatient.first_name || selectedPatient.firstName || ''} ${selectedPatient.last_name || selectedPatient.lastName || ''}`.trim();
+                        const mrn = selectedPatient.mrn || 'N/A';
+                        return `${patientName} - MRN: ${mrn}`;
+                      }
+                      return 'No patient selected';
+                    })()}
+                  </div>
+                )}
               </div>
 
               {/* ICD Codes */}

@@ -348,6 +348,7 @@ const DashboardView = ({
             patients={patients}
             providers={users}
             user={user}
+            allowPatientSelection={true}
             onClose={() => setShowForm(null)}
             onSuccess={() => {
               setShowForm(null);
