@@ -65,20 +65,9 @@ const NewLaboratoryForm = ({ theme, api, onClose, onSuccess, addNotification, t 
         confirmText="Add Laboratory"
         cancelText="Cancel"
       />
-      <div
-        className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${
-          theme === 'dark' ? 'bg-black/50' : 'bg-black/30'
-        }`}
-        onClick={onClose}
-      >
-        <div
-          className={`rounded-xl border max-w-4xl w-full max-h-[90vh] overflow-hidden ${
+      <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+          <div className={`p-6 border-b flex items-center justify-between ${
             theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'
-          }`}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${
-            theme === 'dark' ? 'border-slate-700' : 'border-gray-300'
           }`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
@@ -98,7 +87,7 @@ const NewLaboratoryForm = ({ theme, api, onClose, onSuccess, addNotification, t 
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
             <div className="space-y-6">
               {/* Basic Information */}
               <div>
@@ -423,7 +412,6 @@ const NewLaboratoryForm = ({ theme, api, onClose, onSuccess, addNotification, t 
               </div>
             </div>
           </form>
-        </div>
       </div>
     </>
   );
