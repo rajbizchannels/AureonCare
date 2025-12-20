@@ -3,6 +3,7 @@ import { Bot, Shield, Users, Video, ChevronRight } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
+import { hasPermission } from '../utils/rolePermissions';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import NewPatientForm from '../components/forms/NewPatientForm';
 import NewTaskForm from '../components/forms/NewTaskForm';
