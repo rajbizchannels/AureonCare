@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Shield, Calendar, Clock, DollarSign, Users, Video, FileText, ChevronRight, Check, Settings, Activity } from 'lucide-react';
+import { Bot, Shield, Users, Video, ChevronRight } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
-import { hasPermission } from '../utils/rolePermissions';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import NewPatientForm from '../components/forms/NewPatientForm';
 import NewTaskForm from '../components/forms/NewTaskForm';
@@ -36,7 +35,6 @@ const DashboardView = ({
   updateUserPreferences,
   addNotification
 }) => {
-  const [showQuickActionsSettings, setShowQuickActionsSettings] = useState(false);
   const [clinicName, setClinicName] = useState('Medical Practice');
 
   // Load clinic name from localStorage
@@ -54,38 +52,6 @@ const DashboardView = ({
     }
   }, []);
 
-  // Define all available quick actions with permission requirements
-  const allQuickActions = [
-    { id: 'appointment', label: t.newAppointment, icon: Calendar, color: 'blue', module: 'appointments', action: 'create' },
-    { id: 'patient', label: t.addPatient, icon: FileText, color: 'purple', module: 'patients', action: 'create' },
-    { id: 'diagnosis', label: t.newDiagnosis || 'New Diagnosis', icon: Activity, color: 'orange', module: 'ehr', action: 'create' },
-    { id: 'task', label: t.newTask, icon: Check, color: 'green', module: null, action: null }, // All roles can create tasks
-    { id: 'claim', label: t.newClaim, icon: DollarSign, color: 'yellow', module: 'billing', action: 'create' }
-  ];
-
-  // Filter quick actions based on user role permissions
-  const permittedQuickActions = allQuickActions.filter(action => {
-    // If no permission requirement, allow for all users
-    if (!action.module || !action.action) return true;
-    // Check if user has required permission
-    return hasPermission(user, action.module, action.action);
-  });
-
-  // Get enabled actions from user preferences or default to all permitted actions
-  const enabledActions = user?.preferences?.quickActions || permittedQuickActions.map(a => a.id);
-
-  const toggleQuickAction = async (actionId) => {
-    const newEnabledActions = enabledActions.includes(actionId)
-      ? enabledActions.filter(id => id !== actionId)
-      : [...enabledActions, actionId];
-
-    await updateUserPreferences({ quickActions: newEnabledActions });
-    if (enabledActions.includes(actionId)) {
-      await addNotification('success', 'Quick action removed');
-    } else {
-      await addNotification('success', 'Quick action added');
-    }
-  };
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -215,79 +181,7 @@ const DashboardView = ({
         )}
       </div>
 
-      {/* Quick Actions - Only show if user has at least one permitted action */}
-      {permittedQuickActions.length > 0 && (
-        <div className={`bg-gradient-to-br backdrop-blur-sm rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.quickActions}</h3>
-            <button
-              onClick={() => setShowQuickActionsSettings(!showQuickActionsSettings)}
-              className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-              title="Customize Quick Actions"
-            >
-              <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-            </button>
-          </div>
-
-        {showQuickActionsSettings ? (
-          <div className="space-y-3">
-            <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Toggle which quick actions you want to see:
-            </p>
-            {permittedQuickActions.map(action => {
-              const Icon = action.icon;
-              const isEnabled = enabledActions.includes(action.id);
-              return (
-                <div
-                  key={action.id}
-                  className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`w-5 h-5 text-${action.color}-400`} />
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{action.label}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleQuickAction(action.id)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                      isEnabled
-                        ? 'bg-blue-500'
-                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        isEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {permittedQuickActions
-              .filter(action => enabledActions.includes(action.id))
-              .map(action => {
-                const Icon = action.icon;
-                return (
-                  <button
-                    key={action.id}
-                    onClick={() => setShowForm(action.id)}
-                    className={`p-4 rounded-lg transition-colors text-left group ${theme === 'dark' ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-gray-100/50 hover:bg-gray-100'}`}
-                  >
-                    <Icon className={`w-6 h-6 text-${action.color}-400 mb-2 group-hover:scale-110 transition-transform`} />
-                    <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{action.label}</p>
-                  </button>
-                );
-              })}
-          </div>
-        )}
-        </div>
-      )}
-
-      {/* Forms - Displayed below quick actions */}
+      {/* Forms - Quick actions are now in header dropdown */}
       {showForm === 'appointment' && (
         <div className="mb-6">
           <NewAppointmentForm
