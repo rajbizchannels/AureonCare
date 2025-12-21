@@ -1432,205 +1432,91 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div
-        className={`max-w-5xl w-full max-h-[90vh] overflow-hidden rounded-xl shadow-2xl ${
-          theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-        } flex flex-col`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-          <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {prescription ? 'Edit Prescription' : 'New Prescriptions'}
-          </h3>
-          <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            Patient: {patient.first_name} {patient.last_name}
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={onBack}
+          className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : ''}`}
+        >
+          <ArrowLeft className={`w-6 h-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+        </button>
+        <div>
+          <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Patient History
+          </h1>
+          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            {patientData.first_name} {patientData.last_name}
           </p>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-4">
-            {/* Edit Mode: Single Prescription */}
-            {prescription ? (
-              <>
-                {/* Medication Search */}
-                <MedicationMultiSelect
-                  theme={theme}
-                  api={api}
-                  value={selectedMedications}
-                  onChange={handleMedicationSelect}
-                  label="Select Medication *"
-                  placeholder="Search medication by name..."
-                />
+      {/* Tabs */}
+      <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+        {[
+          { id: 'overview', label: 'Overview', icon: User, count: null },
+          { id: 'records', label: 'Records', icon: FileText, count: medicalRecords.length },
+          { id: 'diagnoses', label: 'Diagnoses', icon: Activity, count: diagnoses.length },
+          { id: 'prescriptions', label: 'Prescriptions', icon: Pill, count: prescriptions.length },
+          { id: 'labOrders', label: 'Lab Orders', icon: Microscope, count: labOrders.length },
+          { id: 'appointments', label: 'Appointments', icon: Calendar, count: appointments.length }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors ${
+              activeTab === tab.id
+                ? `border-b-2 ${theme === 'dark' ? 'border-blue-500 text-blue-500' : 'border-blue-600 text-blue-600'}`
+                : `${theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-600 hover:text-gray-900'}`
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+            {tab.count !== null && (
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                activeTab === tab.id
+                  ? `${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`
+                  : `${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`
+              }`}>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-                {/* Prescription Details */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Dosage <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.dosage}
-                      onChange={(e) => handleChange('dosage', e.target.value)}
-                      required
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                      placeholder="e.g., 10mg"
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Frequency <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.frequency}
-                      onChange={(e) => handleChange('frequency', e.target.value)}
-                      required
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                      placeholder="e.g., Once daily"
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Duration
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.duration}
-                      onChange={(e) => handleChange('duration', e.target.value)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                      placeholder="e.g., 30 days"
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Quantity <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.quantity}
-                      onChange={(e) => handleChange('quantity', e.target.value)}
-                      required
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                      placeholder="e.g., 30"
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Refills
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.refills}
-                      onChange={(e) => handleChange('refills', e.target.value)}
-                      min="0"
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Status
-                    </label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => handleChange('status', e.target.value)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                      <option value="Completed">Completed</option>
-                    </select>
-                  </div>
-                </div>
+      {/* Tab Content */}
+      <div className="mt-6">
+        {activeTab === 'overview' && renderOverview()}
+        {activeTab === 'records' && renderRecords()}
+        {activeTab === 'diagnoses' && renderDiagnoses()}
+        {activeTab === 'prescriptions' && renderPrescriptions()}
+        {activeTab === 'labOrders' && renderLabOrders()}
+        {activeTab === 'appointments' && renderAppointments()}
+      </div>
 
-                {/* Pharmacy Dropdown */}
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Pharmacy
-                  </label>
-                  <select
-                    value={formData.pharmacy_id}
-                    onChange={(e) => handleChange('pharmacy_id', e.target.value)}
-                    className={`w-full px-3 py-2 rounded-lg border ${
-                      theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                    disabled={loadingPharmacies}
-                  >
-                    <option value="">Select pharmacy...</option>
-                    {pharmacies.map(pharmacy => (
-                      <option key={pharmacy.id} value={pharmacy.id}>
-                        {pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Instructions */}
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Instructions
-                  </label>
-                  <textarea
-                    value={formData.instructions}
-                    onChange={(e) => handleChange('instructions', e.target.value)}
-                    rows="3"
-                    className={`w-full px-3 py-2 rounded-lg border ${
-                      theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                    placeholder="Enter special instructions"
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                {/* New Mode: Master-Detail Layout */}
-                <div className="grid grid-cols-3 gap-6">
-                  {/* Left: Master - Add Medications */}
-                  <div className={`col-span-1 p-4 rounded-lg border ${
-                    theme === 'dark' ? 'border-slate-600 bg-slate-800/50' : 'border-gray-300 bg-gray-50'
-                  }`}>
-                    <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Add Medications
-                    </h4>
-
-                    {/* Medication Search */}
-                    <MedicationMultiSelect
-                      theme={theme}
-                      api={api}
-                      value={selectedMedications}
-                      onChange={setSelectedMedications}
-                      label="Search Medication"
-                      placeholder="Search medication..."
-                    />
-
-                    {/* Add Button */}
-                    <button
-                      type="button"
-                      onClick={handleAddMedication}
-                      disabled={selectedMedications.length === 0}
-                      className={`w-full mt-3 px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 ${
-                        selectedMedications.length === 0
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
-                      }`}
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Medication
-                    </button>
+      {/* Diagnosis Form Modal */}
+      {showDiagnosisForm && (
+        <DiagnosisForm
+          theme={theme}
+          api={api}
+          patient={patientData}
+          patients={patients}
+          providers={providers}
+          user={user}
+          editDiagnosis={editingDiagnosis}
+          onClose={() => {
+            setShowDiagnosisForm(false);
+            setEditingDiagnosis(null);
+          }}
+          onSuccess={() => {
+            setShowDiagnosisForm(false);
+            setEditingDiagnosis(null);
+            fetchPatientHistory();
+          }}
+          addNotification={addNotification}
+        />
+      )}
 
       {/* ePrescribe Modal */}
       {showEPrescribeModal && (
@@ -1654,209 +1540,69 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
         />
       )}
 
-                    {medications.length === 0 ? (
-                      <div className={`text-center py-12 rounded-lg border-2 border-dashed ${
-                        theme === 'dark' ? 'border-slate-600' : 'border-gray-300'
-                      }`}>
-                        <Pill className={`w-12 h-12 mx-auto mb-3 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
-                        <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          No medications added yet
-                        </p>
-                        <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                          Search and add medications from the left panel
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3 max-h-96 overflow-y-auto">
-                        {medications.map((med) => (
-                          <div
-                            key={med.id}
-                            className={`p-4 rounded-lg border ${
-                              theme === 'dark' ? 'bg-slate-800/50 border-slate-600' : 'bg-white border-gray-200'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="flex-1">
-                                <h5 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                  {med.medication_name}
-                                </h5>
-                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                  NDC: {med.ndc_code || 'N/A'}
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveMedication(med.id)}
-                                className={`p-1 rounded hover:bg-red-100 ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
-                              >
-                                <Trash2 className="w-4 h-4 text-red-500" />
-                              </button>
-                            </div>
+      {/* Lab Order Form Modal */}
+      {showLabOrderForm && (
+        <NewLabOrderForm
+          theme={theme}
+          api={api}
+          patient={patientData}
+          patients={patients}
+          providers={providers}
+          user={user}
+          editLabOrder={editingLabOrder}
+          onClose={() => {
+            setShowLabOrderForm(false);
+            setEditingLabOrder(null);
+          }}
+          onSuccess={() => {
+            setShowLabOrderForm(false);
+            setEditingLabOrder(null);
+            fetchPatientHistory();
+          }}
+          addNotification={addNotification}
+          t={{}}
+          createDiagnosisOption={false}
+        />
+      )}
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <input
-                                type="text"
-                                value={med.dosage}
-                                onChange={(e) => handleUpdateMedication(med.id, 'dosage', e.target.value)}
-                                placeholder="Dosage"
-                                className={`px-2 py-1 text-sm rounded border ${
-                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                              <input
-                                type="text"
-                                value={med.frequency}
-                                onChange={(e) => handleUpdateMedication(med.id, 'frequency', e.target.value)}
-                                placeholder="Frequency"
-                                className={`px-2 py-1 text-sm rounded border ${
-                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                              <input
-                                type="text"
-                                value={med.duration}
-                                onChange={(e) => handleUpdateMedication(med.id, 'duration', e.target.value)}
-                                placeholder="Duration"
-                                className={`px-2 py-1 text-sm rounded border ${
-                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                              <input
-                                type="number"
-                                value={med.quantity}
-                                onChange={(e) => handleUpdateMedication(med.id, 'quantity', e.target.value)}
-                                placeholder="Quantity"
-                                className={`px-2 py-1 text-sm rounded border ${
-                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                              <input
-                                type="number"
-                                value={med.refills}
-                                onChange={(e) => handleUpdateMedication(med.id, 'refills', e.target.value)}
-                                placeholder="Refills"
-                                className={`px-2 py-1 text-sm rounded border ${
-                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                              <input
-                                type="text"
-                                value={med.instructions}
-                                onChange={(e) => handleUpdateMedication(med.id, 'instructions', e.target.value)}
-                                placeholder="Instructions"
-                                className={`px-2 py-1 text-sm rounded border ${
-                                  theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+      {/* Delete Lab Order Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingLabOrder}
+        onClose={() => setDeletingLabOrder(null)}
+        onConfirm={handleDeleteLabOrder}
+        title="Cancel Lab Order"
+        message="Are you sure you want to cancel this lab order? This action cannot be undone."
+        type="danger"
+        confirmText="Cancel Order"
+        cancelText="Keep Order"
+      />
 
-                {/* Create Diagnosis Option - Only for new prescriptions */}
-                <div className="mt-4">
-            <div className={`p-4 rounded-lg border ${
-              theme === 'dark' ? 'border-slate-600 bg-slate-800/50' : 'border-gray-300 bg-gray-50'
-            }`}>
-              <label className="flex items-center gap-3 cursor-pointer group mb-3">
-                <input
-                  type="checkbox"
-                  checked={createDiagnosis}
-                  onChange={(e) => setCreateDiagnosis(e.target.checked)}
-                  className="w-4 h-4 rounded border-2 border-purple-500 text-purple-600 focus:ring-purple-500 focus:ring-2 cursor-pointer"
-                />
-                <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                  Create diagnosis for this prescription
-                </span>
-              </label>
+      {/* Delete Prescription Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingPrescription}
+        onClose={() => setDeletingPrescription(null)}
+        onConfirm={handleDeletePrescription}
+        title="Delete Prescription"
+        message="Are you sure you want to delete this prescription? This action cannot be undone."
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
 
-              {createDiagnosis && (
-                <div className="space-y-3 ml-7">
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Diagnosis Name
-                    </label>
-                    <input
-                      type="text"
-                      value={diagnosisData.diagnosisName}
-                      onChange={(e) => setDiagnosisData(prev => ({ ...prev, diagnosisName: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        theme === 'dark'
-                          ? 'bg-slate-700 border-slate-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                      placeholder={`Condition requiring ${formData.medication_name || 'medication'}`}
-                    />
-                  </div>
-
-                  {/* ICD Codes Multiselect */}
-                  <MedicalCodeMultiSelect
-                    theme={theme}
-                    api={api}
-                    value={diagnosisData.icdCodes}
-                    onChange={(codes) => setDiagnosisData(prev => ({ ...prev, icdCodes: codes }))}
-                    codeType="icd"
-                    label="ICD-10 Diagnosis Codes (Optional)"
-                    placeholder="Search for ICD codes..."
-                  />
-
-                  {/* Severity */}
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Severity
-                    </label>
-                    <select
-                      value={diagnosisData.severity}
-                      onChange={(e) => setDiagnosisData(prev => ({ ...prev, severity: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        theme === 'dark'
-                          ? 'bg-slate-700 border-slate-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    >
-                      <option value="Mild">Mild</option>
-                      <option value="Moderate">Moderate</option>
-                      <option value="Severe">Severe</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-            </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Form Actions */}
-          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-slate-700">
-            <button
-              type="button"
-              onClick={onClose}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                theme === 'dark'
-                  ? 'bg-slate-700 hover:bg-slate-600 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
-              }`}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!prescription && medications.length === 0}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                !prescription && medications.length === 0
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
-              }`}
-            >
-              {prescription ? 'Update Prescription' : `Create ${medications.length} Prescription${medications.length !== 1 ? 's' : ''}`}
-            </button>
-          </div>
-        </form>
-      </div>
+      {/* Delete Diagnosis Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingDiagnosis}
+        onClose={() => setDeletingDiagnosis(null)}
+        onConfirm={handleDeleteDiagnosis}
+        title="Delete Diagnosis"
+        message="Are you sure you want to delete this diagnosis? This action cannot be undone."
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
