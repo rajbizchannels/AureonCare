@@ -14,8 +14,8 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
 import ViewEditModal from '../components/modals/ViewEditModal';
 
-const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack }) => {
-  const [activeTab, setActiveTab] = useState('prescriptions');
+const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack, initialTab = 'overview' }) => {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
 
   // Data states
@@ -1119,6 +1119,44 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           </div>
         )}
 
+        {/* Edit Patient Form - shown when editing patient from Overview tab */}
+        {editingPatient && (
+          <div className="mb-6">
+            <ViewEditModal
+              theme={theme}
+              editingItem={{ type: 'patient', data: patientData }}
+              currentView='edit'
+              onClose={() => setEditingPatient(false)}
+              onSave={async (updatedData) => {
+                try {
+                  await api.updatePatient(patientData.id, updatedData);
+                  addNotification('success', 'Patient updated successfully');
+                  setEditingPatient(false);
+                  fetchPatientHistory();
+                } catch (error) {
+                  console.error('Error updating patient:', error);
+                  addNotification('error', 'Failed to update patient');
+                }
+              }}
+              patients={patients}
+              users={providers}
+              api={api}
+              addNotification={addNotification}
+              setPatients={(updater) => {
+                // Update local patient data if needed
+                if (typeof updater === 'function') {
+                  const updated = updater(patients);
+                  setPatients(updated);
+                } else {
+                  setPatients(updater);
+                }
+              }}
+              user={user}
+              t={{}}
+            />
+          </div>
+        )}
+
         {/* Content Area - Based on Active Tab */}
         {activeTab === 'overview' && renderOverview()}
         {activeTab === 'diagnoses' && renderDiagnoses()}
@@ -1147,42 +1185,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
             fetchPatientHistory();
           }}
           addNotification={addNotification}
-        />
-      )}
-
-      {/* Edit Patient Modal */}
-      {editingPatient && (
-        <ViewEditModal
-          theme={theme}
-          editingItem={{ type: 'patient', data: patientData }}
-          currentView='edit'
-          onClose={() => setEditingPatient(false)}
-          onSave={async (updatedData) => {
-            try {
-              await api.updatePatient(patientData.id, updatedData);
-              addNotification('success', 'Patient updated successfully');
-              setEditingPatient(false);
-              fetchPatientHistory();
-            } catch (error) {
-              console.error('Error updating patient:', error);
-              addNotification('error', 'Failed to update patient');
-            }
-          }}
-          patients={patients}
-          users={providers}
-          api={api}
-          addNotification={addNotification}
-          setPatients={(updater) => {
-            // Update local patient data if needed
-            if (typeof updater === 'function') {
-              const updated = updater(patients);
-              setPatients(updated);
-            } else {
-              setPatients(updater);
-            }
-          }}
-          user={user}
-          t={{}}
         />
       )}
 
