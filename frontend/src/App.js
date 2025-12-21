@@ -160,6 +160,7 @@ function App() {
 
   // Local state for patient history
   const [selectedPatient, setSelectedPatient] = React.useState(null);
+  const [patientHistoryInitialTab, setPatientHistoryInitialTab] = React.useState('overview');
 
   // Local state for campaigns and appointment types
   const [editingCampaign, setEditingCampaign] = React.useState(null);
@@ -311,12 +312,13 @@ function App() {
             t={t}
             onViewHistory={(patient) => {
               setSelectedPatient(patient);
+              setPatientHistoryInitialTab('overview');
               setCurrentModule('patientHistory');
             }}
             onViewPrescriptions={(patient) => {
               setSelectedPatient(patient);
+              setPatientHistoryInitialTab('prescriptions');
               setCurrentModule('patientHistory');
-              addNotification('info', 'Viewing patient history. Prescription management coming soon.');
             }}
             onViewTelehealth={(patient) => {
               setCurrentModule('telehealth');
@@ -345,9 +347,11 @@ function App() {
             addNotification={addNotification}
             user={user}
             patient={selectedPatient}
+            initialTab={patientHistoryInitialTab}
             onBack={() => {
               setCurrentModule('dashboard');
               setSelectedPatient(null);
+              setPatientHistoryInitialTab('overview'); // Reset to default
             }}
           />
         );
@@ -918,6 +922,7 @@ function App() {
           setCurrentView={setCurrentView}
           onViewHistory={(patient) => {
             setSelectedPatient(patient);
+            setPatientHistoryInitialTab('overview');
             setCurrentModule('patientHistory');
           }}
         />

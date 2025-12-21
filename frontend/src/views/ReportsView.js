@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Users, Calendar, FileText, Download, Filter, ArrowLeft } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 const ReportsView = ({
   theme,
@@ -13,6 +16,7 @@ const ReportsView = ({
 }) => {
   const [dateRange, setDateRange] = useState('30'); // Days
   const [selectedReport, setSelectedReport] = useState('overview');
+  const [exportFormat, setExportFormat] = useState('pdf'); // pdf or xlsx
 
   // Calculate date range
   const getFilteredData = (data, dateField = 'created_at') => {
@@ -73,36 +77,176 @@ const ReportsView = ({
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    // Header
+    doc.setFontSize(20);
+    doc.text('MedFlow - ' + reportTypes.find(r => r.id === selectedReport)?.name, 14, 22);
+    doc.setFontSize(10);
+    doc.text('Generated: ' + new Date().toLocaleString(), 14, 30);
+    doc.text('Date Range: ' + (dateRange === 'all' ? 'All Time' : `Last ${dateRange} Days`), 14, 36);
+
+    // Summary Statistics
+    doc.setFontSize(14);
+    doc.text('Summary Statistics', 14, 50);
+    doc.setFontSize(10);
+
+    const summaryData = [
+      ['Period Revenue', formatCurrency(periodRevenue)],
+      ['Total Payments', formatCurrency(periodPayments)],
+      ['Total Patients', totalPatients.toString()],
+      ['Total Appointments', filteredAppointments.length.toString()],
+      ['Claims Approval Rate', approvalRate + '%']
+    ];
+
+    doc.autoTable({
+      startY: 55,
+      head: [['Metric', 'Value']],
+      body: summaryData,
+      theme: 'striped',
+      headStyles: { fillColor: [59, 130, 246] }
+    });
+
+    // Report-specific tables
+    let finalY = doc.lastAutoTable.finalY + 10;
+
+    if (selectedReport === 'revenue' || selectedReport === 'overview') {
+      doc.setFontSize(14);
+      doc.text('Recent Claims', 14, finalY);
+
+      const claimsData = filteredClaims.slice(0, 20).map(c => [
+        c.claim_number || '',
+        c.patient_name || '',
+        formatDate(c.service_date),
+        c.status || '',
+        formatCurrency(c.amount || 0)
+      ]);
+
+      doc.autoTable({
+        startY: finalY + 5,
+        head: [['Claim #', 'Patient', 'Date', 'Status', 'Amount']],
+        body: claimsData,
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] }
+      });
+
+      finalY = doc.lastAutoTable.finalY + 10;
+    }
+
+    if (selectedReport === 'appointments' || selectedReport === 'overview') {
+      if (finalY > 250) {
+        doc.addPage();
+        finalY = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.text('Recent Appointments', 14, finalY);
+
+      const appointmentsData = filteredAppointments.slice(0, 20).map(a => [
+        a.patient_name || '',
+        a.provider_name || '',
+        formatDate(a.date || a.start_time),
+        a.status || ''
+      ]);
+
+      doc.autoTable({
+        startY: finalY + 5,
+        head: [['Patient', 'Provider', 'Date', 'Status']],
+        body: appointmentsData,
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] }
+      });
+    }
+
+    // Save PDF
+    doc.save(`medflow-report-${selectedReport}-${dateStr}.pdf`);
+    addNotification('success', 'Report exported to PDF successfully');
+  };
+
+  const exportToXLSX = () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    const workbook = XLSX.utils.book_new();
+
+    // Summary Sheet
+    const summaryData = [
+      ['MedFlow Report', reportTypes.find(r => r.id === selectedReport)?.name],
+      ['Generated', new Date().toLocaleString()],
+      ['Date Range', dateRange === 'all' ? 'All Time' : `Last ${dateRange} Days`],
+      [],
+      ['Metric', 'Value'],
+      ['Period Revenue', formatCurrency(periodRevenue)],
+      ['Total Payments', formatCurrency(periodPayments)],
+      ['Total Patients', totalPatients],
+      ['Total Appointments', filteredAppointments.length],
+      ['Claims Approval Rate', approvalRate + '%'],
+      ['Claims Approved', claimsApproved],
+      ['Claims Submitted', claimsSubmitted],
+      ['Claims Pending', claimsPending]
+    ];
+
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+    // Claims Sheet
+    if (filteredClaims.length > 0) {
+      const claimsData = filteredClaims.map(c => ({
+        'Claim Number': c.claim_number || '',
+        'Patient': c.patient_name || '',
+        'Service Date': formatDate(c.service_date),
+        'Status': c.status || '',
+        'Amount': c.amount || 0,
+        'Payer': c.payer || '',
+        'Diagnosis': c.diagnosis || ''
+      }));
+
+      const claimsSheet = XLSX.utils.json_to_sheet(claimsData);
+      XLSX.utils.book_append_sheet(workbook, claimsSheet, 'Claims');
+    }
+
+    // Payments Sheet
+    if (filteredPayments.length > 0) {
+      const paymentsData = filteredPayments.map(p => ({
+        'Payment ID': p.id || '',
+        'Patient': p.patient_name || '',
+        'Payment Date': formatDate(p.payment_date),
+        'Amount': p.amount || 0,
+        'Payment Method': p.payment_method || '',
+        'Status': p.status || ''
+      }));
+
+      const paymentsSheet = XLSX.utils.json_to_sheet(paymentsData);
+      XLSX.utils.book_append_sheet(workbook, paymentsSheet, 'Payments');
+    }
+
+    // Appointments Sheet
+    if (filteredAppointments.length > 0) {
+      const appointmentsData = filteredAppointments.map(a => ({
+        'Patient': a.patient_name || '',
+        'Provider': a.provider_name || '',
+        'Date': formatDate(a.date || a.start_time),
+        'Time': a.time || '',
+        'Type': a.type || '',
+        'Status': a.status || '',
+        'Reason': a.reason || ''
+      }));
+
+      const appointmentsSheet = XLSX.utils.json_to_sheet(appointmentsData);
+      XLSX.utils.book_append_sheet(workbook, appointmentsSheet, 'Appointments');
+    }
+
+    // Save XLSX
+    XLSX.writeFile(workbook, `medflow-report-${selectedReport}-${dateStr}.xlsx`);
+    addNotification('success', 'Report exported to Excel successfully');
+  };
+
   const exportReport = () => {
-    const reportData = {
-      reportType: selectedReport,
-      dateRange: dateRange,
-      generatedAt: new Date().toISOString(),
-      summary: {
-        totalRevenue,
-        periodRevenue,
-        totalPayments,
-        periodPayments,
-        totalPatients,
-        totalAppointments: filteredAppointments.length,
-        approvalRate
-      },
-      claims: filteredClaims,
-      payments: filteredPayments,
-      appointments: filteredAppointments
-    };
-
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `medflow-report-${selectedReport}-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    addNotification('success', 'Report exported successfully');
+    if (exportFormat === 'pdf') {
+      exportToPDF();
+    } else if (exportFormat === 'xlsx') {
+      exportToXLSX();
+    }
   };
 
   const reportTypes = [
@@ -141,12 +285,20 @@ const ReportsView = ({
             <option value="365">Last Year</option>
             <option value="all">All Time</option>
           </select>
+          <select
+            value={exportFormat}
+            onChange={(e) => setExportFormat(e.target.value)}
+            className={`px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+          >
+            <option value="pdf">PDF</option>
+            <option value="xlsx">Excel (XLSX)</option>
+          </select>
           <button
             onClick={exportReport}
             className={`flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-white'}`}
           >
             <Download className="w-4 h-4" />
-            Export Report
+            Export {exportFormat.toUpperCase()}
           </button>
         </div>
       </div>
