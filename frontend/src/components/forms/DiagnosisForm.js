@@ -1000,6 +1000,31 @@ const DiagnosisForm = ({
                       </div>
                     ))}
 
+                    {/* No Laboratories Message */}
+                    {laboratories.length === 0 && (
+                      <div className={`p-4 rounded-lg border-2 border-dashed mb-3 ${
+                        theme === 'dark' ? 'border-yellow-700 bg-yellow-900/20' : 'border-yellow-300 bg-yellow-50'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          <Microscope className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                            theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
+                          }`} />
+                          <div>
+                            <p className={`font-semibold text-sm ${
+                              theme === 'dark' ? 'text-yellow-300' : 'text-yellow-800'
+                            }`}>
+                              No Laboratories Available
+                            </p>
+                            <p className={`text-sm mt-1 ${
+                              theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'
+                            }`}>
+                              Please add a laboratory first from the <strong>Laboratory Management</strong> module before creating lab orders.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => {
