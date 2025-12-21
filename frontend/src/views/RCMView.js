@@ -37,21 +37,33 @@ const RCMView = ({
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => setShowInsurancePayerForm(true)}
+            onClick={() => {
+              setShowInsurancePayerForm(true);
+              setShowPaymentForm(false);
+              setShowClaimForm(false);
+            }}
             className={`flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
             <Shield className="w-4 h-4" />
             Add Insurance Payer
           </button>
           <button
-            onClick={() => setShowPaymentForm(true)}
+            onClick={() => {
+              setShowPaymentForm(true);
+              setShowInsurancePayerForm(false);
+              setShowClaimForm(false);
+            }}
             className={`flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
             <CreditCard className="w-4 h-4" />
             Process Payment
           </button>
           <button
-            onClick={() => setShowClaimForm(true)}
+            onClick={() => {
+              setShowClaimForm(true);
+              setShowPaymentForm(false);
+              setShowInsurancePayerForm(false);
+            }}
             className={`flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
             <Plus className="w-4 h-4" />
@@ -62,7 +74,7 @@ const RCMView = ({
 
       {/* Inline Forms - Between buttons and list */}
       {showInsurancePayerForm && (
-        <div className="mb-6">
+        <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
           <NewInsurancePayerForm
             theme={theme}
             api={api}
@@ -78,7 +90,7 @@ const RCMView = ({
       )}
 
       {showPaymentForm && (
-        <div className="mb-6">
+        <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
           <NewPaymentForm
             theme={theme}
             api={api}
@@ -96,7 +108,7 @@ const RCMView = ({
       )}
 
       {showClaimForm && (
-        <div className="mb-6">
+        <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
           <NewClaimForm
             theme={theme}
             api={api}
