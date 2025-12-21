@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Mail, Send, Calendar, Inbox } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Mail, Send, Calendar, Inbox, Search } from 'lucide-react';
+import NewCampaignForm from '../components/forms/NewCampaignForm';
 
 const CampaignsManagementView = ({
   theme,
@@ -8,10 +9,13 @@ const CampaignsManagementView = ({
   setEditingCampaign,
   setCurrentModule,
   addNotification,
-  t
+  t = {}
 }) => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowFormLocal] = useState(false);
+  const [editingCampaign, setEditingCampaignLocal] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadCampaigns();
@@ -46,9 +50,20 @@ const CampaignsManagementView = ({
   };
 
   const handleEdit = (campaign) => {
-    setEditingCampaign(campaign);
-    setShowForm('campaign');
+    setEditingCampaignLocal(campaign);
+    setShowFormLocal(true);
   };
+
+  const filteredCampaigns = campaigns.filter(campaign => {
+    if (!searchQuery) return true;
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      campaign.name?.toLowerCase().includes(searchLower) ||
+      campaign.subject?.toLowerCase().includes(searchLower) ||
+      campaign.targetAudience?.toLowerCase().includes(searchLower) ||
+      campaign.status?.toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -68,8 +83,8 @@ const CampaignsManagementView = ({
         </div>
         <button
           onClick={() => {
-            setEditingCampaign(null);
-            setShowForm('campaign');
+            setEditingCampaignLocal(null);
+            setShowFormLocal(true);
           }}
           className={`flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
         >
@@ -78,11 +93,50 @@ const CampaignsManagementView = ({
         </button>
       </div>
 
+      {/* Search */}
+      <div className={`flex items-center gap-3 p-4 rounded-lg ${
+        theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'
+      }`}>
+        <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search campaigns by name, subject, audience, or status..."
+          className={`flex-1 bg-transparent border-none outline-none ${
+            theme === 'dark' ? 'text-white placeholder-slate-400' : 'text-gray-900 placeholder-gray-500'
+          }`}
+        />
+      </div>
+
+      {/* Campaign Form - Between search and list */}
+      {showForm && (
+        <div className="mb-6">
+          <NewCampaignForm
+            theme={theme}
+            api={api}
+            campaign={editingCampaign}
+            onClose={() => {
+              setShowFormLocal(false);
+              setEditingCampaignLocal(null);
+            }}
+            onSuccess={() => {
+              setShowFormLocal(false);
+              setEditingCampaignLocal(null);
+              loadCampaigns();
+              addNotification('success', t.campaignCreated || 'Campaign created successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${theme === 'dark' ? 'border-red-400' : 'border-red-600'}`}></div>
         </div>
-      ) : campaigns.length === 0 ? (
+      ) : filteredCampaigns.length === 0 ? (
         <div className={`bg-gradient-to-br rounded-xl border p-12 ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
           <div className="flex flex-col items-center justify-center text-center">
             <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-200'}`}>
@@ -96,8 +150,8 @@ const CampaignsManagementView = ({
             </p>
             <button
               onClick={() => {
-                setEditingCampaign(null);
-                setShowForm('campaign');
+                setEditingCampaignLocal(null);
+                setShowFormLocal(true);
               }}
               className="flex items-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 rounded-lg transition-colors text-white font-medium"
             >
@@ -130,7 +184,7 @@ const CampaignsManagementView = ({
                 </tr>
               </thead>
               <tbody>
-                {campaigns.map((campaign, idx) => (
+                {filteredCampaigns.map((campaign, idx) => (
                   <tr key={campaign.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       <div className="font-medium">{campaign.name}</div>

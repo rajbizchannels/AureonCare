@@ -380,6 +380,45 @@ const OfferingManagementView = () => {
               {showActiveOnly ? 'Active Only' : 'Show All'}
             </button>
           </div>
+
+          <div className="ml-auto">
+            {activeTab === 'offerings' && (
+              <button
+                onClick={() => openModal('offering')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Service
+              </button>
+            )}
+            {activeTab === 'packages' && (
+              <button
+                onClick={() => openModal('package')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Package
+              </button>
+            )}
+            {activeTab === 'categories' && (
+              <button
+                onClick={() => openModal('category')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Category
+              </button>
+            )}
+            {activeTab === 'promotions' && (
+              <button
+                onClick={() => openModal('promotion')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Promotion
+              </button>
+            )}
+          </div>
         </div>
       )}
 
