@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Activity, X, Save, Calendar, FileText, Pill, Microscope, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Activity, X, Save, Calendar, FileText, Pill, Microscope, Plus, Trash2, Search } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
-import MedicationMultiSelect from './MedicationMultiSelect';
 import LabCPTMultiSelect from './LabCPTMultiSelect';
 import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
@@ -45,6 +44,11 @@ const DiagnosisForm = ({
   const [linkedPrescriptions, setLinkedPrescriptions] = useState([]);
   const [linkedLabOrders, setLinkedLabOrders] = useState([]);
   const [pendingSubmit, setPendingSubmit] = useState(null);
+
+  // Medication search state
+  const [medicationSearchQuery, setMedicationSearchQuery] = useState('');
+  const [searchMedications, setSearchMedications] = useState([]);
+  const [loadingMedications, setLoadingMedications] = useState(false);
 
   // Load laboratories on mount
   useEffect(() => {
@@ -196,6 +200,97 @@ const DiagnosisForm = ({
     window.addEventListener('keydown', handleEsc, true);
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose]);
+
+  // Search medications - wrapped in useCallback to prevent unnecessary re-renders
+  const handleSearchMedications = useCallback(async () => {
+    if (!medicationSearchQuery || medicationSearchQuery.length < 2) {
+      return;
+    }
+
+    setLoadingMedications(true);
+    setSearchMedications([]); // Clear previous results
+
+    try {
+      const data = await api.searchMedications(medicationSearchQuery, null, null, 50);
+
+      if (data && Array.isArray(data)) {
+        setSearchMedications(data);
+      } else {
+        setSearchMedications([]);
+        addNotification('alert', 'Received invalid data format from server');
+      }
+    } catch (error) {
+      console.error('Error searching medications:', error);
+
+      // Check for specific error types
+      if (error.message && error.message.includes('501')) {
+        addNotification('alert', 'ePrescribing functionality requires migration 015 to be run. Please contact your system administrator.');
+      } else if (error.message && error.message.includes('Failed to fetch')) {
+        addNotification('alert', 'Cannot connect to server. Please check if the backend is running.');
+      } else if (error.message && error.message.includes('404')) {
+        addNotification('alert', 'Medication search endpoint not found. Migration 015 may not be installed.');
+      } else if (error.message && error.message.includes('500')) {
+        addNotification('alert', 'Server error while searching medications. Check console for details.');
+      } else {
+        addNotification('alert', `Failed to search medications: ${error.message}`);
+      }
+
+      setSearchMedications([]);
+    } finally {
+      setLoadingMedications(false);
+    }
+  }, [medicationSearchQuery, api, addNotification]);
+
+  // Auto-search as user types (debounced)
+  useEffect(() => {
+    if (!medicationSearchQuery || medicationSearchQuery.length < 2) {
+      setSearchMedications([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      handleSearchMedications();
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [medicationSearchQuery, handleSearchMedications]);
+
+  // Function to handle adding a medication to the list
+  const handleAddMedication = useCallback((medication) => {
+    if (!medication) {
+      return;
+    }
+
+    // Check if medication already added
+    const alreadyAdded = formData.medications.some(m =>
+      m.id === medication.id ||
+      (m.ndcCode && medication.ndcCode && m.ndcCode === medication.ndcCode)
+    );
+
+    if (alreadyAdded) {
+      addNotification('alert', 'This medication has already been added');
+      return;
+    }
+
+    // Add medication to the list
+    setFormData({
+      ...formData,
+      medications: [...formData.medications, medication]
+    });
+
+    // Clear search
+    setMedicationSearchQuery('');
+    setSearchMedications([]);
+    addNotification('success', 'Medication added');
+  }, [formData, addNotification]);
+
+  // Function to remove a medication from the list
+  const handleRemoveMedication = useCallback((medicationId) => {
+    setFormData({
+      ...formData,
+      medications: formData.medications.filter(m => m.id !== medicationId)
+    });
+  }, [formData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -503,14 +598,143 @@ const DiagnosisForm = ({
               />
 
               {/* Medications */}
-              <MedicationMultiSelect
-                theme={theme}
-                api={api}
-                value={formData.medications}
-                onChange={(medications) => setFormData({ ...formData, medications })}
-                label="Medications (Optional - Will auto-create prescriptions)"
-                placeholder="Search medications to prescribe..."
-              />
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <div className="flex items-center gap-2">
+                    <Pill className="w-4 h-4" />
+                    Medications (Optional - Will auto-create prescriptions)
+                  </div>
+                </label>
+
+                {/* Medication Search Input */}
+                <div className="relative mb-3">
+                  <input
+                    type="text"
+                    value={medicationSearchQuery}
+                    onChange={(e) => setMedicationSearchQuery(e.target.value)}
+                    placeholder="Start typing medication name or NDC code..."
+                    className={`w-full px-4 py-3 pr-10 border rounded-lg focus:outline-none focus:border-blue-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-800 border-slate-600 text-white'
+                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                    }`}
+                  />
+                  {loadingMedications && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                    </div>
+                  )}
+                  {!loadingMedications && medicationSearchQuery && (
+                    <Search className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                      theme === 'dark' ? 'text-slate-500' : 'text-gray-400'
+                    }`} />
+                  )}
+                </div>
+                <p className={`text-xs mb-3 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  Results appear automatically as you type (minimum 2 characters)
+                </p>
+
+                {/* No Results Message */}
+                {!loadingMedications && medicationSearchQuery && medicationSearchQuery.length >= 2 && searchMedications.length === 0 && (
+                  <div className={`text-center py-6 rounded-lg border-2 border-dashed mb-3 ${
+                    theme === 'dark' ? 'border-slate-700 bg-slate-800/50' : 'border-gray-300 bg-gray-50'
+                  }`}>
+                    <Pill className={`w-10 h-10 mx-auto mb-3 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+                    <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      No medications found matching "{medicationSearchQuery}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Search Results */}
+                {searchMedications.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Found {searchMedications.length} medication{searchMedications.length !== 1 ? 's' : ''} - Click to add:
+                    </p>
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                      {searchMedications.map((med) => (
+                        <div
+                          key={med.id}
+                          onClick={() => handleAddMedication(med)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            theme === 'dark'
+                              ? 'border-slate-700 hover:border-blue-500 hover:bg-slate-800'
+                              : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Pill className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                              <div>
+                                <h4 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  {med.genericName || med.brandName || med.drugName}
+                                </h4>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                  {med.brandName && med.genericName && med.brandName !== med.genericName && `Brand: ${med.brandName} • `}
+                                  {med.strength} {med.dosageForm}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {med.isGeneric && (
+                                <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
+                                  Generic
+                                </span>
+                              )}
+                              {med.controlledSubstance && (
+                                <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs ml-2">
+                                  C-{med.deaSchedule}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Selected Medications List */}
+                {formData.medications.length > 0 && (
+                  <div className="space-y-2">
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Selected Medications ({formData.medications.length}):
+                    </p>
+                    {formData.medications.map((med) => (
+                      <div
+                        key={med.id}
+                        className={`p-3 rounded-lg border ${
+                          theme === 'dark' ? 'bg-slate-800/50 border-slate-600' : 'bg-gray-50 border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Pill className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                            <div>
+                              <h5 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                {med.genericName || med.brandName || med.drugName}
+                              </h5>
+                              <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                {med.strength} {med.dosageForm}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMedication(med.id)}
+                            className={`p-1 rounded hover:bg-red-100 ${
+                              theme === 'dark' ? 'hover:bg-red-900/20 text-red-400' : 'text-red-500'
+                            }`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Lab Orders */}
               <div>
