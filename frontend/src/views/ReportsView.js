@@ -101,7 +101,7 @@ const ReportsView = ({
       ['Claims Approval Rate', approvalRate + '%']
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 55,
       head: [['Metric', 'Value']],
       body: summaryData,
@@ -124,7 +124,7 @@ const ReportsView = ({
         formatCurrency(c.amount || 0)
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: finalY + 5,
         head: [['Claim #', 'Patient', 'Date', 'Status', 'Amount']],
         body: claimsData,
@@ -151,7 +151,7 @@ const ReportsView = ({
         a.status || ''
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: finalY + 5,
         head: [['Patient', 'Provider', 'Date', 'Status']],
         body: appointmentsData,
