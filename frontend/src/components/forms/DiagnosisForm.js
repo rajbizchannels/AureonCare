@@ -779,6 +779,7 @@ const DiagnosisForm = ({
                     <button
                       type="button"
                       onClick={() => {
+                        if (laboratories.length === 0) return;
                         setFormData({
                           ...formData,
                           labOrders: [
@@ -797,14 +798,18 @@ const DiagnosisForm = ({
                           ]
                         });
                       }}
+                      disabled={laboratories.length === 0}
                       className={`w-full px-4 py-3 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center gap-2 ${
-                        theme === 'dark'
-                          ? 'border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/5'
-                          : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
+                        laboratories.length === 0
+                          ? 'border-gray-400 text-gray-400 cursor-not-allowed opacity-50'
+                          : theme === 'dark'
+                            ? 'border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/5'
+                            : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
                       }`}
+                      title={laboratories.length === 0 ? 'No laboratories available in the system' : 'Add a new lab order'}
                     >
                       <Plus className="w-4 h-4" />
-                      Add Lab Order
+                      {laboratories.length === 0 ? 'No Labs Available' : 'Add Lab Order'}
                     </button>
                   </div>
               </div>

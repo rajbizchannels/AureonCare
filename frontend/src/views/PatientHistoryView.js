@@ -8,8 +8,11 @@ import DiagnosisForm from '../components/forms/DiagnosisForm';
 import MedicationMultiSelect from '../components/forms/MedicationMultiSelect';
 import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
 import NewLabOrderForm from '../components/forms/NewLabOrderForm';
+import NewAppointmentForm from '../components/forms/NewAppointmentForm';
+import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
+import ViewEditModal from '../components/modals/ViewEditModal';
 
 const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack }) => {
   const [activeTab, setActiveTab] = useState('prescriptions');
@@ -40,6 +43,15 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   const [showLabOrderForm, setShowLabOrderForm] = useState(false);
   const [editingLabOrder, setEditingLabOrder] = useState(null);
   const [deletingLabOrder, setDeletingLabOrder] = useState(null);
+
+  // Appointment modal states
+  const [showAppointmentForm, setShowAppointmentForm] = useState(false);
+
+  // Medical records upload state
+  const [showRecordUploadForm, setShowRecordUploadForm] = useState(false);
+
+  // Patient edit state
+  const [editingPatient, setEditingPatient] = useState(false);
 
   useEffect(() => {
     if (patient?.id) {
@@ -160,18 +172,27 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Patient Header Card */}
       <div className={`p-8 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
-            {patientData.first_name?.charAt(0)}{patientData.last_name?.charAt(0)}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+              {patientData.first_name?.charAt(0)}{patientData.last_name?.charAt(0)}
+            </div>
+            <div>
+              <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {patientData.first_name} {patientData.last_name}
+              </h3>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                MRN: {patientData.mrn || 'N/A'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.first_name} {patientData.last_name}
-            </h3>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              MRN: {patientData.mrn || 'N/A'}
-            </p>
-          </div>
+          <button
+            onClick={() => setEditingPatient(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+          >
+            <Edit className="w-4 h-4" />
+            Edit Patient
+          </button>
         </div>
 
         {/* Personal Information */}
@@ -290,9 +311,18 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   const renderRecords = () => (
     <div className="space-y-4">
-      <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Medical Records
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Medical Records
+        </h3>
+        <button
+          onClick={() => setShowRecordUploadForm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+        >
+          <Plus className="w-4 h-4" />
+          Upload Record
+        </button>
+      </div>
       {medicalRecords.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <FileText className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
@@ -862,9 +892,18 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   const renderAppointments = () => (
     <div className="space-y-4">
-      <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Appointments
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Appointments
+        </h3>
+        <button
+          onClick={() => setShowAppointmentForm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+        >
+          <Plus className="w-4 h-4" />
+          New Appointment
+        </button>
+      </div>
       {appointments.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <Calendar className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
@@ -916,6 +955,481 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       </div>
     );
   }
+
+  return (
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+      {/* Header with Back Button */}
+      <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onBack}
+              className={`p-2 rounded-lg transition-colors ${
+                theme === 'dark'
+                  ? 'hover:bg-slate-700 text-slate-300'
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {patientData.first_name} {patientData.last_name}
+              </h1>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Patient History
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-1">
+            {[
+              { id: 'overview', label: 'Overview', icon: User },
+              { id: 'diagnoses', label: 'Diagnoses', icon: Activity },
+              { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
+              { id: 'labOrders', label: 'Lab Orders', icon: Microscope },
+              { id: 'appointments', label: 'Appointments', icon: Calendar },
+              { id: 'records', label: 'Records', icon: FileText }
+            ].map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? theme === 'dark'
+                        ? 'border-blue-500 text-blue-400'
+                        : 'border-blue-500 text-blue-600'
+                      : theme === 'dark'
+                        ? 'border-transparent text-slate-400 hover:text-slate-300'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="font-medium">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Inline Forms Area - Between tabs and content */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Diagnosis Form - shown when adding/editing diagnosis */}
+        {showDiagnosisForm && (
+          <div className="mb-6">
+            <DiagnosisForm
+              theme={theme}
+              api={api}
+              diagnosis={editingDiagnosis}
+              patient={patientData}
+              providers={providers}
+              patients={patients}
+              onClose={() => {
+                setShowDiagnosisForm(false);
+                setEditingDiagnosis(null);
+              }}
+              onSave={async (diagnosisData) => {
+                try {
+                  if (editingDiagnosis) {
+                    await api.updateDiagnosis(editingDiagnosis.id, diagnosisData);
+                    addNotification('success', 'Diagnosis updated successfully');
+                  } else {
+                    await api.createDiagnosis(diagnosisData);
+                    addNotification('success', 'Diagnosis created successfully');
+                  }
+                  setShowDiagnosisForm(false);
+                  setEditingDiagnosis(null);
+                  fetchPatientHistory();
+                } catch (error) {
+                  console.error('Error saving diagnosis:', error);
+                  addNotification('error', 'Failed to save diagnosis');
+                }
+              }}
+              addNotification={addNotification}
+              user={user}
+            />
+          </div>
+        )}
+
+        {/* Lab Order Form - shown when adding/editing lab order */}
+        {showLabOrderForm && (
+          <div className="mb-6">
+            <NewLabOrderForm
+              theme={theme}
+              api={api}
+              labOrder={editingLabOrder}
+              patient={patientData}
+              providers={providers}
+              onClose={() => {
+                setShowLabOrderForm(false);
+                setEditingLabOrder(null);
+              }}
+              onSave={async () => {
+                setShowLabOrderForm(false);
+                setEditingLabOrder(null);
+                fetchPatientHistory();
+              }}
+              addNotification={addNotification}
+            />
+          </div>
+        )}
+
+        {/* Appointment Form - shown when adding new appointment */}
+        {showAppointmentForm && (
+          <div className="mb-6">
+            <NewAppointmentForm
+              theme={theme}
+              api={api}
+              patients={[patientData]}
+              users={providers}
+              onClose={() => setShowAppointmentForm(false)}
+              onSuccess={() => {
+                setShowAppointmentForm(false);
+                addNotification('success', 'Appointment scheduled successfully');
+                fetchPatientHistory();
+              }}
+              addNotification={addNotification}
+              t={{}}
+            />
+          </div>
+        )}
+
+        {/* Medical Record Upload Form - shown when uploading records */}
+        {showRecordUploadForm && (
+          <div className="mb-6">
+            <MedicalRecordUploadForm
+              patientId={patientData.id}
+              theme={theme}
+              providers={providers}
+              onSuccess={() => {
+                setShowRecordUploadForm(false);
+                addNotification('success', 'Medical record uploaded successfully');
+                fetchPatientHistory();
+              }}
+              onCancel={() => setShowRecordUploadForm(false)}
+            />
+          </div>
+        )}
+
+        {/* Content Area - Based on Active Tab */}
+        {activeTab === 'overview' && renderOverview()}
+        {activeTab === 'diagnoses' && renderDiagnoses()}
+        {activeTab === 'prescriptions' && renderPrescriptions()}
+        {activeTab === 'labOrders' && renderLabOrders()}
+        {activeTab === 'appointments' && renderAppointments()}
+        {activeTab === 'records' && renderRecords()}
+      </div>
+
+      {/* Modals */}
+      {showEPrescribeModal && (
+        <EPrescribeModal
+          theme={theme}
+          patient={patientData}
+          provider={user}
+          api={api}
+          prescription={editingPrescription}
+          onClose={() => {
+            setShowEPrescribeModal(false);
+            setEditingPrescription(null);
+          }}
+          onSuccess={() => {
+            setShowEPrescribeModal(false);
+            setEditingPrescription(null);
+            addNotification('success', editingPrescription ? 'Prescription updated successfully' : 'Prescription created successfully');
+            fetchPatientHistory();
+          }}
+          addNotification={addNotification}
+        />
+      )}
+
+      {/* Edit Patient Modal */}
+      {editingPatient && (
+        <ViewEditModal
+          theme={theme}
+          editingItem={{ type: 'patient', data: patientData }}
+          currentView='edit'
+          onClose={() => setEditingPatient(false)}
+          onSave={async (updatedData) => {
+            try {
+              await api.updatePatient(patientData.id, updatedData);
+              addNotification('success', 'Patient updated successfully');
+              setEditingPatient(false);
+              fetchPatientHistory();
+            } catch (error) {
+              console.error('Error updating patient:', error);
+              addNotification('error', 'Failed to update patient');
+            }
+          }}
+          patients={patients}
+          users={providers}
+          api={api}
+          addNotification={addNotification}
+          setPatients={(updater) => {
+            // Update local patient data if needed
+            if (typeof updater === 'function') {
+              const updated = updater(patients);
+              setPatients(updated);
+            } else {
+              setPatients(updater);
+            }
+          }}
+          user={user}
+          t={{}}
+        />
+      )}
+
+      {/* Delete Confirmation Modals */}
+      {deletingDiagnosis && (
+        <ConfirmationModal
+          theme={theme}
+          title="Delete Diagnosis"
+          message={`Are you sure you want to delete this diagnosis? This action cannot be undone.`}
+          onConfirm={handleDeleteDiagnosis}
+          onCancel={() => setDeletingDiagnosis(null)}
+        />
+      )}
+
+      {deletingPrescription && (
+        <ConfirmationModal
+          theme={theme}
+          title="Delete Prescription"
+          message={`Are you sure you want to delete this prescription? This action cannot be undone.`}
+          onConfirm={handleDeletePrescription}
+          onCancel={() => setDeletingPrescription(null)}
+        />
+      )}
+
+      {deletingLabOrder && (
+        <ConfirmationModal
+          theme={theme}
+          title="Delete Lab Order"
+          message={`Are you sure you want to delete this lab order? This action cannot be undone.`}
+          onConfirm={handleDeleteLabOrder}
+          onCancel={() => setDeletingLabOrder(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+
+// Prescription Form Modal Component
+const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClose, onSave }) => {
+  // For edit mode, we still handle single prescription
+  const [formData, setFormData] = useState({
+    medication_name: prescription?.medicationName || prescription?.medication_name || '',
+    dosage: prescription?.dosage || '',
+    frequency: prescription?.frequency || '',
+    duration: prescription?.duration || '',
+    quantity: prescription?.quantity || '',
+    refills: prescription?.refills || prescription?.refillsRemaining || 0,
+    instructions: prescription?.instructions || '',
+    pharmacy_id: prescription?.pharmacy_id || '',
+    status: prescription?.status || 'Active',
+    ndc_code: prescription?.ndc_code || ''
+  });
+
+  // For new prescriptions, support multiple medications (master-detail)
+  const [medications, setMedications] = useState([]);
+  const [selectedMedications, setSelectedMedications] = useState([]);
+  const [pharmacies, setPharmacies] = useState([]);
+  const [loadingPharmacies, setLoadingPharmacies] = useState(false);
+  const [createDiagnosis, setCreateDiagnosis] = useState(!prescription);
+  const [diagnosisData, setDiagnosisData] = useState({
+    diagnosisName: '',
+    icdCodes: [], // Array of ICD code objects
+    severity: 'Moderate',
+    status: 'Active'
+  });
+
+  // Load pharmacies on mount
+  useEffect(() => {
+    const loadPharmacies = async () => {
+      setLoadingPharmacies(true);
+      try {
+        const pharmaciesData = await api.getPharmacies?.();
+        if (pharmaciesData) {
+          setPharmacies(pharmaciesData);
+
+          // Load patient's preferred pharmacy
+          if (patient?.id && !prescription) {
+            try {
+              const preferredPharmacy = await api.getPatientPreferredPharmacy?.(patient.id);
+              if (preferredPharmacy?.pharmacy_id) {
+                setFormData(prev => ({ ...prev, pharmacy_id: preferredPharmacy.pharmacy_id }));
+              }
+            } catch (err) {
+              console.log('Could not load preferred pharmacy:', err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error loading pharmacies:', err);
+      } finally {
+        setLoadingPharmacies(false);
+      }
+    };
+    loadPharmacies();
+  }, [api, patient, prescription]);
+
+  // Load existing medication when editing
+  useEffect(() => {
+    const loadExistingMedication = async () => {
+      if (!prescription) return;
+
+      // Try to load full medication details by NDC code
+      if (prescription.ndc_code || prescription.ndcCode) {
+        try {
+          const ndcCode = prescription.ndc_code || prescription.ndcCode;
+          const medication = await api.getMedicationByNdc(ndcCode);
+          if (medication) {
+            setSelectedMedications([medication]);
+            return;
+          }
+        } catch (err) {
+          console.log('Could not load medication by NDC:', err);
+        }
+      }
+
+      // Fallback: Create a basic medication object from prescription data
+      const medicationName = prescription.medicationName || prescription.medication_name;
+      if (medicationName) {
+        const basicMedication = {
+          ndc_code: prescription.ndc_code || prescription.ndcCode || '',
+          drug_name: medicationName,
+          generic_name: '',
+          strength: prescription.dosage || '',
+          dosage_form: '',
+          brand_name: ''
+        };
+        setSelectedMedications([basicMedication]);
+      }
+    };
+    loadExistingMedication();
+  }, [prescription, api]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    let diagnosisId = prescription?.diagnosis_id;
+
+    // Create diagnosis if checkbox is checked
+    if (createDiagnosis && !prescription && medications.length > 0) {
+      try {
+        const firstMed = medications[0];
+        // Get ICD codes as comma-separated string
+        const icdCodeString = diagnosisData.icdCodes.map(c => c.code).join(', ');
+
+        const newDiagnosis = await api.createDiagnosis({
+          patientId: patient.id,
+          providerId: user.id,
+          diagnosisName: diagnosisData.diagnosisName || `Condition requiring ${firstMed.medication_name}`,
+          diagnosisCode: icdCodeString,
+          severity: diagnosisData.severity,
+          status: diagnosisData.status,
+          diagnosedDate: new Date().toISOString().split('T')[0],
+          description: `Diagnosis created for prescription(s)`
+        });
+        diagnosisId = newDiagnosis.id;
+      } catch (err) {
+        console.error('Error creating diagnosis:', err);
+      }
+    }
+
+    // Edit mode: Update single prescription
+    if (prescription) {
+      const prescriptionData = {
+        ...formData,
+        diagnosis_id: diagnosisId
+      };
+      onSave(prescriptionData);
+    } else {
+      // New mode: Create multiple prescriptions
+      try {
+        for (const med of medications) {
+          const prescriptionData = {
+            patient_id: patient.id,
+            provider_id: user.id,
+            medication_name: med.medication_name,
+            dosage: med.dosage,
+            frequency: med.frequency,
+            duration: med.duration,
+            quantity: med.quantity,
+            refills: med.refills,
+            instructions: med.instructions,
+            pharmacy_id: formData.pharmacy_id,
+            status: 'Active',
+            ndc_code: med.ndc_code,
+            diagnosis_id: diagnosisId
+          };
+          await api.createPrescription(prescriptionData);
+        }
+        onClose();
+        window.location.reload(); // Refresh to show new prescriptions
+      } catch (err) {
+        console.error('Error creating prescriptions:', err);
+      }
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Add medication to the list
+  const handleAddMedication = () => {
+    if (selectedMedications.length === 0) return;
+
+    const med = selectedMedications[0];
+    const newMed = {
+      id: Date.now(),
+      medication_name: med.drug_name || med.generic_name || med.brand_name || '',
+      ndc_code: med.ndc_code || '',
+      dosage: med.strength || '',
+      frequency: 'Once daily',
+      duration: '30 days',
+      quantity: 30,
+      refills: 0,
+      instructions: ''
+    };
+
+    setMedications([...medications, newMed]);
+    setSelectedMedications([]);
+  };
+
+  // Remove medication from list
+  const handleRemoveMedication = (id) => {
+    setMedications(medications.filter(m => m.id !== id));
+  };
+
+  // Update medication in list
+  const handleUpdateMedication = (id, field, value) => {
+    setMedications(medications.map(m =>
+      m.id === id ? { ...m, [field]: value } : m
+    ));
+  };
+
+  // When medication is selected from search (edit mode)
+  const handleMedicationSelect = (meds) => {
+    setSelectedMedications(meds);
+    if (prescription && meds.length > 0) {
+      const med = meds[0];
+      setFormData(prev => ({
+        ...prev,
+        medication_name: med.drug_name || med.generic_name || med.brand_name || '',
+        dosage: med.strength || prev.dosage,
+        ndc_code: med.ndc_code || ''
+      }));
+    }
+  };
 
   return (
     <div className="space-y-6">
