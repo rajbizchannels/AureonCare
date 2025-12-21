@@ -61,24 +61,6 @@ const LaboratoryManagementView = ({
 
   return (
     <>
-      {showForm && (
-        <NewLaboratoryForm
-          theme={theme}
-          api={api}
-          onClose={() => {
-            setShowForm(false);
-            setEditingLaboratory(null);
-          }}
-          onSuccess={() => {
-            setShowForm(false);
-            setEditingLaboratory(null);
-            loadLaboratories();
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
       <ConfirmationModal
         theme={theme}
         isOpen={!!deleteConfirm}
@@ -148,6 +130,27 @@ const LaboratoryManagementView = ({
             }`}
           />
         </div>
+
+        {/* Laboratory Form - Between search and list */}
+        {showForm && (
+          <div className="mb-6">
+            <NewLaboratoryForm
+              theme={theme}
+              api={api}
+              onClose={() => {
+                setShowForm(false);
+                setEditingLaboratory(null);
+              }}
+              onSuccess={() => {
+                setShowForm(false);
+                setEditingLaboratory(null);
+                loadLaboratories();
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
 
         {/* Laboratories List */}
         {loading ? (

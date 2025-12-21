@@ -61,24 +61,6 @@ const PharmacyManagementView = ({
 
   return (
     <>
-      {showForm && (
-        <NewPharmacyForm
-          theme={theme}
-          api={api}
-          onClose={() => {
-            setShowForm(false);
-            setEditingPharmacy(null);
-          }}
-          onSuccess={() => {
-            setShowForm(false);
-            setEditingPharmacy(null);
-            loadPharmacies();
-          }}
-          addNotification={addNotification}
-          t={t}
-        />
-      )}
-
       <ConfirmationModal
         theme={theme}
         isOpen={!!deleteConfirm}
@@ -148,6 +130,27 @@ const PharmacyManagementView = ({
             }`}
           />
         </div>
+
+        {/* Pharmacy Form - Between search and list */}
+        {showForm && (
+          <div className="mb-6">
+            <NewPharmacyForm
+              theme={theme}
+              api={api}
+              onClose={() => {
+                setShowForm(false);
+                setEditingPharmacy(null);
+              }}
+              onSuccess={() => {
+                setShowForm(false);
+                setEditingPharmacy(null);
+                loadPharmacies();
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
 
         {/* Pharmacies List */}
         {loading ? (

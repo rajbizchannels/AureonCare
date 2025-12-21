@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   User, Calendar, Clock, Settings, Link2, Mail, Phone,
-  Plus, Edit2, Trash2, Eye, EyeOff, Copy, Check, AlertCircle
+  Plus, Edit2, Trash2, Eye, EyeOff, Copy, Check, AlertCircle, ArrowLeft
 } from 'lucide-react';
 import { DoctorAvailabilityManager } from '../components/scheduling';
+import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 // Helper function to get authentication headers
 const getAuthHeaders = () => {
@@ -24,7 +25,7 @@ const getAuthHeaders = () => {
   return headers;
 };
 
-const ProviderManagementView = ({ theme = 'dark' }) => {
+const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
   const [providers, setProviders] = useState([]);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +36,9 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
   const [appointmentTypes, setAppointmentTypes] = useState([]);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [availability, setAvailability] = useState([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
   useEffect(() => {
     fetchProviders();
@@ -269,9 +273,11 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
       }
 
       await fetchProviderDetails(providerId);
-      alert('Schedule initialized with clinic working hours!');
+      setModalMessage('Schedule initialized with clinic working hours!');
+      setShowSuccessModal(true);
     } catch (err) {
-      alert('Error initializing schedule: ' + err.message);
+      setModalMessage('Error initializing schedule: ' + err.message);
+      setShowErrorModal(true);
     }
   };
 
@@ -344,8 +350,23 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
           : 'bg-white border-gray-200'
       }`}>
         <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-          <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>Providers</h2>
-          <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{providers.length} total</p>
+          <div className="flex items-center gap-3 mb-2">
+            {setCurrentModule && (
+              <button
+                onClick={() => setCurrentModule('dashboard')}
+                className={`p-2 rounded-lg transition-colors ${
+                  theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'
+                }`}
+                title="Back to Dashboard"
+              >
+                <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+              </button>
+            )}
+            <div className="flex-1">
+              <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>Providers</h2>
+            </div>
+          </div>
+          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{providers.length} total</p>
         </div>
         <div className="p-2">
           {providers.map(provider => (
@@ -789,6 +810,32 @@ const ProviderManagementView = ({ theme = 'dark' }) => {
           }}
         />
       )}
+
+      {/* Success Confirmation Modal */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        onConfirm={() => setShowSuccessModal(false)}
+        title="Success"
+        message={modalMessage}
+        type="success"
+        confirmText="OK"
+        showCancel={false}
+      />
+
+      {/* Error Confirmation Modal */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        onConfirm={() => setShowErrorModal(false)}
+        title="Error"
+        message={modalMessage}
+        type="danger"
+        confirmText="OK"
+        showCancel={false}
+      />
     </div>
   );
 };

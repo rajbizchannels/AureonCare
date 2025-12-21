@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import NewPaymentForm from '../components/forms/NewPaymentForm';
+import NewClaimForm from '../components/forms/NewClaimForm';
+import NewInsurancePayerForm from '../components/forms/NewInsurancePayerForm';
 
 const RCMView = ({
   theme,
@@ -12,8 +15,13 @@ const RCMView = ({
   setClaims,
   addNotification,
   api,
-  setCurrentModule
+  setCurrentModule,
+  t = {}
 }) => {
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showClaimForm, setShowClaimForm] = useState(false);
+  const [showInsurancePayerForm, setShowInsurancePayerForm] = useState(false);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -29,21 +37,21 @@ const RCMView = ({
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => setShowForm('insurancePayer')}
+            onClick={() => setShowInsurancePayerForm(true)}
             className={`flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
             <Shield className="w-4 h-4" />
             Add Insurance Payer
           </button>
           <button
-            onClick={() => setShowForm('payment')}
+            onClick={() => setShowPaymentForm(true)}
             className={`flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
             <CreditCard className="w-4 h-4" />
             Process Payment
           </button>
           <button
-            onClick={() => setShowForm('claim')}
+            onClick={() => setShowClaimForm(true)}
             className={`flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
             <Plus className="w-4 h-4" />
@@ -51,6 +59,59 @@ const RCMView = ({
           </button>
         </div>
       </div>
+
+      {/* Inline Forms - Between buttons and list */}
+      {showInsurancePayerForm && (
+        <div className="mb-6">
+          <NewInsurancePayerForm
+            theme={theme}
+            api={api}
+            onClose={() => setShowInsurancePayerForm(false)}
+            onSuccess={() => {
+              setShowInsurancePayerForm(false);
+              addNotification('success', t.insurancePayerAdded || 'Insurance payer added successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
+      {showPaymentForm && (
+        <div className="mb-6">
+          <NewPaymentForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            claims={claims}
+            onClose={() => setShowPaymentForm(false)}
+            onSuccess={(newPayment) => {
+              setShowPaymentForm(false);
+              addNotification('success', t.paymentRecordedSuccessfully || 'Payment recorded successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
+      {showClaimForm && (
+        <div className="mb-6">
+          <NewClaimForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            onClose={() => setShowClaimForm(false)}
+            onSuccess={(newClaim) => {
+              setShowClaimForm(false);
+              setClaims([...claims, newClaim]);
+              addNotification('success', t.claimCreated || 'Claim created successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
 
       <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
         <div className="overflow-x-auto">

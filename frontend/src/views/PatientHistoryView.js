@@ -27,6 +27,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [providers, setProviders] = useState([]);
   const [patients, setPatients] = useState([]);
+  const [laboratories, setLaboratories] = useState([]);
 
   // Modal states
   const [showDiagnosisForm, setShowDiagnosisForm] = useState(false);
@@ -58,6 +59,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       fetchPatientHistory();
       fetchProviders();
       fetchPatients();
+      fetchLaboratories();
     }
   }, [patient?.id]);
 
@@ -76,6 +78,16 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       setPatients(data);
     } catch (error) {
       console.error('Error fetching patients:', error);
+    }
+  };
+
+  const fetchLaboratories = async () => {
+    try {
+      const labs = await api.getLaboratories(true);
+      setLaboratories(labs || []);
+    } catch (error) {
+      console.error('Error fetching laboratories:', error);
+      setLaboratories([]);
     }
   };
 
@@ -1071,8 +1083,8 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           </div>
         )}
 
-        {/* Lab Order Form - shown when adding/editing lab order */}
-        {showLabOrderForm && (
+        {/* Lab Order Form - shown when adding/editing lab order and laboratories exist */}
+        {showLabOrderForm && laboratories.length > 0 && (
           <div className="mb-6">
             <NewLabOrderForm
               theme={theme}
