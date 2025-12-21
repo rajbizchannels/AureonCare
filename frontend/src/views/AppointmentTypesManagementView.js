@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentTypeForm from '../components/forms/NewAppointmentTypeForm';
 
@@ -10,7 +10,7 @@ const AppointmentTypesManagementView = ({
   setEditingAppointmentType,
   setCurrentModule,
   addNotification,
-  t
+  t = {}
 }) => {
   const [appointmentTypes, setAppointmentTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +65,15 @@ const AppointmentTypesManagementView = ({
     setEditingAppointmentTypeLocal(null);
     loadAppointmentTypes();
   };
+
+  const filteredAppointmentTypes = appointmentTypes.filter(apt => {
+    if (!searchQuery) return true;
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      apt.name?.toLowerCase().includes(searchLower) ||
+      apt.description?.toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <>
@@ -179,7 +188,7 @@ const AppointmentTypesManagementView = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {appointmentTypes.map((apt, idx) => (
+                  {filteredAppointmentTypes.map((apt, idx) => (
                     <tr key={apt.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         <div className="flex items-center gap-2">
