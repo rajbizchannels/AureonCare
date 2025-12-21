@@ -9,6 +9,7 @@ import NewPatientForm from '../components/forms/NewPatientForm';
 import NewTaskForm from '../components/forms/NewTaskForm';
 import NewClaimForm from '../components/forms/NewClaimForm';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
+import EPrescribeModal from '../components/modals/ePrescribeModal';
 
 const DashboardView = ({
   theme,
@@ -38,6 +39,9 @@ const DashboardView = ({
 }) => {
   const [clinicName, setClinicName] = useState('Medical Practice');
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [showEPrescribeModal, setShowEPrescribeModal] = useState(false);
+  const [prescribePatient, setPrescribePatient] = useState(null);
+  const [prescribeDiagnosis, setPrescribeDiagnosis] = useState(null);
 
   // Load clinic name from localStorage
   useEffect(() => {
@@ -354,6 +358,11 @@ const DashboardView = ({
               setShowForm(null);
               addNotification('success', t.diagnosisCreated || 'Diagnosis created successfully');
             }}
+            onPrescribe={(patient, diagnosis) => {
+              setPrescribePatient(patient);
+              setPrescribeDiagnosis(diagnosis);
+              setShowEPrescribeModal(true);
+            }}
             addNotification={addNotification}
             t={t}
           />
@@ -474,6 +483,28 @@ const DashboardView = ({
           </div>
         </div>
       </div>
+
+      {/* ePrescribe Modal */}
+      {showEPrescribeModal && prescribePatient && (
+        <EPrescribeModal
+          theme={theme}
+          patient={prescribePatient}
+          provider={user}
+          api={api}
+          onClose={() => {
+            setShowEPrescribeModal(false);
+            setPrescribePatient(null);
+            setPrescribeDiagnosis(null);
+          }}
+          onSuccess={() => {
+            setShowEPrescribeModal(false);
+            setPrescribePatient(null);
+            setPrescribeDiagnosis(null);
+            addNotification('success', 'Prescription sent successfully');
+          }}
+          addNotification={addNotification}
+        />
+      )}
     </div>
   );
 };

@@ -8,8 +8,11 @@ import DiagnosisForm from '../components/forms/DiagnosisForm';
 import MedicationMultiSelect from '../components/forms/MedicationMultiSelect';
 import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
 import NewLabOrderForm from '../components/forms/NewLabOrderForm';
+import NewAppointmentForm from '../components/forms/NewAppointmentForm';
+import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
+import ViewEditModal from '../components/modals/ViewEditModal';
 
 const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack }) => {
   const [activeTab, setActiveTab] = useState('prescriptions');
@@ -40,6 +43,15 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   const [showLabOrderForm, setShowLabOrderForm] = useState(false);
   const [editingLabOrder, setEditingLabOrder] = useState(null);
   const [deletingLabOrder, setDeletingLabOrder] = useState(null);
+
+  // Appointment modal states
+  const [showAppointmentForm, setShowAppointmentForm] = useState(false);
+
+  // Medical records upload state
+  const [showRecordUploadForm, setShowRecordUploadForm] = useState(false);
+
+  // Patient edit state
+  const [editingPatient, setEditingPatient] = useState(false);
 
   useEffect(() => {
     if (patient?.id) {
@@ -160,18 +172,27 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Patient Header Card */}
       <div className={`p-8 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
-            {patientData.first_name?.charAt(0)}{patientData.last_name?.charAt(0)}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+              {patientData.first_name?.charAt(0)}{patientData.last_name?.charAt(0)}
+            </div>
+            <div>
+              <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {patientData.first_name} {patientData.last_name}
+              </h3>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                MRN: {patientData.mrn || 'N/A'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.first_name} {patientData.last_name}
-            </h3>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              MRN: {patientData.mrn || 'N/A'}
-            </p>
-          </div>
+          <button
+            onClick={() => setEditingPatient(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+          >
+            <Edit className="w-4 h-4" />
+            Edit Patient
+          </button>
         </div>
 
         {/* Personal Information */}
@@ -290,9 +311,18 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   const renderRecords = () => (
     <div className="space-y-4">
-      <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Medical Records
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Medical Records
+        </h3>
+        <button
+          onClick={() => setShowRecordUploadForm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+        >
+          <Plus className="w-4 h-4" />
+          Upload Record
+        </button>
+      </div>
       {medicalRecords.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <FileText className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
@@ -862,9 +892,18 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   const renderAppointments = () => (
     <div className="space-y-4">
-      <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Appointments
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Appointments
+        </h3>
+        <button
+          onClick={() => setShowAppointmentForm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+        >
+          <Plus className="w-4 h-4" />
+          New Appointment
+        </button>
+      </div>
       {appointments.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <Calendar className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
@@ -915,7 +954,271 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
-  };
+  }
+
+  return (
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+      {/* Header with Back Button */}
+      <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onBack}
+              className={`p-2 rounded-lg transition-colors ${
+                theme === 'dark'
+                  ? 'hover:bg-slate-700 text-slate-300'
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {patientData.first_name} {patientData.last_name}
+              </h1>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Patient History
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-1">
+            {[
+              { id: 'overview', label: 'Overview', icon: User },
+              { id: 'diagnoses', label: 'Diagnoses', icon: Activity },
+              { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
+              { id: 'labOrders', label: 'Lab Orders', icon: Microscope },
+              { id: 'appointments', label: 'Appointments', icon: Calendar },
+              { id: 'records', label: 'Records', icon: FileText }
+            ].map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? theme === 'dark'
+                        ? 'border-blue-500 text-blue-400'
+                        : 'border-blue-500 text-blue-600'
+                      : theme === 'dark'
+                        ? 'border-transparent text-slate-400 hover:text-slate-300'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="font-medium">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Inline Forms Area - Between tabs and content */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Diagnosis Form - shown when adding/editing diagnosis */}
+        {showDiagnosisForm && (
+          <div className="mb-6">
+            <DiagnosisForm
+              theme={theme}
+              api={api}
+              diagnosis={editingDiagnosis}
+              patient={patientData}
+              providers={providers}
+              patients={patients}
+              onClose={() => {
+                setShowDiagnosisForm(false);
+                setEditingDiagnosis(null);
+              }}
+              onSave={async (diagnosisData) => {
+                try {
+                  if (editingDiagnosis) {
+                    await api.updateDiagnosis(editingDiagnosis.id, diagnosisData);
+                    addNotification('success', 'Diagnosis updated successfully');
+                  } else {
+                    await api.createDiagnosis(diagnosisData);
+                    addNotification('success', 'Diagnosis created successfully');
+                  }
+                  setShowDiagnosisForm(false);
+                  setEditingDiagnosis(null);
+                  fetchPatientHistory();
+                } catch (error) {
+                  console.error('Error saving diagnosis:', error);
+                  addNotification('error', 'Failed to save diagnosis');
+                }
+              }}
+              addNotification={addNotification}
+              user={user}
+            />
+          </div>
+        )}
+
+        {/* Lab Order Form - shown when adding/editing lab order */}
+        {showLabOrderForm && (
+          <div className="mb-6">
+            <NewLabOrderForm
+              theme={theme}
+              api={api}
+              labOrder={editingLabOrder}
+              patient={patientData}
+              providers={providers}
+              onClose={() => {
+                setShowLabOrderForm(false);
+                setEditingLabOrder(null);
+              }}
+              onSave={async () => {
+                setShowLabOrderForm(false);
+                setEditingLabOrder(null);
+                fetchPatientHistory();
+              }}
+              addNotification={addNotification}
+            />
+          </div>
+        )}
+
+        {/* Appointment Form - shown when adding new appointment */}
+        {showAppointmentForm && (
+          <div className="mb-6">
+            <NewAppointmentForm
+              theme={theme}
+              api={api}
+              patients={[patientData]}
+              users={providers}
+              onClose={() => setShowAppointmentForm(false)}
+              onSuccess={() => {
+                setShowAppointmentForm(false);
+                addNotification('success', 'Appointment scheduled successfully');
+                fetchPatientHistory();
+              }}
+              addNotification={addNotification}
+              t={{}}
+            />
+          </div>
+        )}
+
+        {/* Medical Record Upload Form - shown when uploading records */}
+        {showRecordUploadForm && (
+          <div className="mb-6">
+            <MedicalRecordUploadForm
+              patientId={patientData.id}
+              theme={theme}
+              providers={providers}
+              onSuccess={() => {
+                setShowRecordUploadForm(false);
+                addNotification('success', 'Medical record uploaded successfully');
+                fetchPatientHistory();
+              }}
+              onCancel={() => setShowRecordUploadForm(false)}
+            />
+          </div>
+        )}
+
+        {/* Content Area - Based on Active Tab */}
+        {activeTab === 'overview' && renderOverview()}
+        {activeTab === 'diagnoses' && renderDiagnoses()}
+        {activeTab === 'prescriptions' && renderPrescriptions()}
+        {activeTab === 'labOrders' && renderLabOrders()}
+        {activeTab === 'appointments' && renderAppointments()}
+        {activeTab === 'records' && renderRecords()}
+      </div>
+
+      {/* Modals */}
+      {showEPrescribeModal && (
+        <EPrescribeModal
+          theme={theme}
+          patient={patientData}
+          provider={user}
+          api={api}
+          prescription={editingPrescription}
+          onClose={() => {
+            setShowEPrescribeModal(false);
+            setEditingPrescription(null);
+          }}
+          onSuccess={() => {
+            setShowEPrescribeModal(false);
+            setEditingPrescription(null);
+            addNotification('success', editingPrescription ? 'Prescription updated successfully' : 'Prescription created successfully');
+            fetchPatientHistory();
+          }}
+          addNotification={addNotification}
+        />
+      )}
+
+      {/* Edit Patient Modal */}
+      {editingPatient && (
+        <ViewEditModal
+          theme={theme}
+          editingItem={{ type: 'patient', data: patientData }}
+          currentView='edit'
+          onClose={() => setEditingPatient(false)}
+          onSave={async (updatedData) => {
+            try {
+              await api.updatePatient(patientData.id, updatedData);
+              addNotification('success', 'Patient updated successfully');
+              setEditingPatient(false);
+              fetchPatientHistory();
+            } catch (error) {
+              console.error('Error updating patient:', error);
+              addNotification('error', 'Failed to update patient');
+            }
+          }}
+          patients={patients}
+          users={providers}
+          api={api}
+          addNotification={addNotification}
+          setPatients={(updater) => {
+            // Update local patient data if needed
+            if (typeof updater === 'function') {
+              const updated = updater(patients);
+              setPatients(updated);
+            } else {
+              setPatients(updater);
+            }
+          }}
+          user={user}
+          t={{}}
+        />
+      )}
+
+      {/* Delete Confirmation Modals */}
+      {deletingDiagnosis && (
+        <ConfirmationModal
+          theme={theme}
+          title="Delete Diagnosis"
+          message={`Are you sure you want to delete this diagnosis? This action cannot be undone.`}
+          onConfirm={handleDeleteDiagnosis}
+          onCancel={() => setDeletingDiagnosis(null)}
+        />
+      )}
+
+      {deletingPrescription && (
+        <ConfirmationModal
+          theme={theme}
+          title="Delete Prescription"
+          message={`Are you sure you want to delete this prescription? This action cannot be undone.`}
+          onConfirm={handleDeletePrescription}
+          onCancel={() => setDeletingPrescription(null)}
+        />
+      )}
+
+      {deletingLabOrder && (
+        <ConfirmationModal
+          theme={theme}
+          title="Delete Lab Order"
+          message={`Are you sure you want to delete this lab order? This action cannot be undone.`}
+          onConfirm={handleDeleteLabOrder}
+          onCancel={() => setDeletingLabOrder(null)}
+        />
+      )}
+    </div>
+  );
+};
 
 
 // Prescription Form Modal Component
