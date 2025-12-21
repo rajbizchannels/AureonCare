@@ -109,8 +109,7 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
         confirmText={editingCampaign ? (t.updateCampaign || 'Update Campaign') : (t.createCampaign || 'Create Campaign')}
         cancelText={t.cancel || 'Cancel'}
       />
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className={`rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+      <div className={`rounded-xl shadow-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
         <div className={`flex items-center justify-between p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
             <Mail className="w-6 h-6 text-red-400" />
@@ -126,7 +125,7 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[70vh]">
           <div className="space-y-6">
             {/* Campaign Name */}
             <div>
@@ -275,7 +274,6 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
           </div>
         </form>
       </div>
-    </div>
     </>
   );
 };

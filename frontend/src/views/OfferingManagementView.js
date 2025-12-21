@@ -349,6 +349,54 @@ const OfferingManagementView = () => {
         </div>
       )}
 
+      {/* Inline Package Form - shown when adding/editing package */}
+      {showModal && modalType === 'package' && activeTab === 'packages' && (
+        <div className="mb-6">
+          <InlineFormModal
+            type={modalType}
+            formData={formData}
+            setFormData={setFormData}
+            onSave={handleSave}
+            onClose={closeModal}
+            theme={theme}
+            categories={categories}
+            offerings={offerings}
+          />
+        </div>
+      )}
+
+      {/* Inline Category Form - shown when adding/editing category */}
+      {showModal && modalType === 'category' && activeTab === 'categories' && (
+        <div className="mb-6">
+          <InlineFormModal
+            type={modalType}
+            formData={formData}
+            setFormData={setFormData}
+            onSave={handleSave}
+            onClose={closeModal}
+            theme={theme}
+            categories={categories}
+            offerings={offerings}
+          />
+        </div>
+      )}
+
+      {/* Inline Promotion Form - shown when adding/editing promotion */}
+      {showModal && modalType === 'promotion' && activeTab === 'promotions' && (
+        <div className="mb-6">
+          <InlineFormModal
+            type={modalType}
+            formData={formData}
+            setFormData={setFormData}
+            onSave={handleSave}
+            onClose={closeModal}
+            theme={theme}
+            categories={categories}
+            offerings={offerings}
+          />
+        </div>
+      )}
+
       {/* Filters and Search */}
       {activeTab !== 'statistics' && (
         <div className="mb-6 flex flex-wrap gap-4 items-center">
@@ -536,20 +584,6 @@ const OfferingManagementView = () => {
             <StatisticsView statistics={statistics} theme={theme} />
           )}
         </>
-      )}
-
-      {/* Modal - only for packages, categories, and promotions */}
-      {showModal && modalType !== 'offering' && (
-        <FormModal
-          type={modalType}
-          formData={formData}
-          setFormData={setFormData}
-          onSave={handleSave}
-          onClose={closeModal}
-          theme={theme}
-          categories={categories}
-          offerings={offerings}
-        />
       )}
     </div>
     </>
@@ -939,58 +973,59 @@ const StatCard = ({ title, value, icon: Icon, color, theme }) => {
   );
 };
 
-// Form Modal Component
-const FormModal = ({ type, formData, setFormData, onSave, onClose, theme, categories, offerings }) => {
+// Inline Form Modal Component (without overlay)
+const InlineFormModal = ({ type, formData, setFormData, onSave, onClose, theme, categories, offerings }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`rounded-lg w-full h-full max-w-[95vw] max-h-[95vh] overflow-y-auto border ${
-        theme === 'dark' ? 'bg-slate-800/95 text-white border-slate-700' : 'bg-white text-gray-900 border-gray-300'
-      }`}>
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-xl font-bold">
-            {formData.id ? 'Edit' : 'Create'} {type.charAt(0).toUpperCase() + type.slice(1)}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+    <div className={`rounded-xl shadow-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center`}>
+        <h2 className="text-xl font-bold">
+          {formData.id ? 'Edit' : 'Create'} {type.charAt(0).toUpperCase() + type.slice(1)}
+        </h2>
+        <button onClick={onClose} className={`text-gray-400 hover:text-gray-600 p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+          <X className="w-6 h-6" />
+        </button>
+      </div>
 
-        <div className="p-6 space-y-4">
-          {type === 'offering' && (
-            <OfferingForm formData={formData} setFormData={setFormData} categories={categories} theme={theme} />
-          )}
-          {type === 'package' && (
-            <PackageForm formData={formData} setFormData={setFormData} categories={categories} offerings={offerings} theme={theme} />
-          )}
-          {type === 'category' && (
-            <CategoryForm formData={formData} setFormData={setFormData} theme={theme} />
-          )}
-          {type === 'promotion' && (
-            <PromotionForm formData={formData} setFormData={setFormData} theme={theme} />
-          )}
-        </div>
+      <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+        {type === 'offering' && (
+          <OfferingForm formData={formData} setFormData={setFormData} categories={categories} theme={theme} />
+        )}
+        {type === 'package' && (
+          <PackageForm formData={formData} setFormData={setFormData} categories={categories} offerings={offerings} theme={theme} />
+        )}
+        {type === 'category' && (
+          <CategoryForm formData={formData} setFormData={setFormData} theme={theme} />
+        )}
+        {type === 'promotion' && (
+          <PromotionForm formData={formData} setFormData={setFormData} theme={theme} />
+        )}
+      </div>
 
-        <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className={`px-4 py-2 border rounded-lg ${
-              theme === 'dark'
-                ? 'border-gray-700 text-gray-300 hover:bg-gray-700'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onSave}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Save
-          </button>
-        </div>
+      <div className={`p-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex justify-end gap-3`}>
+        <button
+          onClick={onClose}
+          className={`px-4 py-2 border rounded-lg ${
+            theme === 'dark'
+              ? 'border-gray-700 text-gray-300 hover:bg-gray-700'
+              : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onSave}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
+          Save
+        </button>
       </div>
     </div>
   );
+};
+
+// Form Modal Component (kept for backwards compatibility, but converted to inline)
+const FormModal = ({ type, formData, setFormData, onSave, onClose, theme, categories, offerings }) => {
+  return <InlineFormModal type={type} formData={formData} setFormData={setFormData} onSave={onSave} onClose={onClose} theme={theme} categories={categories} offerings={offerings} />;
 };
 
 // Offering Form
