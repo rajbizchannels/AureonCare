@@ -18,7 +18,6 @@ const AppointmentTypesManagementView = ({
   const [deletingId, setDeletingId] = useState(null);
   const [showFormLocal, setShowFormLocal] = useState(false);
   const [editingAppointmentTypeLocal, setEditingAppointmentTypeLocal] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadAppointmentTypes();
@@ -59,6 +58,12 @@ const AppointmentTypesManagementView = ({
   const handleEdit = (appointmentType) => {
     setEditingAppointmentTypeLocal(appointmentType);
     setShowFormLocal(true);
+  };
+
+  const handleFormSuccess = (newAppointmentType) => {
+    setShowFormLocal(false);
+    setEditingAppointmentTypeLocal(null);
+    loadAppointmentTypes();
   };
 
   const filteredAppointmentTypes = appointmentTypes.filter(apt => {
@@ -114,41 +119,19 @@ const AppointmentTypesManagementView = ({
           </button>
         </div>
 
-        {/* Search */}
-        <div className={`flex items-center gap-3 p-4 rounded-lg ${
-          theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'
-        }`}>
-          <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search appointment types by name or description..."
-            className={`flex-1 bg-transparent border-none outline-none ${
-              theme === 'dark' ? 'text-white placeholder-slate-400' : 'text-gray-900 placeholder-gray-500'
-            }`}
-          />
-        </div>
-
-        {/* Appointment Type Form - Between search and list */}
+        {/* Inline Appointment Type Form */}
         {showFormLocal && (
-          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <div className="mb-6">
             <NewAppointmentTypeForm
               theme={theme}
               api={api}
-              appointmentType={editingAppointmentTypeLocal}
               onClose={() => {
                 setShowFormLocal(false);
                 setEditingAppointmentTypeLocal(null);
               }}
-              onSuccess={() => {
-                setShowFormLocal(false);
-                setEditingAppointmentTypeLocal(null);
-                loadAppointmentTypes();
-                addNotification('success', t.appointmentTypeCreated || 'Appointment type saved successfully');
-              }}
+              onSuccess={handleFormSuccess}
               addNotification={addNotification}
-              t={t}
+              t={t || {}}
             />
           </div>
         )}

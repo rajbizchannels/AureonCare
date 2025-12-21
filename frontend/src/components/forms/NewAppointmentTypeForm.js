@@ -103,8 +103,8 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
         confirmText={t.ok || 'OK'}
         showCancel={false}
       />
-      <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
-        <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-pink-500/10 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
+      <div className={`rounded-xl shadow-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+        <div className={`p-6 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
               <Calendar className={`w-5 h-5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
@@ -116,7 +116,7 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[70vh]">
           <div className="space-y-6">
             {/* Basic Information */}
             <div className="grid grid-cols-1 gap-4">
