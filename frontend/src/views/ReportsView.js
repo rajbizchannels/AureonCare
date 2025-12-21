@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Users, Calendar, FileText, Download, Filter, ArrowLeft } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 const ReportsView = ({

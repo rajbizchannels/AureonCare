@@ -63,6 +63,17 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     }
   }, [patient?.id]);
 
+  // Close all forms when tab changes
+  useEffect(() => {
+    setShowDiagnosisForm(false);
+    setShowLabOrderForm(false);
+    setShowAppointmentForm(false);
+    setShowRecordUploadForm(false);
+    setEditingPatient(false);
+    setEditingDiagnosis(null);
+    setEditingLabOrder(null);
+  }, [activeTab]);
+
   const fetchProviders = async () => {
     try {
       const data = await api.getProviders();
@@ -324,8 +335,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   );
 
   const renderRecords = () => (
-    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-      <div className="space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Medical Records
@@ -379,13 +389,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ))}
         </div>
       )}
-      </div>
     </div>
   );
 
   const renderDiagnoses = () => (
-    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-      <div className="space-y-4">
+    <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Diagnoses
@@ -494,13 +502,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ))}
         </div>
       )}
-      </div>
     </div>
   );
 
   const renderPrescriptions = () => (
-    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-      <div className="space-y-4">
+    <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Prescriptions
@@ -597,7 +603,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ))}
         </div>
       )}
-      </div>
     </div>
   );
 
@@ -726,23 +731,56 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   };
 
   const renderLabOrders = () => (
-    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-      <div className="space-y-4">
+    <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Lab Orders
         </h3>
         <button
           onClick={() => {
-            setEditingLabOrder(null);
-            setShowLabOrderForm(true);
+            if (laboratories.length > 0) {
+              setEditingLabOrder(null);
+              setShowLabOrderForm(true);
+            }
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg text-white font-medium transition-colors"
+          disabled={laboratories.length === 0}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            laboratories.length === 0
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white'
+          }`}
+          title={laboratories.length === 0 ? 'No laboratories available. Add a laboratory first from Laboratory Management.' : 'Create new lab order'}
         >
           <Plus className="w-4 h-4" />
           New Lab Order
         </button>
       </div>
+
+      {/* No Laboratories Warning */}
+      {laboratories.length === 0 && (
+        <div className={`p-4 rounded-lg border-2 border-dashed mb-3 ${
+          theme === 'dark' ? 'border-yellow-700 bg-yellow-900/20' : 'border-yellow-300 bg-yellow-50'
+        }`}>
+          <div className="flex items-start gap-3">
+            <Microscope className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+              theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
+            }`} />
+            <div>
+              <p className={`font-semibold text-sm ${
+                theme === 'dark' ? 'text-yellow-300' : 'text-yellow-800'
+              }`}>
+                No Laboratories Available
+              </p>
+              <p className={`text-sm mt-1 ${
+                theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'
+              }`}>
+                Please add a laboratory first from the <strong>Laboratory Management</strong> module before creating lab orders.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {labOrders.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <Microscope className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
@@ -908,13 +946,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           })}
         </div>
       )}
-      </div>
     </div>
   );
 
   const renderAppointments = () => (
-    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-      <div className="space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Appointments
@@ -968,7 +1004,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ))}
         </div>
       )}
-      </div>
     </div>
   );
 
@@ -1048,7 +1083,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Diagnosis Form - shown when adding/editing diagnosis */}
         {showDiagnosisForm && (
-          <div className="mb-6">
+          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
             <DiagnosisForm
               theme={theme}
               api={api}
@@ -1108,7 +1143,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
         {/* Appointment Form - shown when adding new appointment */}
         {showAppointmentForm && (
-          <div className="mb-6">
+          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
             <NewAppointmentForm
               theme={theme}
               api={api}
