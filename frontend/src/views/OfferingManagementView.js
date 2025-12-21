@@ -943,8 +943,8 @@ const StatCard = ({ title, value, icon: Icon, color, theme }) => {
 const FormModal = ({ type, formData, setFormData, onSave, onClose, theme, categories, offerings }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
-        theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
+      <div className={`rounded-lg w-full h-full max-w-[95vw] max-h-[95vh] overflow-y-auto border ${
+        theme === 'dark' ? 'bg-slate-800/95 text-white border-slate-700' : 'bg-white text-gray-900 border-gray-300'
       }`}>
         <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <h2 className="text-xl font-bold">
