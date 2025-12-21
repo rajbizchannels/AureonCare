@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import api from '../api/apiService';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import NewHealthcareOfferingForm from '../components/forms/NewHealthcareOfferingForm';
 import {
   Package,
   FolderTree,
@@ -330,6 +331,24 @@ const OfferingManagementView = () => {
         </nav>
       </div>
 
+      {/* Inline Offering Form - shown when adding/editing offering */}
+      {showModal && modalType === 'offering' && activeTab === 'offerings' && (
+        <div className="mb-6">
+          <NewHealthcareOfferingForm
+            theme={theme}
+            api={api}
+            editingOffering={selectedItem}
+            onClose={closeModal}
+            onSuccess={() => {
+              closeModal();
+              fetchData();
+            }}
+            addNotification={(type, message) => console.log(type, message)}
+            t={{}}
+          />
+        </div>
+      )}
+
       {/* Filters and Search */}
       {activeTab !== 'statistics' && (
         <div className="mb-6 flex flex-wrap gap-4 items-center">
@@ -519,8 +538,8 @@ const OfferingManagementView = () => {
         </>
       )}
 
-      {/* Modal */}
-      {showModal && (
+      {/* Modal - only for packages, categories, and promotions */}
+      {showModal && modalType !== 'offering' && (
         <FormModal
           type={modalType}
           formData={formData}

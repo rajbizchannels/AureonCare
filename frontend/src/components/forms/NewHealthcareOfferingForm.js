@@ -174,8 +174,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
         confirmText={editingOffering ? (t.updateOffering || 'Update Offering') : (t.createOffering || 'Create Offering')}
         cancelText={t.cancel || 'Cancel'}
       />
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className={`rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+      <div className={`rounded-xl shadow-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
         <div className={`flex items-center justify-between p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
             <Heart className="w-6 h-6 text-teal-400" />
@@ -191,7 +190,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[70vh]">
           <div className="space-y-6">
             {/* Basic Information */}
             <div>
@@ -552,7 +551,6 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
           </div>
         </form>
       </div>
-    </div>
     </>
   );
 };

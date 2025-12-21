@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import NewAppointmentTypeForm from '../components/forms/NewAppointmentTypeForm';
 
 const AppointmentTypesManagementView = ({
   theme,
@@ -15,6 +16,8 @@ const AppointmentTypesManagementView = ({
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [showFormLocal, setShowFormLocal] = useState(false);
+  const [editingAppointmentTypeLocal, setEditingAppointmentTypeLocal] = useState(null);
 
   useEffect(() => {
     loadAppointmentTypes();
@@ -53,8 +56,14 @@ const AppointmentTypesManagementView = ({
   };
 
   const handleEdit = (appointmentType) => {
-    setEditingAppointmentType(appointmentType);
-    setShowForm('appointmentType');
+    setEditingAppointmentTypeLocal(appointmentType);
+    setShowFormLocal(true);
+  };
+
+  const handleFormSuccess = (newAppointmentType) => {
+    setShowFormLocal(false);
+    setEditingAppointmentTypeLocal(null);
+    loadAppointmentTypes();
   };
 
   return (
@@ -91,8 +100,8 @@ const AppointmentTypesManagementView = ({
           </div>
           <button
             onClick={() => {
-              setEditingAppointmentType(null);
-              setShowForm('appointmentType');
+              setEditingAppointmentTypeLocal(null);
+              setShowFormLocal(true);
             }}
             className={`flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
@@ -100,6 +109,23 @@ const AppointmentTypesManagementView = ({
             {t.createAppointmentType || 'Create Appointment Type'}
           </button>
         </div>
+
+        {/* Inline Appointment Type Form */}
+        {showFormLocal && (
+          <div className="mb-6">
+            <NewAppointmentTypeForm
+              theme={theme}
+              api={api}
+              onClose={() => {
+                setShowFormLocal(false);
+                setEditingAppointmentTypeLocal(null);
+              }}
+              onSuccess={handleFormSuccess}
+              addNotification={addNotification}
+              t={t || {}}
+            />
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center items-center py-12">
@@ -119,8 +145,8 @@ const AppointmentTypesManagementView = ({
               </p>
               <button
                 onClick={() => {
-                  setEditingAppointmentType(null);
-                  setShowForm('appointmentType');
+                  setEditingAppointmentTypeLocal(null);
+                  setShowFormLocal(true);
                 }}
                 className="flex items-center gap-2 px-6 py-3 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors text-white font-medium"
               >
