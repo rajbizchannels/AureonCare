@@ -195,7 +195,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
       <div className="max-w-4xl mx-auto space-y-6">
       {/* Patient Header Card */}
-      <div className={`p-8 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
+      <div className="p-8 rounded-xl">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
@@ -283,7 +283,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       </div>
 
       {/* Medical Information Card */}
-      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
+      <div className="p-6 rounded-xl">
         <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Medical Information</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -904,6 +904,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
                   <div className="flex flex-col gap-2">
                     <button
+                      type="button"
                       onClick={() => {
                         setEditingLabOrder(order);
                         setShowLabOrderForm(true);
@@ -918,6 +919,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                       <Edit className="w-5 h-5" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => setDeletingLabOrder(order)}
                       className={`p-2 rounded-lg transition-colors ${
                         theme === 'dark'
@@ -929,6 +931,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                       <Trash2 className="w-5 h-5" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => printLabOrder(order)}
                       className={`p-2 rounded-lg transition-colors ${
                         theme === 'dark'
@@ -1120,7 +1123,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
         {/* Lab Order Form - shown when adding/editing lab order and laboratories exist */}
         {showLabOrderForm && laboratories.length > 0 && (
-          <div className="mb-6">
+          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
             <NewLabOrderForm
               theme={theme}
               api={api}
@@ -1163,7 +1166,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
         {/* Medical Record Upload Form - shown when uploading records */}
         {showRecordUploadForm && (
-          <div className="mb-6">
+          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
             <MedicalRecordUploadForm
               patientId={patientData.id}
               theme={theme}
@@ -1180,7 +1183,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
         {/* Edit Patient Form - shown when editing patient from Overview tab */}
         {editingPatient && (
-          <div className="mb-6">
+          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
             <ViewEditModal
               theme={theme}
               editingItem={{ type: 'patient', data: patientData }}
