@@ -169,7 +169,8 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   };
 
   const renderOverview = () => (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+      <div className="max-w-4xl mx-auto space-y-6">
       {/* Patient Header Card */}
       <div className={`p-8 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}>
         <div className="flex items-center justify-between mb-6">
@@ -306,11 +307,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 
   const renderRecords = () => (
-    <div className="space-y-4">
+    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+      <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Medical Records
@@ -364,11 +367,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 
   const renderDiagnoses = () => (
-    <div className="space-y-4">
+    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+      <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Diagnoses
@@ -477,11 +482,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 
   const renderPrescriptions = () => (
-    <div className="space-y-4">
+    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+      <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Prescriptions
@@ -578,6 +585,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 
@@ -706,7 +714,8 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   };
 
   const renderLabOrders = () => (
-    <div className="space-y-4">
+    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+      <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Lab Orders
@@ -887,11 +896,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           })}
         </div>
       )}
+      </div>
     </div>
   );
 
   const renderAppointments = () => (
-    <div className="space-y-4">
+    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+      <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Appointments
@@ -945,6 +956,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 
