@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import NewAppointmentTypeForm from '../components/forms/NewAppointmentTypeForm';
 
 const AppointmentTypesManagementView = ({
   theme,
@@ -9,12 +10,15 @@ const AppointmentTypesManagementView = ({
   setEditingAppointmentType,
   setCurrentModule,
   addNotification,
-  t
+  t = {}
 }) => {
   const [appointmentTypes, setAppointmentTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [showFormLocal, setShowFormLocal] = useState(false);
+  const [editingAppointmentTypeLocal, setEditingAppointmentTypeLocal] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadAppointmentTypes();
@@ -53,9 +57,18 @@ const AppointmentTypesManagementView = ({
   };
 
   const handleEdit = (appointmentType) => {
-    setEditingAppointmentType(appointmentType);
-    setShowForm('appointmentType');
+    setEditingAppointmentTypeLocal(appointmentType);
+    setShowFormLocal(true);
   };
+
+  const filteredAppointmentTypes = appointmentTypes.filter(apt => {
+    if (!searchQuery) return true;
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      apt.name?.toLowerCase().includes(searchLower) ||
+      apt.description?.toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <>
@@ -91,8 +104,8 @@ const AppointmentTypesManagementView = ({
           </div>
           <button
             onClick={() => {
-              setEditingAppointmentType(null);
-              setShowForm('appointmentType');
+              setEditingAppointmentTypeLocal(null);
+              setShowFormLocal(true);
             }}
             className={`flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
@@ -100,6 +113,45 @@ const AppointmentTypesManagementView = ({
             {t.createAppointmentType || 'Create Appointment Type'}
           </button>
         </div>
+
+        {/* Search */}
+        <div className={`flex items-center gap-3 p-4 rounded-lg ${
+          theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'
+        }`}>
+          <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search appointment types by name or description..."
+            className={`flex-1 bg-transparent border-none outline-none ${
+              theme === 'dark' ? 'text-white placeholder-slate-400' : 'text-gray-900 placeholder-gray-500'
+            }`}
+          />
+        </div>
+
+        {/* Appointment Type Form - Between search and list */}
+        {showFormLocal && (
+          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+            <NewAppointmentTypeForm
+              theme={theme}
+              api={api}
+              appointmentType={editingAppointmentTypeLocal}
+              onClose={() => {
+                setShowFormLocal(false);
+                setEditingAppointmentTypeLocal(null);
+              }}
+              onSuccess={() => {
+                setShowFormLocal(false);
+                setEditingAppointmentTypeLocal(null);
+                loadAppointmentTypes();
+                addNotification('success', t.appointmentTypeCreated || 'Appointment type saved successfully');
+              }}
+              addNotification={addNotification}
+              t={t}
+            />
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center items-center py-12">
@@ -119,8 +171,8 @@ const AppointmentTypesManagementView = ({
               </p>
               <button
                 onClick={() => {
-                  setEditingAppointmentType(null);
-                  setShowForm('appointmentType');
+                  setEditingAppointmentTypeLocal(null);
+                  setShowFormLocal(true);
                 }}
                 className="flex items-center gap-2 px-6 py-3 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors text-white font-medium"
               >
@@ -153,7 +205,7 @@ const AppointmentTypesManagementView = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {appointmentTypes.map((apt, idx) => (
+                  {filteredAppointmentTypes.map((apt, idx) => (
                     <tr key={apt.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         <div className="flex items-center gap-2">

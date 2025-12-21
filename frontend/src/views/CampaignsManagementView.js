@@ -111,7 +111,7 @@ const CampaignsManagementView = ({
 
       {/* Campaign Form - Between search and list */}
       {showForm && (
-        <div className="mb-6">
+        <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
           <NewCampaignForm
             theme={theme}
             api={api}
