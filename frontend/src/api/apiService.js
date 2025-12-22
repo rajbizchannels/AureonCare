@@ -1580,6 +1580,36 @@ const api = {
     return response.json();
   },
 
+  // Data Backup
+  generateBackup: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/generate`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to generate backup' }));
+      throw new Error(errorData.error || 'Failed to generate backup');
+    }
+    return response.json();
+  },
+  backupToGoogleDrive: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/google-drive`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to backup to Google Drive' }));
+      throw new Error(errorData.error || 'Failed to backup to Google Drive. Please ensure Google Drive is connected.');
+    }
+    return response.json();
+  },
+  backupToOneDrive: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/onedrive`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to backup to OneDrive' }));
+      throw new Error(errorData.error || 'Failed to backup to OneDrive. Please ensure OneDrive is connected.');
+    }
+    return response.json();
+  },
+
   // Add baseURL property for components that need it
   baseURL: API_BASE_URL
 };
