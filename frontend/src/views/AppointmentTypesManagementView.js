@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentTypeForm from '../components/forms/NewAppointmentTypeForm';
 
@@ -18,6 +18,7 @@ const AppointmentTypesManagementView = ({
   const [deletingId, setDeletingId] = useState(null);
   const [showFormLocal, setShowFormLocal] = useState(false);
   const [editingAppointmentTypeLocal, setEditingAppointmentTypeLocal] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadAppointmentTypes();
@@ -65,6 +66,16 @@ const AppointmentTypesManagementView = ({
     setEditingAppointmentTypeLocal(null);
     loadAppointmentTypes();
   };
+
+  const filteredAppointmentTypes = appointmentTypes.filter(apt => {
+    if (!searchQuery) return true;
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      apt.name?.toLowerCase().includes(searchLower) ||
+      apt.description?.toLowerCase().includes(searchLower) ||
+      (apt.isActive || apt.is_active ? 'active' : 'inactive').includes(searchLower)
+    );
+  });
 
   return (
     <>
@@ -127,6 +138,18 @@ const AppointmentTypesManagementView = ({
           </div>
         )}
 
+        {/* Search Box */}
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search appointment types by name, description, or status..."
+            className={`flex-1 bg-transparent border-none outline-none ${theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'}`}
+          />
+        </div>
+
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${theme === 'dark' ? 'border-purple-400' : 'border-purple-600'}`}></div>
@@ -155,6 +178,20 @@ const AppointmentTypesManagementView = ({
               </button>
             </div>
           </div>
+        ) : filteredAppointmentTypes.length === 0 ? (
+          <div className={`bg-gradient-to-br rounded-xl border p-12 ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-200'}`}>
+                <Search className={`w-12 h-12 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+              </div>
+              <h3 className={`text-xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                No Results Found
+              </h3>
+              <p className={`mb-6 max-w-md ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                No appointment types match your search "{searchQuery}". Try different keywords.
+              </p>
+            </div>
+          </div>
         ) : (
           <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
             <div className="overflow-x-auto">
@@ -179,7 +216,7 @@ const AppointmentTypesManagementView = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {appointmentTypes.map((apt, idx) => (
+                  {filteredAppointmentTypes.map((apt, idx) => (
                     <tr key={apt.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         <div className="flex items-center gap-2">
