@@ -995,6 +995,7 @@ function App() {
         <UserProfileModal
           theme={theme}
           user={user}
+          language={language}
           onClose={() => setShowForm(null)}
           updateUser={setUser}
           updateUserPreferences={updateUserPreferences}

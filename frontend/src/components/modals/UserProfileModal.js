@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
+import { getTranslations } from '../../config/translations';
 
 const UserProfileModal = ({
   theme,
@@ -14,8 +15,9 @@ const UserProfileModal = ({
   setTheme,
   api,
   addNotification,
-  t
+  language
 }) => {
+  const t = getTranslations(language || 'en');
   // Local state for password change
   const [localPasswordData, setLocalPasswordData] = useState({
     currentPassword: '',
