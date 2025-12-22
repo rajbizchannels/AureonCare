@@ -1084,66 +1084,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
       {/* Inline Forms Area - Between tabs and content */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* Diagnosis Form - shown when adding/editing diagnosis */}
-        {showDiagnosisForm && (
-          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-            <DiagnosisForm
-              theme={theme}
-              api={api}
-              diagnosis={editingDiagnosis}
-              patient={patientData}
-              providers={providers}
-              patients={patients}
-              onClose={() => {
-                setShowDiagnosisForm(false);
-                setEditingDiagnosis(null);
-              }}
-              onSave={async (diagnosisData) => {
-                try {
-                  if (editingDiagnosis) {
-                    await api.updateDiagnosis(editingDiagnosis.id, diagnosisData);
-                    addNotification('success', 'Diagnosis updated successfully');
-                  } else {
-                    await api.createDiagnosis(diagnosisData);
-                    addNotification('success', 'Diagnosis created successfully');
-                  }
-                  setShowDiagnosisForm(false);
-                  setEditingDiagnosis(null);
-                  fetchPatientHistory();
-                } catch (error) {
-                  console.error('Error saving diagnosis:', error);
-                  addNotification('error', 'Failed to save diagnosis');
-                }
-              }}
-              addNotification={addNotification}
-              user={user}
-            />
-          </div>
-        )}
-
-        {/* Lab Order Form - shown when adding/editing lab order and laboratories exist */}
-        {showLabOrderForm && laboratories.length > 0 && (
-          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-            <NewLabOrderForm
-              theme={theme}
-              api={api}
-              labOrder={editingLabOrder}
-              patient={patientData}
-              providers={providers}
-              onClose={() => {
-                setShowLabOrderForm(false);
-                setEditingLabOrder(null);
-              }}
-              onSave={async () => {
-                setShowLabOrderForm(false);
-                setEditingLabOrder(null);
-                fetchPatientHistory();
-              }}
-              addNotification={addNotification}
-            />
-          </div>
-        )}
-
         {/* Appointment Form - shown when adding new appointment */}
         {showAppointmentForm && (
           <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
@@ -1247,37 +1187,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
             fetchPatientHistory();
           }}
           addNotification={addNotification}
-        />
-      )}
-
-      {/* Delete Confirmation Modals */}
-      {deletingDiagnosis && (
-        <ConfirmationModal
-          theme={theme}
-          title="Delete Diagnosis"
-          message={`Are you sure you want to delete this diagnosis? This action cannot be undone.`}
-          onConfirm={handleDeleteDiagnosis}
-          onCancel={() => setDeletingDiagnosis(null)}
-        />
-      )}
-
-      {deletingPrescription && (
-        <ConfirmationModal
-          theme={theme}
-          title="Delete Prescription"
-          message={`Are you sure you want to delete this prescription? This action cannot be undone.`}
-          onConfirm={handleDeletePrescription}
-          onCancel={() => setDeletingPrescription(null)}
-        />
-      )}
-
-      {deletingLabOrder && (
-        <ConfirmationModal
-          theme={theme}
-          title="Delete Lab Order"
-          message={`Are you sure you want to delete this lab order? This action cannot be undone.`}
-          onConfirm={handleDeleteLabOrder}
-          onCancel={() => setDeletingLabOrder(null)}
         />
       )}
     </div>

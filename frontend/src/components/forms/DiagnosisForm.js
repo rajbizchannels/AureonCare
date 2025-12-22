@@ -39,7 +39,6 @@ const DiagnosisForm = ({
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [prescribeAfterSave, setPrescribeAfterSave] = useState(false);
   const [savedDiagnosisResult, setSavedDiagnosisResult] = useState(null);
   const [linkedPrescriptions, setLinkedPrescriptions] = useState([]);
   const [linkedLabOrders, setLinkedLabOrders] = useState([]);
@@ -434,16 +433,12 @@ const DiagnosisForm = ({
       // Save result for potential prescription creation
       setSavedDiagnosisResult({ result, selectedPatient, createdPrescriptions });
 
-      // Show success confirmation
+      // Show success confirmation and auto-close after 2 seconds
       setShowSuccessConfirmation(true);
-
-      // If not prescribing, auto-close after 2 seconds
-      if (!prescribeAfterSave) {
-        setTimeout(() => {
-          onSuccess(result);
-          onClose();
-        }, 2000);
-      }
+      setTimeout(() => {
+        onSuccess(result);
+        onClose();
+      }, 2000);
     } catch (err) {
       console.error('Error saving diagnosis:', err);
       const action = editDiagnosis ? 'update' : 'create';
@@ -478,13 +473,6 @@ const DiagnosisForm = ({
         onClose={() => setShowSuccessConfirmation(false)}
         onConfirm={() => {
           setShowSuccessConfirmation(false);
-
-          // If prescribe after save is enabled and callback is provided
-          if (prescribeAfterSave && onPrescribe && savedDiagnosisResult) {
-            // Pass patient and diagnosis info to prescription modal
-            onPrescribe(savedDiagnosisResult.selectedPatient, savedDiagnosisResult.result);
-          }
-
           onSuccess(savedDiagnosisResult?.result);
           onClose();
         }}
@@ -492,12 +480,10 @@ const DiagnosisForm = ({
         message={
           editDiagnosis
             ? 'Diagnosis has been updated successfully.'
-            : prescribeAfterSave
-              ? 'Diagnosis created successfully. Opening prescription form...'
-              : 'Diagnosis has been created successfully.'
+            : 'Diagnosis has been created successfully.'
         }
         type="success"
-        confirmText={prescribeAfterSave ? 'Continue to Prescribe' : (t.ok || 'OK')}
+        confirmText={t.ok || 'OK'}
         showCancel={false}
       />
 
@@ -695,43 +681,44 @@ const DiagnosisForm = ({
                   </div>
                 )}
 
-                {/* Selected Medications List */}
+                {/* Selected Medications List as Chips */}
                 {formData.medications.length > 0 && (
-                  <div className="space-y-2">
-                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  <div>
+                    <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                       Selected Medications ({formData.medications.length}):
                     </p>
-                    {formData.medications.map((med) => (
-                      <div
-                        key={med.id}
-                        className={`p-3 rounded-lg border ${
-                          theme === 'dark' ? 'bg-slate-800/50 border-slate-600' : 'bg-gray-50 border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Pill className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
-                            <div>
-                              <h5 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                {med.genericName || med.brandName || med.drugName}
-                              </h5>
-                              <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                {med.strength} {med.dosageForm}
-                              </p>
-                            </div>
-                          </div>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.medications.map((med) => (
+                        <div
+                          key={med.id}
+                          className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm border ${
+                            theme === 'dark'
+                              ? 'bg-blue-900/30 border-blue-700 text-blue-300'
+                              : 'bg-blue-50 border-blue-200 text-blue-700'
+                          }`}
+                        >
+                          <Pill className="w-3.5 h-3.5" />
+                          <span className="font-medium">
+                            {med.genericName || med.brandName || med.drugName}
+                          </span>
+                          {(med.strength || med.dosageForm) && (
+                            <span className={`text-xs ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                              {med.strength} {med.dosageForm}
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleRemoveMedication(med.id)}
-                            className={`p-1 rounded hover:bg-red-100 ${
-                              theme === 'dark' ? 'hover:bg-red-900/20 text-red-400' : 'text-red-500'
+                            className={`p-0.5 rounded-full hover:bg-red-500/20 transition-colors ${
+                              theme === 'dark' ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'
                             }`}
+                            title="Remove medication"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1331,40 +1318,6 @@ const DiagnosisForm = ({
             </div>
           )}
 
-          {/* Prescribe After Save Option */}
-          {!editDiagnosis && onPrescribe && (
-            <div className={`px-6 py-4 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPrescribeAfterSave(!prescribeAfterSave)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    prescribeAfterSave
-                      ? 'bg-purple-500'
-                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      prescribeAfterSave ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-                <div className="flex items-center gap-2">
-                  <Pill className={`w-5 h-5 ${prescribeAfterSave ? 'text-purple-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'} transition-colors`} />
-                  <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                    Prescribe medication after saving diagnosis
-                  </span>
-                </div>
-              </div>
-              {prescribeAfterSave && (
-                <p className={`text-xs mt-2 ml-14 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  The prescription form will open automatically after the diagnosis is saved.
-                </p>
-              )}
-            </div>
-          )}
-
           {/* Footer */}
           <div
             className={`p-6 border-t flex justify-end gap-3 ${
@@ -1390,9 +1343,7 @@ const DiagnosisForm = ({
               className={`px-6 py-2 rounded-lg font-medium text-white transition-colors flex items-center gap-2 ${
                 isSubmitting
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : prescribeAfterSave
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
-                    : 'bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600'
+                  : 'bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600'
               }`}
             >
               {isSubmitting ? (
@@ -1402,12 +1353,8 @@ const DiagnosisForm = ({
                 </>
               ) : (
                 <>
-                  {prescribeAfterSave ? <Pill className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                  {prescribeAfterSave
-                    ? 'Save & Prescribe'
-                    : editDiagnosis
-                      ? 'Update Diagnosis'
-                      : 'Save Diagnosis'}
+                  <Save className="w-4 h-4" />
+                  {editDiagnosis ? 'Update Diagnosis' : 'Save Diagnosis'}
                 </>
               )}
             </button>

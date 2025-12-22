@@ -1111,17 +1111,25 @@ const EPrescribeModal = ({
                 </div>
 
                 <div className="col-span-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={prescriptionDetails.substitutionAllowed}
-                      onChange={(e) => setPrescriptionDetails({ ...prescriptionDetails, substitutionAllowed: e.target.checked })}
-                      className="form-checkbox h-5 w-5 text-blue-500"
-                    />
-                    <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       Allow generic substitution
                     </span>
-                  </label>
+                    <button
+                      onClick={() => setPrescriptionDetails({ ...prescriptionDetails, substitutionAllowed: !prescriptionDetails.substitutionAllowed })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        prescriptionDetails.substitutionAllowed
+                          ? 'bg-blue-500'
+                          : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          prescriptionDetails.substitutionAllowed ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
 
