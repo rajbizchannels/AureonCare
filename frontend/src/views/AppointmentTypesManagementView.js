@@ -121,6 +121,18 @@ const AppointmentTypesManagementView = ({
           </button>
         </div>
 
+        {/* Search Box */}
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search appointment types by name, description, or status..."
+            className={`flex-1 bg-transparent border-none outline-none ${theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'}`}
+          />
+        </div>
+
         {/* Inline Appointment Type Form */}
         {showFormLocal && (
           <div className="mb-6">
@@ -137,18 +149,6 @@ const AppointmentTypesManagementView = ({
             />
           </div>
         )}
-
-        {/* Search Box */}
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-          <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search appointment types by name, description, or status..."
-            className={`flex-1 bg-transparent border-none outline-none ${theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'}`}
-          />
-        </div>
 
         {loading ? (
           <div className="flex justify-center items-center py-12">
