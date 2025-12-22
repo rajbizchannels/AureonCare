@@ -229,4 +229,171 @@ router.post('/onedrive', async (req, res) => {
   }
 });
 
+/**
+ * Restore data from backup
+ * POST /api/backup/restore
+ */
+router.post('/restore', async (req, res) => {
+  try {
+    console.log('Starting data restore...');
+    const { backup } = req.body;
+
+    if (!backup || !backup.data) {
+      return res.status(400).json({
+        error: 'Invalid backup format. Backup data is required.'
+      });
+    }
+
+    const restoredTables = [];
+    const errors = [];
+
+    // Restore each table
+    for (const [tableName, rows] of Object.entries(backup.data)) {
+      if (!Array.isArray(rows) || rows.length === 0) {
+        console.log(`Skipping empty table: ${tableName}`);
+        continue;
+      }
+
+      try {
+        // Clear existing data (optional - can be made configurable)
+        await pool.query(`TRUNCATE TABLE ${tableName} CASCADE`);
+
+        // Insert backup data
+        for (const row of rows) {
+          const columns = Object.keys(row);
+          const values = Object.values(row);
+          const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+          const query = `
+            INSERT INTO ${tableName} (${columns.join(', ')})
+            VALUES (${placeholders})
+            ON CONFLICT DO NOTHING
+          `;
+
+          await pool.query(query, values);
+        }
+
+        restoredTables.push(tableName);
+        console.log(`Restored ${tableName}: ${rows.length} rows`);
+      } catch (error) {
+        console.error(`Error restoring table ${tableName}:`, error.message);
+        errors.push({ table: tableName, error: error.message });
+      }
+    }
+
+    const response = {
+      success: true,
+      message: 'Data restore completed',
+      restoredTables,
+      totalTables: restoredTables.length,
+      errors: errors.length > 0 ? errors : undefined,
+      restoredAt: new Date().toISOString(),
+      restoredBy: req.headers['x-user-id']
+    };
+
+    console.log('Restore completed:', response);
+    res.json(response);
+  } catch (error) {
+    console.error('Error restoring backup:', error);
+    res.status(500).json({
+      error: 'Failed to restore backup',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * Get backup configuration status
+ * GET /api/backup/config
+ */
+router.get('/config', async (req, res) => {
+  try {
+    const config = {
+      googleDrive: {
+        configured: !!process.env.GOOGLE_DRIVE_CREDENTIALS
+      },
+      oneDrive: {
+        configured: !!process.env.ONEDRIVE_ACCESS_TOKEN
+      }
+    };
+
+    res.json(config);
+  } catch (error) {
+    console.error('Error getting backup config:', error);
+    res.status(500).json({
+      error: 'Failed to get backup configuration',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * Update Google Drive credentials
+ * POST /api/backup/config/google-drive
+ */
+router.post('/config/google-drive', async (req, res) => {
+  try {
+    const { credentials } = req.body;
+
+    if (!credentials) {
+      return res.status(400).json({
+        error: 'Google Drive credentials are required'
+      });
+    }
+
+    // Validate JSON format
+    try {
+      JSON.parse(credentials);
+    } catch (e) {
+      return res.status(400).json({
+        error: 'Invalid JSON format for credentials'
+      });
+    }
+
+    // Store in environment variable (runtime only)
+    process.env.GOOGLE_DRIVE_CREDENTIALS = credentials;
+
+    res.json({
+      success: true,
+      message: 'Google Drive credentials updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating Google Drive config:', error);
+    res.status(500).json({
+      error: 'Failed to update Google Drive configuration',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * Update OneDrive access token
+ * POST /api/backup/config/onedrive
+ */
+router.post('/config/onedrive', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({
+        error: 'OneDrive access token is required'
+      });
+    }
+
+    // Store in environment variable (runtime only)
+    process.env.ONEDRIVE_ACCESS_TOKEN = accessToken;
+
+    res.json({
+      success: true,
+      message: 'OneDrive access token updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating OneDrive config:', error);
+    res.status(500).json({
+      error: 'Failed to update OneDrive configuration',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Zap, Mail, MessageCircle, HardDrive, Cloud, Download } from 'lucide-react';
+import { X, Zap, Mail, MessageCircle } from 'lucide-react';
 import { getTranslations } from '../../config/translations';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -25,18 +25,6 @@ const SettingsModal = ({
   const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
   const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-
-  // Backup states
-  const [backupLoading, setBackupLoading] = useState({
-    local: false,
-    googleDrive: false,
-    oneDrive: false
-  });
-  const [lastBackup, setLastBackup] = useState({
-    local: null,
-    googleDrive: null,
-    oneDrive: null
-  });
 
   // Load WhatsApp notification preference
   useEffect(() => {
@@ -98,71 +86,6 @@ const SettingsModal = ({
     setShowConfirmation(false);
     await addNotification('success', t.settingsSaved);
     onClose();
-  };
-
-  const handleLocalBackup = async () => {
-    try {
-      setBackupLoading(prev => ({ ...prev, local: true }));
-      await addNotification('info', 'Starting local backup...');
-
-      // Call API to generate backup data
-      const backupData = await api.generateBackup();
-
-      // Create a blob and download
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `medflow-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      setLastBackup(prev => ({ ...prev, local: new Date().toISOString() }));
-      await addNotification('success', 'Local backup completed successfully');
-    } catch (error) {
-      console.error('Error creating local backup:', error);
-      await addNotification('alert', 'Failed to create local backup');
-    } finally {
-      setBackupLoading(prev => ({ ...prev, local: false }));
-    }
-  };
-
-  const handleGoogleDriveBackup = async () => {
-    try {
-      setBackupLoading(prev => ({ ...prev, googleDrive: true }));
-      await addNotification('info', 'Starting Google Drive backup...');
-
-      // Call API to backup to Google Drive
-      await api.backupToGoogleDrive();
-
-      setLastBackup(prev => ({ ...prev, googleDrive: new Date().toISOString() }));
-      await addNotification('success', 'Google Drive backup completed successfully');
-    } catch (error) {
-      console.error('Error backing up to Google Drive:', error);
-      await addNotification('alert', error.message || 'Failed to backup to Google Drive');
-    } finally {
-      setBackupLoading(prev => ({ ...prev, googleDrive: false }));
-    }
-  };
-
-  const handleOneDriveBackup = async () => {
-    try {
-      setBackupLoading(prev => ({ ...prev, oneDrive: true }));
-      await addNotification('info', 'Starting OneDrive backup...');
-
-      // Call API to backup to OneDrive
-      await api.backupToOneDrive();
-
-      setLastBackup(prev => ({ ...prev, oneDrive: new Date().toISOString() }));
-      await addNotification('success', 'OneDrive backup completed successfully');
-    } catch (error) {
-      console.error('Error backing up to OneDrive:', error);
-      await addNotification('alert', error.message || 'Failed to backup to OneDrive');
-    } finally {
-      setBackupLoading(prev => ({ ...prev, oneDrive: false }));
-    }
   };
 
   return (
@@ -415,13 +338,7 @@ const SettingsModal = ({
                 </div>
               </div>
             )}
-
-            {/* Data Backup - Admin Only */}
-            {user.role === 'admin' && (
-              <div className={`rounded-lg p-6 border-2 ${theme === 'dark' ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
-                    <HardDrive className="w-6 h-6 text-blue-500" />
+          </div>
                   </div>
                   <div>
                     <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
