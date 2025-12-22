@@ -1609,6 +1609,47 @@ const api = {
     }
     return response.json();
   },
+  restoreBackup: async (backupData) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/restore`, {
+      method: 'POST',
+      body: JSON.stringify({ backup: backupData })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to restore backup' }));
+      throw new Error(errorData.error || 'Failed to restore backup');
+    }
+    return response.json();
+  },
+  getBackupConfig: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/config`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to get backup configuration' }));
+      throw new Error(errorData.error || 'Failed to get backup configuration');
+    }
+    return response.json();
+  },
+  updateGoogleDriveConfig: async (credentials) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/config/google-drive`, {
+      method: 'POST',
+      body: JSON.stringify({ credentials })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to update Google Drive configuration' }));
+      throw new Error(errorData.error || 'Failed to update Google Drive configuration');
+    }
+    return response.json();
+  },
+  updateOneDriveConfig: async (accessToken) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/config/onedrive`, {
+      method: 'POST',
+      body: JSON.stringify({ accessToken })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to update OneDrive configuration' }));
+      throw new Error(errorData.error || 'Failed to update OneDrive configuration');
+    }
+    return response.json();
+  },
 
   // Add baseURL property for components that need it
   baseURL: API_BASE_URL
