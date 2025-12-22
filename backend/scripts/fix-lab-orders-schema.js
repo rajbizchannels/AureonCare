@@ -12,6 +12,29 @@ async function fixLabOrdersSchema() {
   try {
     console.log('Fixing lab_orders table schema...');
 
+    // Enable UUID extension if not already enabled
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`);
+    console.log('✓ UUID extension enabled');
+
+    // Create diagnoses table if it doesn't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS diagnoses (
+        id SERIAL PRIMARY KEY,
+        patient_id UUID NOT NULL,
+        provider_id UUID,
+        diagnosis_name VARCHAR(255),
+        diagnosis_code VARCHAR(50),
+        description TEXT,
+        severity VARCHAR(50),
+        status VARCHAR(50) DEFAULT 'Active',
+        diagnosed_date DATE,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✓ Diagnoses table checked/created');
+
     // Add laboratory_id column if it doesn't exist
     await pool.query(`
       DO $$
@@ -28,6 +51,14 @@ async function fixLabOrdersSchema() {
       END $$;
     `);
 
+    // Check if diagnoses table exists
+    const diagnosesTableExists = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'diagnoses'
+      );
+    `);
+
     // Add linked_diagnosis_id column if it doesn't exist
     await pool.query(`
       DO $$
@@ -36,7 +67,9 @@ async function fixLabOrdersSchema() {
           SELECT 1 FROM information_schema.columns
           WHERE table_name = 'lab_orders' AND column_name = 'linked_diagnosis_id'
         ) THEN
-          ALTER TABLE lab_orders ADD COLUMN linked_diagnosis_id UUID REFERENCES diagnoses(id) ON DELETE SET NULL;
+          ${diagnosesTableExists.rows[0].exists
+            ? "ALTER TABLE lab_orders ADD COLUMN linked_diagnosis_id UUID REFERENCES diagnoses(id) ON DELETE SET NULL;"
+            : "ALTER TABLE lab_orders ADD COLUMN linked_diagnosis_id UUID;"}
           RAISE NOTICE 'Added linked_diagnosis_id column to lab_orders';
         ELSE
           RAISE NOTICE 'linked_diagnosis_id column already exists';
