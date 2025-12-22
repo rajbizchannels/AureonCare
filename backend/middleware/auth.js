@@ -122,8 +122,34 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
+/**
+ * Middleware to require admin role
+ * Checks if the user has admin role from headers
+ */
+const requireAdmin = (req, res, next) => {
+  const userRole = req.headers['x-user-role'];
+
+  if (!userRole) {
+    return res.status(401).json({
+      error: 'Authentication required',
+      message: 'User role not provided in request headers'
+    });
+  }
+
+  if (userRole !== 'admin') {
+    return res.status(403).json({
+      error: 'Access denied',
+      message: 'This resource requires admin privileges',
+      userRole: userRole
+    });
+  }
+
+  next();
+};
+
 module.exports = {
   authenticate,
   authorize,
-  optionalAuth
+  optionalAuth,
+  requireAdmin
 };

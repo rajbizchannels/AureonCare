@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Zap, Mail, MessageCircle } from 'lucide-react';
+import { X, Zap, Mail, MessageCircle, HardDrive, Cloud, Download } from 'lucide-react';
 import { getTranslations } from '../../config/translations';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -25,6 +25,18 @@ const SettingsModal = ({
   const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
   const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Backup states
+  const [backupLoading, setBackupLoading] = useState({
+    local: false,
+    googleDrive: false,
+    oneDrive: false
+  });
+  const [lastBackup, setLastBackup] = useState({
+    local: null,
+    googleDrive: null,
+    oneDrive: null
+  });
 
   // Load WhatsApp notification preference
   useEffect(() => {
@@ -86,6 +98,71 @@ const SettingsModal = ({
     setShowConfirmation(false);
     await addNotification('success', t.settingsSaved);
     onClose();
+  };
+
+  const handleLocalBackup = async () => {
+    try {
+      setBackupLoading(prev => ({ ...prev, local: true }));
+      await addNotification('info', 'Starting local backup...');
+
+      // Call API to generate backup data
+      const backupData = await api.generateBackup();
+
+      // Create a blob and download
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `medflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setLastBackup(prev => ({ ...prev, local: new Date().toISOString() }));
+      await addNotification('success', 'Local backup completed successfully');
+    } catch (error) {
+      console.error('Error creating local backup:', error);
+      await addNotification('alert', 'Failed to create local backup');
+    } finally {
+      setBackupLoading(prev => ({ ...prev, local: false }));
+    }
+  };
+
+  const handleGoogleDriveBackup = async () => {
+    try {
+      setBackupLoading(prev => ({ ...prev, googleDrive: true }));
+      await addNotification('info', 'Starting Google Drive backup...');
+
+      // Call API to backup to Google Drive
+      await api.backupToGoogleDrive();
+
+      setLastBackup(prev => ({ ...prev, googleDrive: new Date().toISOString() }));
+      await addNotification('success', 'Google Drive backup completed successfully');
+    } catch (error) {
+      console.error('Error backing up to Google Drive:', error);
+      await addNotification('alert', error.message || 'Failed to backup to Google Drive');
+    } finally {
+      setBackupLoading(prev => ({ ...prev, googleDrive: false }));
+    }
+  };
+
+  const handleOneDriveBackup = async () => {
+    try {
+      setBackupLoading(prev => ({ ...prev, oneDrive: true }));
+      await addNotification('info', 'Starting OneDrive backup...');
+
+      // Call API to backup to OneDrive
+      await api.backupToOneDrive();
+
+      setLastBackup(prev => ({ ...prev, oneDrive: new Date().toISOString() }));
+      await addNotification('success', 'OneDrive backup completed successfully');
+    } catch (error) {
+      console.error('Error backing up to OneDrive:', error);
+      await addNotification('alert', error.message || 'Failed to backup to OneDrive');
+    } finally {
+      setBackupLoading(prev => ({ ...prev, oneDrive: false }));
+    }
   };
 
   return (
@@ -335,6 +412,168 @@ const SettingsModal = ({
                       <option value="60">{t.oneHour}</option>
                     </select>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Data Backup - Admin Only */}
+            {user.role === 'admin' && (
+              <div className={`rounded-lg p-6 border-2 ${theme === 'dark' ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
+                    <HardDrive className="w-6 h-6 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {t.dataBackup || 'Data Backup'}
+                    </h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.backupDescription || 'Export and backup all system data'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Local Backup */}
+                  <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-green-500/20' : 'bg-green-100'}`}>
+                          <Download className="w-5 h-5 text-green-500" />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {t.localBackup || 'Local Hard Drive'}
+                          </p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {t.downloadBackupFile || 'Download backup as JSON file'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleLocalBackup}
+                        disabled={backupLoading.local}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                          backupLoading.local
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-green-500 hover:bg-green-600 text-white'
+                        }`}
+                      >
+                        {backupLoading.local ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            {t.backing || 'Backing up...'}
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4" />
+                            {t.backup || 'Backup'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    {lastBackup.local && (
+                      <p className={`text-xs ml-11 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        Last backup: {new Date(lastBackup.local).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Google Drive Backup */}
+                  <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
+                          <Cloud className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {t.googleDriveBackup || 'Google Drive'}
+                          </p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {t.backupToGoogleDrive || 'Backup to your Google Drive'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleGoogleDriveBackup}
+                        disabled={backupLoading.googleDrive}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                          backupLoading.googleDrive
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-blue-500 hover:bg-blue-600 text-white'
+                        }`}
+                      >
+                        {backupLoading.googleDrive ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            {t.backing || 'Backing up...'}
+                          </>
+                        ) : (
+                          <>
+                            <Cloud className="w-4 h-4" />
+                            {t.backup || 'Backup'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    {lastBackup.googleDrive && (
+                      <p className={`text-xs ml-11 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        Last backup: {new Date(lastBackup.googleDrive).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* OneDrive Backup */}
+                  <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-purple-500/20' : 'bg-purple-100'}`}>
+                          <Cloud className="w-5 h-5 text-purple-500" />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {t.oneDriveBackup || 'OneDrive'}
+                          </p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {t.backupToOneDrive || 'Backup to your OneDrive'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleOneDriveBackup}
+                        disabled={backupLoading.oneDrive}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                          backupLoading.oneDrive
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-purple-500 hover:bg-purple-600 text-white'
+                        }`}
+                      >
+                        {backupLoading.oneDrive ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            {t.backing || 'Backing up...'}
+                          </>
+                        ) : (
+                          <>
+                            <Cloud className="w-4 h-4" />
+                            {t.backup || 'Backup'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    {lastBackup.oneDrive && (
+                      <p className={`text-xs ml-11 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        Last backup: {new Date(lastBackup.oneDrive).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className={`mt-4 p-3 rounded-lg border-l-4 border-yellow-500 ${theme === 'dark' ? 'bg-yellow-500/10' : 'bg-yellow-50'}`}>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-yellow-200' : 'text-yellow-800'}`}>
+                    <strong>Note:</strong> Backups include all patients, appointments, claims, medical records, and system settings. Keep your backups secure and confidential.
+                  </p>
                 </div>
               </div>
             )}

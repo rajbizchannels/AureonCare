@@ -64,7 +64,8 @@ const AdminPanelView = ({
       ehr: { view: true, create: true, edit: true, delete: true },
       users: { view: true, create: true, edit: true, delete: true },
       reports: { view: true, create: true, edit: true, delete: true },
-      settings: { view: true, create: true, edit: true, delete: true }
+      settings: { view: true, create: true, edit: true, delete: true },
+      backup: { view: true, create: true, edit: true, delete: true }
     },
     doctor: {
       patients: { view: true, create: true, edit: true, delete: false },
@@ -73,7 +74,8 @@ const AdminPanelView = ({
       ehr: { view: true, create: true, edit: true, delete: false },
       users: { view: true, create: false, edit: false, delete: false },
       reports: { view: true, create: false, edit: false, delete: false },
-      settings: { view: false, create: false, edit: false, delete: false }
+      settings: { view: false, create: false, edit: false, delete: false },
+      backup: { view: false, create: false, edit: false, delete: false }
     },
     staff: {
       patients: { view: true, create: true, edit: true, delete: false },
@@ -82,7 +84,8 @@ const AdminPanelView = ({
       ehr: { view: true, create: false, edit: false, delete: false },
       users: { view: false, create: false, edit: false, delete: false },
       reports: { view: true, create: false, edit: false, delete: false },
-      settings: { view: false, create: false, edit: false, delete: false }
+      settings: { view: false, create: false, edit: false, delete: false },
+      backup: { view: false, create: false, edit: false, delete: false }
     },
     patient: {
       patients: { view: true, create: false, edit: false, delete: false },
@@ -91,7 +94,8 @@ const AdminPanelView = ({
       ehr: { view: true, create: false, edit: false, delete: false },
       users: { view: false, create: false, edit: false, delete: false },
       reports: { view: false, create: false, edit: false, delete: false },
-      settings: { view: false, create: false, edit: false, delete: false }
+      settings: { view: false, create: false, edit: false, delete: false },
+      backup: { view: false, create: false, edit: false, delete: false }
     }
   });
 
