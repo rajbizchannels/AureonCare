@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft, CreditCard, Check, Video, Plus } from 'lucide-react';
+import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft, CreditCard, Check, Video, Plus, HardDrive, Cloud, Download, Upload, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 
@@ -37,6 +37,25 @@ const AdminPanelView = ({
     sunday: { open: '09:00', close: '13:00', enabled: false }
   });
 
+  // Backup & Restore states
+  const [backupLoading, setBackupLoading] = useState({
+    local: false,
+    googleDrive: false,
+    oneDrive: false
+  });
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [backupConfig, setBackupConfig] = useState({
+    googleDrive: { configured: false },
+    oneDrive: { configured: false }
+  });
+  const [googleDriveCredentials, setGoogleDriveCredentials] = useState('');
+  const [oneDriveToken, setOneDriveToken] = useState('');
+  const [lastBackup, setLastBackup] = useState({
+    local: null,
+    googleDrive: null,
+    oneDrive: null
+  });
+
   // Load clinic settings from localStorage on mount
   useEffect(() => {
     try {
@@ -48,6 +67,19 @@ const AdminPanelView = ({
       console.error('Error loading clinic settings:', error);
     }
   }, []);
+
+  // Load backup configuration on mount
+  useEffect(() => {
+    const loadBackupConfig = async () => {
+      try {
+        const config = await api.getBackupConfig();
+        setBackupConfig(config);
+      } catch (error) {
+        console.error('Error loading backup config:', error);
+      }
+    };
+    loadBackupConfig();
+  }, [api]);
 
   const [appointmentSettings, setAppointmentSettings] = useState({
     defaultDuration: 30,
@@ -653,6 +685,118 @@ const AdminPanelView = ({
     }
   };
 
+  // Backup & Restore handlers
+  const handleLocalBackup = async () => {
+    try {
+      setBackupLoading(prev => ({ ...prev, local: true }));
+      await addNotification('info', 'Starting local backup...');
+
+      const backupData = await api.generateBackup();
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `medflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setLastBackup(prev => ({ ...prev, local: new Date().toISOString() }));
+      await addNotification('success', 'Local backup completed successfully');
+    } catch (error) {
+      console.error('Error creating local backup:', error);
+      await addNotification('alert', 'Failed to create local backup');
+    } finally {
+      setBackupLoading(prev => ({ ...prev, local: false }));
+    }
+  };
+
+  const handleGoogleDriveBackup = async () => {
+    try {
+      setBackupLoading(prev => ({ ...prev, googleDrive: true }));
+      await addNotification('info', 'Starting Google Drive backup...');
+
+      await api.backupToGoogleDrive();
+
+      setLastBackup(prev => ({ ...prev, googleDrive: new Date().toISOString() }));
+      await addNotification('success', 'Google Drive backup completed successfully');
+    } catch (error) {
+      console.error('Error backing up to Google Drive:', error);
+      await addNotification('alert', error.message || 'Failed to backup to Google Drive');
+    } finally {
+      setBackupLoading(prev => ({ ...prev, googleDrive: false }));
+    }
+  };
+
+  const handleOneDriveBackup = async () => {
+    try {
+      setBackupLoading(prev => ({ ...prev, oneDrive: true }));
+      await addNotification('info', 'Starting OneDrive backup...');
+
+      await api.backupToOneDrive();
+
+      setLastBackup(prev => ({ ...prev, oneDrive: new Date().toISOString() }));
+      await addNotification('success', 'OneDrive backup completed successfully');
+    } catch (error) {
+      console.error('Error backing up to OneDrive:', error);
+      await addNotification('alert', error.message || 'Failed to backup to OneDrive');
+    } finally {
+      setBackupLoading(prev => ({ ...prev, oneDrive: false }));
+    }
+  };
+
+  const handleRestoreBackup = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      setRestoreLoading(true);
+      await addNotification('info', 'Starting data restore...');
+
+      const fileContent = await file.text();
+      const backupData = JSON.parse(fileContent);
+
+      const result = await api.restoreBackup(backupData);
+
+      await addNotification('success', `Restore completed: ${result.totalTables} tables restored`);
+      if (result.errors && result.errors.length > 0) {
+        await addNotification('alert', `Some tables had errors: ${result.errors.length} errors`);
+      }
+    } catch (error) {
+      console.error('Error restoring backup:', error);
+      await addNotification('alert', error.message || 'Failed to restore backup');
+    } finally {
+      setRestoreLoading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleSaveGoogleDriveConfig = async () => {
+    try {
+      await api.updateGoogleDriveConfig(googleDriveCredentials);
+      await addNotification('success', 'Google Drive credentials saved successfully');
+      const config = await api.getBackupConfig();
+      setBackupConfig(config);
+    } catch (error) {
+      console.error('Error saving Google Drive config:', error);
+      await addNotification('alert', error.message || 'Failed to save Google Drive credentials');
+    }
+  };
+
+  const handleSaveOneDriveConfig = async () => {
+    try {
+      await api.updateOneDriveConfig(oneDriveToken);
+      await addNotification('success', 'OneDrive access token saved successfully');
+      const config = await api.getBackupConfig();
+      setBackupConfig(config);
+    } catch (error) {
+      console.error('Error saving OneDrive config:', error);
+      await addNotification('alert', error.message || 'Failed to save OneDrive access token');
+    }
+  };
+
   const tabs = [
     { id: 'clinic', label: t.clinicSettings || 'Clinic Settings', icon: Building2 },
     { id: 'users', label: t.userManagement || 'User Management', icon: Users },
@@ -660,7 +804,8 @@ const AdminPanelView = ({
     { id: 'plans', label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard },
     { id: 'telehealth', label: t.integrations || 'Integrations', icon: Video },
     { id: 'hours', label: t.workingHours || 'Working Hours', icon: Clock },
-    { id: 'appointments', label: t.appointmentSettings || 'Appointment Settings', icon: Settings }
+    { id: 'appointments', label: t.appointmentSettings || 'Appointment Settings', icon: Settings },
+    { id: 'backup', label: 'Backup & Restore', icon: HardDrive }
   ];
 
   // Handle custom role form submission
@@ -2181,6 +2326,98 @@ const AdminPanelView = ({
                 </p>
               </div>
             </div>
+
+            {/* Google Drive Backup Configuration */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <Cloud className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Google Drive Backup
+                  </h3>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Configure Google Drive credentials for cloud backups
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${backupConfig.googleDrive?.configured ? 'text-green-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {backupConfig.googleDrive?.configured ? 'Configured' : 'Not Configured'}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Service Account Credentials (JSON)
+                  </label>
+                  <textarea
+                    value={googleDriveCredentials}
+                    onChange={(e) => setGoogleDriveCredentials(e.target.value)}
+                    rows={6}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 font-mono text-sm ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    placeholder='{"type": "service_account", "project_id": "...", ...}'
+                  />
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    Paste your Google Cloud service account JSON credentials here. Get credentials from Google Cloud Console.
+                  </p>
+                </div>
+                <button
+                  onClick={handleSaveGoogleDriveConfig}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Google Drive Credentials
+                </button>
+              </div>
+            </div>
+
+            {/* OneDrive Backup Configuration */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-blue-700 rounded-lg flex items-center justify-center">
+                  <Cloud className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    OneDrive Backup
+                  </h3>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Configure OneDrive access token for cloud backups
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${backupConfig.oneDrive?.configured ? 'text-green-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {backupConfig.oneDrive?.configured ? 'Configured' : 'Not Configured'}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Access Token
+                  </label>
+                  <input
+                    type="password"
+                    value={oneDriveToken}
+                    onChange={(e) => setOneDriveToken(e.target.value)}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    placeholder="Enter OneDrive access token"
+                  />
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    Get an access token from Microsoft Azure Portal by registering an application.
+                  </p>
+                </div>
+                <button
+                  onClick={handleSaveOneDriveConfig}
+                  className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Save OneDrive Token
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -2306,6 +2543,231 @@ const AdminPanelView = ({
               <Save className="w-5 h-5" />
               {t.saveChanges || 'Save Changes'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Backup & Restore Tab */}
+      {activeTab === 'backup' && (
+        <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Backup & Restore
+          </h2>
+          <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Create backups of all system data and restore from previous backups. Configure cloud storage credentials in the Integrations tab.
+          </p>
+
+          {/* Backup Section */}
+          <div className="space-y-6">
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Create Backup
+              </h3>
+              <p className={`text-sm mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Generate a complete backup of all system data including patients, appointments, medical records, and settings.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Local Backup */}
+                <div className={`rounded-lg border p-4 ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                      <HardDrive className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Local Backup
+                      </h4>
+                      <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                        Download to computer
+                      </p>
+                    </div>
+                  </div>
+                  {lastBackup.local && (
+                    <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      Last: {new Date(lastBackup.local).toLocaleString()}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleLocalBackup}
+                    disabled={backupLoading.local}
+                    className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {backupLoading.local ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Download Backup
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Google Drive Backup */}
+                <div className={`rounded-lg border p-4 ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <Cloud className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Google Drive
+                      </h4>
+                      <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                        Upload to Google Drive
+                      </p>
+                    </div>
+                  </div>
+                  {lastBackup.googleDrive && (
+                    <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      Last: {new Date(lastBackup.googleDrive).toLocaleString()}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleGoogleDriveBackup}
+                    disabled={backupLoading.googleDrive || !backupConfig.googleDrive?.configured}
+                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {backupLoading.googleDrive ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        {backupConfig.googleDrive?.configured ? 'Backup to Drive' : 'Not Configured'}
+                      </>
+                    )}
+                  </button>
+                  {!backupConfig.googleDrive?.configured && (
+                    <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      Configure credentials in Integrations tab
+                    </p>
+                  )}
+                </div>
+
+                {/* OneDrive Backup */}
+                <div className={`rounded-lg border p-4 ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-blue-700 rounded-lg flex items-center justify-center">
+                      <Cloud className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        OneDrive
+                      </h4>
+                      <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                        Upload to OneDrive
+                      </p>
+                    </div>
+                  </div>
+                  {lastBackup.oneDrive && (
+                    <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      Last: {new Date(lastBackup.oneDrive).toLocaleString()}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleOneDriveBackup}
+                    disabled={backupLoading.oneDrive || !backupConfig.oneDrive?.configured}
+                    className="w-full px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {backupLoading.oneDrive ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        {backupConfig.oneDrive?.configured ? 'Backup to OneDrive' : 'Not Configured'}
+                      </>
+                    )}
+                  </button>
+                  {!backupConfig.oneDrive?.configured && (
+                    <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      Configure token in Integrations tab
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Restore Section */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Restore from Backup
+              </h3>
+              <div className={`p-4 rounded-lg mb-4 ${theme === 'dark' ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-yellow-50 border border-yellow-200'}`}>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className={`text-sm font-semibold mb-1 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                      Warning: This will replace all current data
+                    </h4>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-yellow-300/80' : 'text-yellow-700'}`}>
+                      Restoring from a backup will overwrite all existing data in the system. This action cannot be undone. Make sure you have a current backup before proceeding.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Select Backup File (JSON)
+                </label>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleRestoreBackup}
+                  disabled={restoreLoading}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'} file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold ${theme === 'dark' ? 'file:bg-blue-500 file:text-white' : 'file:bg-blue-50 file:text-blue-700'} hover:file:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed`}
+                />
+                {restoreLoading && (
+                  <div className="mt-3 flex items-center gap-2 text-blue-500">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Restoring backup...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Information Panel */}
+            <div className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
+              <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Backup Information
+              </h3>
+              <ul className={`space-y-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  <span>Backups include all system data: patients, appointments, medical records, medications, claims, and settings</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  <span>Local backups are downloaded as JSON files that you can store on your computer or external storage</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  <span>Cloud backups require configuration in the Integrations tab with valid API credentials</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  <span>Regular backups are recommended before making significant changes to the system</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  <span>Restore operations will completely replace all current data with the backup data</span>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       )}
