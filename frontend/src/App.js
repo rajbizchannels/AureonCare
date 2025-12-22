@@ -968,6 +968,40 @@ function App() {
           onSelectModule={setCurrentModule}
         />
       )}
+
+      {/* Settings Modal */}
+      {showForm === 'settings' && (
+        <SettingsModal
+          theme={theme}
+          user={user}
+          users={users}
+          language={language}
+          onClose={() => setShowForm(null)}
+          setCurrentView={setCurrentView}
+          updateUserPreferences={updateUserPreferences}
+          setTheme={setTheme}
+          setLanguage={setLanguage}
+          setShowForm={handleSetShowForm}
+          setEditingItem={handleSetEditingItem}
+          setUsers={setUsers}
+          setCurrentModule={setCurrentModule}
+          api={api}
+          addNotification={addNotification}
+        />
+      )}
+
+      {/* User Profile Modal */}
+      {showForm === 'userProfile' && (
+        <UserProfileModal
+          theme={theme}
+          user={user}
+          onClose={() => setShowForm(null)}
+          updateUser={setUser}
+          updateUserPreferences={updateUserPreferences}
+          api={api}
+          addNotification={addNotification}
+        />
+      )}
     </div>
   );
 }
