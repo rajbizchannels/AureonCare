@@ -16,24 +16,62 @@ async function fixLabOrdersSchema() {
     await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`);
     console.log('✓ UUID extension enabled');
 
-    // Create diagnoses table if it doesn't exist
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS diagnoses (
-        id SERIAL PRIMARY KEY,
-        patient_id INTEGER NOT NULL,
-        provider_id INTEGER,
-        diagnosis_name VARCHAR(255),
-        diagnosis_code VARCHAR(50),
-        description TEXT,
-        severity VARCHAR(50),
-        status VARCHAR(50) DEFAULT 'Active',
-        diagnosed_date DATE,
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    console.log('✓ Diagnoses table checked/created');
+    // Check if diagnoses table exists and has data
+    const diagnosesCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'diagnoses'
+      ) as table_exists,
+      (SELECT COUNT(*) FROM diagnoses) as row_count;
+    `).catch(() => ({ rows: [{ table_exists: false, row_count: 0 }] }));
+
+    const tableExists = diagnosesCheck.rows[0]?.table_exists || false;
+    const hasData = (diagnosesCheck.rows[0]?.row_count || 0) > 0;
+
+    if (!tableExists) {
+      // Create diagnoses table with UUID if it doesn't exist
+      await pool.query(`
+        CREATE TABLE diagnoses (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          patient_id INTEGER NOT NULL,
+          provider_id INTEGER,
+          diagnosis_name VARCHAR(255),
+          diagnosis_code VARCHAR(50),
+          description TEXT,
+          severity VARCHAR(50),
+          status VARCHAR(50) DEFAULT 'Active',
+          diagnosed_date DATE,
+          notes TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log('✓ Diagnoses table created with UUID');
+    } else if (!hasData) {
+      // Table exists but has no data - we can safely recreate it with UUID
+      console.log('⚠ Diagnoses table exists but is empty, recreating with UUID...');
+      await pool.query(`DROP TABLE IF EXISTS diagnoses CASCADE;`);
+      await pool.query(`
+        CREATE TABLE diagnoses (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          patient_id INTEGER NOT NULL,
+          provider_id INTEGER,
+          diagnosis_name VARCHAR(255),
+          diagnosis_code VARCHAR(50),
+          description TEXT,
+          severity VARCHAR(50),
+          status VARCHAR(50) DEFAULT 'Active',
+          diagnosed_date DATE,
+          notes TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log('✓ Diagnoses table recreated with UUID');
+    } else {
+      console.log('⚠ Diagnoses table exists with data - keeping current schema');
+      console.log('  (To migrate to UUID, you would need a separate data migration)');
+    }
 
     // Add laboratory_id column if it doesn't exist
     await pool.query(`
@@ -51,28 +89,45 @@ async function fixLabOrdersSchema() {
       END $$;
     `);
 
-    // Check if diagnoses table exists
-    const diagnosesTableExists = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_name = 'diagnoses'
-      );
+    // Check the data type of diagnoses.id
+    const diagnosesIdType = await pool.query(`
+      SELECT data_type FROM information_schema.columns
+      WHERE table_name = 'diagnoses' AND column_name = 'id'
     `);
+    const isUUID = diagnosesIdType.rows[0]?.data_type === 'uuid';
 
     // Add linked_diagnosis_id column if it doesn't exist
     await pool.query(`
       DO $$
       BEGIN
+        -- Drop existing foreign key constraint if it exists
+        IF EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'lab_orders_linked_diagnosis_id_fkey'
+          AND table_name = 'lab_orders'
+        ) THEN
+          ALTER TABLE lab_orders DROP CONSTRAINT lab_orders_linked_diagnosis_id_fkey;
+          RAISE NOTICE 'Dropped existing foreign key constraint';
+        END IF;
+
+        -- Add column if it doesn't exist
         IF NOT EXISTS (
           SELECT 1 FROM information_schema.columns
           WHERE table_name = 'lab_orders' AND column_name = 'linked_diagnosis_id'
         ) THEN
-          ${diagnosesTableExists.rows[0].exists
-            ? "ALTER TABLE lab_orders ADD COLUMN linked_diagnosis_id INTEGER REFERENCES diagnoses(id) ON DELETE SET NULL;"
-            : "ALTER TABLE lab_orders ADD COLUMN linked_diagnosis_id INTEGER;"}
+          ALTER TABLE lab_orders ADD COLUMN linked_diagnosis_id ${isUUID ? 'UUID' : 'INTEGER'};
           RAISE NOTICE 'Added linked_diagnosis_id column to lab_orders';
-        ELSE
-          RAISE NOTICE 'linked_diagnosis_id column already exists';
+        END IF;
+
+        -- Add foreign key constraint
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'lab_orders_linked_diagnosis_id_fkey'
+          AND table_name = 'lab_orders'
+        ) THEN
+          ALTER TABLE lab_orders ADD CONSTRAINT lab_orders_linked_diagnosis_id_fkey
+            FOREIGN KEY (linked_diagnosis_id) REFERENCES diagnoses(id) ON DELETE SET NULL;
+          RAISE NOTICE 'Added foreign key constraint';
         END IF;
       END $$;
     `);
