@@ -561,6 +561,25 @@ const DiagnosisForm = ({
                 )}
               </div>
 
+              {/* Diagnosis Name */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Diagnosis Name
+                  {formData.icdCodes.length === 0 && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                <input
+                  type="text"
+                  value={formData.diagnosisName}
+                  onChange={(e) => setFormData({ ...formData, diagnosisName: e.target.value })}
+                  placeholder="E.g., Essential Hypertension"
+                  className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+                  }`}
+                />
+              </div>
+
               {/* ICD Codes */}
               <MedicalCodeMultiSelect
                 theme={theme}
@@ -1048,25 +1067,6 @@ const DiagnosisForm = ({
                       {laboratories.length === 0 ? 'No Labs Available' : 'Add Lab Order'}
                     </button>
                   </div>
-              </div>
-
-              {/* Diagnosis Name */}
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Diagnosis Name
-                  {formData.icdCodes.length === 0 && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                <input
-                  type="text"
-                  value={formData.diagnosisName}
-                  onChange={(e) => setFormData({ ...formData, diagnosisName: e.target.value })}
-                  placeholder="E.g., Essential Hypertension"
-                  className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
-                  }`}
-                />
               </div>
 
               {/* Description */}
