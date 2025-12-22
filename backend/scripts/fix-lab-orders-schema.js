@@ -4,8 +4,8 @@ const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'medflow_user',
-  password: process.env.DB_PASSWORD || 'medflow_password'
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'MedFlow2024!'
 });
 
 async function fixLabOrdersSchema() {
@@ -20,7 +20,7 @@ async function fixLabOrdersSchema() {
           SELECT 1 FROM information_schema.columns
           WHERE table_name = 'lab_orders' AND column_name = 'laboratory_id'
         ) THEN
-          ALTER TABLE lab_orders ADD COLUMN laboratory_id INTEGER REFERENCES laboratories(id);
+          ALTER TABLE lab_orders ADD COLUMN laboratory_id UUID REFERENCES laboratories(id);
           RAISE NOTICE 'Added laboratory_id column to lab_orders';
         ELSE
           RAISE NOTICE 'laboratory_id column already exists';
@@ -36,7 +36,7 @@ async function fixLabOrdersSchema() {
           SELECT 1 FROM information_schema.columns
           WHERE table_name = 'lab_orders' AND column_name = 'linked_diagnosis_id'
         ) THEN
-          ALTER TABLE lab_orders ADD COLUMN linked_diagnosis_id INTEGER REFERENCES diagnoses(id) ON DELETE SET NULL;
+          ALTER TABLE lab_orders ADD COLUMN linked_diagnosis_id UUID REFERENCES diagnoses(id) ON DELETE SET NULL;
           RAISE NOTICE 'Added linked_diagnosis_id column to lab_orders';
         ELSE
           RAISE NOTICE 'linked_diagnosis_id column already exists';
