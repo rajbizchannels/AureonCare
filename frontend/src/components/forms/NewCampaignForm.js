@@ -109,7 +109,7 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
         confirmText={editingCampaign ? (t.updateCampaign || 'Update Campaign') : (t.createCampaign || 'Create Campaign')}
         cancelText={t.cancel || 'Cancel'}
       />
-      <div className={`rounded-xl shadow-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+      {/*<div className={`rounded-xl shadow-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>*/}
         <div className={`flex items-center justify-between p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
             <Mail className="w-6 h-6 text-red-400" />
@@ -273,7 +273,7 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
             </button>
           </div>
         </form>
-      </div>
+      {/*</div>*/}
     </>
   );
 };
