@@ -10,7 +10,7 @@ const AppointmentTypesManagementView = ({
   setEditingAppointmentType,
   setCurrentModule,
   addNotification,
-  t
+  t = {}
 }) => {
   const [appointmentTypes, setAppointmentTypes] = useState([]);
   const [loading, setLoading] = useState(true);
