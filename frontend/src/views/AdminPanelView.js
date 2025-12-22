@@ -55,6 +55,15 @@ const AdminPanelView = ({
     googleDrive: null,
     oneDrive: null
   });
+  const [backupSuccessModal, setBackupSuccessModal] = useState({
+    isOpen: false,
+    type: '',
+    message: ''
+  });
+  const [restoreSuccessModal, setRestoreSuccessModal] = useState({
+    isOpen: false,
+    details: null
+  });
 
   // Load clinic settings from localStorage on mount
   useEffect(() => {
@@ -704,7 +713,11 @@ const AdminPanelView = ({
       URL.revokeObjectURL(url);
 
       setLastBackup(prev => ({ ...prev, local: new Date().toISOString() }));
-      await addNotification('success', 'Local backup completed successfully');
+      setBackupSuccessModal({
+        isOpen: true,
+        type: 'Local',
+        message: `Backup file has been downloaded successfully to your computer as medflow-backup-${new Date().toISOString().split('T')[0]}.json`
+      });
     } catch (error) {
       console.error('Error creating local backup:', error);
       await addNotification('alert', 'Failed to create local backup');
@@ -721,7 +734,11 @@ const AdminPanelView = ({
       await api.backupToGoogleDrive();
 
       setLastBackup(prev => ({ ...prev, googleDrive: new Date().toISOString() }));
-      await addNotification('success', 'Google Drive backup completed successfully');
+      setBackupSuccessModal({
+        isOpen: true,
+        type: 'Google Drive',
+        message: 'Your complete system backup has been successfully uploaded to Google Drive.'
+      });
     } catch (error) {
       console.error('Error backing up to Google Drive:', error);
       await addNotification('alert', error.message || 'Failed to backup to Google Drive');
@@ -738,7 +755,11 @@ const AdminPanelView = ({
       await api.backupToOneDrive();
 
       setLastBackup(prev => ({ ...prev, oneDrive: new Date().toISOString() }));
-      await addNotification('success', 'OneDrive backup completed successfully');
+      setBackupSuccessModal({
+        isOpen: true,
+        type: 'OneDrive',
+        message: 'Your complete system backup has been successfully uploaded to OneDrive.'
+      });
     } catch (error) {
       console.error('Error backing up to OneDrive:', error);
       await addNotification('alert', error.message || 'Failed to backup to OneDrive');
@@ -760,10 +781,10 @@ const AdminPanelView = ({
 
       const result = await api.restoreBackup(backupData);
 
-      await addNotification('success', `Restore completed: ${result.totalTables} tables restored`);
-      if (result.errors && result.errors.length > 0) {
-        await addNotification('alert', `Some tables had errors: ${result.errors.length} errors`);
-      }
+      setRestoreSuccessModal({
+        isOpen: true,
+        details: result
+      });
     } catch (error) {
       console.error('Error restoring backup:', error);
       await addNotification('alert', error.message || 'Failed to restore backup');
@@ -2787,6 +2808,44 @@ const AdminPanelView = ({
       type="confirm"
       confirmText="Save"
       cancelText="Cancel"
+    />
+
+    {/* Backup Success Modal */}
+    <ConfirmationModal
+      theme={theme}
+      isOpen={backupSuccessModal.isOpen}
+      onClose={() => setBackupSuccessModal({ isOpen: false, type: '', message: '' })}
+      onConfirm={() => setBackupSuccessModal({ isOpen: false, type: '', message: '' })}
+      title={`${backupSuccessModal.type} Backup Successful`}
+      message={backupSuccessModal.message}
+      type="success"
+      confirmText="OK"
+      showCancel={false}
+    />
+
+    {/* Restore Success Modal */}
+    <ConfirmationModal
+      theme={theme}
+      isOpen={restoreSuccessModal.isOpen}
+      onClose={() => setRestoreSuccessModal({ isOpen: false, details: null })}
+      onConfirm={() => setRestoreSuccessModal({ isOpen: false, details: null })}
+      title="Restore Completed Successfully"
+      message={
+        restoreSuccessModal.details
+          ? `Successfully restored ${restoreSuccessModal.details.totalTables} tables.${
+              restoreSuccessModal.details.errors && restoreSuccessModal.details.errors.length > 0
+                ? `\n\nWarning: ${restoreSuccessModal.details.errors.length} tables had errors during restore.`
+                : ''
+            }${
+              restoreSuccessModal.details.restoredTables && restoreSuccessModal.details.restoredTables.length > 0
+                ? `\n\nRestored tables: ${restoreSuccessModal.details.restoredTables.join(', ')}`
+                : ''
+            }`
+          : 'Data has been successfully restored from backup.'
+      }
+      type={restoreSuccessModal.details?.errors?.length > 0 ? 'warning' : 'success'}
+      confirmText="OK"
+      showCancel={false}
     />
     </>
   );
