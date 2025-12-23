@@ -687,7 +687,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ${order.result_recipients ? `
           <div class="field">
             <span class="field-label">Result Recipients:</span>
-            <span class="field-value">${order.result_recipients.replace('-', ', ').toUpperCase()}</span>
+            <span class="field-value">${Array.isArray(order.result_recipients) ? order.result_recipients.join(', ').toUpperCase() : (typeof order.result_recipients === 'string' ? order.result_recipients.replace(/-/g, ', ').toUpperCase() : '')}</span>
           </div>` : ''}
         </div>
 
@@ -891,7 +891,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
                     {order.result_recipients && (
                       <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                        Recipients: <span className="font-medium">{order.result_recipients.replace(/-/g, ', ').toUpperCase()}</span>
+                        Recipients: <span className="font-medium">
+                          {Array.isArray(order.result_recipients)
+                            ? order.result_recipients.join(', ').toUpperCase()
+                            : (typeof order.result_recipients === 'string'
+                                ? order.result_recipients.replace(/-/g, ', ').toUpperCase()
+                                : '')}
+                        </span>
                       </p>
                     )}
 
