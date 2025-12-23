@@ -54,6 +54,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   // Patient edit state
   const [editingPatient, setEditingPatient] = useState(false);
 
+  // Lab order filter state
+  const [labOrderStatusFilter, setLabOrderStatusFilter] = useState('all');
+
   useEffect(() => {
     if (patient?.id) {
       fetchPatientHistory();
@@ -687,7 +690,20 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ${order.result_recipients ? `
           <div class="field">
             <span class="field-label">Result Recipients:</span>
-            <span class="field-value">${Array.isArray(order.result_recipients) ? order.result_recipients.join(', ').toUpperCase() : (typeof order.result_recipients === 'string' ? order.result_recipients.replace(/-/g, ', ').toUpperCase() : '')}</span>
+            <span class="field-value">${(() => {
+              let recipients = order.result_recipients;
+              if (typeof recipients === 'string') {
+                try {
+                  recipients = JSON.parse(recipients);
+                } catch (e) {
+                  return recipients.replace(/-/g, ', ').toUpperCase();
+                }
+              }
+              if (Array.isArray(recipients)) {
+                return recipients.map(r => typeof r === 'object' ? (r.name || r.type || r) : r).join(', ').toUpperCase();
+              }
+              return '';
+            })()}</span>
           </div>` : ''}
         </div>
 
@@ -730,31 +746,60 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     printWindow.document.close();
   };
 
-  const renderLabOrders = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Lab Orders
-        </h3>
-        <button
-          onClick={() => {
-            if (laboratories.length > 0) {
-              setEditingLabOrder(null);
-              setShowLabOrderForm(true);
-            }
-          }}
-          disabled={laboratories.length === 0}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-            laboratories.length === 0
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white'
-          }`}
-          title={laboratories.length === 0 ? 'No laboratories available. Add a laboratory first from Laboratory Management.' : 'Create new lab order'}
-        >
-          <Plus className="w-4 h-4" />
-          New Lab Order
-        </button>
-      </div>
+  const renderLabOrders = () => {
+    // Filter lab orders based on selected status
+    const filteredLabOrders = labOrderStatusFilter === 'all'
+      ? labOrders
+      : labOrders.filter(order => order.status === labOrderStatusFilter);
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Lab Orders
+          </h3>
+          <div className="flex items-center gap-3">
+            {/* Status Filter Dropdown */}
+            <div className="flex items-center gap-2">
+              <label className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Filter by Status:
+              </label>
+              <select
+                value={labOrderStatusFilter}
+                onChange={(e) => setLabOrderStatusFilter(e.target.value)}
+                className={`px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="sent_to_lab">Sent to Lab</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <button
+              onClick={() => {
+                if (laboratories.length > 0) {
+                  setEditingLabOrder(null);
+                  setShowLabOrderForm(true);
+                }
+              }}
+              disabled={laboratories.length === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                laboratories.length === 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white'
+              }`}
+              title={laboratories.length === 0 ? 'No laboratories available. Add a laboratory first from Laboratory Management.' : 'Create new lab order'}
+            >
+              <Plus className="w-4 h-4" />
+              New Lab Order
+            </button>
+          </div>
+        </div>
 
       {/* No Laboratories Warning */}
       {laboratories.length === 0 && (
@@ -781,14 +826,16 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         </div>
       )}
 
-      {labOrders.length === 0 ? (
+      {filteredLabOrders.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <Microscope className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
-          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>No lab orders found</p>
+          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            {labOrders.length === 0 ? 'No lab orders found' : `No lab orders with status "${labOrderStatusFilter}"`}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {labOrders.map((order) => {
+          {filteredLabOrders.map((order) => {
             const testCodes = order.test_codes ? (typeof order.test_codes === 'string' ? JSON.parse(order.test_codes) : order.test_codes) : [];
             const diagnosisCodes = order.diagnosis_codes ? (typeof order.diagnosis_codes === 'string' ? JSON.parse(order.diagnosis_codes) : order.diagnosis_codes) : [];
 
@@ -892,11 +939,26 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                     {order.result_recipients && (
                       <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                         Recipients: <span className="font-medium">
-                          {Array.isArray(order.result_recipients)
-                            ? order.result_recipients.join(', ').toUpperCase()
-                            : (typeof order.result_recipients === 'string'
-                                ? order.result_recipients.replace(/-/g, ', ').toUpperCase()
-                                : '')}
+                          {(() => {
+                            let recipients = order.result_recipients;
+                            // Parse if it's a JSON string
+                            if (typeof recipients === 'string') {
+                              try {
+                                recipients = JSON.parse(recipients);
+                              } catch (e) {
+                                // If parsing fails, treat as a plain string
+                                return recipients.replace(/-/g, ', ').toUpperCase();
+                              }
+                            }
+                            // Handle array of objects with name/type properties
+                            if (Array.isArray(recipients)) {
+                              return recipients
+                                .map(r => typeof r === 'object' ? (r.name || r.type || r) : r)
+                                .join(', ')
+                                .toUpperCase();
+                            }
+                            return '';
+                          })()}
                         </span>
                       </p>
                     )}
@@ -955,8 +1017,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           })}
         </div>
       )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   const renderAppointments = () => (
     <div className="space-y-4">

@@ -611,74 +611,65 @@ const DiagnosisForm = ({
                   </div>
                 </label>
 
-                {/* Medication Search Input */}
-                <div className="relative mb-3">
-                  <input
-                    type="text"
-                    value={medicationSearchQuery}
-                    onChange={(e) => setMedicationSearchQuery(e.target.value)}
-                    placeholder="Start typing medication name or NDC code..."
-                    className={`w-full px-4 py-3 pr-10 border rounded-lg focus:outline-none focus:border-blue-500 ${
+                {/* Input container with selected chips - similar to MedicalCodeMultiSelect */}
+                <div className="relative">
+                  <div
+                    className={`min-h-[42px] border rounded-lg p-2 flex flex-wrap items-center gap-2 cursor-text ${
                       theme === 'dark'
                         ? 'bg-slate-800 border-slate-600 text-white'
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                        : 'bg-white border-gray-300 text-gray-900'
                     }`}
-                  />
-                  {loadingMedications && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-                    </div>
-                  )}
-                  {!loadingMedications && medicationSearchQuery && (
-                    <Search className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
-                      theme === 'dark' ? 'text-slate-500' : 'text-gray-400'
-                    }`} />
-                  )}
-                </div>
-                <p className={`text-xs mb-3 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                  Results appear automatically as you type (minimum 2 characters)
-                </p>
-
-                {/* Selected Medications Chips - Integrated within multiselect */}
-                {formData.medications.length > 0 && (
-                  <div className="mb-3">
-                    <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Selected ({formData.medications.length}):
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.medications.map((med) => (
-                        <div
-                          key={med.id}
-                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border ${
-                            theme === 'dark'
-                              ? 'bg-blue-900/30 border-blue-700 text-blue-300'
-                              : 'bg-blue-50 border-blue-200 text-blue-700'
+                  >
+                    {/* Selected medication chips inside the input container */}
+                    {formData.medications.map((med) => (
+                      <div
+                        key={med.id}
+                        className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+                          theme === 'dark'
+                            ? 'bg-blue-900/50 text-blue-200 border border-blue-700'
+                            : 'bg-blue-100 text-blue-800 border border-blue-300'
+                        }`}
+                      >
+                        <Pill className="w-3 h-3" />
+                        <span className="font-bold">{med.genericName || med.brandName || med.drugName}</span>
+                        {(med.strength || med.dosageForm) && (
+                          <span className="text-xs opacity-75">({med.strength} {med.dosageForm})</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMedication(med.id)}
+                          className={`ml-1 hover:bg-red-500/20 rounded-full p-0.5 transition-colors ${
+                            theme === 'dark' ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'
                           }`}
+                          title="Remove medication"
                         >
-                          <Pill className="w-3 h-3" />
-                          <span className="font-medium">
-                            {med.genericName || med.brandName || med.drugName}
-                          </span>
-                          {(med.strength || med.dosageForm) && (
-                            <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
-                              {med.strength} {med.dosageForm}
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMedication(med.id)}
-                            className={`p-0.5 rounded-full hover:bg-red-500/20 transition-colors ${
-                              theme === 'dark' ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'
-                            }`}
-                            title="Remove medication"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Search input inside the same container */}
+                    <input
+                      type="text"
+                      value={medicationSearchQuery}
+                      onChange={(e) => setMedicationSearchQuery(e.target.value)}
+                      placeholder={formData.medications.length === 0 ? "Start typing medication name or NDC code..." : ""}
+                      className={`flex-1 min-w-[200px] outline-none bg-transparent ${
+                        theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+
+                    {/* Loading spinner */}
+                    {loadingMedications && (
+                      <div className="flex-shrink-0">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                      </div>
+                    )}
                   </div>
-                )}
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    Type to search medications (minimum 2 characters)
+                  </p>
+                </div>
 
                 {/* No Results Message */}
                 {!loadingMedications && medicationSearchQuery && medicationSearchQuery.length >= 2 && searchMedications.length === 0 && (
