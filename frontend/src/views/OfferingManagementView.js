@@ -1145,14 +1145,25 @@ const SelectField = ({ label, value, onChange, options, theme }) => (
 );
 
 const CheckboxField = ({ label, checked, onChange, theme }) => (
-  <div className="flex items-center gap-2">
-    <input
-      type="checkbox"
-      checked={checked || false}
-      onChange={(e) => onChange(e.target.checked)}
-      className="w-4 h-4"
-    />
-    <label className="text-sm font-medium">{label}</label>
+  <div className="flex items-center justify-between">
+    <label className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+      {label}
+    </label>
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+        checked
+          ? 'bg-blue-500'
+          : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
   </div>
 );
 

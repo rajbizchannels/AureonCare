@@ -14,6 +14,17 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
 import ViewEditModal from '../components/modals/ViewEditModal';
 
+// Helper function to convert string to Title Case
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return str
+    .replace(/-/g, ' ')
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack, initialTab = 'overview' }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
@@ -680,12 +691,12 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           ${order.frequency ? `
           <div class="field">
             <span class="field-label">Frequency:</span>
-            <span class="field-value">${order.frequency.toUpperCase()}</span>
+            <span class="field-value">${toTitleCase(order.frequency)}</span>
           </div>` : ''}
           ${order.collection_class ? `
           <div class="field">
             <span class="field-label">Collection Class:</span>
-            <span class="field-value">${order.collection_class.replace('-', ' ').toUpperCase()}</span>
+            <span class="field-value">${toTitleCase(order.collection_class)}</span>
           </div>` : ''}
           ${order.result_recipients ? `
           <div class="field">
@@ -696,11 +707,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                 try {
                   recipients = JSON.parse(recipients);
                 } catch (e) {
-                  return recipients.replace(/-/g, ', ').toUpperCase();
+                  return toTitleCase(recipients.replace(/-/g, ', '));
                 }
               }
               if (Array.isArray(recipients)) {
-                return recipients.map(r => typeof r === 'object' ? (r.name || r.type || r) : r).join(', ').toUpperCase();
+                return recipients.map(r => typeof r === 'object' ? (r.name || r.type || r) : r).map(r => toTitleCase(String(r))).join(', ');
               }
               return '';
             })()}</span>
@@ -924,15 +935,15 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
                     {order.order_status && (
                       <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                        Order Type: <span className="font-medium">{order.order_status.replace('-', ' ').toUpperCase()}</span>
+                        Order Type: <span className="font-medium">{toTitleCase(order.order_status)}</span>
                         {order.order_status_date && ` - ${order.order_status === 'future' ? 'Scheduled' : 'By'}: ${formatDate(order.order_status_date)}`}
-                        {order.frequency && ` - Frequency: ${order.frequency.toUpperCase()}`}
+                        {order.frequency && ` - Frequency: ${toTitleCase(order.frequency)}`}
                       </p>
                     )}
 
                     {order.collection_class && (
                       <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                        Collection: <span className="font-medium">{order.collection_class.replace('-', ' ').toUpperCase()}</span>
+                        Collection: <span className="font-medium">{toTitleCase(order.collection_class)}</span>
                       </p>
                     )}
 
@@ -947,15 +958,15 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                                 recipients = JSON.parse(recipients);
                               } catch (e) {
                                 // If parsing fails, treat as a plain string
-                                return recipients.replace(/-/g, ', ').toUpperCase();
+                                return toTitleCase(recipients.replace(/-/g, ', '));
                               }
                             }
                             // Handle array of objects with name/type properties
                             if (Array.isArray(recipients)) {
                               return recipients
                                 .map(r => typeof r === 'object' ? (r.name || r.type || r) : r)
-                                .join(', ')
-                                .toUpperCase();
+                                .map(r => toTitleCase(String(r)))
+                                .join(', ');
                             }
                             return '';
                           })()}

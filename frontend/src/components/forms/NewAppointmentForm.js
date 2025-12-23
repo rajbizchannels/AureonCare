@@ -37,9 +37,30 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     const fetchAppointmentTypes = async () => {
       try {
         const data = await api.getAppointmentTypes();
-        setAppointmentTypes(data);
+        if (data && data.length > 0) {
+          setAppointmentTypes(data);
+        } else {
+          // Fallback to default appointment types if API returns empty
+          setAppointmentTypes([
+            { id: 1, type_name: 'office-visit', display_name: 'Office Visit' },
+            { id: 2, type_name: 'telehealth', display_name: 'Telehealth' },
+            { id: 3, type_name: 'follow-up', display_name: 'Follow-up' },
+            { id: 4, type_name: 'annual-physical', display_name: 'Annual Physical' },
+            { id: 5, type_name: 'consultation', display_name: 'Consultation' },
+            { id: 6, type_name: 'procedure', display_name: 'Procedure' }
+          ]);
+        }
       } catch (error) {
         console.error('Error fetching appointment types:', error);
+        // Fallback to default appointment types on error
+        setAppointmentTypes([
+          { id: 1, type_name: 'office-visit', display_name: 'Office Visit' },
+          { id: 2, type_name: 'telehealth', display_name: 'Telehealth' },
+          { id: 3, type_name: 'follow-up', display_name: 'Follow-up' },
+          { id: 4, type_name: 'annual-physical', display_name: 'Annual Physical' },
+          { id: 5, type_name: 'consultation', display_name: 'Consultation' },
+          { id: 6, type_name: 'procedure', display_name: 'Procedure' }
+        ]);
       }
     };
     fetchAppointmentTypes();
