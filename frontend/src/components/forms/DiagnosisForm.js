@@ -639,6 +639,47 @@ const DiagnosisForm = ({
                   Results appear automatically as you type (minimum 2 characters)
                 </p>
 
+                {/* Selected Medications Chips - Integrated within multiselect */}
+                {formData.medications.length > 0 && (
+                  <div className="mb-3">
+                    <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Selected ({formData.medications.length}):
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.medications.map((med) => (
+                        <div
+                          key={med.id}
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border ${
+                            theme === 'dark'
+                              ? 'bg-blue-900/30 border-blue-700 text-blue-300'
+                              : 'bg-blue-50 border-blue-200 text-blue-700'
+                          }`}
+                        >
+                          <Pill className="w-3 h-3" />
+                          <span className="font-medium">
+                            {med.genericName || med.brandName || med.drugName}
+                          </span>
+                          {(med.strength || med.dosageForm) && (
+                            <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                              {med.strength} {med.dosageForm}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMedication(med.id)}
+                            className={`p-0.5 rounded-full hover:bg-red-500/20 transition-colors ${
+                              theme === 'dark' ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'
+                            }`}
+                            title="Remove medication"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* No Results Message */}
                 {!loadingMedications && medicationSearchQuery && medicationSearchQuery.length >= 2 && searchMedications.length === 0 && (
                   <div className={`text-center py-6 rounded-lg border-2 border-dashed mb-3 ${
@@ -700,46 +741,6 @@ const DiagnosisForm = ({
                   </div>
                 )}
 
-                {/* Selected Medications List as Chips */}
-                {formData.medications.length > 0 && (
-                  <div>
-                    <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Selected Medications ({formData.medications.length}):
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.medications.map((med) => (
-                        <div
-                          key={med.id}
-                          className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm border ${
-                            theme === 'dark'
-                              ? 'bg-blue-900/30 border-blue-700 text-blue-300'
-                              : 'bg-blue-50 border-blue-200 text-blue-700'
-                          }`}
-                        >
-                          <Pill className="w-3.5 h-3.5" />
-                          <span className="font-medium">
-                            {med.genericName || med.brandName || med.drugName}
-                          </span>
-                          {(med.strength || med.dosageForm) && (
-                            <span className={`text-xs ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
-                              {med.strength} {med.dosageForm}
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMedication(med.id)}
-                            className={`p-0.5 rounded-full hover:bg-red-500/20 transition-colors ${
-                              theme === 'dark' ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'
-                            }`}
-                            title="Remove medication"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Lab Orders */}

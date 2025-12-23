@@ -1208,6 +1208,95 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           addNotification={addNotification}
         />
       )}
+
+      {/* Diagnosis Form Modal */}
+      {showDiagnosisForm && (
+        <DiagnosisForm
+          theme={theme}
+          api={api}
+          patient={patientData}
+          patients={patients}
+          providers={providers}
+          user={user}
+          editDiagnosis={editingDiagnosis}
+          onClose={() => {
+            setShowDiagnosisForm(false);
+            setEditingDiagnosis(null);
+          }}
+          onSuccess={() => {
+            setShowDiagnosisForm(false);
+            setEditingDiagnosis(null);
+            addNotification('success', editingDiagnosis ? 'Diagnosis updated successfully' : 'Diagnosis created successfully');
+            fetchPatientHistory();
+          }}
+          addNotification={addNotification}
+        />
+      )}
+
+      {/* Lab Order Form Modal */}
+      {showLabOrderForm && (
+        <NewLabOrderForm
+          theme={theme}
+          api={api}
+          patient={patientData}
+          patients={patients}
+          providers={providers}
+          user={user}
+          editLabOrder={editingLabOrder}
+          onClose={() => {
+            setShowLabOrderForm(false);
+            setEditingLabOrder(null);
+          }}
+          onSuccess={() => {
+            setShowLabOrderForm(false);
+            setEditingLabOrder(null);
+            addNotification('success', editingLabOrder ? 'Lab order updated successfully' : 'Lab order created successfully');
+            fetchPatientHistory();
+          }}
+          addNotification={addNotification}
+          t={{}}
+          createDiagnosisOption={false}
+        />
+      )}
+
+      {/* Delete Lab Order Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingLabOrder}
+        onClose={() => setDeletingLabOrder(null)}
+        onConfirm={handleDeleteLabOrder}
+        title="Cancel Lab Order"
+        message="Are you sure you want to cancel this lab order? This action cannot be undone."
+        type="danger"
+        confirmText="Cancel Order"
+        cancelText="Keep Order"
+      />
+
+      {/* Delete Prescription Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingPrescription}
+        onClose={() => setDeletingPrescription(null)}
+        onConfirm={handleDeletePrescription}
+        title="Delete Prescription"
+        message="Are you sure you want to delete this prescription? This action cannot be undone."
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      {/* Delete Diagnosis Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!deletingDiagnosis}
+        onClose={() => setDeletingDiagnosis(null)}
+        onConfirm={handleDeleteDiagnosis}
+        title="Delete Diagnosis"
+        message="Are you sure you want to delete this diagnosis? This action cannot be undone."
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
