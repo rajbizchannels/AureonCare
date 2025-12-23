@@ -1051,12 +1051,12 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex gap-1">
             {[
-              { id: 'overview', label: 'Overview', icon: User },
-              { id: 'diagnoses', label: 'Diagnoses', icon: Activity },
-              { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
-              { id: 'labOrders', label: 'Lab Orders', icon: Microscope },
-              { id: 'appointments', label: 'Appointments', icon: Calendar },
-              { id: 'records', label: 'Records', icon: FileText }
+              { id: 'overview', label: 'Overview', icon: User, count: null },
+              { id: 'diagnoses', label: 'Diagnoses', icon: Activity, count: diagnoses.length },
+              { id: 'prescriptions', label: 'Prescriptions', icon: Pill, count: prescriptions.length },
+              { id: 'labOrders', label: 'Lab Orders', icon: Microscope, count: labOrders.length },
+              { id: 'appointments', label: 'Appointments', icon: Calendar, count: appointments.length },
+              { id: 'records', label: 'Records', icon: FileText, count: medicalRecords.length }
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -1075,6 +1075,19 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                 >
                   <Icon className="w-4 h-4" />
                   <span className="font-medium">{tab.label}</span>
+                  {tab.count !== null && (
+                    <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      activeTab === tab.id
+                        ? theme === 'dark'
+                          ? 'bg-blue-500/20 text-blue-300'
+                          : 'bg-blue-100 text-blue-700'
+                        : theme === 'dark'
+                          ? 'bg-slate-700 text-slate-300'
+                          : 'bg-gray-200 text-gray-700'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -1123,7 +1136,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
         {/* Edit Patient Form - shown when editing patient from Overview tab */}
         {editingPatient && (
-          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <div className={`mb-6 p-6 rounded-xl border-2 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-600' : 'bg-white border-gray-400'}`}>
             <ViewEditModal
               theme={theme}
               editingItem={{ type: 'patient', data: patientData }}
