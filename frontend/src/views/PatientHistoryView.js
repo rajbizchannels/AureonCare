@@ -163,7 +163,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     if (!deletingLabOrder) return;
 
     try {
-      await api.deleteLabOrder(deletingLabOrder.id);
+      await api.cancelLabOrder(deletingLabOrder.id, 'Cancelled by user');
       addNotification('success', 'Lab order cancelled successfully');
       setDeletingLabOrder(null);
       fetchPatientHistory();
@@ -1110,7 +1110,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
               theme={theme}
               api={api}
               patients={[patientData]}
+              patient={patientData}
               users={providers}
+              user={user}
               onClose={() => setShowAppointmentForm(false)}
               onSuccess={() => {
                 setShowAppointmentForm(false);
@@ -1178,6 +1180,60 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           </div>
         )}
 
+        {/* Diagnosis Form - shown when adding/editing diagnosis in Diagnoses tab */}
+        {activeTab === 'diagnoses' && showDiagnosisForm && (
+          <div className={`mb-6 p-6 rounded-xl border-2 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-600' : 'bg-white border-gray-400'}`}>
+            <DiagnosisForm
+              theme={theme}
+              api={api}
+              patient={patientData}
+              patients={patients}
+              providers={providers}
+              user={user}
+              editDiagnosis={editingDiagnosis}
+              onClose={() => {
+                setShowDiagnosisForm(false);
+                setEditingDiagnosis(null);
+              }}
+              onSuccess={() => {
+                setShowDiagnosisForm(false);
+                setEditingDiagnosis(null);
+                addNotification('success', editingDiagnosis ? 'Diagnosis updated successfully' : 'Diagnosis created successfully');
+                fetchPatientHistory();
+              }}
+              addNotification={addNotification}
+            />
+          </div>
+        )}
+
+        {/* Lab Order Form - shown when adding/editing lab order in Lab Orders tab */}
+        {activeTab === 'labOrders' && showLabOrderForm && (
+          <div className={`mb-6 p-6 rounded-xl border-2 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-600' : 'bg-white border-gray-400'}`}>
+            <NewLabOrderForm
+              theme={theme}
+              api={api}
+              patient={patientData}
+              patients={patients}
+              providers={providers}
+              user={user}
+              editLabOrder={editingLabOrder}
+              onClose={() => {
+                setShowLabOrderForm(false);
+                setEditingLabOrder(null);
+              }}
+              onSuccess={() => {
+                setShowLabOrderForm(false);
+                setEditingLabOrder(null);
+                addNotification('success', editingLabOrder ? 'Lab order updated successfully' : 'Lab order created successfully');
+                fetchPatientHistory();
+              }}
+              addNotification={addNotification}
+              t={{}}
+              createDiagnosisOption={false}
+            />
+          </div>
+        )}
+
         {/* Content Area - Based on Active Tab */}
         {activeTab === 'overview' && renderOverview()}
         {activeTab === 'diagnoses' && renderDiagnoses()}
@@ -1206,56 +1262,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
             fetchPatientHistory();
           }}
           addNotification={addNotification}
-        />
-      )}
-
-      {/* Diagnosis Form Modal */}
-      {showDiagnosisForm && (
-        <DiagnosisForm
-          theme={theme}
-          api={api}
-          patient={patientData}
-          patients={patients}
-          providers={providers}
-          user={user}
-          editDiagnosis={editingDiagnosis}
-          onClose={() => {
-            setShowDiagnosisForm(false);
-            setEditingDiagnosis(null);
-          }}
-          onSuccess={() => {
-            setShowDiagnosisForm(false);
-            setEditingDiagnosis(null);
-            addNotification('success', editingDiagnosis ? 'Diagnosis updated successfully' : 'Diagnosis created successfully');
-            fetchPatientHistory();
-          }}
-          addNotification={addNotification}
-        />
-      )}
-
-      {/* Lab Order Form Modal */}
-      {showLabOrderForm && (
-        <NewLabOrderForm
-          theme={theme}
-          api={api}
-          patient={patientData}
-          patients={patients}
-          providers={providers}
-          user={user}
-          editLabOrder={editingLabOrder}
-          onClose={() => {
-            setShowLabOrderForm(false);
-            setEditingLabOrder(null);
-          }}
-          onSuccess={() => {
-            setShowLabOrderForm(false);
-            setEditingLabOrder(null);
-            addNotification('success', editingLabOrder ? 'Lab order updated successfully' : 'Lab order created successfully');
-            fetchPatientHistory();
-          }}
-          addNotification={addNotification}
-          t={{}}
-          createDiagnosisOption={false}
         />
       )}
 
