@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
-const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, addNotification, t }) => {
+const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClose, onSuccess, addNotification, t }) => {
   const [formData, setFormData] = useState({
-    patientId: '',
-    providerId: '',
+    patientId: patient?.id || '',
+    providerId: user?.id || '',
     date: '',
     time: '',
-    type: 'office-visit',
+    type: '',
     duration: 30,
     reason: '',
     notes: '',
@@ -17,6 +17,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [offerings, setOfferings] = useState([]);
+  const [appointmentTypes, setAppointmentTypes] = useState([]);
 
   // Fetch active offerings
   useEffect(() => {
@@ -29,6 +30,19 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
       }
     };
     fetchOfferings();
+  }, [api]);
+
+  // Fetch appointment types
+  useEffect(() => {
+    const fetchAppointmentTypes = async () => {
+      try {
+        const data = await api.getAppointmentTypes();
+        setAppointmentTypes(data);
+      } catch (error) {
+        console.error('Error fetching appointment types:', error);
+      }
+    };
+    fetchAppointmentTypes();
   }, [api]);
 
   // Set default provider to first available provider when users are loaded
@@ -169,17 +183,23 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.patient || 'Patient'} <span className="text-red-400">*</span>
                 </label>
-                <select
-                  required
-                  value={formData.patientId}
-                  onChange={(e) => setFormData({...formData, patientId: e.target.value})}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                >
-                  <option value="">{t.selectPatient || 'Select Patient'}</option>
-                  {patients.map(p => (
-                    <option key={p.id} value={p.id}>{p.first_name} {p.last_name} - {p.mrn}</option>
-                  ))}
-                </select>
+                {patient ? (
+                  <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}>
+                    {patient.first_name} {patient.last_name} - {patient.mrn || 'N/A'}
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={formData.patientId}
+                    onChange={(e) => setFormData({...formData, patientId: e.target.value})}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                  >
+                    <option value="">{t.selectPatient || 'Select Patient'}</option>
+                    {patients.map(p => (
+                      <option key={p.id} value={p.id}>{p.first_name} {p.last_name} - {p.mrn}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -192,12 +212,12 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
                   onChange={(e) => setFormData({...formData, type: e.target.value})}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
-                  <option value="office-visit">{t.officeVisit || 'Office Visit'}</option>
-                  <option value="telehealth">{t.telehealth || 'Telehealth'}</option>
-                  <option value="follow-up">{t.followUp || 'Follow-up'}</option>
-                  <option value="annual-physical">{t.annualPhysical || 'Annual Physical'}</option>
-                  <option value="consultation">{t.consultation || 'Consultation'}</option>
-                  <option value="procedure">{t.procedure || 'Procedure'}</option>
+                  <option value="">{t.selectType || 'Select Type'}</option>
+                  {appointmentTypes.map(type => (
+                    <option key={type.id} value={type.type_name}>
+                      {type.display_name || type.type_name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -272,18 +292,24 @@ const NewAppointmentForm = ({ theme, api, patients, users, onClose, onSuccess, a
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.provider || 'Provider'}
                 </label>
-                <select
-                  value={formData.providerId}
-                  onChange={(e) => setFormData({...formData, providerId: e.target.value})}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                >
-                  <option value="">{t.selectProvider || 'Select Provider'}</option>
-                  {providers.map(provider => (
-                    <option key={provider.id} value={provider.id}>
-                      {`${provider.first_name || provider.firstName || ''} ${provider.last_name || provider.lastName || ''}`.trim() || provider.email}
-                    </option>
-                  ))}
-                </select>
+                {user ? (
+                  <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}>
+                    {`${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || user.email}
+                  </div>
+                ) : (
+                  <select
+                    value={formData.providerId}
+                    onChange={(e) => setFormData({...formData, providerId: e.target.value})}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                  >
+                    <option value="">{t.selectProvider || 'Select Provider'}</option>
+                    {providers.map(provider => (
+                      <option key={provider.id} value={provider.id}>
+                        {`${provider.first_name || provider.firstName || ''} ${provider.last_name || provider.lastName || ''}`.trim() || provider.email}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
