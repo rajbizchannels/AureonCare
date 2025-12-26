@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer } from 'lucide-react';
+import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus } from 'lucide-react';
 
 const EPrescribeModal = ({
   theme,
