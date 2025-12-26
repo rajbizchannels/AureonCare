@@ -21,13 +21,13 @@ const EPrescribeModal = ({
     };
   }, [provider]);
 
-  const [step, setStep] = useState(prescription ? 2 : 1); // Skip to step 2 if editing
   const [searchQuery, setSearchQuery] = useState('');
   const [medications, setMedications] = useState([]);
   const [selectedMedication, setSelectedMedication] = useState(null);
   const [pharmacies, setPharmacies] = useState([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pharmaciesLoading, setPharmaciesLoading] = useState(false);
   const [safetyCheckLoading, setSafetyCheckLoading] = useState(false);
   const [safetyWarnings, setSafetyWarnings] = useState([]);
 
@@ -159,18 +159,16 @@ const EPrescribeModal = ({
     loadPrescriptionData();
   }, [prescription, api]);
 
-  // Debug: Log step changes and render conditions
+  // Debug: Log render state
   useEffect(() => {
     console.log('[ePrescribe] ===== RENDER STATE =====');
-    console.log('[ePrescribe] Current step:', step);
     console.log('[ePrescribe] selectedMedication:', selectedMedication ? {
       id: selectedMedication.id,
       drugName: selectedMedication.drugName || selectedMedication.drug_name,
       ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code
     } : 'NULL');
-    console.log('[ePrescribe] Step 2 will render:', step === 2 && !!selectedMedication);
     console.log('[ePrescribe] ======================');
-  }, [step, selectedMedication]);
+  }, [selectedMedication]);
 
   // Search medications - wrapped in useCallback to prevent unnecessary re-renders
   const handleSearchMedications = useCallback(async () => {
@@ -348,12 +346,6 @@ const EPrescribeModal = ({
       console.log('[ePrescribe] Setting selected medication...');
       setSelectedMedication(medication);
 
-      // Advance to step 2 immediately - THIS IS THE CRITICAL STEP
-      console.log('[ePrescribe] *** ADVANCING TO STEP 2 ***');
-      console.log('[ePrescribe] Setting step to 2...');
-      setStep(2);
-      console.log('[ePrescribe] Step state update called - React will batch this with other state updates');
-
       // Run safety check in background (async, non-blocking)
       // This runs AFTER step advancement, so it won't block the UI
       console.log('[ePrescribe] Starting background safety check...');
@@ -384,25 +376,23 @@ const EPrescribeModal = ({
       })(); // End of async IIFE
 
       console.log('[ePrescribe] handleSelectMedication function completed successfully');
-      console.log('[ePrescribe] Next render should show step 2');
       console.log('[ePrescribe] ========================================');
     } catch (error) {
       console.error('[ePrescribe] CRITICAL ERROR in handleSelectMedication:', error);
       console.error('[ePrescribe] Error stack:', error.stack);
 
-      // Even if there's an error, try to advance to step 2
-      console.log('[ePrescribe] Attempting step advancement despite error...');
+      // Even if there's an error, still set the selected medication
+      console.log('[ePrescribe] Setting medication despite error...');
       setSelectedMedication(medication);
-      setStep(2);
 
       addNotification('alert', `Error processing medication: ${error.message}. Please check the details.`);
     }
-  }, [patient, api, addNotification, step, selectedMedication]);
+  }, [patient, api, addNotification]);
 
   // Load patient's preferred pharmacies
-  const loadPharmacies = async () => {
+  const loadPharmacies = useCallback(async () => {
     console.log('[ePrescribe] Loading pharmacies for patient:', patient.id);
-    setLoading(true);
+    setPharmaciesLoading(true);
     try {
       // First try to get patient's preferred pharmacies using api service
       let data = await api.getPatientPreferredPharmacies(patient.id);
@@ -461,9 +451,14 @@ const EPrescribeModal = ({
 
       setPharmacies([]);
     } finally {
-      setLoading(false);
+      setPharmaciesLoading(false);
     }
-  };
+  }, [patient.id, api, addNotification]);
+
+  // Load pharmacies on mount
+  useEffect(() => {
+    loadPharmacies();
+  }, [loadPharmacies]);
 
   // Submit prescription
   const handleSubmitPrescription = async () => {
@@ -868,10 +863,10 @@ const EPrescribeModal = ({
       <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         <div>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {prescription ? 'Edit Prescription' : 'ePrescribe'} for {patient.firstName || patient.first_name || 'Patient'} {patient.lastName || patient.last_name || ''}
+            {prescription ? 'Edit Prescription' : 'New ePrescription'} for {patient.firstName || patient.first_name || 'Patient'} {patient.lastName || patient.last_name || ''}
           </h2>
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            {prescription ? `Editing: ${selectedMedication?.genericName || selectedMedication?.brandName || selectedMedication?.drugName || 'Medication'}` : `Step ${step} of 4`}
+            {prescription && selectedMedication ? `Editing: ${selectedMedication?.genericName || selectedMedication?.brandName || selectedMedication?.drugName || 'Medication'}` : 'Complete all sections below'}
           </p>
         </div>
         <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
@@ -880,8 +875,11 @@ const EPrescribeModal = ({
       </div>
 
       <div className={`p-6 overflow-y-auto ${inline ? 'max-h-[800px]' : 'max-h-[calc(90vh-180px)]'}`}>
-          {/* Step 1: Search and Select Medication */}
-          {step === 1 && (
+          {/* Section 1: Search and Select Medication */}
+          <div className="mb-8">
+            <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
+              1. Select Medication
+            </h3>
             <div className="space-y-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -979,11 +977,15 @@ const EPrescribeModal = ({
                 </div>
               )}
             </div>
-          )}
+          </div>
 
-          {/* Step 2: Prescription Details */}
-          {step === 2 && selectedMedication && (
-            <div className="space-y-6">
+          {/* Section 2: Prescription Details */}
+          {selectedMedication && (
+            <div className="mb-8">
+              <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
+                2. Prescription Details
+              </h3>
+              <div className="space-y-6">
               {/* Loading indicator for safety check */}
               {safetyCheckLoading && safetyWarnings.length === 0 && (
                 <div className={`p-3 rounded-lg border ${theme === 'dark' ? 'border-blue-700 bg-blue-500/10' : 'border-blue-300 bg-blue-50'}`}>
@@ -1135,40 +1137,17 @@ const EPrescribeModal = ({
                   </div>
                 </div>
               </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setSelectedMedication(null);
-                    setSafetyWarnings([]);
-                    setStep(1);
-                  }}
-                  className={`px-6 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => {
-                    loadPharmacies();
-                    setStep(3);
-                  }}
-                  disabled={!prescriptionDetails.dosage || !prescriptionDetails.frequency || !prescriptionDetails.duration || !prescriptionDetails.quantity}
-                  className="flex-1 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Continue to Pharmacy Selection
-                </button>
               </div>
             </div>
           )}
 
-          {/* Step 3: Select Pharmacy */}
-          {step === 3 && (
+          {/* Section 3: Select Pharmacy */}
+          <div className="mb-8">
+            <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
+              3. Select Pharmacy (Optional)
+            </h3>
             <div className="space-y-4">
-              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Select Pharmacy
-              </h3>
-
-              {loading && (
+              {pharmaciesLoading && (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
                   <p className={`mt-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Loading pharmacies...</p>
@@ -1230,34 +1209,18 @@ const EPrescribeModal = ({
                   ))}
                 </div>
               )}
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setStep(2)}
-                  className={`px-6 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => setStep(4)}
-                  className="flex-1 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
-                >
-                  Review & Send
-                </button>
-              </div>
             </div>
-          )}
+          </div>
 
-          {/* Step 4: Review and Send */}
-          {step === 4 && selectedMedication && (
-            <div className="space-y-6">
-              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Review Prescription
+          {/* Section 4: Submit Actions */}
+          {selectedMedication && (
+            <div className="mb-8">
+              <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
+                4. Review & Submit
               </h3>
-
-              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-50'}`}>
+              <div className={`p-4 rounded-lg mb-4 ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-50'}`}>
                 <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Medication Details
+                  Review Prescription Summary
                 </h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -1266,55 +1229,26 @@ const EPrescribeModal = ({
                   </div>
                   <div className="flex justify-between">
                     <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Dosage:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.dosage}</span>
+                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.dosage || 'Not set'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Frequency:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.frequency}</span>
+                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.frequency || 'Not set'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Duration:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.duration}</span>
+                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.duration || 'Not set'}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Quantity:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.quantity}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Refills:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.refills}</span>
-                  </div>
-                  {prescriptionDetails.instructions && (
-                    <div className="pt-2 border-t border-slate-700">
-                      <span className={`block mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Instructions:</span>
-                      <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.instructions}</span>
+                  {selectedPharmacy && (
+                    <div className="flex justify-between pt-2 border-t border-slate-700">
+                      <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Pharmacy:</span>
+                      <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{selectedPharmacy.pharmacyName}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {selectedPharmacy && (
-                <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-50'}`}>
-                  <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Pharmacy
-                  </h4>
-                  <div className="text-sm">
-                    <p className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{selectedPharmacy.pharmacyName}</p>
-                    <p className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>
-                      {selectedPharmacy.addressLine1}, {selectedPharmacy.city}, {selectedPharmacy.state} {selectedPharmacy.zipCode}
-                    </p>
-                    <p className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>{selectedPharmacy.phone}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep(3)}
-                  className={`px-6 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
-                >
-                  Back
-                </button>
+              <div className="flex gap-3 mt-6">
                 <button
                   onClick={handlePrintPrescription}
                   className={`px-6 py-2 rounded-lg flex items-center gap-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
