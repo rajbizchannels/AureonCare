@@ -52,6 +52,7 @@ const DiagnosisForm = ({
 
   // ePrescribe modal state
   const [showEPrescribeForm, setShowEPrescribeForm] = useState(false);
+  const [preSelectedMedication, setPreSelectedMedication] = useState(null);
 
   // Load laboratories on mount
   useEffect(() => {
@@ -258,34 +259,20 @@ const DiagnosisForm = ({
     return () => clearTimeout(timeoutId);
   }, [medicationSearchQuery, handleSearchMedications]);
 
-  // Function to handle adding a medication to the list
+  // Function to handle adding a medication - opens ePrescribe modal with pre-selected medication
   const handleAddMedication = useCallback((medication) => {
     if (!medication) {
       return;
     }
 
-    // Check if medication already added
-    const alreadyAdded = formData.medications.some(m =>
-      m.id === medication.id ||
-      (m.ndcCode && medication.ndcCode && m.ndcCode === medication.ndcCode)
-    );
-
-    if (alreadyAdded) {
-      addNotification('alert', 'This medication has already been added');
-      return;
-    }
-
-    // Add medication to the list
-    setFormData({
-      ...formData,
-      medications: [...formData.medications, medication]
-    });
+    // Set the pre-selected medication and open ePrescribe modal
+    setPreSelectedMedication(medication);
+    setShowEPrescribeForm(true);
 
     // Clear search
     setMedicationSearchQuery('');
     setSearchMedications([]);
-    addNotification('success', 'Medication added');
-  }, [formData, addNotification]);
+  }, []);
 
   // Function to remove a medication from the list
   const handleRemoveMedication = useCallback((medicationId) => {
@@ -748,7 +735,7 @@ const DiagnosisForm = ({
 
               </div>
 
-              {/* ePrescribe Form - shown when user clicks "Use ePrescribe" */}
+              {/* ePrescribe Form - shown when user clicks "Use ePrescribe" or selects a medication */}
               {showEPrescribeForm && (
                 <div className={`mb-6 p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
                   <EPrescribeModal
@@ -756,10 +743,15 @@ const DiagnosisForm = ({
                     api={api}
                     patient={patients.find(p => p.id === formData.patientId) || patient}
                     provider={user}
+                    initialMedication={preSelectedMedication}
                     inline={true}
-                    onClose={() => setShowEPrescribeForm(false)}
+                    onClose={() => {
+                      setShowEPrescribeForm(false);
+                      setPreSelectedMedication(null);
+                    }}
                     onSuccess={(prescriptions) => {
                       setShowEPrescribeForm(false);
+                      setPreSelectedMedication(null);
                       addNotification('success', `${Array.isArray(prescriptions) ? prescriptions.length : 1} prescription(s) created via ePrescribe`);
                       // Optionally, add prescriptions to linkedPrescriptions state
                       if (Array.isArray(prescriptions)) {
