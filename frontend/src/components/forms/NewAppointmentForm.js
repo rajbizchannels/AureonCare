@@ -42,24 +42,24 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
         } else {
           // Fallback to default appointment types if API returns empty
           setAppointmentTypes([
-            { id: 1, type_name: 'office-visit', display_name: 'Office Visit' },
-            { id: 2, type_name: 'telehealth', display_name: 'Telehealth' },
-            { id: 3, type_name: 'follow-up', display_name: 'Follow-up' },
-            { id: 4, type_name: 'annual-physical', display_name: 'Annual Physical' },
-            { id: 5, type_name: 'consultation', display_name: 'Consultation' },
-            { id: 6, type_name: 'procedure', display_name: 'Procedure' }
+            { id: 1, name: 'General Consultation', durationMinutes: 30 },
+            { id: 2, name: 'Follow-up', durationMinutes: 20 },
+            { id: 3, name: 'Check-up', durationMinutes: 30 },
+            { id: 4, name: 'Physical Exam', durationMinutes: 45 },
+            { id: 5, name: 'Vaccination', durationMinutes: 15 },
+            { id: 6, name: 'Lab Results', durationMinutes: 15 }
           ]);
         }
       } catch (error) {
         console.error('Error fetching appointment types:', error);
         // Fallback to default appointment types on error
         setAppointmentTypes([
-          { id: 1, type_name: 'office-visit', display_name: 'Office Visit' },
-          { id: 2, type_name: 'telehealth', display_name: 'Telehealth' },
-          { id: 3, type_name: 'follow-up', display_name: 'Follow-up' },
-          { id: 4, type_name: 'annual-physical', display_name: 'Annual Physical' },
-          { id: 5, type_name: 'consultation', display_name: 'Consultation' },
-          { id: 6, type_name: 'procedure', display_name: 'Procedure' }
+          { id: 1, name: 'General Consultation', durationMinutes: 30 },
+          { id: 2, name: 'Follow-up', durationMinutes: 20 },
+          { id: 3, name: 'Check-up', durationMinutes: 30 },
+          { id: 4, name: 'Physical Exam', durationMinutes: 45 },
+          { id: 5, name: 'Vaccination', durationMinutes: 15 },
+          { id: 6, name: 'Lab Results', durationMinutes: 15 }
         ]);
       }
     };
@@ -235,8 +235,8 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                 >
                   <option value="">{t.selectType || 'Select Type'}</option>
                   {appointmentTypes.map(type => (
-                    <option key={type.id} value={type.type_name}>
-                      {type.display_name || type.type_name}
+                    <option key={type.id} value={type.name}>
+                      {type.name}
                     </option>
                   ))}
                 </select>
