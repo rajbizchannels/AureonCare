@@ -596,19 +596,9 @@ const DiagnosisForm = ({
               {/* Medications */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Pill className="w-4 h-4" />
-                      Medications (Optional - Will auto-create prescriptions)
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowEPrescribeForm(true)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg text-white text-xs font-medium transition-colors"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Use ePrescribe
-                    </button>
+                  <div className="flex items-center gap-2">
+                    <Pill className="w-4 h-4" />
+                    Medications (Optional - Will auto-create prescriptions)
                   </div>
                 </label>
 
@@ -733,9 +723,28 @@ const DiagnosisForm = ({
                   </div>
                 )}
 
+                {/* Add Prescription Button */}
+                {!showEPrescribeForm && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowEPrescribeForm(true)}
+                      className={`w-full px-4 py-3 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center gap-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/5'
+                          : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
+                      }`}
+                      title="Add a new prescription"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Prescription
+                    </button>
+                  </div>
+                )}
+
               </div>
 
-              {/* ePrescribe Form - shown when user clicks "Use ePrescribe" or selects a medication */}
+              {/* ePrescribe Form - shown when user clicks "Add Prescription" or selects a medication */}
               {showEPrescribeForm && (
                 <div className={`mb-6 p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
                   <EPrescribeModal

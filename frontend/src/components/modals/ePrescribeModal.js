@@ -1292,16 +1292,18 @@ const EPrescribeModal = ({
               </div>
 
               {/* Add to Prescription Button */}
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={handleAddMedication}
-                  disabled={!currentDetails.dosage || !currentDetails.frequency || !currentDetails.duration}
-                  className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add to Prescription
-                </button>
-              </div>
+              {!prescription && (
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={handleAddMedication}
+                    disabled={!currentDetails.dosage || !currentDetails.frequency || !currentDetails.duration}
+                    className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add to Prescription
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

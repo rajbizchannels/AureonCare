@@ -561,6 +561,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                       {rx.providerSpecialization && ` (${rx.providerSpecialization})`}
                     </p>
                   )}
+                  {(rx.prescribedDate || rx.prescribed_date) && (
+                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      Date: {new Date(rx.prescribedDate || rx.prescribed_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </p>
+                  )}
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Dosage: {rx.dosage}
                   </p>
