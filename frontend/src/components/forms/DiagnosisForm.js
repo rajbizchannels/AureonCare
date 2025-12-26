@@ -602,151 +602,10 @@ const DiagnosisForm = ({
                   </div>
                 </label>
 
-                {/* Input container with selected chips - similar to MedicalCodeMultiSelect */}
-                <div className="relative">
-                  <div
-                    className={`min-h-[42px] border rounded-lg p-2 flex flex-wrap items-center gap-2 cursor-text ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  >
-                    {/* Selected medication chips inside the input container */}
-                    {formData.medications.map((med) => (
-                      <div
-                        key={med.id}
-                        className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-                          theme === 'dark'
-                            ? 'bg-blue-900/50 text-blue-200 border border-blue-700'
-                            : 'bg-blue-100 text-blue-800 border border-blue-300'
-                        }`}
-                      >
-                        <Pill className="w-3 h-3" />
-                        <span className="font-bold">{med.genericName || med.brandName || med.drugName}</span>
-                        {(med.strength || med.dosageForm) && (
-                          <span className="text-xs opacity-75">({med.strength} {med.dosageForm})</span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMedication(med.id)}
-                          className={`ml-1 hover:bg-red-500/20 rounded-full p-0.5 transition-colors ${
-                            theme === 'dark' ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'
-                          }`}
-                          title="Remove medication"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-
-                    {/* Search input inside the same container */}
-                    <input
-                      type="text"
-                      value={medicationSearchQuery}
-                      onChange={(e) => setMedicationSearchQuery(e.target.value)}
-                      placeholder={formData.medications.length === 0 ? "Start typing medication name or NDC code..." : ""}
-                      className={`flex-1 min-w-[200px] outline-none bg-transparent ${
-                        theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-
-                    {/* Loading spinner */}
-                    {loadingMedications && (
-                      <div className="flex-shrink-0">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                      </div>
-                    )}
-                  </div>
-                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Type to search medications (minimum 2 characters)
-                  </p>
-                </div>
-
-                {/* No Results Message */}
-                {!loadingMedications && medicationSearchQuery && medicationSearchQuery.length >= 2 && searchMedications.length === 0 && (
-                  <div className={`text-center py-6 rounded-lg border-2 border-dashed mb-3 ${
-                    theme === 'dark' ? 'border-slate-700 bg-slate-800/50' : 'border-gray-300 bg-gray-50'
-                  }`}>
-                    <Pill className={`w-10 h-10 mx-auto mb-3 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
-                    <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      No medications found matching "{medicationSearchQuery}"
-                    </p>
-                  </div>
-                )}
-
-                {/* Search Results */}
-                {searchMedications.length > 0 && (
-                  <div className="space-y-2 mb-3">
-                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Found {searchMedications.length} medication{searchMedications.length !== 1 ? 's' : ''} - Click to add:
-                    </p>
-                    <div className="max-h-64 overflow-y-auto space-y-2">
-                      {searchMedications.map((med) => (
-                        <div
-                          key={med.id}
-                          onClick={() => handleAddMedication(med)}
-                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                            theme === 'dark'
-                              ? 'border-slate-700 hover:border-blue-500 hover:bg-slate-800'
-                              : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Pill className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
-                              <div>
-                                <h4 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                  {med.genericName || med.brandName || med.drugName}
-                                </h4>
-                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                  {med.brandName && med.genericName && med.brandName !== med.genericName && `Brand: ${med.brandName} • `}
-                                  {med.strength} {med.dosageForm}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              {med.isGeneric && (
-                                <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
-                                  Generic
-                                </span>
-                              )}
-                              {med.controlledSubstance && (
-                                <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs ml-2">
-                                  C-{med.deaSchedule}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Add Prescription Button */}
-                {!showEPrescribeForm && (
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowEPrescribeForm(true)}
-                      className={`w-full px-4 py-3 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center gap-2 ${
-                        theme === 'dark'
-                          ? 'border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/5'
-                          : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
-                      }`}
-                      title="Add a new prescription"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Prescription
-                    </button>
-                  </div>
-                )}
-
-              </div>
-
-              {/* ePrescribe Form - shown when user clicks "Add Prescription" or selects a medication */}
-              {showEPrescribeForm && (
-                <div className={`mb-6 p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
+                <div className="space-y-3">
+                  {/* ePrescribe Form - shown when user clicks "Add Prescription" */}
+                  {showEPrescribeForm && (
+                    <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-600' : 'bg-gray-50 border-gray-300'}`}>
                   <EPrescribeModal
                     theme={theme}
                     api={api}
@@ -773,6 +632,32 @@ const DiagnosisForm = ({
                   />
                 </div>
               )}
+
+              {/* Add Prescription Button */}
+              {!showEPrescribeForm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Validate patient selection
+                    if (!formData.patientId) {
+                      addNotification('error', 'Please select Patient');
+                      return;
+                    }
+                    setShowEPrescribeForm(true);
+                  }}
+                  className={`w-full px-4 py-3 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center gap-2 ${
+                    theme === 'dark'
+                      ? 'border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/5'
+                      : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                  title="Add a new prescription"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Prescription
+                </button>
+              )}
+            </div>
+          </div>
 
               {/* Lab Orders */}
               <div>
