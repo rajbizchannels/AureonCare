@@ -38,6 +38,7 @@ const ViewEditModal = ({
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingInsurancePayers, setLoadingInsurancePayers] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [appointmentTypes, setAppointmentTypes] = useState([]);
 
   // Get setLanguage from AppContext for updating language preference
   const { setLanguage } = useApp();
@@ -88,6 +89,43 @@ const ViewEditModal = ({
     } else {
       // If not editing a user, set loadingRoles to false to prevent infinite loading state
       setLoadingRoles(false);
+    }
+  }, [api, editingItem?.type]);
+
+  // Fetch appointment types for appointment editing
+  useEffect(() => {
+    const fetchAppointmentTypes = async () => {
+      try {
+        const data = await api.getAppointmentTypes();
+        if (data && data.length > 0) {
+          setAppointmentTypes(data);
+        } else {
+          // Fallback to default appointment types if API returns empty
+          setAppointmentTypes([
+            { id: 1, name: 'General Consultation', durationMinutes: 30 },
+            { id: 2, name: 'Follow-up', durationMinutes: 20 },
+            { id: 3, name: 'Check-up', durationMinutes: 30 },
+            { id: 4, name: 'Physical Exam', durationMinutes: 45 },
+            { id: 5, name: 'Vaccination', durationMinutes: 15 },
+            { id: 6, name: 'Lab Results', durationMinutes: 15 }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching appointment types:', error);
+        // Fallback to default appointment types on error
+        setAppointmentTypes([
+          { id: 1, name: 'General Consultation', durationMinutes: 30 },
+          { id: 2, name: 'Follow-up', durationMinutes: 20 },
+          { id: 3, name: 'Check-up', durationMinutes: 30 },
+          { id: 4, name: 'Physical Exam', durationMinutes: 45 },
+          { id: 5, name: 'Vaccination', durationMinutes: 15 },
+          { id: 6, name: 'Lab Results', durationMinutes: 15 }
+        ]);
+      }
+    };
+
+    if (editingItem?.type === 'appointment') {
+      fetchAppointmentTypes();
     }
   }, [api, editingItem?.type]);
 
@@ -623,11 +661,12 @@ const ViewEditModal = ({
                       onChange={(e) => setEditData({...editData, type: e.target.value})}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
-                      <option value="Check-up">{t.checkUp || 'Check-up'}</option>
-                      <option value="Follow-up">{t.followUp || 'Follow-up'}</option>
-                      <option value="Consultation">{t.consultation || 'Consultation'}</option>
-                      <option value="Physical">{t.physicalExam || 'Physical Exam'}</option>
-                      <option value="Procedure">{t.procedure || 'Procedure'}</option>
+                      <option value="">{t.selectType || 'Select Type'}</option>
+                      {appointmentTypes.map(type => (
+                        <option key={type.id} value={type.name}>
+                          {type.name}
+                        </option>
+                      ))}
                     </select>
                   )}
                 </div>
