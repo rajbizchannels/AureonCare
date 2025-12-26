@@ -985,10 +985,11 @@ const EPrescribeModal = ({
       <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         <div>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            New ePrescription for {patient.firstName || patient.first_name || 'Patient'} {patient.lastName || patient.last_name || ''}
+            {prescription ? 'Edit Prescription' : 'New ePrescription'}
+            {patient && ` for ${patient.firstName || patient.first_name || 'Patient'} ${patient.lastName || patient.last_name || ''}`}
           </h2>
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            {addedMedications.length > 0 ? `${addedMedications.length} medication(s) added` : 'Search and add medications below'}
+            {prescription ? 'Update prescription details below' : (addedMedications.length > 0 ? `${addedMedications.length} medication(s) added` : 'Search and add medications below')}
           </p>
         </div>
         <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
@@ -1407,20 +1408,39 @@ const EPrescribeModal = ({
           </div>
 
           {/* Submit Actions */}
-          {addedMedications.length > 0 && (
+          {(addedMedications.length > 0 || prescription) && (
             <div className="mb-8">
               <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
-                Submit Prescription
+                {prescription ? 'Update Prescription' : 'Submit Prescription'}
               </h3>
               <div className={`p-4 rounded-lg mb-4 ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-50'}`}>
                 <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Prescription Summary
                 </h4>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Total Medications:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{addedMedications.length}</span>
-                  </div>
+                  {prescription ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Medication:</span>
+                        <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
+                          {currentMedication?.drugName || currentMedication?.drug_name || currentMedication?.genericName || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Dosage:</span>
+                        <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{currentDetails.dosage || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Frequency:</span>
+                        <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{currentDetails.frequency || 'N/A'}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Total Medications:</span>
+                      <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{addedMedications.length}</span>
+                    </div>
+                  )}
                   {selectedPharmacy && (
                     <div className="flex justify-between pt-2 border-t border-slate-700">
                       <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Pharmacy:</span>
@@ -1451,7 +1471,11 @@ const EPrescribeModal = ({
                   className="flex-1 px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Send className="w-5 h-5" />
-                  {selectedPharmacy ? `Send ${addedMedications.length} Prescription(s) to Pharmacy` : `Create ${addedMedications.length} Prescription(s)`}
+                  {prescription ? (
+                    selectedPharmacy ? 'Update & Send to Pharmacy' : 'Update Prescription'
+                  ) : (
+                    selectedPharmacy ? `Send ${addedMedications.length} Prescription(s) to Pharmacy` : `Create ${addedMedications.length} Prescription(s)`
+                  )}
                 </button>
               </div>
             </div>
