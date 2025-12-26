@@ -391,6 +391,13 @@ const EPrescribeModal = ({
 
   // Load patient's preferred pharmacies
   const loadPharmacies = useCallback(async () => {
+    // Guard clause: skip if no patient
+    if (!patient || !patient.id) {
+      console.log('[ePrescribe] No patient available, skipping pharmacy load');
+      setPharmaciesLoading(false);
+      return;
+    }
+
     console.log('[ePrescribe] Loading pharmacies for patient:', patient.id);
     setPharmaciesLoading(true);
     try {
@@ -453,7 +460,7 @@ const EPrescribeModal = ({
     } finally {
       setPharmaciesLoading(false);
     }
-  }, [patient.id, api, addNotification]);
+  }, [patient, api, addNotification]);
 
   // Load pharmacies on mount
   useEffect(() => {
@@ -1306,66 +1313,81 @@ const EPrescribeModal = ({
               Pharmacy
             </h3>
             <div className="space-y-4">
-              {pharmaciesLoading && (
+              {pharmaciesLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
                   <p className={`mt-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Loading pharmacies...</p>
                 </div>
-              )}
-
-              {!loading && pharmacies.length === 0 && (
+              ) : pharmacies.length === 0 ? (
                 <div className={`p-8 text-center rounded-lg border-2 border-dashed ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
                   <Building2 className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
                   <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     No pharmacies found. You can still print the prescription.
                   </p>
                 </div>
-              )}
+              ) : (
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Select Pharmacy (Optional)
+                  </label>
+                  <select
+                    value={selectedPharmacy?.id || ''}
+                    onChange={(e) => {
+                      const pharmacy = pharmacies.find(p => p.id === parseInt(e.target.value));
+                      setSelectedPharmacy(pharmacy || null);
+                    }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-blue-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-800 border-slate-700 text-white'
+                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                    }`}
+                  >
+                    <option value="">No pharmacy selected (Print only)</option>
+                    {pharmacies.map((pharmacy) => (
+                      <option key={pharmacy.id} value={pharmacy.id}>
+                        {pharmacy.pharmacyName}
+                        {(pharmacy.isPreferred || pharmacy.is_preferred) ? ' ⭐ Preferred' : ''}
+                        {' - '}
+                        {pharmacy.city}, {pharmacy.state}
+                        {pharmacy.acceptsErx ? ' (eRx)' : ''}
+                      </option>
+                    ))}
+                  </select>
 
-              {!loading && pharmacies.length > 0 && (
-                <div className="space-y-2">
-                  {pharmacies.map((pharmacy) => (
-                    <div
-                      key={pharmacy.id}
-                      onClick={() => setSelectedPharmacy(pharmacy)}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                        selectedPharmacy?.id === pharmacy.id
-                          ? 'border-blue-500 bg-blue-500/10'
-                          : theme === 'dark'
-                          ? 'border-slate-700 hover:border-blue-500/50'
-                          : 'border-gray-200 hover:border-blue-500/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Building2 className={`w-5 h-5 ${selectedPharmacy?.id === pharmacy.id ? 'text-blue-500' : theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-                          <div>
-                            <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                              {pharmacy.pharmacyName}
-                              {(pharmacy.isPreferred || pharmacy.is_preferred) && (
-                                <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
-                                  Preferred
-                                </span>
-                              )}
-                            </h4>
-                            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              {pharmacy.addressLine1}, {pharmacy.city}, {pharmacy.state} {pharmacy.zipCode}
-                            </p>
-                            {pharmacy.phone && (
-                              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                {pharmacy.phone}
-                              </p>
+                  {/* Show selected pharmacy details */}
+                  {selectedPharmacy && (
+                    <div className={`mt-3 p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
+                      <div className="flex items-start gap-3">
+                        <Building2 className={`w-5 h-5 mt-0.5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                        <div className="flex-1">
+                          <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {selectedPharmacy.pharmacyName}
+                            {(selectedPharmacy.isPreferred || selectedPharmacy.is_preferred) && (
+                              <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
+                                Preferred
+                              </span>
                             )}
-                          </div>
+                            {selectedPharmacy.acceptsErx && (
+                              <span className="ml-2 px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs">
+                                eRx Enabled
+                              </span>
+                            )}
+                          </h4>
+                          <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {selectedPharmacy.addressLine1}
+                          </p>
+                          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {selectedPharmacy.city}, {selectedPharmacy.state} {selectedPharmacy.zipCode}
+                          </p>
+                          {selectedPharmacy.phone && (
+                            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              📞 {selectedPharmacy.phone}
+                            </p>
+                          )}
                         </div>
-                        {pharmacy.acceptsErx && (
-                          <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">
-                            eRx Enabled
-                          </span>
-                        )}
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
