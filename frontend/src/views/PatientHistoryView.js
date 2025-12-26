@@ -80,11 +80,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   // Close all forms when tab changes
   useEffect(() => {
     setShowDiagnosisForm(false);
+    setShowPrescriptionForm(false);
     setShowLabOrderForm(false);
     setShowAppointmentForm(false);
     setShowRecordUploadForm(false);
     setEditingPatient(false);
     setEditingDiagnosis(null);
+    setEditingPrescription(null);
     setEditingLabOrder(null);
   }, [activeTab]);
 
@@ -526,7 +528,10 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           Prescriptions
         </h3>
         <button
-          onClick={() => setShowEPrescribeModal(true)}
+          onClick={() => {
+            setEditingPrescription(null);
+            setShowPrescriptionForm(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg text-white font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -596,7 +601,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                     <button
                       onClick={() => {
                         setEditingPrescription(rx);
-                        setShowEPrescribeModal(true);
+                        setShowPrescriptionForm(true);
                       }}
                       className={`p-2 rounded-lg hover:bg-blue-100 transition-colors ${theme === 'dark' ? 'hover:bg-blue-900/20' : ''}`}
                       title="Edit prescription"
@@ -1304,6 +1309,31 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
               addNotification={addNotification}
               t={{}}
               createDiagnosisOption={false}
+            />
+          </div>
+        )}
+
+        {/* Prescription Form - shown when adding/editing prescription in Prescriptions tab */}
+        {activeTab === 'prescriptions' && showPrescriptionForm && (
+          <div className={`mb-6`}>
+            <EPrescribeModal
+              theme={theme}
+              api={api}
+              patient={patientData}
+              provider={user}
+              prescription={editingPrescription}
+              inline={true}
+              onClose={() => {
+                setShowPrescriptionForm(false);
+                setEditingPrescription(null);
+              }}
+              onSuccess={() => {
+                setShowPrescriptionForm(false);
+                setEditingPrescription(null);
+                addNotification('success', editingPrescription ? 'Prescription updated successfully' : 'Prescription created successfully');
+                fetchPatientHistory();
+              }}
+              addNotification={addNotification}
             />
           </div>
         )}
