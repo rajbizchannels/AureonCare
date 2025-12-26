@@ -4,6 +4,7 @@ import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import LabCPTMultiSelect from './LabCPTMultiSelect';
 import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import EPrescribeModal from '../modals/ePrescribeModal';
 
 const DiagnosisForm = ({
   theme,
@@ -48,6 +49,9 @@ const DiagnosisForm = ({
   const [medicationSearchQuery, setMedicationSearchQuery] = useState('');
   const [searchMedications, setSearchMedications] = useState([]);
   const [loadingMedications, setLoadingMedications] = useState(false);
+
+  // ePrescribe modal state
+  const [showEPrescribeForm, setShowEPrescribeForm] = useState(false);
 
   // Load laboratories on mount
   useEffect(() => {
@@ -605,9 +609,19 @@ const DiagnosisForm = ({
               {/* Medications */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <div className="flex items-center gap-2">
-                    <Pill className="w-4 h-4" />
-                    Medications (Optional - Will auto-create prescriptions)
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Pill className="w-4 h-4" />
+                      Medications (Optional - Will auto-create prescriptions)
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowEPrescribeForm(true)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg text-white text-xs font-medium transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Use ePrescribe
+                    </button>
                   </div>
                 </label>
 
@@ -733,6 +747,31 @@ const DiagnosisForm = ({
                 )}
 
               </div>
+
+              {/* ePrescribe Form - shown when user clicks "Use ePrescribe" */}
+              {showEPrescribeForm && (
+                <div className={`mb-6 p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
+                  <EPrescribeModal
+                    theme={theme}
+                    api={api}
+                    patient={patients.find(p => p.id === formData.patientId) || patient}
+                    provider={user}
+                    inline={true}
+                    onClose={() => setShowEPrescribeForm(false)}
+                    onSuccess={(prescriptions) => {
+                      setShowEPrescribeForm(false);
+                      addNotification('success', `${Array.isArray(prescriptions) ? prescriptions.length : 1} prescription(s) created via ePrescribe`);
+                      // Optionally, add prescriptions to linkedPrescriptions state
+                      if (Array.isArray(prescriptions)) {
+                        setLinkedPrescriptions(prev => [...prev, ...prescriptions]);
+                      } else {
+                        setLinkedPrescriptions(prev => [...prev, prescriptions]);
+                      }
+                    }}
+                    addNotification={addNotification}
+                  />
+                </div>
+              )}
 
               {/* Lab Orders */}
               <div>

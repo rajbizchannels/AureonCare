@@ -278,6 +278,10 @@ const EPrescribeModal = ({
 
     console.log('[ePrescribe] Medication validation passed');
 
+    // Hide the dropdown after selection
+    setSearchResults([]);
+    setSearchQuery('');
+
     try {
       // Pre-fill dosage from medication
       const dosage = medication.commonDosages && medication.commonDosages.length > 0
