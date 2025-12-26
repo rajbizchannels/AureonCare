@@ -7,6 +7,7 @@ const EPrescribeModal = ({
   provider,
   api,
   prescription,
+  initialMedication, // Optional: Pre-select a medication when opening the form
   onClose,
   onSuccess,
   addNotification,
@@ -458,6 +459,62 @@ const EPrescribeModal = ({
   useEffect(() => {
     loadPharmacies();
   }, [loadPharmacies]);
+
+  // Load prescription data when editing
+  useEffect(() => {
+    if (!prescription) return;
+
+    console.log('[ePrescribe] Loading prescription for editing:', prescription);
+
+    // Create a medication object from prescription data
+    const medicationFromPrescription = {
+      id: prescription.id,
+      drugName: prescription.medicationName || prescription.medication_name,
+      drug_name: prescription.medicationName || prescription.medication_name,
+      ndcCode: prescription.ndcCode || prescription.ndc_code,
+      ndc_code: prescription.ndcCode || prescription.ndc_code,
+      genericName: prescription.medicationName || prescription.medication_name,
+      strength: prescription.dosage,
+      dosageForm: 'Tablet' // Default, as this info might not be in prescription
+    };
+
+    // Set as current medication
+    setCurrentMedication(medicationFromPrescription);
+
+    // Load prescription details
+    setCurrentDetails({
+      dosage: prescription.dosage || '',
+      frequency: prescription.frequency || '',
+      duration: prescription.duration || '',
+      quantity: prescription.quantity?.toString() || '',
+      refills: prescription.refills || 0,
+      instructions: prescription.instructions || '',
+      substitutionAllowed: prescription.substitutionAllowed !== undefined ? prescription.substitutionAllowed : true
+    });
+
+    // Load pharmacy if specified
+    if (prescription.pharmacyId || prescription.pharmacy_id) {
+      const pharmacyId = prescription.pharmacyId || prescription.pharmacy_id;
+      // Try to find pharmacy in loaded pharmacies
+      const pharmacy = pharmacies.find(p => p.id === pharmacyId);
+      if (pharmacy) {
+        setSelectedPharmacy(pharmacy);
+      }
+    }
+
+    console.log('[ePrescribe] Prescription loaded for editing');
+  }, [prescription, pharmacies]);
+
+  // Load initial medication if provided (for pre-selecting from DiagnosisForm)
+  useEffect(() => {
+    if (!initialMedication) return;
+    if (prescription) return; // Don't override if editing prescription
+
+    console.log('[ePrescribe] Loading initial medication:', initialMedication);
+
+    // Pre-select the medication
+    handleSelectMedication(initialMedication);
+  }, [initialMedication, prescription, handleSelectMedication]);
 
   // Submit all prescriptions
   const handleSubmitPrescriptions = async () => {
