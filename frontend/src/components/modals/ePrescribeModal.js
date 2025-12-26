@@ -262,8 +262,6 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] ========================================');
     console.log('[ePrescribe] handleSelectMedication called');
     console.log('[ePrescribe] Medication received:', medication);
-    console.log('[ePrescribe] Current step:', step);
-    console.log('[ePrescribe] Current selectedMedication:', selectedMedication);
 
     // Validate medication object
     if (!medication) {
@@ -549,8 +547,8 @@ const EPrescribeModal = ({
       const prescriptionPayload = {
         patientId: patient.id,
         providerId: normalizedProvider.id,
-        medicationName: currentMedication.drugName || selectedMedication.drug_name,
-        ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code,
+        medicationName: currentMedication.drugName || currentMedication.drug_name,
+        ndcCode: currentMedication.ndcCode || currentMedication.ndc_code,
         dosage: currentDetails.dosage,
         frequency: currentDetails.frequency,
         duration: currentDetails.duration,
@@ -746,12 +744,12 @@ const EPrescribeModal = ({
               <div class="rx-symbol">℞</div>
               <div class="info-row">
                 <span class="info-label">Medication:</span>
-                <span class="info-value"><strong>${selectedMedication?.genericName || selectedMedication?.brandName || selectedMedication?.drugName || 'N/A'}</strong></span>
+                <span class="info-value"><strong>${currentMedication?.genericName || currentMedication?.brandName || currentMedication?.drugName || 'N/A'}</strong></span>
               </div>
-              ${selectedMedication?.ndcCode || selectedMedication?.ndc_code ? `
+              ${currentMedication?.ndcCode || currentMedication?.ndc_code ? `
               <div class="info-row">
                 <span class="info-label">NDC Code:</span>
-                <span class="info-value">${selectedMedication.ndcCode || selectedMedication.ndc_code}</span>
+                <span class="info-value">${currentMedication.ndcCode || currentMedication.ndc_code}</span>
               </div>
               ` : ''}
               <div class="info-row">
@@ -1058,7 +1056,7 @@ const EPrescribeModal = ({
                   <input
                     type="text"
                     value={currentDetails.dosage}
-                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, dosage: e.target.value })}
+                    onChange={(e) => setCurrentDetails({ ...currentDetails, dosage: e.target.value })}
                     placeholder="e.g., 500mg"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   />
@@ -1070,7 +1068,7 @@ const EPrescribeModal = ({
                   </label>
                   <select
                     value={currentDetails.frequency}
-                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, frequency: e.target.value })}
+                    onChange={(e) => setCurrentDetails({ ...currentDetails, frequency: e.target.value })}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   >
                     <option value="">Select frequency</option>
@@ -1093,7 +1091,7 @@ const EPrescribeModal = ({
                   <input
                     type="text"
                     value={currentDetails.duration}
-                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, duration: e.target.value })}
+                    onChange={(e) => setCurrentDetails({ ...currentDetails, duration: e.target.value })}
                     placeholder="e.g., 30 days"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   />
@@ -1106,7 +1104,7 @@ const EPrescribeModal = ({
                   <input
                     type="number"
                     value={currentDetails.quantity}
-                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, quantity: e.target.value })}
+                    onChange={(e) => setCurrentDetails({ ...currentDetails, quantity: e.target.value })}
                     placeholder="30"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   />
@@ -1118,7 +1116,7 @@ const EPrescribeModal = ({
                   </label>
                   <select
                     value={currentDetails.refills}
-                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, refills: e.target.value })}
+                    onChange={(e) => setCurrentDetails({ ...currentDetails, refills: e.target.value })}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   >
                     {[0, 1, 2, 3, 4, 5, 6, 11].map(n => (
@@ -1133,7 +1131,7 @@ const EPrescribeModal = ({
                   </label>
                   <textarea
                     value={currentDetails.instructions}
-                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, instructions: e.target.value })}
+                    onChange={(e) => setCurrentDetails({ ...currentDetails, instructions: e.target.value })}
                     placeholder="Take with food. Avoid alcohol."
                     rows="3"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
@@ -1146,7 +1144,7 @@ const EPrescribeModal = ({
                       Allow generic substitution
                     </span>
                     <button
-                      onClick={() => setCurrentDetails({ ...prescriptionDetails, substitutionAllowed: !currentDetails.substitutionAllowed })}
+                      onClick={() => setCurrentDetails({ ...currentDetails, substitutionAllowed: !currentDetails.substitutionAllowed })}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                         currentDetails.substitutionAllowed
                           ? 'bg-blue-500'
