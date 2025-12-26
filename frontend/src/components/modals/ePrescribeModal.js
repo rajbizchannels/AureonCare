@@ -520,8 +520,71 @@ const EPrescribeModal = ({
   const handleSubmitPrescriptions = async () => {
     console.log('[ePrescribe] Submitting prescriptions...');
     console.log('[ePrescribe] Using provider:', normalizedProvider);
+    console.log('[ePrescribe] Is editing:', !!prescription);
     console.log('[ePrescribe] Number of medications:', addedMedications.length);
 
+    // If editing an existing prescription, update it
+    if (prescription) {
+      if (!currentMedication) {
+        addNotification('alert', 'Please select a medication');
+        return;
+      }
+
+      if (!currentDetails.dosage || !currentDetails.frequency || !currentDetails.duration) {
+        addNotification('alert', 'Please fill in dosage, frequency, and duration');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const prescriptionPayload = {
+          patientId: patient.id,
+          providerId: normalizedProvider.id,
+          medicationName: currentMedication.drugName || currentMedication.drug_name,
+          ndcCode: currentMedication.ndcCode || currentMedication.ndc_code,
+          dosage: currentDetails.dosage,
+          frequency: currentDetails.frequency,
+          duration: currentDetails.duration,
+          quantity: parseInt(currentDetails.quantity) || 0,
+          refills: parseInt(currentDetails.refills) || 0,
+          instructions: currentDetails.instructions || generalInstructions,
+          substitutionAllowed: currentDetails.substitutionAllowed,
+          status: 'Active',
+          prescribedDate: prescription.prescribedDate || prescription.prescribed_date || new Date().toISOString().split('T')[0]
+        };
+
+        // Add pharmacy info if selected
+        if (selectedPharmacy) {
+          prescriptionPayload.pharmacyId = selectedPharmacy.id;
+          prescriptionPayload.prescriberDeaNumber = normalizedProvider?.deaNumber || normalizedProvider?.dea_number || '';
+        }
+
+        console.log('[ePrescribe] Updating prescription:', prescription.id);
+        const resultPrescription = await api.updatePrescription(prescription.id, prescriptionPayload);
+
+        // Send electronically to pharmacy if selected
+        if (selectedPharmacy) {
+          try {
+            await api.sendErx(resultPrescription.id);
+            console.log('[ePrescribe] Successfully sent to pharmacy');
+          } catch (erxError) {
+            console.error('[ePrescribe] Failed to send eRx:', erxError);
+          }
+        }
+
+        addNotification('success', 'Prescription updated successfully');
+        if (onSuccess) onSuccess(resultPrescription);
+        onClose();
+      } catch (error) {
+        console.error('[ePrescribe] Error updating prescription:', error);
+        addNotification('alert', `Failed to update prescription: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Creating new prescriptions
     if (addedMedications.length === 0) {
       addNotification('alert', 'Please add at least one medication to the prescription');
       return;
@@ -962,12 +1025,12 @@ const EPrescribeModal = ({
           {/* Search and Add Medication */}
           <div className="mb-8">
             <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
-              {addedMedications.length > 0 ? 'Add Another Medication' : 'Search Medication'}
+              {addedMedications.length > 0 ? 'Add Another Medication' : 'Medication'}
             </h3>
             <div className="space-y-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Search Medication
+                  Medication
                 </label>
                 <div className="relative">
                   <input
@@ -1064,12 +1127,11 @@ const EPrescribeModal = ({
           </div>
 
           {/* Medication Details Form */}
-          {currentMedication && (
-            <div className="mb-8">
-              <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
-                Medication Details
-              </h3>
-              <div className="space-y-6">
+          <div className="mb-8">
+            <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
+              Medication Details
+            </h3>
+            <div className="space-y-6">
               {/* Loading indicator for safety check */}
               {safetyCheckLoading && safetyWarnings.length === 0 && (
                 <div className={`p-3 rounded-lg border ${theme === 'dark' ? 'border-blue-700 bg-blue-500/10' : 'border-blue-300 bg-blue-50'}`}>
@@ -1103,11 +1165,13 @@ const EPrescribeModal = ({
                 </div>
               )}
 
-              <div>
-                <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {currentMedication.genericName || currentMedication.brandName || currentMedication.drugName} - {currentMedication.strength}
-                </h3>
-              </div>
+              {currentMedication && (
+                <div>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {currentMedication.genericName || currentMedication.brandName || currentMedication.drugName} - {currentMedication.strength}
+                  </h3>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1233,14 +1297,13 @@ const EPrescribeModal = ({
                   Add to Prescription
                 </button>
               </div>
-              </div>
             </div>
-          )}
+          </div>
 
           {/* Pharmacy Selection */}
           <div className="mb-8">
             <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
-              Select Pharmacy (Optional)
+              Pharmacy
             </h3>
             <div className="space-y-4">
               {pharmaciesLoading && (
