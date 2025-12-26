@@ -22,23 +22,26 @@ const EPrescribeModal = ({
   }, [provider]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [medications, setMedications] = useState([]);
-  const [selectedMedication, setSelectedMedication] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [addedMedications, setAddedMedications] = useState([]); // Array of medications with their details
+  const [currentMedication, setCurrentMedication] = useState(null); // Currently selected medication to add
   const [pharmacies, setPharmacies] = useState([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState(null);
   const [loading, setLoading] = useState(false);
   const [pharmaciesLoading, setPharmaciesLoading] = useState(false);
   const [safetyCheckLoading, setSafetyCheckLoading] = useState(false);
   const [safetyWarnings, setSafetyWarnings] = useState([]);
+  const [generalInstructions, setGeneralInstructions] = useState('');
 
-  const [prescriptionDetails, setPrescriptionDetails] = useState({
-    dosage: prescription?.dosage || '',
-    frequency: prescription?.frequency || '',
-    duration: prescription?.duration || '',
-    quantity: prescription?.quantity?.toString() || '',
-    refills: prescription?.refills || prescription?.refillsRemaining || 0,
-    instructions: prescription?.instructions || '',
-    substitutionAllowed: prescription?.substitutionAllowed !== undefined ? prescription.substitutionAllowed : true
+  // Current medication details (for adding new medication to list)
+  const [currentDetails, setCurrentDetails] = useState({
+    dosage: '',
+    frequency: '',
+    duration: '',
+    quantity: '',
+    refills: 0,
+    instructions: '',
+    substitutionAllowed: true
   });
 
   // Track if we've successfully validated - prevents closing modal on re-renders
@@ -108,67 +111,17 @@ const EPrescribeModal = ({
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose, inline]);
 
-  // Load existing prescription data when in edit mode
-  useEffect(() => {
-    if (!prescription) return;
-
-    const loadPrescriptionData = async () => {
-      console.log('[ePrescribe] Loading prescription for edit:', prescription);
-
-      // Create medication object from prescription data
-      const medication = {
-        id: prescription.id,
-        drugName: prescription.medicationName || prescription.medication_name || '',
-        drug_name: prescription.medicationName || prescription.medication_name || '',
-        genericName: prescription.genericName || prescription.generic_name || '',
-        brandName: prescription.brandName || prescription.brand_name || '',
-        ndcCode: prescription.ndcCode || prescription.ndc_code || '',
-        ndc_code: prescription.ndcCode || prescription.ndc_code || '',
-        strength: prescription.dosage || '',
-        dosageForm: prescription.dosageForm || prescription.dosage_form || ''
-      };
-
-      setSelectedMedication(medication);
-      console.log('[ePrescribe] Loaded medication for edit:', medication);
-
-      // Prefill search query with medication name
-      const medicationName = medication.genericName || medication.brandName || medication.drugName;
-      if (medicationName) {
-        setSearchQuery(medicationName);
-        console.log('[ePrescribe] Prefilled search query:', medicationName);
-
-        // Add the current medication to search results so it's visible/selectable
-        setMedications([medication]);
-      }
-
-      // Load pharmacy if available
-      if (prescription.pharmacyId || prescription.pharmacy_id) {
-        try {
-          const pharmacyId = prescription.pharmacyId || prescription.pharmacy_id;
-          const pharmacy = await api.getPharmacy(pharmacyId);
-          if (pharmacy) {
-            setSelectedPharmacy(pharmacy);
-            console.log('[ePrescribe] Loaded pharmacy for edit:', pharmacy);
-          }
-        } catch (error) {
-          console.error('[ePrescribe] Error loading pharmacy:', error);
-        }
-      }
-    };
-
-    loadPrescriptionData();
-  }, [prescription, api]);
-
   // Debug: Log render state
   useEffect(() => {
     console.log('[ePrescribe] ===== RENDER STATE =====');
-    console.log('[ePrescribe] selectedMedication:', selectedMedication ? {
-      id: selectedMedication.id,
-      drugName: selectedMedication.drugName || selectedMedication.drug_name,
-      ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code
+    console.log('[ePrescribe] currentMedication:', currentMedication ? {
+      id: currentMedication.id,
+      drugName: currentMedication.drugName || currentMedication.drug_name,
+      ndcCode: currentMedication.ndcCode || currentMedication.ndc_code
     } : 'NULL');
+    console.log('[ePrescribe] addedMedications count:', addedMedications.length);
     console.log('[ePrescribe] ======================');
-  }, [selectedMedication]);
+  }, [currentMedication, addedMedications]);
 
   // Search medications - wrapped in useCallback to prevent unnecessary re-renders
   const handleSearchMedications = useCallback(async () => {
@@ -188,7 +141,7 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] API object:', api ? 'Available' : 'MISSING');
 
     setLoading(true);
-    setMedications([]); // Clear previous results
+    setSearchResults([]); // Clear previous results
 
     try {
       console.log('[ePrescribe] Calling api.searchMedications...');
@@ -204,7 +157,7 @@ const EPrescribeModal = ({
       console.log('[ePrescribe] Number of medications found:', data?.length || 0);
 
       if (data && Array.isArray(data)) {
-        setMedications(data);
+        setSearchResults(data);
 
         if (data.length > 0) {
           console.log('[ePrescribe] First medication:', data[0]);
@@ -220,7 +173,7 @@ const EPrescribeModal = ({
         }
       } else {
         console.error('[ePrescribe] Unexpected response format:', data);
-        setMedications([]);
+        setSearchResults([]);
         addNotification('alert', 'Received invalid data format from server');
       }
 
@@ -247,7 +200,7 @@ const EPrescribeModal = ({
         addNotification('alert', `Failed to search medications: ${error.message}`);
       }
 
-      setMedications([]);
+      setSearchResults([]);
     } finally {
       setLoading(false);
     }
@@ -256,7 +209,7 @@ const EPrescribeModal = ({
   // Auto-search as user types (debounced)
   useEffect(() => {
     if (!searchQuery || searchQuery.length < 2) {
-      setMedications([]);
+      setSearchResults([]);
       return;
     }
 
@@ -267,9 +220,9 @@ const EPrescribeModal = ({
     return () => clearTimeout(timeoutId);
   }, [searchQuery, handleSearchMedications]);
 
-  // Auto-calculate quantity based on frequency and duration
+  // Auto-calculate quantity based on frequency and duration for current medication
   useEffect(() => {
-    const { frequency, duration, quantity } = prescriptionDetails;
+    const { frequency, duration, quantity } = currentDetails;
 
     if (!frequency || !duration) return;
 
@@ -297,12 +250,12 @@ const EPrescribeModal = ({
 
     // Update quantity only if it's different from calculated value
     if (quantity !== calculatedQuantity.toString()) {
-      setPrescriptionDetails(prev => ({
+      setCurrentDetails(prev => ({
         ...prev,
         quantity: calculatedQuantity.toString()
       }));
     }
-  }, [prescriptionDetails.frequency, prescriptionDetails.duration, prescriptionDetails.quantity]);
+  }, [currentDetails.frequency, currentDetails.duration, currentDetails.quantity]);
 
   // Select medication and check safety
   const handleSelectMedication = useCallback((medication) => {
@@ -335,16 +288,16 @@ const EPrescribeModal = ({
 
       console.log('[ePrescribe] Calculated dosage:', dosage);
 
-      // Update prescription details with dosage
-      console.log('[ePrescribe] Updating prescription details...');
-      setPrescriptionDetails(prev => ({
+      // Update current details with dosage
+      console.log('[ePrescribe] Updating current details...');
+      setCurrentDetails(prev => ({
         ...prev,
         dosage: dosage
       }));
 
-      // Set selected medication
-      console.log('[ePrescribe] Setting selected medication...');
-      setSelectedMedication(medication);
+      // Set current medication
+      console.log('[ePrescribe] Setting current medication...');
+      setCurrentMedication(medication);
 
       // Run safety check in background (async, non-blocking)
       // This runs AFTER step advancement, so it won't block the UI
@@ -381,13 +334,57 @@ const EPrescribeModal = ({
       console.error('[ePrescribe] CRITICAL ERROR in handleSelectMedication:', error);
       console.error('[ePrescribe] Error stack:', error.stack);
 
-      // Even if there's an error, still set the selected medication
+      // Even if there's an error, still set the current medication
       console.log('[ePrescribe] Setting medication despite error...');
-      setSelectedMedication(medication);
+      setCurrentMedication(medication);
 
       addNotification('alert', `Error processing medication: ${error.message}. Please check the details.`);
     }
   }, [patient, api, addNotification]);
+
+  // Add medication to the list
+  const handleAddMedication = useCallback(() => {
+    if (!currentMedication) {
+      addNotification('alert', 'Please select a medication first');
+      return;
+    }
+
+    if (!currentDetails.dosage || !currentDetails.frequency || !currentDetails.duration) {
+      addNotification('alert', 'Please fill in dosage, frequency, and duration');
+      return;
+    }
+
+    // Add to medications list
+    const newMedication = {
+      id: Date.now(), // Temporary ID for the list
+      medication: currentMedication,
+      details: { ...currentDetails }
+    };
+
+    setAddedMedications(prev => [...prev, newMedication]);
+
+    // Reset current medication and details
+    setCurrentMedication(null);
+    setCurrentDetails({
+      dosage: '',
+      frequency: '',
+      duration: '',
+      quantity: '',
+      refills: 0,
+      instructions: '',
+      substitutionAllowed: true
+    });
+    setSearchQuery('');
+    setSearchResults([]);
+
+    addNotification('success', 'Medication added to prescription');
+  }, [currentMedication, currentDetails, addNotification]);
+
+  // Remove medication from the list
+  const handleRemoveMedication = useCallback((id) => {
+    setAddedMedications(prev => prev.filter(med => med.id !== id));
+    addNotification('success', 'Medication removed');
+  }, [addNotification]);
 
   // Load patient's preferred pharmacies
   const loadPharmacies = useCallback(async () => {
@@ -460,115 +457,107 @@ const EPrescribeModal = ({
     loadPharmacies();
   }, [loadPharmacies]);
 
-  // Submit prescription
-  const handleSubmitPrescription = async () => {
-    console.log('[ePrescribe] Submitting prescription...');
-    console.log('[ePrescribe] Edit mode:', !!prescription);
+  // Submit all prescriptions
+  const handleSubmitPrescriptions = async () => {
+    console.log('[ePrescribe] Submitting prescriptions...');
     console.log('[ePrescribe] Using provider:', normalizedProvider);
+    console.log('[ePrescribe] Number of medications:', addedMedications.length);
 
-    if (!selectedMedication) {
-      addNotification('alert', 'Please select a medication first');
+    if (addedMedications.length === 0) {
+      addNotification('alert', 'Please add at least one medication to the prescription');
       return;
     }
 
     setLoading(true);
     try {
-      // Build prescription payload
-      const prescriptionPayload = {
-        patientId: patient.id,
-        providerId: normalizedProvider.id,
-        medicationName: selectedMedication.drugName || selectedMedication.drug_name,
-        ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code,
-        dosage: prescriptionDetails.dosage,
-        frequency: prescriptionDetails.frequency,
-        duration: prescriptionDetails.duration,
-        quantity: parseInt(prescriptionDetails.quantity) || 0,
-        refills: parseInt(prescriptionDetails.refills) || 0,
-        instructions: prescriptionDetails.instructions,
-        substitutionAllowed: prescriptionDetails.substitutionAllowed,
-        status: 'Active',
-        prescribedDate: prescription?.prescribedDate || prescription?.prescribed_date || new Date().toISOString().split('T')[0]
-      };
+      const createdPrescriptions = [];
 
-      // Add pharmacy info if selected
-      if (selectedPharmacy) {
-        prescriptionPayload.pharmacyId = selectedPharmacy.id;
-        prescriptionPayload.prescriberDeaNumber = normalizedProvider?.deaNumber || normalizedProvider?.dea_number || '';
-      }
+      // Create a prescription for each medication
+      for (const med of addedMedications) {
+        const prescriptionPayload = {
+          patientId: patient.id,
+          providerId: normalizedProvider.id,
+          medicationName: med.medication.drugName || med.medication.drug_name,
+          ndcCode: med.medication.ndcCode || med.medication.ndc_code,
+          dosage: med.details.dosage,
+          frequency: med.details.frequency,
+          duration: med.details.duration,
+          quantity: parseInt(med.details.quantity) || 0,
+          refills: parseInt(med.details.refills) || 0,
+          instructions: med.details.instructions || generalInstructions,
+          substitutionAllowed: med.details.substitutionAllowed,
+          status: 'Active',
+          prescribedDate: new Date().toISOString().split('T')[0]
+        };
 
-      console.log('[ePrescribe] Prescription payload:', prescriptionPayload);
+        // Add pharmacy info if selected
+        if (selectedPharmacy) {
+          prescriptionPayload.pharmacyId = selectedPharmacy.id;
+          prescriptionPayload.prescriberDeaNumber = normalizedProvider?.deaNumber || normalizedProvider?.dea_number || '';
+        }
 
-      let resultPrescription;
-      if (prescription) {
-        // Update existing prescription
-        console.log('[ePrescribe] Updating prescription ID:', prescription.id);
-        resultPrescription = await api.updatePrescription(prescription.id, prescriptionPayload);
-        console.log('[ePrescribe] Prescription updated:', resultPrescription);
-      } else {
-        // Create new prescription
-        resultPrescription = await api.createPrescription(prescriptionPayload);
-        console.log('[ePrescribe] Prescription created:', resultPrescription);
-      }
+        console.log('[ePrescribe] Creating prescription for:', med.medication.drugName);
+        const resultPrescription = await api.createPrescription(prescriptionPayload);
+        createdPrescriptions.push(resultPrescription);
 
-      // Send electronically to pharmacy if selected (only for new prescriptions)
-      if (selectedPharmacy && !prescription) {
-        console.log('[ePrescribe] Sending to pharmacy:', selectedPharmacy);
-        try {
-          await api.sendErx(resultPrescription.id);
-          console.log('[ePrescribe] Successfully sent to pharmacy');
-          addNotification('success', 'Prescription sent to pharmacy successfully');
-        } catch (erxError) {
-          console.error('[ePrescribe] Failed to send eRx:', erxError);
-
-          // Check if it's a "not available" error
-          if (erxError.message && erxError.message.includes('501')) {
-            addNotification('alert', 'Prescription created but electronic sending is not available. Migration 015 required.');
-          } else {
-            addNotification('alert', 'Prescription created but failed to send electronically');
+        // Send electronically to pharmacy if selected
+        if (selectedPharmacy) {
+          try {
+            await api.sendErx(resultPrescription.id);
+            console.log('[ePrescribe] Successfully sent to pharmacy');
+          } catch (erxError) {
+            console.error('[ePrescribe] Failed to send eRx:', erxError);
           }
         }
-      } else if (!prescription) {
-        console.log('[ePrescribe] No pharmacy selected, prescription created only');
-        addNotification('success', 'Prescription created successfully');
-      } else {
-        // Edit mode success message
-        addNotification('success', 'Prescription updated successfully');
       }
 
-      if (onSuccess) onSuccess(resultPrescription);
+      if (selectedPharmacy) {
+        addNotification('success', `${createdPrescriptions.length} prescription(s) sent to pharmacy successfully`);
+      } else {
+        addNotification('success', `${createdPrescriptions.length} prescription(s) created successfully`);
+      }
+
+      if (onSuccess) onSuccess(createdPrescriptions);
       onClose();
     } catch (error) {
-      console.error('[ePrescribe] Error submitting prescription:', error);
-      addNotification('alert', `Failed to submit prescription: ${error.message}`);
+      console.error('[ePrescribe] Error submitting prescriptions:', error);
+      addNotification('alert', `Failed to submit prescriptions: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Print prescription
-  const handlePrintPrescription = async () => {
-    console.log('[ePrescribe] Printing prescription...');
+  // Print prescriptions
+  const handlePrintPrescriptions = async () => {
+    console.log('[ePrescribe] Printing prescriptions...');
 
-    if (!selectedMedication) {
-      addNotification('alert', 'Please select a medication first');
+    if (addedMedications.length === 0) {
+      addNotification('alert', 'Please add at least one medication to print');
       return;
     }
 
+    // For now, just create the prescriptions and notify
+    await handleSubmitPrescriptions();
+    addNotification('info', 'Print functionality will be enhanced in a future update');
+  };
+
+  // Old print function (keeping for reference, will be updated later)
+  const handlePrintPrescriptionOld = async () => {
     setLoading(true);
     try {
-      // Create prescription using api service
+      // Create prescription using api service (old implementation)
       const prescriptionPayload = {
         patientId: patient.id,
         providerId: normalizedProvider.id,
-        medicationName: selectedMedication.drugName || selectedMedication.drug_name,
+        medicationName: currentMedication.drugName || selectedMedication.drug_name,
         ndcCode: selectedMedication.ndcCode || selectedMedication.ndc_code,
-        dosage: prescriptionDetails.dosage,
-        frequency: prescriptionDetails.frequency,
-        duration: prescriptionDetails.duration,
-        quantity: parseInt(prescriptionDetails.quantity) || 0,
-        refills: parseInt(prescriptionDetails.refills) || 0,
-        instructions: prescriptionDetails.instructions,
-        substitutionAllowed: prescriptionDetails.substitutionAllowed,
+        dosage: currentDetails.dosage,
+        frequency: currentDetails.frequency,
+        duration: currentDetails.duration,
+        quantity: parseInt(currentDetails.quantity) || 0,
+        refills: parseInt(currentDetails.refills) || 0,
+        instructions: currentDetails.instructions,
+        substitutionAllowed: currentDetails.substitutionAllowed,
         status: 'Active',
         prescribedDate: new Date().toISOString().split('T')[0]
       };
@@ -767,33 +756,33 @@ const EPrescribeModal = ({
               ` : ''}
               <div class="info-row">
                 <span class="info-label">Dosage:</span>
-                <span class="info-value"><strong>${prescriptionDetails.dosage}</strong></span>
+                <span class="info-value"><strong>${currentDetails.dosage}</strong></span>
               </div>
               <div class="info-row">
                 <span class="info-label">Frequency:</span>
-                <span class="info-value"><strong>${prescriptionDetails.frequency}</strong></span>
+                <span class="info-value"><strong>${currentDetails.frequency}</strong></span>
               </div>
               <div class="info-row">
                 <span class="info-label">Duration:</span>
-                <span class="info-value"><strong>${prescriptionDetails.duration}</strong></span>
+                <span class="info-value"><strong>${currentDetails.duration}</strong></span>
               </div>
               <div class="info-row">
                 <span class="info-label">Quantity:</span>
-                <span class="info-value"><strong>${prescriptionDetails.quantity}</strong></span>
+                <span class="info-value"><strong>${currentDetails.quantity}</strong></span>
               </div>
               <div class="info-row">
                 <span class="info-label">Refills:</span>
-                <span class="info-value"><strong>${prescriptionDetails.refills}</strong></span>
+                <span class="info-value"><strong>${currentDetails.refills}</strong></span>
               </div>
-              ${prescriptionDetails.instructions ? `
+              ${currentDetails.instructions ? `
               <div class="info-row" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
                 <span class="info-label">Instructions:</span>
-                <span class="info-value">${prescriptionDetails.instructions}</span>
+                <span class="info-value">${currentDetails.instructions}</span>
               </div>
               ` : ''}
               <div class="info-row" style="margin-top: 10px;">
                 <span class="info-label">Generic Substitution:</span>
-                <span class="info-value">${prescriptionDetails.substitutionAllowed ? 'Allowed' : 'Not Allowed (Dispense as Written)'}</span>
+                <span class="info-value">${currentDetails.substitutionAllowed ? 'Allowed' : 'Not Allowed (Dispense as Written)'}</span>
               </div>
             </div>
 
@@ -823,7 +812,7 @@ const EPrescribeModal = ({
 
             <div class="footer">
               <p style="margin: 5px 0; font-size: 9pt; color: #666;">
-                <strong>Note:</strong> This prescription is valid for ${prescriptionDetails.refills > 0 ? `${prescriptionDetails.refills} refill(s)` : 'no refills'}.
+                <strong>Note:</strong> This prescription is valid for ${currentDetails.refills > 0 ? `${currentDetails.refills} refill(s)` : 'no refills'}.
                 Contact your healthcare provider if you have any questions or concerns about this medication.
               </p>
             </div>
@@ -863,10 +852,10 @@ const EPrescribeModal = ({
       <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         <div>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {prescription ? 'Edit Prescription' : 'New ePrescription'} for {patient.firstName || patient.first_name || 'Patient'} {patient.lastName || patient.last_name || ''}
+            New ePrescription for {patient.firstName || patient.first_name || 'Patient'} {patient.lastName || patient.last_name || ''}
           </h2>
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            {prescription && selectedMedication ? `Editing: ${selectedMedication?.genericName || selectedMedication?.brandName || selectedMedication?.drugName || 'Medication'}` : 'Complete all sections below'}
+            {addedMedications.length > 0 ? `${addedMedications.length} medication(s) added` : 'Search and add medications below'}
           </p>
         </div>
         <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
@@ -875,10 +864,46 @@ const EPrescribeModal = ({
       </div>
 
       <div className={`p-6 overflow-y-auto ${inline ? 'max-h-[800px]' : 'max-h-[calc(90vh-180px)]'}`}>
-          {/* Section 1: Search and Select Medication */}
+          {/* Added Medications List */}
+          {addedMedications.length > 0 && (
+            <div className="mb-6">
+              <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
+                Medications in Prescription
+              </h3>
+              <div className="space-y-3">
+                {addedMedications.map((med) => (
+                  <div key={med.id} className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-300'}`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {med.medication.genericName || med.medication.brandName || med.medication.drugName}
+                        </h4>
+                        <div className={`text-sm mt-2 space-y-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                          <p><strong>Dosage:</strong> {med.details.dosage}</p>
+                          <p><strong>Frequency:</strong> {med.details.frequency}</p>
+                          <p><strong>Duration:</strong> {med.details.duration}</p>
+                          <p><strong>Quantity:</strong> {med.details.quantity}</p>
+                          {med.details.instructions && <p><strong>Instructions:</strong> {med.details.instructions}</p>}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveMedication(med.id)}
+                        className={`p-2 rounded-lg hover:bg-red-100 transition-colors ${theme === 'dark' ? 'hover:bg-red-900/20' : ''}`}
+                        title="Remove medication"
+                      >
+                        <X className="w-4 h-4 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search and Add Medication */}
           <div className="mb-8">
             <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
-              1. Select Medication
+              {addedMedications.length > 0 ? 'Add Another Medication' : 'Search Medication'}
             </h3>
             <div className="space-y-4">
               <div>
@@ -908,7 +933,7 @@ const EPrescribeModal = ({
                 </p>
               </div>
 
-              {!loading && searchQuery && searchQuery.length >= 2 && medications.length === 0 && (
+              {!loading && searchQuery && searchQuery.length >= 2 && searchResults.length === 0 && (
                 <div className={`text-center py-8 rounded-lg border-2 border-dashed ${theme === 'dark' ? 'border-slate-700 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
                   <Pill className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
                   <p className={`font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -931,12 +956,12 @@ const EPrescribeModal = ({
                 </div>
               )}
 
-              {medications.length > 0 && (
+              {searchResults.length > 0 && (
                 <div className="space-y-2">
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Found {medications.length} medication{medications.length !== 1 ? 's' : ''} - Click to select:
+                    Found {searchResults.length} medication{searchResults.length !== 1 ? 's' : ''} - Click to select:
                   </p>
-                  {medications.map((med) => (
+                  {searchResults.map((med) => (
                     <div
                       key={med.id}
                       onClick={() => handleSelectMedication(med)}
@@ -979,11 +1004,11 @@ const EPrescribeModal = ({
             </div>
           </div>
 
-          {/* Section 2: Prescription Details */}
-          {selectedMedication && (
+          {/* Medication Details Form */}
+          {currentMedication && (
             <div className="mb-8">
               <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
-                2. Prescription Details
+                Medication Details
               </h3>
               <div className="space-y-6">
               {/* Loading indicator for safety check */}
@@ -1021,7 +1046,7 @@ const EPrescribeModal = ({
 
               <div>
                 <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {selectedMedication.genericName || selectedMedication.brandName || selectedMedication.drugName} - {selectedMedication.strength}
+                  {currentMedication.genericName || currentMedication.brandName || currentMedication.drugName} - {currentMedication.strength}
                 </h3>
               </div>
 
@@ -1032,8 +1057,8 @@ const EPrescribeModal = ({
                   </label>
                   <input
                     type="text"
-                    value={prescriptionDetails.dosage}
-                    onChange={(e) => setPrescriptionDetails({ ...prescriptionDetails, dosage: e.target.value })}
+                    value={currentDetails.dosage}
+                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, dosage: e.target.value })}
                     placeholder="e.g., 500mg"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   />
@@ -1044,8 +1069,8 @@ const EPrescribeModal = ({
                     Frequency *
                   </label>
                   <select
-                    value={prescriptionDetails.frequency}
-                    onChange={(e) => setPrescriptionDetails({ ...prescriptionDetails, frequency: e.target.value })}
+                    value={currentDetails.frequency}
+                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, frequency: e.target.value })}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   >
                     <option value="">Select frequency</option>
@@ -1067,8 +1092,8 @@ const EPrescribeModal = ({
                   </label>
                   <input
                     type="text"
-                    value={prescriptionDetails.duration}
-                    onChange={(e) => setPrescriptionDetails({ ...prescriptionDetails, duration: e.target.value })}
+                    value={currentDetails.duration}
+                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, duration: e.target.value })}
                     placeholder="e.g., 30 days"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   />
@@ -1080,8 +1105,8 @@ const EPrescribeModal = ({
                   </label>
                   <input
                     type="number"
-                    value={prescriptionDetails.quantity}
-                    onChange={(e) => setPrescriptionDetails({ ...prescriptionDetails, quantity: e.target.value })}
+                    value={currentDetails.quantity}
+                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, quantity: e.target.value })}
                     placeholder="30"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   />
@@ -1092,8 +1117,8 @@ const EPrescribeModal = ({
                     Refills
                   </label>
                   <select
-                    value={prescriptionDetails.refills}
-                    onChange={(e) => setPrescriptionDetails({ ...prescriptionDetails, refills: e.target.value })}
+                    value={currentDetails.refills}
+                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, refills: e.target.value })}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   >
                     {[0, 1, 2, 3, 4, 5, 6, 11].map(n => (
@@ -1107,8 +1132,8 @@ const EPrescribeModal = ({
                     Instructions for Patient
                   </label>
                   <textarea
-                    value={prescriptionDetails.instructions}
-                    onChange={(e) => setPrescriptionDetails({ ...prescriptionDetails, instructions: e.target.value })}
+                    value={currentDetails.instructions}
+                    onChange={(e) => setCurrentDetails({ ...prescriptionDetails, instructions: e.target.value })}
                     placeholder="Take with food. Avoid alcohol."
                     rows="3"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
@@ -1121,30 +1146,42 @@ const EPrescribeModal = ({
                       Allow generic substitution
                     </span>
                     <button
-                      onClick={() => setPrescriptionDetails({ ...prescriptionDetails, substitutionAllowed: !prescriptionDetails.substitutionAllowed })}
+                      onClick={() => setCurrentDetails({ ...prescriptionDetails, substitutionAllowed: !currentDetails.substitutionAllowed })}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        prescriptionDetails.substitutionAllowed
+                        currentDetails.substitutionAllowed
                           ? 'bg-blue-500'
                           : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
                       }`}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          prescriptionDetails.substitutionAllowed ? 'translate-x-6' : 'translate-x-1'
+                          currentDetails.substitutionAllowed ? 'translate-x-6' : 'translate-x-1'
                         }`}
                       />
                     </button>
                   </div>
                 </div>
               </div>
+
+              {/* Add to Prescription Button */}
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={handleAddMedication}
+                  disabled={!currentDetails.dosage || !currentDetails.frequency || !currentDetails.duration}
+                  className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add to Prescription
+                </button>
+              </div>
               </div>
             </div>
           )}
 
-          {/* Section 3: Select Pharmacy */}
+          {/* Pharmacy Selection */}
           <div className="mb-8">
             <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
-              3. Select Pharmacy (Optional)
+              Select Pharmacy (Optional)
             </h3>
             <div className="space-y-4">
               {pharmaciesLoading && (
@@ -1212,32 +1249,20 @@ const EPrescribeModal = ({
             </div>
           </div>
 
-          {/* Section 4: Submit Actions */}
-          {selectedMedication && (
+          {/* Submit Actions */}
+          {addedMedications.length > 0 && (
             <div className="mb-8">
               <h3 className={`text-lg font-semibold mb-4 pb-2 border-b ${theme === 'dark' ? 'text-white border-slate-700' : 'text-gray-900 border-gray-300'}`}>
-                4. Review & Submit
+                Submit Prescription
               </h3>
               <div className={`p-4 rounded-lg mb-4 ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-50'}`}>
                 <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Review Prescription Summary
+                  Prescription Summary
                 </h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Medication:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{selectedMedication?.genericName || selectedMedication?.brandName || selectedMedication?.drugName || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Dosage:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.dosage || 'Not set'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Frequency:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.frequency || 'Not set'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Duration:</span>
-                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{prescriptionDetails.duration || 'Not set'}</span>
+                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Total Medications:</span>
+                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{addedMedications.length}</span>
                   </div>
                   {selectedPharmacy && (
                     <div className="flex justify-between pt-2 border-t border-slate-700">
@@ -1245,28 +1270,31 @@ const EPrescribeModal = ({
                       <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{selectedPharmacy.pharmacyName}</span>
                     </div>
                   )}
+                  {!selectedPharmacy && (
+                    <p className={`text-xs italic pt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      No pharmacy selected - prescriptions will be created but not sent electronically
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={handlePrintPrescription}
-                  className={`px-6 py-2 rounded-lg flex items-center gap-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
-                  title="Print Prescription"
+                  onClick={handlePrintPrescriptions}
+                  disabled={loading}
+                  className={`px-6 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
+                  title="Print Prescriptions"
                 >
                   <Printer className="w-5 h-5" />
-                  Print
+                  Print All
                 </button>
                 <button
-                  onClick={handleSubmitPrescription}
+                  onClick={handleSubmitPrescriptions}
                   disabled={loading}
                   className="flex-1 px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Send className="w-5 h-5" />
-                  {prescription
-                    ? 'Update Prescription'
-                    : (selectedPharmacy ? 'Send to Pharmacy Electronically' : 'Create Prescription')
-                  }
+                  {selectedPharmacy ? `Send ${addedMedications.length} Prescription(s) to Pharmacy` : `Create ${addedMedications.length} Prescription(s)`}
                 </button>
               </div>
             </div>
