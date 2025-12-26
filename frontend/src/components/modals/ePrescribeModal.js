@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus, RefreshCw } from 'lucide-react';
+import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus } from 'lucide-react';
 
 const EPrescribeModal = ({
   theme,
@@ -345,7 +345,7 @@ const EPrescribeModal = ({
     }
   }, [patient, api, addNotification]);
 
-  // Add medication to the list (or update if editing)
+  // Add medication to the list
   const handleAddMedication = useCallback(() => {
     if (!currentMedication) {
       addNotification('alert', 'Please select a medication first');
@@ -357,14 +357,7 @@ const EPrescribeModal = ({
       return;
     }
 
-    // If editing a prescription, the details are ready - just show success message
-    // The actual update happens in handleSubmitPrescriptions
-    if (prescription) {
-      addNotification('success', 'Prescription details updated. Click submit to save.');
-      return;
-    }
-
-    // Add to medications list for new prescriptions
+    // Add to medications list
     const newMedication = {
       id: Date.now(), // Temporary ID for the list
       medication: currentMedication,
@@ -388,7 +381,7 @@ const EPrescribeModal = ({
     setSearchResults([]);
 
     addNotification('success', 'Medication added to prescription');
-  }, [currentMedication, currentDetails, prescription, addNotification]);
+  }, [currentMedication, currentDetails, addNotification]);
 
   // Remove medication from the list
   const handleRemoveMedication = useCallback((id) => {
@@ -1298,24 +1291,15 @@ const EPrescribeModal = ({
                 </div>
               </div>
 
-              {/* Add to Prescription / Update Prescription Button */}
+              {/* Add to Prescription Button */}
               <div className="flex justify-end mt-6">
                 <button
                   onClick={handleAddMedication}
                   disabled={!currentDetails.dosage || !currentDetails.frequency || !currentDetails.duration}
                   className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {prescription ? (
-                    <>
-                      <RefreshCw className="w-4 h-4" />
-                      Update Prescription
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4" />
-                      Add to Prescription
-                    </>
-                  )}
+                  <Plus className="w-4 h-4" />
+                  Add to Prescription
                 </button>
               </div>
             </div>
