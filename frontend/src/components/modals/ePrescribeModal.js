@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus } from 'lucide-react';
+import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus, RefreshCw } from 'lucide-react';
 
 const EPrescribeModal = ({
   theme,
@@ -345,7 +345,7 @@ const EPrescribeModal = ({
     }
   }, [patient, api, addNotification]);
 
-  // Add medication to the list
+  // Add medication to the list (or update if editing)
   const handleAddMedication = useCallback(() => {
     if (!currentMedication) {
       addNotification('alert', 'Please select a medication first');
@@ -357,7 +357,14 @@ const EPrescribeModal = ({
       return;
     }
 
-    // Add to medications list
+    // If editing a prescription, the details are ready - just show success message
+    // The actual update happens in handleSubmitPrescriptions
+    if (prescription) {
+      addNotification('success', 'Prescription details updated. Click submit to save.');
+      return;
+    }
+
+    // Add to medications list for new prescriptions
     const newMedication = {
       id: Date.now(), // Temporary ID for the list
       medication: currentMedication,
@@ -381,7 +388,7 @@ const EPrescribeModal = ({
     setSearchResults([]);
 
     addNotification('success', 'Medication added to prescription');
-  }, [currentMedication, currentDetails, addNotification]);
+  }, [currentMedication, currentDetails, prescription, addNotification]);
 
   // Remove medication from the list
   const handleRemoveMedication = useCallback((id) => {
@@ -401,50 +408,47 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] Loading pharmacies for patient:', patient.id);
     setPharmaciesLoading(true);
     try {
-      // First try to get patient's preferred pharmacies using api service
-      let data = await api.getPatientPreferredPharmacies(patient.id);
-      let isPreferredList = data && data.length > 0;
+      // Load ALL pharmacies from the pharmacy table
+      const allPharmacies = await api.getPharmacies();
+      console.log('[ePrescribe] All pharmacies loaded:', allPharmacies?.length || 0, 'pharmacies');
 
-      console.log('[ePrescribe] Preferred pharmacies:', data);
-
-      // If no preferred pharmacies, get nearby pharmacies by ZIP code
-      // Check all possible ZIP code field names (camelCase and snake_case)
-      const zipCode = patient.zipCode || patient.zip_code || patient.zip;
-
-      if ((!data || data.length === 0) && zipCode) {
-        console.log('[ePrescribe] No preferred pharmacies, searching by ZIP:', zipCode);
-        data = await api.searchPharmacies(zipCode, null, null, null, 10);
-        console.log('[ePrescribe] Nearby pharmacies by ZIP:', data);
+      // Get patient's preferred pharmacies to mark them
+      let preferredPharmacies = [];
+      try {
+        preferredPharmacies = await api.getPatientPreferredPharmacies(patient.id);
+        console.log('[ePrescribe] Preferred pharmacies:', preferredPharmacies?.length || 0);
+      } catch (error) {
+        console.log('[ePrescribe] Could not load preferred pharmacies:', error.message);
       }
 
-      // If still no pharmacies found, load all pharmacies as fallback
-      if (!data || data.length === 0) {
-        console.warn('[ePrescribe] No preferred or nearby pharmacies found, loading all pharmacies');
-        console.log('[ePrescribe] Patient data:', { zipCode: patient.zipCode, zip_code: patient.zip_code, zip: patient.zip });
+      // Create a Set of preferred pharmacy IDs for quick lookup
+      const preferredIds = new Set(preferredPharmacies?.map(p => p.id) || []);
 
-        // Get all pharmacies with a limit
-        data = await api.getPharmacies();
-        console.log('[ePrescribe] All pharmacies loaded:', data?.length || 0, 'pharmacies');
+      // Mark preferred pharmacies in the all pharmacies list
+      let pharmaciesWithPreferredFlag = (allPharmacies || []).map(pharmacy => ({
+        ...pharmacy,
+        isPreferred: preferredIds.has(pharmacy.id),
+        is_preferred: preferredIds.has(pharmacy.id)
+      }));
 
-        // Limit to first 20 for performance
-        if (data && data.length > 20) {
-          data = data.slice(0, 20);
-          console.log('[ePrescribe] Limited to first 20 pharmacies');
-        }
-      }
+      // Sort pharmacies: preferred first, then alphabetically by name
+      pharmaciesWithPreferredFlag.sort((a, b) => {
+        // Preferred pharmacies come first
+        if (a.isPreferred && !b.isPreferred) return -1;
+        if (!a.isPreferred && b.isPreferred) return 1;
+        // Then sort alphabetically by name
+        const nameA = (a.pharmacyName || '').toLowerCase();
+        const nameB = (b.pharmacyName || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
 
-      setPharmacies(data || []);
+      setPharmacies(pharmaciesWithPreferredFlag);
 
       // Auto-select preferred pharmacy if exists
-      // First try to find explicitly preferred pharmacy
-      const preferred = data?.find(p => p.isPreferred || p.is_preferred);
+      const preferred = pharmaciesWithPreferredFlag.find(p => p.isPreferred || p.is_preferred);
       if (preferred) {
-        console.log('[ePrescribe] Auto-selecting explicitly preferred pharmacy:', preferred);
+        console.log('[ePrescribe] Auto-selecting preferred pharmacy:', preferred.pharmacyName);
         setSelectedPharmacy(preferred);
-      } else if (isPreferredList && data && data.length > 0) {
-        // If we loaded pharmacies from patient's preferred list, auto-select the first one
-        console.log('[ePrescribe] Auto-selecting first pharmacy from patient preferred list:', data[0]);
-        setSelectedPharmacy(data[0]);
       }
     } catch (error) {
       console.error('[ePrescribe] Error loading pharmacies:', error);
@@ -1293,15 +1297,24 @@ const EPrescribeModal = ({
                 </div>
               </div>
 
-              {/* Add to Prescription Button */}
+              {/* Add to Prescription / Update Prescription Button */}
               <div className="flex justify-end mt-6">
                 <button
                   onClick={handleAddMedication}
                   disabled={!currentDetails.dosage || !currentDetails.frequency || !currentDetails.duration}
                   className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  <Plus className="w-4 h-4" />
-                  Add to Prescription
+                  {prescription ? (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      Update Prescription
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add to Prescription
+                    </>
+                  )}
                 </button>
               </div>
             </div>
