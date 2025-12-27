@@ -1036,9 +1036,6 @@ const EPrescribeModal = ({
             </h3>
             <div className="space-y-4">
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Medication
-                </label>
                 <div className="relative">
                   <input
                     type="text"
