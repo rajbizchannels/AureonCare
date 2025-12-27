@@ -1714,28 +1714,6 @@ const PrescriptionFormModal = ({ theme, api, prescription, patient, user, onClos
         />
       )}
 
-      {/* ePrescribe Modal */}
-      {showEPrescribeModal && (
-        <EPrescribeModal
-          theme={theme}
-          patient={patientData}
-          provider={user}
-          api={api}
-          prescription={editingPrescription}
-          onClose={() => {
-            setShowEPrescribeModal(false);
-            setEditingPrescription(null);
-          }}
-          onSuccess={(prescription) => {
-            setShowEPrescribeModal(false);
-            setEditingPrescription(null);
-            addNotification('success', editingPrescription ? 'Prescription updated successfully' : 'Prescription created successfully');
-            fetchPatientHistory(); // Refresh the prescriptions list
-          }}
-          addNotification={addNotification}
-        />
-      )}
-
       {/* Lab Order Form Modal */}
       {showLabOrderForm && (
         <NewLabOrderForm
