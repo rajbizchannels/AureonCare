@@ -1327,7 +1327,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
               patient={patientData}
               provider={user}
               prescription={editingPrescription}
-              inline={true}
               onClose={() => {
                 setShowPrescriptionForm(false);
                 setEditingPrescription(null);
