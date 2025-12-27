@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus } from 'lucide-react';
+import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus, Trash2 } from 'lucide-react';
 
 const EPrescribeModal = ({
   theme,
@@ -974,23 +974,25 @@ const EPrescribeModal = ({
 
   // Content component (shared between modal and inline modes)
   const content = (
-    <div className={`rounded-xl border max-w-5xl w-full ${inline ? '' : 'max-h-[90vh]'} overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => inline ? null : e.stopPropagation()}>
-      <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-        <div>
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {prescription ? 'Edit Prescription' : 'New ePrescription'}
-            {patient && ` for ${patient.firstName || patient.first_name || 'Patient'} ${patient.lastName || patient.last_name || ''}`}
-          </h2>
-          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            {prescription ? 'Update prescription details below' : (addedMedications.length > 0 ? `${addedMedications.length} medication(s) added` : 'Search and add medications below')}
-          </p>
+    <div className={`${inline ? 'w-full' : 'rounded-xl border max-w-5xl w-full max-h-[90vh]'} overflow-hidden ${inline ? '' : theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => inline ? null : e.stopPropagation()}>
+      {!inline && (
+        <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+          <div>
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {prescription ? 'Edit Prescription' : 'New ePrescription'}
+              {patient && ` for ${patient.firstName || patient.first_name || 'Patient'} ${patient.lastName || patient.last_name || ''}`}
+            </h2>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              {prescription ? 'Update prescription details below' : (addedMedications.length > 0 ? `${addedMedications.length} medication(s) added` : 'Search and add medications below')}
+            </p>
+          </div>
+          <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
+            <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          </button>
         </div>
-        <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
-          <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-        </button>
-      </div>
+      )}
 
-      <div className={`p-6 overflow-y-auto ${inline ? 'max-h-[800px]' : 'max-h-[calc(90vh-180px)]'}`}>
+      <div className={`${inline ? '' : 'p-6'} overflow-y-auto ${inline ? 'max-h-[800px]' : 'max-h-[calc(90vh-180px)]'}`}>
           {/* Added Medications List */}
           {addedMedications.length > 0 && (
             <div className="mb-6">
@@ -1465,6 +1467,22 @@ const EPrescribeModal = ({
                 </button>
               </div>
             </div>
+          )}
+
+          {/* Remove Prescription Button - Only shown in inline mode */}
+          {inline && (
+            <button
+              type="button"
+              onClick={onClose}
+              className={`mt-3 flex items-center gap-2 text-xs font-medium transition-colors ${
+                theme === 'dark'
+                  ? 'text-red-400 hover:text-red-300'
+                  : 'text-red-600 hover:text-red-700'
+              }`}
+            >
+              <Trash2 className="w-3 h-3" />
+              Remove Prescription
+            </button>
           )}
         </div>
       </div>
