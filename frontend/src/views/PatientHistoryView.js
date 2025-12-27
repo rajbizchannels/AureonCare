@@ -1320,13 +1320,14 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
         {/* Prescription Form - shown when adding/editing prescription in Prescriptions tab */}
         {activeTab === 'prescriptions' && showPrescriptionForm && (
-          <div className={`mb-6`}>
+          <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
             <EPrescribeModal
               theme={theme}
               api={api}
               patient={patientData}
               provider={user}
               prescription={editingPrescription}
+              inline={true}
               onClose={() => {
                 setShowPrescriptionForm(false);
                 setEditingPrescription(null);
