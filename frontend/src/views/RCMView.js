@@ -24,6 +24,7 @@ const RCMView = ({
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [showInsurancePayerForm, setShowInsurancePayerForm] = useState(false);
   const [showPreapprovalForm, setShowPreapprovalForm] = useState(false);
+  const [editingPayer, setEditingPayer] = useState(null);
 
   // Data states
   const [preapprovals, setPreapprovals] = useState([]);
@@ -43,6 +44,7 @@ const RCMView = ({
     setShowPreapprovalForm(false);
     setShowPaymentForm(false);
     setShowInsurancePayerForm(false);
+    setEditingPayer(null);
   }, [activeTab]);
 
   // Fetch all RCM data
@@ -477,6 +479,16 @@ const RCMView = ({
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         <button
+                          onClick={() => {
+                            setEditingPayer(payer);
+                            setShowInsurancePayerForm(true);
+                          }}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                          title="Edit"
+                        >
+                          <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                        </button>
+                        <button
                           onClick={async () => {
                             if (window.confirm('Are you sure you want to delete this insurance payer?')) {
                               try {
@@ -595,7 +607,10 @@ const RCMView = ({
         )}
         {activeTab === 'payers' && (
           <button
-            onClick={() => setShowInsurancePayerForm(!showInsurancePayerForm)}
+            onClick={() => {
+              setEditingPayer(null);
+              setShowInsurancePayerForm(!showInsurancePayerForm);
+            }}
             className={`flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors`}
           >
             <Shield className="w-4 h-4" />
@@ -666,11 +681,23 @@ const RCMView = ({
           <NewInsurancePayerForm
             theme={theme}
             api={api}
-            onClose={() => setShowInsurancePayerForm(false)}
-            onSuccess={(newPayer) => {
+            editPayer={editingPayer}
+            onClose={() => {
               setShowInsurancePayerForm(false);
-              setInsurancePayers([...insurancePayers, newPayer]);
-              addNotification('success', t.insurancePayerAdded || 'Insurance payer added successfully');
+              setEditingPayer(null);
+            }}
+            onSuccess={(savedPayer) => {
+              setShowInsurancePayerForm(false);
+              if (editingPayer) {
+                // Update existing payer in list
+                setInsurancePayers(insurancePayers.map(p => p.id === savedPayer.id ? savedPayer : p));
+                addNotification('success', t.insurancePayerUpdated || 'Insurance payer updated successfully');
+              } else {
+                // Add new payer to list
+                setInsurancePayers([...insurancePayers, savedPayer]);
+                addNotification('success', t.insurancePayerAdded || 'Insurance payer added successfully');
+              }
+              setEditingPayer(null);
             }}
             addNotification={addNotification}
             t={t}

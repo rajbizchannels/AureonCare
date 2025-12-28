@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileCheck, X, Save, Search, Plus, Trash2, Printer, AlertCircle } from 'lucide-react';
+import { FileCheck, X, Save, Search, Plus, Trash2, Printer, AlertCircle, Shield } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotification, t }) => {
@@ -426,22 +426,38 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
           </select>
         </div>
 
-        {/* Show patient's insurance info if available */}
-        {selectedPatientInsurer && (
-          <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5" />
-              <div>
-                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-blue-300' : 'text-blue-900'}`}>
-                  Patient Insurance
-                </p>
-                <p className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
-                  {selectedPatientInsurer.name} ({selectedPatientInsurer.payer_id})
-                </p>
+        {/* Insurance Payer - Auto-populated from patient */}
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+            Insurance Payer *
+          </label>
+          {selectedPatientInsurer ? (
+            <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-gray-100 border-gray-300'}`}>
+              <div className="flex items-start gap-2">
+                <Shield className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} mt-0.5`} />
+                <div>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {selectedPatientInsurer.name}
+                  </p>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Payer ID: {selectedPatientInsurer.payer_id}
+                  </p>
+                  {selectedPatientInsurer.prior_authorization_required && (
+                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                      ✓ Prior authorization required by this payer
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-300'}`}>
+              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                {formData.patientId ? 'No insurance payer assigned to this patient' : 'Select a patient to view insurance payer'}
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Diagnosis Selection - Load data from existing diagnosis */}
         {formData.patientId && (
@@ -475,31 +491,6 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
             )}
           </div>
         )}
-
-        {/* Insurance Payer */}
-        <div>
-          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-            Insurance Payer *
-          </label>
-          <select
-            value={formData.insurancePayerId}
-            onChange={(e) => setFormData({ ...formData, insurancePayerId: e.target.value })}
-            className={`w-full px-4 py-2 rounded-lg border ${
-              theme === 'dark'
-                ? 'bg-slate-700 border-slate-600 text-white'
-                : 'bg-white border-gray-300 text-gray-900'
-            } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-            required
-            disabled={loadingPayers}
-          >
-            <option value="">Select insurance payer</option>
-            {insurancePayers.map(payer => (
-              <option key={payer.id} value={payer.id}>
-                {payer.name} ({payer.payer_id})
-              </option>
-            ))}
-          </select>
-        </div>
 
         {/* Requested Service */}
         <div>
