@@ -13,16 +13,24 @@ const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
       .then(data => {
         const steps = data.onboarding[userRole] || data.onboarding['admin'] || [];
         setTourSteps(steps);
+        // Show tour immediately when component mounts (parent controls visibility)
         if (steps.length > 0) {
-          // Check if user has completed onboarding
-          const hasCompletedOnboarding = localStorage.getItem(`onboarding-${userRole}-completed`);
-          if (!hasCompletedOnboarding) {
-            setTimeout(() => setIsVisible(true), 1000); // Delay to let page load
-          }
+          setIsVisible(true);
         }
       })
       .catch(err => console.error('Failed to load onboarding tour:', err));
   }, [userRole]);
+
+  // ESC key handler to close tour
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isVisible) {
+        handleSkip();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isVisible]);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {

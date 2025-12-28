@@ -178,15 +178,15 @@ function App() {
   const [currentContext, setCurrentContext] = React.useState('dashboard');
   const [showOnboarding, setShowOnboarding] = React.useState(false);
 
-  // Check if user should see onboarding tour
-  React.useEffect(() => {
-    if (isAuthenticated && user?.role) {
-      const hasSeenOnboarding = localStorage.getItem(`onboarding_${user.role}_complete`);
-      if (!hasSeenOnboarding) {
-        setShowOnboarding(true);
-      }
-    }
-  }, [isAuthenticated, user]);
+  // Don't auto-show onboarding - let users trigger it manually from help menu
+  // React.useEffect(() => {
+  //   if (isAuthenticated && user?.role) {
+  //     const hasSeenOnboarding = localStorage.getItem(`onboarding_${user.role}_complete`);
+  //     if (!hasSeenOnboarding) {
+  //       setShowOnboarding(true);
+  //     }
+  //   }
+  // }, [isAuthenticated, user]);
 
   // Update current context when module or form changes
   React.useEffect(() => {
