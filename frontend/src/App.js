@@ -1090,6 +1090,10 @@ function App() {
           onClose={() => setShowHelpDrawer(false)}
           currentContext={currentContext}
           userRole={user?.role}
+          onOpenAI={() => {
+            setShowHelpDrawer(false);
+            setShowAIAssistant(true);
+          }}
         />
       )}
 
