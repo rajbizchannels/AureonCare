@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waitlist Management - MedFlow Documentation</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-container">
+            <h1>Waitlist Management</h1>
+            <div class="breadcrumb">
+                <a href="../index.html">Documentation</a> / <a href="../index.html#features">Features</a> / Waitlist Management
+            </div>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <div class="doc-grid">
+            <aside class="doc-sidebar">
+                <h3>Core Features</h3>
+                <nav>
+                    <ul>
+                        <li><a href="appointments.html">Appointments</a></li>
+                        <li><a href="waitlist.html" class="active">Waitlist</a></li>
+                        <li><a href="patient-management.html">Patients</a></li>
+                        <li><a href="eprescribe.html">ePrescribe</a></li>
+                        <li><a href="lab-orders.html">Lab Orders</a></li>
+                        <li><a href="diagnosis.html">Diagnosis</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <main class="doc-content">
+                <a href="../index.html" class="back-link">← Back to Documentation Home</a>
+
+                <h1>Waitlist Management</h1>
+
+                <div class="callout callout-note">
+                    <strong>🆕 New in Version 1.1:</strong>
+                    <p>Waitlist is now fully integrated into Practice Management! Access it directly from the Practice Management module's Waitlist tab for a unified appointment and waitlist workflow.</p>
+                </div>
+
+                <p>The waitlist feature helps you manage patients waiting for appointments when slots are full. When appointments become available, the system automatically notifies waitlist patients based on priority.</p>
+
+                <h2>Accessing the Waitlist</h2>
+
+                <h3>Navigation Path</h3>
+                <ol>
+                    <li>Click <strong>"Practice Management"</strong> from the main menu</li>
+                    <li>Click the <strong>"Waitlist"</strong> tab (next to List and Calendar)</li>
+                    <li>View all waitlisted patients with their status and priority</li>
+                </ol>
+
+                <div class="callout callout-tip">
+                    <strong>💡 Quick Access:</strong>
+                    <p>The Waitlist tab shows a count badge indicating the number of active waitlist entries.</p>
+                </div>
+
+                <h2>Adding a Patient to the Waitlist</h2>
+
+                <h3>Method 1: From Appointment Scheduling</h3>
+                <ol>
+                    <li>Attempt to schedule an appointment for a patient</li>
+                    <li>If no slots are available, click <strong>"Add to Waitlist"</strong></li>
+                    <li>Fill in the waitlist details (see form fields below)</li>
+                    <li>Click <strong>"Save"</strong></li>
+                </ol>
+
+                <h3>Method 2: Directly from Waitlist Tab</h3>
+                <ol>
+                    <li>Go to <strong>Practice Management > Waitlist</strong></li>
+                    <li>Click <strong>"+ Add to Waitlist"</strong> button</li>
+                    <li>Complete the waitlist form</li>
+                    <li>Click <strong>"Save"</strong></li>
+                </ol>
+
+                <h2>Waitlist Form Fields</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Description</th>
+                            <th>Required</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Patient</strong></td>
+                            <td>Search and select the patient</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Provider</strong></td>
+                            <td>Preferred provider for the appointment</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Appointment Type</strong></td>
+                            <td>Type of visit needed (e.g., Follow-up, New Patient)</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Priority</strong></td>
+                            <td>High, Medium, or Low priority</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Preferred Date Range</strong></td>
+                            <td>Date range when patient is available</td>
+                            <td>Optional</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Preferred Time</strong></td>
+                            <td>Morning, Afternoon, or Any Time</td>
+                            <td>Optional</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Reason</strong></td>
+                            <td>Brief description of appointment reason</td>
+                            <td>Optional</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Notes</strong></td>
+                            <td>Internal notes about patient preferences</td>
+                            <td>Optional</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Priority Levels</h2>
+
+                <p>Set the appropriate priority based on medical necessity and patient needs:</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Priority</th>
+                            <th>When to Use</th>
+                            <th>Notification Order</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>🔴 High</strong></td>
+                            <td>Urgent medical need, time-sensitive follow-up</td>
+                            <td>Notified first</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🟡 Medium</strong></td>
+                            <td>Standard follow-up, moderately important</td>
+                            <td>Notified second</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🟢 Low</strong></td>
+                            <td>Routine check-up, flexible timing</td>
+                            <td>Notified last</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout callout-warning">
+                    <strong>⚠️ Clinical Judgment:</strong>
+                    <p>Always use clinical judgment when assigning priority. High priority should be reserved for patients with urgent medical needs.</p>
+                </div>
+
+                <h2>Waitlist Status Tracking</h2>
+
+                <p>Each waitlist entry has one of the following statuses:</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Description</th>
+                            <th>Next Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Active</strong></td>
+                            <td>Patient is waiting for an appointment slot</td>
+                            <td>System monitors for available slots</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Notified</strong></td>
+                            <td>Patient has been notified of an available slot</td>
+                            <td>Awaiting patient confirmation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Scheduled</strong></td>
+                            <td>Appointment has been scheduled</td>
+                            <td>Entry moved to scheduled appointments</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cancelled</strong></td>
+                            <td>Patient no longer needs the appointment</td>
+                            <td>Entry archived</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Expired</strong></td>
+                            <td>Patient didn't respond within timeframe</td>
+                            <td>Follow up with patient or remove</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Automatic Notifications</h2>
+
+                <p>When a matching appointment slot becomes available, MedFlow automatically:</p>
+
+                <ol>
+                    <li><strong>Identifies Matches:</strong> Finds waitlist entries matching the provider, appointment type, and date preferences</li>
+                    <li><strong>Sorts by Priority:</strong> Orders matches by priority (High > Medium > Low) and date added</li>
+                    <li><strong>Sends Notifications:</strong> Notifies the highest-priority patient via:
+                        <ul>
+                            <li>SMS text message</li>
+                            <li>Email notification</li>
+                            <li>Patient portal alert</li>
+                        </ul>
+                    </li>
+                    <li><strong>Updates Status:</strong> Changes waitlist status to "Notified"</li>
+                    <li><strong>Sets Expiration:</strong> Patient has 24 hours to confirm (configurable)</li>
+                </ol>
+
+                <div class="callout callout-tip">
+                    <strong>💡 Pro Tip:</strong>
+                    <p>Enable mobile notifications in patient preferences to ensure they receive waitlist alerts immediately.</p>
+                </div>
+
+                <h2>Confirming an Appointment from Waitlist</h2>
+
+                <h3>When Patient Responds "Yes"</h3>
+                <ol>
+                    <li>Patient confirms they want the appointment (via portal, phone, or SMS)</li>
+                    <li>Staff clicks <strong>"Confirm Appointment"</strong> next to the waitlist entry</li>
+                    <li>System automatically:
+                        <ul>
+                            <li>Creates the appointment in the calendar</li>
+                            <li>Updates waitlist status to "Scheduled"</li>
+                            <li>Sends appointment confirmation to patient</li>
+                            <li>Removes entry from active waitlist</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>When Patient Responds "No" or Doesn't Respond</h3>
+                <ol>
+                    <li>If patient declines or doesn't respond within 24 hours:</li>
+                    <li>Click <strong>"Move to Next"</strong> to notify the next priority patient</li>
+                    <li>Original entry status changes to "Expired"</li>
+                    <li>Next patient in priority order is automatically notified</li>
+                </ol>
+
+                <h2>Managing Waitlist Entries</h2>
+
+                <h3>Editing a Waitlist Entry</h3>
+                <ol>
+                    <li>Click the <strong>"Edit"</strong> icon next to the entry</li>
+                    <li>Update priority, preferences, or notes</li>
+                    <li>Click <strong>"Save Changes"</strong></li>
+                </ol>
+
+                <h3>Cancelling a Waitlist Entry</h3>
+                <ol>
+                    <li>Click the <strong>"Cancel"</strong> icon</li>
+                    <li>Select cancellation reason:
+                        <ul>
+                            <li>Patient no longer needs appointment</li>
+                            <li>Scheduled elsewhere</li>
+                            <li>Unable to reach patient</li>
+                            <li>Other (specify)</li>
+                        </ul>
+                    </li>
+                    <li>Add optional notes</li>
+                    <li>Confirm cancellation</li>
+                </ol>
+
+                <h3>Filtering and Searching</h3>
+                <p>Use the filter controls to find specific waitlist entries:</p>
+                <ul>
+                    <li><strong>Status Filter:</strong> Active, Notified, Expired, etc.</li>
+                    <li><strong>Priority Filter:</strong> High, Medium, Low</li>
+                    <li><strong>Provider Filter:</strong> Select specific provider</li>
+                    <li><strong>Date Range:</strong> Filter by date added or preferred dates</li>
+                    <li><strong>Search:</strong> Search by patient name or MRN</li>
+                </ul>
+
+                <h2>Best Practices</h2>
+
+                <div class="callout callout-tip">
+                    <strong>💡 Waitlist Best Practices:</strong>
+                    <ul>
+                        <li><strong>Set Realistic Priorities:</strong> Reserve High priority for medically urgent cases</li>
+                        <li><strong>Keep Notes Updated:</strong> Document patient preferences and special requirements</li>
+                        <li><strong>Review Daily:</strong> Check waitlist daily for expired or stale entries</li>
+                        <li><strong>Contact Patients Proactively:</strong> Call high-priority patients when slots open</li>
+                        <li><strong>Clean Up Regularly:</strong> Remove or update entries older than 30 days</li>
+                        <li><strong>Verify Contact Info:</strong> Ensure patient phone and email are current</li>
+                        <li><strong>Train Front Desk:</strong> Ensure staff knows how to use waitlist efficiently</li>
+                    </ul>
+                </div>
+
+                <h2>Reports and Analytics</h2>
+
+                <p>Access waitlist reports from <strong>Reports > Scheduling</strong>:</p>
+                <ul>
+                    <li><strong>Active Waitlist Report:</strong> Current waitlist entries by provider</li>
+                    <li><strong>Waitlist Conversion Rate:</strong> Percentage of waitlist patients who schedule</li>
+                    <li><strong>Average Wait Time:</strong> Time from waitlist addition to scheduling</li>
+                    <li><strong>Expired Entries Report:</strong> Patients who didn't respond to notifications</li>
+                </ul>
+
+                <h2>Troubleshooting</h2>
+
+                <h3>Patient Not Receiving Notifications</h3>
+                <ul>
+                    <li>Verify patient's contact information is correct</li>
+                    <li>Check patient's notification preferences (Settings > Profile)</li>
+                    <li>Ensure SMS and email services are configured (Admin only)</li>
+                    <li>Check spam/junk folders for emails</li>
+                </ul>
+
+                <h3>Wrong Patient Was Notified</h3>
+                <ul>
+                    <li>Review priority settings on all waitlist entries</li>
+                    <li>Check date preferences - system matches on availability</li>
+                    <li>Verify appointment type matches</li>
+                </ul>
+
+                <h3>Can't Confirm Appointment</h3>
+                <ul>
+                    <li>Ensure the time slot is still available</li>
+                    <li>Check for scheduling conflicts</li>
+                    <li>Verify provider is working that day</li>
+                    <li>Refresh the page and try again</li>
+                </ul>
+
+                <h2>Related Topics</h2>
+                <ul>
+                    <li><a href="appointments.html">Appointment Scheduling →</a></li>
+                    <li><a href="patient-management.html">Patient Management →</a></li>
+                    <li><a href="../guides/reports.html">Scheduling Reports →</a></li>
+                </ul>
+
+                <div class="doc-footer">
+                    <p>For additional help with waitlist management, contact your practice administrator.</p>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

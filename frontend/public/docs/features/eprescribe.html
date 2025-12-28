@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ePrescribe - MedFlow Documentation</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-container">
+            <h1>Electronic Prescribing (ePrescribe)</h1>
+            <div class="breadcrumb">
+                <a href="../index.html">Documentation</a> / <a href="../index.html#features">Features</a> / ePrescribe
+            </div>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <div class="doc-grid">
+            <aside class="doc-sidebar">
+                <h3>Core Features</h3>
+                <nav>
+                    <ul>
+                        <li><a href="appointments.html">Appointments</a></li>
+                        <li><a href="waitlist.html">Waitlist</a></li>
+                        <li><a href="patient-management.html">Patients</a></li>
+                        <li><a href="eprescribe.html" class="active">ePrescribe</a></li>
+                        <li><a href="lab-orders.html">Lab Orders</a></li>
+                        <li><a href="diagnosis.html">Diagnosis</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <main class="doc-content">
+                <a href="../index.html" class="back-link">← Back to Documentation Home</a>
+
+                <h1>Electronic Prescribing (ePrescribe)</h1>
+
+                <div class="callout callout-note">
+                    <strong>🆕 New in Version 1.1:</strong>
+                    <p>The ePrescribe modal now features edit mode with prefilled medication names, step-by-step workflow navigation, and direct linking to diagnoses!</p>
+                </div>
+
+                <p>MedFlow's ePrescribe module enables providers to electronically prescribe medications, check drug interactions, and send prescriptions directly to pharmacies. The system is integrated with national drug databases and pharmacy networks.</p>
+
+                <h2>Accessing ePrescribe</h2>
+
+                <h3>From Patient Chart</h3>
+                <ol>
+                    <li>Open a patient's chart</li>
+                    <li>Go to the <strong>"Medications"</strong> tab</li>
+                    <li>Click <strong>"+ New Prescription"</strong> button</li>
+                    <li>The ePrescribe modal opens with a 4-step workflow</li>
+                </ol>
+
+                <h3>From Clinical Encounter</h3>
+                <ol>
+                    <li>During a patient visit or clinical note</li>
+                    <li>Click <strong>"Prescribe Medication"</strong> in the encounter toolbar</li>
+                    <li>The ePrescribe modal opens with patient context pre-loaded</li>
+                </ol>
+
+                <h2>ePrescribe Workflow (4 Steps)</h2>
+
+                <p>The ePrescribe modal guides you through a step-by-step process:</p>
+
+                <h3>Step 1: Search Medication</h3>
+                <ol>
+                    <li><strong>Search for Drug:</strong> Type medication name or NDC code</li>
+                    <li><strong>Select from Results:</strong> Choose the specific drug formulation
+                        <ul>
+                            <li>Brand name or generic</li>
+                            <li>Strength (e.g., 10mg, 20mg)</li>
+                            <li>Form (tablet, capsule, liquid, etc.)</li>
+                        </ul>
+                    </li>
+                    <li><strong>View Drug Information:</strong> Review indication, warnings, and contraindications</li>
+                    <li>Click <strong>"Next"</strong> to proceed to prescription details</li>
+                </ol>
+
+                <div class="callout callout-tip">
+                    <strong>💡 Edit Mode Enhancement:</strong>
+                    <p>When editing an existing prescription, Step 1 now automatically prefills the medication name, allowing you to quickly update dosage or instructions without re-searching!</p>
+                </div>
+
+                <h3>Step 2: Prescription Details</h3>
+                <p>Enter detailed prescription information:</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Dosage</strong></td>
+                            <td>Strength and quantity per dose</td>
+                            <td>10mg, 1 tablet</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Frequency</strong></td>
+                            <td>How often to take medication</td>
+                            <td>Once daily, Twice daily, Every 6 hours</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Route</strong></td>
+                            <td>Administration method</td>
+                            <td>Oral, Topical, IV, IM, etc.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Duration</strong></td>
+                            <td>Length of treatment</td>
+                            <td>7 days, 30 days, Until finished</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Quantity</strong></td>
+                            <td>Total number to dispense</td>
+                            <td>30 tablets, 100ml</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Refills</strong></td>
+                            <td>Number of refills allowed</td>
+                            <td>0, 1, 2, 3, PRN</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Instructions</strong></td>
+                            <td>Patient-facing directions (SIG)</td>
+                            <td>"Take 1 tablet by mouth daily with food"</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Notes</strong></td>
+                            <td>Internal clinical notes</td>
+                            <td>"For hypertension management"</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Special Options</h4>
+                <ul>
+                    <li><strong>Generic Substitution:</strong> Toggle to allow/disallow generic substitution ("DAW" - Dispense As Written)</li>
+                    <li><strong>Prior Authorization:</strong> Check if prior auth is required</li>
+                    <li><strong>Controlled Substance:</strong> System flags Schedule II-V medications automatically</li>
+                </ul>
+
+                <h3>Step 3: Select Pharmacy</h3>
+                <ol>
+                    <li><strong>Patient's Preferred Pharmacy:</strong> Pre-selected if on file</li>
+                    <li><strong>Search for Pharmacy:</strong> Find by name, address, or zip code</li>
+                    <li><strong>Recent Pharmacies:</strong> Choose from recently used pharmacies</li>
+                    <li><strong>Add New Pharmacy:</strong> Add a pharmacy to the system if not found</li>
+                </ol>
+
+                <p>Selected pharmacy must support electronic prescribing (most major chains do).</p>
+
+                <div class="callout callout-warning">
+                    <strong>⚠️ Controlled Substances:</strong>
+                    <p>Schedule II medications may require paper prescription in some states. Check your state regulations. MedFlow will alert you if electronic prescribing is not allowed.</p>
+                </div>
+
+                <h3>Step 4: Review and Submit</h3>
+                <ol>
+                    <li><strong>Review All Information:</strong>
+                        <ul>
+                            <li>Patient demographics and allergies</li>
+                            <li>Medication details and instructions</li>
+                            <li>Pharmacy information</li>
+                            <li>Drug interactions and warnings</li>
+                        </ul>
+                    </li>
+                    <li><strong>Link to Diagnosis (New!):</strong>
+                        <ul>
+                            <li>Select primary diagnosis for this prescription</li>
+                            <li>Links prescription to ICD-10 code for insurance</li>
+                            <li>Improves claim approval rates</li>
+                        </ul>
+                    </li>
+                    <li><strong>Digital Signature:</strong> Apply your electronic signature</li>
+                    <li>Click <strong>"Submit Prescription"</strong></li>
+                </ol>
+
+                <h2>Drug Interaction Checking</h2>
+
+                <p>MedFlow automatically checks for potential issues before submitting prescriptions:</p>
+
+                <h3>Interaction Types</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Action Required</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>🔴 Critical</strong></td>
+                            <td>Severe drug-drug interaction or contraindication</td>
+                            <td>Prescription blocked - clinical override required</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🟡 Moderate</strong></td>
+                            <td>Potential interaction requiring monitoring</td>
+                            <td>Warning displayed - acknowledgment required</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🟢 Minor</strong></td>
+                            <td>Low-risk interaction</td>
+                            <td>Informational only</td>
+                        </tr>
+                        <tr>
+                            <td><strong>⚠️ Allergy</strong></td>
+                            <td>Patient allergic to medication or class</td>
+                            <td>Prescription blocked - override with justification</td>
+                        </tr>
+                        <tr>
+                            <td><strong>👶 Age</strong></td>
+                            <td>Not recommended for patient age</td>
+                            <td>Warning - clinical judgment required</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🤰 Pregnancy</strong></td>
+                            <td>Contraindicated in pregnancy</td>
+                            <td>Category X drugs blocked for pregnant patients</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout callout-danger">
+                    <strong>🔒 Clinical Override:</strong>
+                    <p>When overriding a critical alert, you MUST document clinical justification. This documentation is part of the patient's permanent medical record.</p>
+                </div>
+
+                <h2>Editing Existing Prescriptions</h2>
+
+                <h3>Edit vs. New Prescription</h3>
+                <p>To modify an active prescription:</p>
+                <ol>
+                    <li>Go to <strong>Patient Chart > Medications</strong></li>
+                    <li>Find the prescription in the active medications list</li>
+                    <li>Click <strong>"Edit"</strong> icon</li>
+                    <li>The ePrescribe modal opens in <strong>Edit Mode</strong>:
+                        <ul>
+                            <li>Medication name is prefilled (can't be changed - create new prescription to change drug)</li>
+                            <li>All current details are pre-populated</li>
+                            <li>You can navigate between steps while maintaining context</li>
+                            <li>Update dosage, frequency, quantity, or instructions</li>
+                        </ul>
+                    </li>
+                    <li>Click <strong>"Update Prescription"</strong></li>
+                    <li>System sends updated prescription to pharmacy</li>
+                </ol>
+
+                <div class="callout callout-note">
+                    <strong>📝 Version History:</strong>
+                    <p>All prescription changes are tracked in the medication history. Click "View History" to see all versions and who made changes.</p>
+                </div>
+
+                <h2>Managing Prescriptions</h2>
+
+                <h3>Renewing a Prescription</h3>
+                <ol>
+                    <li>Click <strong>"Renew"</strong> next to an active or expired prescription</li>
+                    <li>Review and update details if needed</li>
+                    <li>Update refill count and quantity</li>
+                    <li>Submit renewed prescription</li>
+                </ol>
+
+                <h3>Discontinuing a Prescription</h3>
+                <ol>
+                    <li>Click <strong>"Discontinue"</strong></li>
+                    <li>Select reason:
+                        <ul>
+                            <li>Treatment completed</li>
+                            <li>Adverse reaction</li>
+                            <li>No longer needed</li>
+                            <li>Changed to different medication</li>
+                            <li>Other (specify)</li>
+                        </ul>
+                    </li>
+                    <li>Add optional notes</li>
+                    <li>Confirm discontinuation</li>
+                </ol>
+
+                <p>Discontinued medications move to the "Past Medications" section but remain in the patient's history.</p>
+
+                <h3>Prescription Status</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Meaning</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Pending</strong></td>
+                            <td>Submitted but not yet processed by pharmacy</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sent</strong></td>
+                            <td>Successfully transmitted to pharmacy</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Received</strong></td>
+                            <td>Pharmacy acknowledged receipt</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Filled</strong></td>
+                            <td>Pharmacy filled the prescription</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Picked Up</strong></td>
+                            <td>Patient picked up medication</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Error</strong></td>
+                            <td>Transmission failed - requires resubmission</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cancelled</strong></td>
+                            <td>Prescription cancelled before filling</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Linking Prescriptions to Diagnoses</h2>
+
+                <p><strong>New in v1.1:</strong> You can now link each prescription to a diagnosis code.</p>
+
+                <h3>Why Link Diagnoses?</h3>
+                <ul>
+                    <li><strong>Insurance Requirements:</strong> Many payers require diagnosis justification</li>
+                    <li><strong>Clinical Documentation:</strong> Creates clear link between problem and treatment</li>
+                    <li><strong>Improved Claims:</strong> Reduces claim denials and prior auth rejections</li>
+                    <li><strong>Better Analytics:</strong> Track prescribing patterns by condition</li>
+                </ul>
+
+                <h3>How to Link</h3>
+                <ol>
+                    <li>In Step 4 (Review), look for <strong>"Link to Diagnosis"</strong> section</li>
+                    <li>Click <strong>"Select Diagnosis"</strong></li>
+                    <li>Choose from:
+                        <ul>
+                            <li>Diagnoses from current encounter</li>
+                            <li>Active diagnoses in patient's problem list</li>
+                            <li>Search for new ICD-10 code</li>
+                        </ul>
+                    </li>
+                    <li>Selected diagnosis appears on prescription</li>
+                </ol>
+
+                <div class="callout callout-tip">
+                    <strong>💡 Quick Tip:</strong>
+                    <p>When prescribing from within a clinical note, diagnoses from that encounter are pre-populated for easy selection.</p>
+                </div>
+
+                <h2>Controlled Substances</h2>
+
+                <h3>DEA Requirements</h3>
+                <p>To prescribe controlled substances electronically:</p>
+                <ul>
+                    <li>Provider must have valid DEA number on file</li>
+                    <li>Two-factor authentication required for each CS prescription</li>
+                    <li>State-specific rules apply (some states require paper for Schedule II)</li>
+                    <li>Refills not allowed for Schedule II</li>
+                </ul>
+
+                <h3>EPCS Authentication</h3>
+                <ol>
+                    <li>Complete prescription as normal</li>
+                    <li>When submitting a controlled substance prescription:</li>
+                    <li>System prompts for additional authentication:
+                        <ul>
+                            <li>Password confirmation</li>
+                            <li>SMS code to registered phone</li>
+                            <li>Or biometric verification</li>
+                        </ul>
+                    </li>
+                    <li>Enter authentication credentials</li>
+                    <li>Prescription is digitally signed and transmitted</li>
+                </ol>
+
+                <h2>Pharmacy Management</h2>
+
+                <h3>Adding a New Pharmacy</h3>
+                <ol>
+                    <li>From the pharmacy selection step, click <strong>"+ Add Pharmacy"</strong></li>
+                    <li>Search NCPDP database by:
+                        <ul>
+                            <li>Pharmacy name</li>
+                            <li>Address or zip code</li>
+                            <li>NCPDP number</li>
+                        </ul>
+                    </li>
+                    <li>Select pharmacy from results</li>
+                    <li>Verify ePrescribe capability (shown in listing)</li>
+                    <li>Save to patient's preferred pharmacies</li>
+                </ol>
+
+                <h3>Setting Patient's Preferred Pharmacy</h3>
+                <ol>
+                    <li>Go to <strong>Patient Chart > Demographics</strong></li>
+                    <li>Click <strong>"Edit Contact Information"</strong></li>
+                    <li>Select <strong>"Preferred Pharmacy"</strong> from dropdown</li>
+                    <li>Save changes</li>
+                </ol>
+
+                <p>This pharmacy will be pre-selected for all future prescriptions for this patient.</p>
+
+                <h2>Prescription History</h2>
+
+                <p>View complete prescription history:</p>
+                <ul>
+                    <li><strong>Active Medications:</strong> Currently prescribed and active</li>
+                    <li><strong>Past Medications:</strong> Discontinued or completed</li>
+                    <li><strong>Medication History:</strong> All prescriptions ever written</li>
+                </ul>
+
+                <p>Filter by:</p>
+                <ul>
+                    <li>Date range</li>
+                    <li>Prescribing provider</li>
+                    <li>Medication name or class</li>
+                    <li>Status (active, discontinued, etc.)</li>
+                </ul>
+
+                <h2>Troubleshooting</h2>
+
+                <h3>Prescription Failed to Send</h3>
+                <ul>
+                    <li>Check internet connection</li>
+                    <li>Verify pharmacy supports ePrescribe</li>
+                    <li>Ensure pharmacy information is complete and correct</li>
+                    <li>Try selecting a different pharmacy</li>
+                    <li>If issue persists, print prescription and fax/call pharmacy</li>
+                </ul>
+
+                <h3>Can't Find Medication in Search</h3>
+                <ul>
+                    <li>Try searching by generic name instead of brand</li>
+                    <li>Check spelling</li>
+                    <li>Search by NDC code if available</li>
+                    <li>For compounded medications, use "Custom Medication" option</li>
+                </ul>
+
+                <h3>Drug Interaction Alert Won't Clear</h3>
+                <ul>
+                    <li>Review the interaction details carefully</li>
+                    <li>For critical alerts, you must provide clinical justification</li>
+                    <li>Consider alternative medications</li>
+                    <li>Consult pharmacist if unsure</li>
+                </ul>
+
+                <h2>Best Practices</h2>
+
+                <div class="callout callout-tip">
+                    <strong>💡 ePrescribe Best Practices:</strong>
+                    <ul>
+                        <li><strong>Review Allergies First:</strong> Always check patient allergies before prescribing</li>
+                        <li><strong>Link to Diagnosis:</strong> Always link prescriptions to diagnoses for better documentation</li>
+                        <li><strong>Clear Instructions:</strong> Write patient-friendly SIG instructions</li>
+                        <li><strong>Check Interactions:</strong> Never ignore drug interaction warnings</li>
+                        <li><strong>Verify Pharmacy:</strong> Confirm pharmacy selection before submitting</li>
+                        <li><strong>Document Overrides:</strong> Always document clinical reasoning for alert overrides</li>
+                        <li><strong>Update Medication List:</strong> Keep active medications list current</li>
+                        <li><strong>Follow Up:</strong> Check prescription status to ensure pharmacy received it</li>
+                    </ul>
+                </div>
+
+                <h2>Related Topics</h2>
+                <ul>
+                    <li><a href="diagnosis.html">Diagnosis & ICD Codes →</a></li>
+                    <li><a href="../guides/clinical-notes.html">Clinical Documentation →</a></li>
+                    <li><a href="../guides/pharmacy-directory.html">Pharmacy Directory →</a></li>
+                </ul>
+
+                <div class="doc-footer">
+                    <p>For ePrescribe technical issues, contact MedFlow support at support@medflow.com</p>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

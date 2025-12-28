@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Sun, Moon, LogOut } from 'lucide-react';
+import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Sun, Moon, LogOut, HelpCircle } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -68,6 +68,11 @@ import NewLaboratoryForm from './components/forms/NewLaboratoryForm';
 import NotificationsPanel from './components/panels/NotificationsPanel';
 import SearchPanel from './components/panels/SearchPanel';
 import AIAssistantPanel from './components/panels/AIAssistantPanel';
+
+// Help System Components
+import HelpDrawer from './components/help/HelpDrawer';
+import OnboardingTour from './components/help/OnboardingTour';
+import EnhancedAIAssistant from './components/help/EnhancedAIAssistant';
 
 // Quick Views
 import AppointmentsQuickView from './components/quickViews/AppointmentsQuickView';
@@ -168,6 +173,30 @@ function App() {
 
   // CRM refresh trigger - increment this to force CRM counts to refresh
   const [crmRefreshKey, setCrmRefreshKey] = React.useState(0);
+
+  // Help system state
+  const [showHelpDrawer, setShowHelpDrawer] = React.useState(false);
+  const [currentContext, setCurrentContext] = React.useState('dashboard');
+  const [showOnboarding, setShowOnboarding] = React.useState(false);
+
+  // Check if user should see onboarding tour
+  React.useEffect(() => {
+    if (isAuthenticated && user?.role) {
+      const hasSeenOnboarding = localStorage.getItem(`onboarding_${user.role}_complete`);
+      if (!hasSeenOnboarding) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [isAuthenticated, user]);
+
+  // Update current context when module or form changes
+  React.useEffect(() => {
+    if (showForm) {
+      setCurrentContext(`${showForm}-form`);
+    } else if (currentModule) {
+      setCurrentContext(currentModule);
+    }
+  }, [currentModule, showForm]);
 
   // Modal management: close other modals when opening a new one
   const handleSetEditingItem = (item) => {
@@ -625,6 +654,14 @@ function App() {
               </button>
 
               <button
+                onClick={() => setShowHelpDrawer(!showHelpDrawer)}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                title="Help & Documentation"
+              >
+                <HelpCircle className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+              </button>
+
+              <button
                 onClick={() => setShowAIAssistant(!showAIAssistant)}
                 className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
                 title="AI Assistant"
@@ -960,12 +997,40 @@ function App() {
       )}
 
       {showAIAssistant && (
-        <AIAssistantPanel
+        <EnhancedAIAssistant
           theme={theme}
           tasks={tasks}
           onClose={() => setShowAIAssistant(false)}
           onSelectItem={setSelectedItem}
           onSelectModule={setCurrentModule}
+          currentContext={currentContext}
+        />
+      )}
+
+      {/* Help Drawer */}
+      {showHelpDrawer && (
+        <HelpDrawer
+          theme={theme}
+          isOpen={showHelpDrawer}
+          onClose={() => setShowHelpDrawer(false)}
+          currentContext={currentContext}
+          userRole={user?.role}
+        />
+      )}
+
+      {/* Onboarding Tour */}
+      {showOnboarding && (
+        <OnboardingTour
+          theme={theme}
+          userRole={user?.role}
+          onComplete={() => {
+            setShowOnboarding(false);
+            localStorage.setItem(`onboarding_${user.role}_complete`, 'true');
+          }}
+          onSkip={() => {
+            setShowOnboarding(false);
+            localStorage.setItem(`onboarding_${user.role}_complete`, 'true');
+          }}
         />
       )}
 

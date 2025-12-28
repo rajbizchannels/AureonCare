@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Authentication - MedFlow Documentation</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-container">
+            <h1>Login & Authentication</h1>
+            <div class="breadcrumb">
+                <a href="../index.html">Documentation</a> / <a href="../index.html#getting-started">Getting Started</a> / Login & Authentication
+            </div>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <div class="doc-grid">
+            <aside class="doc-sidebar">
+                <h3>Getting Started</h3>
+                <nav>
+                    <ul>
+                        <li><a href="login.html" class="active">Login & Authentication</a></li>
+                        <li><a href="dashboard.html">Dashboard Overview</a></li>
+                        <li><a href="navigation.html">Navigation Guide</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <main class="doc-content">
+                <a href="../index.html" class="back-link">← Back to Documentation Home</a>
+
+                <h1>Login & Authentication</h1>
+
+                <p>MedFlow uses secure, role-based authentication to ensure patient data privacy and HIPAA compliance. This guide will help you access the system and manage your account.</p>
+
+                <h2>Accessing MedFlow</h2>
+
+                <h3>Step 1: Navigate to Login Page</h3>
+                <ol>
+                    <li>Open your web browser (Chrome, Firefox, Safari, or Edge recommended)</li>
+                    <li>Navigate to your MedFlow URL (provided by your administrator)</li>
+                    <li>You will see the MedFlow login screen</li>
+                </ol>
+
+                <h3>Step 2: Enter Your Credentials</h3>
+                <ol>
+                    <li><strong>Username:</strong> Enter your assigned username (usually your email address)</li>
+                    <li><strong>Password:</strong> Enter your secure password</li>
+                    <li>Click the <strong>"Sign In"</strong> button</li>
+                </ol>
+
+                <div class="callout callout-tip">
+                    <strong>💡 Tip:</strong>
+                    <p>Check the "Remember Me" option if you're using a personal, secure device. Do NOT use this option on shared computers.</p>
+                </div>
+
+                <h2>First-Time Login</h2>
+
+                <p>When you log in for the first time, you may be asked to:</p>
+                <ul>
+                    <li><strong>Change Your Password:</strong> Create a strong password that meets security requirements</li>
+                    <li><strong>Set Up Two-Factor Authentication (2FA):</strong> Add an extra layer of security (if enabled)</li>
+                    <li><strong>Review Terms of Service:</strong> Accept the user agreement and privacy policy</li>
+                    <li><strong>Complete Your Profile:</strong> Add contact information and preferences</li>
+                </ul>
+
+                <h3>Password Requirements</h3>
+                <ul>
+                    <li>Minimum 8 characters</li>
+                    <li>At least one uppercase letter</li>
+                    <li>At least one lowercase letter</li>
+                    <li>At least one number</li>
+                    <li>At least one special character (@, #, $, %, etc.)</li>
+                </ul>
+
+                <h2>Two-Factor Authentication (2FA)</h2>
+
+                <p>If your organization has enabled 2FA, you'll need to verify your identity using a second method after entering your password.</p>
+
+                <h3>Setting Up 2FA</h3>
+                <ol>
+                    <li>After entering your password, you'll be prompted to set up 2FA</li>
+                    <li>Choose your preferred method:
+                        <ul>
+                            <li><strong>SMS Text Message:</strong> Receive a code via text</li>
+                            <li><strong>Authenticator App:</strong> Use Google Authenticator or similar app</li>
+                            <li><strong>Email:</strong> Receive a code via email</li>
+                        </ul>
+                    </li>
+                    <li>Follow the on-screen instructions to complete setup</li>
+                    <li>Save your backup codes in a secure location</li>
+                </ol>
+
+                <div class="callout callout-warning">
+                    <strong>⚠️ Important:</strong>
+                    <p>Keep your backup codes secure. You'll need them if you lose access to your 2FA device.</p>
+                </div>
+
+                <h2>User Roles and Permissions</h2>
+
+                <p>MedFlow uses role-based access control (RBAC). Your role determines which features you can access:</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Description</th>
+                            <th>Key Permissions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Administrator</strong></td>
+                            <td>Full system access</td>
+                            <td>Manage users, configure settings, view all data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Doctor</strong></td>
+                            <td>Clinical provider</td>
+                            <td>Patient care, prescribe, order labs, clinical notes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nurse</strong></td>
+                            <td>Clinical support</td>
+                            <td>Vital signs, assist with care, view patient data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Receptionist</strong></td>
+                            <td>Front desk</td>
+                            <td>Schedule appointments, register patients, check-in</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Billing Manager</strong></td>
+                            <td>Revenue cycle</td>
+                            <td>Submit claims, process payments, financial reports</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Patient</strong></td>
+                            <td>Self-service portal</td>
+                            <td>View records, schedule appointments, pay bills</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Troubleshooting Login Issues</h2>
+
+                <h3>Forgot Password</h3>
+                <ol>
+                    <li>Click the <strong>"Forgot Password?"</strong> link on the login page</li>
+                    <li>Enter your username or email address</li>
+                    <li>Check your email for a password reset link</li>
+                    <li>Click the link and create a new password</li>
+                    <li>Return to the login page and sign in with your new password</li>
+                </ol>
+
+                <h3>Account Locked</h3>
+                <p>If you enter an incorrect password multiple times (usually 5 attempts), your account will be temporarily locked for security. Wait 15 minutes or contact your administrator to unlock it.</p>
+
+                <h3>Can't Receive 2FA Code</h3>
+                <ul>
+                    <li>Check your phone signal or email inbox</li>
+                    <li>Request a new code by clicking "Resend Code"</li>
+                    <li>Use a backup code if available</li>
+                    <li>Contact your administrator for assistance</li>
+                </ul>
+
+                <div class="callout callout-danger">
+                    <strong>🔒 Security Best Practices:</strong>
+                    <ul>
+                        <li>Never share your password with anyone</li>
+                        <li>Log out when leaving your workstation</li>
+                        <li>Use a unique password for MedFlow</li>
+                        <li>Report suspicious activity immediately</li>
+                        <li>Keep your contact information up to date</li>
+                    </ul>
+                </div>
+
+                <h2>Logging Out</h2>
+
+                <p>To securely log out of MedFlow:</p>
+                <ol>
+                    <li>Click your profile icon in the top-right corner</li>
+                    <li>Select <strong>"Logout"</strong> from the dropdown menu</li>
+                    <li>You will be returned to the login screen</li>
+                </ol>
+
+                <p>Your session will automatically expire after 30 minutes of inactivity for security purposes.</p>
+
+                <h2>Next Steps</h2>
+                <ul>
+                    <li><a href="dashboard.html">Learn about the Dashboard →</a></li>
+                    <li><a href="navigation.html">Navigation Guide →</a></li>
+                    <li><a href="../features/appointments.html">Schedule Your First Appointment →</a></li>
+                </ul>
+
+                <div class="doc-footer">
+                    <p>Need help? Contact your system administrator or IT support team.</p>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
