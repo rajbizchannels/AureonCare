@@ -114,6 +114,7 @@ app.use('/api/telehealth-settings', require('./routes/telehealthSettings'));
 app.use('/api/vendor-integration-settings', require('./routes/vendorIntegrationSettings'));
 app.use('/api/notification-preferences', require('./routes/notificationPreferences'));
 app.use('/api/fhir', require('./routes/fhir'));
+app.use('/api/fhir-tracking', require('./routes/fhir-tracking'));
 app.use('/api/patient-portal', require('./routes/patient-portal'));
 app.use('/api/medical-records', require('./routes/medical-records'));
 app.use('/api/prescriptions', require('./routes/prescriptions'));

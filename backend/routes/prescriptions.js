@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const WhatsAppService = require('../services/whatsappService');
 const vendorIntegrationManager = require('../services/vendorIntegrations');
+const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -223,6 +224,30 @@ router.post('/', async (req, res) => {
 
     const prescription = result.rows[0];
 
+    // Initialize FHIR tracking for prescription
+    try {
+      const patientResult = await pool.query(
+        'SELECT first_name, last_name FROM users WHERE id = $1',
+        [patientId]
+      );
+      const providerResult = await pool.query(
+        'SELECT first_name, last_name FROM users WHERE id = $1',
+        [providerId]
+      );
+
+      await fhirTrackingIntegration.initializePrescriptionTracking({
+        prescriptionId: prescription.id,
+        prescription,
+        patientData: patientResult.rows[0],
+        providerData: providerResult.rows[0],
+        vendorName: req.body.sendToVendor ? 'surescripts' : null,
+        userId: providerId
+      });
+    } catch (trackingError) {
+      console.error('Error initializing prescription tracking:', trackingError);
+      // Don't fail the request if tracking fails
+    }
+
     // Send WhatsApp notification if enabled
     try {
       const whatsappPref = await WhatsAppService.isEnabledForPatient(pool, patientId);
@@ -338,6 +363,21 @@ router.post('/', async (req, res) => {
             internalReferenceId: prescription.id,
             patientId: patientId
           });
+
+          // Record vendor interaction in FHIR tracking
+          try {
+            await fhirTrackingIntegration.recordPrescriptionVendorInteraction({
+              prescriptionId: prescription.id,
+              vendorName: 'surescripts',
+              vendorTrackingId: vendorResponse.vendorId,
+              vendorStatus: vendorResponse.status,
+              vendorResponse: vendorResponse.response,
+              success: true,
+              userId: providerId
+            });
+          } catch (trackingError) {
+            console.error('Error recording vendor interaction in tracking:', trackingError);
+          }
         } else {
           // Log failed transaction
           await vendorIntegrationManager.logTransaction('surescripts', 'prescription_send', {
@@ -350,10 +390,38 @@ router.post('/', async (req, res) => {
           });
 
           prescription.vendor_error = vendorResponse.error;
+
+          // Record error in FHIR tracking
+          try {
+            await fhirTrackingIntegration.recordPrescriptionError({
+              prescriptionId: prescription.id,
+              errorMessage: vendorResponse.error,
+              errorDetails: { response: vendorResponse.response },
+              vendorName: 'surescripts',
+              vendorResponse: vendorResponse.response,
+              userId: providerId
+            });
+          } catch (trackingError) {
+            console.error('Error recording prescription error in tracking:', trackingError);
+          }
         }
       } catch (vendorError) {
         console.error('Error sending prescription to Surescripts:', vendorError);
         prescription.vendor_error = vendorError.message;
+
+        // Record error in FHIR tracking
+        try {
+          await fhirTrackingIntegration.recordPrescriptionError({
+            prescriptionId: prescription.id,
+            errorMessage: vendorError.message,
+            errorDetails: { stack: vendorError.stack },
+            vendorName: 'surescripts',
+            userId: providerId
+          });
+        } catch (trackingError) {
+          console.error('Error recording prescription error in tracking:', trackingError);
+        }
+
         // Don't fail the request if vendor integration fails
       }
     }
@@ -403,7 +471,24 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    res.json(toCamelCase(result.rows[0]));
+    const updatedPrescription = result.rows[0];
+
+    // Update FHIR tracking status if status changed
+    if (status) {
+      try {
+        await fhirTrackingIntegration.updatePrescriptionTracking({
+          prescriptionId: req.params.id,
+          status,
+          statusReason: 'Manual update',
+          userId: req.user?.id || null
+        });
+      } catch (trackingError) {
+        console.error('Error updating prescription tracking:', trackingError);
+        // Don't fail the request if tracking update fails
+      }
+    }
+
+    res.json(toCamelCase(updatedPrescription));
   } catch (error) {
     console.error('Error updating prescription:', error);
     res.status(500).json({ error: 'Failed to update prescription' });
