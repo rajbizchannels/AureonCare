@@ -1,6 +1,6 @@
 # MedFlow User Manual
 
-**Version 1.0**
+**Version 1.1 - Updated December 2025**
 **Modern Healthcare Practice Management System**
 
 ---
@@ -83,6 +83,59 @@ This manual is designed for:
 - ⚠️ **Warning** - Important information to prevent errors
 - 💡 **Tip** - Helpful suggestions and best practices
 - ✅ **Note** - Additional information
+
+### 1.5 What's New in Version 1.1 (December 2025)
+
+**Recent Enhancements:**
+
+🆕 **Waitlist Management Integration**
+- Waitlist now fully integrated into Practice Management module
+- Access via **Practice Management > Waitlist** tab
+- Unified workflow for appointments and waitlist
+- Enhanced status tracking and priority management
+- Auto-notification for available slots
+
+🆕 **Advanced Lab Order System**
+- CPT code multiselect dropdown (80+ common lab tests)
+- Support for recurring and future lab orders
+- Collection method specification (clinic vs. lab collect)
+- Result recipient multiselect
+- Print functionality for professional lab orders
+- Lab Orders tab in Patient History
+
+🆕 **Enhanced ePrescribe Workflow**
+- Edit mode support in ePrescribe modal
+- Medication name prefilled when editing
+- Step-by-step guided workflow
+- Smart context retention across steps
+- Improved user experience for prescription management
+
+🆕 **Diagnosis-Prescription Linking**
+- Link prescriptions directly to diagnoses
+- Better clinical documentation
+- View associated prescriptions per diagnosis
+- Enhanced quality tracking and reporting
+
+🆕 **Modern UI Improvements**
+- Toggle switches replace checkboxes throughout system
+- Better visual indicators (ON/OFF states)
+- More accessible and touch-friendly interface
+- Consistent with modern design patterns
+- Improved forms in Pharmacy and Laboratory modules
+
+🆕 **Pharmacy & Laboratory Management**
+- Comprehensive pharmacy directory with enhanced fields
+- Laboratory facility management with toggle switches
+- Detailed service feature tracking
+- Integration settings for HL7/FHIR
+- Operating hours and contact management
+
+🆕 **User Experience Enhancements**
+- Action confirmation popups on all forms
+- Read-only patient field in diagnosis form (auto-populated from context)
+- Improved CRM card count refresh
+- Better error handling and validation
+- Enhanced appointment display (showing only today or later)
 
 ---
 
@@ -773,38 +826,99 @@ MedFlow sends automatic appointment reminders via:
 
 ### 6.7 Waitlist Management
 
+**Accessing the Waitlist:**
+
+The waitlist is fully integrated into Practice Management:
+1. Go to **Practice Management** module
+2. Click the **Waitlist** tab (next to List and Calendar views)
+3. View all waitlisted patients in one unified interface
+
+✅ **Note:** Waitlist is now part of Practice Management for unified appointment and waitlist workflow.
+
 **Adding Patient to Waitlist:**
 
 When no appointments are available:
 1. Click **Add to Waitlist**
-2. Select patient
+2. Select patient (required)
 3. Select provider (optional)
 4. Select preferred date range
 5. Select preferred time of day
-6. Add notes
-7. Click **Add to Waitlist**
+6. Set priority level:
+   - **High** - Urgent need
+   - **Medium** - Standard priority
+   - **Low** - Flexible timing
+7. Add appointment type
+8. Add reason/notes
+9. Click **Add to Waitlist**
 
-**Managing the Waitlist:**
-1. Go to **Practice Management** > **Waitlist**
-2. View all waitlisted patients
-3. Patients are prioritized by:
-   - Date added
-   - Urgency level
-   - Provider preference
+**Waitlist View Features:**
 
-**Auto-Notification:**
+**Status Indicators:**
+- 🔵 **Active** - Waiting for slot
+- 🟡 **Notified** - Patient has been contacted
+- 🟢 **Scheduled** - Appointment confirmed
+- ⚪ **Cancelled** - Request cancelled
+- 🔴 **Expired** - Request expired
+
+**Filter Options:**
+- All entries
+- Active only
+- Notified
+- Scheduled
+- Cancelled
+- Expired
+
+**Priority Badges:**
+- High (Red)
+- Medium (Yellow)
+- Low (Blue)
+
+**Managing Waitlist Entries:**
+
+**View Entry Details:**
+- Patient name and contact info
+- Preferred date/time range
+- Provider preference
+- Appointment type
+- Reason/notes
+- Priority level
+- Date added
+- Current status
+
+**Notify Next Patient:**
+1. When slot becomes available, click **Notify Next Patient**
+2. System automatically selects highest-priority active patient
+3. Patient receives notification via email/SMS/WhatsApp
+4. Entry status changes to "Notified"
+5. Wait for patient response
+
+**Confirm Appointment:**
+1. When patient confirms, find their waitlist entry
+2. Click **Confirm Appointment** button
+3. Confirmation modal appears
+4. Select appointment date and time
+5. Click **Confirm**
+6. Entry status changes to "Scheduled"
+7. Patient automatically removed from active waitlist
+8. Appointment appears in calendar
+
+**Auto-Notification Flow:**
 When a slot becomes available:
-1. System automatically notifies highest-priority patient
+1. System identifies highest-priority active patient
 2. Patient receives notification via email/SMS/WhatsApp
 3. Patient can confirm or decline
-4. If declined, next patient is notified
+4. If confirmed, appointment scheduled
+5. If declined, next patient is automatically notified
 
 **Manual Waitlist Conversion:**
 1. Find patient on waitlist
-2. Click **Schedule Appointment**
-3. Select available time slot
+2. Click **Confirm Appointment**
+3. Select available date and time slot
 4. Click **Confirm**
-5. Patient is removed from waitlist
+5. Patient is removed from active waitlist
+6. Appointment created in schedule
+
+💡 **Tip:** Use the integrated Practice Management view to seamlessly switch between scheduling appointments (List/Calendar tabs) and managing the waitlist (Waitlist tab).
 
 ### 6.8 Provider Availability
 
@@ -1121,6 +1235,60 @@ Or:
 5. Review any warnings or alerts
 6. Click **Save Prescription**
 
+**Using ePrescribe Modal (Enhanced Workflow):**
+
+The ePrescribe modal provides a guided, step-by-step prescription workflow:
+
+**Step 1: Medication Selection**
+1. Click **ePrescribe** button from patient history
+2. Search for medication by name
+3. Select medication from search results
+4. System displays medication details automatically
+
+**Step 2: Prescription Details**
+1. Enter dosage strength (e.g., "500mg")
+2. Select dosage form (tablet, capsule, liquid, etc.)
+3. Enter quantity to dispense
+4. Select route of administration
+5. Enter frequency (e.g., "twice daily")
+6. Add special instructions for patient
+
+**Step 3: Pharmacy Selection**
+1. Select patient's preferred pharmacy (auto-populated)
+2. Or search for different pharmacy
+3. Verify pharmacy accepts e-prescriptions
+
+**Step 4: Review & Submit**
+1. Review all prescription details
+2. Check for drug interactions
+3. Click **Submit Prescription**
+4. Prescription sent electronically to pharmacy
+
+**Editing Existing Prescriptions:**
+
+The ePrescribe modal now supports edit mode:
+
+1. Go to **Patient History** > **Prescriptions** tab
+2. Find the prescription you want to edit
+3. Click **Edit** button (pencil icon)
+4. ePrescribe modal opens in edit mode
+
+**Edit Mode Features:**
+- **Medication name prefilled** in search box - You can immediately see which medication you're editing
+- **All prescription details loaded** - Dosage, frequency, quantity, etc. pre-populated
+- **Current medication visible** - Appears in search results as already selected
+- **Step navigation enabled** - Can navigate back to any step to make changes
+- **Smart context retention** - If you navigate back to Step 1, medication name remains visible
+
+**Benefits of Edit Mode:**
+- No need to search for medication again
+- Prevents errors from selecting wrong medication
+- Faster editing workflow
+- Clear context of what you're modifying
+- Follows best practices for form editing
+
+💡 **Tip:** When editing prescriptions, the medication name follows this priority: Generic Name > Brand Name > Drug Name for display.
+
 ### 9.2 E-Prescribing
 
 **Sending Electronic Prescriptions:**
@@ -1255,8 +1423,34 @@ When creating a prescription, the system automatically checks for:
 **Association:**
 - **Link to Appointment** - Associate with current appointment
 - **Primary Diagnosis** - Check if this is the primary condition
+- **Link to Prescription** - Optionally link related prescriptions to this diagnosis
 
 4. Click **Save Diagnosis**
+
+**Linking Prescriptions to Diagnoses:**
+
+MedFlow now supports linking prescriptions directly to diagnoses for better clinical documentation:
+
+**Benefits:**
+- Clear association between diagnosis and treatment
+- Improved clinical documentation
+- Better tracking of treatment efficacy
+- Enhanced reporting and analytics
+- Supports quality measures and compliance
+
+**How to Link:**
+1. When creating or editing a diagnosis
+2. Patient field is read-only (automatically set from context)
+3. After entering diagnosis information
+4. System maintains diagnosis-prescription relationships
+5. View linked prescriptions in diagnosis details
+
+**View Linked Prescriptions:**
+1. Open patient record
+2. Go to **Diagnoses** tab
+3. Click on a diagnosis
+4. View **Associated Prescriptions** section
+5. See all medications prescribed for this diagnosis
 
 ### 10.2 ICD Code Search
 
@@ -1495,18 +1689,75 @@ Session automatically linked to:
 - **Select Laboratory** - Choose from lab directory
 - Or use patient's preferred lab
 
-**Test Selection:**
-- Click **Add Tests**
-- Search for tests by name or CPT code:
-  - Complete Blood Count (CBC)
-  - Basic Metabolic Panel (BMP)
-  - Lipid Panel
-  - Hemoglobin A1C
-  - Thyroid Function Tests
-  - Urinalysis
-  - And more...
-- Select all applicable tests
-- Tests added to order
+**Test Selection (Enhanced CPT Code Multiselect):**
+
+MedFlow now features an advanced multiselect dropdown for laboratory tests with CPT codes:
+
+1. Click on **Select Lab Tests** dropdown
+2. Search for tests by name or CPT code (80000-89999 range)
+3. Select multiple tests at once
+4. Common tests available include:
+   - **Complete Blood Count (CBC)** - 85025, 85027
+   - **Basic Metabolic Panel (BMP)** - 80047, 80048
+   - **Comprehensive Metabolic Panel (CMP)** - 80053
+   - **Lipid Panel** - 80061
+   - **Hemoglobin A1C** - 83036, 83037
+   - **Thyroid Function Tests** - 84439, 84443, 84480
+   - **Urinalysis** - 81000, 81001, 81002
+   - **Liver Function Tests** - 80076
+   - **Coagulation Panel** - 85610, 85730
+   - **Iron Studies** - 83540, 83550
+   - **Vitamin D** - 82306
+   - **PSA** - 84153
+   - **And 80+ more common tests...**
+
+**Search Features:**
+- Type test name (e.g., "glucose", "cholesterol")
+- Type CPT code (e.g., "80053", "85025")
+- Multiselect - select multiple tests in one order
+- Auto-complete suggestions
+- CPT code and test name displayed together
+
+**Order Status & Scheduling:**
+
+Select order status to control when tests are performed:
+
+- **One-Time** - Single lab order, perform immediately
+- **Recurring** - Repeated tests on schedule
+- **Future** - Scheduled for specific future date
+
+**For Recurring Orders:**
+1. Select **Recurring** as order status
+2. Choose frequency:
+   - Daily
+   - Weekly
+   - Monthly
+   - Quarterly
+   - Annually
+3. Set start date
+4. Set end date (optional)
+
+**For Future Orders:**
+1. Select **Future** as order status
+2. Choose specific date for test performance
+3. System schedules order for that date
+
+**Collection Method:**
+
+Specify who collects the specimen:
+
+- **Clinic Collect** - Specimen collected at your clinic, sent to lab
+- **Lab Collect** - Patient goes to lab for collection
+
+**Result Recipients:**
+
+Select who receives lab results (multiselect):
+
+- **Ordering Doctor**
+- **Primary Care Provider**
+- **Specialists**
+- **Nursing Staff**
+- **Patient** (via patient portal)
 
 **Specimen Information:**
 - **Specimen Type** - Blood, Urine, Tissue, etc.
@@ -1520,6 +1771,39 @@ Session automatically linked to:
 
 4. Click **Save Lab Order**
 5. Click **Send to Lab** to transmit electronically
+
+**Print Lab Orders:**
+
+Generate professional print-ready lab orders:
+
+1. After creating lab order
+2. Click **Print** button
+3. System generates formatted lab order with:
+   - Patient demographics
+   - All selected CPT codes and test names
+   - Order status and frequency
+   - Collection method
+   - Result recipients
+   - Clinical notes
+   - Provider signature line
+4. Print or save as PDF
+
+**Viewing Lab Orders in Patient History:**
+
+Lab orders are now integrated into Patient History:
+
+1. Go to **Patient History View**
+2. Click **Lab Orders** tab
+3. View all lab orders for this patient:
+   - Order date
+   - Ordered tests (CPT codes)
+   - Order status
+   - Collection method
+   - Results status
+4. Click on order to view details
+5. Print orders directly from history
+
+💡 **Tip:** Use the CPT code multiselect to order multiple related tests efficiently, such as ordering a complete metabolic panel plus additional specific tests.
 
 ### 12.2 Managing Lab Orders
 
@@ -1625,13 +1909,72 @@ Session automatically linked to:
 2. View all contracted labs
 3. Click **Add New Lab** to add facility
 
-**Lab Facility Information:**
+**Adding New Laboratory:**
+
+1. Click **Add New Laboratory**
+2. Fill in laboratory details using the enhanced form with toggle switches:
+
+**Basic Information:**
+- **Laboratory Name** (required)
+- **Lab Type** - Select type:
+  - Reference Laboratory
+  - Hospital Laboratory
+  - Clinical Laboratory
+  - Pathology Laboratory
+  - Specialty Laboratory
+  - Other
+- **CLIA Number** - Clinical Laboratory Improvement Amendments ID
+
+**Address Information:**
+- **Street Address** (required)
+- **City** (required)
+- **State** (required)
+- **ZIP Code** (required)
+- **Country**
+
+**Contact Information:**
+- **Phone Number** (required)
+- **Fax Number**
+- **Email Address**
+- **Website URL**
+- **Contact Person** - Main point of contact
+
+**Service Features (Toggle Switches):**
+
+- 🔵 **Accepts Electronic Orders** - Toggle ON if lab accepts e-orders
+- 🔵 **Active Status** - Toggle ON to make lab active in system
+
+**Operational Details:**
+- **Result Turnaround Time** - Average time for results (e.g., "24-48 hours")
+- **Operating Hours** - Hours of operation
+- **Supported Test Menu** - Types of tests offered
+- **Specialty Services** - Advanced or specialized testing capabilities
+
+**Integration Settings:**
+- **Electronic Interface** - HL7/FHIR integration status
+- **Result Delivery Method** - Electronic, fax, portal, etc.
+- **Priority Handling** - STAT and urgent test capabilities
+
+3. Click **Save Laboratory**
+
+**Lab Facility Information Display:**
 - Lab name and location
 - Contact information
 - Supported test menu
 - Result turnaround times
 - Electronic ordering capability
-- Preferred lab flag
+- Active status
+- Integration status
+
+**Editing Laboratory:**
+
+1. Find laboratory in directory
+2. Click **Edit** button
+3. Update information using toggle switches
+4. Modify contact or service details
+5. Click **Update Laboratory**
+
+💡 **Tip:** Use toggle switches to quickly enable/disable laboratory features without having to check/uncheck multiple boxes.
 
 ---
 
@@ -1661,16 +2004,71 @@ Session automatically linked to:
 **To Add New Pharmacy:**
 
 1. Go to **Pharmacies** > **Add Pharmacy**
-2. Fill in pharmacy details:
-   - **Pharmacy Name** (required)
-   - **NCPDP ID** - National pharmacy identifier
-   - **Address** - Complete address (required)
-   - **Phone Number** (required)
-   - **Fax Number**
-   - **Email**
-   - **24-Hour Pharmacy** - Check if available 24/7
-   - **E-Prescribe Enabled** - Check if accepts e-prescriptions
+2. Fill in pharmacy details using the enhanced form with toggle switches:
+
+**Basic Information:**
+- **Pharmacy Name** (required)
+- **NCPDP ID** - National pharmacy identifier
+- **Chain Name** - Pharmacy chain (e.g., CVS, Walgreens)
+- **Type** - Select pharmacy type:
+  - Community
+  - Hospital
+  - Mail Order
+  - Specialty
+  - Long-term Care
+  - Other
+
+**Address Information:**
+- **Street Address** (required)
+- **City** (required)
+- **State** (required)
+- **ZIP Code** (required)
+- **Country**
+
+**Contact Information:**
+- **Phone Number** (required)
+- **Fax Number**
+- **Email Address**
+- **Website URL**
+
+**Service Features (Toggle Switches):**
+
+Modern toggle switches replace checkboxes for better UX:
+
+- 🔵 **24-Hour Service** - Toggle ON if pharmacy is open 24/7
+- 🔵 **Accepts E-Prescriptions** - Toggle ON if accepts electronic prescriptions
+- 🔵 **Delivery Available** - Toggle ON if pharmacy offers delivery service
+- 🔵 **Drive-Through** - Toggle ON if pharmacy has drive-through window
+- 🔵 **Accepts Insurance** - Toggle ON if pharmacy accepts insurance
+- 🔵 **Preferred Network** - Toggle ON if this is a preferred network pharmacy
+- 🔵 **Active Status** - Toggle ON to make pharmacy active in system
+
+**Operating Hours:**
+- Set hours for each day of the week
+- Specify if closed on certain days
+
+**Additional Information:**
+- **Notes** - Special instructions or additional information
+- **Services** - List of specialized services offered
+
 3. Click **Save Pharmacy**
+
+💡 **Tip:** Toggle switches provide clear visual indication of enabled features - blue toggle means enabled, gray means disabled.
+
+**Editing Existing Pharmacy:**
+
+1. Find pharmacy in directory
+2. Click **Edit** button
+3. Update information using same form
+4. Use toggle switches to enable/disable features
+5. Click **Update Pharmacy**
+
+**Toggle Switch Benefits:**
+- Clear visual state (ON/OFF)
+- More accessible than checkboxes
+- Modern, intuitive interface
+- Consistent with mobile app design patterns
+- Easier to use on touch devices
 
 ### 13.3 Patient Preferred Pharmacy
 
@@ -3363,7 +3761,15 @@ A: Credit card, debit card, cash, check, bank transfer, and insurance (varies by
 
 ## Document Version History
 
-**Version 1.0** - Initial Release - [Date]
+**Version 1.1** - December 2025 - Updated with:
+- Waitlist management integration into Practice Management
+- Advanced lab order system with CPT multiselect
+- Enhanced ePrescribe modal with edit mode
+- Diagnosis-prescription linking
+- Modern UI improvements (toggle switches)
+- Enhanced pharmacy and laboratory management
+
+**Version 1.0** - December 2025 - Initial Release
 
 ---
 
