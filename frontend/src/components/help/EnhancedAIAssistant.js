@@ -13,6 +13,7 @@ const EnhancedAIAssistant = ({
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [documentation, setDocumentation] = useState(null);
+  const [selectedArticle, setSelectedArticle] = useState(null);
   const messagesEndRef = useRef(null);
 
   // Load documentation for context
@@ -145,7 +146,8 @@ const EnhancedAIAssistant = ({
   };
 
   return (
-    <div className={`fixed bottom-24 right-6 w-96 rounded-xl border shadow-2xl z-50 ${
+    <>
+    <div className={`fixed bottom-24 right-6 w-96 rounded-xl border shadow-2xl z-[55] ${
       theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
     }`}>
       {/* Header */}
@@ -218,19 +220,27 @@ const EnhancedAIAssistant = ({
                     📚 Related Documentation:
                   </p>
                   {message.articles.map((article, i) => (
-                    <div
+                    <button
                       key={i}
-                      className={`text-xs px-3 py-2 rounded ${
-                        theme === 'dark' ? 'bg-slate-700' : 'bg-white border border-gray-200'
+                      onClick={() => setSelectedArticle(article)}
+                      className={`w-full text-left text-xs px-3 py-2 rounded cursor-pointer transition-colors ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 hover:bg-slate-600'
+                          : 'bg-white border border-gray-200 hover:bg-gray-50'
                       }`}
                     >
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {article.title}
-                      </p>
-                      <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        {article.section}
-                      </p>
-                    </div>
+                      <div className="flex items-start gap-2">
+                        <Book className={`w-3 h-3 mt-0.5 flex-shrink-0 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} />
+                        <div className="flex-1">
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {article.title}
+                          </p>
+                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {article.section}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -295,6 +305,69 @@ const EnhancedAIAssistant = ({
         </p>
       </div>
     </div>
+
+    {/* Article Modal */}
+    {selectedArticle && (
+      <div className="fixed inset-0 bg-black/50 z-[65] flex items-center justify-center p-4" onClick={() => setSelectedArticle(null)}>
+        <div
+          className={`max-w-3xl w-full max-h-[90vh] rounded-xl overflow-hidden ${
+            theme === 'dark' ? 'bg-slate-900' : 'bg-white'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {selectedArticle.title}
+                </h2>
+                <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {selectedArticle.section}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedArticle(null)}
+                className={`p-2 rounded-lg ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+              >
+                <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+              </button>
+            </div>
+          </div>
+          <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+            <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none`}>
+              <p className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>
+                {selectedArticle.content}
+              </p>
+              {selectedArticle.url && (
+                <div className="mt-6">
+                  <a
+                    href={selectedArticle.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${
+                      theme === 'dark'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
+                  >
+                    <Book className="w-4 h-4" />
+                    Read Full Documentation
+                  </a>
+                </div>
+              )}
+              <div className={`mt-6 p-4 rounded-lg ${
+                theme === 'dark' ? 'bg-slate-800' : 'bg-blue-50'
+              }`}>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  📘 For complete step-by-step instructions, refer to the full User Manual.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

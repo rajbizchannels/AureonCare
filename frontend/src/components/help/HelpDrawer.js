@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Book, HelpCircle, MessageCircle, Lightbulb } from 'lucide-react';
 
-const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole }) => {
+const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [documentation, setDocumentation] = useState(null);
   const [filteredArticles, setFilteredArticles] = useState([]);
@@ -64,6 +64,18 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole }) => {
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
+
+  // Prevent body scrolling when drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -326,6 +338,11 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole }) => {
         {/* Footer */}
         <div className={`p-4 border-t ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
           <button
+            onClick={() => {
+              if (onOpenAI) {
+                onOpenAI();
+              }
+            }}
             className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-colors ${
               theme === 'dark'
                 ? 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -343,7 +360,7 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole }) => {
 
       {/* Article Modal */}
       {selectedArticle && (
-        <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
           <div className={`max-w-3xl w-full max-h-[90vh] rounded-xl overflow-hidden ${
             theme === 'dark' ? 'bg-slate-900' : 'bg-white'
           }`}>
