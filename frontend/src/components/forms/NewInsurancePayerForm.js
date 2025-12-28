@@ -2,30 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { Shield, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
-const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => {
+const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification, t, editPayer = null }) => {
   const [formData, setFormData] = useState({
-    payerId: '',
-    name: '',
-    payerType: 'insurance',
-    phone: '',
-    email: '',
-    website: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    contactPerson: '',
-    contactPhone: '',
-    contactEmail: '',
-    claimSubmissionMethod: 'electronic',
-    claimSubmissionAddress: '',
-    electronicPayerId: '',
-    timelyFilingLimit: '365',
-    priorAuthorizationRequired: false,
-    acceptsAssignment: true,
-    notes: ''
+    payerId: editPayer?.payer_id || '',
+    name: editPayer?.name || '',
+    payerType: editPayer?.payer_type || 'insurance',
+    phone: editPayer?.phone || '',
+    email: editPayer?.email || '',
+    website: editPayer?.website || '',
+    address: editPayer?.address || '',
+    city: editPayer?.city || '',
+    state: editPayer?.state || '',
+    zipCode: editPayer?.zip_code || '',
+    contactPerson: editPayer?.contact_person || '',
+    contactPhone: editPayer?.contact_phone || '',
+    contactEmail: editPayer?.contact_email || '',
+    claimSubmissionMethod: editPayer?.claim_submission_method || 'electronic',
+    claimSubmissionAddress: editPayer?.claim_submission_address || '',
+    electronicPayerId: editPayer?.electronic_payer_id || '',
+    timelyFilingLimit: editPayer?.timely_filing_limit?.toString() || '365',
+    priorAuthorizationRequired: editPayer?.prior_authorization_required || false,
+    acceptsAssignment: editPayer?.accepts_assignment !== false,
+    notes: editPayer?.notes || ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const isEditing = !!editPayer;
 
   // ESC key handler
   useEffect(() => {
@@ -73,14 +74,20 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
         is_active: true
       };
 
-      const newPayer = await api.createInsurancePayer(payerData);
-      await addNotification('success', `${t.newInsurancePayerAdded || 'New insurance payer added'}: ${newPayer.name}`);
+      let savedPayer;
+      if (isEditing) {
+        savedPayer = await api.updateInsurancePayer(editPayer.id, payerData);
+        await addNotification('success', `${t.insurancePayerUpdated || 'Insurance payer updated'}: ${savedPayer.name}`);
+      } else {
+        savedPayer = await api.createInsurancePayer(payerData);
+        await addNotification('success', `${t.newInsurancePayerAdded || 'New insurance payer added'}: ${savedPayer.name}`);
+      }
 
-      onSuccess(newPayer);
+      onSuccess(savedPayer);
       onClose();
     } catch (err) {
-      console.error('Error creating insurance payer:', err);
-      addNotification('alert', t.failedToCreateInsurancePayer || 'Failed to create insurance payer. Please try again.');
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} insurance payer:`, err);
+      addNotification('alert', isEditing ? (t.failedToUpdateInsurancePayer || 'Failed to update insurance payer. Please try again.') : (t.failedToCreateInsurancePayer || 'Failed to create insurance payer. Please try again.'));
     }
   };
 
@@ -91,10 +98,10 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
         onConfirm={handleActualSubmit}
-        title="Add Insurance Payer"
-        message="Are you sure you want to add this insurance payer?"
+        title={isEditing ? "Update Insurance Payer" : "Add Insurance Payer"}
+        message={isEditing ? "Are you sure you want to update this insurance payer?" : "Are you sure you want to add this insurance payer?"}
         type="confirm"
-        confirmText="Add Payer"
+        confirmText={isEditing ? "Update Payer" : "Add Payer"}
         cancelText="Cancel"
       />
       <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
@@ -103,7 +110,9 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
               <Shield className={`w-5 h-5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
             </div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.newInsurancePayer || 'New Insurance Payer'}</h2>
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {isEditing ? (t.editInsurancePayer || 'Edit Insurance Payer') : (t.newInsurancePayer || 'New Insurance Payer')}
+            </h2>
           </div>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
