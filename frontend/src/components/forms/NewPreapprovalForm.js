@@ -26,6 +26,31 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
   const [searchingDiagnosis, setSearchingDiagnosis] = useState(false);
   const [searchingProcedure, setSearchingProcedure] = useState(false);
   const [selectedPatientInsurer, setSelectedPatientInsurer] = useState(null);
+  const [diagnoses, setDiagnoses] = useState([]);
+  const [loadingDiagnoses, setLoadingDiagnoses] = useState(false);
+  const [selectedDiagnosisId, setSelectedDiagnosisId] = useState('');
+
+  // Load diagnoses when patient is selected
+  useEffect(() => {
+    const loadDiagnoses = async () => {
+      if (!formData.patientId) {
+        setDiagnoses([]);
+        return;
+      }
+
+      setLoadingDiagnoses(true);
+      try {
+        const patientDiagnoses = await api.getDiagnoses(formData.patientId);
+        setDiagnoses(patientDiagnoses || []);
+      } catch (error) {
+        console.error('Error loading diagnoses:', error);
+        setDiagnoses([]);
+      } finally {
+        setLoadingDiagnoses(false);
+      }
+    };
+    loadDiagnoses();
+  }, [formData.patientId, api]);
 
   // Auto-load insurance payer from patient profile when patient is selected
   useEffect(() => {
@@ -153,6 +178,75 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
 
   const handleRemoveProcedure = (code) => {
     setSelectedProcedures(selectedProcedures.filter(p => p.code !== code));
+  };
+
+  // Handle diagnosis selection - populate form fields from diagnosis
+  const handleDiagnosisSelection = async (diagnosisId) => {
+    setSelectedDiagnosisId(diagnosisId);
+
+    if (!diagnosisId) {
+      // Clear fields if no diagnosis selected
+      return;
+    }
+
+    const diagnosis = diagnoses.find(d => d.id.toString() === diagnosisId);
+    if (!diagnosis) return;
+
+    try {
+      // Set the requested service from diagnosis name
+      setFormData(prev => ({
+        ...prev,
+        requestedService: diagnosis.diagnosisName || '',
+        clinicalNotes: diagnosis.notes || prev.clinicalNotes
+      }));
+
+      // Parse and load ICD codes from diagnosis
+      const icdCodes = [];
+      if (diagnosis.diagnosisCode && typeof diagnosis.diagnosisCode === 'string') {
+        const icdCodeStrings = diagnosis.diagnosisCode.split(',').map(c => c.trim()).filter(Boolean);
+
+        // Fetch full code objects for each ICD code
+        for (const codeStr of icdCodeStrings) {
+          try {
+            const codeData = await api.getMedicalCodeByCode(codeStr);
+            if (codeData) {
+              icdCodes.push({
+                code: codeData.code,
+                display: codeData.display || codeData.description || codeStr
+              });
+            }
+          } catch (error) {
+            console.error(`Error fetching ICD code ${codeStr}:`, error);
+            // Add as fallback even if fetch fails
+            icdCodes.push({ code: codeStr, display: codeStr });
+          }
+        }
+      }
+      setSelectedDiagnoses(icdCodes);
+
+      // Parse and load CPT codes from diagnosis notes
+      const cptCodes = [];
+      if (diagnosis.notes && typeof diagnosis.notes === 'string') {
+        const cptMatch = diagnosis.notes.match(/CPT Codes:\s*([^]*?)(?:\n\n|$)/);
+        if (cptMatch) {
+          const cptSection = cptMatch[1];
+          const cptEntries = cptSection.split(';').map(entry => entry.trim()).filter(Boolean);
+
+          for (const entry of cptEntries) {
+            const match = entry.match(/^(\d+)\s*\(([^)]+)\)/);
+            if (match) {
+              const [, code, description] = match;
+              cptCodes.push({ code, display: description });
+            }
+          }
+        }
+      }
+      setSelectedProcedures(cptCodes);
+
+    } catch (error) {
+      console.error('Error loading diagnosis details:', error);
+      addNotification('alert', 'Error loading diagnosis details');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -346,6 +440,39 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Diagnosis Selection - Load data from existing diagnosis */}
+        {formData.patientId && (
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Load from Existing Diagnosis (Optional)
+            </label>
+            <select
+              value={selectedDiagnosisId}
+              onChange={(e) => handleDiagnosisSelection(e.target.value)}
+              disabled={loadingDiagnoses || diagnoses.length === 0}
+              className={`w-full px-4 py-2 rounded-lg border ${
+                theme === 'dark'
+                  ? 'bg-slate-700 border-slate-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+            >
+              <option value="">
+                {loadingDiagnoses ? 'Loading diagnoses...' : diagnoses.length === 0 ? 'No diagnoses available' : 'Select a diagnosis to auto-fill'}
+              </option>
+              {diagnoses.map(diagnosis => (
+                <option key={diagnosis.id} value={diagnosis.id}>
+                  {diagnosis.diagnosisName} - {diagnosis.diagnosedDate ? new Date(diagnosis.diagnosedDate).toLocaleDateString() : 'No date'}
+                </option>
+              ))}
+            </select>
+            {selectedDiagnosisId && (
+              <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                ✓ Form fields have been auto-filled from diagnosis. You can still edit all fields below.
+              </p>
+            )}
           </div>
         )}
 
