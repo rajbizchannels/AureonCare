@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Orders - MedFlow Documentation</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-container">
+            <h1>Laboratory Orders</h1>
+            <div class="breadcrumb">
+                <a href="../index.html">Documentation</a> / <a href="../index.html#features">Features</a> / Lab Orders
+            </div>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <div class="doc-grid">
+            <aside class="doc-sidebar">
+                <h3>Core Features</h3>
+                <nav>
+                    <ul>
+                        <li><a href="appointments.html">Appointments</a></li>
+                        <li><a href="waitlist.html">Waitlist</a></li>
+                        <li><a href="patient-management.html">Patients</a></li>
+                        <li><a href="eprescribe.html">ePrescribe</a></li>
+                        <li><a href="lab-orders.html" class="active">Lab Orders</a></li>
+                        <li><a href="diagnosis.html">Diagnosis</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <main class="doc-content">
+                <a href="../index.html" class="back-link">← Back to Documentation Home</a>
+
+                <h1>Laboratory Orders</h1>
+
+                <div class="callout callout-note">
+                    <strong>🆕 New in Version 1.1:</strong>
+                    <p>Lab orders now support CPT code multiselect (80+ common tests), recurring orders, future scheduling, and enhanced print functionality!</p>
+                </div>
+
+                <p>MedFlow's laboratory order module streamlines the process of ordering lab tests, tracking results, and managing laboratory workflows. The system integrates with major lab networks for electronic order transmission and result delivery.</p>
+
+                <h2>Accessing Lab Orders</h2>
+
+                <h3>From Patient Chart</h3>
+                <ol>
+                    <li>Open patient's chart</li>
+                    <li>Go to <strong>"Laboratory"</strong> tab</li>
+                    <li>Click <strong>"+ New Lab Order"</strong> button</li>
+                </ol>
+
+                <h3>From Clinical Encounter</h3>
+                <ol>
+                    <li>During patient visit or while documenting a note</li>
+                    <li>Click <strong>"Order Labs"</strong> in the encounter toolbar</li>
+                    <li>Patient context is automatically populated</li>
+                </ol>
+
+                <h2>Creating a Lab Order</h2>
+
+                <h3>Step 1: Basic Information</h3>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Description</th>
+                            <th>Required</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Patient</strong></td>
+                            <td>Patient receiving the lab tests (pre-populated from context)</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ordering Provider</strong></td>
+                            <td>Provider ordering the tests (usually current user)</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Order Date</strong></td>
+                            <td>Date order is placed (defaults to today)</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Priority</strong></td>
+                            <td>Routine, STAT, or ASAP</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Clinical Indication</strong></td>
+                            <td>Reason for ordering tests (ICD-10 diagnosis)</td>
+                            <td>Yes</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Step 2: Select Lab Tests (CPT Codes)</h3>
+
+                <p><strong>New Multi-Select Interface:</strong> You can now select multiple lab tests in one order!</p>
+
+                <h4>Using CPT Code Multiselect</h4>
+                <ol>
+                    <li>Click in the <strong>"Select Tests"</strong> field</li>
+                    <li>A dropdown appears showing 80+ common lab tests organized by category</li>
+                    <li>Browse by category or start typing to search:
+                        <ul>
+                            <li>Test name (e.g., "CBC", "Glucose")</li>
+                            <li>CPT code (e.g., "85025", "82947")</li>
+                            <li>Panel name (e.g., "Basic Metabolic Panel")</li>
+                        </ul>
+                    </li>
+                    <li>Click to select multiple tests - they appear as chips/tags</li>
+                    <li>Click the X on any chip to remove a test</li>
+                    <li>Selected tests show with their CPT codes</li>
+                </ol>
+
+                <h4>Common Lab Test Categories</h4>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Example Tests</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>🩸 Hematology</strong></td>
+                            <td>CBC (85025), CBC with Diff (85027), Platelet Count (85049)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🧬 Chemistry</strong></td>
+                            <td>Basic Metabolic Panel (80048), Comprehensive Metabolic Panel (80053), Glucose (82947)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>💉 Coagulation</strong></td>
+                            <td>PT/INR (85610), PTT (85730), D-Dimer (85379)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🧪 Lipids</strong></td>
+                            <td>Lipid Panel (80061), Cholesterol (82465), Triglycerides (84478)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🔬 Microbiology</strong></td>
+                            <td>Urinalysis (81001), Urine Culture (87086), Throat Culture (87070)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>💊 Therapeutic</strong></td>
+                            <td>Digoxin Level (80162), Theophylline (80198), Vancomycin (80202)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🩺 Endocrine</strong></td>
+                            <td>TSH (84443), Free T4 (84439), Hemoglobin A1C (83036)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🧫 Immunology</strong></td>
+                            <td>ANA (86038), Rheumatoid Factor (86431), CRP (86140)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout callout-tip">
+                    <strong>💡 Quick Panels:</strong>
+                    <p>Common test combinations are grouped as panels (e.g., "Basic Metabolic Panel" includes 8 individual tests). Selecting a panel is faster than selecting individual tests!</p>
+                </div>
+
+                <h3>Step 3: Collection Details</h3>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Description</th>
+                            <th>Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Collection Method</strong></td>
+                            <td>Where specimen will be collected</td>
+                            <td>In-Clinic, At Laboratory, Home Collection</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Scheduled Date/Time</strong></td>
+                            <td>When to collect specimen (NEW: supports future dates!)</td>
+                            <td>Today, Future Date, Recurring</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fasting Required</strong></td>
+                            <td>Toggle if patient must fast before collection</td>
+                            <td>Yes/No toggle</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fasting Duration</strong></td>
+                            <td>How long to fast (if required)</td>
+                            <td>8 hours, 10 hours, 12 hours</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Specimen Type</strong></td>
+                            <td>Type of specimen</td>
+                            <td>Blood, Urine, Stool, Throat Swab, etc.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Recurring Orders (New!)</h4>
+                <p>For chronic condition monitoring, you can now schedule recurring lab orders:</p>
+                <ol>
+                    <li>Toggle <strong>"Recurring Order"</strong> switch</li>
+                    <li>Select frequency:
+                        <ul>
+                            <li>Daily</li>
+                            <li>Weekly (specify day of week)</li>
+                            <li>Bi-weekly</li>
+                            <li>Monthly (specify day of month)</li>
+                            <li>Quarterly</li>
+                            <li>Custom interval</li>
+                        </ul>
+                    </li>
+                    <li>Set start date and end date (or number of occurrences)</li>
+                    <li>System automatically generates future orders on the schedule</li>
+                </ol>
+
+                <div class="callout callout-note">
+                    <strong>📅 Example Use Cases for Recurring Orders:</strong>
+                    <ul>
+                        <li>Monthly INR for warfarin patients</li>
+                        <li>Quarterly A1C for diabetic patients</li>
+                        <li>Weekly drug levels for patients on certain medications</li>
+                    </ul>
+                </div>
+
+                <h3>Step 4: Laboratory Selection</h3>
+
+                <ol>
+                    <li><strong>Preferred Lab:</strong> Patient's preferred laboratory (if on file)</li>
+                    <li><strong>Search Labs:</strong> Find by name, location, or specialty</li>
+                    <li><strong>In-Network Labs:</strong> Filter to show only in-network labs for patient's insurance</li>
+                    <li><strong>Lab Capabilities:</strong> Ensure lab performs the ordered tests</li>
+                </ol>
+
+                <h3>Step 5: Results Distribution</h3>
+
+                <p><strong>Result Recipients (New Multi-Select):</strong></p>
+                <ul>
+                    <li>Select multiple recipients to receive results automatically</li>
+                    <li>Options:
+                        <ul>
+                            <li><strong>Ordering Provider:</strong> You (auto-selected)</li>
+                            <li><strong>Primary Care Physician:</strong> Patient's PCP</li>
+                            <li><strong>Specialist:</strong> Select from patient's care team</li>
+                            <li><strong>Patient Portal:</strong> Post to patient's portal when ready</li>
+                            <li><strong>Other Provider:</strong> Search and add any provider</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <div class="callout callout-tip">
+                    <strong>💡 Patient Portal Integration:</strong>
+                    <p>When "Patient Portal" is selected, results are automatically posted to the patient's portal with provider notes explaining the findings.</p>
+                </div>
+
+                <h3>Step 6: Review and Submit</h3>
+
+                <ol>
+                    <li>Review all order details</li>
+                    <li>Verify selected tests and CPT codes</li>
+                    <li>Confirm laboratory and collection method</li>
+                    <li>Check result recipients</li>
+                    <li>Click <strong>"Submit Order"</strong></li>
+                </ol>
+
+                <h4>After Submission</h4>
+                <ul>
+                    <li>Order is transmitted electronically to laboratory (if supported)</li>
+                    <li>Requisition form is generated and can be printed</li>
+                    <li>Patient receives instructions via portal/email/SMS</li>
+                    <li>Order appears in pending labs list</li>
+                </ul>
+
+                <h2>Printing Lab Orders</h2>
+
+                <p><strong>Enhanced Print Functionality:</strong></p>
+
+                <h3>Printing Options</h3>
+                <ol>
+                    <li>After creating order, click <strong>"Print"</strong> button</li>
+                    <li>Choose print format:
+                        <ul>
+                            <li><strong>Full Requisition:</strong> Complete lab requisition form with all details</li>
+                            <li><strong>Patient Instructions:</strong> Patient-friendly prep instructions</li>
+                            <li><strong>Both:</strong> Requisition + instructions on separate pages</li>
+                        </ul>
+                    </li>
+                    <li>Preview before printing</li>
+                    <li>Print directly or save as PDF</li>
+                </ol>
+
+                <h3>Requisition Form Includes</h3>
+                <ul>
+                    <li>Patient demographics and insurance</li>
+                    <li>All ordered tests with CPT codes</li>
+                    <li>ICD-10 diagnosis codes</li>
+                    <li>Provider information and signature</li>
+                    <li>Collection instructions</li>
+                    <li>Laboratory barcode (if applicable)</li>
+                </ul>
+
+                <h2>Managing Lab Orders</h2>
+
+                <h3>Order Status</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Meaning</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Pending</strong></td>
+                            <td>Order created, awaiting collection</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Scheduled</strong></td>
+                            <td>Collection appointment scheduled</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Collected</strong></td>
+                            <td>Specimen collected, sent to lab</td>
+                        </tr>
+                        <tr>
+                            <td><strong>In Progress</strong></td>
+                            <td>Lab is processing the tests</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Partial Results</strong></td>
+                            <td>Some results available, others pending</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Completed</strong></td>
+                            <td>All results received</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cancelled</strong></td>
+                            <td>Order cancelled before collection</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Cancelling an Order</h3>
+                <ol>
+                    <li>Go to <strong>Patient Chart > Laboratory</strong></li>
+                    <li>Find the pending order</li>
+                    <li>Click <strong>"Cancel Order"</strong></li>
+                    <li>Select reason and add notes</li>
+                    <li>Confirm cancellation</li>
+                </ol>
+
+                <p>Note: Orders can only be cancelled before specimen collection.</p>
+
+                <h3>Modifying an Order</h3>
+                <p>To change a pending order:</p>
+                <ul>
+                    <li><strong>Before Submission to Lab:</strong> Click "Edit" and update details</li>
+                    <li><strong>After Submission:</strong> Cancel original order and create a new one</li>
+                </ul>
+
+                <h2>Viewing Lab Results</h2>
+
+                <h3>When Results Arrive</h3>
+                <ol>
+                    <li>System notification alerts you to new results</li>
+                    <li>Go to <strong>Patient Chart > Laboratory</strong></li>
+                    <li>Click on the completed order</li>
+                    <li>Review results panel showing:
+                        <ul>
+                            <li>Test name and value</li>
+                            <li>Reference range</li>
+                            <li>Abnormal flag (H, L, Critical)</li>
+                            <li>Result date/time</li>
+                            <li>Performing lab</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>Abnormal Results</h3>
+                <p>Abnormal results are highlighted:</p>
+                <ul>
+                    <li><strong>🔴 Critical (H/L):</strong> Red text - requires immediate attention</li>
+                    <li><strong>🟡 Abnormal:</strong> Yellow background - outside reference range</li>
+                    <li><strong>⚪ Normal:</strong> Standard display - within reference range</li>
+                </ul>
+
+                <div class="callout callout-danger">
+                    <strong>⚠️ Critical Values:</strong>
+                    <p>Critical lab values trigger immediate alerts to ordering provider via SMS, email, and system notification. You must acknowledge receipt and document follow-up action.</p>
+                </div>
+
+                <h3>Documenting Result Review</h3>
+                <ol>
+                    <li>After reviewing results, click <strong>"Sign Results"</strong></li>
+                    <li>Add interpretation notes</li>
+                    <li>Document follow-up plan:
+                        <ul>
+                            <li>No action needed</li>
+                            <li>Retest scheduled</li>
+                            <li>Treatment adjustment</li>
+                            <li>Specialist referral</li>
+                            <li>Patient notified</li>
+                        </ul>
+                    </li>
+                    <li>Apply electronic signature</li>
+                </ol>
+
+                <h2>Result Notifications to Patients</h2>
+
+                <h3>Automatic Portal Posting</h3>
+                <p>If "Patient Portal" was selected as recipient:</p>
+                <ul>
+                    <li>Results post to portal automatically when reviewed and signed</li>
+                    <li>Patient receives notification email/SMS</li>
+                    <li>Provider notes and interpretation included</li>
+                    <li>Critical results withheld from portal until provider contacts patient</li>
+                </ul>
+
+                <h3>Manual Patient Notification</h3>
+                <ol>
+                    <li>Review results in patient chart</li>
+                    <li>Click <strong>"Notify Patient"</strong></li>
+                    <li>Choose method:
+                        <ul>
+                            <li>Portal message with results</li>
+                            <li>Secure email summary</li>
+                            <li>Phone call (log in chart)</li>
+                            <li>Schedule follow-up appointment</li>
+                        </ul>
+                    </li>
+                    <li>Document notification in patient record</li>
+                </ol>
+
+                <h2>Lab Reports and Analytics</h2>
+
+                <p>Access lab analytics from <strong>Reports > Laboratory</strong>:</p>
+                <ul>
+                    <li><strong>Pending Orders Report:</strong> All orders awaiting collection or results</li>
+                    <li><strong>Unsigned Results:</strong> Results requiring provider review</li>
+                    <li><strong>Critical Values Log:</strong> History of all critical results</li>
+                    <li><strong>Turnaround Time:</strong> Average time from order to result by lab</li>
+                    <li><strong>Most Ordered Tests:</strong> Frequency of specific lab tests</li>
+                    <li><strong>Cost Analysis:</strong> Lab ordering costs by provider or department</li>
+                </ul>
+
+                <h2>Laboratory Directory</h2>
+
+                <h3>Managing Lab Partnerships</h3>
+                <ol>
+                    <li>Go to <strong>Administration > Laboratory Directory</strong></li>
+                    <li>View all contracted laboratories</li>
+                    <li>For each lab, see:
+                        <ul>
+                            <li>Name, location, contact info</li>
+                            <li>Available tests and test menu</li>
+                            <li>Electronic ordering capability</li>
+                            <li>Turnaround times</li>
+                            <li>Insurance networks accepted</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>Adding a New Laboratory</h3>
+                <ol>
+                    <li>Click <strong>"+ Add Laboratory"</strong></li>
+                    <li>Enter lab details:
+                        <ul>
+                            <li>Lab name and CLIA number</li>
+                            <li>Contact information</li>
+                            <li>Electronic interface (HL7, API, etc.)</li>
+                            <li>Test catalog/menu</li>
+                        </ul>
+                    </li>
+                    <li>Configure integration settings</li>
+                    <li>Test connectivity</li>
+                    <li>Save and activate</li>
+                </ol>
+
+                <h2>Best Practices</h2>
+
+                <div class="callout callout-tip">
+                    <strong>💡 Lab Ordering Best Practices:</strong>
+                    <ul>
+                        <li><strong>Always Include Diagnosis:</strong> Link orders to clinical indication for insurance approval</li>
+                        <li><strong>Use Panels Wisely:</strong> Order panels when appropriate to reduce costs</li>
+                        <li><strong>Check for Duplicates:</strong> Review recent labs before ordering to avoid unnecessary repeats</li>
+                        <li><strong>Set Correct Priority:</strong> Reserve STAT for true emergencies</li>
+                        <li><strong>Verify Fasting Requirements:</strong> Ensure patient is properly prepared</li>
+                        <li><strong>Use Recurring Orders:</strong> For chronic disease monitoring</li>
+                        <li><strong>Document Review:</strong> Sign all results promptly</li>
+                        <li><strong>Follow Up Abnormals:</strong> Always document action on abnormal results</li>
+                        <li><strong>Notify Patients:</strong> Communicate results in timely manner</li>
+                    </ul>
+                </div>
+
+                <h2>Troubleshooting</h2>
+
+                <h3>Order Not Received by Lab</h3>
+                <ul>
+                    <li>Check order status - may be pending transmission</li>
+                    <li>Verify lab's electronic ordering is functioning</li>
+                    <li>Print requisition and fax to lab as backup</li>
+                    <li>Call lab to confirm receipt</li>
+                </ul>
+
+                <h3>Results Not Appearing</h3>
+                <ul>
+                    <li>Verify specimen was collected</li>
+                    <li>Check with lab on processing status</li>
+                    <li>Confirm lab has correct patient identifiers</li>
+                    <li>Check interface logs (Admin only)</li>
+                </ul>
+
+                <h3>Can't Find Specific Test</h3>
+                <ul>
+                    <li>Search by CPT code instead of test name</li>
+                    <li>Check if test is in selected lab's menu</li>
+                    <li>Use "Other/Custom Test" option and enter details manually</li>
+                    <li>Contact lab to add test to catalog</li>
+                </ul>
+
+                <h2>Related Topics</h2>
+                <ul>
+                    <li><a href="diagnosis.html">Diagnosis & ICD Codes →</a></li>
+                    <li><a href="../guides/clinical-notes.html">Clinical Documentation →</a></li>
+                    <li><a href="../guides/lab-directory.html">Laboratory Directory →</a></li>
+                </ul>
+
+                <div class="doc-footer">
+                    <p>For lab order technical support, contact MedFlow support or your laboratory account representative.</p>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

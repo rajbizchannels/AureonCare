@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedFlow Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-container">
+            <h1>📚 MedFlow Documentation Center</h1>
+            <p>Complete guide to using the MedFlow healthcare platform</p>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 Search documentation..." onkeyup="filterCards()">
+        </div>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem;">Getting Started</h2>
+            <div class="card-grid">
+                <a href="getting-started/login.html">
+                    <div class="card">
+                        <div class="card-icon">🔐</div>
+                        <h3>Login & Authentication</h3>
+                        <p>Learn how to access MedFlow and manage your account</p>
+                    </div>
+                </a>
+                <a href="getting-started/dashboard.html">
+                    <div class="card">
+                        <div class="card-icon">📊</div>
+                        <h3>Dashboard Overview</h3>
+                        <p>Understand your dashboard and quick actions</p>
+                    </div>
+                </a>
+                <a href="getting-started/navigation.html">
+                    <div class="card">
+                        <div class="card-icon">🧭</div>
+                        <h3>Navigation Guide</h3>
+                        <p>Navigate through MedFlow modules efficiently</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem; margin-top: 3rem;">Core Features</h2>
+            <div class="card-grid">
+                <a href="features/appointments.html">
+                    <div class="card">
+                        <div class="card-icon">📅</div>
+                        <h3>Appointment Scheduling</h3>
+                        <p>Create and manage appointments with calendar views</p>
+                    </div>
+                </a>
+                <a href="features/waitlist.html">
+                    <div class="card">
+                        <div class="card-icon">⏳</div>
+                        <h3>Waitlist Management</h3>
+                        <p>Manage patient waitlist with priority tracking</p>
+                    </div>
+                </a>
+                <a href="features/patient-management.html">
+                    <div class="card">
+                        <div class="card-icon">👥</div>
+                        <h3>Patient Management</h3>
+                        <p>Register and manage patient records</p>
+                    </div>
+                </a>
+                <a href="features/eprescribe.html">
+                    <div class="card">
+                        <div class="card-icon">💊</div>
+                        <h3>ePrescribe</h3>
+                        <p>Create and manage electronic prescriptions</p>
+                    </div>
+                </a>
+                <a href="features/lab-orders.html">
+                    <div class="card">
+                        <div class="card-icon">🔬</div>
+                        <h3>Lab Orders</h3>
+                        <p>Order lab tests with CPT code selection</p>
+                    </div>
+                </a>
+                <a href="features/diagnosis.html">
+                    <div class="card">
+                        <div class="card-icon">🩺</div>
+                        <h3>Diagnosis & ICD Codes</h3>
+                        <p>Record diagnoses and link to treatments</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem; margin-top: 3rem;">Clinical Modules</h2>
+            <div class="card-grid">
+                <a href="guides/clinical-notes.html">
+                    <div class="card">
+                        <div class="card-icon">📝</div>
+                        <h3>Clinical Notes</h3>
+                        <p>Document patient encounters and SOAP notes</p>
+                    </div>
+                </a>
+                <a href="guides/vitals.html">
+                    <div class="card">
+                        <div class="card-icon">❤️</div>
+                        <h3>Vital Signs</h3>
+                        <p>Record and track patient vital signs</p>
+                    </div>
+                </a>
+                <a href="guides/telehealth.html">
+                    <div class="card">
+                        <div class="card-icon">📹</div>
+                        <h3>Telehealth</h3>
+                        <p>Conduct virtual appointments with video</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem; margin-top: 3rem;">Revenue Cycle</h2>
+            <div class="card-grid">
+                <a href="guides/claims.html">
+                    <div class="card">
+                        <div class="card-icon">💰</div>
+                        <h3>Claims Management</h3>
+                        <p>Submit and track insurance claims</p>
+                    </div>
+                </a>
+                <a href="guides/payments.html">
+                    <div class="card">
+                        <div class="card-icon">💳</div>
+                        <h3>Payments & Billing</h3>
+                        <p>Process payments and generate invoices</p>
+                    </div>
+                </a>
+                <a href="guides/reports.html">
+                    <div class="card">
+                        <div class="card-icon">📈</div>
+                        <h3>Financial Reports</h3>
+                        <p>View revenue and billing analytics</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem; margin-top: 3rem;">Administration</h2>
+            <div class="card-grid">
+                <a href="guides/user-management.html">
+                    <div class="card">
+                        <div class="card-icon">👨‍💼</div>
+                        <h3>User Management</h3>
+                        <p>Manage staff accounts and permissions</p>
+                    </div>
+                </a>
+                <a href="guides/practice-settings.html">
+                    <div class="card">
+                        <div class="card-icon">⚙️</div>
+                        <h3>Practice Settings</h3>
+                        <p>Configure practice information and preferences</p>
+                    </div>
+                </a>
+                <a href="troubleshooting/common-issues.html">
+                    <div class="card">
+                        <div class="card-icon">🔧</div>
+                        <h3>Troubleshooting</h3>
+                        <p>Solutions to common problems</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <div class="doc-footer">
+            <p><strong>MedFlow v1.1</strong> | Last Updated: December 2025</p>
+            <p>For technical support, contact your system administrator</p>
+        </div>
+    </div>
+
+    <script>
+        function filterCards() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const cards = document.querySelectorAll('.card');
+
+            cards.forEach(card => {
+                const title = card.querySelector('h3').textContent.toLowerCase();
+                const description = card.querySelector('p').textContent.toLowerCase();
+
+                if (title.includes(filter) || description.includes(filter)) {
+                    card.parentElement.style.display = '';
+                } else {
+                    card.parentElement.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

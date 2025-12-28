@@ -1,0 +1,374 @@
+{
+  "version": "1.1",
+  "lastUpdated": "2025-12-27",
+  "sections": [
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "icon": "🚀",
+      "articles": [
+        {
+          "id": "login",
+          "title": "Logging In",
+          "path": "/docs/getting-started/login.html",
+          "keywords": ["login", "sign in", "authentication", "password", "oauth"],
+          "content": "Learn how to log into MedFlow using email/password or OAuth providers",
+          "roles": ["all"]
+        },
+        {
+          "id": "dashboard",
+          "title": "Dashboard Overview",
+          "path": "/docs/getting-started/dashboard.html",
+          "keywords": ["dashboard", "overview", "home", "stats", "quick actions"],
+          "content": "Understanding your MedFlow dashboard and key metrics",
+          "roles": ["all"]
+        },
+        {
+          "id": "navigation",
+          "title": "Navigation Basics",
+          "path": "/docs/getting-started/navigation.html",
+          "keywords": ["navigation", "menu", "sidebar", "modules"],
+          "content": "How to navigate through MedFlow modules and features",
+          "roles": ["all"]
+        }
+      ]
+    },
+    {
+      "id": "appointments",
+      "title": "Appointment Management",
+      "icon": "📅",
+      "articles": [
+        {
+          "id": "create-appointment",
+          "title": "Creating Appointments",
+          "path": "/docs/features/appointments/create.html",
+          "keywords": ["appointment", "schedule", "booking", "calendar"],
+          "content": "Step-by-step guide to scheduling patient appointments",
+          "roles": ["admin", "doctor", "nurse", "receptionist"]
+        },
+        {
+          "id": "waitlist",
+          "title": "Waitlist Management",
+          "path": "/docs/features/appointments/waitlist.html",
+          "keywords": ["waitlist", "priority", "notify", "available slots"],
+          "content": "Managing the waitlist and auto-notifications for available appointments",
+          "roles": ["admin", "receptionist"]
+        },
+        {
+          "id": "calendar-views",
+          "title": "Calendar Views",
+          "path": "/docs/features/appointments/calendar.html",
+          "keywords": ["calendar", "day", "week", "month", "schedule"],
+          "content": "Using different calendar views to manage appointments",
+          "roles": ["admin", "doctor", "nurse", "receptionist"]
+        }
+      ]
+    },
+    {
+      "id": "patients",
+      "title": "Patient Management",
+      "icon": "👥",
+      "articles": [
+        {
+          "id": "register-patient",
+          "title": "Patient Registration",
+          "path": "/docs/features/patients/registration.html",
+          "keywords": ["patient", "register", "new", "demographics", "mrn"],
+          "content": "How to register new patients and set up portal access",
+          "roles": ["admin", "receptionist"]
+        },
+        {
+          "id": "search-patients",
+          "title": "Searching Patients",
+          "path": "/docs/features/patients/search.html",
+          "keywords": ["search", "find", "patient", "filter"],
+          "content": "Advanced patient search and filtering options",
+          "roles": ["admin", "doctor", "nurse", "receptionist"]
+        }
+      ]
+    },
+    {
+      "id": "ehr",
+      "title": "Electronic Health Records",
+      "icon": "📋",
+      "articles": [
+        {
+          "id": "medical-records",
+          "title": "Medical Records",
+          "path": "/docs/features/ehr/records.html",
+          "keywords": ["ehr", "medical records", "documentation", "notes"],
+          "content": "Creating and managing patient medical records",
+          "roles": ["admin", "doctor", "nurse"]
+        },
+        {
+          "id": "prescriptions",
+          "title": "Prescriptions & ePrescribe",
+          "path": "/docs/features/ehr/prescriptions.html",
+          "keywords": ["prescription", "eprescribe", "medication", "pharmacy"],
+          "content": "Using the ePrescribe modal to create and manage prescriptions with edit mode support",
+          "roles": ["admin", "doctor"]
+        },
+        {
+          "id": "diagnoses",
+          "title": "Diagnosis Management",
+          "path": "/docs/features/ehr/diagnoses.html",
+          "keywords": ["diagnosis", "icd", "condition", "prescription linking"],
+          "content": "Creating diagnoses and linking prescriptions for better documentation",
+          "roles": ["admin", "doctor", "nurse"]
+        },
+        {
+          "id": "lab-orders",
+          "title": "Laboratory Orders",
+          "path": "/docs/features/ehr/lab-orders.html",
+          "keywords": ["lab", "laboratory", "cpt", "tests", "orders", "recurring"],
+          "content": "Advanced lab ordering with CPT multiselect, recurring orders, and result management",
+          "roles": ["admin", "doctor", "nurse"]
+        }
+      ]
+    },
+    {
+      "id": "telehealth",
+      "title": "Telehealth",
+      "icon": "🎥",
+      "articles": [
+        {
+          "id": "video-consultations",
+          "title": "Video Consultations",
+          "path": "/docs/features/telehealth/video.html",
+          "keywords": ["telehealth", "video", "virtual", "consultation"],
+          "content": "Conducting video consultations with patients",
+          "roles": ["admin", "doctor", "nurse"]
+        }
+      ]
+    },
+    {
+      "id": "rcm",
+      "title": "Revenue Cycle Management",
+      "icon": "💰",
+      "articles": [
+        {
+          "id": "claims",
+          "title": "Claims Management",
+          "path": "/docs/features/rcm/claims.html",
+          "keywords": ["claims", "billing", "insurance", "submit"],
+          "content": "Creating and managing insurance claims",
+          "roles": ["admin", "billing_manager"]
+        },
+        {
+          "id": "payments",
+          "title": "Payment Processing",
+          "path": "/docs/features/rcm/payments.html",
+          "keywords": ["payment", "process", "credit card", "cash"],
+          "content": "Processing patient payments and managing transactions",
+          "roles": ["admin", "billing_manager", "receptionist"]
+        }
+      ]
+    },
+    {
+      "id": "pharmacy-lab",
+      "title": "Pharmacy & Laboratory",
+      "icon": "💊",
+      "articles": [
+        {
+          "id": "pharmacy-directory",
+          "title": "Pharmacy Management",
+          "path": "/docs/features/pharmacy/directory.html",
+          "keywords": ["pharmacy", "directory", "toggle switches", "erx"],
+          "content": "Managing pharmacy directory with modern toggle switches and service features",
+          "roles": ["admin"]
+        },
+        {
+          "id": "lab-directory",
+          "title": "Laboratory Management",
+          "path": "/docs/features/lab/directory.html",
+          "keywords": ["laboratory", "lab", "directory", "clia"],
+          "content": "Managing laboratory facilities and electronic ordering",
+          "roles": ["admin"]
+        }
+      ]
+    },
+    {
+      "id": "admin",
+      "title": "Administration",
+      "icon": "⚙️",
+      "articles": [
+        {
+          "id": "user-management",
+          "title": "User Management",
+          "path": "/docs/admin/users.html",
+          "keywords": ["users", "roles", "permissions", "rbac"],
+          "content": "Managing users, roles, and permissions",
+          "roles": ["admin"]
+        },
+        {
+          "id": "settings",
+          "title": "System Settings",
+          "path": "/docs/admin/settings.html",
+          "keywords": ["settings", "configuration", "organization"],
+          "content": "Configuring clinic settings and preferences",
+          "roles": ["admin"]
+        }
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshooting",
+      "icon": "🔧",
+      "articles": [
+        {
+          "id": "login-issues",
+          "title": "Login Problems",
+          "path": "/docs/troubleshooting/login.html",
+          "keywords": ["login", "password", "forgot", "locked", "troubleshoot"],
+          "content": "Solutions for common login and authentication issues",
+          "roles": ["all"]
+        },
+        {
+          "id": "performance",
+          "title": "Performance Issues",
+          "path": "/docs/troubleshooting/performance.html",
+          "keywords": ["slow", "performance", "loading", "lag"],
+          "content": "Troubleshooting slow performance and loading issues",
+          "roles": ["all"]
+        }
+      ]
+    }
+  ],
+  "contextualHelp": {
+    "login-form": {
+      "title": "Login to MedFlow",
+      "content": "Enter your email and password. Use OAuth for quick social login.",
+      "articleId": "login"
+    },
+    "dashboard": {
+      "title": "Your Dashboard",
+      "content": "View key metrics, quick actions, and recent activity at a glance.",
+      "articleId": "dashboard"
+    },
+    "appointment-form": {
+      "title": "Schedule Appointment",
+      "content": "Select patient, provider, date, and time. System prevents double-booking.",
+      "articleId": "create-appointment"
+    },
+    "waitlist-tab": {
+      "title": "Waitlist Management",
+      "content": "Manage patient waitlist with status tracking and auto-notifications.",
+      "articleId": "waitlist"
+    },
+    "patient-form": {
+      "title": "Patient Registration",
+      "content": "Enter patient demographics, insurance, and enable portal access.",
+      "articleId": "register-patient"
+    },
+    "eprescribe-modal": {
+      "title": "ePrescribe Workflow",
+      "content": "Step-by-step prescription creation with drug interaction checking. Edit mode prefills medication name.",
+      "articleId": "prescriptions"
+    },
+    "diagnosis-form": {
+      "title": "Diagnosis Entry",
+      "content": "Search ICD codes and link prescriptions for better documentation.",
+      "articleId": "diagnoses"
+    },
+    "lab-order-form": {
+      "title": "Lab Order Creation",
+      "content": "Use CPT multiselect to order multiple tests. Support for one-time, recurring, and future orders.",
+      "articleId": "lab-orders"
+    },
+    "pharmacy-form": {
+      "title": "Pharmacy Management",
+      "content": "Use toggle switches for service features like 24-hour, e-prescribe, delivery.",
+      "articleId": "pharmacy-directory"
+    },
+    "lab-directory": {
+      "title": "Laboratory Directory",
+      "content": "Manage lab facilities with electronic ordering and integration settings.",
+      "articleId": "lab-directory"
+    }
+  },
+  "onboarding": {
+    "admin": [
+      {
+        "step": 1,
+        "target": "dashboard",
+        "title": "Welcome to MedFlow!",
+        "content": "This is your central dashboard. View key metrics and quick actions here.",
+        "placement": "center"
+      },
+      {
+        "step": 2,
+        "target": "sidebar",
+        "title": "Navigation Menu",
+        "content": "Access all modules from this sidebar. Your role determines what you can see.",
+        "placement": "right"
+      },
+      {
+        "step": 3,
+        "target": "user-menu",
+        "title": "Your Profile",
+        "content": "Manage your profile, switch roles, and access settings here.",
+        "placement": "bottom"
+      },
+      {
+        "step": 4,
+        "target": "help-button",
+        "title": "Need Help?",
+        "content": "Click here anytime to access help, documentation, and the AI assistant.",
+        "placement": "bottom"
+      }
+    ],
+    "doctor": [
+      {
+        "step": 1,
+        "target": "dashboard",
+        "title": "Welcome, Doctor!",
+        "content": "Your dashboard shows today's appointments and pending tasks.",
+        "placement": "center"
+      },
+      {
+        "step": 2,
+        "target": "practice-management",
+        "title": "Appointments",
+        "content": "Manage your schedule here. View calendar, list, or waitlist.",
+        "placement": "right"
+      },
+      {
+        "step": 3,
+        "target": "patients",
+        "title": "Patient Records",
+        "content": "Access complete patient medical history and EHR.",
+        "placement": "right"
+      },
+      {
+        "step": 4,
+        "target": "help-button",
+        "title": "Help & Support",
+        "content": "Get contextual help and use the AI assistant for quick answers.",
+        "placement": "bottom"
+      }
+    ],
+    "receptionist": [
+      {
+        "step": 1,
+        "target": "practice-management",
+        "title": "Welcome!",
+        "content": "Start here to manage appointments and the waitlist.",
+        "placement": "center"
+      },
+      {
+        "step": 2,
+        "target": "patients",
+        "title": "Patient Management",
+        "content": "Register new patients and update existing records.",
+        "placement": "right"
+      },
+      {
+        "step": 3,
+        "target": "waitlist-tab",
+        "title": "Waitlist Feature",
+        "content": "Manage patient waitlist and send auto-notifications when slots open.",
+        "placement": "top"
+      }
+    ]
+  }
+}
