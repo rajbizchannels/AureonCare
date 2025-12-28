@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const vendorIntegrationManager = require('../services/vendorIntegrations');
+const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 
 /**
  * Lab Orders API
@@ -219,6 +220,19 @@ router.post('/', async (req, res) => {
 
     const labOrder = result.rows[0];
 
+    // Initialize FHIR tracking for lab order
+    try {
+      await fhirTrackingIntegration.initializeLabOrderTracking({
+        labOrderId: labOrder.id,
+        labOrder,
+        vendorName: send_to_vendor ? 'labcorp' : null,
+        userId: provider_id
+      });
+    } catch (trackingError) {
+      console.error('Error initializing lab order tracking:', trackingError);
+      // Don't fail the request if tracking fails
+    }
+
     // Send to Labcorp if requested and integration is enabled
     if (send_to_vendor && vendorIntegrationManager.isVendorEnabled('labcorp')) {
       try {
@@ -274,6 +288,31 @@ router.post('/', async (req, res) => {
             internalReferenceId: labOrder.id,
             patientId: patient_id
           });
+
+          // Record vendor interaction in FHIR tracking
+          try {
+            await fhirTrackingIntegration.recordLabOrderVendorInteraction({
+              labOrderId: labOrder.id,
+              vendorName: 'labcorp',
+              vendorTrackingId: vendorResponse.vendorOrderId,
+              vendorStatus: vendorResponse.status,
+              vendorResponse: vendorResponse.response,
+              success: true,
+              userId: provider_id
+            });
+
+            // Update tracking status to sent_to_lab
+            await fhirTrackingIntegration.updateLabOrderTracking({
+              labOrderId: labOrder.id,
+              status: 'sent_to_lab',
+              statusReason: 'Sent to Labcorp',
+              vendorStatus: vendorResponse.status,
+              vendorTrackingId: vendorResponse.vendorOrderId,
+              userId: provider_id
+            });
+          } catch (trackingError) {
+            console.error('Error recording lab order vendor interaction in tracking:', trackingError);
+          }
         } else {
           // Log failed transaction
           await vendorIntegrationManager.logTransaction('labcorp', 'lab_order_submit', {
@@ -286,10 +325,37 @@ router.post('/', async (req, res) => {
           });
 
           labOrder.vendor_error = vendorResponse.error;
+
+          // Record error in FHIR tracking
+          try {
+            await fhirTrackingIntegration.recordLabOrderError({
+              labOrderId: labOrder.id,
+              errorMessage: vendorResponse.error,
+              errorDetails: { response: vendorResponse.response },
+              vendorName: 'labcorp',
+              vendorResponse: vendorResponse.response,
+              userId: provider_id
+            });
+          } catch (trackingError) {
+            console.error('Error recording lab order error in tracking:', trackingError);
+          }
         }
       } catch (vendorError) {
         console.error('Error sending to Labcorp:', vendorError);
         labOrder.vendor_error = vendorError.message;
+
+        // Record error in FHIR tracking
+        try {
+          await fhirTrackingIntegration.recordLabOrderError({
+            labOrderId: labOrder.id,
+            errorMessage: vendorError.message,
+            errorDetails: { stack: vendorError.stack },
+            vendorName: 'labcorp',
+            userId: provider_id
+          });
+        } catch (trackingError) {
+          console.error('Error recording lab order error in tracking:', trackingError);
+        }
       }
     }
 
@@ -369,7 +435,24 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Lab order not found' });
     }
 
-    res.json(result.rows[0]);
+    const updatedLabOrder = result.rows[0];
+
+    // Update FHIR tracking status if status changed
+    if (status) {
+      try {
+        await fhirTrackingIntegration.updateLabOrderTracking({
+          labOrderId: id,
+          status,
+          statusReason: 'Manual update',
+          userId: req.user?.id || null
+        });
+      } catch (trackingError) {
+        console.error('Error updating lab order tracking:', trackingError);
+        // Don't fail the request if tracking update fails
+      }
+    }
+
+    res.json(updatedLabOrder);
   } catch (error) {
     console.error('Error updating lab order:', error);
     res.status(500).json({ error: 'Failed to update lab order' });
