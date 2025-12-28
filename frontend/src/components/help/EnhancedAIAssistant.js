@@ -335,7 +335,7 @@ const EnhancedAIAssistant = ({
           </div>
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
             <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none`}>
-              <p className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>
+              <p className={`whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {selectedArticle.content}
               </p>
               {selectedArticle.url && (
@@ -351,17 +351,10 @@ const EnhancedAIAssistant = ({
                     }`}
                   >
                     <Book className="w-4 h-4" />
-                    Read Full Documentation
+                    View Complete Guide
                   </a>
                 </div>
               )}
-              <div className={`mt-6 p-4 rounded-lg ${
-                theme === 'dark' ? 'bg-slate-800' : 'bg-blue-50'
-              }`}>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  📘 For complete step-by-step instructions, refer to the full User Manual.
-                </p>
-              </div>
             </div>
           </div>
         </div>
