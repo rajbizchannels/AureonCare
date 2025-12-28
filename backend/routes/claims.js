@@ -53,7 +53,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const {
     claim_number, patient_id, payer, amount, status,
-    service_date, diagnosis_codes, procedure_codes, notes
+    service_date, diagnosis_codes, procedure_codes, notes, preapproval_id
   } = req.body;
 
   try {
@@ -62,11 +62,11 @@ router.post('/', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO claims
        (claim_number, patient_id, payer, amount, status,
-        service_date, diagnosis_codes, procedure_codes, notes, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        service_date, diagnosis_codes, procedure_codes, notes, preapproval_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
        RETURNING *`,
       [claim_number, patient_id, payer, amount, status || 'pending',
-       service_date, diagnosis_codes, procedure_codes, notes]
+       service_date, diagnosis_codes, procedure_codes, notes, preapproval_id || null]
     );
 
     const claim = result.rows[0];

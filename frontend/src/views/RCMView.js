@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield, FileCheck } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import NewPaymentForm from '../components/forms/NewPaymentForm';
 import NewClaimForm from '../components/forms/NewClaimForm';
 import NewInsurancePayerForm from '../components/forms/NewInsurancePayerForm';
+import NewPreapprovalForm from '../components/forms/NewPreapprovalForm';
 
 const RCMView = ({
   theme,
@@ -21,6 +22,7 @@ const RCMView = ({
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [showInsurancePayerForm, setShowInsurancePayerForm] = useState(false);
+  const [showPreapprovalForm, setShowPreapprovalForm] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -41,6 +43,7 @@ const RCMView = ({
               setShowInsurancePayerForm(true);
               setShowPaymentForm(false);
               setShowClaimForm(false);
+              setShowPreapprovalForm(false);
             }}
             className={`flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
@@ -49,9 +52,22 @@ const RCMView = ({
           </button>
           <button
             onClick={() => {
+              setShowPreapprovalForm(true);
+              setShowPaymentForm(false);
+              setShowInsurancePayerForm(false);
+              setShowClaimForm(false);
+            }}
+            className={`flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors`}
+          >
+            <FileCheck className="w-4 h-4" />
+            Request Preapproval
+          </button>
+          <button
+            onClick={() => {
               setShowPaymentForm(true);
               setShowInsurancePayerForm(false);
               setShowClaimForm(false);
+              setShowPreapprovalForm(false);
             }}
             className={`flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
@@ -63,6 +79,7 @@ const RCMView = ({
               setShowClaimForm(true);
               setShowPaymentForm(false);
               setShowInsurancePayerForm(false);
+              setShowPreapprovalForm(false);
             }}
             className={`flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
           >
@@ -118,6 +135,23 @@ const RCMView = ({
               setShowClaimForm(false);
               setClaims([...claims, newClaim]);
               addNotification('success', t.claimCreated || 'Claim created successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
+      {showPreapprovalForm && (
+        <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewPreapprovalForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            onClose={() => setShowPreapprovalForm(false)}
+            onSuccess={(newPreapproval) => {
+              setShowPreapprovalForm(false);
+              addNotification('success', t.preapprovalCreated || 'Preapproval request created successfully');
             }}
             addNotification={addNotification}
             t={t}
