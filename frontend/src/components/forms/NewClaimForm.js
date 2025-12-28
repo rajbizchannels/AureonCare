@@ -8,12 +8,15 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
     payerId: '',
     serviceDate: '',
     amount: '',
-    notes: ''
+    notes: '',
+    preapprovalId: ''
   });
   const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingPayers, setLoadingPayers] = useState(true);
+  const [preapprovals, setPreapprovals] = useState([]);
+  const [loadingPreapprovals, setLoadingPreapprovals] = useState(false);
   const [selectedDiagnoses, setSelectedDiagnoses] = useState([]);
   const [selectedProcedures, setSelectedProcedures] = useState([]);
   const [diagnosisSearch, setDiagnosisSearch] = useState('');
@@ -72,6 +75,32 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
     };
     loadPayers();
   }, [api, addNotification]);
+
+  // Load preapprovals when patient is selected
+  useEffect(() => {
+    const loadPreapprovals = async () => {
+      if (!formData.patientId) {
+        setPreapprovals([]);
+        return;
+      }
+
+      setLoadingPreapprovals(true);
+      try {
+        const approvals = await api.getPreapprovals(formData.patientId);
+        // Filter for approved or pending preapprovals
+        const activeApprovals = approvals.filter(a =>
+          a.status === 'Approved' || a.status === 'Pending' || a.status === 'Submitted'
+        );
+        setPreapprovals(activeApprovals);
+      } catch (error) {
+        console.error('Error loading preapprovals:', error);
+        setPreapprovals([]);
+      } finally {
+        setLoadingPreapprovals(false);
+      }
+    };
+    loadPreapprovals();
+  }, [formData.patientId, api]);
 
   // Search diagnoses (ICD codes) with debounce
   useEffect(() => {
@@ -218,12 +247,14 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
         claim_number: claimNo,
         patient_id: formData.patientId,
         payer: payer?.name || 'Unknown',
+        payer_id: formData.payerId,
         amount: parseFloat(formData.amount),
         status: 'pending',
         service_date: formData.serviceDate,
         diagnosis_codes: selectedDiagnoses.map(d => d.code),
         procedure_codes: selectedProcedures.map(p => p.code),
-        notes: formData.notes
+        notes: formData.notes,
+        preapproval_id: formData.preapprovalId || null
       };
 
       const newClaim = await api.createClaim(claimData);
@@ -322,6 +353,32 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
                     <option key={p.id} value={p.id}>{p.name} ({p.payer_id})</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.preapproval || 'Preapproval (Prior Authorization)'}
+                </label>
+                <select
+                  value={formData.preapprovalId}
+                  onChange={(e) => setFormData({...formData, preapprovalId: e.target.value})}
+                  disabled={loadingPreapprovals || !formData.patientId}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingPreapprovals ? 'opacity-50' : ''}`}
+                >
+                  <option value="">
+                    {!formData.patientId ? 'Select patient first' : loadingPreapprovals ? 'Loading...' : (preapprovals.length === 0 ? 'No preapprovals available' : 'None (optional)')}
+                  </option>
+                  {preapprovals.map(pa => (
+                    <option key={pa.id} value={pa.id}>
+                      {pa.preapproval_number} - {pa.requested_service} ({pa.status})
+                    </option>
+                  ))}
+                </select>
+                {preapprovals.length > 0 && formData.preapprovalId && (
+                  <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                    ✓ This claim will be linked to the selected preapproval
+                  </p>
+                )}
               </div>
 
               <div>

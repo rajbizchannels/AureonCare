@@ -155,6 +155,50 @@ const api = {
     return response.json();
   },
 
+  // Preapprovals
+  getPreapprovals: async (patientId) => {
+    const params = new URLSearchParams();
+    if (patientId) params.append('patientId', patientId);
+    const response = await fetch(`${API_BASE_URL}/preapprovals?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch preapprovals');
+    return response.json();
+  },
+  getPreapproval: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/preapprovals/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch preapproval');
+    return response.json();
+  },
+  checkClearinghouseStatus: async () => {
+    const response = await fetch(`${API_BASE_URL}/preapprovals/check-clearinghouse/status`);
+    if (!response.ok) throw new Error('Failed to check clearinghouse status');
+    return response.json();
+  },
+  createPreapproval: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/preapprovals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create preapproval');
+    return response.json();
+  },
+  updatePreapproval: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/preapprovals/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update preapproval');
+    return response.json();
+  },
+  deletePreapproval: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/preapprovals/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete preapproval');
+    return response.json();
+  },
+
   // Payments
   getPayments: async (patientId, claimId, status) => {
     const params = new URLSearchParams();
