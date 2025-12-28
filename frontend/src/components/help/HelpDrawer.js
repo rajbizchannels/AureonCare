@@ -384,16 +384,26 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
             </div>
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
               <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none`}>
-                <p className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>
+                <p className={`whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {selectedArticle.content}
                 </p>
-                <div className={`mt-6 p-4 rounded-lg ${
-                  theme === 'dark' ? 'bg-slate-800' : 'bg-blue-50'
-                }`}>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    📘 For complete step-by-step instructions, refer to the full User Manual.
-                  </p>
-                </div>
+                {selectedArticle.url && (
+                  <div className="mt-6">
+                    <a
+                      href={selectedArticle.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        theme === 'dark'
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                          : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      }`}
+                    >
+                      <Book className="w-4 h-4" />
+                      Read Full Documentation
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           </div>
