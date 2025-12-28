@@ -4,7 +4,7 @@
  * Provides integration helpers to add FHIR tracking to prescription and lab order workflows
  */
 
-const pool = require('../config/db');
+const pool = require('../db');
 const fhirTrackingService = require('./fhirTracking');
 
 /**

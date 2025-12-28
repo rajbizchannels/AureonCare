@@ -5,7 +5,7 @@
  * with end-to-end visibility, error handling, and action suggestions.
  */
 
-const pool = require('../config/db');
+const pool = require('../db');
 
 /**
  * Status mappings for different resource types
