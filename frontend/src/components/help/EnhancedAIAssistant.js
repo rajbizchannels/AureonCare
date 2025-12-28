@@ -135,7 +135,7 @@ const EnhancedAIAssistant = ({
 
     return {
       content: "I can help you with:\n\n• Appointment scheduling and waitlist\n• Patient management and registration\n• ePrescribe and medication management\n• Lab orders with CPT codes\n• Pharmacy and laboratory directories\n• Claims and payment processing\n• Reports and analytics\n\nTry asking about a specific feature, and I'll provide detailed guidance!",
-      suggestions: ['How to create appointments?', 'What's new in v1.1?', 'Show me help topics'],
+      suggestions: ['How to create appointments?', 'What\'s new in v1.1?', 'Show me help topics'],
       articles: []
     };
   };
