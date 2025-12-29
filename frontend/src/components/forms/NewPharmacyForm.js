@@ -3,7 +3,7 @@ import { Pill, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import Toggle from '../Toggle';
 
-const NewPharmacyForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => {
+const NewPharmacyForm = ({ theme, api, editingPharmacy, onClose, onSuccess, addNotification, t }) => {
   const [formData, setFormData] = useState({
     pharmacyName: '',
     chainName: '',
@@ -28,6 +28,34 @@ const NewPharmacyForm = ({ theme, api, onClose, onSuccess, addNotification, t })
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  // Preload form data when editing
+  useEffect(() => {
+    if (editingPharmacy) {
+      setFormData({
+        pharmacyName: editingPharmacy.pharmacyName || '',
+        chainName: editingPharmacy.chainName || '',
+        ncpdpId: editingPharmacy.ncpdpId || '',
+        npi: editingPharmacy.npi || '',
+        addressLine1: editingPharmacy.addressLine1 || '',
+        addressLine2: editingPharmacy.addressLine2 || '',
+        city: editingPharmacy.city || '',
+        state: editingPharmacy.state || '',
+        zipCode: editingPharmacy.zipCode || '',
+        phone: editingPharmacy.phone || '',
+        fax: editingPharmacy.fax || '',
+        email: editingPharmacy.email || '',
+        website: editingPharmacy.website || '',
+        is24Hours: editingPharmacy.is24Hours || false,
+        acceptsErx: editingPharmacy.acceptsErx !== undefined ? editingPharmacy.acceptsErx : true,
+        deliveryAvailable: editingPharmacy.deliveryAvailable || false,
+        driveThrough: editingPharmacy.driveThrough || false,
+        acceptsInsurance: editingPharmacy.acceptsInsurance !== undefined ? editingPharmacy.acceptsInsurance : true,
+        preferredNetwork: editingPharmacy.preferredNetwork || false,
+        isActive: editingPharmacy.isActive !== undefined ? editingPharmacy.isActive : true
+      });
+    }
+  }, [editingPharmacy]);
+
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e) => {
@@ -48,13 +76,21 @@ const NewPharmacyForm = ({ theme, api, onClose, onSuccess, addNotification, t })
 
   const handleActualSubmit = async () => {
     try {
-      const newPharmacy = await api.createPharmacy(formData);
-      await addNotification('alert', `New pharmacy added: ${newPharmacy.pharmacyName}`);
-      onSuccess(newPharmacy);
+      let pharmacy;
+      if (editingPharmacy) {
+        // Update existing pharmacy
+        pharmacy = await api.updatePharmacy(editingPharmacy.id, formData);
+        await addNotification('success', `Pharmacy updated: ${pharmacy.pharmacyName}`);
+      } else {
+        // Create new pharmacy
+        pharmacy = await api.createPharmacy(formData);
+        await addNotification('success', `New pharmacy added: ${pharmacy.pharmacyName}`);
+      }
+      onSuccess(pharmacy);
       onClose();
     } catch (err) {
-      console.error('Error creating pharmacy:', err);
-      addNotification('alert', 'Failed to create pharmacy');
+      console.error(`Error ${editingPharmacy ? 'updating' : 'creating'} pharmacy:`, err);
+      addNotification('alert', `Failed to ${editingPharmacy ? 'update' : 'create'} pharmacy`);
     }
   };
 
@@ -65,10 +101,10 @@ const NewPharmacyForm = ({ theme, api, onClose, onSuccess, addNotification, t })
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
         onConfirm={handleActualSubmit}
-        title="Add Pharmacy"
-        message="Are you sure you want to add this pharmacy?"
+        title={editingPharmacy ? "Update Pharmacy" : "Add Pharmacy"}
+        message={editingPharmacy ? "Are you sure you want to update this pharmacy?" : "Are you sure you want to add this pharmacy?"}
         type="confirm"
-        confirmText="Add Pharmacy"
+        confirmText={editingPharmacy ? "Update Pharmacy" : "Add Pharmacy"}
         cancelText="Cancel"
       />
       <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
