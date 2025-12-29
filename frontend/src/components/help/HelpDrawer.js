@@ -8,6 +8,29 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [activeTab, setActiveTab] = useState('search'); // search, context, recent
 
+  // Parse simple markdown to HTML
+  const parseMarkdown = (text) => {
+    if (!text) return '';
+
+    // Convert **text** to <strong>text</strong>
+    let parsed = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Convert line breaks to <br> for proper display
+    parsed = parsed.replace(/\n/g, '<br />');
+
+    return parsed;
+  };
+
+  // Get summary or first 2 lines of content
+  const getSummary = (article) => {
+    if (article.summary) {
+      return article.summary;
+    }
+    // Fallback: get first 2 lines of content
+    const lines = article.content.split('\n').filter(line => line.trim());
+    return lines.slice(0, 2).join('\n');
+  };
+
   // Load documentation index
   useEffect(() => {
     fetch('/docs/documentation-index.json')
@@ -211,9 +234,10 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
                           <h3 className={`font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {article.title}
                           </h3>
-                          <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            {article.content}
-                          </p>
+                          <div
+                            className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}
+                            dangerouslySetInnerHTML={{ __html: parseMarkdown(getSummary(article)) }}
+                          />
                           <div className="flex items-center gap-2">
                             <span className={`text-xs px-2 py-1 rounded ${
                               theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'
@@ -323,9 +347,10 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
                           }`}
                         >
                           <p className="font-medium text-sm">{article.title}</p>
-                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                            {article.content}
-                          </p>
+                          <div
+                            className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}
+                            dangerouslySetInnerHTML={{ __html: parseMarkdown(getSummary(article)) }}
+                          />
                         </button>
                       ))}
                   </div>
@@ -384,9 +409,14 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
             </div>
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
               <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none`}>
-                <p className={`whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  {selectedArticle.content}
-                </p>
+                <div
+                  className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}
+                  dangerouslySetInnerHTML={{ __html: parseMarkdown(selectedArticle.content) }}
+                  style={{
+                    lineHeight: '1.75',
+                    fontSize: '0.95rem'
+                  }}
+                />
                 {selectedArticle.url && (
                   <div className="mt-6">
                     <a
