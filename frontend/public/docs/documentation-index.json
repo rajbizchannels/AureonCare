@@ -10,29 +10,52 @@
         {
           "id": "login",
           "title": "Logging In",
-          "path": "/docs/getting-started/login.html",
-          "url": "/docs/getting-started/login.html",
-          "keywords": ["login", "sign in", "authentication", "password", "oauth"],
+          "path": "/docs/index.html#login",
+          "url": "/docs/index.html#login",
+          "keywords": [
+            "login",
+            "sign in",
+            "authentication",
+            "password",
+            "oauth"
+          ],
           "content": "How to Access MedFlow:\n\n**Staff Portal Login:**\n1. Navigate to your MedFlow URL\n2. Enter your Email Address\n3. Enter your Password\n4. Click Sign In\n\n**Patient Portal Login:**\n1. Navigate to the Patient Portal URL\n2. Enter your registered Email Address\n3. Enter your Password\n4. Click Sign In\n\n**Social Login (OAuth):**\nClick one of the social login buttons:\n• Sign in with Google\n• Sign in with Microsoft\n• Sign in with Facebook\n\nThen authorize MedFlow to access your account.\n\n**Forgot Password:**\n1. Click 'Forgot Password' on login screen\n2. Enter your email address\n3. Check email for reset link (valid 1 hour)\n4. Click link and create new password\n5. Confirm new password\n6. Log in with new credentials\n\n**First-Time Login:**\nYou may be prompted to:\n• Change your temporary password\n• Set up your user profile\n• Upload profile picture (optional)\n• Set language preference\n• Review assigned roles\n\n**Security Best Practices:**\n• Never share your password\n• Log out when leaving workstation\n• Use unique password for MedFlow\n• Report suspicious activity\n• Keep contact information current",
-          "roles": ["all"]
+          "roles": [
+            "all"
+          ]
         },
         {
           "id": "dashboard",
           "title": "Dashboard Overview",
           "path": "/docs/getting-started/dashboard.html",
-          "keywords": ["dashboard", "overview", "home", "stats", "quick actions"],
+          "keywords": [
+            "dashboard",
+            "overview",
+            "home",
+            "stats",
+            "quick actions"
+          ],
           "content": "Understanding your MedFlow dashboard and key metrics",
-          "roles": ["all"]
+          "roles": [
+            "all"
+          ]
         },
         {
           "id": "navigation",
           "title": "Navigation Basics",
-          "path": "/docs/getting-started/navigation.html",
-          "url": "/docs/getting-started/navigation.html",
-          "keywords": ["navigation", "menu", "sidebar", "modules"],
+          "path": "/docs/index.html#navigation",
+          "url": "/docs/index.html#navigation",
+          "keywords": [
+            "navigation",
+            "menu",
+            "sidebar",
+            "modules"
+          ],
           "summary": "Navigate through MedFlow modules and features\n\nUse the top menu bar and sidebar to access different modules. Breadcrumbs show your current location.",
           "content": "**Main Navigation:**\n\nTop Menu Bar - Access to main modules\nLeft Sidebar - Quick navigation to key features\nNotifications Icon - View system notifications\nUser Profile Icon - Access settings and logout\nTheme Toggle - Switch between light and dark mode\nLanguage Selector - Change interface language\n\n**Accessing Modules:**\n1. Click on module name in top menu (Patients, Appointments, etc.)\n2. Or use left sidebar for quick access\n3. Use search bar to find specific records\n\n**Breadcrumb Navigation:**\n• Shows your current location in the system\n• Click any breadcrumb to navigate back\n\n**Common Actions:**\n• View - Click on a record to see details\n• Edit - Click Edit button or pencil icon\n• Delete - Click Delete button or trash icon\n• Search - Use search box at top of lists\n• Filter - Use filter dropdowns to narrow results\n\n**Keyboard Shortcuts:**\n• ESC - Close modals and dialogs\n• Ctrl+K - Open search\n• ? - Open help documentation\n\n**Quick Tips:**\n• Use breadcrumbs to navigate back quickly\n• Search supports partial matches\n• Filters persist until cleared\n• Recent items appear at top of lists",
-          "roles": ["all"]
+          "roles": [
+            "all"
+          ]
         }
       ]
     },
@@ -44,42 +67,82 @@
         {
           "id": "create-appointment",
           "title": "Creating Appointments",
-          "path": "/docs/features/appointments.html",
-          "url": "/docs/features/appointments.html",
-          "keywords": ["appointment", "schedule", "booking", "calendar", "new"],
+          "path": "/docs/index.html#create-appointment",
+          "url": "/docs/index.html#create-appointment",
+          "keywords": [
+            "appointment",
+            "schedule",
+            "booking",
+            "calendar",
+            "new"
+          ],
           "summary": "Schedule patient appointments quickly and easily\n\nCreate appointments from Practice Management module with patient, provider, date, and time selection.",
           "content": "**Accessing Appointment Scheduling:**\n\n1. Go to Practice Management module\n2. Click '+ New Appointment' button\n3. Or click on calendar to create at specific time\n\n**Creating New Appointment:**\n\nStep 1: Select Patient\n• Search by name or MRN\n• Select from dropdown\n• Or click '+ New Patient' to register\n\nStep 2: Choose Provider\n• Select from available providers\n• System shows provider's availability\n• Can book with any provider if admin\n\nStep 3: Set Date and Time\n• Select date from calendar\n• Choose time slot\n• System prevents double-booking\n• Shows conflicts if any exist\n\nStep 4: Appointment Type\n• Office Visit\n• Telehealth\n• Follow-up\n• Annual Physical\n• Consultation\n• Procedure\n\nStep 5: Duration\n• Default: 30 minutes\n• Adjust based on appointment type\n• Can set custom duration\n\nStep 6: Additional Details\n• Reason for visit (optional)\n• Internal notes (optional)\n• Link to healthcare offering (optional)\n\n**After Creating:**\n• Appointment appears on calendar\n• Patient receives confirmation (if portal enabled)\n• Provider notified\n• Status set to 'Scheduled'\n\n**Calendar Views:**\n• Day View - See hourly schedule\n• Week View - Plan weekly schedule\n• Month View - Overview of month\n• List View - All appointments in list format\n\n**Managing Appointments:**\n• Edit - Click appointment to modify\n• Cancel - Mark as cancelled with reason\n• Reschedule - Change date/time\n• Check-in - Mark patient arrived\n• Complete - Mark visit completed\n\n**Best Practices:**\n• Verify patient contact information\n• Double-check provider availability\n• Add appointment reason for context\n• Set appropriate duration\n• Send confirmation to patient\n• Block time for lunch/meetings",
-          "roles": ["admin", "doctor", "nurse", "receptionist"]
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "receptionist"
+          ]
         },
         {
           "id": "waitlist",
           "title": "Waitlist Management",
-          "path": "/docs/features/waitlist.html",
-          "url": "/docs/features/waitlist.html",
-          "keywords": ["waitlist", "priority", "notify", "available slots"],
+          "path": "/docs/index.html#waitlist",
+          "url": "/docs/index.html#waitlist",
+          "keywords": [
+            "waitlist",
+            "priority",
+            "notify",
+            "available slots"
+          ],
           "summary": "NEW IN V1.1: Manage patient waitlist with auto-notifications\n\nAccess via Practice Management > Waitlist tab. Set priority levels and automatically notify patients when slots open.",
           "content": "**NEW IN V1.1:** Waitlist now fully integrated into Practice Management!\n\n**Accessing Waitlist:**\n1. Go to Practice Management module\n2. Click the 'Waitlist' tab (next to List and Calendar)\n3. View all patients with status tracking\n\n**Adding Patient to Waitlist:**\n\n**Method 1 - From Appointment Scheduling:**\n1. Attempt to schedule appointment\n2. If no slots available, click 'Add to Waitlist'\n3. Fill in waitlist details\n4. Click Save\n\n**Method 2 - Directly from Waitlist Tab:**\n1. Go to Practice Management > Waitlist\n2. Click '+ Add to Waitlist' button\n3. Complete the form\n4. Click Save\n\n**Required Fields:**\n• Patient (search and select)\n• Provider (preferred provider)\n• Appointment Type\n• Priority (High/Medium/Low)\n\n**Optional Fields:**\n• Preferred Date Range\n• Preferred Time (Morning/Afternoon/Any)\n• Reason for visit\n• Internal notes\n\n**Priority Levels:**\n🔴 HIGH - Urgent medical need, time-sensitive follow-up (notified first)\n🟡 MEDIUM - Standard follow-up, moderately important (notified second)\n🟢 LOW - Routine check-up, flexible timing (notified last)\n\n**Status Tracking:**\n• Active - Waiting for appointment slot\n• Notified - Patient notified of available slot\n• Scheduled - Appointment has been scheduled\n• Cancelled - Patient no longer needs appointment\n• Expired - Patient didn't respond within timeframe\n\n**Auto-Notification System:**\nWhen matching slot becomes available:\n1. System identifies matches (provider, type, preferences)\n2. Sorts by priority (High > Medium > Low) and date\n3. Notifies highest-priority patient via SMS, email, portal\n4. Updates status to 'Notified'\n5. Patient has 24 hours to confirm\n\n**Confirming Appointments:**\nWhen patient responds 'Yes':\n1. Click 'Confirm Appointment' next to entry\n2. System automatically creates appointment\n3. Updates status to 'Scheduled'\n4. Sends confirmation to patient\n5. Removes from active waitlist\n\nWhen patient responds 'No' or doesn't respond:\n1. Click 'Move to Next'\n2. Original entry marked 'Expired'\n3. Next priority patient automatically notified\n\n**Best Practices:**\n• Reserve High priority for medically urgent cases\n• Document patient preferences in notes\n• Review waitlist daily for expired entries\n• Call high-priority patients proactively\n• Clean up entries older than 30 days\n• Verify patient contact information is current",
-          "roles": ["admin", "receptionist"]
+          "roles": [
+            "admin",
+            "receptionist"
+          ]
         },
         {
           "id": "calendar-views",
           "title": "Calendar Views",
-          "path": "/docs/features/appointments/calendar.html",
-          "url": "/docs/features/appointments/calendar.html",
-          "keywords": ["calendar", "day", "week", "month", "schedule"],
+          "path": "/docs/index.html#calendar-views",
+          "url": "/docs/index.html#calendar-views",
+          "keywords": [
+            "calendar",
+            "day",
+            "week",
+            "month",
+            "schedule"
+          ],
           "summary": "Switch between different calendar views to manage schedules\n\nUse Day, Week, Month, and List views to visualize and manage appointments efficiently.",
           "content": "**Calendar View Options:**\n\n**Accessing Calendar:**\n1. Go to Practice Management module\n2. Click 'Calendar' tab\n3. Select view type from toolbar\n\n**Available Views:**\n\n**Day View:**\nBest for: Detailed daily schedule management\n\n**Features:**\n• Hour-by-hour schedule (6 AM - 10 PM)\n• 15-minute time increments\n• See all providers or filter by specific provider\n• Color-coded by appointment type\n• Quick click to create appointment at specific time\n• Drag-and-drop to reschedule\n• See patient names, appointment types, duration\n• Blocked time clearly marked\n\n**How to Use:**\n1. Click 'Day' button in calendar toolbar\n2. Use arrows or date picker to navigate days\n3. Click time slot to create new appointment\n4. Click existing appointment to view/edit\n5. Drag appointment to different time to reschedule\n\n**Week View:**\nBest for: Weekly planning and resource allocation\n\n**Features:**\n• 7-day spread (Monday-Sunday or custom)\n• See multiple providers side-by-side\n• Compare schedules across team\n• Identify open slots at a glance\n• Color-coded appointments\n• Shows blocked time and time off\n\n**How to Use:**\n1. Click 'Week' button in calendar toolbar\n2. Use arrows to navigate weeks\n3. Filter by provider or view all\n4. Click any time slot to create appointment\n5. Scroll horizontally to see more providers\n\n**Month View:**\nBest for: Long-term planning and overview\n\n**Features:**\n• Full month calendar grid\n• See appointment counts per day\n• Color indicators for busy/light days\n• Holidays and time off displayed\n• Recurring appointments visible\n• Quick navigation between months\n\n**How to Use:**\n1. Click 'Month' button in calendar toolbar\n2. Use arrows or month picker to navigate\n3. Click date to see day's appointments\n4. Hover over date to see appointment preview\n5. Click date to switch to Day view for that date\n\n**Day Count Indicators:**\n• Green - Light (0-5 appointments)\n• Yellow - Moderate (6-12 appointments)\n• Orange - Busy (13-18 appointments)\n• Red - Very Busy (19+ appointments)\n\n**List View:**\nBest for: Searching, sorting, and bulk operations\n\n**Features:**\n• Table format with sortable columns\n• Advanced filters and search\n• Bulk actions (cancel, reschedule)\n• Export to CSV/Excel\n• See upcoming appointments chronologically\n• Filter by status, provider, patient, type\n\n**Columns:**\n• Date & Time\n• Patient Name & MRN\n• Provider\n• Appointment Type\n• Duration\n• Status\n• Location (if multi-site)\n• Actions (View, Edit, Cancel)\n\n**How to Use:**\n1. Click 'List' button in calendar toolbar\n2. Use search box to find appointments\n3. Click column headers to sort\n4. Apply filters from dropdown menus\n5. Select multiple appointments for bulk actions\n6. Click Export to download list\n\n**Filtering Options:**\n\n**Filter by Provider:**\n1. Click provider filter dropdown\n2. Select specific provider(s)\n3. Or choose 'All Providers'\n\n**Filter by Status:**\n• Scheduled - Confirmed appointments\n• Confirmed - Patient confirmed attendance\n• Checked In - Patient arrived\n• In Progress - Currently being seen\n• Completed - Visit finished\n• No Show - Patient didn't arrive\n• Cancelled - Appointment cancelled\n\n**Filter by Type:**\n• Office Visit\n• Telehealth\n• Follow-up\n• Annual Physical\n• Procedure\n• Consultation\n• Custom types\n\n**Filter by Date Range:**\n1. Click date range selector\n2. Choose preset:\n   • Today\n   • This Week\n   • This Month\n   • Next 7 Days\n   • Next 30 Days\n3. Or select custom date range\n\n**Color Coding System:**\n\n**By Appointment Type:**\n• Blue - Office Visit\n• Purple - Telehealth\n• Green - Follow-up\n• Orange - Annual Physical\n• Red - Urgent/Same-Day\n• Gray - Cancelled\n• Custom colors for custom types\n\n**By Status:**\n• Solid fill - Scheduled/Confirmed\n• Striped - Tentative/Unconfirmed\n• Faded - Completed\n• Red border - No Show\n• Crosshatch - Cancelled\n\n**Calendar Actions:**\n\n**Creating Appointment:**\n1. Click any open time slot\n2. 'New Appointment' modal opens\n3. Pre-filled with date/time/provider\n4. Complete form and save\n\n**Editing Appointment:**\n1. Click existing appointment\n2. Appointment details modal opens\n3. Click 'Edit' button\n4. Modify details and save\n\n**Rescheduling:**\n**Method 1 - Drag and Drop:**\n1. Click and hold appointment\n2. Drag to new time slot\n3. Release to drop\n4. Confirm new time\n\n**Method 2 - Edit:**\n1. Click appointment\n2. Click 'Reschedule'\n3. Select new date/time\n4. Save changes\n\n**Cancelling:**\n1. Click appointment\n2. Click 'Cancel' button\n3. Select cancellation reason\n4. Add notes (optional)\n5. Notify patient (optional)\n6. Confirm cancellation\n\n**Quick Actions:**\n• Check In - Mark patient arrived\n• No Show - Mark patient didn't arrive\n• Complete - Mark visit completed\n• Print - Print appointment card\n• SMS - Send reminder to patient\n\n**Calendar Settings:**\n\n**Time Range:**\n1. Click settings gear icon\n2. Set start time (default 6 AM)\n3. Set end time (default 10 PM)\n4. Save preferences\n\n**Time Increments:**\nChoose slot duration:\n• 10 minutes\n• 15 minutes (default)\n• 30 minutes\n• 60 minutes\n\n**Default View:**\nSet which view opens by default:\n• Day\n• Week\n• Month\n• List\n\n**Weekend Display:**\nToggle Saturday/Sunday visibility\n\n**Keyboard Shortcuts:**\n• Arrow Keys - Navigate days/weeks\n• T - Jump to Today\n• D - Switch to Day view\n• W - Switch to Week view\n• M - Switch to Month view\n• L - Switch to List view\n• N - Create new appointment\n• / - Focus search box\n\n**Printing Calendar:**\n1. Click Print icon in toolbar\n2. Select view to print\n3. Choose date range\n4. Select providers to include\n5. Preview and print\n\n**Best Practices:**\n• Use Day view for detailed daily management\n• Use Week view for team coordination\n• Use Month view for planning ahead\n• Use List view for searching and reporting\n• Color-code appointment types consistently\n• Review calendar daily for gaps or conflicts\n• Block lunch and administrative time\n• Set realistic appointment durations\n• Keep calendar up-to-date with cancellations",
-          "roles": ["admin", "doctor", "nurse", "receptionist"]
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "receptionist"
+          ]
         },
         {
           "id": "provider-scheduling",
           "title": "Provider Scheduling",
-          "path": "/docs/features/appointments/provider-scheduling.html",
-          "url": "/docs/features/appointments/provider-scheduling.html",
-          "keywords": ["provider", "schedule", "availability", "hours", "time off", "block"],
+          "path": "/docs/index.html#provider-scheduling",
+          "url": "/docs/index.html#provider-scheduling",
+          "keywords": [
+            "provider",
+            "schedule",
+            "availability",
+            "hours",
+            "time off",
+            "block"
+          ],
           "summary": "Manage provider availability and working hours\n\nSet up provider schedules, block time for meetings or procedures, and manage time-off requests.",
           "content": "**Managing Provider Schedules:**\n\n**Accessing Provider Scheduling:**\n1. Go to Administration > Providers\n2. Select a provider\n3. Click 'Manage Schedule' tab\n4. Or go to Practice Management > Provider Schedules\n\n**Setting Up Provider Availability:**\n\n**Regular Working Hours:**\n1. Click 'Set Schedule' button\n2. For each day of week:\n   • Toggle working day on/off\n   • Set start time (e.g., 8:00 AM)\n   • Set end time (e.g., 5:00 PM)\n   • Add lunch break (optional)\n   • Add multiple time blocks per day\n\n**Example Schedule:**\nMonday - Friday:\n• 8:00 AM - 12:00 PM (Morning)\n• 12:00 PM - 1:00 PM (Lunch - Blocked)\n• 1:00 PM - 5:00 PM (Afternoon)\n\nSaturday:\n• 9:00 AM - 1:00 PM (Half day)\n\nSunday:\n• Closed\n\n**Appointment Slot Configuration:**\n\n**Default Slot Duration:**\n• 15 minutes - Quick follow-ups\n• 30 minutes - Standard office visits\n• 45 minutes - New patient visits\n• 60 minutes - Physicals, consultations\n\n**Buffer Time:**\n• Between appointments (5-10 min)\n• Prevents back-to-back scheduling\n• Allows for charting/documentation\n• Accounts for running late\n\n**Appointment Types by Duration:**\n1. Click 'Appointment Types'\n2. Set custom duration for each type:\n   • Office Visit: 30 min\n   • Annual Physical: 60 min\n   • Follow-up: 15 min\n   • Procedure: varies\n   • Telehealth: 20 min\n\n**Blocking Time:**\n\n**One-Time Blocks:**\n1. Go to provider's calendar\n2. Click time slot to block\n3. Select 'Block Time'\n4. Choose reason:\n   • Meeting/Conference\n   • Procedure/Surgery\n   • Administrative Time\n   • Training\n   • Personal\n5. Set start and end time\n6. Add notes (optional)\n7. Click 'Save Block'\n\n**Recurring Blocks:**\nFor regular commitments:\n1. Click 'Create Recurring Block'\n2. Set schedule:\n   • Every Tuesday 2:00-3:00 PM\n   • First Monday of month\n   • Every other Wednesday\n3. Set recurrence pattern:\n   • Daily\n   • Weekly (select days)\n   • Monthly (select date or day)\n   • Custom\n4. Set end date or number of occurrences\n5. Reason and notes\n6. Save\n\n**Common Recurring Blocks:**\n• Weekly staff meetings\n• Monthly quality review\n• Thursday afternoon procedures\n• Every other Friday administrative time\n\n**Time Off Management:**\n\n**Requesting Time Off:**\n1. Go to My Schedule > Request Time Off\n2. Select type:\n   • Vacation\n   • Sick Leave\n   • Conference/CME\n   • Personal Day\n   • Holiday\n3. Select date range\n4. Add notes/justification\n5. Submit request\n\n**Approving Time Off (Admins):**\n1. Go to Administration > Time Off Requests\n2. Review pending requests\n3. Check coverage for dates\n4. Approve or deny with notes\n5. System blocks calendar automatically\n6. Notifies provider of decision\n\n**When Time Off Approved:**\n• Calendar blocked for date range\n• Existing appointments flagged for rescheduling\n• New appointments prevented during period\n• Out-of-office message can be set\n• Coverage provider assigned (optional)\n\n**Coverage Providers:**\n\n**Assigning Coverage:**\nWhen provider is out:\n1. Set time off period\n2. Click 'Assign Coverage'\n3. Select covering provider(s)\n4. Set rules:\n   • Transfer all appointments\n   • Only urgent/same-day\n   • By appointment type\n5. Notify patients of change (optional)\n6. Existing appointments updated\n\n**Multiple Locations:**\n\nIf provider works at multiple locations:\n1. Go to Provider > Locations\n2. Add each location\n3. Set schedule per location:\n   • Monday/Wednesday - Main Office\n   • Tuesday/Thursday - Satellite Clinic\n   • Friday - Hospital Rounds\n4. Calendar shows location for each slot\n5. Appointments automatically tagged with location\n\n**Appointment Limits:**\n\n**Daily Limits:**\nPrevent overbooking:\n1. Set max appointments per day\n2. Set max new patients per day\n3. Set max specific appointment types\n4. System warns when approaching limit\n5. Admin override available if needed\n\n**Example Limits:**\n• Max 20 appointments/day\n• Max 4 new patients/day\n• Max 2 annual physicals/day\n• Max 5 telehealth visits/day\n\n**Emergency/ASAP Slots:**\n\n**Reserved Slots:**\n1. Block specific slots daily for urgent visits\n2. Example: 11:00 AM and 3:00 PM\n3. Only bookable as 'Urgent' or 'Same-Day'\n4. Auto-released if not used by cutoff time\n5. Cutoff: 2 hours before slot time\n\n**Override Scheduling:**\n\n**Double Booking:**\nFor emergencies/urgent needs:\n1. Attempt to book filled slot\n2. System shows conflict warning\n3. Select 'Override - Urgent'\n4. Add justification\n5. Provider notified of double-book\n6. Appears as overlapping on calendar\n\n**Outside Working Hours:**\n1. Attempt to book blocked time\n2. System warns 'Outside working hours'\n3. Admin can override\n4. Provider notified\n5. Requires approval if provider settings require it\n\n**Schedule Templates:**\n\n**Creating Templates:**\n1. Set up ideal weekly schedule\n2. Include:\n   • Working hours\n   • Blocked time\n   • Appointment types distribution\n   • Buffer times\n3. Save as template\n4. Apply to future weeks with one click\n\n**Template Use Cases:**\n• Seasonal schedules (summer vs winter)\n• Rotating schedules\n• New provider onboarding\n• Standardizing across providers\n\n**Schedule Reports:**\n\n**Available Reports:**\n• Provider utilization (% of time booked)\n• No-show rate by provider\n• Average appointment duration\n• Peak appointment times\n• Cancellation patterns\n• Time off summary\n• Revenue per provider hour\n\n**Best Practices:**\n• Set realistic appointment durations\n• Build in buffer time for documentation\n• Reserve slots for urgent/same-day\n• Review and update schedule quarterly\n• Communicate schedule changes in advance\n• Use templates for consistency\n• Monitor utilization to optimize\n• Block administrative time for charting\n• Coordinate time off with colleagues\n• Set automatic lunch blocks\n• Review no-shows and adjust overbooking\n• Use recurring blocks for standing commitments\n• Assign coverage for all absences\n• Keep contact info current for notifications",
-          "roles": ["admin", "practice_manager"]
+          "roles": [
+            "admin",
+            "practice_manager"
+          ]
         }
       ]
     },
@@ -91,22 +154,43 @@
         {
           "id": "register-patient",
           "title": "Patient Registration",
-          "path": "/docs/features/patients/registration.html",
-          "url": "/docs/features/patients/registration.html",
-          "keywords": ["patient", "register", "new", "demographics", "mrn", "portal"],
+          "path": "/docs/index.html#register-patient",
+          "url": "/docs/index.html#register-patient",
+          "keywords": [
+            "patient",
+            "register",
+            "new",
+            "demographics",
+            "mrn",
+            "portal"
+          ],
           "summary": "Register new patients and set up portal access\n\nEnter demographics, insurance, emergency contacts, and enable patient portal for online access.",
           "content": "**Registering New Patients:**\n\n**Accessing Registration:**\n1. Go to Patients module\n2. Click '+ New Patient' button\n3. Or click 'Add New Patient' from dashboard\n\n**Registration Process - 5 Steps:**\n\n**STEP 1: Demographics**\n\n**Required Fields:**\n• First Name\n• Last Name\n• Date of Birth\n• Gender (Male, Female, Other, Prefer not to say)\n• Phone Number (primary contact)\n• Email Address\n\n**Optional Fields:**\n• Middle Name\n• Preferred Name (what patient likes to be called)\n• Suffix (Jr., Sr., III)\n• SSN (last 4 digits or full, encrypted)\n• Language Preference\n• Race/Ethnicity (for reporting)\n• Marital Status\n• Occupation\n\n**Address Information:**\n• Street Address\n• Apartment/Unit Number\n• City\n• State/Province\n• ZIP/Postal Code\n• Country\n\n**Additional Contact:**\n• Secondary Phone (mobile/work)\n• Preferred Contact Method (Phone, Email, SMS, Portal)\n• Best Time to Call\n\n**STEP 2: Insurance Information**\n\n**Primary Insurance:**\n• Insurance Company (search from list or add new)\n• Policy/Member ID Number\n• Group Number\n• Policy Holder Name (if different from patient)\n• Policy Holder DOB\n• Relationship to Patient (Self, Spouse, Parent, Other)\n• Effective Date\n• Upload Insurance Card:\n  - Front (required)\n  - Back (required)\n\n**Secondary Insurance (Optional):**\nSame fields as primary insurance\n\n**Insurance Verification:**\n1. Click 'Verify Coverage' button\n2. System checks eligibility in real-time\n3. Displays:\n   • Active/Inactive status\n   • Copay amount\n   • Deductible status\n   • Coverage details\n\n**STEP 3: Emergency Contact**\n\n**Primary Emergency Contact:**\n• Full Name\n• Relationship to Patient\n• Phone Number (home)\n• Mobile Phone\n• Email Address\n• Address (if different from patient)\n\n**Secondary Emergency Contact (Optional):**\nSame fields as primary contact\n\n**STEP 4: Medical History (Optional)**\n\nCan be completed now or during first visit:\n• Allergies\n• Current Medications\n• Past Medical History\n• Family History\n• Social History\n• Surgical History\n\n**STEP 5: Portal Access**\n\n**Enable Patient Portal:**\n1. Toggle 'Enable Portal Access'\n2. Patient receives email invitation\n3. Email contains:\n   • Portal URL\n   • Temporary password or setup link\n   • Instructions for first login\n\n**Portal Features:**\n• View medical records\n• Schedule appointments\n• Request prescription refills\n• Message providers\n• View test results\n• Pay bills online\n• Update personal information\n\n**Portal Setup Options:**\n• Send invitation immediately\n• Send invitation later\n• Generate temporary password\n• Require patient to set password on first login\n\n**Completing Registration:**\n\n1. Review all information\n2. Click 'Save Patient' button\n3. System generates:\n   • MRN (Medical Record Number) - auto-assigned\n   • Patient ID\n   • Chart number\n4. Patient added to system\n5. Portal invitation sent (if enabled)\n\n**After Registration:**\n\n**Immediate Actions:**\n• Schedule first appointment\n• Add to waitlist if no availability\n• Collect copay/payment\n• Scan insurance cards\n• Provide new patient forms\n• Give office policies handout\n\n**Patient Chart Created:**\n• Empty chart ready for documentation\n• Demographics populated\n• Insurance information loaded\n• Portal access configured\n• Ready for clinical use\n\n**Quick Registration (Walk-In):**\n\nFor urgent/walk-in patients:\n1. Click 'Quick Registration'\n2. Minimal fields required:\n   • Name\n   • Date of Birth\n   • Phone Number\n3. Complete full registration later\n4. System flags chart as 'Incomplete'\n\n**Duplicate Detection:**\n\nSystem checks for duplicates based on:\n• First Name + Last Name + DOB\n• SSN (if provided)\n• Phone Number + DOB\n\nIf potential duplicate found:\n1. System displays warning\n2. Shows matching patient(s)\n3. Options:\n   • Continue with new registration\n   • Link to existing patient\n   • Cancel registration\n\n**Required Documents:**\n\n**To Collect:**\n• Photo ID (driver's license, passport)\n• Insurance card(s) - front and back\n• Referral (if required by insurance)\n• Previous medical records (if transferring)\n\n**To Provide:**\n• HIPAA Notice of Privacy Practices\n• Patient Rights and Responsibilities\n• Financial Policy\n• Office Policies\n• Portal registration instructions\n• New patient forms (if not pre-filled)\n\n**Minor Patients (Under 18):**\n\n**Additional Requirements:**\n• Parent/Guardian information\n• Parent/Guardian ID and signature\n• Custody documentation (if applicable)\n• Insurance through parent/guardian\n\n**Portal Access for Minors:**\n• Age 13-17: Parent proxy access with patient view\n• Under 13: Parent-only access\n• State-specific rules may apply\n\n**Special Populations:**\n\n**Medicare Patients:**\n• Verify Medicare number\n• Check Part A/B/D coverage\n• Capture Medicare card image\n• Document Advanced Beneficiary Notice (ABN) consent\n\n**Medicaid Patients:**\n• Verify active coverage monthly\n• Some states require re-verification\n• Check managed care plan\n\n**Self-Pay/Uninsured:**\n• Discuss payment options\n• Offer payment plans\n• Provide cash discount if applicable\n• Document financial agreement\n\n**Updating Patient Information:**\n\n**At Each Visit:**\nVerify and update:\n• Address and phone number\n• Insurance coverage\n• Emergency contacts\n• Medications and allergies\n• Employer (if relevant)\n\n**To Update:**\n1. Open patient chart\n2. Click 'Edit Demographics'\n3. Update changed fields\n4. Save changes\n5. System logs who made changes and when\n\n**Best Practices:**\n• Verify insurance before every visit\n• Scan all documents (ID, insurance cards)\n• Enable portal access for all eligible patients\n• Complete registration fully before first visit\n• Review patient information at check-in\n• Use duplicate detection to avoid duplicates\n• Document any special needs or accommodations\n• Update pharmacy preferences\n• Verify consent for electronic communications\n• Keep emergency contacts current",
-          "roles": ["admin", "receptionist"]
+          "roles": [
+            "admin",
+            "receptionist"
+          ]
         },
         {
           "id": "search-patients",
           "title": "Searching Patients",
-          "path": "/docs/features/patients/search.html",
-          "url": "/docs/features/patients/search.html",
-          "keywords": ["search", "find", "patient", "filter", "lookup"],
+          "path": "/docs/index.html#search-patients",
+          "url": "/docs/index.html#search-patients",
+          "keywords": [
+            "search",
+            "find",
+            "patient",
+            "filter",
+            "lookup"
+          ],
           "summary": "Find patients quickly using advanced search and filters\n\nSearch by name, MRN, phone, date of birth, or use advanced filters to locate patient records.",
           "content": "**Patient Search Methods:**\n\n**Quick Search:**\n\n**Global Search Bar:**\nAvailable from any page:\n1. Click search icon in top toolbar\n2. Or press Ctrl+K (Cmd+K on Mac)\n3. Type search query\n4. Results appear instantly\n\n**Search Criteria:**\nSearch supports:\n• Patient name (first, last, or both)\n• MRN (Medical Record Number)\n• Phone number\n• Date of Birth\n• Email address\n• SSN (last 4 digits)\n\n**Examples:**\n• \"John Smith\" - Finds all John Smiths\n• \"Smith, John\" - Same, different format\n• \"MRN12345\" - Finds by MRN\n• \"555-1234\" - Finds by phone (partial OK)\n• \"01/15/1980\" - Finds by DOB\n\n**From Patients Module:**\n\n**Basic Search:**\n1. Go to Patients module\n2. Use search box at top of patient list\n3. Type name, MRN, or phone\n4. List filters in real-time\n5. Click patient to open chart\n\n**Search Tips:**\n• Partial names work (\"Joh\" finds \"John\")\n• Not case-sensitive\n• Ignores special characters in phone numbers\n• Searches all fields simultaneously\n• Results sorted by relevance\n\n**Advanced Search:**\n\n**Accessing Advanced Search:**\n1. Go to Patients module\n2. Click 'Advanced Search' or filter icon\n3. Advanced search panel opens\n\n**Filter Options:**\n\n**Demographics:**\n• Age Range (e.g., 18-65)\n• Gender (Male, Female, Other, All)\n• Date of Birth range\n• City/State/ZIP Code\n• Language Preference\n\n**Clinical:**\n• Primary Diagnosis (ICD-10 code)\n• Active Medications\n• Allergies (specific allergen)\n• Active Problems\n• Last Visit Date range\n• Provider (primary or any)\n\n**Insurance:**\n• Insurance Company\n• Insurance Type (Commercial, Medicare, Medicaid, Self-Pay)\n• Coverage Status (Active, Inactive, Pending)\n• Policy expiration date\n\n**Status:**\n• Active Patients\n• Inactive Patients (not seen in 2+ years)\n• Deceased\n• Portal Enabled/Disabled\n• Outstanding Balance\n\n**Appointment Related:**\n• Upcoming Appointments\n• No appointments scheduled\n• No-show history\n• Cancelled appointments\n• Missed annual physical\n\n**Custom Filters:**\n• Patient Tags/Labels\n• Custom Fields\n• Risk Scores\n• Care Programs enrolled\n\n**Multiple Filter Combinations:**\nStack filters for precise results:\n\n**Example 1 - Diabetic Patients Due for A1C:**\n• Diagnosis: Diabetes (E11.9)\n• Last A1C: >90 days ago\n• Active patients only\n\n**Example 2 - Medicare Annual Wellness Visit Due:**\n• Insurance: Medicare\n• Age: 65+\n• Last AWV: >12 months ago\n\n**Example 3 - Overdue Follow-ups:**\n• Last Visit: >6 months ago\n• Has chronic condition\n• Active patients\n• Outstanding balance = No\n\n**Saved Searches:**\n\n**Creating Saved Search:**\n1. Set up advanced filters\n2. Click 'Save Search'\n3. Name the search (e.g., \"Diabetics Due for Labs\")\n4. Save\n\n**Using Saved Searches:**\n1. Click 'Saved Searches' dropdown\n2. Select saved search\n3. Filters auto-apply\n4. Results display immediately\n\n**Common Saved Searches:**\n• Active Diabetics\n• Medicare Patients\n• Patients Due for Annual Physical\n• High-Risk Patients\n• Portal Not Activated\n• Outstanding Balances >$100\n• No Show Risk Patients\n\n**Search Results:**\n\n**Result Columns:**\n• Patient Name\n• MRN\n• Date of Birth\n• Age\n• Gender\n• Phone Number\n• Primary Insurance\n• Last Visit Date\n• Primary Provider\n• Status (Active/Inactive)\n• Actions\n\n**Sortable Columns:**\nClick column header to sort:\n• Name (A-Z or Z-A)\n• Age (Youngest-Oldest or Oldest-Youngest)\n• Last Visit (Most Recent-Oldest or Oldest-Most Recent)\n• MRN (Ascending/Descending)\n\n**Result Actions:**\nFor each patient:\n• View Chart - Opens full patient chart\n• Schedule Appointment - Quick schedule\n• Send Message - Portal message\n• View History - Recent visits/notes\n• Edit - Update demographics\n• Print - Patient info sheet\n\n**Bulk Actions:**\n\n**Selecting Multiple Patients:**\n1. Check boxes next to patient names\n2. Or use 'Select All' for all results\n3. Choose bulk action\n\n**Available Bulk Actions:**\n• Send Mass Message (portal)\n• Add to Campaign (marketing)\n• Export to CSV/Excel\n• Print Patient Lists\n• Tag/Label Patients\n• Send Appointment Reminders\n• Generate Reports\n\n**Export Options:**\n\n**Exporting Search Results:**\n1. Run search/filters\n2. Click 'Export' button\n3. Choose format:\n   • CSV - For spreadsheets\n   • Excel - With formatting\n   • PDF - For printing\n4. Select fields to include\n5. Download file\n\n**Use Cases:**\n• Patient outreach lists\n• Quality measure reporting\n• Insurance audits\n• Marketing campaigns\n• Care coordination\n\n**Special Searches:**\n\n**Find Duplicates:**\n1. Click 'Find Duplicates' tool\n2. System searches for:\n   • Same name + DOB\n   • Similar names + same DOB\n   • Same SSN\n   • Same phone + similar names\n3. Review potential duplicates\n4. Merge or dismiss\n\n**Inactive Patients:**\n1. Filter by 'Inactive' status\n2. Shows patients not seen in 2+ years\n3. Review for:\n   • Re-engagement campaigns\n   • Chart purging\n   • Contact information updates\n\n**Portal Not Activated:**\n1. Filter by 'Portal = Not Enabled'\n2. Shows patients without portal access\n3. Send batch invitations\n4. Improve portal adoption\n\n**Keyboard Shortcuts:**\n• Ctrl+K (Cmd+K) - Open global search\n• / - Focus search box\n• Esc - Clear search\n• ↓↑ - Navigate results\n• Enter - Open selected patient\n\n**Best Practices:**\n• Use MRN for fastest, most accurate search\n• Save common searches for quick access\n• Export lists before bulk communications\n• Review search results count before bulk actions\n• Use advanced filters for reporting\n• Keep patient information updated for accurate searches\n• Use tags for custom categorization\n• Regularly check for duplicates\n• Document search criteria when exporting\n• Verify patient identity before opening chart",
-          "roles": ["admin", "doctor", "nurse", "receptionist"]
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "receptionist"
+          ]
         }
       ]
     },
@@ -118,42 +202,84 @@
         {
           "id": "medical-records",
           "title": "Medical Records",
-          "path": "/docs/features/ehr/records.html",
-          "url": "/docs/features/ehr/records.html",
-          "keywords": ["ehr", "medical records", "documentation", "notes", "soap", "clinical"],
+          "path": "/docs/index.html#medical-records",
+          "url": "/docs/index.html#medical-records",
+          "keywords": [
+            "ehr",
+            "medical records",
+            "documentation",
+            "notes",
+            "soap",
+            "clinical"
+          ],
           "summary": "Create and manage electronic health records and clinical notes\n\nDocument patient encounters using SOAP notes, templates, and structured charting tools.",
           "content": "**Electronic Health Records (EHR):**\n\n**Accessing Patient Chart:**\n1. Search for patient (Ctrl+K)\n2. Click patient name from results\n3. Or go to Patients module > Select patient\n4. Patient chart opens\n\n**Chart Sections:**\n\n**Summary Tab:**\n• Vital Signs (most recent)\n• Active Problems/Diagnoses\n• Current Medications\n• Allergies\n• Recent Visits\n• Upcoming Appointments\n• Active Lab Orders\n• Care Team\n\n**Progress Notes Tab:**\n• All clinical documentation\n• Visit notes\n• Phone encounters\n• Telehealth notes\n• Procedure notes\n\n**Medications Tab:**\n• Active Prescriptions\n• Discontinued Medications\n• Medication History\n• Prescription Requests\n\n**Laboratory Tab:**\n• Pending Orders\n• Results (with abnormal flags)\n• Lab History\n• Trending/Graphs\n\n**Imaging Tab:**\n• Radiology Orders\n• Reports\n• Images (DICOM viewer)\n\n**Documents Tab:**\n• Uploaded Documents\n• Scanned Records\n• External Records\n• Consent Forms\n\n**Creating Clinical Notes:**\n\n**Starting a New Note:**\n1. Open patient chart\n2. Click 'Progress Notes' tab\n3. Click '+ New Note' button\n4. Select note type\n\n**Note Types:**\n• Office Visit\n• Annual Physical\n• Follow-up Visit\n• Urgent Care\n• Telehealth\n• Phone Encounter\n• Procedure Note\n• Letter/Referral\n• Hospital Consultation\n• Custom Types\n\n**SOAP Note Format:**\n\nMost common structure:\n\n**Subjective (S):**\nPatient's reported symptoms/concerns\n• Chief Complaint\n• History of Present Illness (HPI)\n• Review of Systems (ROS)\n• Past Medical/Surgical/Family/Social History\n\n**Objective (O):**\nMeasurable findings\n• Vital Signs:\n  - Blood Pressure\n  - Heart Rate\n  - Temperature\n  - Respiratory Rate\n  - Oxygen Saturation\n  - Height/Weight/BMI\n• Physical Examination:\n  - General Appearance\n  - HEENT (Head, Eyes, Ears, Nose, Throat)\n  - Cardiovascular\n  - Respiratory\n  - Abdomen\n  - Extremities\n  - Neurological\n  - Skin\n• Test Results (labs, imaging)\n\n**Assessment (A):**\nProvider's clinical impression\n• List of diagnoses (with ICD-10 codes)\n• Problem status (new, stable, worsening, resolved)\n• Differential diagnoses\n\n**Plan (P):**\nTreatment and follow-up\n• Medications (new, modified, discontinued)\n• Lab orders\n• Imaging orders\n• Referrals\n• Patient education\n• Follow-up appointment timeframe\n• Return precautions\n\n**Documentation Tools:**\n\n**Templates:**\n1. Click 'Templates' button\n2. Browse by specialty or type\n3. Select template\n4. Auto-populates note sections\n5. Customize as needed\n\n**Common Templates:**\n• Annual Physical\n• Diabetes Follow-up\n• Hypertension Management\n• Well-Child Visit\n• Sports Physical\n• Post-Operative Visit\n• Pre-Op Clearance\n\n**Macros/SmartPhrases:**\nReusable text snippets\n\n**How to Use:**\n1. Type macro shortcut (e.g., \".normal_neuro\")\n2. Expands to full text\n3. Edit as needed\n\n**Examples:**\n• .ros = Full Review of Systems template\n• .pe = Physical Exam template\n• .dm = Diabetes management plan\n• .htn = Hypertension management plan\n\n**Voice Dictation:**\n1. Click microphone icon\n2. Speak clearly\n3. System transcribes in real-time\n4. Edit for accuracy\n5. Medical terminology recognized\n\n**Copy Forward:**\nBring forward previous note elements:\n1. Click 'Copy From Previous'\n2. Select which sections to copy:\n   • Past Medical History\n   • Medications\n   • Allergies\n   • Social History\n   • Review of Systems\n3. Update changed information\n\n**Vital Signs Entry:**\n\n**Recording Vitals:**\n1. In note or separate vitals section\n2. Enter measurements:\n   • BP: 120/80 mmHg\n   • HR: 72 bpm\n   • Temp: 98.6°F (37°C)\n   • RR: 16 breaths/min\n   • O2 Sat: 98%\n   • Height: 5'10\" (178 cm)\n   • Weight: 170 lbs (77 kg)\n   • BMI: Auto-calculated\n3. Add time and location\n4. Save\n\n**Vital Signs Display:**\n• Color-coded for abnormal values\n• Trending graphs available\n• Comparison to previous visits\n• Alerts for critical values\n\n**Adding Diagnoses:**\n\n**From Assessment Section:**\n1. Type diagnosis or ICD-10 code\n2. Search dropdown appears\n3. Select correct diagnosis\n4. Set status:\n   • Active\n   • Chronic\n   • Resolved\n   • Rule Out\n5. Set date of onset\n6. Add to problem list\n\n**Problem List Management:**\n• Active Problems - Currently being treated\n• Chronic Problems - Ongoing conditions\n• Past Problems - Resolved/Inactive\n• Mark primary diagnosis for visit\n• Link to prescriptions and orders\n\n**Ordering from Note:**\n\n**Lab Orders:**\n1. In Plan section, click 'Order Labs'\n2. Select tests\n3. Auto-linked to current diagnosis\n4. Order details pre-filled\n\n**Prescriptions:**\n1. Click 'Prescribe'\n2. ePrescribe workflow opens\n3. Diagnosis from note auto-populated\n4. Complete and send\n\n**Referrals:**\n1. Click 'Refer'\n2. Select specialist/facility\n3. Reason pre-filled from note\n4. Generate referral letter\n\n**Completing the Note:**\n\n**Review:**\n1. Review all sections for completeness\n2. Check spelling and grammar\n3. Verify diagnoses coded correctly\n4. Ensure orders placed\n\n**Sign and Lock:**\n1. Click 'Sign Note'\n2. Apply electronic signature\n3. Note becomes part of legal record\n4. Cannot be edited (only addendums allowed)\n\n**If Not Ready to Sign:**\n• Save as Draft\n• Returns to note later\n• Marked as 'Unsigned' in note list\n\n**Addendums:**\n\nFor signed notes requiring changes:\n1. Open signed note\n2. Click 'Add Addendum'\n3. Enter additional information\n4. Cannot modify original text\n5. Addendum timestamped and signed separately\n\n**Co-Signing:**\n\nFor supervised providers:\n1. Resident/Student creates note\n2. Clicks 'Request Co-Signature'\n3. Attending receives notification\n4. Attending reviews and co-signs\n5. Both signatures on record\n\n**Document Scanning:**\n\n**Uploading External Documents:**\n1. Click 'Documents' tab\n2. Click 'Upload'\n3. Select file (PDF, JPG, PNG)\n4. Categorize:\n   • Consent Forms\n   • External Records\n   • Lab Reports\n   • Imaging Reports\n   • Correspondence\n5. Add date and description\n6. Save\n\n**Best Practices:**\n• Sign notes same day as visit\n• Use templates for consistency\n• Link diagnoses to orders and prescriptions\n• Document patient education provided\n• Include time spent (for billing)\n• Use specific, objective language\n• Avoid copy-paste errors\n• Review before signing\n• Document phone calls and portal messages\n• Update problem list regularly\n• Record medication reconciliation\n• Note patient adherence/non-adherence\n• Include patient's understanding of plan\n• Document informed consent for procedures",
-          "roles": ["admin", "doctor", "nurse"]
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse"
+          ]
         },
         {
           "id": "prescriptions",
           "title": "Prescriptions & ePrescribe",
-          "path": "/docs/features/eprescribe.html",
-          "url": "/docs/features/eprescribe.html",
-          "keywords": ["prescription", "eprescribe", "medication", "pharmacy", "edit mode"],
+          "path": "/docs/index.html#prescriptions",
+          "url": "/docs/index.html#prescriptions",
+          "keywords": [
+            "prescription",
+            "eprescribe",
+            "medication",
+            "pharmacy",
+            "edit mode"
+          ],
           "summary": "NEW IN V1.1: ePrescribe with edit mode and diagnosis linking\n\n4-step workflow: Search medication, enter details, select pharmacy, review and submit with drug interaction checking.",
           "content": "**NEW IN V1.1:** Edit mode now prefills medication name with step-by-step workflow!\n\n**Accessing ePrescribe:**\n\n**From Patient Chart:**\n1. Open patient's chart\n2. Go to 'Medications' tab\n3. Click '+ New Prescription' button\n4. ePrescribe modal opens with 4-step workflow\n\n**From Clinical Encounter:**\n1. During patient visit/clinical note\n2. Click 'Prescribe Medication' in toolbar\n3. Patient context pre-loaded\n\n**4-Step Workflow:**\n\n**STEP 1: Search Medication**\n1. Type medication name or NDC code\n2. Select specific drug formulation:\n   • Brand name or generic\n   • Strength (10mg, 20mg, etc.)\n   • Form (tablet, capsule, liquid)\n3. Review drug information\n4. Click 'Next'\n\n**NEW:** In edit mode, medication name is prefilled - skip search!\n\n**STEP 2: Prescription Details**\nEnter:\n• Dosage (strength and quantity per dose)\n• Frequency (once daily, twice daily, every 6 hours)\n• Route (oral, topical, IV, IM)\n• Duration (7 days, 30 days, until finished)\n• Quantity (total number to dispense)\n• Refills (0, 1, 2, 3, PRN)\n• Instructions (patient-facing SIG directions)\n• Notes (internal clinical notes)\n\n**Special Options:**\n• Generic Substitution toggle (DAW)\n• Prior Authorization checkbox\n• Controlled Substance auto-flagged\n\n**STEP 3: Select Pharmacy**\n1. Patient's preferred pharmacy pre-selected\n2. Search by name, address, or zip code\n3. Choose from recent pharmacies\n4. Add new pharmacy if needed\n\n**STEP 4: Review and Submit**\n1. Review all information:\n   • Patient demographics and allergies\n   • Medication details and instructions\n   • Pharmacy information\n   • Drug interactions and warnings\n\n2. **NEW:** Link to Diagnosis\n   • Select primary diagnosis for prescription\n   • Links to ICD-10 code for insurance\n   • Improves claim approval rates\n\n3. Apply digital signature\n4. Click 'Submit Prescription'\n\n**Drug Interaction Checking:**\n🔴 CRITICAL - Severe interaction, prescription blocked (override required)\n🟡 MODERATE - Potential interaction, warning displayed\n🟢 MINOR - Low-risk interaction, informational\n⚠️ ALLERGY - Patient allergic, blocked (override with justification)\n👶 AGE - Not recommended for age, warning\n🤰 PREGNANCY - Contraindicated in pregnancy\n\n**Editing Existing Prescriptions:**\n1. Go to Patient Chart > Medications\n2. Find prescription in active list\n3. Click 'Edit' icon\n4. **NEW:** Medication name prefilled (can't change drug)\n5. Update dosage, frequency, quantity, instructions\n6. Navigate between steps with context maintained\n7. Click 'Update Prescription'\n\n**Managing Prescriptions:**\n\n**Renewing:**\n1. Click 'Renew' next to prescription\n2. Review and update if needed\n3. Update refill count and quantity\n4. Submit renewed prescription\n\n**Discontinuing:**\n1. Click 'Discontinue'\n2. Select reason (completed, adverse reaction, no longer needed)\n3. Add optional notes\n4. Confirm discontinuation\n\n**Status Tracking:**\n• Pending - Submitted, not processed by pharmacy\n• Sent - Transmitted to pharmacy\n• Received - Pharmacy acknowledged\n• Filled - Pharmacy filled prescription\n• Picked Up - Patient picked up medication\n• Error - Transmission failed, resubmit\n• Cancelled - Prescription cancelled\n\n**Controlled Substances (EPCS):**\n• Valid DEA number required\n• Two-factor authentication for each CS prescription\n• State-specific rules apply\n• No refills for Schedule II\n\n**Best Practices:**\n• Always review allergies before prescribing\n• Link prescriptions to diagnoses\n• Write clear, patient-friendly instructions\n• Never ignore drug interaction warnings\n• Verify pharmacy selection\n• Document alert overrides\n• Keep medication list current\n• Check prescription status",
-          "roles": ["admin", "doctor"]
+          "roles": [
+            "admin",
+            "doctor"
+          ]
         },
         {
           "id": "diagnoses",
           "title": "Diagnosis Management",
-          "path": "/docs/features/ehr/diagnoses.html",
-          "url": "/docs/features/ehr/diagnoses.html",
-          "keywords": ["diagnosis", "icd", "icd-10", "condition", "prescription linking", "problem list"],
+          "path": "/docs/index.html#diagnoses",
+          "url": "/docs/index.html#diagnoses",
+          "keywords": [
+            "diagnosis",
+            "icd",
+            "icd-10",
+            "condition",
+            "prescription linking",
+            "problem list"
+          ],
           "summary": "Manage patient diagnoses and problem lists with ICD-10 codes\n\nAdd, update, and link diagnoses to prescriptions, lab orders, and claims for proper documentation.",
           "content": "**Managing Patient Diagnoses:**\n\n**Accessing Diagnoses:**\n1. Open patient chart\n2. Click 'Problems' or 'Diagnoses' tab\n3. View active and past diagnoses\n\n**Problem List Overview:**\n\n**Active Problems:**\nConditions currently being treated or monitored\n• Chronic diseases (Diabetes, Hypertension)\n• Acute conditions (Infections, injuries)\n• Ongoing issues requiring management\n\n**Chronic Problems:**\nLong-term conditions (subset of active)\n• Marked separately for easy identification\n• Typically require ongoing medication\n• Need regular monitoring\n\n**Past/Resolved Problems:**\n• Previously active, now resolved\n• Kept for historical reference\n• Not shown in active problem list\n• Available in medical history\n\n**Adding New Diagnosis:**\n\n**Method 1 - From Problem List:**\n1. Open patient chart\n2. Go to 'Problems' tab\n3. Click '+ Add Diagnosis'\n4. Search for diagnosis\n\n**Method 2 - From Clinical Note:**\n1. In SOAP note Assessment section\n2. Type diagnosis name or code\n3. Select from dropdown\n4. Automatically added to problem list\n\n**Method 3 - From Prescription:**\n1. When prescribing medication\n2. Step 4: Link to diagnosis\n3. Can add new diagnosis on-the-fly\n\n**Searching for Diagnoses:**\n\n**ICD-10 Code Search:**\nMultiple search methods:\n\n**By Description:**\n• Type: \"diabetes\"\n• Shows all diabetes-related codes:\n  - E11.9 - Type 2 Diabetes without complications\n  - E11.65 - Type 2 Diabetes with hyperglycemia\n  - E10.9 - Type 1 Diabetes\n  - E11.22 - Type 2 Diabetes with chronic kidney disease\n\n**By ICD-10 Code:**\n• Type: \"E11.9\"\n• Direct match displayed\n• Related codes suggested\n\n**By Body System:**\n• Browse categories:\n  - Endocrine (E codes)\n  - Circulatory (I codes)\n  - Respiratory (J codes)\n  - Digestive (K codes)\n  - Musculoskeletal (M codes)\n\n**Smart Search Features:**\n• Autocomplete as you type\n• Shows code + description\n• Recently used codes at top\n• Favorite/common codes saved\n• Synonym recognition (\"sugar diabetes\" = diabetes mellitus)\n\n**Diagnosis Details:**\n\n**Required Fields:**\n• ICD-10 Code (e.g., E11.9)\n• Description (auto-filled from code)\n• Date of Onset\n• Status (Active, Chronic, Resolved)\n\n**Optional Fields:**\n• Severity (Mild, Moderate, Severe)\n• Laterality (Left, Right, Bilateral) - if applicable\n• Stage/Grade (for cancers, ulcers, etc.)\n• Clinical Notes\n• Treating Provider\n• Date Resolved (if applicable)\n\n**Status Types:**\n\n**Active:**\nCurrently being treated\n• Shows in active problem list\n• Included in encounter documentation\n• Available for linking to orders/prescriptions\n\n**Chronic:**\nOngoing, long-term condition\n• Subset of Active\n• Flagged for special tracking\n• Requires regular monitoring\n• Examples: Diabetes, Hypertension, Asthma\n\n**Resolved:**\nNo longer active\n• Moves to past medical history\n• Not in active problem list\n• Available for reference\n• Date resolved documented\n\n**Rule Out:**\nDifferential diagnosis, not confirmed\n• Appears with \"R/O\" prefix\n• Used during workup\n• Update to Active or Remove after testing\n\n**Linking Diagnoses:**\n\n**Link to Prescriptions:**\n\nWhen prescribing medication:\n1. ePrescribe Step 4\n2. Select primary diagnosis for prescription\n3. Improves claim approval\n4. Documents medical necessity\n\n**Example:**\nPrescribing Metformin → Link to E11.9 (Type 2 Diabetes)\n\n**Link to Lab Orders:**\n\nWhen ordering labs:\n1. Step 1: Clinical Indication required\n2. Select diagnosis from problem list\n3. Links order to condition\n4. Supports medical necessity\n\n**Example:**\nOrdering A1C → Link to E11.9 (Type 2 Diabetes)\n\n**Link to Procedures:**\n\nFor procedures and billing:\n1. Procedure requires diagnosis pointer\n2. Select applicable diagnosis(es)\n3. Up to 12 diagnoses per claim\n4. Primary diagnosis listed first\n\n**Link to Encounters:**\n\nIn clinical note:\n1. Assessment section lists diagnoses\n2. Mark primary diagnosis for visit\n3. Links to E&M code for billing\n4. Supports level of service billed\n\n**Managing Existing Diagnoses:**\n\n**Editing:**\n1. Click diagnosis in problem list\n2. Click 'Edit'\n3. Update fields:\n   • Change status\n   • Update severity\n   • Add notes\n   • Modify date\n4. Save changes\n\n**Resolving:**\n1. Click diagnosis\n2. Click 'Mark as Resolved'\n3. Enter resolution date\n4. Add resolution notes (optional)\n5. Moves to past medical history\n\n**Deleting:**\nOnly if added in error:\n1. Click diagnosis\n2. Click 'Delete'\n3. Confirm deletion\n4. Provide reason\n5. Permanently removed (logged in audit trail)\n\n**Problem List Best Practices:**\n\n**Keep it Current:**\n• Review at every visit\n• Resolve conditions that are inactive\n• Update status as conditions change\n• Remove duplicate entries\n\n**Be Specific:**\n• Use most specific ICD-10 code available\n• E11.65 (with hyperglycemia) vs E11.9 (unspecified)\n• Include laterality when relevant\n• Document stage/severity\n\n**Prioritize:**\n• List most significant problems first\n• Mark chronic conditions clearly\n• Identify primary diagnosis for visit\n\n**Link Everything:**\n• Link prescriptions to diagnoses\n• Link lab orders to diagnoses\n• Link procedures to diagnoses\n• Improves claims approval\n• Documents medical necessity\n\n**Common Diagnosis Scenarios:**\n\n**Multiple Related Diagnoses:**\n\nExample - Diabetes complications:\n• E11.9 - Type 2 Diabetes (primary)\n• E11.22 - Type 2 Diabetes with CKD (if kidney disease present)\n• E11.36 - Type 2 Diabetes with diabetic neuropathy\n• E11.319 - Type 2 Diabetes with diabetic retinopathy\n\nKeep all relevant codes active for comprehensive documentation.\n\n**Combination Codes:**\n\nSome conditions have single combined codes:\n• I10 - Essential Hypertension (use instead of separate codes)\n• J44.0 - COPD with acute lower respiratory infection (not COPD + pneumonia separately)\n\nUse combination code when available.\n\n**Diagnosis Hierarchy:**\n\nFor claims and documentation:\n1. Primary Diagnosis - Main reason for visit/service\n2. Secondary Diagnoses - Contributing factors\n3. Additional Diagnoses - Other relevant conditions\n\n**Quality Measures:**\n\nCertain diagnoses trigger quality reporting:\n• Diabetes → A1C testing required\n• Hypertension → BP control monitoring\n• COPD → Spirometry testing\n• Depression → PHQ-9 screening\n\nSystem flags these for compliance tracking.\n\n**Diagnosis Reports:**\n\n**Available Reports:**\n• Active Diagnoses by Patient\n• Diagnosis Frequency (most common)\n• Chronic Disease Registry\n• Quality Measure Compliance\n• Diagnosis by Provider\n• Missing Diagnosis Links (prescriptions without diagnosis)\n\n**Using Reports:**\n1. Go to Reports module\n2. Select 'Diagnosis Reports'\n3. Choose report type\n4. Set filters (date range, provider, diagnosis)\n5. Generate and export\n\n**ICD-10 Code Updates:**\n\n**Annual Updates:**\nOctober 1st each year:\n• New codes added\n• Some codes deleted\n• Descriptions modified\n• System auto-updates\n\n**When Code Changes:**\n• System notifies affected charts\n• Recommend updating to new code\n• Old code still visible in history\n• Update prospectively, not retrospectively\n\n**Best Practices:**\n• Use most specific code possible (5-6 characters)\n• Include laterality when applicable (right vs left)\n• Document stage/severity for cancers\n• Link all prescriptions to diagnoses\n• Keep problem list current and accurate\n• Resolve inactive problems\n• Use chronic designation appropriately\n• Review problem list at each visit\n• Verify diagnoses support procedures/tests ordered\n• Use combination codes when available\n• Don't use unspecified codes if more specific available\n• Document onset dates accurately\n• Include patient in problem list review\n• Use consistent terminology\n• Avoid outdated or obsolete codes",
-          "roles": ["admin", "doctor", "nurse"]
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse"
+          ]
         },
         {
           "id": "lab-orders",
           "title": "Laboratory Orders",
-          "path": "/docs/features/lab-orders.html",
-          "url": "/docs/features/lab-orders.html",
-          "keywords": ["lab", "laboratory", "cpt", "tests", "orders", "recurring"],
+          "path": "/docs/index.html#lab-orders",
+          "url": "/docs/index.html#lab-orders",
+          "keywords": [
+            "lab",
+            "laboratory",
+            "cpt",
+            "tests",
+            "orders",
+            "recurring"
+          ],
           "summary": "NEW IN V1.1: Order labs with CPT multiselect and recurring orders\n\nSelect from 80+ tests organized by category. Support for one-time, recurring, and future scheduled orders.",
           "content": "**NEW IN V1.1:** CPT multiselect (80+ tests), recurring orders, and enhanced print functionality!\n\n**Accessing Lab Orders:**\n\n**From Patient Chart:**\n1. Open patient's chart\n2. Go to 'Laboratory' tab\n3. Click '+ New Lab Order' button\n\n**From Clinical Encounter:**\n1. During patient visit/note documentation\n2. Click 'Order Labs' in encounter toolbar\n3. Patient context auto-populated\n\n**Creating Lab Order - 6 Steps:**\n\n**STEP 1: Basic Information**\n• Patient (pre-populated from context)\n• Ordering Provider (usually current user)\n• Order Date (defaults to today)\n• Priority (Routine, STAT, ASAP)\n• Clinical Indication (ICD-10 diagnosis - REQUIRED)\n\n**STEP 2: Select Lab Tests (CPT Codes)**\n**NEW:** Multi-select interface for multiple tests!\n\n1. Click 'Select Tests' field\n2. Dropdown shows 80+ common tests organized by category:\n\n**Categories:**\n🩸 Hematology - CBC (85025), CBC with Diff (85027), Platelet Count\n🧬 Chemistry - BMP (80048), CMP (80053), Glucose (82947)\n💉 Coagulation - PT/INR (85610), PTT (85730), D-Dimer\n🧪 Lipids - Lipid Panel (80061), Cholesterol, Triglycerides\n🔬 Microbiology - Urinalysis (81001), Urine Culture (87086)\n💊 Therapeutic - Drug levels (Digoxin, Theophylline)\n🩺 Endocrine - TSH (84443), T4 (84439), A1C (83036)\n🧫 Immunology - ANA (86038), RF (86431), CRP (86140)\n\n3. Type to search by test name or CPT code\n4. Click to select - tests appear as chips/tags\n5. Click X on chip to remove test\n6. Selected tests show with CPT codes\n\n**Quick Panels:** Select panel to get multiple tests at once\n• Basic Metabolic Panel = 8 individual tests\n• Comprehensive Metabolic Panel = 14 tests\n• Lipid Panel = 4 tests\n\n**STEP 3: Collection Details**\n• Collection Method (In-Clinic, At Laboratory, Home Collection)\n• **NEW:** Scheduled Date/Time (supports future dates!)\n• Fasting Required (toggle Yes/No)\n• Fasting Duration (8, 10, or 12 hours)\n• Specimen Type (Blood, Urine, Stool, Throat Swab, etc.)\n\n**NEW: Recurring Orders**\nFor chronic condition monitoring:\n1. Toggle 'Recurring Order' switch\n2. Select frequency:\n   • Daily\n   • Weekly (specify day)\n   • Bi-weekly\n   • Monthly (specify day of month)\n   • Quarterly\n   • Custom interval\n3. Set start date and end date (or # of occurrences)\n4. System auto-generates future orders\n\n**Use Cases for Recurring:**\n• Monthly INR for warfarin patients\n• Quarterly A1C for diabetic patients\n• Weekly drug levels for specific medications\n\n**STEP 4: Laboratory Selection**\n1. Preferred Lab (patient's preferred if on file)\n2. Search by name, location, specialty\n3. In-Network Labs (filter by patient insurance)\n4. Verify lab performs ordered tests\n\n**STEP 5: Results Distribution**\n**NEW:** Multi-select recipients!\nSelect who receives results:\n• Ordering Provider (auto-selected)\n• Primary Care Physician\n• Specialist (from care team)\n• Patient Portal (auto-posts when ready)\n• Other Provider (search and add)\n\n**STEP 6: Review and Submit**\n1. Review all order details\n2. Verify tests and CPT codes\n3. Confirm laboratory and collection method\n4. Check result recipients\n5. Click 'Submit Order'\n\n**After Submission:**\n• Order transmitted electronically to lab\n• Requisition form generated\n• Patient receives instructions (portal/email/SMS)\n• Order appears in pending labs list\n\n**Enhanced Print Functionality:**\n\n**Print Options:**\n1. After creating order, click 'Print'\n2. Choose format:\n   • Full Requisition - Complete form with all details\n   • Patient Instructions - Prep instructions only\n   • Both - Requisition + instructions on separate pages\n3. Preview before printing\n4. Print directly or save as PDF\n\n**Requisition Includes:**\n• Patient demographics and insurance\n• All ordered tests with CPT codes\n• ICD-10 diagnosis codes\n• Provider information and signature\n• Collection instructions\n• Laboratory barcode\n\n**Managing Lab Orders:**\n\n**Status Tracking:**\n• Pending - Order created, awaiting collection\n• Scheduled - Collection appointment scheduled\n• Collected - Specimen collected, sent to lab\n• In Progress - Lab processing tests\n• Partial Results - Some results available\n• Completed - All results received\n• Cancelled - Order cancelled before collection\n\n**Cancelling Orders:**\n1. Go to Patient Chart > Laboratory\n2. Find pending order\n3. Click 'Cancel Order'\n4. Select reason and add notes\n5. Confirm cancellation\nNote: Can only cancel before specimen collection\n\n**Viewing Results:**\n1. System notification for new results\n2. Go to Patient Chart > Laboratory\n3. Click completed order\n4. Review results panel:\n   • Test name and value\n   • Reference range\n   • Abnormal flag (H, L, Critical)\n   • Result date/time\n   • Performing lab\n\n**Abnormal Results:**\n🔴 Critical (H/L) - Red text, immediate attention\n🟡 Abnormal - Yellow background, outside range\n⚪ Normal - Standard display, within range\n\n**Critical Values:** Trigger immediate alerts via SMS, email, system notification. Must acknowledge and document follow-up.\n\n**Documenting Review:**\n1. Click 'Sign Results'\n2. Add interpretation notes\n3. Document follow-up plan:\n   • No action needed\n   • Retest scheduled\n   • Treatment adjustment\n   • Specialist referral\n   • Patient notified\n4. Apply electronic signature\n\n**Best Practices:**\n• Always include diagnosis for insurance approval\n• Use panels when appropriate to reduce costs\n• Check for duplicates before ordering\n• Set correct priority (reserve STAT for emergencies)\n• Verify fasting requirements\n• Use recurring orders for chronic monitoring\n• Sign all results promptly\n• Document action on abnormal results\n• Notify patients of results timely",
-          "roles": ["admin", "doctor", "nurse"]
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse"
+          ]
         }
       ]
     },
@@ -165,12 +291,22 @@
         {
           "id": "video-consultations",
           "title": "Video Consultations",
-          "path": "/docs/features/telehealth.html",
-          "url": "/docs/features/telehealth.html",
-          "keywords": ["telehealth", "video", "virtual", "consultation", "remote"],
+          "path": "/docs/index.html#video-consultations",
+          "url": "/docs/index.html#video-consultations",
+          "keywords": [
+            "telehealth",
+            "video",
+            "virtual",
+            "consultation",
+            "remote"
+          ],
           "summary": "Conduct virtual video consultations with patients\n\nStart video calls from appointments or patient chart. Built-in screen sharing and chat features.",
           "content": "**Starting a Telehealth Session:**\n\nFrom Appointment:\n1. Go to Practice Management > Calendar\n2. Find telehealth appointment\n3. Click 'Start Video Call' button\n4. System opens video interface\n5. Patient joins from portal\n\nFrom Patient Chart:\n1. Open patient's chart\n2. Click 'Start Telehealth' button\n3. Patient receives instant notification\n4. Both join video session\n\n**Before Starting:**\n• Test camera and microphone\n• Ensure stable internet connection\n• Close other applications\n• Use headphones for better audio\n• Have patient chart open\n\n**Video Interface Features:**\n• HD video and audio\n• Screen sharing capability\n• Text chat window\n• Mute/unmute controls\n• Camera on/off toggle\n• Recording option (with consent)\n• Waiting room for patients\n• Background blur option\n\n**During Consultation:**\n• Verify patient identity\n• Confirm consent for telehealth\n• Conduct exam as normal\n• Use screen share to review results\n• Document visit in real-time\n• Can prescribe medications\n• Can order lab tests\n\n**Documentation:**\n• Note type automatically set to 'Telehealth'\n• SOAP notes supported\n• Screen captures can be saved\n• Recording stored securely (if enabled)\n• Visit duration tracked\n• Billing codes auto-populated\n\n**Technical Support:**\n• Test Call feature to verify setup\n• Browser compatibility check\n• Bandwidth requirements: 5 Mbps minimum\n• Supported browsers: Chrome, Firefox, Safari, Edge\n• Mobile apps available for iOS and Android\n\n**Troubleshooting:**\n• No video - Check camera permissions\n• No audio - Check microphone permissions\n• Poor quality - Check internet speed\n• Can't connect - Refresh browser\n• Patient issues - Send test link\n\n**Best Practices:**\n• Schedule telehealth like regular appointments\n• Send reminder with tech requirements\n• Start call 5 minutes early to test\n• Maintain professional appearance\n• Good lighting and quiet environment\n• Keep eye contact with camera\n• Document any technical issues\n• Follow up if call quality was poor",
-          "roles": ["admin", "doctor", "nurse"]
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse"
+          ]
         }
       ]
     },
@@ -182,20 +318,39 @@
         {
           "id": "claims",
           "title": "Claims Management",
-          "path": "/docs/features/rcm/claims.html",
-          "url": "/docs/features/rcm/claims.html",
-          "keywords": ["claims", "billing", "insurance", "submit", "837", "eob"],
+          "path": "/docs/index.html#claims",
+          "url": "/docs/index.html#claims",
+          "keywords": [
+            "claims",
+            "billing",
+            "insurance",
+            "submit",
+            "837",
+            "eob"
+          ],
           "summary": "Create and submit insurance claims electronically\n\nSubmit claims to insurance payers with real-time eligibility verification and status tracking.",
           "content": "**Creating Insurance Claims:**\n\n**Accessing Claims:**\n1. Go to Revenue Cycle Management module\n2. Click 'Claims' tab\n3. Click '+ New Claim' button\n\n**Automatic Claim Generation:**\nClaims auto-generate from:\n• Completed appointments\n• Signed clinical encounter notes\n• Procedures performed\n• Services rendered\n\nSystem automatically:\n• Links diagnosis codes (ICD-10)\n• Links procedure codes (CPT)\n• Pulls patient insurance information\n• Calculates charges\n• Validates claim data\n\n**Manual Claim Creation:**\n\nStep 1: Patient Selection\n• Search by name or MRN\n• System displays active insurance\n• Verify coverage is active\n\nStep 2: Service Information\n• Date of Service (DOS)\n• Place of Service (POS code)\n• Type of Service\n• Rendering Provider\n• Referring Provider (if applicable)\n\nStep 3: Diagnosis Codes (ICD-10)\n• Primary diagnosis (required)\n• Secondary diagnoses (up to 11)\n• Diagnosis pointer for each procedure\n• Search by code or description\n\nStep 4: Procedure Codes (CPT/HCPCS)\nFor each service:\n• CPT/HCPCS code\n• Modifiers (if applicable)\n• Units/quantity\n• Charge amount\n• Diagnosis pointer (links to ICD-10)\n\n**Common CPT Codes:**\n• 99213 - Established patient office visit (15 min)\n• 99214 - Established patient office visit (25 min)\n• 99203 - New patient office visit (30 min)\n• 99204 - New patient office visit (45 min)\n• 99396 - Preventive visit, established\n\nStep 5: Review and Validate\nSystem checks:\n• Coverage verification\n• Medical necessity (diagnosis supports procedure)\n• Duplicate claim detection\n• Missing required fields\n• Coding errors\n\n**Real-Time Eligibility Verification:**\n1. Click 'Verify Coverage' button\n2. System contacts payer in real-time\n3. Returns:\n   • Active/Inactive status\n   • Deductible met/remaining\n   • Co-pay amount\n   • Co-insurance percentage\n   • Out-of-pocket max\n   • Prior authorization requirements\n\n**Submitting Claims:**\n\n**Electronic Submission (837):**\n1. Review claim details\n2. Click 'Submit Electronically'\n3. Claim sent via clearinghouse\n4. Receive acknowledgement (999/997)\n5. Status updates automatically\n\n**Paper Submission (CMS-1500):**\n1. Click 'Print CMS-1500'\n2. Review form for accuracy\n3. Print and sign\n4. Mail to payer address\n5. Manually track status\n\n**Claim Status Tracking:**\n\n• Draft - Claim created, not submitted\n• Ready to Submit - Validated, awaiting submission\n• Submitted - Sent to payer\n• Acknowledged - Payer received claim\n• In Process - Payer processing claim\n• Accepted - Claim approved for payment\n• Paid - Payment received (EOB posted)\n• Denied - Claim rejected by payer\n• Appealed - Denial appealed\n• Closed - Claim finalized\n\n**Claim Denials:**\n\nCommon Denial Reasons:\n• Coverage terminated\n• Services not covered\n• Missing/invalid diagnosis code\n• Medical necessity not met\n• Timely filing limit exceeded\n• Duplicate claim\n• Incorrect patient information\n\n**Handling Denials:**\n1. Click denied claim\n2. Review denial reason code\n3. Check EOB/remittance advice\n4. Determine action:\n   • Correct and resubmit\n   • Appeal with documentation\n   • Write off as adjustment\n   • Bill patient (if applicable)\n\n**Corrected Claims:**\n1. Open denied claim\n2. Click 'Create Corrected Claim'\n3. Update incorrect information\n4. Mark as 'Corrected Claim' (Claim Frequency 7)\n5. Reference original claim number (ICN)\n6. Resubmit\n\n**Appeals Process:**\n1. Click 'Appeal Denial'\n2. Select appeal level (1st, 2nd, 3rd)\n3. Upload supporting documents:\n   • Clinical notes\n   • Lab results\n   • Medical necessity letter\n   • Peer-reviewed articles\n4. Write appeal letter\n5. Submit appeal\n6. Track appeal status\n\n**Payment Posting (EOB/ERA):**\n\nWhen payment received:\n1. System receives ERA (Electronic Remittance)\n2. Or manually enter EOB (Explanation of Benefits)\n3. Post payment:\n   • Amount paid by insurance\n   • Patient responsibility\n   • Adjustments/contractual write-offs\n   • Denial amounts\n4. System updates:\n   • Patient account balance\n   • Claim status to 'Paid'\n   • Generates patient statement if balance due\n\n**Batch Claims Processing:**\n\n1. Go to Claims > Batch Processing\n2. Filter claims:\n   • Date range\n   • Payer\n   • Provider\n   • Status (Ready to Submit)\n3. Select multiple claims\n4. Bulk actions:\n   • Submit all\n   • Validate all\n   • Export to file\n   • Print batch\n\n**Claims Reporting:**\n\n**Available Reports:**\n• Claims Aging (by payer, provider)\n• Denial Rate Analysis\n• Days in A/R\n• Clean Claim Rate\n• Payment by Payer\n• Top Denial Reasons\n• Revenue by CPT Code\n\n**Best Practices:**\n• Verify insurance before each visit\n• Submit claims within 24-48 hours\n• Review claims for accuracy before submission\n• Monitor aging reports weekly\n• Follow up on claims >30 days\n• Appeal valid denials promptly\n• Document all payer communications\n• Keep CPT and ICD-10 codes current\n• Train staff on coding updates\n• Use correct modifiers\n• Link appropriate diagnoses to procedures\n• Check timely filing limits by payer",
-          "roles": ["admin", "billing_manager"]
+          "roles": [
+            "admin",
+            "billing_manager"
+          ]
         },
         {
           "id": "payments",
           "title": "Payment Processing",
           "path": "/docs/features/rcm/payments.html",
-          "keywords": ["payment", "process", "credit card", "cash"],
+          "keywords": [
+            "payment",
+            "process",
+            "credit card",
+            "cash"
+          ],
           "content": "Processing patient payments and managing transactions",
-          "roles": ["admin", "billing_manager", "receptionist"]
+          "roles": [
+            "admin",
+            "billing_manager",
+            "receptionist"
+          ]
         }
       ]
     },
@@ -208,17 +363,31 @@
           "id": "pharmacy-directory",
           "title": "Pharmacy Management",
           "path": "/docs/features/pharmacy/directory.html",
-          "keywords": ["pharmacy", "directory", "toggle switches", "erx"],
+          "keywords": [
+            "pharmacy",
+            "directory",
+            "toggle switches",
+            "erx"
+          ],
           "content": "Managing pharmacy directory with modern toggle switches and service features",
-          "roles": ["admin"]
+          "roles": [
+            "admin"
+          ]
         },
         {
           "id": "lab-directory",
           "title": "Laboratory Management",
           "path": "/docs/features/lab/directory.html",
-          "keywords": ["laboratory", "lab", "directory", "clia"],
+          "keywords": [
+            "laboratory",
+            "lab",
+            "directory",
+            "clia"
+          ],
           "content": "Managing laboratory facilities and electronic ordering",
-          "roles": ["admin"]
+          "roles": [
+            "admin"
+          ]
         }
       ]
     },
@@ -230,12 +399,21 @@
         {
           "id": "offerings-management",
           "title": "Offerings Management",
-          "path": "/docs/features/offerings/management.html",
-          "url": "/docs/features/offerings/management.html",
-          "keywords": ["offerings", "services", "packages", "pricing", "healthcare services"],
+          "path": "/docs/index.html#offerings-management",
+          "url": "/docs/index.html#offerings-management",
+          "keywords": [
+            "offerings",
+            "services",
+            "packages",
+            "pricing",
+            "healthcare services"
+          ],
           "summary": "Manage healthcare service offerings and packages\n\nCreate service packages, set pricing, and manage what your practice offers to patients.",
           "content": "**Managing Healthcare Offerings:**\n\n**What are Offerings?**\nOfferings are healthcare services, packages, or programs your practice provides to patients. Examples:\n• Annual Wellness Package\n• Executive Physical\n• Weight Management Program\n• Chronic Care Management\n• Sports Physical\n• Travel Medicine Consultation\n• Concierge Medicine Membership\n\n**Accessing Offerings:**\n1. Go to Administration module\n2. Click 'Healthcare Offerings'\n3. View all active offerings\n4. Click '+ New Offering' to create\n\n**Creating New Offering:**\n\nStep 1: Basic Information\n• Offering Name (e.g., \"Annual Wellness Package\")\n• Category:\n  - Preventive Care\n  - Chronic Disease Management\n  - Specialty Services\n  - Membership Programs\n  - Wellness Programs\n  - Diagnostic Services\n• Description (patient-facing, marketing copy)\n• Internal Notes (staff-only information)\n\nStep 2: Services Included\nSelect what's included in offering:\n• Office visits (quantity and type)\n• Lab tests (specific tests)\n• Imaging studies\n• Procedures\n• Vaccinations\n• Counseling sessions\n• Follow-up calls/check-ins\n• Portal messaging access\n• After-hours availability\n\n**Example - Annual Wellness Package:**\n✓ 1 Comprehensive Physical Exam (60 min)\n✓ Comprehensive Metabolic Panel (CMP)\n✓ Lipid Panel\n✓ HbA1c Test\n✓ Thyroid Panel (TSH, T4)\n✓ Urinalysis\n✓ EKG\n✓ Health Risk Assessment\n✓ Nutrition Counseling (30 min)\n✓ Personalized Wellness Plan\n✓ 1 Follow-up Visit (30 min)\n\nStep 3: Pricing\n• Standard Price (full retail)\n• Member Price (if applicable)\n• Insurance Billable (yes/no)\n• Payment Options:\n  - One-time payment\n  - Monthly installments\n  - Annual subscription\n• Tax Treatment (taxable/non-taxable)\n\nStep 4: Eligibility & Requirements\n• Age Range (e.g., 18-64, 65+)\n• Gender (All, Male, Female)\n• Patient Type (New, Established, All)\n• Prerequisites (e.g., must complete health assessment)\n• Exclusions (contraindications)\n\nStep 5: Scheduling\n• Can be scheduled online (yes/no)\n• Required appointment duration\n• Specific providers only (or all)\n• Specific locations (if multi-site)\n• Advance booking window (e.g., 7-90 days)\n\nStep 6: Marketing & Display\n• Display on patient portal (yes/no)\n• Display on website (yes/no)\n• Featured offering (highlighted)\n• Upload images/brochure\n• SEO keywords\n• Call-to-action text\n\n**Managing Existing Offerings:**\n\n**Editing:**\n1. Click offering from list\n2. Click 'Edit'\n3. Update any fields\n4. Click 'Save Changes'\n5. Changes effective immediately\n\n**Activating/Deactivating:**\n1. Toggle 'Active' switch\n2. Active = Available for booking\n3. Inactive = Hidden from patients, existing enrolled continue\n\n**Archiving:**\n1. Click 'Archive' on offering\n2. Archived offerings not bookable\n3. Existing enrollments handled per policy:\n   • Complete existing\n   • Refund prorated\n   • Transfer to similar offering\n\n**Patient Enrollment:**\n\n**Enrolling Patients:**\n1. Open patient chart\n2. Go to 'Offerings' tab\n3. Click '+ Enroll in Offering'\n4. Select offering from dropdown\n5. Choose payment plan\n6. Set start date\n7. Apply any discounts\n8. Process payment or send invoice\n9. Generate enrollment agreement\n10. Patient signs consent\n\n**Enrollment Status:**\n• Pending - Enrollment requested, awaiting payment\n• Active - Currently enrolled\n• Paused - Temporarily suspended\n• Completed - Offering period finished\n• Cancelled - Enrollment cancelled\n• Expired - Enrollment term ended\n\n**Managing Enrollments:**\n\n**Viewing Enrollments:**\n1. Go to Healthcare Offerings\n2. Click specific offering\n3. View 'Enrollments' tab\n4. See all patients enrolled\n5. Filter by status, date, provider\n\n**Tracking Usage:**\nFor each enrollment:\n• Services used vs. included\n• Appointments scheduled/completed\n• Tests ordered/completed\n• Next scheduled services\n• Remaining balance (visits, tests)\n• Renewal date\n\n**Example Tracking:**\nJohn Doe - Annual Wellness Package\n✓ Physical Exam (completed 1/1/2025)\n✓ CMP (completed 1/1/2025)\n✓ Lipid Panel (completed 1/1/2025)\n⏳ Nutrition Counseling (scheduled 2/1/2025)\n☐ Follow-up Visit (not scheduled - 0/1 used)\n\n**Renewal Management:**\n\n**Auto-Renewal Settings:**\n1. Edit offering\n2. Enable 'Auto-renewal'\n3. Set renewal terms:\n   • 30 days before expiration\n   • Automatic billing\n   • Notification to patient\n   • Opt-out window\n\n**Manual Renewal:**\n1. System notifies 60 days before expiration\n2. Staff contacts patient\n3. Update offering if changed\n4. Process renewal payment\n5. Extend enrollment period\n\n**Reporting & Analytics:**\n\n**Available Reports:**\n• Enrollment by Offering\n• Revenue by Offering\n• Most Popular Offerings\n• Completion Rates\n• Renewal Rates\n• Patient Demographics by Offering\n• Service Utilization\n• Average Revenue per Patient\n• Cancellation Reasons\n\n**Marketing Integration:**\n\n**Promoting Offerings:**\n• Email campaigns to patient list\n• Portal announcements\n• In-office signage/brochures\n• Website landing pages\n• Social media posts\n• Seasonal promotions\n\n**Discount Codes:**\n1. Create promo codes\n2. Set discount amount/percentage\n3. Set expiration date\n4. Apply to specific offerings\n5. Track redemptions\n\n**Membership Programs:**\n\n**Creating Memberships:**\nSpecial type of offering with:\n• Monthly or annual fee\n• Ongoing benefits (not one-time)\n• Automatic renewal\n• Tiered levels (Basic, Premium, VIP)\n\n**Example - Concierge Membership:**\nPremium Level - $200/month:\n• Same/next-day appointments\n• Direct provider cell phone access\n• Extended 45-min appointments\n• No copays for visits\n• Annual physical included\n• 24/7 telehealth access\n• Prescription discounts\n• Quarterly wellness coaching\n\n**Best Practices:**\n• Price competitively based on market research\n• Bundle complementary services\n• Clear descriptions of what's included\n• Update offerings based on patient feedback\n• Track utilization to optimize bundles\n• Promote preventive care packages\n• Offer payment plans for expensive packages\n• Set realistic appointment durations\n• Train staff on all offerings\n• Review and update quarterly\n• Use offerings for patient retention\n• Create seasonal offerings (flu season, sports physicals)\n• Ensure HIPAA compliance in marketing\n• Get legal review for membership agreements",
-          "roles": ["admin", "practice_manager"]
+          "roles": [
+            "admin",
+            "practice_manager"
+          ]
         }
       ]
     },
@@ -247,12 +425,23 @@
         {
           "id": "campaigns-management",
           "title": "Campaigns Management",
-          "path": "/docs/features/campaigns/management.html",
-          "url": "/docs/features/campaigns/management.html",
-          "keywords": ["campaigns", "marketing", "email", "sms", "outreach", "patient engagement"],
+          "path": "/docs/index.html#campaigns-management",
+          "url": "/docs/index.html#campaigns-management",
+          "keywords": [
+            "campaigns",
+            "marketing",
+            "email",
+            "sms",
+            "outreach",
+            "patient engagement"
+          ],
           "summary": "Create and manage patient marketing campaigns\n\nSend targeted email and SMS campaigns to specific patient segments for appointments, wellness, and engagement.",
           "content": "**Managing Marketing Campaigns:**\n\n**What are Campaigns?**\nCampaigns are targeted communications to specific patient groups via email, SMS, or portal. Common uses:\n• Appointment reminders\n• Wellness program promotion\n• Preventive care outreach (flu shots, annual physicals)\n• New service announcements\n• Patient education\n• Re-engagement of inactive patients\n• Birthday/holiday greetings\n• Patient satisfaction surveys\n\n**Accessing Campaigns:**\n1. Go to Marketing module\n2. Click 'Campaigns'\n3. View active, scheduled, and past campaigns\n4. Click '+ New Campaign' to create\n\n**Creating New Campaign:**\n\nStep 1: Campaign Basics\n• Campaign Name (internal, e.g., \"2025 Flu Shot Outreach\")\n• Campaign Type:\n  - Appointment Reminder\n  - Wellness Promotion\n  - Re-engagement\n  - Educational\n  - Promotional\n  - Survey/Feedback\n• Description/Goal\n• Start and End Dates\n\nStep 2: Target Audience\n\n**Patient Segmentation:**\nCreate filters to target specific patients:\n\n**Demographics:**\n• Age range (e.g., 65+ for Medicare wellness)\n• Gender\n• Location/zip code\n• Language preference\n\n**Clinical:**\n• Specific diagnoses (e.g., diabetics for A1C reminder)\n• Medications (e.g., warfarin patients for INR)\n• Last visit date (e.g., >12 months for re-engagement)\n• Overdue preventive care\n• Lab results in range\n\n**Behavioral:**\n• Portal users vs. non-users\n• Appointment no-show history\n• Payment history\n• Enrollment in programs/offerings\n\n**Example Segments:**\n\n**Flu Shot Campaign:**\n• Age 50+ OR high-risk conditions\n• No flu vaccine current season\n• Active patients (visit in last 24 months)\n\n**Diabetic A1C Reminder:**\n• Diagnosis: Diabetes (ICD E11.9)\n• Last A1C >90 days ago\n• Active patients\n\n**Re-engagement:**\n• No visit in 18+ months\n• Previously active (3+ visits historically)\n• Age 18-75\n• Not deceased or moved\n\nStep 3: Message Creation\n\n**Channel Selection:**\n☑️ Email\n☑️ SMS/Text\n☑️ Portal Message\n☐ Phone Call (manual)\n☐ Postcard (mail)\n\n**Email Message:**\n1. Subject Line (compelling, clear)\n2. Preview Text (appears in inbox)\n3. Email Body:\n   • Use template or create custom\n   • Rich text editor with formatting\n   • Insert merge fields (patient name, provider)\n   • Add images/logos\n   • Include call-to-action button\n   • Add unsubscribe link (required)\n4. Mobile-responsive design\n\n**SMS Message:**\n1. Limited to 160 characters\n2. Clear, concise message\n3. Include opt-out instructions (STOP)\n4. Insert merge fields\n5. Optional link (use URL shortener)\n\n**Merge Fields:**\nPersonalize messages:\n• {{FirstName}}\n• {{LastName}}\n• {{PreferredName}}\n• {{ProviderName}}\n• {{ClinicName}}\n• {{NextAppointment}}\n• {{LastVisitDate}}\n\n**Example Messages:**\n\n**Email - Flu Shot:**\nSubject: Protect Yourself This Flu Season, {{FirstName}}!\n\nHi {{FirstName}},\n\nFlu season is here! Protect yourself and your loved ones with a flu vaccine.\n\n✓ Quick and convenient\n✓ No appointment needed\n✓ Walk-ins welcome Mon-Fri 9am-5pm\n✓ Most insurance covers 100%\n\n[Schedule Your Flu Shot]\n\nQuestions? Call us at (555) 123-4567.\n\nStay healthy,\n{{ClinicName}} Team\n\n**SMS - Appointment Reminder:**\n\"Hi {{FirstName}}! Reminder: You have an appt with Dr. {{ProviderName}} tomorrow at {{AppointmentTime}}. Reply C to confirm or R to reschedule. Reply STOP to opt out.\"\n\nStep 4: Scheduling\n\n**Send Options:**\n• Send Now - Immediate delivery\n• Schedule - Specific date/time\n• Recurring - Repeat campaign\n• Drip Campaign - Sequence over time\n\n**Best Send Times:**\n• Email: Tuesday-Thursday 10am-2pm\n• SMS: 10am-6pm (avoid early morning/late evening)\n• Avoid Mondays and Fridays\n• Consider time zones\n\n**Frequency Limits:**\nSet rules to prevent over-messaging:\n• Max 1 promotional email per week\n• Max 2 SMS per month\n• Exclude patients who opted out\n• Respect quiet hours (9pm-9am)\n\nStep 5: Compliance & Consent\n\n**HIPAA Compliance:**\n• Only use secure, encrypted channels\n• Don't include PHI in subject lines\n• Limit clinical details in messages\n• Audit trail for all communications\n• Patient consent documented\n\n**Consent Requirements:**\n• Email: Implied for existing patients\n• SMS: Explicit opt-in required\n• Marketing: Can opt-out anytime\n• Appointment reminders: Different rules (operational)\n\n**Opt-Out Management:**\n• Automatic opt-out processing\n• \"Reply STOP\" for SMS\n• Unsubscribe link for email\n• Remove from future campaigns\n• Document opt-out date\n\nStep 6: Review and Launch\n\n**Pre-Launch Checklist:**\n✓ Target audience count reasonable\n✓ Message proofread (no typos)\n✓ Merge fields tested\n✓ Links work correctly\n✓ Mobile preview checked\n✓ Unsubscribe link present\n✓ Compliance verified\n✓ Approval obtained (if required)\n\n**Test Campaign:**\n1. Send to test group (staff emails)\n2. Verify formatting\n3. Check links\n4. Test on mobile devices\n5. Confirm deliverability\n\n**Launch:**\n1. Final review\n2. Click 'Launch Campaign'\n3. System begins sending\n4. Monitor real-time progress\n\n**Monitoring Campaign Performance:**\n\n**Real-Time Metrics:**\n• Total sent\n• Delivery rate\n• Open rate (email)\n• Click-through rate\n• Bounce rate\n• Unsubscribe rate\n• Conversion rate (appointments booked)\n\n**Email Metrics:**\n• Sent: 1,000\n• Delivered: 980 (98%)\n• Opened: 392 (40%)\n• Clicked: 98 (10%)\n• Bounced: 20 (2%)\n• Unsubscribed: 5 (0.5%)\n• Appointments Booked: 45 (4.6% conversion)\n\n**SMS Metrics:**\n• Sent: 500\n• Delivered: 495 (99%)\n• Clicked: 125 (25%)\n• Opt-outs: 2 (0.4%)\n• Responses: 87 (17.4%)\n\n**Post-Campaign Analysis:**\n\n**Available Reports:**\n• Campaign Performance Summary\n• Audience Engagement by Segment\n• ROI Analysis (cost vs. revenue generated)\n• Bounce Analysis (update contact info)\n• A/B Test Results\n• Time-of-Day Performance\n• Device Breakdown (mobile vs. desktop)\n\n**Drip Campaigns:**\n\n**What are Drip Campaigns?**\nAutomated series of messages over time.\n\n**Example - New Patient Onboarding:**\n• Day 1: Welcome email with portal setup\n• Day 3: SMS reminder to complete health history\n• Day 7: Email about services and offerings\n• Day 14: Survey about first visit experience\n• Day 30: Email about preventive care schedule\n\n**Example - Chronic Care Management:**\n• Week 1: Educational content about condition\n• Week 2: Medication adherence tips\n• Week 3: Lifestyle modification resources\n• Week 4: Schedule follow-up appointment\n• Repeat monthly with new content\n\n**A/B Testing:**\n\n**Testing Variables:**\n• Subject lines\n• Send times\n• Message length\n• Call-to-action wording\n• Images vs. text-only\n• Sender name\n\n**How to A/B Test:**\n1. Create two versions (A and B)\n2. Split audience 50/50\n3. Send simultaneously\n4. Compare performance\n5. Use winner for future campaigns\n\n**Campaign Templates:**\n\n**Pre-Built Templates:**\n• Annual Physical Reminder\n• Flu Shot Promotion\n• Appointment Reminder\n• Birthday Wishes\n• Patient Satisfaction Survey\n• New Service Announcement\n• Insurance Information Update\n• Portal Registration Invitation\n\n**Creating Custom Templates:**\n1. Design message\n2. Add merge fields\n3. Save as template\n4. Reuse for future campaigns\n5. Update as needed\n\n**Budget & Cost Tracking:**\n\n**Campaign Costs:**\n• SMS: ~$0.01-0.03 per message\n• Email: ~$0.001 per email (or unlimited)\n• Design/copywriting time\n• Tool/platform fees\n\n**ROI Calculation:**\n• Revenue generated (appointments booked)\n• Minus campaign costs\n• Equals ROI\n\n**Example:**\nFlu Shot Campaign:\n• Cost: $50 (500 SMS × $0.10)\n• Appointments booked: 75\n• Revenue: $1,875 (75 × $25)\n• ROI: 3,650%\n\n**Best Practices:**\n• Segment audiences for relevance\n• Personalize messages with merge fields\n• Clear call-to-action in every message\n• Mobile-first design\n• Test before launching\n• Monitor deliverability rates\n• Clean contact lists regularly\n• Respect frequency limits\n• Always include opt-out\n• Track ROI on every campaign\n• Use templates for consistency\n• A/B test to optimize\n• Comply with HIPAA and TCPA\n• Get consent for SMS\n• Schedule at optimal times\n• Follow up on engagement\n• Update based on performance data\n• Coordinate with front desk on responses",
-          "roles": ["admin", "marketing_manager", "practice_manager"]
+          "roles": [
+            "admin",
+            "marketing_manager",
+            "practice_manager"
+          ]
         }
       ]
     },
@@ -265,17 +454,30 @@
           "id": "user-management",
           "title": "User Management",
           "path": "/docs/admin/users.html",
-          "keywords": ["users", "roles", "permissions", "rbac"],
+          "keywords": [
+            "users",
+            "roles",
+            "permissions",
+            "rbac"
+          ],
           "content": "Managing users, roles, and permissions",
-          "roles": ["admin"]
+          "roles": [
+            "admin"
+          ]
         },
         {
           "id": "settings",
           "title": "System Settings",
           "path": "/docs/admin/settings.html",
-          "keywords": ["settings", "configuration", "organization"],
+          "keywords": [
+            "settings",
+            "configuration",
+            "organization"
+          ],
           "content": "Configuring clinic settings and preferences",
-          "roles": ["admin"]
+          "roles": [
+            "admin"
+          ]
         }
       ]
     },
@@ -288,17 +490,32 @@
           "id": "login-issues",
           "title": "Login Problems",
           "path": "/docs/troubleshooting/login.html",
-          "keywords": ["login", "password", "forgot", "locked", "troubleshoot"],
+          "keywords": [
+            "login",
+            "password",
+            "forgot",
+            "locked",
+            "troubleshoot"
+          ],
           "content": "Solutions for common login and authentication issues",
-          "roles": ["all"]
+          "roles": [
+            "all"
+          ]
         },
         {
           "id": "performance",
           "title": "Performance Issues",
           "path": "/docs/troubleshooting/performance.html",
-          "keywords": ["slow", "performance", "loading", "lag"],
+          "keywords": [
+            "slow",
+            "performance",
+            "loading",
+            "lag"
+          ],
           "content": "Troubleshooting slow performance and loading issues",
-          "roles": ["all"]
+          "roles": [
+            "all"
+          ]
         }
       ]
     }
