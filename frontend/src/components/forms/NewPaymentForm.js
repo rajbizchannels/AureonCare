@@ -18,6 +18,8 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
 
   const [processing, setProcessing] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [claimPaymentPostings, setClaimPaymentPostings] = useState([]);
+  const [remainderAmount, setRemainderAmount] = useState(0);
 
   const paymentMethods = [
     { id: 'credit_card', name: 'Credit Card', icon: '💳' },
@@ -41,15 +43,49 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
     return () => window.removeEventListener('keydown', handleEsc, true);
   }, [onClose, processing]);
 
-  // Auto-populate amount from selected claim
+  // Auto-populate amount from selected claim and fetch payment postings
   useEffect(() => {
-    if (formData.claimId) {
-      const selectedClaim = claims.find(c => c.id.toString() === formData.claimId);
-      if (selectedClaim && selectedClaim.amount) {
-        setFormData(prev => ({ ...prev, amount: selectedClaim.amount.toString() }));
+    const fetchPaymentPostingsForClaim = async () => {
+      if (formData.claimId) {
+        const selectedClaim = claims.find(c => c.id.toString() === formData.claimId);
+
+        try {
+          // Fetch payment postings for this claim
+          const postings = await api.getPaymentPostingsByClaim(formData.claimId).catch(() => []);
+          setClaimPaymentPostings(postings || []);
+
+          // Calculate total posted payments
+          const totalPosted = (postings || []).reduce((sum, posting) => {
+            return sum + parseFloat(posting.payment_amount || 0);
+          }, 0);
+
+          // Calculate remainder
+          const claimAmount = parseFloat(selectedClaim?.amount || 0);
+          const remainder = claimAmount - totalPosted;
+          setRemainderAmount(remainder);
+
+          // Auto-populate amount with remainder (patient responsibility)
+          if (remainder > 0) {
+            setFormData(prev => ({ ...prev, amount: remainder.toFixed(2) }));
+          } else if (selectedClaim && selectedClaim.amount) {
+            setFormData(prev => ({ ...prev, amount: selectedClaim.amount.toString() }));
+          }
+        } catch (error) {
+          console.error('Error fetching payment postings:', error);
+          // Fallback to claim amount if payment postings fetch fails
+          if (selectedClaim && selectedClaim.amount) {
+            setFormData(prev => ({ ...prev, amount: selectedClaim.amount.toString() }));
+            setRemainderAmount(parseFloat(selectedClaim.amount));
+          }
+        }
+      } else {
+        setClaimPaymentPostings([]);
+        setRemainderAmount(0);
       }
-    }
-  }, [formData.claimId, claims]);
+    };
+
+    fetchPaymentPostingsForClaim();
+  }, [formData.claimId, claims, api]);
 
   const formatCardNumber = (value) => {
     // Remove non-digits
@@ -196,6 +232,29 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
                 </select>
               </div>
             </div>
+
+            {/* Payment Postings Summary */}
+            {formData.claimId && claimPaymentPostings.length > 0 && (
+              <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
+                <h4 className={`text-sm font-semibold mb-2 ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                  Insurance Payment Postings
+                </h4>
+                <div className="space-y-2">
+                  {claimPaymentPostings.map((posting, idx) => (
+                    <div key={idx} className={`flex justify-between text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      <span>{posting.insurance_payer_name || 'Insurance'} - {new Date(posting.posting_date).toLocaleDateString()}</span>
+                      <span className="font-medium">${parseFloat(posting.payment_amount).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className={`pt-2 mt-2 border-t flex justify-between font-semibold ${theme === 'dark' ? 'border-slate-600 text-white' : 'border-gray-300 text-gray-900'}`}>
+                    <span>Remaining Balance (Patient Responsibility):</span>
+                    <span className={remainderAmount > 0 ? 'text-green-500' : 'text-gray-400'}>
+                      ${remainderAmount.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Amount */}
             <div>

@@ -102,6 +102,8 @@ app.use('/api/patients', require('./routes/patients'));
 app.use('/api/claims', require('./routes/claims'));
 app.use('/api/preapprovals', require('./routes/preapprovals'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/payment-postings', require('./routes/payment-postings'));
+app.use('/api/denials', require('./routes/denials'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/users', require('./routes/users'));

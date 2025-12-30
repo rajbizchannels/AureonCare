@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield, FileCheck, DollarSign, Search } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import NewPaymentForm from '../components/forms/NewPaymentForm';
 import NewClaimForm from '../components/forms/NewClaimForm';
 import NewInsurancePayerForm from '../components/forms/NewInsurancePayerForm';
 import NewPreapprovalForm from '../components/forms/NewPreapprovalForm';
+import NewPaymentPostingForm from '../components/forms/NewPaymentPostingForm';
+import NewDenialForm from '../components/forms/NewDenialForm';
 
 const RCMView = ({
   theme,
@@ -24,11 +26,15 @@ const RCMView = ({
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [showInsurancePayerForm, setShowInsurancePayerForm] = useState(false);
   const [showPreapprovalForm, setShowPreapprovalForm] = useState(false);
+  const [showPaymentPostingForm, setShowPaymentPostingForm] = useState(false);
+  const [showDenialForm, setShowDenialForm] = useState(false);
   const [editingPayer, setEditingPayer] = useState(null);
 
   // Data states
   const [preapprovals, setPreapprovals] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [paymentPostings, setPaymentPostings] = useState([]);
+  const [denials, setDenials] = useState([]);
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +42,8 @@ const RCMView = ({
   const [claimSearch, setClaimSearch] = useState('');
   const [preapprovalSearch, setPreapprovalSearch] = useState('');
   const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentPostingSearch, setPaymentPostingSearch] = useState('');
+  const [denialSearch, setDenialSearch] = useState('');
   const [payerSearch, setPayerSearch] = useState('');
 
   // Close all forms when tab changes
@@ -43,6 +51,8 @@ const RCMView = ({
     setShowClaimForm(false);
     setShowPreapprovalForm(false);
     setShowPaymentForm(false);
+    setShowPaymentPostingForm(false);
+    setShowDenialForm(false);
     setShowInsurancePayerForm(false);
     setEditingPayer(null);
   }, [activeTab]);
@@ -55,14 +65,18 @@ const RCMView = ({
   const fetchRCMData = async () => {
     setLoading(true);
     try {
-      const [preapprovalsData, paymentsData, payersData] = await Promise.all([
+      const [preapprovalsData, paymentsData, paymentPostingsData, denialsData, payersData] = await Promise.all([
         api.getPreapprovals().catch(() => []),
         api.getPayments().catch(() => []),
+        api.getPaymentPostings().catch(() => []),
+        api.getDenials().catch(() => []),
         api.getInsurancePayers().catch(() => [])
       ]);
 
       setPreapprovals(preapprovalsData || []);
       setPayments(paymentsData || []);
+      setPaymentPostings(paymentPostingsData || []);
+      setDenials(denialsData || []);
       setInsurancePayers(payersData || []);
     } catch (error) {
       console.error('Error fetching RCM data:', error);
@@ -116,6 +130,32 @@ const RCMView = ({
       payer.name?.toLowerCase().includes(searchLower) ||
       payer.payer_id?.toLowerCase().includes(searchLower) ||
       payer.payer_type?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const filteredPaymentPostings = paymentPostings.filter(posting => {
+    if (!paymentPostingSearch) return true;
+    const searchLower = paymentPostingSearch.toLowerCase();
+    return (
+      posting.posting_number?.toLowerCase().includes(searchLower) ||
+      posting.patient_name?.toLowerCase().includes(searchLower) ||
+      posting.claim_number?.toLowerCase().includes(searchLower) ||
+      posting.insurance_payer_name?.toLowerCase().includes(searchLower) ||
+      posting.status?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const filteredDenials = denials.filter(denial => {
+    if (!denialSearch) return true;
+    const searchLower = denialSearch.toLowerCase();
+    return (
+      denial.denial_number?.toLowerCase().includes(searchLower) ||
+      denial.patient_name?.toLowerCase().includes(searchLower) ||
+      denial.claim_number?.toLowerCase().includes(searchLower) ||
+      denial.insurance_payer_name?.toLowerCase().includes(searchLower) ||
+      denial.denial_category?.toLowerCase().includes(searchLower) ||
+      denial.status?.toLowerCase().includes(searchLower) ||
+      denial.appeal_status?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -518,6 +558,206 @@ const RCMView = ({
     </div>
   );
 
+  const renderPaymentPostings = () => (
+    <div>
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className={`absolute left-3 top-3 w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+          <input
+            type="text"
+            value={paymentPostingSearch}
+            onChange={(e) => setPaymentPostingSearch(e.target.value)}
+            placeholder="Search payment postings by posting #, patient, claim, or payer..."
+            className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
+              theme === 'dark'
+                ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'
+                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+            } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+          />
+        </div>
+      </div>
+
+      {/* Payment Postings Table */}
+      <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+              <tr>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Posting #</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Patient</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Claim #</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Payer</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Payment Amount</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Posting Date</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPaymentPostings.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className={`px-6 py-8 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {paymentPostingSearch ? 'No payment postings found matching your search' : 'No payment postings yet'}
+                  </td>
+                </tr>
+              ) : (
+                filteredPaymentPostings.map((posting, idx) => (
+                  <tr key={posting.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
+                    <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{posting.posting_number}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.patient_name}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.claim_number || 'N/A'}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.insurance_payer_name || 'N/A'}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(posting.payment_amount)}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(posting.posting_date)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        posting.status === 'posted' ? 'bg-green-500/20 text-green-400' :
+                        posting.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                        posting.status === 'reversed' ? 'bg-red-500/20 text-red-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {posting.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to delete this payment posting?')) {
+                              try {
+                                await api.deletePaymentPosting(posting.id);
+                                setPaymentPostings(prev => prev.filter(p => p.id !== posting.id));
+                                addNotification('success', 'Payment posting deleted successfully');
+                              } catch (err) {
+                                console.error('Error deleting posting:', err);
+                                alert('Failed to delete payment posting');
+                              }
+                            }
+                          }}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDenials = () => (
+    <div>
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className={`absolute left-3 top-3 w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+          <input
+            type="text"
+            value={denialSearch}
+            onChange={(e) => setDenialSearch(e.target.value)}
+            placeholder="Search denials by denial #, patient, claim, category, or status..."
+            className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
+              theme === 'dark'
+                ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'
+                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+            } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+          />
+        </div>
+      </div>
+
+      {/* Denials Table */}
+      <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+              <tr>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Denial #</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Patient</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Claim #</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Category</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Amount</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Appeal Deadline</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Priority</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDenials.length === 0 ? (
+                <tr>
+                  <td colSpan="9" className={`px-6 py-8 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {denialSearch ? 'No denials found matching your search' : 'No denials yet'}
+                  </td>
+                </tr>
+              ) : (
+                filteredDenials.map((denial, idx) => (
+                  <tr key={denial.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
+                    <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{denial.denial_number}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.patient_name}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.claim_number || 'N/A'}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.denial_category}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(denial.denial_amount)}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(denial.appeal_deadline)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        denial.priority === 'urgent' ? 'bg-red-500/20 text-red-400' :
+                        denial.priority === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                        denial.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {denial.priority}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        denial.status === 'open' ? 'bg-red-500/20 text-red-400' :
+                        denial.status === 'under_review' ? 'bg-yellow-500/20 text-yellow-400' :
+                        denial.status === 'appealing' ? 'bg-blue-500/20 text-blue-400' :
+                        denial.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {denial.status?.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to delete this denial?')) {
+                              try {
+                                await api.deleteDenial(denial.id);
+                                setDenials(prev => prev.filter(d => d.id !== denial.id));
+                                addNotification('success', 'Denial deleted successfully');
+                              } catch (err) {
+                                console.error('Error deleting denial:', err);
+                                alert('Failed to delete denial');
+                              }
+                            }
+                          }}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -547,6 +787,8 @@ const RCMView = ({
           { id: 'claims', label: 'Claims', icon: DollarSign, count: claims.length },
           { id: 'preapprovals', label: 'Pre-Authorizations', icon: FileCheck, count: preapprovals.length },
           { id: 'payments', label: 'Payments', icon: CreditCard, count: payments.length },
+          { id: 'payment-postings', label: 'Payment Postings', icon: TrendingUp, count: paymentPostings.length },
+          { id: 'denials', label: 'Denials', icon: AlertCircle, count: denials.length },
           { id: 'payers', label: 'Insurance Payers', icon: Shield, count: insurancePayers.length }
         ].map((tab) => {
           const Icon = tab.icon;
@@ -603,6 +845,24 @@ const RCMView = ({
           >
             <CreditCard className="w-4 h-4" />
             Process Payment
+          </button>
+        )}
+        {activeTab === 'payment-postings' && (
+          <button
+            onClick={() => setShowPaymentPostingForm(!showPaymentPostingForm)}
+            className={`flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            Post Payment
+          </button>
+        )}
+        {activeTab === 'denials' && (
+          <button
+            onClick={() => setShowDenialForm(!showDenialForm)}
+            className={`flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors`}
+          >
+            <AlertCircle className="w-4 h-4" />
+            Record Denial
           </button>
         )}
         {activeTab === 'payers' && (
@@ -676,6 +936,46 @@ const RCMView = ({
         </div>
       )}
 
+      {activeTab === 'payment-postings' && showPaymentPostingForm && (
+        <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewPaymentPostingForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            claims={claims}
+            insurancePayers={insurancePayers}
+            onClose={() => setShowPaymentPostingForm(false)}
+            onSuccess={(newPosting) => {
+              setShowPaymentPostingForm(false);
+              setPaymentPostings([...paymentPostings, newPosting]);
+              fetchRCMData(); // Refresh data
+              addNotification('success', 'Payment posting created successfully');
+            }}
+            addNotification={addNotification}
+          />
+        </div>
+      )}
+
+      {activeTab === 'denials' && showDenialForm && (
+        <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewDenialForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            claims={claims}
+            insurancePayers={insurancePayers}
+            onClose={() => setShowDenialForm(false)}
+            onSuccess={(newDenial) => {
+              setShowDenialForm(false);
+              setDenials([...denials, newDenial]);
+              fetchRCMData(); // Refresh data
+              addNotification('success', 'Denial created successfully');
+            }}
+            addNotification={addNotification}
+          />
+        </div>
+      )}
+
       {activeTab === 'payers' && showInsurancePayerForm && (
         <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
           <NewInsurancePayerForm
@@ -710,6 +1010,8 @@ const RCMView = ({
         {activeTab === 'claims' && renderClaims()}
         {activeTab === 'preapprovals' && renderPreapprovals()}
         {activeTab === 'payments' && renderPayments()}
+        {activeTab === 'payment-postings' && renderPaymentPostings()}
+        {activeTab === 'denials' && renderDenials()}
         {activeTab === 'payers' && renderInsurancePayers()}
       </div>
     </div>

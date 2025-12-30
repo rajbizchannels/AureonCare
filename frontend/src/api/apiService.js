@@ -240,6 +240,107 @@ const api = {
     return response.json();
   },
 
+  // Payment Postings
+  getPaymentPostings: async (patientId, claimId, insurancePayerId, status) => {
+    const params = new URLSearchParams();
+    if (patientId) params.append('patientId', patientId);
+    if (claimId) params.append('claimId', claimId);
+    if (insurancePayerId) params.append('insurancePayerId', insurancePayerId);
+    if (status) params.append('status', status);
+    const response = await fetch(`${API_BASE_URL}/payment-postings?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch payment postings');
+    return response.json();
+  },
+  getPaymentPosting: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/payment-postings/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch payment posting');
+    return response.json();
+  },
+  getPaymentPostingsByClaim: async (claimId) => {
+    const response = await fetch(`${API_BASE_URL}/payment-postings/claim/${claimId}`);
+    if (!response.ok) throw new Error('Failed to fetch payment postings for claim');
+    return response.json();
+  },
+  createPaymentPosting: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/payment-postings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create payment posting');
+    return response.json();
+  },
+  updatePaymentPosting: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/payment-postings/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update payment posting');
+    return response.json();
+  },
+  deletePaymentPosting: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/payment-postings/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete payment posting');
+    return response.json();
+  },
+
+  // Denials
+  getDenials: async (patientId, claimId, insurancePayerId, status, appealStatus, priority) => {
+    const params = new URLSearchParams();
+    if (patientId) params.append('patientId', patientId);
+    if (claimId) params.append('claimId', claimId);
+    if (insurancePayerId) params.append('insurancePayerId', insurancePayerId);
+    if (status) params.append('status', status);
+    if (appealStatus) params.append('appealStatus', appealStatus);
+    if (priority) params.append('priority', priority);
+    const response = await fetch(`${API_BASE_URL}/denials?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch denials');
+    return response.json();
+  },
+  getDenial: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/denials/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch denial');
+    return response.json();
+  },
+  getDenialsByClaim: async (claimId) => {
+    const response = await fetch(`${API_BASE_URL}/denials/claim/${claimId}`);
+    if (!response.ok) throw new Error('Failed to fetch denials for claim');
+    return response.json();
+  },
+  getDenialDeadlineAlerts: async () => {
+    const response = await fetch(`${API_BASE_URL}/denials/alerts/deadline`);
+    if (!response.ok) throw new Error('Failed to fetch denial deadline alerts');
+    return response.json();
+  },
+  createDenial: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/denials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create denial');
+    return response.json();
+  },
+  updateDenial: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/denials/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update denial');
+    return response.json();
+  },
+  deleteDenial: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/denials/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete denial');
+    return response.json();
+  },
+
   // Notifications
   getNotifications: async (userId = null) => {
     const url = userId
