@@ -190,6 +190,23 @@ function App() {
   //   }
   // }, [isAuthenticated, user]);
 
+  // Check URL parameters for help redirect after login
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hash = window.location.hash;
+
+      // Check if help parameter is present in URL or hash
+      if (urlParams.get('help') === 'true' || hash.includes('#help')) {
+        setShowHelpDrawer(true);
+
+        // Clean up URL parameters
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, [isAuthenticated]);
+
   // Update current context when module or form changes
   React.useEffect(() => {
     if (showForm) {
