@@ -16,6 +16,19 @@ const EnhancedAIAssistant = ({
   const [selectedArticle, setSelectedArticle] = useState(null);
   const messagesEndRef = useRef(null);
 
+  // Parse simple markdown to HTML
+  const parseMarkdown = (text) => {
+    if (!text) return '';
+
+    // Convert **text** to <strong>text</strong>
+    let parsed = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Convert line breaks to <br> for proper display
+    parsed = parsed.replace(/\n/g, '<br />');
+
+    return parsed;
+  };
+
   // Load documentation for context
   useEffect(() => {
     fetch('/docs/documentation-index.json')
@@ -186,13 +199,14 @@ const EnhancedAIAssistant = ({
                 ? theme === 'dark' ? 'bg-blue-600' : 'bg-blue-500'
                 : theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'
             } rounded-lg p-3`}>
-              <p className={`text-sm whitespace-pre-line ${
-                message.type === 'user'
-                  ? 'text-white'
-                  : theme === 'dark' ? 'text-slate-300' : 'text-gray-800'
-              }`}>
-                {message.content}
-              </p>
+              <div
+                className={`text-sm ${
+                  message.type === 'user'
+                    ? 'text-white'
+                    : theme === 'dark' ? 'text-slate-300' : 'text-gray-800'
+                }`}
+                dangerouslySetInnerHTML={{ __html: parseMarkdown(message.content) }}
+              />
 
               {/* Suggestions */}
               {message.suggestions && message.suggestions.length > 0 && (
@@ -335,9 +349,14 @@ const EnhancedAIAssistant = ({
           </div>
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
             <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none`}>
-              <p className={`whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                {selectedArticle.content}
-              </p>
+              <div
+                className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}
+                dangerouslySetInnerHTML={{ __html: parseMarkdown(selectedArticle.content) }}
+                style={{
+                  lineHeight: '1.75',
+                  fontSize: '0.95rem'
+                }}
+              />
               {selectedArticle.url && (
                 <div className="mt-6">
                   <a
