@@ -3,8 +3,6 @@ import { Pill, Microscope, Plus, Edit, Trash2, ArrowLeft, RefreshCw, Search, Act
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewPharmacyForm from '../components/forms/NewPharmacyForm';
 import NewLaboratoryForm from '../components/forms/NewLaboratoryForm';
-import FHIRTrackingBadge from '../components/FHIRTrackingBadge';
-import FHIRTracking from '../components/FHIRTracking';
 
 const ClinicalServicesView = ({
   theme,
