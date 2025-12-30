@@ -360,9 +360,7 @@ const EnhancedAIAssistant = ({
               {selectedArticle.url && (
                 <div className="mt-6">
                   <a
-                    href={selectedArticle.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`${selectedArticle.url}${selectedArticle.url.includes('?') ? '&' : '?'}help=true`}
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${
                       theme === 'dark'
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
