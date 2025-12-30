@@ -137,6 +137,7 @@ const LaboratoryManagementView = ({
             <NewLaboratoryForm
               theme={theme}
               api={api}
+              editingLaboratory={editingLaboratory}
               onClose={() => {
                 setShowForm(false);
                 setEditingLaboratory(null);
@@ -253,6 +254,20 @@ const LaboratoryManagementView = ({
                   </div>
 
                   <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingLaboratory(lab);
+                        setShowForm(true);
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        theme === 'dark'
+                          ? 'hover:bg-blue-900/30 text-blue-400'
+                          : 'hover:bg-blue-100 text-blue-700'
+                      }`}
+                      title="Edit Laboratory"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => setDeleteConfirm(lab)}
                       className={`p-2 rounded-lg transition-colors ${

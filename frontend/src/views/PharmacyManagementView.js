@@ -137,6 +137,7 @@ const PharmacyManagementView = ({
             <NewPharmacyForm
               theme={theme}
               api={api}
+              editingPharmacy={editingPharmacy}
               onClose={() => {
                 setShowForm(false);
                 setEditingPharmacy(null);
@@ -247,6 +248,20 @@ const PharmacyManagementView = ({
                   </div>
 
                   <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingPharmacy(pharmacy);
+                        setShowForm(true);
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        theme === 'dark'
+                          ? 'hover:bg-blue-900/30 text-blue-400'
+                          : 'hover:bg-blue-100 text-blue-700'
+                      }`}
+                      title="Edit Pharmacy"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => setDeleteConfirm(pharmacy)}
                       className={`p-2 rounded-lg transition-colors ${

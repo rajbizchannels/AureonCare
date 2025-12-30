@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Microscope, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
-const NewLaboratoryForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => {
+const NewLaboratoryForm = ({ theme, api, editingLaboratory, onClose, onSuccess, addNotification, t }) => {
   const [formData, setFormData] = useState({
     labName: '',
     addressLine1: '',
@@ -21,6 +21,29 @@ const NewLaboratoryForm = ({ theme, api, onClose, onSuccess, addNotification, t 
     acceptsElectronicOrders: true
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Preload form data when editing
+  useEffect(() => {
+    if (editingLaboratory) {
+      setFormData({
+        labName: editingLaboratory.labName || '',
+        addressLine1: editingLaboratory.addressLine1 || '',
+        addressLine2: editingLaboratory.addressLine2 || '',
+        city: editingLaboratory.city || '',
+        state: editingLaboratory.state || '',
+        zipCode: editingLaboratory.zipCode || '',
+        phone: editingLaboratory.phone || '',
+        fax: editingLaboratory.fax || '',
+        email: editingLaboratory.email || '',
+        website: editingLaboratory.website || '',
+        cliaNumber: editingLaboratory.cliaNumber || '',
+        npi: editingLaboratory.npi || '',
+        specialty: editingLaboratory.specialty || '',
+        isActive: editingLaboratory.isActive !== undefined ? editingLaboratory.isActive : true,
+        acceptsElectronicOrders: editingLaboratory.acceptsElectronicOrders !== undefined ? editingLaboratory.acceptsElectronicOrders : true
+      });
+    }
+  }, [editingLaboratory]);
 
   // ESC key handler
   useEffect(() => {
@@ -42,13 +65,21 @@ const NewLaboratoryForm = ({ theme, api, onClose, onSuccess, addNotification, t 
 
   const handleActualSubmit = async () => {
     try {
-      const newLaboratory = await api.createLaboratory(formData);
-      await addNotification('alert', `New laboratory added: ${newLaboratory.labName}`);
-      onSuccess(newLaboratory);
+      let laboratory;
+      if (editingLaboratory) {
+        // Update existing laboratory
+        laboratory = await api.updateLaboratory(editingLaboratory.id, formData);
+        await addNotification('success', `Laboratory updated: ${laboratory.labName}`);
+      } else {
+        // Create new laboratory
+        laboratory = await api.createLaboratory(formData);
+        await addNotification('success', `New laboratory added: ${laboratory.labName}`);
+      }
+      onSuccess(laboratory);
       onClose();
     } catch (err) {
-      console.error('Error creating laboratory:', err);
-      addNotification('alert', 'Failed to create laboratory');
+      console.error(`Error ${editingLaboratory ? 'updating' : 'creating'} laboratory:`, err);
+      addNotification('alert', `Failed to ${editingLaboratory ? 'update' : 'create'} laboratory`);
     }
   };
 
@@ -59,10 +90,10 @@ const NewLaboratoryForm = ({ theme, api, onClose, onSuccess, addNotification, t 
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
         onConfirm={handleActualSubmit}
-        title="Add Laboratory"
-        message="Are you sure you want to add this laboratory?"
+        title={editingLaboratory ? "Update Laboratory" : "Add Laboratory"}
+        message={editingLaboratory ? "Are you sure you want to update this laboratory?" : "Are you sure you want to add this laboratory?"}
         type="confirm"
-        confirmText="Add Laboratory"
+        confirmText={editingLaboratory ? "Update Laboratory" : "Add Laboratory"}
         cancelText="Cancel"
       />
       <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
