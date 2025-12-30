@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pill, Microscope, Plus, Edit, Trash2, ArrowLeft, RefreshCw, Search, Activity } from 'lucide-react';
+import { Pill, Microscope, Plus, Edit, Trash2, ArrowLeft, RefreshCw, Search, Activity, Database, Download, Upload, User, FileText, AlertCircle, Check } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewPharmacyForm from '../components/forms/NewPharmacyForm';
 import NewLaboratoryForm from '../components/forms/NewLaboratoryForm';
@@ -11,6 +11,7 @@ const ClinicalServicesView = ({
   api,
   addNotification,
   setCurrentModule,
+  patients = [],
   t = {}
 }) => {
   const [activeTab, setActiveTab] = useState('pharmacies');
@@ -30,16 +31,22 @@ const ClinicalServicesView = ({
   const [deleteLabConfirm, setDeleteLabConfirm] = useState(null);
   const [labSearchQuery, setLabSearchQuery] = useState('');
 
-  // FHIR Tracking state
-  const [viewingTracking, setViewingTracking] = useState(null);
+  // FHIR state
+  const [fhirResources, setFhirResources] = useState([]);
+  const [syncing, setSyncing] = useState(false);
+  const [selectedResourceType, setSelectedResourceType] = useState('all');
+
+  const resourceTypes = ['all', 'Patient', 'Observation', 'Condition', 'Medication', 'Procedure', 'MedicationRequest', 'ServiceRequest'];
 
   useEffect(() => {
     if (activeTab === 'pharmacies') {
       loadPharmacies();
     } else if (activeTab === 'laboratories') {
       loadLaboratories();
+    } else if (activeTab === 'fhir') {
+      loadFhirResources();
     }
-  }, [activeTab]);
+  }, [activeTab, selectedResourceType]);
 
   // Close forms when tab changes
   useEffect(() => {
@@ -103,6 +110,64 @@ const ClinicalServicesView = ({
     }
   };
 
+  const loadFhirResources = async () => {
+    setLoading(true);
+    try {
+      const resourceType = selectedResourceType === 'all' ? null : selectedResourceType;
+      const data = await api.getFhirResources(resourceType, null);
+      setFhirResources(data);
+    } catch (error) {
+      console.error('Error loading FHIR resources:', error);
+      addNotification('alert', 'Failed to load FHIR resources');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSyncPatient = async (patientId) => {
+    try {
+      setSyncing(true);
+      await api.syncPatientToFhir(patientId);
+      addNotification('success', 'Patient synced to FHIR successfully');
+      loadFhirResources();
+    } catch (error) {
+      console.error('Error syncing patient:', error);
+      addNotification('alert', 'Failed to sync patient to FHIR');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDownloadBundle = async (patientId) => {
+    try {
+      const bundle = await api.getFhirBundle(patientId);
+      const dataStr = JSON.stringify(bundle, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `fhir-bundle-${patientId}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      addNotification('success', 'FHIR bundle downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading bundle:', error);
+      addNotification('alert', 'Failed to download FHIR bundle');
+    }
+  };
+
+  const getResourceIcon = (resourceType) => {
+    switch (resourceType) {
+      case 'Patient':
+        return User;
+      case 'Observation':
+      case 'Condition':
+        return Activity;
+      default:
+        return FileText;
+    }
+  };
+
   const filteredPharmacies = pharmacies.filter(pharmacy => {
     if (!pharmacySearchQuery) return true;
     const searchLower = pharmacySearchQuery.toLowerCase();
@@ -125,9 +190,24 @@ const ClinicalServicesView = ({
     );
   });
 
+  const filteredFhirResources = selectedResourceType === 'all'
+    ? fhirResources
+    : fhirResources.filter(r => r.resource_type === selectedResourceType);
+
+  const getPatientName = (patientId) => {
+    const patient = patients.find(p => p.id === patientId);
+    return patient ? `${patient.first_name} ${patient.last_name}` : 'Unknown';
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString();
+  };
+
   const tabs = [
     { id: 'pharmacies', label: 'Pharmacies', icon: Pill, count: pharmacies.length },
-    { id: 'laboratories', label: 'Laboratories', icon: Microscope, count: laboratories.length }
+    { id: 'laboratories', label: 'Laboratories', icon: Microscope, count: laboratories.length },
+    { id: 'fhir', label: 'FHIR Resources', icon: Database, count: fhirResources.length }
   ];
 
   const renderPharmacies = () => (
@@ -474,6 +554,178 @@ const ClinicalServicesView = ({
     </>
   );
 
+  const renderFHIR = () => (
+    <>
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Total Resources</h3>
+            <Database className={`w-5 h-5 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} />
+          </div>
+          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{fhirResources.length}</p>
+        </div>
+
+        <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Patients</h3>
+            <User className={`w-5 h-5 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
+          </div>
+          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {fhirResources.filter(r => r.resource_type === 'Patient').length}
+          </p>
+        </div>
+
+        <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>FHIR Version</h3>
+            <Check className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+          </div>
+          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>R4</p>
+        </div>
+
+        <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</h3>
+            <Activity className={`w-5 h-5 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} />
+          </div>
+          <p className={`text-lg font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>Active</p>
+        </div>
+      </div>
+
+      {/* Patient Sync Section */}
+      <div className={`bg-gradient-to-br rounded-xl p-6 border mb-6 ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+        <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Sync Patients to FHIR
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {patients.slice(0, 6).map((patient) => (
+            <div
+              key={patient.id}
+              className={`flex items-center justify-between p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/30' : 'bg-gray-100/30'}`}
+            >
+              <div>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patient.first_name} {patient.last_name}
+                </p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  MRN: {patient.mrn}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleSyncPatient(patient.id)}
+                  disabled={syncing}
+                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400' : 'bg-purple-100 hover:bg-purple-200 text-purple-700'} disabled:opacity-50`}
+                  title="Sync to FHIR"
+                >
+                  <Upload className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDownloadBundle(patient.id)}
+                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-pink-500/20 hover:bg-pink-500/30 text-pink-400' : 'bg-pink-100 hover:bg-pink-200 text-pink-700'}`}
+                  title="Download FHIR Bundle"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-4 mb-6">
+        <label className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Resource Type:
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {resourceTypes.map((type) => (
+            <button
+              key={type}
+              onClick={() => setSelectedResourceType(type)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedResourceType === type
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                  : theme === 'dark'
+                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* FHIR Resources List */}
+      <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+        <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          FHIR Resources ({filteredFhirResources.length})
+        </h3>
+
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+          </div>
+        ) : filteredFhirResources.length === 0 ? (
+          <div className="text-center py-12">
+            <AlertCircle className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+            <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              No FHIR resources found. Sync patients to create resources.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredFhirResources.map((resource) => {
+              const Icon = getResourceIcon(resource.resource_type);
+              return (
+                <div
+                  key={resource.id}
+                  className={`flex items-center justify-between p-4 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/30 hover:bg-slate-800/50' : 'bg-gray-100/30 hover:bg-gray-200/50'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {resource.resource_type} - {resource.resource_id}
+                      </p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {resource.patient_id && `Patient: ${getPatientName(resource.patient_id)}`}
+                        {' · '}
+                        Updated: {formatDate(resource.last_updated)}
+                        {' · '}
+                        Version: {resource.fhir_version}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const dataStr = JSON.stringify(resource.resource_data, null, 2);
+                      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                      const url = URL.createObjectURL(dataBlob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `${resource.resource_type}-${resource.resource_id}.json`;
+                      link.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <>
       {/* Modals */}
@@ -523,7 +775,11 @@ const ClinicalServicesView = ({
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={activeTab === 'pharmacies' ? loadPharmacies : loadLaboratories}
+              onClick={() => {
+                if (activeTab === 'pharmacies') loadPharmacies();
+                else if (activeTab === 'laboratories') loadLaboratories();
+                else if (activeTab === 'fhir') loadFhirResources();
+              }}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                 theme === 'dark'
                   ? 'bg-slate-700 hover:bg-slate-600 text-white'
@@ -533,13 +789,15 @@ const ClinicalServicesView = ({
               <RefreshCw className="w-4 h-4" />
               Refresh
             </button>
-            <button
-              onClick={() => activeTab === 'pharmacies' ? setShowPharmacyForm(true) : setShowLabForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              Add {activeTab === 'pharmacies' ? 'Pharmacy' : 'Laboratory'}
-            </button>
+            {activeTab !== 'fhir' && (
+              <button
+                onClick={() => activeTab === 'pharmacies' ? setShowPharmacyForm(true) : setShowLabForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Add {activeTab === 'pharmacies' ? 'Pharmacy' : 'Laboratory'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -587,6 +845,7 @@ const ClinicalServicesView = ({
         <div className="space-y-4">
           {activeTab === 'pharmacies' && renderPharmacies()}
           {activeTab === 'laboratories' && renderLaboratories()}
+          {activeTab === 'fhir' && renderFHIR()}
         </div>
       </div>
     </>
