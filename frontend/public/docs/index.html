@@ -198,6 +198,74 @@
                 }
             });
         }
+
+        // Handle hash-based navigation to display articles
+        async function loadArticleByHash() {
+            const hash = window.location.hash.slice(1); // Remove # from hash
+            if (!hash) return; // No hash, show normal index page
+
+            try {
+                // Load documentation index
+                const response = await fetch('/docs/documentation-index.json');
+                const data = await response.json();
+
+                // Find article by ID
+                let article = null;
+                for (const section of data.sections) {
+                    const found = section.articles.find(a => a.id === hash);
+                    if (found) {
+                        article = { ...found, section: section.title };
+                        break;
+                    }
+                }
+
+                if (!article) {
+                    console.warn('Article not found:', hash);
+                    return;
+                }
+
+                // Parse markdown-style formatting
+                const parseMarkdown = (text) => {
+                    if (!text) return '';
+                    let parsed = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    parsed = parsed.replace(/\n/g, '<br />');
+                    return parsed;
+                };
+
+                // Hide index content and show article
+                const container = document.querySelector('.doc-container');
+                container.innerHTML = `
+                    <div style="max-width: 900px; margin: 0 auto;">
+                        <div style="margin-bottom: 2rem;">
+                            <a href="/docs/index.html" style="color: #4a90e2; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                ← Back to Documentation Index
+                            </a>
+                        </div>
+                        <div class="card" style="padding: 2rem;">
+                            <div style="margin-bottom: 1rem;">
+                                <span style="display: inline-block; background: #e3f2fd; color: #1976d2; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; font-weight: 500;">
+                                    ${article.section}
+                                </span>
+                            </div>
+                            <h1 style="color: #002060; margin-bottom: 1.5rem; font-size: 2rem;">
+                                ${article.title}
+                            </h1>
+                            <div style="line-height: 1.75; color: #333;">
+                                ${parseMarkdown(article.content || article.summary || 'No content available.')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading article:', error);
+            }
+        }
+
+        // Load article on page load if hash exists
+        window.addEventListener('DOMContentLoaded', loadArticleByHash);
+
+        // Handle hash changes (back/forward navigation)
+        window.addEventListener('hashchange', loadArticleByHash);
     </script>
 </body>
 </html>
