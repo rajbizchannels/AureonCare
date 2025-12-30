@@ -179,6 +179,26 @@ const RCMView = ({
         </div>
       </div>
 
+      {/* Inline New Claim Form - Between Search and List */}
+      {showClaimForm && (
+        <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewClaimForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            claims={claims}
+            onClose={() => setShowClaimForm(false)}
+            onSuccess={(newClaim) => {
+              setShowClaimForm(false);
+              setClaims([...claims, newClaim]);
+              addNotification('success', t.claimCreated || 'Claim created successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
       {/* Claims Table */}
       <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
         <div className="overflow-x-auto">
@@ -295,6 +315,25 @@ const RCMView = ({
         </div>
       </div>
 
+      {/* Inline Pre-Authorization Form - Between Search and List */}
+      {showPreapprovalForm && (
+        <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewPreapprovalForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            onClose={() => setShowPreapprovalForm(false)}
+            onSuccess={(newPreapproval) => {
+              setShowPreapprovalForm(false);
+              setPreapprovals([...preapprovals, newPreapproval]);
+              addNotification('success', t.preauthorizationCreated || 'Pre-authorization request created successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
       {/* PreAuthorizations Table */}
       <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
         <div className="overflow-x-auto">
@@ -386,6 +425,26 @@ const RCMView = ({
           />
         </div>
       </div>
+
+      {/* Inline Payment Form - Between Search and List */}
+      {showPaymentForm && (
+        <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewPaymentForm
+            theme={theme}
+            api={api}
+            patients={patients}
+            claims={claims}
+            onClose={() => setShowPaymentForm(false)}
+            onSuccess={(newPayment) => {
+              setShowPaymentForm(false);
+              setPayments([...payments, newPayment]);
+              addNotification('success', t.paymentRecordedSuccessfully || 'Payment recorded successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
 
       {/* Payments Table */}
       <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
@@ -480,6 +539,36 @@ const RCMView = ({
           />
         </div>
       </div>
+
+      {/* Inline Insurance Payer Form - Between Search and List */}
+      {showInsurancePayerForm && (
+        <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewInsurancePayerForm
+            theme={theme}
+            api={api}
+            editPayer={editingPayer}
+            onClose={() => {
+              setShowInsurancePayerForm(false);
+              setEditingPayer(null);
+            }}
+            onSuccess={(savedPayer) => {
+              setShowInsurancePayerForm(false);
+              if (editingPayer) {
+                // Update existing payer in list
+                setInsurancePayers(insurancePayers.map(p => p.id === savedPayer.id ? savedPayer : p));
+                addNotification('success', t.insurancePayerUpdated || 'Insurance payer updated successfully');
+              } else {
+                // Add new payer to list
+                setInsurancePayers([...insurancePayers, savedPayer]);
+                addNotification('success', t.insurancePayerAdded || 'Insurance payer added successfully');
+              }
+              setEditingPayer(null);
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
 
       {/* Insurance Payers Table */}
       <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
