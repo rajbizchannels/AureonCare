@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, X, Save, Bot, Search, Plus, Trash2 } from 'lucide-react';
+import { DollarSign, X, Save, Bot, Search, Plus, Trash2, Shield } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
 const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNotification, t }) => {
@@ -28,15 +28,23 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
   const [existingDiagnoses, setExistingDiagnoses] = useState([]);
   const [loadingDiagnoses, setLoadingDiagnoses] = useState(false);
 
+  const [selectedPatientInsurer, setSelectedPatientInsurer] = useState(null);
+
   // Auto-load insurance payer from patient profile when patient is selected
   useEffect(() => {
     if (formData.patientId) {
       const selectedPatient = patients.find(p => p.id.toString() === formData.patientId);
       if (selectedPatient && selectedPatient.insurance_payer_id) {
         setFormData(prev => ({...prev, payerId: selectedPatient.insurance_payer_id}));
+
+        // Find the insurance payer details
+        const payer = insurancePayers.find(ip => ip.id === selectedPatient.insurance_payer_id);
+        setSelectedPatientInsurer(payer);
+      } else {
+        setSelectedPatientInsurer(null);
       }
     }
-  }, [formData.patientId, patients]);
+  }, [formData.patientId, patients, insurancePayers]);
 
   // Load existing diagnoses when patient is selected
   useEffect(() => {
@@ -226,6 +234,11 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!formData.payerId) {
+      addNotification('alert', 'Please select a patient with an assigned insurance payer');
+      return;
+    }
+
     if (selectedDiagnoses.length === 0) {
       addNotification('alert', 'Please add at least one diagnosis code');
       return;
@@ -346,18 +359,32 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.insurancePayer || 'Insurance Payer'} <span className="text-red-400">*</span>
                 </label>
-                <select
-                  required
-                  value={formData.payerId}
-                  onChange={(e) => setFormData({...formData, payerId: e.target.value})}
-                  disabled={loadingPayers}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingPayers ? 'opacity-50' : ''}`}
-                >
-                  <option value="">{loadingPayers ? 'Loading...' : (t.selectPayer || 'Select Payer')}</option>
-                  {insurancePayers.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.payer_id})</option>
-                  ))}
-                </select>
+                {selectedPatientInsurer ? (
+                  <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-gray-100 border-gray-300'}`}>
+                    <div className="flex items-start gap-2">
+                      <Shield className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} mt-0.5`} />
+                      <div>
+                        <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {selectedPatientInsurer.name}
+                        </p>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          Payer ID: {selectedPatientInsurer.payer_id}
+                        </p>
+                        {selectedPatientInsurer.prior_authorization_required && (
+                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                            ✓ Prior authorization required by this payer
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-300'}`}>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {formData.patientId ? 'No insurance payer assigned to this patient' : 'Select a patient to view insurance payer'}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
