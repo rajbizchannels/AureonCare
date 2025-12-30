@@ -106,6 +106,26 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
 
   return (
     <>
+      {/* Custom Scrollbar Styles */}
+      <style>
+        {`
+          .help-drawer-content::-webkit-scrollbar {
+            width: 8px;
+          }
+          .help-drawer-content::-webkit-scrollbar-track {
+            background: ${theme === 'dark' ? '#1e293b' : '#f1f5f9'};
+            border-radius: 4px;
+          }
+          .help-drawer-content::-webkit-scrollbar-thumb {
+            background: ${theme === 'dark' ? '#475569' : '#cbd5e1'};
+            border-radius: 4px;
+          }
+          .help-drawer-content::-webkit-scrollbar-thumb:hover {
+            background: ${theme === 'dark' ? '#64748b' : '#94a3b8'};
+          }
+        `}
+      </style>
+
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/30 z-40"
@@ -113,7 +133,7 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
       />
 
       {/* Drawer */}
-      <div className={`fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 xl:w-2/5 z-50 transform transition-transform duration-300 ${
+      <div className={`fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 xl:w-2/5 z-50 transform transition-transform duration-300 flex flex-col ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       } ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'} shadow-2xl`}>
 
@@ -206,7 +226,13 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div
+          className="help-drawer-content flex-1 overflow-y-auto p-6"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: theme === 'dark' ? '#475569 #1e293b' : '#cbd5e1 #f1f5f9'
+          }}
+        >
 
           {/* Search Results Tab */}
           {activeTab === 'search' && (
@@ -407,7 +433,13 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
                 </button>
               </div>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+            <div
+              className="help-drawer-content p-6 overflow-y-auto max-h-[calc(90vh-180px)]"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: theme === 'dark' ? '#475569 #1e293b' : '#cbd5e1 #f1f5f9'
+              }}
+            >
               <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none`}>
                 <div
                   className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}
