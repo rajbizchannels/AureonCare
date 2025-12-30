@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS payment_postings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     posting_number VARCHAR(50) UNIQUE NOT NULL,
-    claim_id INTEGER REFERENCES claims(id) ON DELETE SET NULL,
+    claim_id UUID REFERENCES claims(id) ON DELETE SET NULL,
     patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
     insurance_payer_id UUID REFERENCES insurance_payers(id) ON DELETE SET NULL,
 
