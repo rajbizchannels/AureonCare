@@ -38,6 +38,7 @@ import CampaignsManagementView from './views/CampaignsManagementView';
 import AppointmentTypesManagementView from './views/AppointmentTypesManagementView';
 import PharmacyManagementView from './views/PharmacyManagementView';
 import LaboratoryManagementView from './views/LaboratoryManagementView';
+import ClinicalServicesView from './views/ClinicalServicesView';
 import WaitlistManagementView from './views/WaitlistManagementView';
 
 // Modals
@@ -426,14 +427,15 @@ function App() {
         return <CRMView theme={theme} api={api} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} currentModule={currentModule} crmRefreshKey={crmRefreshKey} t={t} />;
       case 'integrations':
         return <IntegrationsView theme={theme} setCurrentModule={setCurrentModule} />;
-      case 'fhir':
+      case 'clinicalServices':
         return (
-          <FHIRView
+          <ClinicalServicesView
             theme={theme}
             api={api}
             patients={patients}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            t={t}
           />
         );
       case 'patientPortal':
@@ -491,26 +493,6 @@ function App() {
             setEditingAppointmentType={setEditingAppointmentType}
             setCurrentModule={setCurrentModule}
             addNotification={addNotification}
-            t={t}
-          />
-        );
-      case 'pharmacies':
-        return (
-          <PharmacyManagementView
-            theme={theme}
-            api={api}
-            addNotification={addNotification}
-            setCurrentModule={setCurrentModule}
-            t={t}
-          />
-        );
-      case 'laboratories':
-        return (
-          <LaboratoryManagementView
-            theme={theme}
-            api={api}
-            addNotification={addNotification}
-            setCurrentModule={setCurrentModule}
             t={t}
           />
         );
