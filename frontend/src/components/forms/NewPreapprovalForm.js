@@ -289,11 +289,11 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
       };
 
       const newPreapproval = await api.createPreapproval(preapprovalData);
-      addNotification('success', 'Preapproval request created successfully');
+      addNotification('success', 'Pre-authorization request created successfully');
       onSuccess(newPreapproval);
     } catch (error) {
       console.error('Error creating preapproval:', error);
-      addNotification('alert', error.message || 'Failed to create preapproval request');
+      addNotification('alert', error.message || 'Failed to create pre-authorization request');
     }
   };
 
@@ -306,7 +306,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
     printWindow.document.write(`
       <html>
         <head>
-          <title>Preapproval Request</title>
+          <title>Pre-Authorization Request</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 40px; }
             h1 { color: #1e40af; border-bottom: 2px solid #1e40af; padding-bottom: 10px; }
@@ -397,7 +397,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
       <div className="flex items-center gap-3 mb-6">
         <FileCheck className="w-6 h-6 text-blue-500" />
         <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Request Preapproval
+          Request Pre-Authorization
         </h3>
       </div>
 
@@ -740,7 +740,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
                 ? 'bg-slate-700 border-slate-600 text-white'
                 : 'bg-white border-gray-300 text-gray-900'
             } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-            placeholder="Enter any additional clinical notes or justification for the preapproval request..."
+            placeholder="Enter any additional clinical notes or justification for the pre-authorization request..."
           />
         </div>
 
@@ -762,7 +762,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
             className="flex items-center gap-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
           >
             <Save className="w-4 h-4" />
-            Submit Preapproval Request
+            Submit Pre-Authorization Request
           </button>
         </div>
       </form>

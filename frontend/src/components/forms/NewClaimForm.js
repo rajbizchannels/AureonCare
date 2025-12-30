@@ -177,9 +177,14 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
         }
       }
 
-      // If diagnosis has associated CPT codes in notes, extract and add them
-      // Only do this when selecting from existing patient diagnoses
+      // Auto-populate clinical notes from diagnosis if not already set
       if (diagnosis.notes && typeof diagnosis.notes === 'string') {
+        if (!formData.notes || formData.notes.trim() === '') {
+          setFormData(prev => ({ ...prev, notes: diagnosis.notes }));
+        }
+
+        // If diagnosis has associated CPT codes in notes, extract and add them
+        // Only do this when selecting from existing patient diagnoses
         const cptMatch = diagnosis.notes.match(/CPT Codes:\s*([^]*?)(?:\n\n|$)/);
         if (cptMatch) {
           const cptSection = cptMatch[1];
@@ -357,7 +362,7 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  {t.preapproval || 'Preapproval (Prior Authorization)'}
+                  {t.preauthorization || 'Pre-Authorization (Prior Authorization)'}
                 </label>
                 <select
                   value={formData.preapprovalId}
@@ -366,7 +371,7 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingPreapprovals ? 'opacity-50' : ''}`}
                 >
                   <option value="">
-                    {!formData.patientId ? 'Select patient first' : loadingPreapprovals ? 'Loading...' : (preapprovals.length === 0 ? 'No preapprovals available' : 'None (optional)')}
+                    {!formData.patientId ? 'Select patient first' : loadingPreapprovals ? 'Loading...' : (preapprovals.length === 0 ? 'No pre-authorizations available' : 'None (optional)')}
                   </option>
                   {preapprovals.map(pa => (
                     <option key={pa.id} value={pa.id}>
@@ -376,7 +381,7 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
                 </select>
                 {preapprovals.length > 0 && formData.preapprovalId && (
                   <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                    ✓ This claim will be linked to the selected preapproval
+                    ✓ This claim will be linked to the selected pre-authorization
                   </p>
                 )}
               </div>
