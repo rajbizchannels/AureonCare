@@ -245,7 +245,7 @@ const RCMView = ({
             type="text"
             value={preapprovalSearch}
             onChange={(e) => setPreapprovalSearch(e.target.value)}
-            placeholder="Search preapprovals by number, patient, service, or status..."
+            placeholder="Search pre-authorizations by number, patient, service, or status..."
             className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
               theme === 'dark'
                 ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400'
@@ -255,7 +255,7 @@ const RCMView = ({
         </div>
       </div>
 
-      {/* Preapprovals Table */}
+      {/* PreAuthorizations Table */}
       <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -274,7 +274,7 @@ const RCMView = ({
               {filteredPreapprovals.length === 0 ? (
                 <tr>
                   <td colSpan="7" className={`px-6 py-8 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {preapprovalSearch ? 'No preapprovals found matching your search' : 'No preapprovals yet'}
+                    {preapprovalSearch ? 'No pre-authorizations found matching your search' : 'No pre-authorizations yet'}
                   </td>
                 </tr>
               ) : (
@@ -299,14 +299,14 @@ const RCMView = ({
                       <div className="flex gap-2">
                         <button
                           onClick={async () => {
-                            if (window.confirm('Are you sure you want to delete this preapproval?')) {
+                            if (window.confirm('Are you sure you want to delete this pre-authorization?')) {
                               try {
                                 await api.deletePreapproval(pa.id);
                                 setPreapprovals(prev => prev.filter(p => p.id !== pa.id));
-                                await addNotification('success', 'Preapproval deleted successfully');
+                                await addNotification('success', 'Pre-authorization deleted successfully');
                               } catch (err) {
-                                console.error('Error deleting preapproval:', err);
-                                alert('Failed to delete preapproval');
+                                console.error('Error deleting pre-authorization:', err);
+                                alert('Failed to delete pre-authorization');
                               }
                             }
                           }}
@@ -535,7 +535,7 @@ const RCMView = ({
               Revenue Cycle Management
             </h2>
             <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Manage claims, preapprovals, payments, and insurance payers
+              Manage claims, pre-authorizations, payments, and insurance payers
             </p>
           </div>
         </div>
@@ -545,7 +545,7 @@ const RCMView = ({
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
           { id: 'claims', label: 'Claims', icon: DollarSign, count: claims.length },
-          { id: 'preapprovals', label: 'Preapprovals', icon: FileCheck, count: preapprovals.length },
+          { id: 'preapprovals', label: 'Pre-Authorizations', icon: FileCheck, count: preapprovals.length },
           { id: 'payments', label: 'Payments', icon: CreditCard, count: payments.length },
           { id: 'payers', label: 'Insurance Payers', icon: Shield, count: insurancePayers.length }
         ].map((tab) => {
@@ -593,7 +593,7 @@ const RCMView = ({
             className={`flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors`}
           >
             <FileCheck className="w-4 h-4" />
-            Request Preapproval
+            Request Pre-Authorization
           </button>
         )}
         {activeTab === 'payments' && (
@@ -649,7 +649,7 @@ const RCMView = ({
             onSuccess={(newPreapproval) => {
               setShowPreapprovalForm(false);
               setPreapprovals([...preapprovals, newPreapproval]);
-              addNotification('success', t.preapprovalCreated || 'Preapproval request created successfully');
+              addNotification('success', t.preauthorizationCreated || 'Pre-authorization request created successfully');
             }}
             addNotification={addNotification}
             t={t}
