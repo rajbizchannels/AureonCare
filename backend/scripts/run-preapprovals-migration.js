@@ -8,7 +8,7 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'medflow',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
+  password: 'MedFlow2024!',
 });
 
 async function runMigrations() {

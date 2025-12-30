@@ -25,9 +25,9 @@ BEGIN
         ALTER TABLE patients
         ADD COLUMN insurance_payer_id UUID;
 
-        RAISE NOTICE 'Added insurance_payer_id column to patients table';
-    ELSE
-        RAISE NOTICE 'insurance_payer_id column already exists in patients table';
+--        RAISE NOTICE 'Added insurance_payer_id column to patients table';
+--    ELSE
+--        RAISE NOTICE 'insurance_payer_id column already exists in patients table';
     END IF;
 END $$;
 
@@ -49,9 +49,9 @@ BEGIN
         REFERENCES insurance_payers(id)
         ON DELETE SET NULL;
 
-        RAISE NOTICE 'Added foreign key constraint patients_insurance_payer_id_fkey';
-    ELSE
-        RAISE NOTICE 'Foreign key constraint patients_insurance_payer_id_fkey already exists';
+--        RAISE NOTICE 'Added foreign key constraint patients_insurance_payer_id_fkey';
+--    ELSE
+--        RAISE NOTICE 'Foreign key constraint patients_insurance_payer_id_fkey already exists';
     END IF;
 END $$;
 
@@ -62,7 +62,7 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_patients_insurance_payer_id
 ON patients(insurance_payer_id);
 
-RAISE NOTICE 'Created index idx_patients_insurance_payer_id';
+--RAISE NOTICE 'Created index idx_patients_insurance_payer_id';
 
 -- ============================================================================
 -- Step 4: Add comment for documentation
@@ -75,5 +75,5 @@ COMMIT;
 -- Final notification
 DO $$
 BEGIN
-    RAISE NOTICE 'Migration 032 completed: Added insurance_payer_id to patients table';
+--    RAISE NOTICE 'Migration 032 completed: Added insurance_payer_id to patients table';
 END $$;
