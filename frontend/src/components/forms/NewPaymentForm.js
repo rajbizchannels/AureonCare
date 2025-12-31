@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, X, Save, Lock } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
-const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addNotification }) => {
+const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addNotification, editingPayment }) => {
   const [formData, setFormData] = useState({
-    patientId: '',
-    claimId: '',
-    amount: '',
-    paymentMethod: 'credit_card',
+    patientId: editingPayment?.patient_id?.toString() || '',
+    claimId: editingPayment?.claim_id?.toString() || '',
+    amount: editingPayment?.amount?.toString() || '',
+    paymentMethod: editingPayment?.payment_method || 'credit_card',
     cardNumber: '',
     cardholderName: '',
     expiryDate: '',
     cvv: '',
-    description: '',
-    notes: ''
+    description: editingPayment?.description || '',
+    notes: editingPayment?.notes || ''
   });
 
   const [processing, setProcessing] = useState(false);
@@ -116,54 +116,73 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
     setProcessing(true);
 
     try {
-      // Generate payment number
-      const paymentNo = `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
-
       const patient = patients.find(p => p.id.toString() === formData.patientId);
       const claim = claims.find(c => c.id.toString() === formData.claimId);
 
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (editingPayment) {
+        // Update existing payment
+        const paymentData = {
+          patient_id: formData.patientId,
+          claim_id: formData.claimId || null,
+          amount: parseFloat(formData.amount),
+          payment_method: formData.paymentMethod,
+          description: formData.description || `Payment for ${claim?.claim_number || 'medical services'}`,
+          notes: formData.notes
+        };
 
-      // Get card brand from card number (simple detection)
-      let cardBrand = 'Unknown';
-      const firstDigit = formData.cardNumber.charAt(0);
-      if (firstDigit === '4') cardBrand = 'Visa';
-      else if (firstDigit === '5') cardBrand = 'Mastercard';
-      else if (firstDigit === '3') cardBrand = 'Amex';
-      else if (firstDigit === '6') cardBrand = 'Discover';
+        const updatedPayment = await api.updatePayment(editingPayment.id, paymentData);
+        const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
+        await addNotification('success', `Payment updated successfully for ${patientName}`);
+        onSuccess(updatedPayment);
+        onClose();
+      } else {
+        // Create new payment
+        // Generate payment number
+        const paymentNo = `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
 
-      const paymentData = {
-        payment_number: paymentNo,
-        patient_id: formData.patientId,
-        claim_id: formData.claimId || null,
-        amount: parseFloat(formData.amount),
-        payment_method: formData.paymentMethod,
-        payment_status: 'completed', // In production, this would be 'processing' initially
-        transaction_id: `TXN-${Date.now()}`, // Simulated transaction ID
-        card_last_four: formData.cardNumber.replace(/\D/g, '').slice(-4),
-        card_brand: cardBrand,
-        payment_date: new Date().toISOString(),
-        description: formData.description || `Payment for ${claim?.claim_number || 'medical services'}`,
-        notes: formData.notes
-      };
+        // Simulate payment processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const newPayment = await api.createPayment(paymentData);
+        // Get card brand from card number (simple detection)
+        let cardBrand = 'Unknown';
+        const firstDigit = formData.cardNumber.charAt(0);
+        if (firstDigit === '4') cardBrand = 'Visa';
+        else if (firstDigit === '5') cardBrand = 'Mastercard';
+        else if (firstDigit === '3') cardBrand = 'Amex';
+        else if (firstDigit === '6') cardBrand = 'Discover';
 
-      const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
-      await addNotification('success', `Payment ${paymentNo} processed successfully for ${patientName}`);
+        const paymentData = {
+          payment_number: paymentNo,
+          patient_id: formData.patientId,
+          claim_id: formData.claimId || null,
+          amount: parseFloat(formData.amount),
+          payment_method: formData.paymentMethod,
+          payment_status: 'completed', // In production, this would be 'processing' initially
+          transaction_id: `TXN-${Date.now()}`, // Simulated transaction ID
+          card_last_four: formData.cardNumber.replace(/\D/g, '').slice(-4),
+          card_brand: cardBrand,
+          payment_date: new Date().toISOString(),
+          description: formData.description || `Payment for ${claim?.claim_number || 'medical services'}`,
+          notes: formData.notes
+        };
 
-      onSuccess(newPayment);
-      onClose();
+        const newPayment = await api.createPayment(paymentData);
+
+        const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
+        await addNotification('success', `Payment ${paymentNo} processed successfully for ${patientName}`);
+
+        onSuccess(newPayment);
+        onClose();
+      }
     } catch (err) {
       console.error('Error processing payment:', err);
-      await addNotification('alert', 'Payment processing failed. Please try again.');
+      await addNotification('alert', editingPayment ? 'Payment update failed. Please try again.' : 'Payment processing failed. Please try again.');
     } finally {
       setProcessing(false);
     }
   };
 
-  const requiresCardDetails = ['credit_card', 'debit_card'].includes(formData.paymentMethod);
+  const requiresCardDetails = !editingPayment && ['credit_card', 'debit_card'].includes(formData.paymentMethod);
 
   return (
     <>
@@ -172,10 +191,10 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
         onConfirm={handleActualSubmit}
-        title="Process Payment"
-        message="Are you sure you want to process this payment?"
+        title={editingPayment ? "Update Payment" : "Process Payment"}
+        message={editingPayment ? "Are you sure you want to update this payment?" : "Are you sure you want to process this payment?"}
         type="confirm"
-        confirmText="Process Payment"
+        confirmText={editingPayment ? "Update Payment" : "Process Payment"}
         cancelText="Cancel"
       />
       <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
@@ -184,7 +203,9 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
             <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
               <CreditCard className={`w-5 h-5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
             </div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Process Payment</h2>
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {editingPayment ? 'Edit Payment' : 'Process Payment'}
+            </h2>
           </div>
           {!processing && (
             <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
