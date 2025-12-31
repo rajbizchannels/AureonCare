@@ -96,6 +96,113 @@ Detailed patient scenarios and narratives that bring the demo to life with reali
 
 ---
 
+### 5. **VIDEO_PRODUCTION_GUIDE.md**
+**Comprehensive Video Production Manual**
+
+Complete guide for creating a professional demo video with step-by-step instructions.
+
+**Includes:**
+- Pre-production checklist
+- Tools and software recommendations (OBS Studio, DaVinci Resolve)
+- Recording setup instructions
+- Production workflow (recording approaches)
+- Post-production editing guide
+- Export settings for various platforms
+- Quality checklist
+
+**Use this for:**
+- Creating recorded demo videos
+- Understanding video production workflow
+- Choosing the right tools
+- Professional video output
+
+---
+
+### 6. **VIDEO_STORYBOARD.md**
+**Scene-by-Scene Visual Script**
+
+Detailed storyboard showing exactly what should appear on screen at each moment of the video.
+
+**Includes:**
+- 15 scenes with precise timing (0:00 - 13:30)
+- Visual descriptions for each scene
+- Audio/voiceover alignment
+- Graphics and overlay specifications
+- Transition instructions
+- Production notes
+
+**Use this for:**
+- Planning video shoots
+- Coordinating voiceover with visuals
+- Understanding video flow
+- Creating consistent scenes
+
+---
+
+### 7. **VOICEOVER_SCRIPT.md**
+**Professional Narration Script with Timing**
+
+Complete voiceover script with precise timing, pronunciation guide, and recording instructions.
+
+**Includes:**
+- Full script (1,890 words, 13:30 duration)
+- Scene-by-scene breakdown with timestamps
+- Pronunciation guide for technical terms
+- Emphasis and pacing instructions
+- Recording tips and audio editing checklist
+- Speaking rate: 140 words/minute
+
+**Use this for:**
+- Recording professional voiceover
+- Syncing audio with video
+- Maintaining consistent tone
+- Professional narration delivery
+
+---
+
+### 8. **SCREEN_RECORDING_GUIDE.md**
+**Step-by-Step Screen Capture Instructions**
+
+Detailed instructions for recording every screen action in the MedFlow demo.
+
+**Includes:**
+- MedFlow environment setup
+- Scene-by-scene recording actions (click-by-click)
+- Mouse movement and typing best practices
+- Recording workflow and timing
+- Troubleshooting common issues
+- Post-recording checklist
+
+**Use this for:**
+- Recording MedFlow screen actions
+- Ensuring consistent screen captures
+- Avoiding common recording mistakes
+- Professional-looking demos
+
+---
+
+### 9. **VIDEO_EDITING_TIMELINE.md**
+**Complete Video Assembly Guide**
+
+Comprehensive timeline for assembling the final video in DaVinci Resolve or similar editor.
+
+**Includes:**
+- Project setup instructions
+- Track layout and organization
+- Scene-by-scene assembly guide (with timecodes)
+- Audio mixing instructions
+- Color grading recommendations
+- Export settings
+- Final review checklist
+
+**Use this for:**
+- Assembling the final video
+- Audio/video synchronization
+- Adding graphics and effects
+- Professional video editing
+
+---
+
 ## 🎯 Quick Start Guide
 
 ### For First-Time Presenters
