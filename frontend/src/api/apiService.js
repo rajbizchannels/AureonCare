@@ -341,6 +341,48 @@ const api = {
     return response.json();
   },
 
+  // EDI Processing
+  upload835File: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/edi/835/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to upload 835 file');
+    }
+    return response.json();
+  },
+  generate837File: async (claimId, options = {}) => {
+    const response = await fetch(`${API_BASE_URL}/edi/837/generate/${claimId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options)
+    });
+    if (!response.ok) throw new Error('Failed to generate 837 file');
+    return response.json();
+  },
+  submit837ToClearinghouse: async (claimId, options = {}) => {
+    const response = await fetch(`${API_BASE_URL}/edi/837/submit/${claimId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options)
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to submit to clearinghouse');
+    }
+    return response.json();
+  },
+  getClaimSubmissions: async (claimId) => {
+    const response = await fetch(`${API_BASE_URL}/edi/submissions/${claimId}`);
+    if (!response.ok) throw new Error('Failed to fetch claim submissions');
+    return response.json();
+  },
+
   // Notifications
   getNotifications: async (userId = null) => {
     const url = userId

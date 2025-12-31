@@ -266,6 +266,47 @@ const RCMView = ({
                           </button>
                           <button
                             onClick={async () => {
+                              try {
+                                // Try to submit to clearinghouse first
+                                try {
+                                  const result = await api.submit837ToClearinghouse(claim.id);
+                                  addNotification('success', result.message);
+                                  // Refresh claims to update status
+                                  const updatedClaims = await api.getClaims();
+                                  setClaims(updatedClaims);
+                                } catch (submitError) {
+                                  // If clearinghouse submission fails, offer to download
+                                  if (window.confirm(submitError.message + '\n\nWould you like to download the EDI 837 file instead?')) {
+                                    const result = await api.generate837File(claim.id);
+
+                                    // Create a download link
+                                    const blob = new Blob([result.ediContent], { type: 'text/plain' });
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = result.fileName;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    window.URL.revokeObjectURL(url);
+                                    document.body.removeChild(a);
+
+                                    addNotification('success', 'EDI 837 file downloaded successfully');
+                                  }
+                                }
+                              } catch (error) {
+                                console.error('Error with EDI 837:', error);
+                                addNotification('error', error.message || 'Failed to process EDI 837');
+                              }
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                            title="Submit EDI 837 / Download"
+                          >
+                            <svg className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={async () => {
                               if (window.confirm('Are you sure you want to delete this claim?')) {
                                 try {
                                   await api.deleteClaim(claim.id);
@@ -649,10 +690,46 @@ const RCMView = ({
 
   const renderPaymentPostings = () => (
     <div>
-      {/* Search */}
-      <div className="mb-4">
-        <div className="relative">
-          <Search className={`absolute left-3 top-3 w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+      {/* Upload EDI 835 Button */}
+      <div className="mb-4 flex gap-2">
+        <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
+          theme === 'dark'
+            ? 'border-emerald-500/50 hover:border-emerald-500 hover:bg-emerald-500/10'
+            : 'border-emerald-500 hover:bg-emerald-50'
+        }`}>
+          <input
+            type="file"
+            accept=".txt,.edi,.835,.x12"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+
+              try {
+                addNotification('info', 'Uploading and processing EDI 835 file...');
+                const result = await api.upload835File(file);
+
+                addNotification('success', result.message);
+                fetchRCMData(); // Refresh data
+              } catch (error) {
+                console.error('Error uploading 835 file:', error);
+                addNotification('error', error.message || 'Failed to upload 835 file');
+              }
+
+              // Reset file input
+              e.target.value = '';
+            }}
+          />
+          <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <span className={`font-medium ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
+            Upload EDI 835 (ERA)
+          </span>
+        </label>
+
+        <div className={`flex-1 relative`}>
+          <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
           <input
             type="text"
             value={paymentPostingSearch}
