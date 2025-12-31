@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { parse835File, convertToPaymentPostings, validate835File } = require('../utils/edi835Parser');
+const { parse835File, convertToPaymentPostings, validate835File, generate835File } = require('../utils/edi835Parser');
 const { generate837File, validateClaimData } = require('../utils/edi837Generator');
 
 // Configure multer for file uploads
@@ -405,6 +405,113 @@ router.get('/submissions/:claimId', async (req, res) => {
     res.status(500).json({
       error: 'Failed to fetch claim submissions',
       message: error.message
+    });
+  }
+});
+
+// Generate EDI 835 file from payment postings
+router.post('/835/generate/:paymentPostingId', async (req, res) => {
+  try {
+    const { paymentPostingId } = req.params;
+    const pool = req.app.locals.pool;
+
+    // Check if clearinghouse integration is configured
+    const settingsQuery = await pool.query(
+      `SELECT is_enabled, settings FROM vendor_integration_settings WHERE vendor_type = 'optum'`
+    );
+
+    const clearinghouseEnabled = settingsQuery.rows.length > 0 && settingsQuery.rows[0].is_enabled;
+
+    // Get payment posting with related data
+    const postingQuery = await pool.query(
+      `SELECT pp.*,
+              c.claim_number, c.amount as claim_amount, c.service_date,
+              p.first_name as patient_first_name, p.last_name as patient_last_name,
+              ip.name as payer_name, ip.payer_id, ip.address, ip.city, ip.state, ip.zip_code
+       FROM payment_postings pp
+       LEFT JOIN claims c ON pp.claim_id = c.id
+       LEFT JOIN patients p ON c.patient_id = p.id
+       LEFT JOIN insurance_payers ip ON pp.insurance_payer_id = ip.id
+       WHERE pp.id::text = $1::text`,
+      [paymentPostingId]
+    );
+
+    if (postingQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'Payment posting not found' });
+    }
+
+    const posting = postingQuery.rows[0];
+
+    // Prepare payment data for 835 generation
+    const paymentData = {
+      totalAmount: posting.payment_amount || '0.00',
+      checkNumber: posting.check_number || posting.posting_number,
+      claims: [{
+        claimNumber: posting.claim_number || 'UNKNOWN',
+        statusCode: '1', // Processed as Primary
+        chargedAmount: posting.claim_amount || posting.payment_amount,
+        paidAmount: posting.payment_amount || '0.00',
+        patientResponsibility: posting.patient_responsibility || '0.00',
+        filingIndicator: '12', // PPO
+        sequenceNumber: 1,
+        patientFirstName: posting.patient_first_name || 'Patient',
+        patientLastName: posting.patient_last_name || 'Unknown',
+        adjustments: []
+      }]
+    };
+
+    // Add adjustments if present
+    if (posting.adjustment_amount && parseFloat(posting.adjustment_amount) > 0) {
+      paymentData.claims[0].adjustments.push({
+        groupCode: posting.adjustment_group_code || 'CO',
+        reasonCode: posting.adjustment_reason_code || '45',
+        amount: posting.adjustment_amount
+      });
+    }
+
+    // Prepare payer info
+    const payerInfo = {
+      name: posting.payer_name || 'Insurance Company',
+      payerId: posting.payer_id || 'PAYER001',
+      receiverId: 'PROVIDER001',
+      address: posting.address || '',
+      city: posting.city || '',
+      state: posting.state || '',
+      zip: posting.zip_code || ''
+    };
+
+    // Generate 835 file
+    const edi835Content = generate835File(paymentData, payerInfo);
+    const fileName = `835_${posting.posting_number || Date.now()}.txt`;
+
+    if (clearinghouseEnabled) {
+      // If clearinghouse is enabled, could submit here
+      // For now, just return success with option to download
+      res.json({
+        success: true,
+        message: 'EDI 835 generated successfully',
+        ediContent: edi835Content,
+        fileName: fileName,
+        clearinghouseEnabled: true
+      });
+    } else {
+      // If clearinghouse not configured, return for download
+      res.json({
+        success: true,
+        message: 'EDI 835 generated successfully. Clearinghouse not configured - download file.',
+        ediContent: edi835Content,
+        fileName: fileName,
+        clearinghouseEnabled: false,
+        downloadRequired: true
+      });
+    }
+  } catch (error) {
+    console.error('Error generating 835 file:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({
+      error: 'Failed to generate EDI 835 file',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

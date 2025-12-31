@@ -298,9 +298,212 @@ function validate835File(fileContent) {
   };
 }
 
+/**
+ * Generate EDI 835 file from payment posting data
+ * @param {Object} paymentData - Payment posting data
+ * @param {Object} payerInfo - Payer information
+ * @returns {string} EDI 835 file content
+ */
+function generate835File(paymentData, payerInfo) {
+  const segments = [];
+  const segmentTerminator = '~';
+  const elementSeparator = '*';
+  const subelementSeparator = ':';
+
+  // Generate control numbers
+  const interchangeControlNumber = String(Math.floor(Math.random() * 1000000000)).padStart(9, '0');
+  const groupControlNumber = String(Math.floor(Math.random() * 1000000000)).padStart(9, '0');
+  const transactionSetControlNumber = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+
+  // Get current date/time
+  const now = new Date();
+  const currentDate = formatEDIDate(now, 'YYMMDD');
+  const currentTime = formatEDITime(now);
+  const currentDateLong = formatEDIDate(now, 'CCYYMMDD');
+
+  // ISA - Interchange Control Header
+  segments.push([
+    'ISA',
+    '00', '          ', // Authorization
+    '00', '          ', // Security
+    'ZZ', padRight(payerInfo.payerId || 'PAYER', 15),
+    'ZZ', padRight(payerInfo.receiverId || 'RECEIVER', 15),
+    currentDate, currentTime,
+    'U', '00401',
+    interchangeControlNumber,
+    '0', 'P', subelementSeparator
+  ].join(elementSeparator));
+
+  // GS - Functional Group Header
+  segments.push([
+    'GS', 'HP', // HP = Health Care Claim Payment/Advice
+    payerInfo.payerId || 'PAYER',
+    payerInfo.receiverId || 'RECEIVER',
+    currentDateLong,
+    currentTime.substring(0, 4),
+    groupControlNumber,
+    'X', '005010X221A1' // 835 version
+  ].join(elementSeparator));
+
+  // ST - Transaction Set Header
+  segments.push([
+    'ST', '835',
+    transactionSetControlNumber,
+    '005010X221A1'
+  ].join(elementSeparator));
+
+  // BPR - Financial Information
+  segments.push([
+    'BPR',
+    'I', // I = Information Reporting
+    paymentData.totalAmount || '0.00',
+    'C', // C = Credit
+    'ACH', // Payment method
+    '', '', // Banking info (empty for now)
+    '', payerInfo.accountNumber || '',
+    '', payerInfo.routingNumber || '',
+    'DA', // DA = Demand Deposit Account
+    '', payerInfo.receiverAccountNumber || '',
+    '', payerInfo.receiverRoutingNumber || '',
+    currentDateLong // Effective date
+  ].join(elementSeparator));
+
+  // TRN - Reassociation Trace Number
+  segments.push([
+    'TRN',
+    '1', // 1 = Current Transaction Trace Numbers
+    paymentData.checkNumber || interchangeControlNumber,
+    payerInfo.payerId || '1234567890'
+  ].join(elementSeparator));
+
+  // N1 - Payer Identification
+  segments.push([
+    'N1', 'PR', // PR = Payer
+    payerInfo.name || 'Insurance Company'
+  ].join(elementSeparator));
+
+  // N3 - Payer Address
+  if (payerInfo.address) {
+    segments.push(`N3*${payerInfo.address}`);
+  }
+
+  // N4 - Payer City/State/ZIP
+  if (payerInfo.city || payerInfo.state || payerInfo.zip) {
+    segments.push([
+      'N4',
+      payerInfo.city || '',
+      payerInfo.state || '',
+      payerInfo.zip || ''
+    ].join(elementSeparator));
+  }
+
+  // Loop through claims
+  (paymentData.claims || []).forEach(claim => {
+    // LX - Header Number
+    segments.push(`LX*${claim.sequenceNumber || 1}`);
+
+    // CLP - Claim Payment Information
+    segments.push([
+      'CLP',
+      claim.claimNumber || '',
+      claim.statusCode || '1', // 1 = Processed as Primary
+      claim.chargedAmount || '0.00',
+      claim.paidAmount || '0.00',
+      claim.patientResponsibility || '0.00',
+      claim.filingIndicator || '12', // 12 = PPO
+      claim.payerClaimControlNumber || '',
+      claim.facilityTypeCode || '11' // 11 = Office
+    ].join(elementSeparator));
+
+    // CAS - Claim Adjustment (if any)
+    if (claim.adjustments && claim.adjustments.length > 0) {
+      claim.adjustments.forEach(adj => {
+        segments.push([
+          'CAS',
+          adj.groupCode || 'CO', // CO = Contractual Obligation
+          adj.reasonCode || '45', // 45 = Charge exceeds fee schedule
+          adj.amount || '0.00'
+        ].join(elementSeparator));
+      });
+    }
+
+    // NM1 - Patient Name
+    if (claim.patientName) {
+      segments.push([
+        'NM1', 'QC', // QC = Patient
+        '1', // 1 = Person
+        claim.patientLastName || '',
+        claim.patientFirstName || '',
+        claim.patientMiddleName || ''
+      ].join(elementSeparator));
+    }
+
+    // Service lines
+    (claim.serviceLines || []).forEach((service, idx) => {
+      // SVC - Service Payment Information
+      segments.push([
+        'SVC',
+        `HC:${service.procedureCode || '99213'}`, // HC = Health Care Procedure Coding System
+        service.chargedAmount || '0.00',
+        service.paidAmount || '0.00',
+        '', // Revenue code
+        service.units || '1'
+      ].join(elementSeparator));
+
+      // DTM - Service Date
+      if (service.serviceDate) {
+        const svcDate = formatEDIDate(new Date(service.serviceDate), 'CCYYMMDD');
+        segments.push(`DTM*472*${svcDate}`);
+      }
+    });
+  });
+
+  // SE - Transaction Set Trailer
+  const segmentCount = segments.length + 1;
+  segments.push([
+    'SE',
+    segmentCount,
+    transactionSetControlNumber
+  ].join(elementSeparator));
+
+  // GE - Functional Group Trailer
+  segments.push([
+    'GE', '1', groupControlNumber
+  ].join(elementSeparator));
+
+  // IEA - Interchange Control Trailer
+  segments.push([
+    'IEA', '1', interchangeControlNumber
+  ].join(elementSeparator));
+
+  return segments.join(segmentTerminator) + segmentTerminator;
+}
+
+/**
+ * Format time for EDI (HHMM)
+ * @param {Date} date - Date to format
+ * @returns {string} Formatted time
+ */
+function formatEDITime(date) {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}${minutes}`;
+}
+
+/**
+ * Pad string to the right with spaces
+ * @param {string} str - String to pad
+ * @param {number} length - Target length
+ * @returns {string} Padded string
+ */
+function padRight(str, length) {
+  return str.substring(0, length).padEnd(length, ' ');
+}
+
 module.exports = {
   parse835File,
   convertToPaymentPostings,
   validate835File,
-  formatEDIDate
+  formatEDIDate,
+  generate835File
 };
