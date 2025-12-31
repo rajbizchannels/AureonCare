@@ -29,6 +29,8 @@ const RCMView = ({
   const [showPaymentPostingForm, setShowPaymentPostingForm] = useState(false);
   const [showDenialForm, setShowDenialForm] = useState(false);
   const [editingPayer, setEditingPayer] = useState(null);
+  const [viewingClaim, setViewingClaim] = useState(null);
+  const [editingPayment, setEditingPayment] = useState(null);
 
   // Data states
   const [preapprovals, setPreapprovals] = useState([]);
@@ -55,6 +57,8 @@ const RCMView = ({
     setShowDenialForm(false);
     setShowInsurancePayerForm(false);
     setEditingPayer(null);
+    setViewingClaim(null);
+    setEditingPayment(null);
   }, [activeTab]);
 
   // Fetch all RCM data
@@ -226,8 +230,8 @@ const RCMView = ({
                         <div className="flex gap-2">
                           <button
                             onClick={() => {
-                              setEditingItem({ type: 'claim', data: claim });
-                              setCurrentView('view');
+                              setViewingClaim(viewingClaim?.id === claim.id ? null : claim);
+                              setShowClaimForm(false);
                             }}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
                             title="View"
@@ -471,6 +475,16 @@ const RCMView = ({
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingPayment(payment);
+                              setShowPaymentForm(true);
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                            title="Edit"
+                          >
+                            <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                          </button>
                           <button
                             onClick={async () => {
                               if (window.confirm('Are you sure you want to delete this payment?')) {
@@ -957,6 +971,92 @@ const RCMView = ({
       </div>
 
       {/* Inline Forms - Between button and list */}
+      {activeTab === 'claims' && viewingClaim && (
+        <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Claim Details - {viewingClaim.claim_number}
+            </h3>
+            <button
+              onClick={() => setViewingClaim(null)}
+              className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Patient
+              </label>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                {patients.find(p => p.id === viewingClaim.patient_id) ?
+                  `${patients.find(p => p.id === viewingClaim.patient_id).first_name} ${patients.find(p => p.id === viewingClaim.patient_id).last_name}` :
+                  'Unknown Patient'}
+              </div>
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Payer
+              </label>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                {viewingClaim.payer || 'N/A'}
+              </div>
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Service Date
+              </label>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                {formatDate(viewingClaim.service_date)}
+              </div>
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Amount
+              </label>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                {formatCurrency(viewingClaim.amount)}
+              </div>
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Status
+              </label>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  viewingClaim.status === 'Approved' ? 'bg-green-500/20 text-green-400' :
+                  viewingClaim.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' :
+                  'bg-yellow-500/20 text-yellow-400'
+                }`}>
+                  {viewingClaim.status}
+                </span>
+              </div>
+            </div>
+            {viewingClaim.preapproval_id && (
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Pre-approval
+                </label>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                  {viewingClaim.preapproval_id}
+                </div>
+              </div>
+            )}
+            {viewingClaim.notes && (
+              <div className="md:col-span-2">
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Notes
+                </label>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                  {viewingClaim.notes}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'claims' && showClaimForm && (
         <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
           <NewClaimForm
@@ -1001,11 +1101,23 @@ const RCMView = ({
             api={api}
             patients={patients}
             claims={claims}
-            onClose={() => setShowPaymentForm(false)}
-            onSuccess={(newPayment) => {
+            editingPayment={editingPayment}
+            onClose={() => {
               setShowPaymentForm(false);
-              setPayments([...payments, newPayment]);
-              addNotification('success', t.paymentRecordedSuccessfully || 'Payment recorded successfully');
+              setEditingPayment(null);
+            }}
+            onSuccess={(payment) => {
+              setShowPaymentForm(false);
+              if (editingPayment) {
+                // Update existing payment
+                setPayments(payments.map(p => p.id === payment.id ? payment : p));
+                addNotification('success', 'Payment updated successfully');
+              } else {
+                // Add new payment
+                setPayments([...payments, payment]);
+                addNotification('success', t.paymentRecordedSuccessfully || 'Payment recorded successfully');
+              }
+              setEditingPayment(null);
             }}
             addNotification={addNotification}
             t={t}
