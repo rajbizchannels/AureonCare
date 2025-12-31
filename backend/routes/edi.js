@@ -176,9 +176,9 @@ router.post('/837/generate/:claimId', async (req, res) => {
     // Get claim with patient and provider information
     const claimQuery = await pool.query(
       `SELECT c.*,
-              p.first_name, p.last_name, p.middle_name, p.date_of_birth, p.gender,
-              p.address, p.city, p.state, p.zip_code, p.phone,
-              p.insurance_member_id, p.insurance_plan, p.insurance_payer_id
+              p.first_name, p.last_name, p.date_of_birth, p.gender,
+              p.address, p.phone, p.email, p.mrn,
+              p.insurance_payer_id
        FROM claims c
        LEFT JOIN patients p ON c.patient_id::text = p.id::text
        WHERE c.id::text = $1::text`,
@@ -240,15 +240,16 @@ router.post('/837/generate/:claimId', async (req, res) => {
       patient: {
         first_name: claim.first_name || 'Patient',
         last_name: claim.last_name || 'Unknown',
-        middle_name: claim.middle_name || '',
+        middle_name: '', // Not stored separately in patients table
         date_of_birth: claim.date_of_birth || '1980-01-01',
         gender: claim.gender || 'U',
         address: claim.address || '123 Main St',
-        city: claim.city || 'City',
-        state: claim.state || 'CA',
-        zip_code: claim.zip_code || '12345',
-        insurance_member_id: claim.insurance_member_id || '123456789',
-        insurance_plan: claim.insurance_plan || 'PPO'
+        city: 'City', // Not stored separately, using default
+        state: 'CA', // Not stored separately, using default
+        zip_code: '12345', // Not stored separately, using default
+        phone: claim.phone || '5555555555',
+        insurance_member_id: claim.mrn || '123456789', // Use MRN as member ID
+        insurance_plan: 'PPO' // Not stored in patients table, using default
       },
       provider: providerInfo,
       payer: claim.payer || 'Insurance Company',
