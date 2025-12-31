@@ -320,10 +320,10 @@ router.post('/837/submit/:claimId', async (req, res) => {
 
     // Check if clearinghouse integration is configured
     const settingsQuery = await pool.query(
-      `SELECT settings FROM vendor_integration_settings WHERE vendor_name = 'Optum'`
+      `SELECT is_enabled, settings FROM vendor_integration_settings WHERE vendor_type = 'optum'`
     );
 
-    if (settingsQuery.rows.length === 0 || !settingsQuery.rows[0].settings?.enabled) {
+    if (settingsQuery.rows.length === 0 || !settingsQuery.rows[0].is_enabled) {
       return res.status(400).json({
         error: 'Clearinghouse integration not configured',
         message: 'Please configure Optum clearinghouse integration or download the 837 file manually',
