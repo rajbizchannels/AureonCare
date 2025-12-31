@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, X, Save, Bot, Search, Plus, Trash2, Shield } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
-const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNotification, t }) => {
+const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onSuccess, addNotification, t }) => {
   const [formData, setFormData] = useState({
-    patientId: '',
-    payerId: '',
-    serviceDate: '',
-    amount: '',
-    notes: '',
-    preapprovalId: ''
+    patientId: editingClaim?.patient_id?.toString() || '',
+    payerId: editingClaim?.payer_id?.toString() || '',
+    serviceDate: editingClaim?.service_date?.split('T')[0] || '',
+    amount: editingClaim?.amount?.toString() || '',
+    notes: editingClaim?.notes || '',
+    preapprovalId: editingClaim?.preapproval_id?.toString() || ''
   });
   const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -17,8 +17,20 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
   const [loadingPayers, setLoadingPayers] = useState(true);
   const [preapprovals, setPreapprovals] = useState([]);
   const [loadingPreapprovals, setLoadingPreapprovals] = useState(false);
-  const [selectedDiagnoses, setSelectedDiagnoses] = useState([]);
-  const [selectedProcedures, setSelectedProcedures] = useState([]);
+  const [selectedDiagnoses, setSelectedDiagnoses] = useState(() => {
+    if (editingClaim?.diagnosis_codes) {
+      return Array.isArray(editingClaim.diagnosis_codes) ? editingClaim.diagnosis_codes :
+             typeof editingClaim.diagnosis_codes === 'string' ? JSON.parse(editingClaim.diagnosis_codes) : [];
+    }
+    return [];
+  });
+  const [selectedProcedures, setSelectedProcedures] = useState(() => {
+    if (editingClaim?.procedure_codes) {
+      return Array.isArray(editingClaim.procedure_codes) ? editingClaim.procedure_codes :
+             typeof editingClaim.procedure_codes === 'string' ? JSON.parse(editingClaim.procedure_codes) : [];
+    }
+    return [];
+  });
   const [diagnosisSearch, setDiagnosisSearch] = useState('');
   const [procedureSearch, setProcedureSearch] = useState('');
   const [diagnosisResults, setDiagnosisResults] = useState([]);
@@ -257,40 +269,48 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
     setShowSubmitConfirmation(false);
 
     try {
-      const claimNo = `CLM-2024-${String(claims.length + 1).padStart(3, '0')}`;
       const patient = patients.find(p => p.id.toString() === formData.patientId);
       const payer = insurancePayers.find(p => p.id.toString() === formData.payerId);
 
       const claimData = {
-        claim_number: claimNo,
         patient_id: formData.patientId,
         payer: payer?.name || 'Unknown',
         payer_id: formData.payerId,
         amount: parseFloat(formData.amount),
-        status: 'pending',
         service_date: formData.serviceDate,
-        diagnosis_codes: selectedDiagnoses.map(d => d.code),
-        procedure_codes: selectedProcedures.map(p => p.code),
+        diagnosis_codes: selectedDiagnoses.map(d => d.code || d),
+        procedure_codes: selectedProcedures.map(p => p.code || p),
         notes: formData.notes,
         preapproval_id: formData.preapprovalId || null
       };
 
-      const newClaim = await api.createClaim(claimData);
-
-      const patientName = patient ? `${patient.first_name} ${patient.last_name}` : t.patient || 'patient';
-      await addNotification('claim', `${t.newClaimCreated || 'New claim'} ${claimNo} ${t.createdFor || 'created for'} ${patientName}`);
+      let claim;
+      if (editingClaim) {
+        // Update existing claim
+        claim = await api.updateClaim(editingClaim.id, claimData);
+        const patientName = patient ? `${patient.first_name} ${patient.last_name}` : t.patient || 'patient';
+        await addNotification('success', `Claim updated successfully for ${patientName}`);
+      } else {
+        // Create new claim
+        const claimNo = `CLM-2024-${String(claims.length + 1).padStart(3, '0')}`;
+        claimData.claim_number = claimNo;
+        claimData.status = 'pending';
+        claim = await api.createClaim(claimData);
+        const patientName = patient ? `${patient.first_name} ${patient.last_name}` : t.patient || 'patient';
+        await addNotification('claim', `${t.newClaimCreated || 'New claim'} ${claimNo} ${t.createdFor || 'created for'} ${patientName}`);
+      }
 
       // Show success confirmation
       setShowConfirmation(true);
 
       // Auto-close after 2 seconds
       setTimeout(() => {
-        onSuccess(newClaim);
+        onSuccess(claim);
         onClose();
       }, 2000);
     } catch (err) {
-      console.error('Error creating claim:', err);
-      addNotification('alert', t.failedToCreateClaim || 'Failed to create claim. Please try again.');
+      console.error('Error saving claim:', err);
+      addNotification('alert', editingClaim ? 'Failed to update claim. Please try again.' : (t.failedToCreateClaim || 'Failed to create claim. Please try again.'));
     }
   };
 
@@ -301,10 +321,10 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
         isOpen={showSubmitConfirmation}
         onClose={() => setShowSubmitConfirmation(false)}
         onConfirm={handleActualSubmit}
-        title={t.createClaim || 'Create Claim'}
-        message="Are you sure you want to create this claim?"
+        title={editingClaim ? 'Update Claim' : (t.createClaim || 'Create Claim')}
+        message={editingClaim ? 'Are you sure you want to update this claim?' : 'Are you sure you want to create this claim?'}
         type="confirm"
-        confirmText={t.createClaim || 'Create Claim'}
+        confirmText={editingClaim ? 'Update Claim' : (t.createClaim || 'Create Claim')}
         cancelText={t.cancel || 'Cancel'}
       />
       <ConfirmationModal
@@ -327,7 +347,9 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
             <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
               <DollarSign className={`w-5 h-5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
             </div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.newClaim || 'New Claim'}</h2>
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {editingClaim ? 'Edit Claim' : (t.newClaim || 'New Claim')}
+            </h2>
           </div>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
@@ -655,7 +677,7 @@ const NewClaimForm = ({ theme, api, patients, claims, onClose, onSuccess, addNot
               className={`flex-1 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
             >
               <Save className="w-5 h-5" />
-              {t.createClaim || 'Create Claim'}
+              {editingClaim ? 'Update Claim' : (t.createClaim || 'Create Claim')}
             </button>
           </div>
         </form>
