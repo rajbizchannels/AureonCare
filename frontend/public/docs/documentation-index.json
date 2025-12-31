@@ -27,7 +27,8 @@
         {
           "id": "dashboard",
           "title": "Dashboard Overview",
-          "path": "/docs/getting-started/dashboard.html",
+          "path": "/docs/index.html#dashboard",
+          "url": "/docs/index.html#dashboard",
           "keywords": [
             "dashboard",
             "overview",
@@ -338,7 +339,8 @@
         {
           "id": "payments",
           "title": "Payment Processing",
-          "path": "/docs/features/rcm/payments.html",
+          "path": "/docs/index.html#payments",
+          "url": "/docs/index.html#payments",
           "keywords": [
             "payment",
             "process",
@@ -362,7 +364,8 @@
         {
           "id": "pharmacy-directory",
           "title": "Pharmacy Management",
-          "path": "/docs/features/pharmacy/directory.html",
+          "path": "/docs/index.html#pharmacy-directory",
+          "url": "/docs/index.html#pharmacy-directory",
           "keywords": [
             "pharmacy",
             "directory",
@@ -377,7 +380,8 @@
         {
           "id": "lab-directory",
           "title": "Laboratory Management",
-          "path": "/docs/features/lab/directory.html",
+          "path": "/docs/index.html#lab-directory",
+          "url": "/docs/index.html#lab-directory",
           "keywords": [
             "laboratory",
             "lab",
