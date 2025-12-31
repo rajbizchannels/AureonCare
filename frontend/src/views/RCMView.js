@@ -7,6 +7,7 @@ import NewInsurancePayerForm from '../components/forms/NewInsurancePayerForm';
 import NewPreapprovalForm from '../components/forms/NewPreapprovalForm';
 import NewPaymentPostingForm from '../components/forms/NewPaymentPostingForm';
 import NewDenialForm from '../components/forms/NewDenialForm';
+import ConfirmationModal from '../components/modals/ConfirmationModal';
 
 const RCMView = ({
   theme,
@@ -30,7 +31,17 @@ const RCMView = ({
   const [showDenialForm, setShowDenialForm] = useState(false);
   const [editingPayer, setEditingPayer] = useState(null);
   const [viewingClaim, setViewingClaim] = useState(null);
+  const [editingClaim, setEditingClaim] = useState(null);
   const [editingPayment, setEditingPayment] = useState(null);
+
+  // Confirmation modal states
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    type: 'confirm'
+  });
 
   // Data states
   const [preapprovals, setPreapprovals] = useState([]);
@@ -58,6 +69,7 @@ const RCMView = ({
     setShowInsurancePayerForm(false);
     setEditingPayer(null);
     setViewingClaim(null);
+    setEditingClaim(null);
     setEditingPayment(null);
   }, [activeTab]);
 
@@ -260,8 +272,9 @@ const RCMView = ({
                           </button>
                           <button
                             onClick={() => {
-                              setEditingItem({ type: 'claim', data: claim });
-                              setCurrentView('edit');
+                              setEditingClaim(claim);
+                              setShowClaimForm(true);
+                              setViewingClaim(null);
                             }}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
                             title="Edit"
@@ -280,22 +293,33 @@ const RCMView = ({
                                   setClaims(updatedClaims);
                                 } catch (submitError) {
                                   // If clearinghouse submission fails, offer to download
-                                  if (window.confirm(submitError.message + '\n\nWould you like to download the EDI 837 file instead?')) {
-                                    const result = await api.generate837File(claim.id);
+                                  setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Clearinghouse Submission Failed',
+                                    message: `${submitError.message}\n\nWould you like to download the EDI 837 file instead?`,
+                                    type: 'confirm',
+                                    onConfirm: async () => {
+                                      try {
+                                        const result = await api.generate837File(claim.id);
 
-                                    // Create a download link
-                                    const blob = new Blob([result.ediContent], { type: 'text/plain' });
-                                    const url = window.URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = result.fileName;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    window.URL.revokeObjectURL(url);
-                                    document.body.removeChild(a);
+                                        // Create a download link
+                                        const blob = new Blob([result.ediContent], { type: 'text/plain' });
+                                        const url = window.URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = result.fileName;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        window.URL.revokeObjectURL(url);
+                                        document.body.removeChild(a);
 
-                                    addNotification('success', 'EDI 837 file downloaded successfully');
-                                  }
+                                        addNotification('success', 'EDI 837 file downloaded successfully');
+                                      } catch (err) {
+                                        addNotification('error', 'Failed to generate EDI 837 file');
+                                      }
+                                      setConfirmModal({ ...confirmModal, isOpen: false });
+                                    }
+                                  });
                                 }
                               } catch (error) {
                                 console.error('Error with EDI 837:', error);
@@ -310,17 +334,24 @@ const RCMView = ({
                             </svg>
                           </button>
                           <button
-                            onClick={async () => {
-                              if (window.confirm('Are you sure you want to delete this claim?')) {
-                                try {
-                                  await api.deleteClaim(claim.id);
-                                  setClaims(prev => prev.filter(c => c.id !== claim.id));
-                                  await addNotification('alert', 'Claim deleted successfully');
-                                } catch (err) {
-                                  console.error('Error deleting claim:', err);
-                                  alert('Failed to delete claim');
+                            onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Delete Claim',
+                                message: 'Are you sure you want to delete this claim? This action cannot be undone.',
+                                type: 'danger',
+                                onConfirm: async () => {
+                                  try {
+                                    await api.deleteClaim(claim.id);
+                                    setClaims(prev => prev.filter(c => c.id !== claim.id));
+                                    await addNotification('alert', 'Claim deleted successfully');
+                                  } catch (err) {
+                                    console.error('Error deleting claim:', err);
+                                    addNotification('error', 'Failed to delete claim');
+                                  }
+                                  setConfirmModal({ ...confirmModal, isOpen: false });
                                 }
-                              }
+                              });
                             }}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
                             title="Delete"
@@ -422,17 +453,24 @@ const RCMView = ({
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         <button
-                          onClick={async () => {
-                            if (window.confirm('Are you sure you want to delete this pre-authorization?')) {
-                              try {
-                                await api.deletePreapproval(pa.id);
-                                setPreapprovals(prev => prev.filter(p => p.id !== pa.id));
-                                await addNotification('success', 'Pre-authorization deleted successfully');
-                              } catch (err) {
-                                console.error('Error deleting pre-authorization:', err);
-                                alert('Failed to delete pre-authorization');
+                          onClick={() => {
+                            setConfirmModal({
+                              isOpen: true,
+                              title: 'Delete Pre-Authorization',
+                              message: 'Are you sure you want to delete this pre-authorization? This action cannot be undone.',
+                              type: 'danger',
+                              onConfirm: async () => {
+                                try {
+                                  await api.deletePreapproval(pa.id);
+                                  setPreapprovals(prev => prev.filter(p => p.id !== pa.id));
+                                  await addNotification('success', 'Pre-authorization deleted successfully');
+                                } catch (err) {
+                                  console.error('Error deleting pre-authorization:', err);
+                                  addNotification('error', 'Failed to delete pre-authorization');
+                                }
+                                setConfirmModal({ ...confirmModal, isOpen: false });
                               }
-                            }
+                            });
                           }}
                           className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
                           title="Delete"
@@ -545,17 +583,24 @@ const RCMView = ({
                             <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
                           </button>
                           <button
-                            onClick={async () => {
-                              if (window.confirm('Are you sure you want to delete this payment?')) {
-                                try {
-                                  await api.deletePayment(payment.id);
-                                  setPayments(prev => prev.filter(p => p.id !== payment.id));
-                                  await addNotification('success', 'Payment deleted successfully');
-                                } catch (err) {
-                                  console.error('Error deleting payment:', err);
-                                  alert('Failed to delete payment');
+                            onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Delete Payment',
+                                message: 'Are you sure you want to delete this payment? This action cannot be undone.',
+                                type: 'danger',
+                                onConfirm: async () => {
+                                  try {
+                                    await api.deletePayment(payment.id);
+                                    setPayments(prev => prev.filter(p => p.id !== payment.id));
+                                    await addNotification('success', 'Payment deleted successfully');
+                                  } catch (err) {
+                                    console.error('Error deleting payment:', err);
+                                    addNotification('error', 'Failed to delete payment');
+                                  }
+                                  setConfirmModal({ ...confirmModal, isOpen: false });
                                 }
-                              }
+                              });
                             }}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
                             title="Delete"
@@ -673,17 +718,24 @@ const RCMView = ({
                           <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
                         </button>
                         <button
-                          onClick={async () => {
-                            if (window.confirm('Are you sure you want to delete this insurance payer?')) {
-                              try {
-                                await api.deleteInsurancePayer(payer.id);
-                                setInsurancePayers(prev => prev.filter(p => p.id !== payer.id));
-                                await addNotification('success', 'Insurance payer deleted successfully');
-                              } catch (err) {
-                                console.error('Error deleting payer:', err);
-                                alert('Failed to delete insurance payer');
+                          onClick={() => {
+                            setConfirmModal({
+                              isOpen: true,
+                              title: 'Delete Insurance Payer',
+                              message: 'Are you sure you want to delete this insurance payer? This action cannot be undone.',
+                              type: 'danger',
+                              onConfirm: async () => {
+                                try {
+                                  await api.deleteInsurancePayer(payer.id);
+                                  setInsurancePayers(prev => prev.filter(p => p.id !== payer.id));
+                                  await addNotification('success', 'Insurance payer deleted successfully');
+                                } catch (err) {
+                                  console.error('Error deleting payer:', err);
+                                  addNotification('error', 'Failed to delete insurance payer');
+                                }
+                                setConfirmModal({ ...confirmModal, isOpen: false });
                               }
-                            }
+                            });
                           }}
                           className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
                           title="Delete"
@@ -803,17 +855,24 @@ const RCMView = ({
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         <button
-                          onClick={async () => {
-                            if (window.confirm('Are you sure you want to delete this payment posting?')) {
-                              try {
-                                await api.deletePaymentPosting(posting.id);
-                                setPaymentPostings(prev => prev.filter(p => p.id !== posting.id));
-                                addNotification('success', 'Payment posting deleted successfully');
-                              } catch (err) {
-                                console.error('Error deleting posting:', err);
-                                alert('Failed to delete payment posting');
+                          onClick={() => {
+                            setConfirmModal({
+                              isOpen: true,
+                              title: 'Delete Payment Posting',
+                              message: 'Are you sure you want to delete this payment posting? This action cannot be undone.',
+                              type: 'danger',
+                              onConfirm: async () => {
+                                try {
+                                  await api.deletePaymentPosting(posting.id);
+                                  setPaymentPostings(prev => prev.filter(p => p.id !== posting.id));
+                                  addNotification('success', 'Payment posting deleted successfully');
+                                } catch (err) {
+                                  console.error('Error deleting posting:', err);
+                                  addNotification('error', 'Failed to delete payment posting');
+                                }
+                                setConfirmModal({ ...confirmModal, isOpen: false });
                               }
-                            }
+                            });
                           }}
                           className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
                           title="Delete"
@@ -909,17 +968,24 @@ const RCMView = ({
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         <button
-                          onClick={async () => {
-                            if (window.confirm('Are you sure you want to delete this denial?')) {
-                              try {
-                                await api.deleteDenial(denial.id);
-                                setDenials(prev => prev.filter(d => d.id !== denial.id));
-                                addNotification('success', 'Denial deleted successfully');
-                              } catch (err) {
-                                console.error('Error deleting denial:', err);
-                                alert('Failed to delete denial');
+                          onClick={() => {
+                            setConfirmModal({
+                              isOpen: true,
+                              title: 'Delete Denial',
+                              message: 'Are you sure you want to delete this denial? This action cannot be undone.',
+                              type: 'danger',
+                              onConfirm: async () => {
+                                try {
+                                  await api.deleteDenial(denial.id);
+                                  setDenials(prev => prev.filter(d => d.id !== denial.id));
+                                  addNotification('success', 'Denial deleted successfully');
+                                } catch (err) {
+                                  console.error('Error deleting denial:', err);
+                                  addNotification('error', 'Failed to delete denial');
+                                }
+                                setConfirmModal({ ...confirmModal, isOpen: false });
                               }
-                            }
+                            });
                           }}
                           className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
                           title="Delete"
@@ -1153,11 +1219,23 @@ const RCMView = ({
             api={api}
             patients={patients}
             claims={claims}
-            onClose={() => setShowClaimForm(false)}
-            onSuccess={(newClaim) => {
+            editingClaim={editingClaim}
+            onClose={() => {
               setShowClaimForm(false);
-              setClaims([...claims, newClaim]);
-              addNotification('success', t.claimCreated || 'Claim created successfully');
+              setEditingClaim(null);
+            }}
+            onSuccess={(claim) => {
+              setShowClaimForm(false);
+              if (editingClaim) {
+                // Update existing claim
+                setClaims(claims.map(c => c.id === claim.id ? claim : c));
+                addNotification('success', 'Claim updated successfully');
+              } else {
+                // Add new claim
+                setClaims([...claims, claim]);
+                addNotification('success', t.claimCreated || 'Claim created successfully');
+              }
+              setEditingClaim(null);
             }}
             addNotification={addNotification}
             t={t}
@@ -1292,6 +1370,19 @@ const RCMView = ({
         {activeTab === 'denials' && renderDenials()}
         {activeTab === 'payers' && renderInsurancePayers()}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.type === 'danger' ? 'Delete' : 'Confirm'}
+        cancelText="Cancel"
+      />
     </div>
   );
 };
