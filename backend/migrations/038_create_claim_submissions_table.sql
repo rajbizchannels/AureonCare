@@ -4,7 +4,7 @@
 -- Create claim_submissions table
 CREATE TABLE IF NOT EXISTS claim_submissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    claim_id INTEGER REFERENCES claims(id) ON DELETE CASCADE,
+    claim_id UUID REFERENCES claims(id) ON DELETE CASCADE,
     submission_type VARCHAR(50) DEFAULT 'EDI_837' CHECK (submission_type IN ('EDI_837', 'Manual', 'Portal', 'Fax', 'Mail')),
     submission_date TIMESTAMP NOT NULL,
     submission_id VARCHAR(100),
