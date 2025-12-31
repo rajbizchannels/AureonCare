@@ -8,9 +8,20 @@
 </head>
 <body>
     <header class="doc-header">
-        <div class="doc-container">
-            <h1>📚 MedFlow Documentation Center</h1>
-            <p>Complete guide to using the MedFlow healthcare platform</p>
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to MedFlow
+                </a>
+                <div class="doc-header-title">
+                    <h1>📚 MedFlow Documentation Center</h1>
+                    <p>Complete guide to using the MedFlow healthcare platform</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.1</span>
         </div>
     </header>
 
@@ -235,22 +246,18 @@
                 // Hide index content and show article
                 const container = document.querySelector('.doc-container');
                 container.innerHTML = `
-                    <div style="max-width: 900px; margin: 0 auto;">
-                        <div style="margin-bottom: 2rem;">
-                            <a href="/docs/index.html" style="color: #4a90e2; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
-                                ← Back to Documentation Index
-                            </a>
-                        </div>
-                        <div class="card" style="padding: 2rem;">
-                            <div style="margin-bottom: 1rem;">
-                                <span style="display: inline-block; background: #e3f2fd; color: #1976d2; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; font-weight: 500;">
-                                    ${article.section}
-                                </span>
-                            </div>
-                            <h1 style="color: #002060; margin-bottom: 1.5rem; font-size: 2rem;">
+                    <div class="article-container">
+                        <a href="/docs/index.html" class="back-link">
+                            ← Back to Documentation Index
+                        </a>
+                        <div class="article-card">
+                            <span class="article-badge">
+                                ${article.section}
+                            </span>
+                            <h1 class="article-title">
                                 ${article.title}
                             </h1>
-                            <div style="line-height: 1.75; color: #333;">
+                            <div class="article-content">
                                 ${parseMarkdown(article.content || article.summary || 'No content available.')}
                             </div>
                         </div>
