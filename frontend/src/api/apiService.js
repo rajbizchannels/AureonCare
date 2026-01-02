@@ -1846,6 +1846,135 @@ const api = {
     return response.json();
   },
 
+  // Patient Intake Forms
+  getIntakeForms: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.form_type) params.append('form_type', filters.form_type);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch intake forms');
+    return response.json();
+  },
+  getIntakeForm: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch intake form');
+    return response.json();
+  },
+  createIntakeForm: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create intake form' }));
+      throw new Error(errorData.error || 'Failed to create intake form');
+    }
+    return response.json();
+  },
+  updateIntakeForm: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update intake form');
+    return response.json();
+  },
+  deleteIntakeForm: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete intake form');
+    return response.json();
+  },
+
+  // Patient Intake Flows
+  getIntakeFlows: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.flow_type) params.append('flow_type', filters.flow_type);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/flows${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch intake flows');
+    return response.json();
+  },
+  getIntakeFlow: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/flows/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch intake flow');
+    return response.json();
+  },
+  createIntakeFlow: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/flows`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create intake flow' }));
+      throw new Error(errorData.error || 'Failed to create intake flow');
+    }
+    return response.json();
+  },
+  updateIntakeFlow: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/flows/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update intake flow');
+    return response.json();
+  },
+  deleteIntakeFlow: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/flows/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete intake flow');
+    return response.json();
+  },
+
+  // Patient Consent Forms
+  getConsentForms: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.consent_type) params.append('consent_type', filters.consent_type);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/consents${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch consent forms');
+    return response.json();
+  },
+  getConsentForm: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/consents/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch consent form');
+    return response.json();
+  },
+  createConsentForm: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/consents`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create consent form' }));
+      throw new Error(errorData.error || 'Failed to create consent form');
+    }
+    return response.json();
+  },
+  updateConsentForm: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/consents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update consent form');
+    return response.json();
+  },
+  deleteConsentForm: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/intake-forms/consents/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete consent form');
+    return response.json();
+  },
+
   // Add baseURL property for components that need it
   baseURL: API_BASE_URL
 };

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, MessageSquare, Phone, ArrowLeft, Calendar, Plus, Heart, Clock, Edit } from 'lucide-react';
+import { Mail, MessageSquare, Phone, ArrowLeft, Calendar, Plus, Heart, Clock, Edit, FileText } from 'lucide-react';
 
 const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefreshKey, api, t }) => {
   const [campaignCount, setCampaignCount] = useState(0);
   const [offeringCount, setOfferingCount] = useState(0);
   const [appointmentTypeCount, setAppointmentTypeCount] = useState(0);
+  const [intakeFormCount, setIntakeFormCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Fetch counts whenever we navigate to CRM view or when crmRefreshKey changes
@@ -26,6 +27,10 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefre
         // Fetch appointment types
         const appointmentTypes = await api.getAppointmentTypes().catch(() => []);
         setAppointmentTypeCount(appointmentTypes?.length || 0);
+
+        // Fetch intake forms
+        const intakeForms = await api.getIntakeForms().catch(() => []);
+        setIntakeFormCount(intakeForms?.length || 0);
       } catch (error) {
         console.error('Error fetching counts:', error);
       } finally {
@@ -112,6 +117,20 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefre
           {!loading && (
             <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
               {appointmentTypeCount} {appointmentTypeCount === 1 ? 'type' : 'types'}
+            </p>
+          )}
+        </div>
+
+        <div
+          onClick={() => setCurrentModule && setCurrentModule('intakeForms')}
+          className={`bg-gradient-to-br rounded-xl p-6 border text-center transition-all cursor-pointer ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-blue-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-blue-600/50'}`}
+        >
+          <FileText className="w-12 h-12 mx-auto mb-4 text-blue-400" />
+          <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.intakeForms || 'Intake Forms'}</h3>
+          <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.manageIntakeForms || 'Manage patient intake forms and consents'}</p>
+          {!loading && (
+            <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+              {intakeFormCount} {intakeFormCount === 1 ? 'form' : 'forms'}
             </p>
           )}
         </div>
