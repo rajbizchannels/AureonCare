@@ -94,7 +94,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
       return;
     }
 
-    setToggling({ ...toggling, [vendorType]: true });
+    setToggling(prev => ({ ...prev, [vendorType]: true }));
     try {
       await api.toggleVendorIntegration(vendorType, !currentEnabled);
       await fetchIntegrations();
@@ -102,7 +102,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
       console.error('Error toggling vendor integration:', err);
       alert('Failed to toggle integration: ' + err.message);
     } finally {
-      setToggling({ ...toggling, [vendorType]: false });
+      setToggling(prev => ({ ...prev, [vendorType]: false }));
     }
   };
 
@@ -115,7 +115,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
       return;
     }
 
-    setToggling({ ...toggling, [providerType]: true });
+    setToggling(prev => ({ ...prev, [providerType]: true }));
     try {
       await api.toggleTelehealthProvider(providerType, !currentEnabled);
       await fetchIntegrations();
@@ -123,7 +123,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
       console.error('Error toggling telehealth provider:', err);
       alert('Failed to toggle provider: ' + err.message);
     } finally {
-      setToggling({ ...toggling, [providerType]: false });
+      setToggling(prev => ({ ...prev, [providerType]: false }));
     }
   };
 
@@ -148,16 +148,46 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
   const hasFormChanges = (key) => {
     if (!formData[key] || !originalData[key]) return false;
 
-    return JSON.stringify(formData[key]) !== JSON.stringify(originalData[key]);
+    // Compare each field individually to detect changes
+    const currentData = formData[key];
+    const originalDataForKey = originalData[key];
+
+    for (const field in currentData) {
+      const currentValue = currentData[field];
+      const originalValue = originalDataForKey[field];
+
+      // For strings, compare trimmed values
+      if (typeof currentValue === 'string' && typeof originalValue === 'string') {
+        if (currentValue.trim() !== originalValue.trim()) {
+          return true;
+        }
+      } else if (currentValue !== originalValue) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   const hasAnyFormValue = (key) => {
     if (!formData[key]) return false;
 
-    return Object.values(formData[key]).some(value => {
-      if (typeof value === 'boolean') return false; // Don't count boolean flags
-      return value && value.toString().trim() !== '';
-    });
+    const data = formData[key];
+
+    // Check if any credential field has a non-empty value
+    for (const field in data) {
+      const value = data[field];
+
+      // Skip boolean fields
+      if (typeof value === 'boolean') continue;
+
+      // Check if string field has a value
+      if (typeof value === 'string' && value.trim() !== '') {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   const toggleExpanded = (key) => {
@@ -179,7 +209,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
 
   const handleSaveVendor = async (vendorType) => {
     const key = `vendor_${vendorType}`;
-    setSaving({ ...saving, [key]: true });
+    setSaving(prev => ({ ...prev, [key]: true }));
 
     try {
       await api.saveVendorIntegrationSettings(vendorType, formData[key]);
@@ -189,13 +219,13 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
       console.error('Error saving vendor settings:', err);
       alert('Failed to save settings: ' + err.message);
     } finally {
-      setSaving({ ...saving, [key]: false });
+      setSaving(prev => ({ ...prev, [key]: false }));
     }
   };
 
   const handleSaveTelehealth = async (providerType) => {
     const key = `telehealth_${providerType}`;
-    setSaving({ ...saving, [key]: true });
+    setSaving(prev => ({ ...prev, [key]: true }));
 
     try {
       await api.saveTelehealthSettings(providerType, formData[key]);
@@ -205,7 +235,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
       console.error('Error saving telehealth settings:', err);
       alert('Failed to save settings: ' + err.message);
     } finally {
-      setSaving({ ...saving, [key]: false });
+      setSaving(prev => ({ ...prev, [key]: false }));
     }
   };
 
@@ -218,10 +248,16 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
     const key = `${category}_${type}`;
     const isExpanded = expandedIntegrations[key];
 
-    // Disable save button if: no changes made OR no values entered at all
+    // Check if form has changes and values
     const hasChanges = hasFormChanges(key);
     const hasValues = hasAnyFormValue(key);
-    const isSaveDisabled = !hasChanges || !hasValues;
+
+    // Save button should be DISABLED when:
+    // 1. No values entered (empty form) - hasValues = false
+    // 2. No changes made (form matches original) - hasChanges = false
+    // Save button should be ENABLED when:
+    // - User has entered values AND made changes
+    const isSaveDisabled = !hasValues || !hasChanges;
 
     return (
       <div key={type} className={`rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
