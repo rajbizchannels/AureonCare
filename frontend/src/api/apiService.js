@@ -356,6 +356,14 @@ const api = {
     }
     return response.json();
   },
+  generate835File: async (paymentPostingId) => {
+    const response = await fetch(`${API_BASE_URL}/edi/835/generate/${paymentPostingId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) throw new Error('Failed to generate 835 file');
+    return response.json();
+  },
   generate837File: async (claimId, options = {}) => {
     const response = await fetch(`${API_BASE_URL}/edi/837/generate/${claimId}`, {
       method: 'POST',

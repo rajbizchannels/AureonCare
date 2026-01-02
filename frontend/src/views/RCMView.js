@@ -855,6 +855,39 @@ const RCMView = ({
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         <button
+                          onClick={async () => {
+                            try {
+                              const result = await api.generate835File(posting.id);
+
+                              if (result.downloadRequired || !result.clearinghouseEnabled) {
+                                // Download the file
+                                const blob = new Blob([result.ediContent], { type: 'text/plain' });
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = result.fileName;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+
+                                addNotification('success', 'EDI 835 file downloaded successfully');
+                              } else {
+                                addNotification('success', result.message);
+                              }
+                            } catch (error) {
+                              console.error('Error generating EDI 835:', error);
+                              addNotification('error', error.message || 'Failed to generate EDI 835 file');
+                            }
+                          }}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                          title="Download EDI 835"
+                        >
+                          <svg className={`w-4 h-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                          </svg>
+                        </button>
+                        <button
                           onClick={() => {
                             setConfirmModal({
                               isOpen: true,
