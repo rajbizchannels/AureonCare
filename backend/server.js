@@ -132,6 +132,7 @@ app.use('/api/campaigns', require('./routes/campaigns'));
 app.use('/api/calendar-sync', require('./routes/calendar-sync'));
 app.use('/api/medical-codes', require('./routes/medical-codes'));
 app.use('/api/insurance-payers', require('./routes/insurance-payers'));
+app.use('/api/intake-forms', require('./routes/intake-forms'));
 app.use('/api/backup', require('./routes/backup'));
 
 // Serve uploaded files

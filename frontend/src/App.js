@@ -36,6 +36,7 @@ import PatientDiagnosisView from './views/PatientDiagnosisView';
 import PatientHistoryView from './views/PatientHistoryView';
 import CampaignsManagementView from './views/CampaignsManagementView';
 import AppointmentTypesManagementView from './views/AppointmentTypesManagementView';
+import PatientIntakeView from './views/PatientIntakeView';
 import PharmacyManagementView from './views/PharmacyManagementView';
 import LaboratoryManagementView from './views/LaboratoryManagementView';
 import ClinicalServicesView from './views/ClinicalServicesView';
@@ -508,6 +509,17 @@ function App() {
             api={api}
             setShowForm={handleSetShowForm}
             setEditingAppointmentType={setEditingAppointmentType}
+            setCurrentModule={setCurrentModule}
+            addNotification={addNotification}
+            t={t}
+          />
+        );
+      case 'intakeForms':
+        return (
+          <PatientIntakeView
+            theme={theme}
+            api={api}
+            patients={patients}
             setCurrentModule={setCurrentModule}
             addNotification={addNotification}
             t={t}
