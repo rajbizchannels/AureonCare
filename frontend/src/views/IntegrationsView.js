@@ -146,7 +146,10 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
   };
 
   const hasFormChanges = (key) => {
-    if (!formData[key] || !originalData[key]) return false;
+    if (!formData[key] || !originalData[key]) {
+      console.log(`[hasFormChanges][${key}] Missing data, returning false`);
+      return false;
+    }
 
     // Compare each field individually to detect changes
     const currentData = formData[key];
@@ -158,19 +161,27 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
 
       // For strings, compare trimmed values
       if (typeof currentValue === 'string' && typeof originalValue === 'string') {
-        if (currentValue.trim() !== originalValue.trim()) {
+        const currentTrimmed = currentValue.trim();
+        const originalTrimmed = originalValue.trim();
+        if (currentTrimmed !== originalTrimmed) {
+          console.log(`[hasFormChanges][${key}] Field '${field}' changed: "${originalTrimmed}" -> "${currentTrimmed}"`);
           return true;
         }
       } else if (currentValue !== originalValue) {
+        console.log(`[hasFormChanges][${key}] Field '${field}' changed: ${originalValue} -> ${currentValue}`);
         return true;
       }
     }
 
+    console.log(`[hasFormChanges][${key}] No changes detected`);
     return false;
   };
 
   const hasAnyFormValue = (key) => {
-    if (!formData[key]) return false;
+    if (!formData[key]) {
+      console.log(`[hasAnyFormValue][${key}] No formData, returning false`);
+      return false;
+    }
 
     const data = formData[key];
 
@@ -183,10 +194,12 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
 
       // Check if string field has a value
       if (typeof value === 'string' && value.trim() !== '') {
+        console.log(`[hasAnyFormValue][${key}] Found non-empty field '${field}': "${value.trim()}"`);
         return true;
       }
     }
 
+    console.log(`[hasAnyFormValue][${key}] No non-empty values found`);
     return false;
   };
 
@@ -248,9 +261,18 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
     const key = `${category}_${type}`;
     const isExpanded = expandedIntegrations[key];
 
+    // Ensure formData[key] and originalData[key] exist
+    const currentFormData = formData[key] || {};
+    const currentOriginalData = originalData[key] || {};
+
     // Check if form has changes and values
     const hasChanges = hasFormChanges(key);
     const hasValues = hasAnyFormValue(key);
+
+    // Debug logging
+    console.log(`[${key}] hasChanges:`, hasChanges, 'hasValues:', hasValues);
+    console.log(`[${key}] formData:`, currentFormData);
+    console.log(`[${key}] originalData:`, currentOriginalData);
 
     // Save button should be DISABLED when:
     // 1. No values entered (empty form) - hasValues = false
@@ -258,6 +280,8 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
     // Save button should be ENABLED when:
     // - User has entered values AND made changes
     const isSaveDisabled = !hasValues || !hasChanges;
+
+    console.log(`[${key}] isSaveDisabled:`, isSaveDisabled);
 
     return (
       <div key={type} className={`rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
