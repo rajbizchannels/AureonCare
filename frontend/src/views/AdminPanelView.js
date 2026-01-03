@@ -860,6 +860,31 @@ const AdminPanelView = ({
   }, [api, addNotification]);
 
   /**
+   * Fetch backup provider configuration status
+   */
+  const fetchBackupConfigStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/backup-providers/config/status');
+      if (response.ok) {
+        const status = await response.json();
+        setBackupConfig({
+          googleDrive: { configured: status.googleDrive?.configured || false },
+          oneDrive: { configured: status.oneDrive?.configured || false },
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching backup config status:', error);
+    }
+  }, []);
+
+  /**
+   * Load backup configuration status on mount
+   */
+  useEffect(() => {
+    fetchBackupConfigStatus();
+  }, [fetchBackupConfigStatus]);
+
+  /**
    * Configure cloud backup provider (OAuth)
    */
   const handleConfigureCloudBackup = useCallback(async (providerType) => {
@@ -899,32 +924,7 @@ const AdminPanelView = ({
       console.error(`Error configuring ${providerType}:`, error);
       await addNotification('alert', error.message || `Failed to configure ${providerType}`);
     }
-  }, [addNotification]);
-
-  /**
-   * Fetch backup provider configuration status
-   */
-  const fetchBackupConfigStatus = useCallback(async () => {
-    try {
-      const response = await fetch('/api/backup-providers/config/status');
-      if (response.ok) {
-        const status = await response.json();
-        setBackupConfig({
-          googleDrive: { configured: status.googleDrive?.configured || false },
-          oneDrive: { configured: status.oneDrive?.configured || false },
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching backup config status:', error);
-    }
-  }, []);
-
-  /**
-   * Load backup configuration status on mount
-   */
-  useEffect(() => {
-    fetchBackupConfigStatus();
-  }, [fetchBackupConfigStatus]);
+  }, [addNotification, fetchBackupConfigStatus]);
 
   /**
    * Restore from backup file
