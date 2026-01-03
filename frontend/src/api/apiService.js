@@ -1975,6 +1975,34 @@ const api = {
     return response.json();
   },
 
+  // Clinic Settings
+  getWorkingHours: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/clinic-settings/working-hours`);
+    if (!response.ok) throw new Error('Failed to fetch working hours');
+    return response.json();
+  },
+  saveWorkingHours: async (workingHours) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/clinic-settings/working-hours`, {
+      method: 'POST',
+      body: JSON.stringify(workingHours)
+    });
+    if (!response.ok) throw new Error('Failed to save working hours');
+    return response.json();
+  },
+  getAppointmentSettings: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/clinic-settings/appointment-settings`);
+    if (!response.ok) throw new Error('Failed to fetch appointment settings');
+    return response.json();
+  },
+  saveAppointmentSettings: async (settings) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/clinic-settings/appointment-settings`, {
+      method: 'POST',
+      body: JSON.stringify(settings)
+    });
+    if (!response.ok) throw new Error('Failed to save appointment settings');
+    return response.json();
+  },
+
   // Add baseURL property for components that need it
   baseURL: API_BASE_URL
 };
