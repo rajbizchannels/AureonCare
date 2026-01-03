@@ -619,6 +619,78 @@ const AdminPanelView = ({
         const data = await response.json();
 
         if (!response.ok) {
+          // If provider not configured, prompt for credentials
+          if (data.error === 'Provider not configured') {
+            const clientId = window.prompt(
+              `Please enter your ${displayName} Client ID:\n\nYou can get this from your ${displayName} app settings/developer console.`
+            );
+            if (!clientId) {
+              await addNotification('warning', 'Configuration cancelled. Client ID is required.');
+              return;
+            }
+
+            const clientSecret = window.prompt(
+              `Please enter your ${displayName} Client Secret:\n\nYou can get this from your ${displayName} app settings/developer console.`
+            );
+            if (!clientSecret) {
+              await addNotification('warning', 'Configuration cancelled. Client Secret is required.');
+              return;
+            }
+
+            // Save credentials
+            const saveResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
+            });
+
+            if (!saveResponse.ok) {
+              throw new Error('Failed to save credentials');
+            }
+
+            await addNotification('success', 'Credentials saved. Initiating OAuth flow...');
+
+            // Retry OAuth initiation
+            const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+            const retryData = await retryResponse.json();
+
+            if (!retryResponse.ok) {
+              throw new Error(retryData.error || 'Failed to initiate OAuth flow');
+            }
+
+            // Open OAuth flow with retry data
+            const width = 600;
+            const height = 700;
+            const left = window.screen.width / 2 - width / 2;
+            const top = window.screen.height / 2 - height / 2;
+
+            const popup = window.open(
+              retryData.authUrl,
+              'OAuth Authorization',
+              `width=${width},height=${height},left=${left},top=${top}`
+            );
+
+            // Poll for popup closure
+            const pollTimer = setInterval(async () => {
+              if (popup && popup.closed) {
+                clearInterval(pollTimer);
+                try {
+                  const settings = await api.getTelehealthSettings();
+                  if (settings) {
+                    setTelehealthStatus((prev) => ({
+                      ...prev,
+                      ...settings,
+                    }));
+                  }
+                  await addNotification('success', `${displayName} configuration updated successfully.`);
+                } catch (error) {
+                  console.error('Error refreshing telehealth status:', error);
+                  await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
+                }
+              }
+            }, 1000);
+            return;
+          }
           throw new Error(data.error || 'Failed to initiate OAuth flow');
         }
 
@@ -703,14 +775,13 @@ const AdminPanelView = ({
    */
   const handleSaveWorkingHours = useCallback(async () => {
     try {
-      // TODO: Add backend API endpoint for working hours
-      // await api.saveWorkingHours(workingHours);
+      await api.saveWorkingHours(workingHours);
       await addNotification('success', t.workingHoursSaved || 'Working hours saved successfully');
     } catch (error) {
       console.error('Error saving working hours:', error);
       await addNotification('alert', 'Failed to save working hours');
     }
-  }, [workingHours, addNotification, t]);
+  }, [api, workingHours, addNotification, t]);
 
   const handleSaveWorkingHoursClick = useCallback(() => {
     setPendingSaveAction(() => handleSaveWorkingHours);
@@ -759,8 +830,7 @@ const AdminPanelView = ({
    */
   const handleSaveAppointmentSettings = useCallback(async () => {
     try {
-      // TODO: Add backend API endpoint for appointment settings
-      // await api.saveAppointmentSettings(appointmentSettings);
+      await api.saveAppointmentSettings(appointmentSettings);
       await addNotification(
         'success',
         t.appointmentSettingsSaved || 'Appointment settings saved successfully'
@@ -769,7 +839,7 @@ const AdminPanelView = ({
       console.error('Error saving appointment settings:', error);
       await addNotification('alert', 'Failed to save appointment settings');
     }
-  }, [appointmentSettings, addNotification, t]);
+  }, [api, appointmentSettings, addNotification, t]);
 
   const handleSaveAppointmentSettingsClick = useCallback(() => {
     setPendingSaveAction(() => handleSaveAppointmentSettings);
@@ -889,13 +959,75 @@ const AdminPanelView = ({
    */
   const handleConfigureCloudBackup = useCallback(async (providerType) => {
     try {
-      await addNotification('info', `Initiating ${providerType === 'google_drive' ? 'Google Drive' : 'OneDrive'} configuration...`);
+      const displayName = providerType === 'google_drive' ? 'Google Drive' : 'OneDrive';
+      await addNotification('info', `Initiating ${displayName} configuration...`);
 
       // Call OAuth initiate endpoint
       const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
       const data = await response.json();
 
       if (!response.ok) {
+        // If provider not configured, prompt for credentials
+        if (data.error === 'Provider not configured') {
+          const clientId = window.prompt(
+            `Please enter your ${displayName} Client ID:\n\nFor Google Drive: Get this from Google Cloud Console\nFor OneDrive: Get this from Azure App Registration`
+          );
+          if (!clientId) {
+            await addNotification('warning', 'Configuration cancelled. Client ID is required.');
+            return;
+          }
+
+          const clientSecret = window.prompt(
+            `Please enter your ${displayName} Client Secret:\n\nFor Google Drive: Get this from Google Cloud Console\nFor OneDrive: Get this from Azure App Registration`
+          );
+          if (!clientSecret) {
+            await addNotification('warning', 'Configuration cancelled. Client Secret is required.');
+            return;
+          }
+
+          // Save credentials
+          const saveResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
+          });
+
+          if (!saveResponse.ok) {
+            throw new Error('Failed to save credentials');
+          }
+
+          await addNotification('success', 'Credentials saved. Initiating OAuth flow...');
+
+          // Retry OAuth initiation
+          const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+          const retryData = await retryResponse.json();
+
+          if (!retryResponse.ok) {
+            throw new Error(retryData.error || 'Failed to initiate OAuth flow');
+          }
+
+          // Open OAuth flow with retry data
+          const width = 600;
+          const height = 700;
+          const left = window.screen.width / 2 - width / 2;
+          const top = window.screen.height / 2 - height / 2;
+
+          const popup = window.open(
+            retryData.authUrl,
+            'OAuth Authorization',
+            `width=${width},height=${height},left=${left},top=${top}`
+          );
+
+          // Poll for popup closure
+          const pollTimer = setInterval(async () => {
+            if (popup && popup.closed) {
+              clearInterval(pollTimer);
+              await fetchBackupConfigStatus();
+              await addNotification('success', `${displayName} configuration updated successfully.`);
+            }
+          }, 1000);
+          return;
+        }
         throw new Error(data.error || 'Failed to initiate OAuth flow');
       }
 
