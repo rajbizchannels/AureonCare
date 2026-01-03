@@ -49,6 +49,7 @@ import { useClinicSettings } from '../hooks/useClinicSettings';
 import {
   USER_ROLES,
   USER_STATUS,
+  PLAN_IDS,
   DEFAULT_APPOINTMENT_SETTINGS,
   DEFAULT_WORKING_HOURS,
   DEFAULT_ROLE_PERMISSIONS,
@@ -137,7 +138,12 @@ const AdminPanelView = ({
     details: null,
   });
 
-  const [appointmentSettings, setAppointmentSettings] = useState(DEFAULT_APPOINTMENT_SETTINGS);
+  const [appointmentSettings, setAppointmentSettings] = useState({
+    defaultDuration: DEFAULT_APPOINTMENT_SETTINGS.DURATION,
+    slotInterval: DEFAULT_APPOINTMENT_SETTINGS.SLOT_INTERVAL,
+    maxAdvanceBooking: DEFAULT_APPOINTMENT_SETTINGS.MAX_ADVANCE_BOOKING,
+    cancellationDeadline: DEFAULT_APPOINTMENT_SETTINGS.CANCELLATION_DEADLINE,
+  });
   const [rolePermissions, setRolePermissions] = useState(DEFAULT_ROLE_PERMISSIONS);
 
   const [currentPlan, setCurrentPlan] = useState(planTier || PLAN_IDS.PROFESSIONAL);
@@ -599,14 +605,25 @@ const AdminPanelView = ({
   const handleConfigureTelehealthProvider = useCallback(
     async (providerType) => {
       try {
-        // Redirect to secure configuration page or modal
-        // This should initiate OAuth flow or open a secure backend form
-        const configUrl = await api.getProviderConfigUrl(providerType);
+        // TODO: Implement backend OAuth flow or secure configuration endpoint
+        // For now, show a notification that this feature is coming soon
+        await addNotification(
+          'info',
+          `Configuration for ${providerType} will open in a secure window. This feature requires backend OAuth implementation.`
+        );
 
-        // Open in new window for OAuth flow
-        window.open(configUrl, '_blank', 'width=600,height=800');
-
-        await addNotification('info', 'Please complete the configuration in the new window');
+        // If the API method exists, use it
+        if (api.getProviderConfigUrl) {
+          const configUrl = await api.getProviderConfigUrl(providerType);
+          window.open(configUrl, '_blank', 'width=600,height=800');
+        } else {
+          // Otherwise, open settings page or show modal
+          console.log(`Configure ${providerType} - Backend OAuth flow not yet implemented`);
+          await addNotification(
+            'warning',
+            'Provider configuration requires backend implementation. Please contact your administrator.'
+          );
+        }
       } catch (error) {
         console.error('Error starting provider configuration:', error);
         await addNotification('alert', 'Failed to start configuration flow');
@@ -1384,8 +1401,537 @@ const AdminPanelView = ({
     </div>
   );
 
-  // TODO: Implement other tabs (Roles, Plans, Hours, Appointments, Backup)
-  // These should follow the same pattern as above tabs
+  /**
+   * Render Roles & Permissions Tab
+   * TODO: Extract to separate component RolesPermissionsTab.js
+   */
+  const renderRolesPermissionsTab = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Role Permissions
+        </h2>
+        <button
+          onClick={() => setShowCustomRoleForm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+          Create Custom Role
+        </button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+              <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Role
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Patients
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Appointments
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Claims
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                EHR
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Settings
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rolePermissionEntries.map(([role, permissions]) => (
+              <tr key={role} className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'}`}>
+                <td className={`px-4 py-3 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {role}
+                </td>
+                {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => (
+                  <td key={module} className="px-4 py-3 text-center">
+                    <div className="flex justify-center gap-1">
+                      {permissions[module]?.view && <span className="text-green-500" title="View">V</span>}
+                      {permissions[module]?.create && <span className="text-blue-500" title="Create">C</span>}
+                      {permissions[module]?.edit && <span className="text-yellow-500" title="Edit">E</span>}
+                      {permissions[module]?.delete && <span className="text-red-500" title="Delete">D</span>}
+                    </div>
+                  </td>
+                ))}
+                <td className="px-4 py-3 text-center">
+                  {!['admin', 'doctor', 'staff', 'patient'].includes(role) && (
+                    <button
+                      onClick={() => handleDeleteCustomRole(role)}
+                      className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                      title="Delete role"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleSaveRolePermissionsClick}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+        >
+          <Save className="w-5 h-5" />
+          Save Permissions
+        </button>
+      </div>
+    </div>
+  );
+
+  /**
+   * Render Subscription Plans Tab
+   * TODO: Extract to separate component SubscriptionPlansTab.js
+   */
+  const renderSubscriptionPlansTab = () => (
+    <div className="space-y-6">
+      <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        Subscription Plans
+      </h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {SUBSCRIPTION_PLANS.map((plan) => (
+          <div
+            key={plan.id}
+            className={`border rounded-lg p-6 ${
+              currentPlan === plan.id
+                ? theme === 'dark'
+                  ? 'border-blue-500 bg-blue-500/10'
+                  : 'border-blue-500 bg-blue-50'
+                : theme === 'dark'
+                ? 'border-slate-700 bg-slate-800'
+                : 'border-gray-300 bg-white'
+            } ${plan.popular ? 'relative' : ''}`}
+          >
+            {plan.popular && (
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <span className="bg-purple-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  Popular
+                </span>
+              </div>
+            )}
+
+            <div className="text-center">
+              <h3 className={`text-xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {plan.name}
+              </h3>
+              <div className="mb-4">
+                <span className={`text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  ${plan.price}
+                </span>
+                <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  /{plan.billing}
+                </span>
+              </div>
+
+              <div className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                <p>Up to {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers} users</p>
+                <p>Up to {plan.maxPatients === -1 ? 'Unlimited' : plan.maxPatients} patients</p>
+              </div>
+
+              <ul className="space-y-2 mb-6">
+                {Object.entries(plan.features).map(([feature, enabled]) => (
+                  <li
+                    key={feature}
+                    className={`flex items-center justify-center gap-2 text-sm ${
+                      enabled
+                        ? theme === 'dark'
+                          ? 'text-green-400'
+                          : 'text-green-600'
+                        : theme === 'dark'
+                        ? 'text-slate-600'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    {enabled ? <Check className="w-4 h-4" /> : <span className="w-4 h-4">-</span>}
+                    <span className="capitalize">{feature.replace(/([A-Z])/g, ' $1').trim()}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={() => {
+                  setCurrentPlan(plan.id);
+                  setPlanTier(plan.id);
+                  updateUserPreferences({ planTier: plan.id });
+                  addNotification('success', `Switched to ${plan.name}`);
+                }}
+                disabled={currentPlan === plan.id}
+                className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
+                  currentPlan === plan.id
+                    ? theme === 'dark'
+                      ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                {currentPlan === plan.id ? 'Current Plan' : 'Select Plan'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  /**
+   * Render Working Hours Tab
+   * TODO: Extract to separate component WorkingHoursTab.js
+   */
+  const renderWorkingHoursTab = () => (
+    <div className="space-y-6">
+      <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        Working Hours
+      </h2>
+
+      <div className="space-y-4">
+        {Object.entries(workingHours).map(([day, hours]) => (
+          <div
+            key={day}
+            className={`p-4 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-32">
+                  <span className={`font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {day}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={hours.open}
+                    onChange={(e) => handleWorkingHoursChange(day, 'open', e.target.value)}
+                    disabled={!hours.enabled}
+                    className={`px-3 py-2 border rounded-lg ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white disabled:bg-slate-800 disabled:text-slate-600'
+                        : 'bg-white border-gray-300 text-gray-900 disabled:bg-gray-100 disabled:text-gray-400'
+                    }`}
+                  />
+                  <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>to</span>
+                  <input
+                    type="time"
+                    value={hours.close}
+                    onChange={(e) => handleWorkingHoursChange(day, 'close', e.target.value)}
+                    disabled={!hours.enabled}
+                    className={`px-3 py-2 border rounded-lg ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white disabled:bg-slate-800 disabled:text-slate-600'
+                        : 'bg-white border-gray-300 text-gray-900 disabled:bg-gray-100 disabled:text-gray-400'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleWorkingHoursChange(day, 'enabled', !hours.enabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  hours.enabled ? 'bg-green-500' : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    hours.enabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleSaveWorkingHoursClick}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+        >
+          <Save className="w-5 h-5" />
+          Save Working Hours
+        </button>
+      </div>
+    </div>
+  );
+
+  /**
+   * Render Appointment Settings Tab
+   * TODO: Extract to separate component AppointmentSettingsTab.js
+   */
+  const renderAppointmentSettingsTab = () => (
+    <div className="space-y-6">
+      <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        Appointment Settings
+      </h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Default Appointment Duration (minutes)
+          </label>
+          <input
+            type="number"
+            min="5"
+            max="480"
+            value={appointmentSettings.defaultDuration}
+            onChange={(e) => handleAppointmentSettingChange('defaultDuration', e.target.value)}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          />
+          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+            Range: 5-480 minutes (5 min to 8 hours)
+          </p>
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Slot Interval (minutes)
+          </label>
+          <input
+            type="number"
+            min="5"
+            max="120"
+            value={appointmentSettings.slotInterval}
+            onChange={(e) => handleAppointmentSettingChange('slotInterval', e.target.value)}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          />
+          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+            Range: 5-120 minutes (5 min to 2 hours)
+          </p>
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Max Advance Booking (days)
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="365"
+            value={appointmentSettings.maxAdvanceBooking}
+            onChange={(e) => handleAppointmentSettingChange('maxAdvanceBooking', e.target.value)}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          />
+          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+            Range: 1-365 days (1 day to 1 year)
+          </p>
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Cancellation Deadline (hours)
+          </label>
+          <input
+            type="number"
+            min="0"
+            max="168"
+            value={appointmentSettings.cancellationDeadline}
+            onChange={(e) => handleAppointmentSettingChange('cancellationDeadline', e.target.value)}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          />
+          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+            Range: 0-168 hours (0 to 7 days)
+          </p>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleSaveAppointmentSettingsClick}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+        >
+          <Save className="w-5 h-5" />
+          Save Settings
+        </button>
+      </div>
+    </div>
+  );
+
+  /**
+   * Render Backup & Restore Tab
+   * TODO: Extract to separate component BackupRestoreTab.js
+   */
+  const renderBackupRestoreTab = () => (
+    <div className="space-y-6">
+      <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        Backup & Restore
+      </h2>
+
+      {/* Backup Options */}
+      <div>
+        <h3 className={`text-lg font-medium mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Create Backup
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Local Backup */}
+          <div className={`p-6 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <HardDrive className={`w-6 h-6 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} />
+              <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Local Backup
+              </h4>
+            </div>
+            <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Download a backup file to your computer
+            </p>
+            {lastBackup.local && (
+              <p className={`text-xs mb-3 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                Last backup: {new Date(lastBackup.local).toLocaleString()}
+              </p>
+            )}
+            <button
+              onClick={handleLocalBackup}
+              disabled={backupLoading.local}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+            >
+              {backupLoading.local ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5" />
+                  Download Backup
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Google Drive Backup */}
+          <div className={`p-6 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <Cloud className={`w-6 h-6 ${theme === 'dark' ? 'text-green-400' : 'text-green-500'}`} />
+              <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Google Drive
+              </h4>
+            </div>
+            <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Backup to Google Drive
+            </p>
+            {lastBackup.googleDrive && (
+              <p className={`text-xs mb-3 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                Last backup: {new Date(lastBackup.googleDrive).toLocaleString()}
+              </p>
+            )}
+            <button
+              onClick={handleGoogleDriveBackup}
+              disabled={backupLoading.googleDrive || !backupConfig.googleDrive.configured}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+            >
+              {backupLoading.googleDrive ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-5 h-5" />
+                  {backupConfig.googleDrive.configured ? 'Upload to Drive' : 'Not Configured'}
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* OneDrive Backup */}
+          <div className={`p-6 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <Cloud className={`w-6 h-6 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-500'}`} />
+              <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                OneDrive
+              </h4>
+            </div>
+            <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Backup to Microsoft OneDrive
+            </p>
+            {lastBackup.oneDrive && (
+              <p className={`text-xs mb-3 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                Last backup: {new Date(lastBackup.oneDrive).toLocaleString()}
+              </p>
+            )}
+            <button
+              onClick={handleOneDriveBackup}
+              disabled={backupLoading.oneDrive || !backupConfig.oneDrive.configured}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+            >
+              {backupLoading.oneDrive ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-5 h-5" />
+                  {backupConfig.oneDrive.configured ? 'Upload to OneDrive' : 'Not Configured'}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Restore Section */}
+      <div>
+        <h3 className={`text-lg font-medium mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Restore from Backup
+        </h3>
+        <div className={`p-6 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <div className={`mb-4 p-4 rounded-lg border ${theme === 'dark' ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-50 border-yellow-200'}`}>
+            <p className={`font-medium ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'}`}>
+              Warning
+            </p>
+            <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-yellow-400/80' : 'text-yellow-600'}`}>
+              Restoring from backup will replace all current data. This action cannot be undone.
+            </p>
+          </div>
+
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleRestoreBackup}
+            disabled={restoreLoading}
+            className={`block w-full text-sm ${
+              theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+            } file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold ${
+              theme === 'dark'
+                ? 'file:bg-slate-700 file:text-slate-300 hover:file:bg-slate-600'
+                : 'file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200'
+            } cursor-pointer`}
+          />
+
+          {restoreLoading && (
+            <div className="mt-4 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
+              <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>
+                Restoring data...
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   // ==================== MAIN RENDER ====================
 
@@ -1476,15 +2022,42 @@ const AdminPanelView = ({
         <div>
           {activeTab === ADMIN_TABS.CLINIC && renderClinicSettingsTab()}
           {activeTab === ADMIN_TABS.USERS && renderUserManagementTab()}
+          {activeTab === ADMIN_TABS.ROLES && renderRolesPermissionsTab()}
+          {activeTab === ADMIN_TABS.PLANS && renderSubscriptionPlansTab()}
           {activeTab === ADMIN_TABS.TELEHEALTH && renderTelehealthTab()}
-          {/* TODO: Implement other tabs */}
-          {activeTab === ADMIN_TABS.ROLES && <div>Roles & Permissions - TODO</div>}
-          {activeTab === ADMIN_TABS.PLANS && <div>Subscription Plans - TODO</div>}
-          {activeTab === ADMIN_TABS.HOURS && <div>Working Hours - TODO</div>}
-          {activeTab === ADMIN_TABS.APPOINTMENTS && <div>Appointment Settings - TODO</div>}
-          {activeTab === ADMIN_TABS.BACKUP && <div>Backup & Restore - TODO</div>}
+          {activeTab === ADMIN_TABS.HOURS && renderWorkingHoursTab()}
+          {activeTab === ADMIN_TABS.APPOINTMENTS && renderAppointmentSettingsTab()}
+          {activeTab === ADMIN_TABS.BACKUP && renderBackupRestoreTab()}
         </div>
       </div>
+
+      {/* Global Styles for Scrollbar */}
+      <style jsx>{`
+        /* Custom scrollbar for tabs */
+        .flex.space-x-8.overflow-x-auto::-webkit-scrollbar {
+          height: 6px;
+        }
+
+        .flex.space-x-8.overflow-x-auto::-webkit-scrollbar-track {
+          background: ${theme === 'dark' ? '#1e293b' : '#f1f5f9'};
+          border-radius: 3px;
+        }
+
+        .flex.space-x-8.overflow-x-auto::-webkit-scrollbar-thumb {
+          background: ${theme === 'dark' ? '#475569' : '#cbd5e1'};
+          border-radius: 3px;
+        }
+
+        .flex.space-x-8.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+          background: ${theme === 'dark' ? '#64748b' : '#94a3b8'};
+        }
+
+        /* For Firefox */
+        .flex.space-x-8.overflow-x-auto {
+          scrollbar-width: thin;
+          scrollbar-color: ${theme === 'dark' ? '#475569 #1e293b' : '#cbd5e1 #f1f5f9'};
+        }
+      `}</style>
 
       {/* Confirmation Modals */}
       <ConfirmationModal
