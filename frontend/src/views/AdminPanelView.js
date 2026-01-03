@@ -362,6 +362,13 @@ const AdminPanelView = ({
     loadPermissions();
   }, [api, addNotification]);
 
+  /**
+   * Fetch backup provider configuration status on mount
+   */
+  useEffect(() => {
+    fetchBackupConfigStatus();
+  }, [fetchBackupConfigStatus]);
+
   // ==================== CALLBACKS ====================
 
   /**
@@ -605,28 +612,58 @@ const AdminPanelView = ({
   const handleConfigureTelehealthProvider = useCallback(
     async (providerType) => {
       try {
-        // TODO: Implement backend OAuth flow or secure configuration endpoint
-        // For now, show a notification that this feature is coming soon
-        await addNotification(
-          'info',
-          `Configuration for ${providerType} will open in a secure window. This feature requires backend OAuth implementation.`
+        const providerNames = {
+          zoom: 'Zoom',
+          google_meet: 'Google Meet',
+          webex: 'Cisco Webex',
+        };
+        const displayName = providerNames[providerType] || providerType;
+
+        await addNotification('info', `Initiating ${displayName} configuration...`);
+
+        // Call OAuth initiate endpoint
+        const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to initiate OAuth flow');
+        }
+
+        // Open OAuth flow in popup window
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+
+        const popup = window.open(
+          data.authUrl,
+          'OAuth Authorization',
+          `width=${width},height=${height},left=${left},top=${top}`
         );
 
-        // If the API method exists, use it
-        if (api.getProviderConfigUrl) {
-          const configUrl = await api.getProviderConfigUrl(providerType);
-          window.open(configUrl, '_blank', 'width=600,height=800');
-        } else {
-          // Otherwise, open settings page or show modal
-          console.log(`Configure ${providerType} - Backend OAuth flow not yet implemented`);
-          await addNotification(
-            'warning',
-            'Provider configuration requires backend implementation. Please contact your administrator.'
-          );
-        }
+        // Poll for popup closure to refresh status
+        const pollTimer = setInterval(async () => {
+          if (popup && popup.closed) {
+            clearInterval(pollTimer);
+            // Refresh telehealth status
+            try {
+              const settings = await api.getTelehealthSettings();
+              if (settings) {
+                setTelehealthStatus((prev) => ({
+                  ...prev,
+                  ...settings,
+                }));
+              }
+              await addNotification('success', `${displayName} configuration updated successfully.`);
+            } catch (error) {
+              console.error('Error refreshing telehealth status:', error);
+              await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
+            }
+          }
+        }, 1000);
       } catch (error) {
         console.error('Error starting provider configuration:', error);
-        await addNotification('alert', 'Failed to start configuration flow');
+        await addNotification('alert', error.message || 'Failed to start configuration flow');
       }
     },
     [api, addNotification]
@@ -828,6 +865,66 @@ const AdminPanelView = ({
       setBackupLoading((prev) => ({ ...prev, oneDrive: false }));
     }
   }, [api, addNotification]);
+
+  /**
+   * Configure cloud backup provider (OAuth)
+   */
+  const handleConfigureCloudBackup = useCallback(async (providerType) => {
+    try {
+      await addNotification('info', `Initiating ${providerType === 'google_drive' ? 'Google Drive' : 'OneDrive'} configuration...`);
+
+      // Call OAuth initiate endpoint
+      const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initiate OAuth flow');
+      }
+
+      // Open OAuth flow in popup window
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      const popup = window.open(
+        data.authUrl,
+        'OAuth Authorization',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+
+      // Poll for popup closure to refresh status
+      const pollTimer = setInterval(async () => {
+        if (popup && popup.closed) {
+          clearInterval(pollTimer);
+          // Refresh configuration status
+          await fetchBackupConfigStatus();
+          await addNotification('success', 'Configuration updated. Please check the status.');
+        }
+      }, 1000);
+    } catch (error) {
+      console.error(`Error configuring ${providerType}:`, error);
+      await addNotification('alert', error.message || `Failed to configure ${providerType}`);
+    }
+  }, [addNotification]);
+
+  /**
+   * Fetch backup provider configuration status
+   */
+  const fetchBackupConfigStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/backup-providers/config/status');
+      if (response.ok) {
+        const status = await response.json();
+        setBackupConfig({
+          googleDrive: { configured: status.googleDrive?.configured || false },
+          oneDrive: { configured: status.oneDrive?.configured || false },
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching backup config status:', error);
+    }
+  }, []);
 
   /**
    * Restore from backup file
@@ -1408,9 +1505,26 @@ const AdminPanelView = ({
   const renderRolesPermissionsTab = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Role Permissions
-        </h2>
+        <div>
+          <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Role Permissions
+          </h2>
+          {/* Legend */}
+          <div className={`flex gap-4 mt-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            <span className="flex items-center gap-1">
+              <span className="text-green-500 font-semibold">V</span> = View
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-blue-500 font-semibold">C</span> = Create
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-yellow-500 font-semibold">E</span> = Edit
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-red-500 font-semibold">D</span> = Delete
+            </span>
+          </div>
+        </div>
         <button
           onClick={() => setShowCustomRoleForm(true)}
           className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
@@ -1452,27 +1566,58 @@ const AdminPanelView = ({
               <tr key={role} className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'}`}>
                 <td className={`px-4 py-3 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {role}
+                  {role === 'admin' && <span className={`ml-2 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>(Protected)</span>}
                 </td>
                 {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => (
                   <td key={module} className="px-4 py-3 text-center">
                     <div className="flex justify-center gap-1">
-                      {permissions[module]?.view && <span className="text-green-500" title="View">V</span>}
-                      {permissions[module]?.create && <span className="text-blue-500" title="Create">C</span>}
-                      {permissions[module]?.edit && <span className="text-yellow-500" title="Edit">E</span>}
-                      {permissions[module]?.delete && <span className="text-red-500" title="Delete">D</span>}
+                      {permissions[module]?.view && <span className="text-green-500 font-semibold" title="View">V</span>}
+                      {permissions[module]?.create && <span className="text-blue-500 font-semibold" title="Create">C</span>}
+                      {permissions[module]?.edit && <span className="text-yellow-500 font-semibold" title="Edit">E</span>}
+                      {permissions[module]?.delete && <span className="text-red-500 font-semibold" title="Delete">D</span>}
                     </div>
                   </td>
                 ))}
                 <td className="px-4 py-3 text-center">
-                  {!['admin', 'doctor', 'staff', 'patient'].includes(role) && (
-                    <button
-                      onClick={() => handleDeleteCustomRole(role)}
-                      className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-                      title="Delete role"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </button>
-                  )}
+                  <div className="flex justify-center gap-2">
+                    {/* Allow editing for doctor and staff roles */}
+                    {(['doctor', 'staff'].includes(role)) && (
+                      <button
+                        onClick={() => {
+                          setCustomRoleName(role);
+                          setCustomRolePermissions(permissions);
+                          setShowCustomRoleForm(true);
+                        }}
+                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                        title="Edit permissions"
+                      >
+                        <Edit className="w-4 h-4 text-blue-500" />
+                      </button>
+                    )}
+                    {/* Allow deleting custom roles only */}
+                    {!['admin', 'doctor', 'staff', 'patient'].includes(role) && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setCustomRoleName(role);
+                            setCustomRolePermissions(permissions);
+                            setShowCustomRoleForm(true);
+                          }}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                          title="Edit permissions"
+                        >
+                          <Edit className="w-4 h-4 text-blue-500" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCustomRole(role)}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                          title="Delete role"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1821,11 +1966,26 @@ const AdminPanelView = ({
 
           {/* Google Drive Backup */}
           <div className={`p-6 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
-            <div className="flex items-center gap-3 mb-4">
-              <Cloud className={`w-6 h-6 ${theme === 'dark' ? 'text-green-400' : 'text-green-500'}`} />
-              <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Google Drive
-              </h4>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Cloud className={`w-6 h-6 ${theme === 'dark' ? 'text-green-400' : 'text-green-500'}`} />
+                <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Google Drive
+                </h4>
+              </div>
+              <button
+                onClick={() => handleConfigureCloudBackup('google_drive')}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                title="Configure Google Drive"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
+            <div className={`flex items-center gap-2 mb-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              <div className={`w-2 h-2 rounded-full ${backupConfig.googleDrive.configured ? 'bg-green-500' : 'bg-gray-400'}`} />
+              <span className="text-xs">
+                {backupConfig.googleDrive.configured ? 'Configured' : 'Not configured'}
+              </span>
             </div>
             <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
               Backup to Google Drive
@@ -1856,11 +2016,26 @@ const AdminPanelView = ({
 
           {/* OneDrive Backup */}
           <div className={`p-6 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
-            <div className="flex items-center gap-3 mb-4">
-              <Cloud className={`w-6 h-6 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-500'}`} />
-              <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                OneDrive
-              </h4>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Cloud className={`w-6 h-6 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-500'}`} />
+                <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  OneDrive
+                </h4>
+              </div>
+              <button
+                onClick={() => handleConfigureCloudBackup('onedrive')}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                title="Configure OneDrive"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
+            <div className={`flex items-center gap-2 mb-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              <div className={`w-2 h-2 rounded-full ${backupConfig.oneDrive.configured ? 'bg-green-500' : 'bg-gray-400'}`} />
+              <span className="text-xs">
+                {backupConfig.oneDrive.configured ? 'Configured' : 'Not configured'}
+              </span>
             </div>
             <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
               Backup to Microsoft OneDrive
