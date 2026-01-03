@@ -362,13 +362,6 @@ const AdminPanelView = ({
     loadPermissions();
   }, [api, addNotification]);
 
-  /**
-   * Fetch backup provider configuration status on mount
-   */
-  useEffect(() => {
-    fetchBackupConfigStatus();
-  }, [fetchBackupConfigStatus]);
-
   // ==================== CALLBACKS ====================
 
   /**
@@ -925,6 +918,13 @@ const AdminPanelView = ({
       console.error('Error fetching backup config status:', error);
     }
   }, []);
+
+  /**
+   * Load backup configuration status on mount
+   */
+  useEffect(() => {
+    fetchBackupConfigStatus();
+  }, [fetchBackupConfigStatus]);
 
   /**
    * Restore from backup file
