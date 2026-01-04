@@ -519,10 +519,16 @@ const AdminPanelView = ({
   const handleUserFormSubmit = useCallback(
     async (formData) => {
       try {
+        // Split name into firstName and lastName
+        const nameParts = formData.name.trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
         if (editingUser) {
           // Update existing user
           const updateData = {
-            name: formData.name,
+            firstName,
+            lastName,
             email: formData.email,
             phone: formData.phone,
             role: formData.role,
@@ -538,7 +544,16 @@ const AdminPanelView = ({
           await addNotification('success', t.userUpdatedSuccessfully || 'User updated successfully');
         } else {
           // Create new user
-          const newUser = await api.createUser(formData);
+          const userData = {
+            firstName,
+            lastName,
+            email: formData.email,
+            phone: formData.phone,
+            role: formData.role,
+            password: formData.password,
+          };
+
+          const newUser = await api.createUser(userData);
           setUsers((prevUsers) => [...prevUsers, newUser]);
           await addNotification('success', t.userCreatedSuccessfully || 'User created successfully');
         }
