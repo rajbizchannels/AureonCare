@@ -181,6 +181,12 @@ const AdminPanelView = ({
   // Confirmation modal state
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [pendingSaveAction, setPendingSaveAction] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState({
+    title: '',
+    message: '',
+    onConfirm: null,
+  });
 
   // User form modal state
   const [showUserForm, setShowUserForm] = useState(false);
@@ -193,6 +199,7 @@ const AdminPanelView = ({
     providerType: '',
     credentialType: 'oauth',
     onSuccess: null,
+    existingCredentials: null,
   });
 
   // ==================== MEMOIZED VALUES ====================
@@ -439,19 +446,22 @@ const AdminPanelView = ({
    * Delete user handler with proper confirmation
    */
   const handleDeleteUser = useCallback(
-    async (userId) => {
-      // TODO: Replace window.confirm with custom ConfirmationModal
-      if (!window.confirm(t.confirmDeleteUser || 'Are you sure you want to delete this user?'))
-        return;
-
-      try {
-        await api.deleteUser(userId);
-        setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
-        await addNotification('success', t.userDeletedSuccessfully || 'User deleted successfully');
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        await addNotification('alert', t.failedToDeleteUser || 'Failed to delete user');
-      }
+    (userId) => {
+      setConfirmModalConfig({
+        title: t.deleteUser || 'Delete User',
+        message: t.confirmDeleteUser || 'Are you sure you want to delete this user? This action cannot be undone.',
+        onConfirm: async () => {
+          try {
+            await api.deleteUser(userId);
+            setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
+            await addNotification('success', t.userDeletedSuccessfully || 'User deleted successfully');
+          } catch (error) {
+            console.error('Error deleting user:', error);
+            await addNotification('alert', t.failedToDeleteUser || 'Failed to delete user');
+          }
+        },
+      });
+      setShowConfirmModal(true);
     },
     [api, setUsers, addNotification, t]
   );
@@ -460,34 +470,39 @@ const AdminPanelView = ({
    * Toggle user status (block/unblock)
    */
   const handleToggleUserStatus = useCallback(
-    async (userId, currentStatus) => {
+    (userId, currentStatus) => {
       const newStatus = currentStatus === USER_STATUS.BLOCKED ? USER_STATUS.ACTIVE : USER_STATUS.BLOCKED;
       const actionText = newStatus === USER_STATUS.BLOCKED ? 'block' : 'unblock';
       const confirmMsg =
         newStatus === USER_STATUS.BLOCKED
           ? t.confirmBlockUser || 'Are you sure you want to block this user?'
           : t.confirmUnblockUser || 'Are you sure you want to unblock this user?';
+      const title = newStatus === USER_STATUS.BLOCKED ? 'Block User' : 'Unblock User';
 
-      // TODO: Replace window.confirm with custom ConfirmationModal
-      if (!window.confirm(confirmMsg)) return;
+      setConfirmModalConfig({
+        title,
+        message: confirmMsg,
+        onConfirm: async () => {
+          try {
+            const updatedUser = await api.updateUser(userId, { status: newStatus });
+            setUsers((prevUsers) => prevUsers.map((u) => (u.id === userId ? updatedUser : u)));
 
-      try {
-        const updatedUser = await api.updateUser(userId, { status: newStatus });
-        setUsers((prevUsers) => prevUsers.map((u) => (u.id === userId ? updatedUser : u)));
-
-        const successMsg =
-          newStatus === USER_STATUS.BLOCKED
-            ? t.userBlockedSuccessfully || 'User blocked successfully'
-            : t.userUnblockedSuccessfully || 'User unblocked successfully';
-        await addNotification('success', successMsg);
-      } catch (error) {
-        console.error(`Error ${actionText}ing user:`, error);
-        const errorMsg =
-          newStatus === USER_STATUS.BLOCKED
-            ? t.failedToBlockUser || 'Failed to block user'
-            : t.failedToUnblockUser || 'Failed to unblock user';
-        await addNotification('alert', errorMsg);
-      }
+            const successMsg =
+              newStatus === USER_STATUS.BLOCKED
+                ? t.userBlockedSuccessfully || 'User blocked successfully'
+                : t.userUnblockedSuccessfully || 'User unblocked successfully';
+            await addNotification('success', successMsg);
+          } catch (error) {
+            console.error(`Error ${actionText}ing user:`, error);
+            const errorMsg =
+              newStatus === USER_STATUS.BLOCKED
+                ? t.failedToBlockUser || 'Failed to block user'
+                : t.failedToUnblockUser || 'Failed to unblock user';
+            await addNotification('alert', errorMsg);
+          }
+        },
+      });
+      setShowConfirmModal(true);
     },
     [api, setUsers, addNotification, t]
   );
@@ -496,19 +511,22 @@ const AdminPanelView = ({
    * Approve user handler
    */
   const handleApproveUser = useCallback(
-    async (userId) => {
-      // TODO: Replace window.confirm with custom ConfirmationModal
-      if (!window.confirm(t.confirmApproveUser || 'Are you sure you want to approve this user?'))
-        return;
-
-      try {
-        const updatedUser = await api.updateUser(userId, { status: USER_STATUS.ACTIVE });
-        setUsers((prevUsers) => prevUsers.map((u) => (u.id === userId ? updatedUser : u)));
-        await addNotification('success', t.userApprovedSuccessfully || 'User approved successfully');
-      } catch (error) {
-        console.error('Error approving user:', error);
-        await addNotification('alert', t.failedToApproveUser || 'Failed to approve user');
-      }
+    (userId) => {
+      setConfirmModalConfig({
+        title: t.approveUser || 'Approve User',
+        message: t.confirmApproveUser || 'Are you sure you want to approve this user?',
+        onConfirm: async () => {
+          try {
+            const updatedUser = await api.updateUser(userId, { status: USER_STATUS.ACTIVE });
+            setUsers((prevUsers) => prevUsers.map((u) => (u.id === userId ? updatedUser : u)));
+            await addNotification('success', t.userApprovedSuccessfully || 'User approved successfully');
+          } catch (error) {
+            console.error('Error approving user:', error);
+            await addNotification('alert', t.failedToApproveUser || 'Failed to approve user');
+          }
+        },
+      });
+      setShowConfirmModal(true);
     },
     [api, setUsers, addNotification, t]
   );
@@ -602,29 +620,29 @@ const AdminPanelView = ({
    * Delete custom role
    */
   const handleDeleteCustomRole = useCallback(
-    async (roleName) => {
-      // TODO: Replace window.confirm with custom ConfirmationModal
-      if (
-        window.confirm(
-          `Are you sure you want to delete the "${roleName}" role? This action cannot be undone.`
-        )
-      ) {
-        try {
-          // Remove from state
-          setRolePermissions((prev) => {
-            const updated = { ...prev };
-            delete updated[roleName];
-            return updated;
-          });
+    (roleName) => {
+      setConfirmModalConfig({
+        title: 'Delete Custom Role',
+        message: `Are you sure you want to delete the "${roleName}" role? This action cannot be undone.`,
+        onConfirm: async () => {
+          try {
+            // Remove from state
+            setRolePermissions((prev) => {
+              const updated = { ...prev };
+              delete updated[roleName];
+              return updated;
+            });
 
-          // Delete from API
-          await api.deleteRole(roleName);
-          await addNotification('success', `Custom role "${roleName}" deleted successfully`);
-        } catch (error) {
-          console.error('Error deleting custom role:', error);
-          await addNotification('alert', 'Failed to delete custom role');
-        }
-      }
+            // Delete from API
+            await api.deleteRole(roleName);
+            await addNotification('success', `Custom role "${roleName}" deleted successfully`);
+          } catch (error) {
+            console.error('Error deleting custom role:', error);
+            await addNotification('alert', 'Failed to delete custom role');
+          }
+        },
+      });
+      setShowConfirmModal(true);
     },
     [api, addNotification]
   );
@@ -723,7 +741,7 @@ const AdminPanelView = ({
       await addNotification('success', 'Credentials saved successfully.');
       setShowCredentialModal(false);
 
-      // Call the success callback if provided
+      // Call the success callback if provided (e.g., trigger OAuth)
       if (onSuccess) {
         await onSuccess();
       }
@@ -735,8 +753,67 @@ const AdminPanelView = ({
   }, [credentialModalConfig, addNotification]);
 
   /**
+   * Handle reconfigure integration - fetches existing credentials and shows edit modal
+   */
+  const handleReconfigureIntegration = useCallback(
+    async (providerType, providerName, credentialType = 'oauth') => {
+      try {
+        // Fetch existing credentials
+        const response = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch credentials');
+        }
+
+        // Determine onSuccess callback based on credential type
+        const onSuccess = credentialType === 'oauth' ? async () => {
+          // Trigger OAuth flow after saving credentials
+          const oauthResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+          const oauthData = await oauthResponse.json();
+
+          if (oauthResponse.ok && oauthData.authUrl) {
+            // Open OAuth popup
+            const popup = window.open(oauthData.authUrl, 'OAuth Authorization', 'width=600,height=700');
+
+            // Poll for popup closure
+            const pollTimer = setInterval(async () => {
+              if (popup && popup.closed) {
+                clearInterval(pollTimer);
+                // Refresh status based on provider type
+                if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
+                  const settings = await api.getTelehealthSettings();
+                  setTelehealthStatus((prev) => ({ ...prev, ...settings }));
+                } else if (['google_drive', 'onedrive'].includes(providerType)) {
+                  await fetchBackupConfigStatus();
+                }
+                await addNotification('success', `${providerName} configured successfully.`);
+              }
+            }, 1000);
+          }
+        } : null;
+
+        // Show credential modal with existing data
+        setCredentialModalConfig({
+          providerName,
+          providerType,
+          credentialType,
+          existingCredentials: data,
+          onSuccess,
+        });
+        setShowCredentialModal(true);
+      } catch (error) {
+        console.error('Error fetching credentials for reconfiguration:', error);
+        await addNotification('alert', 'Failed to load existing credentials');
+      }
+    },
+    [api, addNotification, fetchBackupConfigStatus]
+  );
+
+  /**
    * SECURITY FIX: Open secure configuration flow (redirect to backend OAuth or secure form)
    * Credentials are NEVER stored in frontend state
+   * Supports both initial configuration and reconfiguration
    */
   const handleConfigureTelehealthProvider = useCallback(
     async (providerType) => {
@@ -747,6 +824,15 @@ const AdminPanelView = ({
           webex: 'Cisco Webex',
         };
         const displayName = providerNames[providerType] || providerType;
+
+        // Check if provider is already configured for reconfiguration
+        const isConfigured = telehealthStatus[providerType]?.is_configured;
+
+        if (isConfigured) {
+          // For reconfiguration, fetch and show existing credentials
+          await handleReconfigureIntegration(providerType, displayName, 'oauth');
+          return;
+        }
 
         await addNotification('info', `Initiating ${displayName} configuration...`);
 
@@ -761,6 +847,7 @@ const AdminPanelView = ({
               providerName: displayName,
               providerType: providerType,
               credentialType: 'oauth',
+              existingCredentials: null,
               onSuccess: async () => {
                 // Retry OAuth initiation after credentials are saved
                 try {
@@ -853,7 +940,7 @@ const AdminPanelView = ({
         await addNotification('alert', error.message || 'Failed to start configuration flow');
       }
     },
-    [api, addNotification]
+    [api, addNotification, telehealthStatus, handleReconfigureIntegration]
   );
 
   /**
@@ -2670,14 +2757,35 @@ const AdminPanelView = ({
             providerType: '',
             credentialType: 'oauth',
             onSuccess: null,
+            existingCredentials: null,
           });
         }}
         onSubmit={handleCredentialSubmit}
         providerName={credentialModalConfig.providerName}
         credentialType={credentialModalConfig.credentialType}
+        existingCredentials={credentialModalConfig.existingCredentials}
         theme={theme}
       />
 
+      {/* User Action Confirmation Modal */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={async () => {
+          if (confirmModalConfig.onConfirm) {
+            await confirmModalConfig.onConfirm();
+          }
+          setShowConfirmModal(false);
+        }}
+        title={confirmModalConfig.title}
+        message={confirmModalConfig.message}
+        type="warning"
+        confirmText="Confirm"
+        showCancel={true}
+      />
+
+      {/* Restore Success Modal */}
       <ConfirmationModal
         theme={theme}
         isOpen={restoreSuccessModal.isOpen}
