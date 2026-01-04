@@ -1228,10 +1228,22 @@ const AdminPanelView = ({
 
   /**
    * Configure cloud backup provider (OAuth)
+   * Supports both initial configuration and reconfiguration
    */
   const handleConfigureCloudBackup = useCallback(async (providerType) => {
     try {
       const displayName = providerType === 'google_drive' ? 'Google Drive' : 'OneDrive';
+
+      // Check if provider is already configured for reconfiguration
+      const providerKey = providerType === 'google_drive' ? 'googleDrive' : 'oneDrive';
+      const isConfigured = backupConfig[providerKey]?.configured;
+
+      if (isConfigured) {
+        // For reconfiguration, fetch and show existing credentials
+        await handleReconfigureIntegration(providerType, displayName, 'oauth');
+        return;
+      }
+
       await addNotification('info', `Initiating ${displayName} configuration...`);
 
       // Call OAuth initiate endpoint
@@ -1314,7 +1326,7 @@ const AdminPanelView = ({
       console.error(`Error configuring ${providerType}:`, error);
       await addNotification('alert', error.message || `Failed to configure ${providerType}`);
     }
-  }, [addNotification, fetchBackupConfigStatus]);
+  }, [backupConfig, handleReconfigureIntegration, addNotification, fetchBackupConfigStatus]);
 
   /**
    * Restore from backup file
