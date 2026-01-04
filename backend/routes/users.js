@@ -107,10 +107,11 @@ router.post('/', async (req, res) => {
 
 // Update user
 router.put('/:id', async (req, res) => {
-  const { firstName, lastName, first_name, last_name, role, avatar, email, phone, license, specialty, preferences, status, language, country } = req.body;
+  const { firstName, lastName, first_name, last_name, role, avatar, email, phone, license, specialty, preferences, status, language, country, password } = req.body;
 
   try {
     const pool = req.app.locals.pool;
+    const bcrypt = require('bcryptjs');
 
     // Accept both camelCase and snake_case
     const finalFirstName = first_name || firstName;
@@ -120,6 +121,12 @@ router.put('/:id', async (req, res) => {
     let timezone = null;
     if (country) {
       timezone = getTimezoneFromCountry(country);
+    }
+
+    // Hash password if provided
+    let passwordHash = null;
+    if (password) {
+      passwordHash = await bcrypt.hash(password, 10);
     }
 
     // Get current user data to check for role changes
@@ -151,8 +158,9 @@ router.put('/:id', async (req, res) => {
            language = COALESCE($11, language),
            country = COALESCE($12, country),
            timezone = COALESCE($13, timezone),
+           password_hash = COALESCE($14, password_hash),
            updated_at = NOW()
-       WHERE id::text = $14::text
+       WHERE id::text = $15::text
        RETURNING *`,
       [
         finalFirstName,
@@ -168,6 +176,7 @@ router.put('/:id', async (req, res) => {
         language,
         country,
         timezone,
+        passwordHash,
         req.params.id
       ]
     );
