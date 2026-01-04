@@ -190,7 +190,9 @@ const AdminPanelView = ({
   const [showCredentialModal, setShowCredentialModal] = useState(false);
   const [credentialModalConfig, setCredentialModalConfig] = useState({
     providerName: '',
+    providerType: '',
     credentialType: 'oauth',
+    onSuccess: null,
   });
 
   // ==================== MEMOIZED VALUES ====================
@@ -375,6 +377,42 @@ const AdminPanelView = ({
     };
     loadPermissions();
   }, [api, addNotification]);
+
+  /**
+   * Load working hours from backend
+   */
+  useEffect(() => {
+    const loadWorkingHours = async () => {
+      try {
+        const hours = await api.getWorkingHours();
+        if (hours && Object.keys(hours).length > 0) {
+          setWorkingHours(hours);
+        }
+      } catch (error) {
+        console.error('Error loading working hours:', error);
+        // Continue with default working hours
+      }
+    };
+    loadWorkingHours();
+  }, [api]);
+
+  /**
+   * Load appointment settings from backend
+   */
+  useEffect(() => {
+    const loadAppointmentSettings = async () => {
+      try {
+        const settings = await api.getAppointmentSettings();
+        if (settings) {
+          setAppointmentSettings(settings);
+        }
+      } catch (error) {
+        console.error('Error loading appointment settings:', error);
+        // Continue with default appointment settings
+      }
+    };
+    loadAppointmentSettings();
+  }, [api]);
 
   // ==================== CALLBACKS ====================
 
@@ -654,6 +692,39 @@ const AdminPanelView = ({
   );
 
   /**
+   * Handle credential modal submission
+   */
+  const handleCredentialSubmit = useCallback(async (credentials) => {
+    const { providerType, onSuccess } = credentialModalConfig;
+
+    try {
+      // Save credentials
+      const saveResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
+        throw new Error(errorData.error || 'Failed to save credentials');
+      }
+
+      await addNotification('success', 'Credentials saved successfully.');
+      setShowCredentialModal(false);
+
+      // Call the success callback if provided
+      if (onSuccess) {
+        await onSuccess();
+      }
+    } catch (error) {
+      console.error('Error saving credentials:', error);
+      await addNotification('alert', error.message || 'Failed to save credentials');
+      throw error; // Re-throw to keep modal open
+    }
+  }, [credentialModalConfig, addNotification]);
+
+  /**
    * SECURITY FIX: Open secure configuration flow (redirect to backend OAuth or secure form)
    * Credentials are NEVER stored in frontend state
    */
@@ -674,76 +745,62 @@ const AdminPanelView = ({
         const data = await response.json();
 
         if (!response.ok) {
-          // If provider not configured, prompt for credentials
+          // If provider not configured, show credential modal
           if (data.error === 'Provider not configured') {
-            const clientId = window.prompt(
-              `Please enter your ${displayName} Client ID:\n\nYou can get this from your ${displayName} app settings/developer console.`
-            );
-            if (!clientId) {
-              await addNotification('warning', 'Configuration cancelled. Client ID is required.');
-              return;
-            }
-
-            const clientSecret = window.prompt(
-              `Please enter your ${displayName} Client Secret:\n\nYou can get this from your ${displayName} app settings/developer console.`
-            );
-            if (!clientSecret) {
-              await addNotification('warning', 'Configuration cancelled. Client Secret is required.');
-              return;
-            }
-
-            // Save credentials
-            const saveResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
-            });
-
-            if (!saveResponse.ok) {
-              throw new Error('Failed to save credentials');
-            }
-
-            await addNotification('success', 'Credentials saved. Initiating OAuth flow...');
-
-            // Retry OAuth initiation
-            const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
-            const retryData = await retryResponse.json();
-
-            if (!retryResponse.ok) {
-              throw new Error(retryData.error || 'Failed to initiate OAuth flow');
-            }
-
-            // Open OAuth flow with retry data
-            const width = 600;
-            const height = 700;
-            const left = window.screen.width / 2 - width / 2;
-            const top = window.screen.height / 2 - height / 2;
-
-            const popup = window.open(
-              retryData.authUrl,
-              'OAuth Authorization',
-              `width=${width},height=${height},left=${left},top=${top}`
-            );
-
-            // Poll for popup closure
-            const pollTimer = setInterval(async () => {
-              if (popup && popup.closed) {
-                clearInterval(pollTimer);
+            setCredentialModalConfig({
+              providerName: displayName,
+              providerType: providerType,
+              credentialType: 'oauth',
+              onSuccess: async () => {
+                // Retry OAuth initiation after credentials are saved
                 try {
-                  const settings = await api.getTelehealthSettings();
-                  if (settings) {
-                    setTelehealthStatus((prev) => ({
-                      ...prev,
-                      ...settings,
-                    }));
+                  await addNotification('info', 'Initiating OAuth flow...');
+
+                  const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+                  const retryData = await retryResponse.json();
+
+                  if (!retryResponse.ok) {
+                    throw new Error(retryData.error || 'Failed to initiate OAuth flow');
                   }
-                  await addNotification('success', `${displayName} configuration updated successfully.`);
+
+                  // Open OAuth flow
+                  const width = 600;
+                  const height = 700;
+                  const left = window.screen.width / 2 - width / 2;
+                  const top = window.screen.height / 2 - height / 2;
+
+                  const popup = window.open(
+                    retryData.authUrl,
+                    'OAuth Authorization',
+                    `width=${width},height=${height},left=${left},top=${top}`
+                  );
+
+                  // Poll for popup closure
+                  const pollTimer = setInterval(async () => {
+                    if (popup && popup.closed) {
+                      clearInterval(pollTimer);
+                      try {
+                        const settings = await api.getTelehealthSettings();
+                        if (settings) {
+                          setTelehealthStatus((prev) => ({
+                            ...prev,
+                            ...settings,
+                          }));
+                        }
+                        await addNotification('success', `${displayName} configured successfully.`);
+                      } catch (error) {
+                        console.error('Error refreshing telehealth status:', error);
+                        await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
+                      }
+                    }
+                  }, 1000);
                 } catch (error) {
-                  console.error('Error refreshing telehealth status:', error);
-                  await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
+                  console.error('Error in OAuth flow:', error);
+                  await addNotification('alert', error.message || 'Failed to complete OAuth flow');
                 }
               }
-            }, 1000);
+            });
+            setShowCredentialModal(true);
             return;
           }
           throw new Error(data.error || 'Failed to initiate OAuth flow');
@@ -837,43 +894,23 @@ const AdminPanelView = ({
       };
       const displayName = vendorNames[vendorType] || vendorType;
 
-      const apiKey = window.prompt(
-        `Please enter your ${displayName} API Key:\n\nYou can obtain this from your ${displayName} account settings.`
-      );
-
-      if (!apiKey) {
-        await addNotification('warning', 'Configuration cancelled. API Key is required.');
-        return;
-      }
-
-      const clientId = window.prompt(
-        `Please enter your ${displayName} Client ID (if applicable):\n\nLeave blank if not required.`
-      );
-
-      // Save credentials
-      const saveResponse = await fetch(`/api/integrations/oauth/${vendorType}/credentials`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: clientId || 'api_key_auth',
-          client_secret: apiKey
-        })
+      setCredentialModalConfig({
+        providerName: displayName,
+        providerType: vendorType,
+        credentialType: 'api_key',
+        onSuccess: async () => {
+          // Update vendor status
+          setVendorStatus((prev) => ({
+            ...prev,
+            [vendorType]: {
+              ...prev[vendorType],
+              is_configured: true,
+            },
+          }));
+          await addNotification('success', `${displayName} configured successfully.`);
+        }
       });
-
-      if (!saveResponse.ok) {
-        throw new Error('Failed to save API credentials');
-      }
-
-      // Update vendor status
-      setVendorStatus((prev) => ({
-        ...prev,
-        [vendorType]: {
-          ...prev[vendorType],
-          is_configured: true,
-        },
-      }));
-
-      await addNotification('success', `${displayName} configured successfully.`);
+      setShowCredentialModal(true);
     } catch (error) {
       console.error('Error configuring vendor integration:', error);
       await addNotification('alert', error.message || 'Failed to configure vendor integration');
@@ -1077,65 +1114,51 @@ const AdminPanelView = ({
       const data = await response.json();
 
       if (!response.ok) {
-        // If provider not configured, prompt for credentials
+        // If provider not configured, show credential modal
         if (data.error === 'Provider not configured') {
-          const clientId = window.prompt(
-            `Please enter your ${displayName} Client ID:\n\nFor Google Drive: Get this from Google Cloud Console\nFor OneDrive: Get this from Azure App Registration`
-          );
-          if (!clientId) {
-            await addNotification('warning', 'Configuration cancelled. Client ID is required.');
-            return;
-          }
+          setCredentialModalConfig({
+            providerName: displayName,
+            providerType: providerType,
+            credentialType: 'oauth',
+            onSuccess: async () => {
+              // Retry OAuth initiation after credentials are saved
+              try {
+                await addNotification('info', 'Initiating OAuth flow...');
 
-          const clientSecret = window.prompt(
-            `Please enter your ${displayName} Client Secret:\n\nFor Google Drive: Get this from Google Cloud Console\nFor OneDrive: Get this from Azure App Registration`
-          );
-          if (!clientSecret) {
-            await addNotification('warning', 'Configuration cancelled. Client Secret is required.');
-            return;
-          }
+                const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+                const retryData = await retryResponse.json();
 
-          // Save credentials
-          const saveResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
-          });
+                if (!retryResponse.ok) {
+                  throw new Error(retryData.error || 'Failed to initiate OAuth flow');
+                }
 
-          if (!saveResponse.ok) {
-            throw new Error('Failed to save credentials');
-          }
+                // Open OAuth flow
+                const width = 600;
+                const height = 700;
+                const left = window.screen.width / 2 - width / 2;
+                const top = window.screen.height / 2 - height / 2;
 
-          await addNotification('success', 'Credentials saved. Initiating OAuth flow...');
+                const popup = window.open(
+                  retryData.authUrl,
+                  'OAuth Authorization',
+                  `width=${width},height=${height},left=${left},top=${top}`
+                );
 
-          // Retry OAuth initiation
-          const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
-          const retryData = await retryResponse.json();
-
-          if (!retryResponse.ok) {
-            throw new Error(retryData.error || 'Failed to initiate OAuth flow');
-          }
-
-          // Open OAuth flow with retry data
-          const width = 600;
-          const height = 700;
-          const left = window.screen.width / 2 - width / 2;
-          const top = window.screen.height / 2 - height / 2;
-
-          const popup = window.open(
-            retryData.authUrl,
-            'OAuth Authorization',
-            `width=${width},height=${height},left=${left},top=${top}`
-          );
-
-          // Poll for popup closure
-          const pollTimer = setInterval(async () => {
-            if (popup && popup.closed) {
-              clearInterval(pollTimer);
-              await fetchBackupConfigStatus();
-              await addNotification('success', `${displayName} configuration updated successfully.`);
+                // Poll for popup closure
+                const pollTimer = setInterval(async () => {
+                  if (popup && popup.closed) {
+                    clearInterval(pollTimer);
+                    await fetchBackupConfigStatus();
+                    await addNotification('success', `${displayName} configured successfully.`);
+                  }
+                }, 1000);
+              } catch (error) {
+                console.error('Error in OAuth flow:', error);
+                await addNotification('alert', error.message || 'Failed to complete OAuth flow');
+              }
             }
-          }, 1000);
+          });
+          setShowCredentialModal(true);
           return;
         }
         throw new Error(data.error || 'Failed to initiate OAuth flow');
@@ -2630,11 +2653,16 @@ const AdminPanelView = ({
       {/* Credential Modal */}
       <CredentialModal
         isOpen={showCredentialModal}
-        onClose={() => setShowCredentialModal(false)}
-        onSubmit={(credentials) => {
-          // This will be handled by the specific integration handler
-          // We'll update this when integrating with OAuth handlers
+        onClose={() => {
+          setShowCredentialModal(false);
+          setCredentialModalConfig({
+            providerName: '',
+            providerType: '',
+            credentialType: 'oauth',
+            onSuccess: null,
+          });
         }}
+        onSubmit={handleCredentialSubmit}
         providerName={credentialModalConfig.providerName}
         credentialType={credentialModalConfig.credentialType}
         theme={theme}
