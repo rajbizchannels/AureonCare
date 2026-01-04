@@ -105,6 +105,23 @@ router.post('/', async (req, res) => {
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating user:', error);
+
+    // Handle duplicate email error
+    if (error.code === '23505' && error.constraint === 'users_email_key') {
+      return res.status(409).json({
+        error: 'Email already exists',
+        message: 'A user with this email address already exists. Please use a different email.'
+      });
+    }
+
+    // Handle other constraint violations
+    if (error.code === '23505') {
+      return res.status(409).json({
+        error: 'Duplicate entry',
+        message: 'This user information conflicts with an existing user.'
+      });
+    }
+
     res.status(500).json({ error: 'Failed to create user', details: error.message });
   }
 });
@@ -306,6 +323,23 @@ router.put('/:id', async (req, res) => {
     res.json(toCamelCase(updatedUser));
   } catch (error) {
     console.error('Error updating user:', error);
+
+    // Handle duplicate email error
+    if (error.code === '23505' && error.constraint === 'users_email_key') {
+      return res.status(409).json({
+        error: 'Email already exists',
+        message: 'A user with this email address already exists. Please use a different email.'
+      });
+    }
+
+    // Handle other constraint violations
+    if (error.code === '23505') {
+      return res.status(409).json({
+        error: 'Duplicate entry',
+        message: 'This user information conflicts with an existing user.'
+      });
+    }
+
     res.status(500).json({ error: 'Failed to update user', details: error.message });
   }
 });

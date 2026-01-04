@@ -467,7 +467,10 @@ const api = {
       method: 'PUT',
       body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error('Failed to update user');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.error || 'Failed to update user');
+    }
     return response.json();
   },
   getUsers: async () => {
@@ -480,7 +483,10 @@ const api = {
       method: 'POST',
       body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error('Failed to create user');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.error || 'Failed to create user');
+    }
     return response.json();
   },
   deleteUser: async (id) => {

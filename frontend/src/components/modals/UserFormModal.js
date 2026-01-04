@@ -7,7 +7,8 @@ import { X, User, Mail, Phone, Lock, Shield } from 'lucide-react';
  */
 const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     role: 'patient',
@@ -21,15 +22,9 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
 
   useEffect(() => {
     if (user) {
-      // Construct name from firstName and lastName
-      const name = user.name ||
-                   (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '') ||
-                   user.firstName ||
-                   user.lastName ||
-                   '';
-
       setFormData({
-        name,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         email: user.email || '',
         phone: user.phone || '',
         role: user.role || 'patient',
@@ -38,7 +33,8 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
       });
     } else {
       setFormData({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         phone: '',
         role: 'patient',
@@ -54,8 +50,12 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
     }
 
     if (!formData.email.trim()) {
@@ -108,7 +108,8 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
 
   const handleClose = () => {
     setFormData({
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       phone: '',
       role: 'patient',
@@ -159,32 +160,58 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Name */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${
-              theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
-            }`}>
-              {t.name || 'Name'} <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
-                theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
-              }`} />
+          {/* First Name and Last Name */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* First Name */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+              }`}>
+                {t.firstName || 'First Name'} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                  theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                }`} />
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => handleChange('firstName', e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  } ${errors.firstName ? 'border-red-500' : ''}`}
+                  placeholder="John"
+                />
+              </div>
+              {errors.firstName && (
+                <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>
+              )}
+            </div>
+
+            {/* Last Name */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+              }`}>
+                {t.lastName || 'Last Name'} <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                value={formData.lastName}
+                onChange={(e) => handleChange('lastName', e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   theme === 'dark'
                     ? 'bg-slate-800 border-slate-700 text-white'
                     : 'bg-white border-gray-300 text-gray-900'
-                } ${errors.name ? 'border-red-500' : ''}`}
-                placeholder="Enter full name"
+                } ${errors.lastName ? 'border-red-500' : ''}`}
+                placeholder="Doe"
               />
+              {errors.lastName && (
+                <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>
+              )}
             </div>
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-500">{errors.name}</p>
-            )}
           </div>
 
           {/* Email */}
