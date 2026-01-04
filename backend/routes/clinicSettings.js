@@ -32,13 +32,13 @@ router.get('/working-hours', async (req, res) => {
     // If no data exists, return default working hours
     if (result.rows.length === 0) {
       const defaultHours = {
-        monday: { isWorking: true, start: '09:00', end: '17:00' },
-        tuesday: { isWorking: true, start: '09:00', end: '17:00' },
-        wednesday: { isWorking: true, start: '09:00', end: '17:00' },
-        thursday: { isWorking: true, start: '09:00', end: '17:00' },
-        friday: { isWorking: true, start: '09:00', end: '17:00' },
-        saturday: { isWorking: false, start: '09:00', end: '13:00' },
-        sunday: { isWorking: false, start: '09:00', end: '13:00' }
+        monday: { enabled: true, open: '09:00', close: '17:00' },
+        tuesday: { enabled: true, open: '09:00', close: '17:00' },
+        wednesday: { enabled: true, open: '09:00', close: '17:00' },
+        thursday: { enabled: true, open: '09:00', close: '17:00' },
+        friday: { enabled: true, open: '09:00', close: '17:00' },
+        saturday: { enabled: false, open: '09:00', close: '13:00' },
+        sunday: { enabled: false, open: '09:00', close: '13:00' }
       };
       return res.json(defaultHours);
     }
@@ -47,9 +47,9 @@ router.get('/working-hours', async (req, res) => {
     const workingHours = {};
     result.rows.forEach(row => {
       workingHours[row.day] = {
-        isWorking: row.is_working,
-        start: row.start_time || '09:00',
-        end: row.end_time || '17:00'
+        enabled: row.is_working,
+        open: row.start_time || '09:00',
+        close: row.end_time || '17:00'
       };
     });
 
@@ -93,7 +93,7 @@ router.post('/working-hours', async (req, res) => {
           start_time = $3,
           end_time = $4,
           updated_at = CURRENT_TIMESTAMP
-      `, [day, hours.isWorking, hours.start, hours.end]);
+      `, [day, hours.enabled, hours.open, hours.close]);
     }
 
     res.json({ success: true, message: 'Working hours saved successfully' });
