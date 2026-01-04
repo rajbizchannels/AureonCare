@@ -1077,8 +1077,12 @@ function App() {
           user={user}
           language={language}
           onClose={() => setShowForm(null)}
-          updateUser={setUser}
+          setCurrentView={setCurrentView}
+          setEditingItem={handleSetEditingItem}
+          showChangePassword={showChangePassword}
+          setShowChangePassword={setShowChangePassword}
           updateUserPreferences={updateUserPreferences}
+          setTheme={setTheme}
           api={api}
           addNotification={addNotification}
         />
