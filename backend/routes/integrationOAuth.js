@@ -80,9 +80,37 @@ router.get('/:providerType/initiate', async (req, res) => {
     if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
       settingsTable = 'telehealth_provider_settings';
       providerField = 'provider_type';
+
+      // Ensure table exists
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
+          id SERIAL PRIMARY KEY,
+          provider_type VARCHAR(50) UNIQUE NOT NULL,
+          is_enabled BOOLEAN DEFAULT false,
+          client_id VARCHAR(255),
+          client_secret VARCHAR(255),
+          settings JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
     } else if (['google_drive', 'onedrive'].includes(providerType)) {
       settingsTable = 'backup_provider_settings';
       providerField = 'provider_type';
+
+      // Ensure table exists
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS backup_provider_settings (
+          id SERIAL PRIMARY KEY,
+          provider_type VARCHAR(50) UNIQUE NOT NULL,
+          is_enabled BOOLEAN DEFAULT false,
+          client_id VARCHAR(255),
+          client_secret VARCHAR(255),
+          settings JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
     } else {
       return res.status(400).json({ error: 'Invalid provider type' });
     }
@@ -312,12 +340,55 @@ router.post('/:providerType/credentials', async (req, res) => {
     if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
       settingsTable = 'telehealth_provider_settings';
       providerField = 'provider_type';
+
+      // Ensure table exists
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
+          id SERIAL PRIMARY KEY,
+          provider_type VARCHAR(50) UNIQUE NOT NULL,
+          is_enabled BOOLEAN DEFAULT false,
+          client_id VARCHAR(255),
+          client_secret VARCHAR(255),
+          settings JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
     } else if (['google_drive', 'onedrive'].includes(providerType)) {
       settingsTable = 'backup_provider_settings';
       providerField = 'provider_type';
+
+      // Ensure table exists
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS backup_provider_settings (
+          id SERIAL PRIMARY KEY,
+          provider_type VARCHAR(50) UNIQUE NOT NULL,
+          is_enabled BOOLEAN DEFAULT false,
+          client_id VARCHAR(255),
+          client_secret VARCHAR(255),
+          settings JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
     } else if (['surescripts', 'labcorp', 'optum'].includes(providerType)) {
       settingsTable = 'vendor_integration_settings';
       providerField = 'vendor_type';
+
+      // Ensure table exists
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS vendor_integration_settings (
+          id SERIAL PRIMARY KEY,
+          vendor_type VARCHAR(50) UNIQUE NOT NULL,
+          is_enabled BOOLEAN DEFAULT false,
+          client_id VARCHAR(255),
+          client_secret VARCHAR(255),
+          api_key VARCHAR(255),
+          settings JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
     } else {
       return res.status(400).json({ error: 'Unknown provider type' });
     }
