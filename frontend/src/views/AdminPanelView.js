@@ -771,6 +771,61 @@ const AdminPanelView = ({
   );
 
   /**
+   * Configure vendor integration (API key based)
+   */
+  const handleConfigureVendorIntegration = useCallback(async (vendorType) => {
+    try {
+      const vendorNames = {
+        surescripts: 'Surescripts ePrescribe',
+        labcorp: 'Labcorp',
+        optum: 'Optum',
+      };
+      const displayName = vendorNames[vendorType] || vendorType;
+
+      const apiKey = window.prompt(
+        `Please enter your ${displayName} API Key:\n\nYou can obtain this from your ${displayName} account settings.`
+      );
+
+      if (!apiKey) {
+        await addNotification('warning', 'Configuration cancelled. API Key is required.');
+        return;
+      }
+
+      const clientId = window.prompt(
+        `Please enter your ${displayName} Client ID (if applicable):\n\nLeave blank if not required.`
+      );
+
+      // Save credentials
+      const saveResponse = await fetch(`/api/integrations/oauth/${vendorType}/credentials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: clientId || 'api_key_auth',
+          client_secret: apiKey
+        })
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save API credentials');
+      }
+
+      // Update vendor status
+      setVendorStatus((prev) => ({
+        ...prev,
+        [vendorType]: {
+          ...prev[vendorType],
+          is_configured: true,
+        },
+      }));
+
+      await addNotification('success', `${displayName} configured successfully.`);
+    } catch (error) {
+      console.error('Error configuring vendor integration:', error);
+      await addNotification('alert', error.message || 'Failed to configure vendor integration');
+    }
+  }, [addNotification]);
+
+  /**
    * Save working hours with validation
    */
   const handleSaveWorkingHours = useCallback(async () => {
@@ -1596,7 +1651,7 @@ const AdminPanelView = ({
             isConfigured={vendorStatus.surescripts.is_configured}
             theme={theme}
             onToggle={handleToggleVendorIntegration}
-            onConfigure={handleConfigureTelehealthProvider}
+            onConfigure={handleConfigureVendorIntegration}
             t={t}
           />
 
@@ -1609,7 +1664,7 @@ const AdminPanelView = ({
             isConfigured={vendorStatus.labcorp.is_configured}
             theme={theme}
             onToggle={handleToggleVendorIntegration}
-            onConfigure={handleConfigureTelehealthProvider}
+            onConfigure={handleConfigureVendorIntegration}
             t={t}
           />
 
@@ -1622,7 +1677,7 @@ const AdminPanelView = ({
             isConfigured={vendorStatus.optum.is_configured}
             theme={theme}
             onToggle={handleToggleVendorIntegration}
-            onConfigure={handleConfigureTelehealthProvider}
+            onConfigure={handleConfigureVendorIntegration}
             t={t}
           />
         </div>

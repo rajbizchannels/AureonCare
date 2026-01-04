@@ -150,6 +150,21 @@ router.delete('/:providerType', async (req, res) => {
 router.get('/config/status', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+
+    // Ensure table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS backup_provider_settings (
+        id SERIAL PRIMARY KEY,
+        provider_type VARCHAR(50) UNIQUE NOT NULL,
+        is_enabled BOOLEAN DEFAULT false,
+        client_id VARCHAR(255),
+        client_secret VARCHAR(255),
+        settings JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     const result = await pool.query(`
       SELECT provider_type, is_enabled,
              (client_id IS NOT NULL AND client_id != '') as has_credentials,
