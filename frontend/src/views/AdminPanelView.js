@@ -476,6 +476,47 @@ const AdminPanelView = ({
   );
 
   /**
+   * Handle user form submission (create or update)
+   */
+  const handleUserFormSubmit = useCallback(
+    async (formData) => {
+      try {
+        if (editingUser) {
+          // Update existing user
+          const updateData = {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            role: formData.role,
+          };
+
+          // Only include password if it was changed
+          if (formData.password) {
+            updateData.password = formData.password;
+          }
+
+          const updatedUser = await api.updateUser(editingUser.id, updateData);
+          setUsers((prevUsers) => prevUsers.map((u) => (u.id === editingUser.id ? updatedUser : u)));
+          await addNotification('success', t.userUpdatedSuccessfully || 'User updated successfully');
+        } else {
+          // Create new user
+          const newUser = await api.createUser(formData);
+          setUsers((prevUsers) => [...prevUsers, newUser]);
+          await addNotification('success', t.userCreatedSuccessfully || 'User created successfully');
+        }
+
+        setShowUserForm(false);
+        setEditingUser(null);
+      } catch (error) {
+        console.error('Error saving user:', error);
+        await addNotification('alert', error.message || (editingUser ? 'Failed to update user' : 'Failed to create user'));
+        throw error; // Re-throw to keep modal open
+      }
+    },
+    [editingUser, api, setUsers, addNotification, t]
+  );
+
+  /**
    * Save role permissions
    */
   const handleSaveRolePermissions = useCallback(async () => {
@@ -1394,8 +1435,8 @@ const AdminPanelView = ({
         </h2>
         <button
           onClick={() => {
-            setShowForm(true);
-            setEditingItem(null);
+            setEditingUser(null);
+            setShowUserForm(true);
           }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
         >
@@ -1429,8 +1470,8 @@ const AdminPanelView = ({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      setEditingItem(user);
-                      setShowForm(true);
+                      setEditingUser(user);
+                      setShowUserForm(true);
                     }}
                     className={`p-2 rounded-lg transition-colors ${
                       theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
@@ -2571,6 +2612,32 @@ const AdminPanelView = ({
         type="success"
         confirmText="OK"
         showCancel={false}
+      />
+
+      {/* User Form Modal */}
+      <UserFormModal
+        isOpen={showUserForm}
+        onClose={() => {
+          setShowUserForm(false);
+          setEditingUser(null);
+        }}
+        onSubmit={handleUserFormSubmit}
+        user={editingUser}
+        theme={theme}
+        t={t}
+      />
+
+      {/* Credential Modal */}
+      <CredentialModal
+        isOpen={showCredentialModal}
+        onClose={() => setShowCredentialModal(false)}
+        onSubmit={(credentials) => {
+          // This will be handled by the specific integration handler
+          // We'll update this when integrating with OAuth handlers
+        }}
+        providerName={credentialModalConfig.providerName}
+        credentialType={credentialModalConfig.credentialType}
+        theme={theme}
       />
 
       <ConfirmationModal
