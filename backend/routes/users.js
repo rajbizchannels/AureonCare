@@ -70,6 +70,9 @@ router.post('/', async (req, res) => {
     const pool = req.app.locals.pool;
     const bcrypt = require('bcryptjs');
 
+    // Ensure UUID extension is enabled
+    await pool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+
     // Accept both camelCase and snake_case
     const finalFirstName = first_name || firstName || '';
     const finalLastName = last_name || lastName || '';
@@ -80,9 +83,10 @@ router.post('/', async (req, res) => {
       passwordHash = await bcrypt.hash(password, 10);
     }
 
+    // Explicitly generate UUID for id
     const result = await pool.query(
-      `INSERT INTO users (first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, status, password_hash, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      `INSERT INTO users (id, first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, status, password_hash, created_at)
+       VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
        RETURNING *`,
       [
         finalFirstName,
