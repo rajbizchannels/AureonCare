@@ -173,8 +173,8 @@ const AdminPanelView = ({
   const [customRolePermissions, setCustomRolePermissions] = useState({
     patients: { view: false, create: false, edit: false, delete: false },
     appointments: { view: false, create: false, edit: false, delete: false },
-    billing: { view: false, create: false, edit: false, delete: false },
-    reports: { view: false, create: false, edit: false, delete: false },
+    claims: { view: false, create: false, edit: false, delete: false },
+    ehr: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, create: false, edit: false, delete: false },
   });
 
@@ -1262,8 +1262,8 @@ const AdminPanelView = ({
     setCustomRolePermissions((prev) => ({
       ...prev,
       [module]: {
-        ...prev[module],
-        [action]: !prev[module][action],
+        ...(prev[module] || { view: false, create: false, edit: false, delete: false }),
+        [action]: !(prev[module]?.[action] || false),
       },
     }));
   }, []);
@@ -1499,7 +1499,7 @@ const AdminPanelView = ({
               >
                 <div>
                   <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {user.name}
+                    {user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email)}
                   </h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {user.email} • {user.role}
@@ -1559,7 +1559,7 @@ const AdminPanelView = ({
               >
                 <div>
                   <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {user.name}
+                    {user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email)}
                   </h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {user.email} • {user.role}
@@ -1605,7 +1605,7 @@ const AdminPanelView = ({
               >
                 <div>
                   <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {user.name}
+                    {user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email)}
                   </h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {user.email} • {user.role}

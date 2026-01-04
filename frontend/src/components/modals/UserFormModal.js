@@ -21,8 +21,15 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
 
   useEffect(() => {
     if (user) {
+      // Construct name from firstName and lastName
+      const name = user.name ||
+                   (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '') ||
+                   user.firstName ||
+                   user.lastName ||
+                   '';
+
       setFormData({
-        name: user.name || '',
+        name,
         email: user.email || '',
         phone: user.phone || '',
         role: user.role || 'patient',
