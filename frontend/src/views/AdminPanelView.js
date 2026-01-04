@@ -41,9 +41,12 @@ import {
   Download,
   Upload,
   RefreshCw,
+  X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import UserFormModal from '../components/modals/UserFormModal';
+import CredentialModal from '../components/modals/CredentialModal';
 import IntegrationCard from '../components/IntegrationCard';
 import { useClinicSettings } from '../hooks/useClinicSettings';
 import {
@@ -178,6 +181,17 @@ const AdminPanelView = ({
   // Confirmation modal state
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [pendingSaveAction, setPendingSaveAction] = useState(null);
+
+  // User form modal state
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+
+  // Credential modal state
+  const [showCredentialModal, setShowCredentialModal] = useState(false);
+  const [credentialModalConfig, setCredentialModalConfig] = useState({
+    providerName: '',
+    credentialType: 'oauth',
+  });
 
   // ==================== MEMOIZED VALUES ====================
 
@@ -2313,13 +2327,123 @@ const AdminPanelView = ({
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal content - simplified for brevity */}
-            {/* TODO: Extract to separate CustomRoleModal component */}
-            <div className="p-6">
+            {/* Header */}
+            <div className={`flex items-center justify-between p-6 border-b ${
+              theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+            }`}>
               <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Create Custom Role
+                {customRoleName && !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName)
+                  ? 'Edit Custom Role'
+                  : customRoleName
+                    ? `Edit ${customRoleName.charAt(0).toUpperCase() + customRoleName.slice(1)} Permissions`
+                    : 'Create Custom Role'}
               </h2>
-              {/* Form fields... */}
+              <button
+                onClick={() => {
+                  setShowCustomRoleForm(false);
+                  setCustomRoleName('');
+                  setCustomRolePermissions({});
+                }}
+                className={`p-2 rounded-lg transition-colors ${
+                  theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+              {/* Role Name - only editable for new roles */}
+              {!customRoleName || !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName) ? (
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                  }`}>
+                    Role Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customRoleName}
+                    onChange={(e) => setCustomRoleName(e.target.value)}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark'
+                        ? 'bg-slate-800 border-slate-700 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    placeholder="e.g., Nurse, Receptionist, Billing Manager"
+                  />
+                </div>
+              ) : (
+                <div className={`p-4 rounded-lg ${
+                  theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'
+                }`}>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
+                    Editing permissions for <strong>{customRoleName}</strong> role
+                  </p>
+                </div>
+              )}
+
+              {/* Permissions Grid */}
+              <div>
+                <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Permissions
+                </h3>
+                <div className="space-y-4">
+                  {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => (
+                    <div key={module} className={`p-4 border rounded-lg ${
+                      theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-gray-50'
+                    }`}>
+                      <h4 className={`font-medium mb-3 capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {module}
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {['view', 'create', 'edit', 'delete'].map((action) => (
+                          <label key={action} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={customRolePermissions[module]?.[action] || false}
+                              onChange={() => handleToggleCustomRolePermission(module, action)}
+                              className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className={`text-sm capitalize ${
+                              theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                            }`}>
+                              {action}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className={`flex gap-3 p-6 border-t ${
+              theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+            }`}>
+              <button
+                onClick={() => {
+                  setShowCustomRoleForm(false);
+                  setCustomRoleName('');
+                  setCustomRolePermissions({});
+                }}
+                className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors ${
+                  theme === 'dark'
+                    ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitCustomRole}
+                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+              >
+                {customRoleName && !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName) ? 'Update Role' : 'Create Role'}
+              </button>
             </div>
           </div>
         </div>
