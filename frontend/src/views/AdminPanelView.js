@@ -753,6 +753,24 @@ const AdminPanelView = ({
   }, [credentialModalConfig, addNotification]);
 
   /**
+   * Fetch backup provider configuration status
+   */
+  const fetchBackupConfigStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/backup-providers/config/status');
+      if (response.ok) {
+        const status = await response.json();
+        setBackupConfig({
+          googleDrive: { configured: status.googleDrive?.configured || false },
+          oneDrive: { configured: status.oneDrive?.configured || false },
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching backup config status:', error);
+    }
+  }, []);
+
+  /**
    * Handle reconfigure integration - fetches existing credentials and shows edit modal
    */
   const handleReconfigureIntegration = useCallback(
@@ -1172,24 +1190,6 @@ const AdminPanelView = ({
       setBackupLoading((prev) => ({ ...prev, oneDrive: false }));
     }
   }, [api, addNotification]);
-
-  /**
-   * Fetch backup provider configuration status
-   */
-  const fetchBackupConfigStatus = useCallback(async () => {
-    try {
-      const response = await fetch('/api/backup-providers/config/status');
-      if (response.ok) {
-        const status = await response.json();
-        setBackupConfig({
-          googleDrive: { configured: status.googleDrive?.configured || false },
-          oneDrive: { configured: status.oneDrive?.configured || false },
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching backup config status:', error);
-    }
-  }, []);
 
   /**
    * Load backup configuration status on mount
