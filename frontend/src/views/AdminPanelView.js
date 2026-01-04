@@ -191,6 +191,12 @@ const AdminPanelView = ({
   // User form modal state
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [showUserResultModal, setShowUserResultModal] = useState(false);
+  const [userResultModalConfig, setUserResultModalConfig] = useState({
+    type: 'success',
+    title: '',
+    message: '',
+  });
 
   // Credential modal state
   const [showCredentialModal, setShowCredentialModal] = useState(false);
@@ -554,7 +560,16 @@ const AdminPanelView = ({
 
           const updatedUser = await api.updateUser(editingUser.id, updateData);
           setUsers((prevUsers) => prevUsers.map((u) => (u.id === editingUser.id ? updatedUser : u)));
-          await addNotification('success', t.userUpdatedSuccessfully || 'User updated successfully');
+
+          // Close user form and show success modal
+          setShowUserForm(false);
+          setEditingUser(null);
+          setUserResultModalConfig({
+            type: 'success',
+            title: t.success || 'Success',
+            message: t.userUpdatedSuccessfully || 'User updated successfully',
+          });
+          setShowUserResultModal(true);
         } else {
           // Create new user
           const userData = {
@@ -568,18 +583,31 @@ const AdminPanelView = ({
 
           const newUser = await api.createUser(userData);
           setUsers((prevUsers) => [...prevUsers, newUser]);
-          await addNotification('success', t.userCreatedSuccessfully || 'User created successfully');
-        }
 
-        setShowUserForm(false);
-        setEditingUser(null);
+          // Close user form and show success modal
+          setShowUserForm(false);
+          setEditingUser(null);
+          setUserResultModalConfig({
+            type: 'success',
+            title: t.success || 'Success',
+            message: t.userCreatedSuccessfully || 'User created successfully',
+          });
+          setShowUserResultModal(true);
+        }
       } catch (error) {
         console.error('Error saving user:', error);
-        await addNotification('alert', error.message || (editingUser ? 'Failed to update user' : 'Failed to create user'));
+
+        // Show error modal (keep user form open)
+        setUserResultModalConfig({
+          type: 'warning',
+          title: t.error || 'Error',
+          message: error.message || (editingUser ? 'Failed to update user' : 'Failed to create user'),
+        });
+        setShowUserResultModal(true);
         throw error; // Re-throw to keep modal open
       }
     },
-    [editingUser, api, setUsers, addNotification, t]
+    [editingUser, api, setUsers, t]
   );
 
   /**
@@ -2798,6 +2826,19 @@ const AdminPanelView = ({
             : 'Data has been successfully restored from backup.'
         }
         type={restoreSuccessModal.details?.errors?.length > 0 ? 'warning' : 'success'}
+        confirmText="OK"
+        showCancel={false}
+      />
+
+      {/* User Form Result Modal (Success/Error) */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={showUserResultModal}
+        onClose={() => setShowUserResultModal(false)}
+        onConfirm={() => setShowUserResultModal(false)}
+        title={userResultModalConfig.title}
+        message={userResultModalConfig.message}
+        type={userResultModalConfig.type}
         confirmText="OK"
         showCancel={false}
       />
