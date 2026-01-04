@@ -1,16 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { X, Key, User } from 'lucide-react';
 
 /**
  * CredentialModal - Themed modal for collecting OAuth credentials
  * Replaces browser prompts with a professional UI
+ * Supports both create and edit modes
  */
-const CredentialModal = ({ isOpen, onClose, onSubmit, providerName, theme, credentialType = 'oauth' }) => {
+const CredentialModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  providerName,
+  theme,
+  credentialType = 'oauth',
+  existingCredentials = null // For edit mode
+}) => {
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [errors, setErrors] = useState({});
+
+  const isEditMode = Boolean(existingCredentials);
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (existingCredentials) {
+      if (credentialType === 'oauth') {
+        setClientId(existingCredentials.client_id || '');
+        setClientSecret(existingCredentials.client_secret || '');
+      } else if (credentialType === 'api_key') {
+        setApiKey(existingCredentials.client_secret || existingCredentials.api_key || '');
+        setClientId(existingCredentials.client_id || '');
+      }
+    }
+  }, [existingCredentials, credentialType]);
 
   if (!isOpen) return null;
 
@@ -143,7 +167,7 @@ const CredentialModal = ({ isOpen, onClose, onSubmit, providerName, theme, crede
           theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
         }`}>
           <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {config.title}
+            {isEditMode ? `Edit ${config.title}` : config.title}
           </h2>
           <button
             onClick={handleClose}
@@ -310,7 +334,7 @@ const CredentialModal = ({ isOpen, onClose, onSubmit, providerName, theme, crede
               type="submit"
               className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
             >
-              Save & Continue
+              {isEditMode ? 'Update & Continue' : 'Save & Continue'}
             </button>
           </div>
         </form>
@@ -326,6 +350,7 @@ CredentialModal.propTypes = {
   providerName: PropTypes.string.isRequired,
   theme: PropTypes.string.isRequired,
   credentialType: PropTypes.oneOf(['oauth', 'api_key']),
+  existingCredentials: PropTypes.object,
 };
 
 export default CredentialModal;

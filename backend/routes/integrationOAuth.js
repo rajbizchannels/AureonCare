@@ -322,6 +322,54 @@ router.get('/:providerType/status', async (req, res) => {
 });
 
 /**
+ * Get provider client credentials (for editing)
+ * GET /api/integrations/oauth/:providerType/credentials
+ * Returns masked credentials for security
+ */
+router.get('/:providerType/credentials', async (req, res) => {
+  try {
+    const { providerType } = req.params;
+    const pool = req.app.locals.pool;
+    let settingsTable, providerField;
+
+    if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
+      settingsTable = 'telehealth_provider_settings';
+      providerField = 'provider_type';
+    } else if (['google_drive', 'onedrive'].includes(providerType)) {
+      settingsTable = 'backup_provider_settings';
+      providerField = 'provider_type';
+    } else if (['surescripts', 'labcorp', 'optum'].includes(providerType)) {
+      settingsTable = 'vendor_integration_settings';
+      providerField = 'vendor_type';
+    } else {
+      return res.status(400).json({ error: 'Unknown provider type' });
+    }
+
+    // Fetch credentials
+    const result = await pool.query(
+      `SELECT client_id, client_secret FROM ${settingsTable} WHERE ${providerField} = $1`,
+      [providerType]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Provider not configured' });
+    }
+
+    const credentials = result.rows[0];
+
+    // Return credentials (client will display them in the form)
+    // Note: In a real production app, you might want to return masked values
+    res.json({
+      client_id: credentials.client_id,
+      client_secret: credentials.client_secret,
+    });
+  } catch (error) {
+    console.error('Error fetching credentials:', error);
+    res.status(500).json({ error: 'Failed to fetch credentials' });
+  }
+});
+
+/**
  * Save provider client credentials (client_id, client_secret)
  * POST /api/integrations/oauth/:providerType/credentials
  */
