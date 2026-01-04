@@ -519,16 +519,11 @@ const AdminPanelView = ({
   const handleUserFormSubmit = useCallback(
     async (formData) => {
       try {
-        // Split name into firstName and lastName
-        const nameParts = formData.name.trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-
         if (editingUser) {
           // Update existing user
           const updateData = {
-            firstName,
-            lastName,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
             email: formData.email,
             phone: formData.phone,
             role: formData.role,
@@ -545,8 +540,8 @@ const AdminPanelView = ({
         } else {
           // Create new user
           const userData = {
-            firstName,
-            lastName,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
             email: formData.email,
             phone: formData.phone,
             role: formData.role,
