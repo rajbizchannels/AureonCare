@@ -6,6 +6,78 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// Cache for table existence check (expires after 5 minutes)
+let tableExistsCache = {
+  exists: null,
+  timestamp: 0,
+  ttl: 5 * 60 * 1000, // 5 minutes
+};
+
+/**
+ * Middleware to check if audit_logs table exists
+ * Uses caching to avoid excessive database queries
+ */
+const checkAuditTableExists = async (req, res, next) => {
+  try {
+    const now = Date.now();
+
+    // Check cache first
+    if (tableExistsCache.exists !== null && (now - tableExistsCache.timestamp) < tableExistsCache.ttl) {
+      if (!tableExistsCache.exists) {
+        return res.status(503).json({
+          error: 'Audit logs table not found',
+          message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
+          migration: 'backend/migrations/040_create_audit_logs_table.sql',
+        });
+      }
+      // Table exists, continue
+      return next();
+    }
+
+    // Cache miss or expired - check database
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM pg_tables
+        WHERE schemaname = 'public'
+        AND tablename = 'audit_logs'
+      );
+    `);
+
+    tableExistsCache.exists = tableCheck.rows[0].exists;
+    tableExistsCache.timestamp = now;
+
+    if (!tableExistsCache.exists) {
+      return res.status(503).json({
+        error: 'Audit logs table not found',
+        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
+        migration: 'backend/migrations/040_create_audit_logs_table.sql',
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error checking audit table existence:', error);
+
+    // Check if error is due to missing table
+    if (error.message && error.message.includes('relation "audit_logs" does not exist')) {
+      tableExistsCache.exists = false;
+      tableExistsCache.timestamp = Date.now();
+
+      return res.status(503).json({
+        error: 'Audit logs table not found',
+        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
+        migration: 'backend/migrations/040_create_audit_logs_table.sql',
+      });
+    }
+
+    // Other errors - pass to error handler
+    return res.status(500).json({
+      error: 'Failed to check audit table',
+      details: error.message,
+    });
+  }
+};
+
 /**
  * Create an audit log entry
  * POST /api/audit
@@ -133,25 +205,8 @@ router.post('/', async (req, res) => {
  * - sort: Sort field (default: created_at)
  * - order: Sort order (asc/desc, default: desc)
  */
-router.get('/', async (req, res) => {
+router.get('/', checkAuditTableExists, async (req, res) => {
   try {
-    // Check if audit_logs table exists
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM pg_tables
-        WHERE schemaname = 'public'
-        AND tablename = 'audit_logs'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      return res.status(503).json({
-        error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
-      });
-    }
-
     const {
       user_id,
       user_email,
@@ -291,25 +346,8 @@ router.get('/', async (req, res) => {
  * Get audit log by ID
  * GET /api/audit/:id
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkAuditTableExists, async (req, res) => {
   try {
-    // Check if audit_logs table exists
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM pg_tables
-        WHERE schemaname = 'public'
-        AND tablename = 'audit_logs'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      return res.status(503).json({
-        error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
-      });
-    }
-
     const { id } = req.params;
 
     const query = 'SELECT * FROM audit_logs WHERE id = $1';
@@ -332,25 +370,8 @@ router.get('/:id', async (req, res) => {
  *
  * Returns aggregated statistics for dashboards
  */
-router.get('/stats/summary', async (req, res) => {
+router.get('/stats/summary', checkAuditTableExists, async (req, res) => {
   try {
-    // Check if audit_logs table exists
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM pg_tables
-        WHERE schemaname = 'public'
-        AND tablename = 'audit_logs'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      return res.status(503).json({
-        error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
-      });
-    }
-
     const { start_date, end_date } = req.query;
 
     const conditions = [];
@@ -412,25 +433,8 @@ router.get('/stats/summary', async (req, res) => {
  * Get most active users
  * GET /api/audit/stats/top-users
  */
-router.get('/stats/top-users', async (req, res) => {
+router.get('/stats/top-users', checkAuditTableExists, async (req, res) => {
   try {
-    // Check if audit_logs table exists
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM pg_tables
-        WHERE schemaname = 'public'
-        AND tablename = 'audit_logs'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      return res.status(503).json({
-        error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
-      });
-    }
-
     const { limit = 10, start_date, end_date } = req.query;
 
     const conditions = [];
@@ -478,25 +482,8 @@ router.get('/stats/top-users', async (req, res) => {
  * Get most accessed resources
  * GET /api/audit/stats/top-resources
  */
-router.get('/stats/top-resources', async (req, res) => {
+router.get('/stats/top-resources', checkAuditTableExists, async (req, res) => {
   try {
-    // Check if audit_logs table exists
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM pg_tables
-        WHERE schemaname = 'public'
-        AND tablename = 'audit_logs'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      return res.status(503).json({
-        error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
-      });
-    }
-
     const { limit = 10, start_date, end_date } = req.query;
 
     const conditions = [];
