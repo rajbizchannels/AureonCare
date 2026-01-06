@@ -56,6 +56,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     reports: { view: true, create: true, edit: true, delete: true },
     settings: { view: true, create: true, edit: true, delete: true },
     backup: { view: true, create: true, edit: true, delete: true },
+    audit: { view: true, create: false, edit: false, delete: true },
   },
   doctor: {
     patients: { view: true, create: true, edit: true, delete: false },
@@ -66,6 +67,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     reports: { view: true, create: false, edit: false, delete: false },
     settings: { view: false, create: false, edit: false, delete: false },
     backup: { view: false, create: false, edit: false, delete: false },
+    audit: { view: false, create: false, edit: false, delete: false },
   },
   staff: {
     patients: { view: true, create: true, edit: true, delete: false },
@@ -76,6 +78,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     reports: { view: true, create: false, edit: false, delete: false },
     settings: { view: false, create: false, edit: false, delete: false },
     backup: { view: false, create: false, edit: false, delete: false },
+    audit: { view: false, create: false, edit: false, delete: false },
   },
   patient: {
     patients: { view: true, create: false, edit: false, delete: false },
@@ -86,6 +89,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     reports: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, create: false, edit: false, delete: false },
     backup: { view: false, create: false, edit: false, delete: false },
+    audit: { view: false, create: false, edit: false, delete: false },
   },
 };
 
@@ -171,6 +175,7 @@ export const ADMIN_TABS = {
   HOURS: 'hours',
   APPOINTMENTS: 'appointments',
   BACKUP: 'backup',
+  AUDIT: 'audit',
 };
 
 // Storage Keys
