@@ -1961,28 +1961,43 @@ const AdminPanelView = ({
         </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-max">
           <thead>
             <tr className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-              <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-3 py-3 text-left text-sm font-semibold sticky left-0 ${theme === 'dark' ? 'text-slate-300 bg-slate-900' : 'text-gray-700 bg-white'}`}>
                 Role
               </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Patients
               </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Appointments
               </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Claims
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 EHR
               </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Telehealth
+              </th>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                CRM
+              </th>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                RCM
+              </th>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Practice
+              </th>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Clinical
+              </th>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Reports
+              </th>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Settings
               </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-3 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Actions
               </th>
             </tr>
@@ -1990,12 +2005,12 @@ const AdminPanelView = ({
           <tbody>
             {rolePermissionEntries.map(([role, permissions]) => (
               <tr key={role} className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'}`}>
-                <td className={`px-4 py-3 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <td className={`px-3 py-3 font-medium capitalize sticky left-0 ${theme === 'dark' ? 'text-white bg-slate-900' : 'text-gray-900 bg-white'}`}>
                   {role}
                   {role === 'admin' && <span className={`ml-2 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>(Protected)</span>}
                 </td>
-                {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => (
-                  <td key={module} className="px-4 py-3 text-center">
+                {['patients', 'appointments', 'ehr', 'telehealth', 'crm', 'rcm', 'practiceManagement', 'clinicalServices', 'reports', 'settings'].map((module) => (
+                  <td key={module} className="px-3 py-3 text-center">
                     <div className="flex justify-center gap-1">
                       {permissions[module]?.view && <span className="text-green-500 font-semibold" title="View">V</span>}
                       {permissions[module]?.create && <span className="text-blue-500 font-semibold" title="Create">C</span>}
