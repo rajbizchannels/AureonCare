@@ -321,25 +321,26 @@ const DiagnosisForm = ({
   const handleActualSubmit = async () => {
     setIsSubmitting(true);
 
+    // Prepare diagnosis data - store codes as comma-separated string for backward compatibility
+    const diagnosisData = {
+      patientId: formData.patientId,
+      providerId: formData.providerId || null,
+      appointmentId: null,
+      diagnosisCode: formData.icdCodes.length > 0 ? formData.icdCodes.map(c => c.code).join(', ') : null,
+      diagnosisName: formData.diagnosisName || (formData.icdCodes.length > 0 ? formData.icdCodes[0].description : ''),
+      description: formData.description || null,
+      severity: formData.severity,
+      status: formData.status,
+      diagnosedDate: formData.diagnosedDate,
+      notes: formData.notes || null,
+      // Store additional metadata in notes for full details
+      metadata: {
+        icdCodes: formData.icdCodes,
+        cptCodes: formData.cptCodes
+      }
+    };
+
     try {
-      // Prepare diagnosis data - store codes as comma-separated string for backward compatibility
-      const diagnosisData = {
-        patientId: formData.patientId,
-        providerId: formData.providerId || null,
-        appointmentId: null,
-        diagnosisCode: formData.icdCodes.length > 0 ? formData.icdCodes.map(c => c.code).join(', ') : null,
-        diagnosisName: formData.diagnosisName || (formData.icdCodes.length > 0 ? formData.icdCodes[0].description : ''),
-        description: formData.description || null,
-        severity: formData.severity,
-        status: formData.status,
-        diagnosedDate: formData.diagnosedDate,
-        notes: formData.notes || null,
-        // Store additional metadata in notes for full details
-        metadata: {
-          icdCodes: formData.icdCodes,
-          cptCodes: formData.cptCodes
-        }
-      };
 
       // Append metadata to notes if not empty
       if (diagnosisData.metadata.icdCodes.length > 0 || diagnosisData.metadata.cptCodes.length > 0) {
