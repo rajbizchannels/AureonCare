@@ -58,10 +58,12 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [migrationNeeded, setMigrationNeeded] = useState(false);
 
   // Load audit logs
   const loadAuditLogs = useCallback(async () => {
     setLoading(true);
+    setMigrationNeeded(false);
     try {
       const queryFilters = {
         ...filters,
@@ -79,7 +81,14 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
       setPagination(response.pagination || pagination);
     } catch (error) {
       console.error('Error loading audit logs:', error);
-      addNotification('error', 'Failed to load audit logs');
+
+      // Check if migration is needed
+      if (error.message && (error.message.includes('503') || error.message.includes('table not found'))) {
+        setMigrationNeeded(true);
+        addNotification('warning', 'Audit logs table not found. Please run the database migration.');
+      } else {
+        addNotification('error', 'Failed to load audit logs');
+      }
     } finally {
       setLoading(false);
     }
@@ -496,15 +505,67 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
         </div>
       )}
 
+      {/* Migration Needed Message */}
+      {migrationNeeded && (
+        <div
+          className={`p-6 rounded-lg border-2 mb-6 ${
+            theme === 'dark'
+              ? 'bg-yellow-900/20 border-yellow-700'
+              : 'bg-yellow-50 border-yellow-300'
+          }`}
+        >
+          <div className="flex items-start gap-4">
+            <AlertCircle
+              className={`w-6 h-6 flex-shrink-0 mt-0.5 ${
+                theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
+              }`}
+            />
+            <div className="flex-1">
+              <h3
+                className={`text-lg font-semibold mb-2 ${
+                  theme === 'dark' ? 'text-yellow-300' : 'text-yellow-800'
+                }`}
+              >
+                Database Migration Required
+              </h3>
+              <p
+                className={`mb-3 ${
+                  theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'
+                }`}
+              >
+                The audit logs table has not been created yet. Please run the database migration to enable audit logging.
+              </p>
+              <div
+                className={`p-3 rounded-lg font-mono text-sm mb-3 ${
+                  theme === 'dark'
+                    ? 'bg-slate-900 text-gray-300'
+                    : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                psql -U medflow_app -d medflow -f backend/migrations/040_create_audit_logs_table.sql
+              </div>
+              <p
+                className={`text-sm ${
+                  theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'
+                }`}
+              >
+                After running the migration, click the <strong>Refresh</strong> button above to load audit logs.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Audit Logs Table */}
-      <div
-        className={`rounded-lg border overflow-hidden ${
-          theme === 'dark'
-            ? 'bg-slate-800 border-slate-700'
-            : 'bg-white border-gray-300'
-        }`}
-      >
-        <div className="overflow-x-auto">
+      {!migrationNeeded && (
+        <div
+          className={`rounded-lg border overflow-hidden ${
+            theme === 'dark'
+              ? 'bg-slate-800 border-slate-700'
+              : 'bg-white border-gray-300'
+          }`}
+        >
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead className={theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}>
               <tr>
@@ -670,7 +731,8 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       {showDetailModal && selectedLog && (
