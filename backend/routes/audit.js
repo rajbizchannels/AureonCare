@@ -1,10 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+// Get pool from app.locals (shared pool from server.js)
+let pool;
 
 // Cache for table existence check (expires after 5 minutes)
 let tableExistsCache = {
@@ -19,6 +17,11 @@ let tableExistsCache = {
  */
 const checkAuditTableExists = async (req, res, next) => {
   try {
+    // Get pool from app.locals if not already set
+    if (!pool) {
+      pool = req.app.locals.pool;
+    }
+
     const now = Date.now();
 
     // Check cache first
@@ -105,6 +108,11 @@ const checkAuditTableExists = async (req, res, next) => {
  */
 router.post('/', async (req, res) => {
   try {
+    // Get pool from app.locals if not already set
+    if (!pool) {
+      pool = req.app.locals.pool;
+    }
+
     const {
       action_type,
       resource_type,
