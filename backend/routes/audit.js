@@ -135,6 +135,23 @@ router.post('/', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
+    // Check if audit_logs table exists
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM pg_tables
+        WHERE schemaname = 'public'
+        AND tablename = 'audit_logs'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      return res.status(503).json({
+        error: 'Audit logs table not found',
+        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
+        migration: 'backend/migrations/040_create_audit_logs_table.sql',
+      });
+    }
+
     const {
       user_id,
       user_email,
@@ -253,7 +270,20 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching audit logs:', error);
-    res.status(500).json({ error: 'Failed to fetch audit logs' });
+
+    // Check if error is due to missing table
+    if (error.message && error.message.includes('relation "audit_logs" does not exist')) {
+      return res.status(503).json({
+        error: 'Audit logs table not found',
+        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
+        migration: 'backend/migrations/040_create_audit_logs_table.sql',
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to fetch audit logs',
+      details: error.message,
+    });
   }
 });
 
