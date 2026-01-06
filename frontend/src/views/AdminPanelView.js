@@ -71,6 +71,7 @@ import {
   sanitizeString,
   safeJSONParse,
 } from '../utils/validators';
+import { hasPermission, isAdmin } from '../utils/rolePermissions';
 
 /**
  * Main Admin Panel View Component
@@ -101,7 +102,7 @@ const AdminPanelView = ({
   t,
 }) => {
   // ==================== CONTEXT ====================
-  const { setPlanTier, updateUserPreferences, planTier } = useApp();
+  const { setPlanTier, updateUserPreferences, planTier, user } = useApp();
 
   // ==================== STATE ====================
   const [activeTab, setActiveTab] = useState(ADMIN_TABS.CLINIC);
@@ -1907,37 +1908,57 @@ const AdminPanelView = ({
    * Render Roles & Permissions Tab
    * TODO: Extract to separate component RolesPermissionsTab.js
    */
-  const renderRolesPermissionsTab = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Role Permissions
-          </h2>
-          {/* Legend */}
-          <div className={`flex gap-4 mt-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            <span className="flex items-center gap-1">
-              <span className="text-green-500 font-semibold">V</span> = View
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-blue-500 font-semibold">C</span> = Create
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-yellow-500 font-semibold">E</span> = Edit
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-red-500 font-semibold">D</span> = Delete
-            </span>
+  const renderRolesPermissionsTab = () => {
+    // Check if user has permission to manage roles (admin only)
+    const canManageRoles = hasPermission(user, 'admin', 'roles');
+
+    return (
+      <div className="space-y-6">
+        {/* Permission Warning */}
+        {!canManageRoles && (
+          <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-yellow-50 border-yellow-300 text-yellow-800'}`}>
+            <div className="flex items-center gap-2">
+              <Lock className="w-5 h-5" />
+              <span className="font-medium">Read-only mode: Only administrators can modify role permissions</span>
+            </div>
           </div>
+        )}
+
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Role Permissions
+            </h2>
+            {/* Legend */}
+            <div className={`flex gap-4 mt-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              <span className="flex items-center gap-1">
+                <span className="text-green-500 font-semibold">V</span> = View
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-blue-500 font-semibold">C</span> = Create
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-yellow-500 font-semibold">E</span> = Edit
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-red-500 font-semibold">D</span> = Delete
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowCustomRoleForm(true)}
+            disabled={!canManageRoles}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              canManageRoles
+                ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                : 'bg-gray-400 cursor-not-allowed text-gray-200'
+            }`}
+            title={!canManageRoles ? 'Only administrators can create custom roles' : 'Create Custom Role'}
+          >
+            <Plus className="w-5 h-5" />
+            Create Custom Role
+          </button>
         </div>
-        <button
-          onClick={() => setShowCustomRoleForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Create Custom Role
-        </button>
-      </div>
 
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -1993,8 +2014,13 @@ const AdminPanelView = ({
                           setCustomRolePermissions(permissions);
                           setShowCustomRoleForm(true);
                         }}
-                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-                        title="Edit permissions"
+                        disabled={!canManageRoles}
+                        className={`p-2 rounded-lg transition-colors ${
+                          canManageRoles
+                            ? theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
+                            : 'opacity-50 cursor-not-allowed'
+                        }`}
+                        title={canManageRoles ? "Edit permissions" : "Only administrators can edit permissions"}
                       >
                         <Edit className="w-4 h-4 text-blue-500" />
                       </button>
@@ -2008,15 +2034,25 @@ const AdminPanelView = ({
                             setCustomRolePermissions(permissions);
                             setShowCustomRoleForm(true);
                           }}
-                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-                          title="Edit permissions"
+                          disabled={!canManageRoles}
+                          className={`p-2 rounded-lg transition-colors ${
+                            canManageRoles
+                              ? theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
+                              : 'opacity-50 cursor-not-allowed'
+                          }`}
+                          title={canManageRoles ? "Edit permissions" : "Only administrators can edit permissions"}
                         >
                           <Edit className="w-4 h-4 text-blue-500" />
                         </button>
                         <button
                           onClick={() => handleDeleteCustomRole(role)}
-                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-                          title="Delete role"
+                          disabled={!canManageRoles}
+                          className={`p-2 rounded-lg transition-colors ${
+                            canManageRoles
+                              ? theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
+                              : 'opacity-50 cursor-not-allowed'
+                          }`}
+                          title={canManageRoles ? "Delete role" : "Only administrators can delete roles"}
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </button>
@@ -2030,17 +2066,24 @@ const AdminPanelView = ({
         </table>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          onClick={handleSaveRolePermissionsClick}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
-        >
-          <Save className="w-5 h-5" />
-          Save Permissions
-        </button>
+        <div className="flex justify-end">
+          <button
+            onClick={handleSaveRolePermissionsClick}
+            disabled={!canManageRoles}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+              canManageRoles
+                ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                : 'bg-gray-400 cursor-not-allowed text-gray-200'
+            }`}
+            title={!canManageRoles ? 'Only administrators can save permission changes' : 'Save Permissions'}
+          >
+            <Save className="w-5 h-5" />
+            Save Permissions
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   /**
    * Render Subscription Plans Tab
