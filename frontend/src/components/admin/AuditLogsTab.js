@@ -105,6 +105,12 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
       setStats(statsData);
     } catch (error) {
       console.error('Error loading stats:', error);
+
+      // Check if migration is needed
+      if (error.message && (error.message.includes('503') || error.message.includes('table not found'))) {
+        setMigrationNeeded(true);
+      }
+      // Silently fail for stats - main error is shown by loadAuditLogs
     }
   }, [api, filters.start_date, filters.end_date]);
 
