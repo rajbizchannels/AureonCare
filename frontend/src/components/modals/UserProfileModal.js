@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { getTranslations } from '../../config/translations';
+import { useAudit } from '../../hooks/useAudit';
 
 const UserProfileModal = ({
   theme,
@@ -17,6 +18,7 @@ const UserProfileModal = ({
   addNotification,
   language
 }) => {
+  const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const t = getTranslations(language || 'en');
   // Local state for password change
   const [localPasswordData, setLocalPasswordData] = useState({
@@ -26,19 +28,43 @@ const UserProfileModal = ({
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  // Log modal open on mount
+  useEffect(() => {
+    startAction();
+    logModalOpen('UserProfileModal', {
+      module: 'Profile',
+      metadata: {
+        userId: user?.id,
+        userRole: user?.role,
+      },
+    });
+  }, []);
+
+  // Handle close with audit logging
+  const handleClose = () => {
+    logModalClose('UserProfileModal', {
+      module: 'Profile',
+      metadata: {
+        userId: user?.id,
+        userRole: user?.role,
+      },
+    });
+    setShowChangePassword(false);
+    onClose();
+  };
+
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         e.stopImmediatePropagation();
         e.preventDefault();
-        onClose();
-        setShowChangePassword(false);
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleEsc, true); // Use capture phase
     return () => window.removeEventListener('keydown', handleEsc, true);
-  }, [onClose, setShowChangePassword]);
+  }, [handleClose]);
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -72,6 +98,12 @@ const UserProfileModal = ({
       setLocalPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setShowChangePassword(false);
     } catch (error) {
+      logError('UserProfileModal', 'modal', error.message, {
+        module: 'Profile',
+        metadata: {
+          userId: user?.id,
+        },
+      });
       await addNotification('alert', error.message || t.failedToChangePassword);
     }
   };
@@ -89,11 +121,11 @@ const UserProfileModal = ({
         confirmText={t.updatePassword || 'Update Password'}
         cancelText={t.cancel || 'Cancel'}
       />
-      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
+      <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={handleClose}>
         <div className={`rounded-xl border max-w-2xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`flex items-center justify-between p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.userProfile || 'User Profile'}</h2>
-          <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
+          <button onClick={handleClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
         </div>
@@ -313,7 +345,7 @@ const UserProfileModal = ({
             >
               {t.editProfile || 'Edit Profile'}
             </button>
-            <button onClick={onClose} className={`flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <button onClick={handleClose} className={`flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {t.close || 'Close'}
             </button>
           </div>

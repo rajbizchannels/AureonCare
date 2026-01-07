@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Users, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotification, t }) => {
+  const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -23,6 +25,17 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingPayers, setLoadingPayers] = useState(true);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewPatientForm', {
+      module: 'EHR',
+      metadata: {
+        mode: 'create',
+      },
+    });
+  }, []);
 
   // Load insurance payers on mount
   useEffect(() => {
@@ -61,29 +74,42 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
   };
 
   const handleActualSubmit = async () => {
+    // Generate MRN
+    const mrn = `MRN${String(patients.length + 1).padStart(6, '0')}`;
+
+    const patientData = {
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      mrn: mrn,
+      dob: formData.dob,
+      gender: formData.gender,
+      phone: formData.phone,
+      email: formData.email,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      zip: formData.zip,
+      insurance: formData.insurance,
+      insurance_id: formData.insuranceId,
+      insurance_payer_id: formData.insurancePayerId || null,
+      status: 'Active'
+    };
+
     try {
-      // Generate MRN
-      const mrn = `MRN${String(patients.length + 1).padStart(6, '0')}`;
-
-      const patientData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        mrn: mrn,
-        dob: formData.dob,
-        gender: formData.gender,
-        phone: formData.phone,
-        email: formData.email,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        zip: formData.zip,
-        insurance: formData.insurance,
-        insurance_id: formData.insuranceId,
-        insurance_payer_id: formData.insurancePayerId || null,
-        status: 'Active'
-      };
-
       const newPatient = await api.createPatient(patientData);
+
+      // Log successful creation
+      logCreate('NewPatientForm', patientData, {
+        module: 'EHR',
+        resource_id: newPatient.id,
+        patient_id: newPatient.id,
+        metadata: {
+          mrn: mrn,
+          name: `${formData.firstName} ${formData.lastName}`,
+          insurance_payer_id: formData.insurancePayerId,
+        },
+      });
+
       // Add computed 'name' field for compatibility
       const patientWithName = {
         ...newPatient,
@@ -97,6 +123,12 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
     } catch (err) {
       console.error('Error creating patient:', err);
       addNotification('alert', t.failedToCreatePatient);
+
+      // Log error
+      logError('NewPatientForm', 'form', err.message || 'Failed to create patient', {
+        module: 'EHR',
+        metadata: { formData: patientData },
+      });
     }
   };
 

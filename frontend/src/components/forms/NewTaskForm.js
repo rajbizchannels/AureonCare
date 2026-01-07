@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { CheckSquare, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => {
+  const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -13,6 +15,17 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewTaskForm', {
+      module: 'Practice Management',
+      metadata: {
+        mode: 'create',
+      },
+    });
+  }, []);
 
   // ESC key handler
   useEffect(() => {
@@ -43,19 +56,30 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
   const handleActualSubmit = async () => {
     setShowConfirmation(false);
 
-    try {
-      const taskData = {
-        title: formData.title,
-        description: formData.description,
-        priority: formData.priority,
-        due_date: formData.dueDate || null,
-        status: formData.status,
-        assigned_to: formData.assignedTo || null
-      };
+    const taskData = {
+      title: formData.title,
+      description: formData.description,
+      priority: formData.priority,
+      due_date: formData.dueDate || null,
+      status: formData.status,
+      assigned_to: formData.assignedTo || null
+    };
 
+    try {
       const newTask = await api.createTask(taskData);
 
       await addNotification('task', `${t.newTaskCreated || 'New task created'}: ${formData.title}`);
+
+      // Log successful creation
+      logCreate('NewTaskForm', taskData, {
+        module: 'Practice Management',
+        resource_id: newTask.id,
+        metadata: {
+          priority: formData.priority,
+          status: formData.status,
+          assignedTo: formData.assignedTo,
+        },
+      });
 
       // Show success confirmation
       setShowSuccessConfirmation(true);
@@ -68,6 +92,12 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
     } catch (err) {
       console.error('Error creating task:', err);
       addNotification('alert', t.failedToCreateTask || 'Failed to create task. Please try again.');
+
+      // Log error
+      logError('NewTaskForm', 'form', err.message || 'Failed to create task', {
+        module: 'Practice Management',
+        metadata: { formData: taskData },
+      });
     }
   };
 
