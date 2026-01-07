@@ -48,6 +48,7 @@ import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import UserFormModal from '../components/modals/UserFormModal';
 import CredentialModal from '../components/modals/CredentialModal';
+import { useAudit } from '../hooks/useAudit';
 import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import { useClinicSettings } from '../hooks/useClinicSettings';
@@ -256,7 +257,20 @@ const AdminPanelView = ({
     [users]
   );
 
+  // ==================== AUDIT HOOK ====================
+
+  const { logViewAccess } = useAudit();
+
   // ==================== EFFECTS ====================
+
+  /**
+   * Log view access on mount
+   */
+  useEffect(() => {
+    logViewAccess('AdminPanelView', {
+      module: 'Admin',
+    });
+  }, []);
 
   /**
    * Sync currentPlan with planTier from context

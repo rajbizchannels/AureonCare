@@ -3,6 +3,7 @@ import { Microscope, X, Save } from 'lucide-react';
 import LabCPTMultiSelect from './LabCPTMultiSelect';
 import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewLabOrderForm = ({
   theme,
@@ -18,6 +19,7 @@ const NewLabOrderForm = ({
   editLabOrder = null,
   createDiagnosisOption = false
 }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patientId: patient?.id || '',
     providerId: user?.id || '',
@@ -43,6 +45,20 @@ const NewLabOrderForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createDiagnosis, setCreateDiagnosis] = useState(false);
   const [medicalCodes, setMedicalCodes] = useState([]);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewLabOrderForm', {
+      module: 'EHR',
+      patient_id: patient?.id || formData.patientId,
+      provider_id: user?.id || formData.providerId,
+      metadata: {
+        mode: editLabOrder ? 'edit' : 'create',
+        order_id: editLabOrder?.id,
+      },
+    });
+  }, []);
 
   // Load laboratories on mount
   useEffect(() => {
@@ -214,36 +230,62 @@ const NewLabOrderForm = ({
     setIsSubmitting(true);
     setShowConfirmation(false);
 
+    // Convert recipients array to JSON
+    const recipientIds = formData.recipients && formData.recipients.length > 0
+      ? formData.recipients.map(r => ({ id: r.id, name: r.name, type: r.type }))
+      : [];
+
+    const labOrderData = {
+      patient_id: formData.patientId,
+      provider_id: formData.providerId,
+      laboratory_id: formData.laboratoryId,
+      linked_diagnosis_id: formData.linkedDiagnosisId || null,
+      order_type: 'lab_test',
+      priority: formData.priority,
+      diagnosis_codes: formData.diagnosisCodes,
+      test_codes: formData.cptCodes.map(c => c.code),
+      clinical_notes: formData.clinicalNotes || null,
+      special_instructions: formData.instructions || null,
+      order_status: formData.status,
+      order_status_date: formData.statusDate || null,
+      frequency: formData.frequency || null,
+      collection_class: formData.class,
+      result_recipients: JSON.stringify(recipientIds),
+      send_to_vendor: false
+    };
+
     try {
-      // Convert recipients array to JSON
-      const recipientIds = formData.recipients && formData.recipients.length > 0
-        ? formData.recipients.map(r => ({ id: r.id, name: r.name, type: r.type }))
-        : [];
-
-      const labOrderData = {
-        patient_id: formData.patientId,
-        provider_id: formData.providerId,
-        laboratory_id: formData.laboratoryId,
-        linked_diagnosis_id: formData.linkedDiagnosisId || null,
-        order_type: 'lab_test',
-        priority: formData.priority,
-        diagnosis_codes: formData.diagnosisCodes,
-        test_codes: formData.cptCodes.map(c => c.code),
-        clinical_notes: formData.clinicalNotes || null,
-        special_instructions: formData.instructions || null,
-        order_status: formData.status,
-        order_status_date: formData.statusDate || null,
-        frequency: formData.frequency || null,
-        collection_class: formData.class,
-        result_recipients: JSON.stringify(recipientIds),
-        send_to_vendor: false
-      };
-
       let result;
       if (editLabOrder) {
         result = await api.updateLabOrder(editLabOrder.id, labOrderData);
+
+        // Log successful update
+        logUpdate('NewLabOrderForm', editLabOrder, labOrderData, {
+          module: 'EHR',
+          resource_id: editLabOrder.id,
+          patient_id: formData.patientId,
+          provider_id: formData.providerId,
+          metadata: {
+            priority: formData.priority,
+            status: formData.status,
+            testCodes: formData.cptCodes.map(c => c.code),
+          },
+        });
       } else {
         result = await api.createLabOrder(labOrderData);
+
+        // Log successful creation
+        logCreate('NewLabOrderForm', labOrderData, {
+          module: 'EHR',
+          resource_id: result.id,
+          patient_id: formData.patientId,
+          provider_id: formData.providerId,
+          metadata: {
+            priority: formData.priority,
+            status: formData.status,
+            testCodes: formData.cptCodes.map(c => c.code),
+          },
+        });
       }
 
       const selectedPatient = patients.find(p => p.id === formData.patientId) || patient;
@@ -284,6 +326,14 @@ const NewLabOrderForm = ({
       console.error('Error saving lab order:', err);
       const action = editLabOrder ? 'update' : 'create';
       addNotification('alert', `Failed to ${action} lab order. Please try again.`);
+
+      // Log error
+      logError('NewLabOrderForm', 'form', err.message || 'Failed to save lab order', {
+        module: 'EHR',
+        patient_id: formData.patientId,
+        provider_id: formData.providerId,
+        metadata: { formData: labOrderData },
+      });
     } finally {
       setIsSubmitting(false);
     }

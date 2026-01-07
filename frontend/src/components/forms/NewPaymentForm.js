@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, X, Save, Lock } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addNotification, editingPayment }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patientId: editingPayment?.patient_id?.toString() || '',
     claimId: editingPayment?.claim_id?.toString() || '',
@@ -29,6 +31,19 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
     { id: 'google_pay', name: 'Google Pay', icon: '🔵' },
     { id: 'bank_transfer', name: 'Bank Transfer', icon: '🏦' }
   ];
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewPaymentForm', {
+      module: 'RCM',
+      patient_id: editingPayment?.patient_id,
+      metadata: {
+        mode: editingPayment ? 'edit' : 'create',
+        payment_id: editingPayment?.id,
+      },
+    });
+  }, []);
 
   // ESC key handler
   useEffect(() => {
@@ -115,10 +130,10 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
   const handleActualSubmit = async () => {
     setProcessing(true);
 
-    try {
-      const patient = patients.find(p => p.id.toString() === formData.patientId);
-      const claim = claims.find(c => c.id.toString() === formData.claimId);
+    const patient = patients.find(p => p.id.toString() === formData.patientId);
+    const claim = claims.find(c => c.id.toString() === formData.claimId);
 
+    try {
       if (editingPayment) {
         // Update existing payment
         const paymentData = {
@@ -131,6 +146,19 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
         };
 
         const updatedPayment = await api.updatePayment(editingPayment.id, paymentData);
+
+        // Log update
+        logUpdate('NewPaymentForm', editingPayment, paymentData, {
+          module: 'RCM',
+          resource_id: editingPayment.id,
+          patient_id: formData.patientId,
+          metadata: {
+            amount: paymentData.amount,
+            payment_method: paymentData.payment_method,
+            claim_id: formData.claimId,
+          },
+        });
+
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
         await addNotification('success', `Payment updated successfully for ${patientName}`);
         onSuccess(updatedPayment);
@@ -157,8 +185,8 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
           claim_id: formData.claimId || null,
           amount: parseFloat(formData.amount),
           payment_method: formData.paymentMethod,
-          payment_status: 'completed', // In production, this would be 'processing' initially
-          transaction_id: `TXN-${Date.now()}`, // Simulated transaction ID
+          payment_status: 'completed',
+          transaction_id: `TXN-${Date.now()}`,
           card_last_four: formData.cardNumber.replace(/\D/g, '').slice(-4),
           card_brand: cardBrand,
           payment_date: new Date().toISOString(),
@@ -167,6 +195,19 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
         };
 
         const newPayment = await api.createPayment(paymentData);
+
+        // Log creation
+        logCreate('NewPaymentForm', paymentData, {
+          module: 'RCM',
+          resource_id: newPayment.id,
+          patient_id: formData.patientId,
+          metadata: {
+            payment_number: paymentNo,
+            amount: paymentData.amount,
+            payment_method: paymentData.payment_method,
+            claim_id: formData.claimId,
+          },
+        });
 
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
         await addNotification('success', `Payment ${paymentNo} processed successfully for ${patientName}`);
@@ -177,6 +218,17 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
     } catch (err) {
       console.error('Error processing payment:', err);
       await addNotification('alert', editingPayment ? 'Payment update failed. Please try again.' : 'Payment processing failed. Please try again.');
+
+      // Log error
+      logError('NewPaymentForm', 'form', err.message || `Failed to ${editingPayment ? 'update' : 'process'} payment`, {
+        module: 'RCM',
+        patient_id: formData.patientId,
+        metadata: {
+          mode: editingPayment ? 'edit' : 'create',
+          amount: formData.amount,
+          payment_method: formData.paymentMethod,
+        },
+      });
     } finally {
       setProcessing(false);
     }

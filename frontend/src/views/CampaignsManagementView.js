@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Mail, Send, Calendar, Inbox, Search } from 'lucide-react';
 import NewCampaignForm from '../components/forms/NewCampaignForm';
+import { useAudit } from '../hooks/useAudit';
 
 const CampaignsManagementView = ({
   theme,
@@ -16,6 +17,14 @@ const CampaignsManagementView = ({
   const [showForm, setShowFormLocal] = useState(false);
   const [editingCampaign, setEditingCampaignLocal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('CampaignsManagementView', {
+      module: 'CRM',
+    });
+  }, []);
 
   useEffect(() => {
     loadCampaigns();

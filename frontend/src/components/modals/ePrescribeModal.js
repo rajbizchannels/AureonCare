@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus, Trash2 } from 'lucide-react';
+import { useAudit } from '../../hooks/useAudit';
 
 const EPrescribeModal = ({
   theme,
@@ -13,6 +14,8 @@ const EPrescribeModal = ({
   addNotification,
   inline = false
 }) => {
+  const { logModalOpen, logModalClose, logError, startAction } = useAudit();
+
   // Normalize provider ID early - accept both 'id' and 'user_id'
   const normalizedProvider = React.useMemo(() => {
     if (!provider) return null;
@@ -73,7 +76,7 @@ const EPrescribeModal = ({
       if (!hasShownErrorRef.current) {
         hasShownErrorRef.current = true;
         addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
-        onClose();
+        if (onClose) onClose(); // Can't use handleClose here as it's not defined yet
       }
       return;
     }
@@ -87,7 +90,7 @@ const EPrescribeModal = ({
       if (!hasShownErrorRef.current) {
         hasShownErrorRef.current = true;
         addNotification('alert', 'Cannot open ePrescribe: Provider data is missing');
-        onClose();
+        if (onClose) onClose(); // Can't use handleClose here as it's not defined yet
       }
       return;
     }
@@ -97,6 +100,35 @@ const EPrescribeModal = ({
     console.log('[ePrescribe] Modal opened successfully with valid data');
   }, [patient, normalizedProvider, provider, addNotification, onClose]);
 
+  // Log modal open on mount
+  useEffect(() => {
+    if (patient && normalizedProvider) {
+      startAction();
+      logModalOpen('ePrescribeModal', {
+        module: 'EHR',
+        patient_id: patient?.id,
+        provider_id: normalizedProvider?.id,
+        metadata: {
+          mode: prescription ? 'edit' : 'create',
+          inline: inline,
+        },
+      });
+    }
+  }, []); // Run once on mount
+
+  // Handle close with audit logging
+  const handleClose = useCallback(() => {
+    logModalClose('ePrescribeModal', {
+      module: 'EHR',
+      patient_id: patient?.id,
+      provider_id: normalizedProvider?.id,
+      metadata: {
+        inline: inline,
+      },
+    });
+    onClose();
+  }, [logModalClose, patient, normalizedProvider, inline, onClose]);
+
   // ESC key handler (only in modal mode)
   useEffect(() => {
     if (inline) return; // Skip ESC handler in inline mode
@@ -105,12 +137,12 @@ const EPrescribeModal = ({
       if (e.key === 'Escape') {
         e.stopImmediatePropagation();
         e.preventDefault();
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleEsc, true);
     return () => window.removeEventListener('keydown', handleEsc, true);
-  }, [onClose, inline]);
+  }, [handleClose, inline]);
 
   // Debug: Log render state
   useEffect(() => {
@@ -578,7 +610,7 @@ const EPrescribeModal = ({
 
         addNotification('success', 'Prescription updated successfully');
         if (onSuccess) onSuccess(resultPrescription);
-        onClose();
+        handleClose();
       } catch (error) {
         console.error('[ePrescribe] Error updating prescription:', error);
         addNotification('alert', `Failed to update prescription: ${error.message}`);
@@ -644,9 +676,14 @@ const EPrescribeModal = ({
       }
 
       if (onSuccess) onSuccess(createdPrescriptions);
-      onClose();
+      handleClose();
     } catch (error) {
       console.error('[ePrescribe] Error submitting prescriptions:', error);
+      logError('ePrescribeModal', 'modal', error.message, {
+        module: 'EHR',
+        patient_id: patient?.id,
+        provider_id: normalizedProvider?.id,
+      });
       addNotification('alert', `Failed to submit prescriptions: ${error.message}`);
     } finally {
       setLoading(false);
@@ -986,7 +1023,7 @@ const EPrescribeModal = ({
               {prescription ? 'Update prescription details below' : (addedMedications.length > 0 ? `${addedMedications.length} medication(s) added` : 'Search and add medications below')}
             </p>
           </div>
-          <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
+          <button onClick={handleClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
         </div>
@@ -1470,7 +1507,7 @@ const EPrescribeModal = ({
           {inline && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className={`mt-3 flex items-center gap-2 text-xs font-medium transition-colors ${
                 theme === 'dark'
                   ? 'text-red-400 hover:text-red-300'
@@ -1491,7 +1528,7 @@ const EPrescribeModal = ({
   }
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
+    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={handleClose}>
       {content}
     </div>
   );

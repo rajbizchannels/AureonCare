@@ -76,6 +76,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [editingRecord, setEditingRecord] = useState(null);
   const [editRecordData, setEditRecordData] = useState({ title: '', description: '', providerId: '' });
 
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('PatientPortalView', {
+      module: 'Patient Portal',
+      patient_id: user?.id,
+    });
+  }, []);
+
   useEffect(() => {
     if (user) {
       // Initialize profile data from user
