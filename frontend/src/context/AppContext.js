@@ -404,6 +404,9 @@ const AppProvider = ({ children }) => {
     user,
     setUser,
 
+    // API service
+    api,
+
     // Helper functions
     fetchAllData,
     updateUserPreferences,
