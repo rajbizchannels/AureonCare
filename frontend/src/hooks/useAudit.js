@@ -76,6 +76,12 @@ export const useAudit = () => {
       includeDuration = false,
     }) => {
       try {
+        // Check if api is available
+        if (!api || !api.createAuditLog) {
+          console.warn('Audit logging unavailable: API not accessible');
+          return;
+        }
+
         const auditData = {
           action_type,
           resource_type,
