@@ -178,7 +178,16 @@ const AdminPanelView = ({
     appointments: { view: false, create: false, edit: false, delete: false },
     claims: { view: false, create: false, edit: false, delete: false },
     ehr: { view: false, create: false, edit: false, delete: false },
+    telehealth: { view: false, create: false, edit: false, delete: false },
+    crm: { view: false, create: false, edit: false, delete: false },
+    rcm: { view: false, create: false, edit: false, delete: false },
+    practiceManagement: { view: false, create: false, edit: false, delete: false },
+    clinicalServices: { view: false, create: false, edit: false, delete: false },
+    reports: { view: false, create: false, edit: false, delete: false },
+    users: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, create: false, edit: false, delete: false },
+    backup: { view: false, create: false, edit: false, delete: false },
+    audit: { view: false, create: false, edit: false, delete: false },
   });
 
   // Confirmation modal state
@@ -2663,21 +2672,39 @@ const AdminPanelView = ({
                 <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Permissions
                 </h3>
-                <div className="space-y-4">
-                  {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => (
-                    <div key={module} className={`p-4 border rounded-lg ${
-                      theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-gray-50'
+                <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Configure module-level permissions for this role. Toggle checkboxes to grant or revoke access.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { id: 'patients', label: 'Patients' },
+                    { id: 'appointments', label: 'Appointments' },
+                    { id: 'claims', label: 'Claims' },
+                    { id: 'ehr', label: 'EHR (Electronic Health Records)' },
+                    { id: 'telehealth', label: 'Telehealth' },
+                    { id: 'crm', label: 'CRM (Customer Relations)' },
+                    { id: 'rcm', label: 'RCM (Revenue Cycle)' },
+                    { id: 'practiceManagement', label: 'Practice Management' },
+                    { id: 'clinicalServices', label: 'Clinical Services' },
+                    { id: 'reports', label: 'Reports' },
+                    { id: 'users', label: 'Users' },
+                    { id: 'settings', label: 'Settings' },
+                    { id: 'backup', label: 'Backup & Restore' },
+                    { id: 'audit', label: 'Audit Logs' },
+                  ].map((module) => (
+                    <div key={module.id} className={`p-4 border rounded-lg ${
+                      theme === 'dark' ? 'border-slate-700 bg-slate-800/50' : 'border-gray-300 bg-gray-50'
                     }`}>
-                      <h4 className={`font-medium mb-3 capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {module}
+                      <h4 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {module.label}
                       </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 gap-3">
                         {['view', 'create', 'edit', 'delete'].map((action) => (
                           <label key={action} className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={customRolePermissions[module]?.[action] || false}
-                              onChange={() => handleToggleCustomRolePermission(module, action)}
+                              checked={customRolePermissions[module.id]?.[action] || false}
+                              onChange={() => handleToggleCustomRolePermission(module.id, action)}
                               className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
                             />
                             <span className={`text-sm capitalize ${
