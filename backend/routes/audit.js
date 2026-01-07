@@ -114,6 +114,13 @@ router.post('/', async (req, res) => {
     }
 
     const {
+      // User information (from frontend)
+      user_id: body_user_id,
+      user_email: body_user_email,
+      user_name: body_user_name,
+      user_role: body_user_role,
+
+      // Action information
       action_type,
       resource_type,
       resource_name,
@@ -123,10 +130,14 @@ router.post('/', async (req, res) => {
       old_values,
       new_values,
       changed_fields,
+
+      // Related entities
       patient_id,
       provider_id,
       appointment_id,
       claim_id,
+
+      // Status
       status = 'success',
       error_message,
       duration_ms,
@@ -140,13 +151,13 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Get user information from session/token
-    const user_id = req.user?.id || null;
-    const user_email = req.user?.email || null;
-    const user_name = req.user?.name || req.user?.first_name && req.user?.last_name
-      ? `${req.user.first_name} ${req.user.last_name}`
-      : null;
-    const user_role = req.user?.role || null;
+    // Get user information - prefer body over session
+    const user_id = body_user_id || req.user?.id || null;
+    const user_email = body_user_email || req.user?.email || null;
+    const user_name = body_user_name ||
+      (req.user?.name) ||
+      (req.user?.first_name && req.user?.last_name ? `${req.user.first_name} ${req.user.last_name}` : null);
+    const user_role = body_user_role || req.user?.role || null;
 
     // Get request metadata
     const ip_address = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;

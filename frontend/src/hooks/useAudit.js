@@ -83,6 +83,13 @@ export const useAudit = () => {
         }
 
         const auditData = {
+          // User information
+          user_id: user?.id || null,
+          user_email: user?.email || null,
+          user_name: user ? `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || user.email : null,
+          user_role: user?.role || null,
+
+          // Action information
           action_type,
           resource_type,
           resource_name,
@@ -92,10 +99,14 @@ export const useAudit = () => {
           old_values,
           new_values,
           changed_fields,
+
+          // Related entities
           patient_id,
           provider_id,
           appointment_id,
           claim_id,
+
+          // Status
           status,
           error_message,
           metadata,
@@ -121,7 +132,7 @@ export const useAudit = () => {
         console.error('Error in logAudit:', error);
       }
     },
-    [api, getDuration]
+    [api, user, getDuration]
   );
 
   /**
