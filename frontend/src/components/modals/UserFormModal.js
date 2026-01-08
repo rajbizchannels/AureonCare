@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, User, Mail, Phone, Lock, Shield, Building, FileText, Stethoscope, Globe, Clock } from 'lucide-react';
+import { X, User, Mail, Phone, Lock, Shield, Building, FileText, Stethoscope, Globe, Clock, Languages } from 'lucide-react';
 
 /**
  * UserFormModal - Modal for adding/editing users
@@ -18,6 +18,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
     country: '',
     timezone: '',
     license_number: '',
+    language: '',
     password: '',
     confirmPassword: '',
   });
@@ -40,6 +41,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
         country: user.country || '',
         timezone: user.timezone || '',
         license_number: user.license_number || '',
+        language: user.language || '',
         password: '',
         confirmPassword: '',
       });
@@ -56,6 +58,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
         country: '',
         timezone: '',
         license_number: '',
+        language: '',
         password: '',
         confirmPassword: '',
       });
@@ -137,6 +140,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
       country: '',
       timezone: '',
       license_number: '',
+      language: '',
       password: '',
       confirmPassword: '',
     });
@@ -467,6 +471,43 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
                   <option value="Australia/Sydney">Sydney (AEDT)</option>
                 </select>
               </div>
+            </div>
+          </div>
+
+          {/* Language */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${
+              theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+            }`}>
+              {t.language || 'Language'}
+            </label>
+            <div className="relative">
+              <Languages className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+              }`} />
+              <select
+                value={formData.language}
+                onChange={(e) => handleChange('language', e.target.value)}
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              >
+                <option value="">Select Language</option>
+                <option value="en">English</option>
+                <option value="es">Español (Spanish)</option>
+                <option value="fr">Français (French)</option>
+                <option value="de">Deutsch (German)</option>
+                <option value="it">Italiano (Italian)</option>
+                <option value="pt">Português (Portuguese)</option>
+                <option value="zh">中文 (Chinese)</option>
+                <option value="ja">日本語 (Japanese)</option>
+                <option value="ko">한국어 (Korean)</option>
+                <option value="ar">العربية (Arabic)</option>
+                <option value="hi">हिन्दी (Hindi)</option>
+                <option value="ru">Русский (Russian)</option>
+              </select>
             </div>
           </div>
 
