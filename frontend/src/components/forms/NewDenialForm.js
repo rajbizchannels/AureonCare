@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, X, Save, Flag } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose, onSuccess, addNotification }) => {
+  const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patientId: '',
     claimId: '',
@@ -60,6 +62,19 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
     { code: 'OA-23', description: 'Indication of medical necessity missing' },
     { code: 'OA-109', description: 'Claim not covered by this payer' }
   ];
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewDenialForm', {
+      module: 'RCM',
+      metadata: {
+        mode: 'create',
+        availablePatients: patients?.length || 0,
+        availableClaims: claims?.length || 0,
+      },
+    });
+  }, []);
 
   // ESC key handler
   useEffect(() => {
@@ -136,31 +151,44 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
   const handleActualSubmit = async () => {
     setProcessing(true);
 
+    const patient = patients.find(p => p.id.toString() === formData.patientId);
+    const claim = claims.find(c => c.id.toString() === formData.claimId);
+
+    const denialData = {
+      claim_id: formData.claimId,
+      patient_id: formData.patientId,
+      insurance_payer_id: formData.insurance_payer_id,
+      denial_date: formData.denial_date,
+      denial_amount: parseFloat(formData.denial_amount),
+      denied_service_date: formData.denied_service_date || null,
+      denial_reason_code: formData.denial_reason_code,
+      denial_reason_description: formData.denial_reason_description,
+      denial_category: formData.denial_category,
+      appeal_status: 'not_appealed',
+      appeal_deadline: formData.appeal_deadline,
+      status: 'open',
+      eob_number: formData.eob_number,
+      era_number: formData.era_number,
+      priority: formData.priority,
+      notes: formData.notes,
+      created_by: 'Current User' // This should come from auth context
+    };
+
     try {
-      const patient = patients.find(p => p.id.toString() === formData.patientId);
-      const claim = claims.find(c => c.id.toString() === formData.claimId);
+      const result = await api.createDenial(denialData);
 
-      const denialData = {
-        claim_id: formData.claimId,
+      // Log successful creation
+      logCreate('NewDenialForm', denialData, {
+        module: 'RCM',
+        resource_id: result.id,
         patient_id: formData.patientId,
-        insurance_payer_id: formData.insurance_payer_id,
-        denial_date: formData.denial_date,
-        denial_amount: parseFloat(formData.denial_amount),
-        denied_service_date: formData.denied_service_date || null,
-        denial_reason_code: formData.denial_reason_code,
-        denial_reason_description: formData.denial_reason_description,
-        denial_category: formData.denial_category,
-        appeal_status: 'not_appealed',
-        appeal_deadline: formData.appeal_deadline,
-        status: 'open',
-        eob_number: formData.eob_number,
-        era_number: formData.era_number,
-        priority: formData.priority,
-        notes: formData.notes,
-        created_by: 'Current User' // This should come from auth context
-      };
-
-      await api.createDenial(denialData);
+        claim_id: formData.claimId,
+        metadata: {
+          denial_category: formData.denial_category,
+          denial_amount: formData.denial_amount,
+          priority: formData.priority,
+        },
+      });
 
       addNotification(
         `Denial created successfully for ${patient?.first_name} ${patient?.last_name} - ${claim?.claim_number}`,
@@ -172,6 +200,15 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
       onClose();
     } catch (error) {
       console.error('Error creating denial:', error);
+
+      // Log error
+      logError('NewDenialForm', 'form', error.message || 'Failed to create denial', {
+        module: 'RCM',
+        patient_id: formData.patientId,
+        claim_id: formData.claimId,
+        metadata: { formData: denialData },
+      });
+
       addNotification(error.message || 'Failed to create denial', 'error');
     } finally {
       setProcessing(false);

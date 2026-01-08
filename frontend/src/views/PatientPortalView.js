@@ -5,6 +5,7 @@ import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
+import { useAudit } from '../hooks/useAudit';
 
 const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const { language, setLanguage, setTheme } = useApp();
@@ -75,6 +76,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [editRecordData, setEditRecordData] = useState({ title: '', description: '', providerId: '' });
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('PatientPortalView', {
+      module: 'Patient Portal',
+      patient_id: user?.id,
+    });
+  }, []);
 
   useEffect(() => {
     if (user) {

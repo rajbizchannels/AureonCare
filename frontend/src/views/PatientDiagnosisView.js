@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Activity, Plus, Search, Calendar, User, Edit2, Trash2, Filter, AlertCircle } from 'lucide-react';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import { useAudit } from '../hooks/useAudit';
 
 /**
  * PatientDiagnosisView - Manage patient diagnoses in practice management
@@ -26,6 +27,15 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
   const [filterPatient, setFilterPatient] = useState('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [diagnosisToDelete, setDiagnosisToDelete] = useState(null);
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('PatientDiagnosisView', {
+      module: 'EHR',
+      patient_id: selectedPatient?.id,
+    });
+  }, []);
 
   // Load initial data
   useEffect(() => {

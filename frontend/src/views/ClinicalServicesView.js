@@ -3,6 +3,7 @@ import { Pill, Microscope, Plus, Edit, Trash2, ArrowLeft, RefreshCw, Search, Act
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewPharmacyForm from '../components/forms/NewPharmacyForm';
 import NewLaboratoryForm from '../components/forms/NewLaboratoryForm';
+import { useAudit } from '../hooks/useAudit';
 
 const ClinicalServicesView = ({
   theme,
@@ -35,6 +36,14 @@ const ClinicalServicesView = ({
   const [selectedResourceType, setSelectedResourceType] = useState('all');
 
   const resourceTypes = ['all', 'Patient', 'Observation', 'Condition', 'Medication', 'Procedure', 'MedicationRequest', 'ServiceRequest'];
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('ClinicalServicesView', {
+      module: 'EHR',
+    });
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'pharmacies') {

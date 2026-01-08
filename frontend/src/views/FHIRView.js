@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Database, RefreshCw, Download, Upload, Check, AlertCircle, FileText, User, Activity, ArrowLeft } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
+import { useAudit } from '../hooks/useAudit';
 
 const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule }) => {
   const [fhirResources, setFhirResources] = useState([]);
@@ -10,6 +11,14 @@ const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule }) =
   const [selectedPatient, setSelectedPatient] = useState(null);
 
   const resourceTypes = ['all', 'Patient', 'Observation', 'Condition', 'Medication', 'Procedure'];
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('FHIRView', {
+      module: 'FHIR',
+    });
+  }, []);
 
   useEffect(() => {
     fetchFhirResources();

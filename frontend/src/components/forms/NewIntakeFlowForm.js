@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { GitBranch, X, Save } from 'lucide-react';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewIntakeFlowForm = ({ theme, api, patients, editingFlow, onClose, onSuccess, addNotification }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patient_id: editingFlow?.patient_id || '',
     flow_type: editingFlow?.flow_type || 'new_patient',
@@ -28,6 +30,19 @@ const NewIntakeFlowForm = ({ theme, api, patients, editingFlow, onClose, onSucce
     { id: 'expired', name: 'Expired' }
   ];
 
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewIntakeFlowForm', {
+      module: 'Patient Intake',
+      metadata: {
+        mode: editingFlow ? 'edit' : 'create',
+        flow_id: editingFlow?.id || null,
+        availablePatients: patients?.length || 0,
+      },
+    });
+  }, []);
+
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape' && !processing) {
@@ -44,26 +59,52 @@ const NewIntakeFlowForm = ({ theme, api, patients, editingFlow, onClose, onSucce
     e.preventDefault();
     setProcessing(true);
 
+    const patient = patients.find(p => p.id?.toString() === formData.patient_id);
+
+    const flowData = {
+      patient_id: formData.patient_id,
+      flow_type: formData.flow_type,
+      flow_name: formData.flow_name,
+      total_steps: parseInt(formData.total_steps),
+      current_step: parseInt(formData.current_step),
+      status: formData.status,
+      notes: formData.notes
+    };
+
     try {
-      const patient = patients.find(p => p.id?.toString() === formData.patient_id);
-
-      const flowData = {
-        patient_id: formData.patient_id,
-        flow_type: formData.flow_type,
-        flow_name: formData.flow_name,
-        total_steps: parseInt(formData.total_steps),
-        current_step: parseInt(formData.current_step),
-        status: formData.status,
-        notes: formData.notes
-      };
-
       let result;
       if (editingFlow) {
         result = await api.updateIntakeFlow(editingFlow.id, flowData);
+
+        // Log successful update
+        logUpdate('NewIntakeFlowForm', flowData, {
+          module: 'Patient Intake',
+          resource_id: editingFlow.id,
+          patient_id: formData.patient_id,
+          metadata: {
+            flow_type: formData.flow_type,
+            flow_name: formData.flow_name,
+            status: formData.status,
+          },
+        });
+
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
         await addNotification('success', `Intake flow updated successfully for ${patientName}`);
       } else {
         result = await api.createIntakeFlow(flowData);
+
+        // Log successful creation
+        logCreate('NewIntakeFlowForm', flowData, {
+          module: 'Patient Intake',
+          resource_id: result.id,
+          patient_id: formData.patient_id,
+          metadata: {
+            flow_type: formData.flow_type,
+            flow_name: formData.flow_name,
+            total_steps: formData.total_steps,
+          },
+        });
+
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
         await addNotification('success', `Intake flow created successfully for ${patientName}`);
       }
@@ -71,6 +112,14 @@ const NewIntakeFlowForm = ({ theme, api, patients, editingFlow, onClose, onSucce
       onSuccess(result);
     } catch (err) {
       console.error('Error saving intake flow:', err);
+
+      // Log error
+      logError('NewIntakeFlowForm', 'form', err.message || (editingFlow ? 'Failed to update intake flow' : 'Failed to create intake flow'), {
+        module: 'Patient Intake',
+        patient_id: formData.patient_id,
+        metadata: { formData: flowData },
+      });
+
       await addNotification('error', editingFlow ? 'Failed to update intake flow' : 'Failed to create intake flow');
     } finally {
       setProcessing(false);

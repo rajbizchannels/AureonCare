@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, ArrowLeft, UserPlus } from 'lucide-react';
+import { useAudit } from '../../hooks/useAudit';
 
 const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) => {
+  const { logViewAccess, logError } = useAudit();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -14,6 +16,13 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
   });
   const [registerError, setRegisterError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Log page access on mount
+  useEffect(() => {
+    logViewAccess('RegisterPage', {
+      module: 'Auth',
+    });
+  }, []);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -56,6 +65,13 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
 
       onClose();
     } catch (error) {
+      logError('RegisterPage', 'view', error.message, {
+        module: 'Auth',
+        metadata: {
+          // DO NOT log password or sensitive data
+          registrationAttempt: true,
+        },
+      });
       setRegisterError(error.message || 'Registration failed');
     } finally {
       setLoading(false);

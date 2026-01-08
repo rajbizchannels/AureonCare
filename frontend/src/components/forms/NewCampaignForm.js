@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Send, Users, Calendar } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, editingCampaign = null }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [loading, setLoading] = useState(false);
   const [offerings, setOfferings] = useState([]);
   const [loadingOfferings, setLoadingOfferings] = useState(true);
@@ -16,6 +18,18 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
     scheduledDate: '',
     status: 'draft'
   });
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewCampaignForm', {
+      module: 'CRM',
+      metadata: {
+        mode: editingCampaign ? 'edit' : 'create',
+        campaign_id: editingCampaign?.id,
+      },
+    });
+  }, []);
 
   useEffect(() => {
     const loadOfferings = async () => {
@@ -68,29 +82,59 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
     setLoading(true);
     setShowConfirmation(false);
 
-    try {
-      const campaignData = {
-        name: formData.name.trim(),
-        subject: formData.subject.trim(),
-        message: formData.message.trim() || null,
-        offeringId: formData.offeringId || null,
-        targetAudience: formData.targetAudience,
-        scheduledDate: formData.scheduledDate || null,
-        status: formData.status
-      };
+    const campaignData = {
+      name: formData.name.trim(),
+      subject: formData.subject.trim(),
+      message: formData.message.trim() || null,
+      offeringId: formData.offeringId || null,
+      targetAudience: formData.targetAudience,
+      scheduledDate: formData.scheduledDate || null,
+      status: formData.status
+    };
 
+    try {
       let result;
       if (editingCampaign) {
         result = await api.updateCampaign(editingCampaign.id, campaignData);
+
+        // Log update
+        logUpdate('NewCampaignForm', editingCampaign, campaignData, {
+          module: 'CRM',
+          resource_id: editingCampaign.id,
+          metadata: {
+            name: campaignData.name,
+            targetAudience: campaignData.targetAudience,
+            status: campaignData.status,
+          },
+        });
+
         addNotification('success', t.campaignUpdatedSuccessfully || 'Campaign updated successfully');
       } else {
         result = await api.createCampaign(campaignData);
+
+        // Log creation
+        logCreate('NewCampaignForm', campaignData, {
+          module: 'CRM',
+          resource_id: result.id,
+          metadata: {
+            name: campaignData.name,
+            targetAudience: campaignData.targetAudience,
+            status: campaignData.status,
+          },
+        });
+
         addNotification('success', t.campaignCreatedSuccessfully || 'Campaign created successfully');
       }
       onSuccess(result);
     } catch (error) {
       console.error(`Error ${editingCampaign ? 'updating' : 'creating'} campaign:`, error);
       addNotification('alert', error.message || `Failed to ${editingCampaign ? 'update' : 'create'} campaign`);
+
+      // Log error
+      logError('NewCampaignForm', 'form', error.message || `Failed to ${editingCampaign ? 'update' : 'create'} campaign`, {
+        module: 'CRM',
+        metadata: { formData: campaignData, mode: editingCampaign ? 'edit' : 'create' },
+      });
     } finally {
       setLoading(false);
     }

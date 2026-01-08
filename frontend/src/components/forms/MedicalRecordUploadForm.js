@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, X, FileText, Image, File } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'light', providers = [] }) => {
+  const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -14,6 +16,18 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
   const [error, setError] = useState('');
   const [preview, setPreview] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('MedicalRecordUploadForm', {
+      module: 'EHR',
+      patient_id: patientId,
+      metadata: {
+        availableProviders: providers?.length || 0,
+      },
+    });
+  }, []);
 
   const classifications = [
     'General',
@@ -83,6 +97,15 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
     setUploading(true);
     setError('');
 
+    const uploadData = {
+      title: formData.title,
+      description: formData.description,
+      classification: formData.classification,
+      fileName: formData.file?.name,
+      fileSize: formData.file?.size,
+      fileType: formData.file?.type,
+    };
+
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('file', formData.file);
@@ -107,6 +130,19 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
 
       const result = await response.json();
 
+      // Log successful upload
+      logCreate('MedicalRecordUploadForm', uploadData, {
+        module: 'EHR',
+        resource_id: result.id,
+        patient_id: patientId,
+        provider_id: formData.providerId || undefined,
+        metadata: {
+          classification: formData.classification,
+          fileName: formData.file?.name,
+          fileSize: formData.file?.size,
+        },
+      });
+
       // Reset form
       setFormData({
         title: '',
@@ -123,6 +159,14 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
     } catch (error) {
       console.error('Upload error:', error);
       setError(error.message || 'Failed to upload file');
+
+      // Log error
+      logError('MedicalRecordUploadForm', 'form', error.message || 'Failed to upload file', {
+        module: 'EHR',
+        patient_id: patientId,
+        provider_id: formData.providerId || undefined,
+        metadata: { formData: uploadData },
+      });
     } finally {
       setUploading(false);
     }
