@@ -574,7 +574,7 @@ const AdminPanelView = ({
           setUserResultModalConfig({
             type: 'success',
             title: t.success || 'Success',
-            message: t.userUpdatedSuccessfully || 'User updated successfully',
+            message: (t.userUpdatedSuccessfully || 'User updated successfully') + '. Changes will take effect after logout and login.',
           });
           setShowUserResultModal(true);
         } else {
@@ -604,7 +604,7 @@ const AdminPanelView = ({
           setUserResultModalConfig({
             type: 'success',
             title: t.success || 'Success',
-            message: t.userCreatedSuccessfully || 'User created successfully',
+            message: (t.userCreatedSuccessfully || 'User created successfully') + '. Changes will take effect after logout and login.',
           });
           setShowUserResultModal(true);
         }

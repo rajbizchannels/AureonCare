@@ -499,14 +499,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
                 <option value="es">Español (Spanish)</option>
                 <option value="fr">Français (French)</option>
                 <option value="de">Deutsch (German)</option>
-                <option value="it">Italiano (Italian)</option>
-                <option value="pt">Português (Portuguese)</option>
-                <option value="zh">中文 (Chinese)</option>
-                <option value="ja">日本語 (Japanese)</option>
-                <option value="ko">한국어 (Korean)</option>
                 <option value="ar">العربية (Arabic)</option>
-                <option value="hi">हिन्दी (Hindi)</option>
-                <option value="ru">Русский (Russian)</option>
               </select>
             </div>
           </div>
