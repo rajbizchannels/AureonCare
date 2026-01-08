@@ -137,6 +137,7 @@ app.use('/api/medical-codes', require('./routes/medical-codes'));
 app.use('/api/insurance-payers', require('./routes/insurance-payers'));
 app.use('/api/intake-forms', require('./routes/intake-forms'));
 app.use('/api/backup', require('./routes/backup'));
+app.use('/api/archive', require('./routes/archive'));
 app.use('/api/audit', require('./routes/audit'));
 
 // Serve uploaded files

@@ -61,6 +61,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users: { view: true, create: true, edit: true, delete: true },
     settings: { view: true, create: true, edit: true, delete: true },
     backup: { view: true, create: true, edit: true, delete: true },
+    archive: { view: true, create: true, edit: true, delete: true },
     audit: { view: true, create: false, edit: false, delete: true },
   },
   doctor: {
@@ -77,6 +78,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users: { view: true, create: false, edit: false, delete: false },
     settings: { view: false, create: false, edit: false, delete: false },
     backup: { view: false, create: false, edit: false, delete: false },
+    archive: { view: false, create: false, edit: false, delete: false },
     audit: { view: false, create: false, edit: false, delete: false },
   },
   staff: {
@@ -93,6 +95,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, create: false, edit: false, delete: false },
     backup: { view: false, create: false, edit: false, delete: false },
+    archive: { view: false, create: false, edit: false, delete: false },
     audit: { view: false, create: false, edit: false, delete: false },
   },
   patient: {
@@ -109,6 +112,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, create: false, edit: false, delete: false },
     backup: { view: false, create: false, edit: false, delete: false },
+    archive: { view: false, create: false, edit: false, delete: false },
     audit: { view: false, create: false, edit: false, delete: false },
   },
 };
@@ -195,6 +199,7 @@ export const ADMIN_TABS = {
   HOURS: 'hours',
   APPOINTMENTS: 'appointments',
   BACKUP: 'backup',
+  ARCHIVE: 'archive',
   AUDIT: 'audit',
 };
 
