@@ -728,7 +728,7 @@ export const translations = {
     connected: 'Conectado',
     emailProvider: 'Proveedor de Correo',
     gmailIntegration: 'Integración con Gmail',
-    connect: 'Conectar'
+    connect: 'Conectar',
 
     // Additional translations
     acceptsAssignment: 'Acepta Asignación',
@@ -1404,7 +1404,7 @@ export const translations = {
     connected: 'Connecté',
     emailProvider: 'Fournisseur d\'E-mail',
     gmailIntegration: 'Intégration avec Gmail',
-    connect: 'Connecter'
+    connect: 'Connecter',
 
     // Additional translations
     acceptsAssignment: 'Accepte l\'Affectation',
@@ -2080,7 +2080,7 @@ export const translations = {
     connected: 'Verbunden',
     emailProvider: 'E-Mail-Anbieter',
     gmailIntegration: 'Gmail Integration',
-    connect: 'Verbinden'
+    connect: 'Verbinden',
 
     // Additional translations
     acceptsAssignment: 'Akzeptiert Zuweisung',
@@ -2756,7 +2756,7 @@ export const translations = {
     connected: 'متصل',
     emailProvider: 'مزود البريد الإلكتروني',
     gmailIntegration: 'التكامل مع Gmail',
-    connect: 'اتصال'
+    connect: 'اتصال',
 
     // Additional translations
     acceptsAssignment: 'يقبل التكليف',
