@@ -43,6 +43,7 @@ import {
   RefreshCw,
   X,
   FileText,
+  Archive,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -51,6 +52,7 @@ import CredentialModal from '../components/modals/CredentialModal';
 import { useAudit } from '../hooks/useAudit';
 import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
+import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import { useClinicSettings } from '../hooks/useClinicSettings';
 import {
   USER_ROLES,
@@ -236,6 +238,7 @@ const AdminPanelView = ({
       { id: ADMIN_TABS.HOURS, label: t.workingHours || 'Working Hours', icon: Clock },
       { id: ADMIN_TABS.APPOINTMENTS, label: t.appointmentSettings || 'Appointment Settings', icon: Settings },
       { id: ADMIN_TABS.BACKUP, label: 'Backup & Restore', icon: HardDrive },
+      { id: ADMIN_TABS.ARCHIVE, label: 'Archive Management', icon: Archive },
       { id: ADMIN_TABS.AUDIT, label: 'Audit Logs', icon: FileText },
     ],
     [t]
@@ -2829,6 +2832,7 @@ const AdminPanelView = ({
           {activeTab === ADMIN_TABS.HOURS && renderWorkingHoursTab()}
           {activeTab === ADMIN_TABS.APPOINTMENTS && renderAppointmentSettingsTab()}
           {activeTab === ADMIN_TABS.BACKUP && renderBackupRestoreTab()}
+          {activeTab === ADMIN_TABS.ARCHIVE && <ArchiveManagementTab theme={theme} api={api} addNotification={addNotification} />}
           {activeTab === ADMIN_TABS.AUDIT && <AuditLogsTab theme={theme} api={api} addNotification={addNotification} />}
         </div>
       </div>
