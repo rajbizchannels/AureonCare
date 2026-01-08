@@ -551,6 +551,12 @@ const AdminPanelView = ({
             email: formData.email,
             phone: formData.phone,
             role: formData.role,
+            practice: formData.practice,
+            license: formData.license,
+            specialty: formData.specialty,
+            country: formData.country,
+            timezone: formData.timezone,
+            license_number: formData.license_number,
           };
 
           // Only include password if it was changed
@@ -578,6 +584,12 @@ const AdminPanelView = ({
             email: formData.email,
             phone: formData.phone,
             role: formData.role,
+            practice: formData.practice,
+            license: formData.license,
+            specialty: formData.specialty,
+            country: formData.country,
+            timezone: formData.timezone,
+            license_number: formData.license_number,
             password: formData.password,
           };
 
