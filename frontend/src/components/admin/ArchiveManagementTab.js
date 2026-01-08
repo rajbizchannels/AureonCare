@@ -30,6 +30,31 @@ import {
  * - Delete archives
  * - Archive statistics
  */
+
+// API Base URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+
+/**
+ * Get authentication headers from localStorage
+ */
+const getAuthHeaders = () => {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user && user.id) {
+      headers['x-user-id'] = user.id;
+      headers['x-user-role'] = user.role || 'admin';
+    }
+  } catch (error) {
+    console.error('Error parsing user from localStorage:', error);
+  }
+
+  return headers;
+};
+
 const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   const [archives, setArchives] = useState([]);
   const [modules, setModules] = useState([]);
@@ -55,10 +80,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   const loadArchives = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/archive/list', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+      const response = await fetch(`${API_BASE_URL}/archive/list`, {
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -78,10 +101,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   // Load available modules
   const loadModules = useCallback(async () => {
     try {
-      const response = await fetch('/api/archive/modules', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+      const response = await fetch(`${API_BASE_URL}/archive/modules`, {
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -99,10 +120,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   // Load statistics
   const loadStats = useCallback(async () => {
     try {
-      const response = await fetch('/api/archive/stats/summary', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+      const response = await fetch(`${API_BASE_URL}/archive/stats/summary`, {
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -157,12 +176,9 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
 
     setCreating(true);
     try {
-      const response = await fetch('/api/archive/create', {
+      const response = await fetch(`${API_BASE_URL}/archive/create`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           archiveName,
           description: archiveDescription,
@@ -201,11 +217,9 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
 
     setRestoring(true);
     try {
-      const response = await fetch(`/api/archive/${archiveId}/restore`, {
+      const response = await fetch(`${API_BASE_URL}/archive/${archiveId}/restore`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -235,11 +249,9 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
     }
 
     try {
-      const response = await fetch(`/api/archive/${archiveId}`, {
+      const response = await fetch(`${API_BASE_URL}/archive/${archiveId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
