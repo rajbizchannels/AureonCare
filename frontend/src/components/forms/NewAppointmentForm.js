@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClose, onSuccess, addNotification, t }) => {
+  const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patientId: patient?.id || '',
     providerId: user?.id || '',
@@ -18,6 +20,20 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [offerings, setOfferings] = useState([]);
   const [appointmentTypes, setAppointmentTypes] = useState([]);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewAppointmentForm', {
+      module: 'Scheduling',
+      patient_id: patient?.id,
+      provider_id: user?.id,
+      metadata: {
+        preselectedPatient: !!patient,
+        preselectedProvider: !!user,
+      },
+    });
+  }, []);
 
   // Fetch active offerings
   useEffect(() => {
@@ -108,6 +124,20 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
   const handleActualSubmit = async () => {
     setShowConfirmation(false);
 
+    const appointmentData = {
+      patient_id: formData.patientId,
+      provider_id: formData.providerId,
+      practice_id: null,
+      appointment_type: formData.type,
+      duration_minutes: formData.duration,
+      status: 'scheduled',
+      reason: formData.reason,
+      notes: formData.notes,
+      offering_id: formData.offeringId || null,
+      date: formData.date,
+      time: formData.time,
+    };
+
     try {
       // Combine date and time into start_time timestamp
       const startTime = `${formData.date}T${formData.time}:00`;
@@ -118,21 +148,23 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
       const endTime = endDate.toISOString().slice(0, 19).replace('T', ' ');
       const formattedStartTime = startDate.toISOString().slice(0, 19).replace('T', ' ');
 
-      const appointmentData = {
-        patient_id: formData.patientId,
-        provider_id: formData.providerId,
-        practice_id: null, // Can be set if you have practice context
-        appointment_type: formData.type,
-        start_time: formattedStartTime,
-        end_time: endTime,
-        duration_minutes: formData.duration,
-        status: 'scheduled',
-        reason: formData.reason,
-        notes: formData.notes,
-        offering_id: formData.offeringId || null
-      };
+      appointmentData.start_time = formattedStartTime;
+      appointmentData.end_time = endTime;
 
       const newAppointment = await api.createAppointment(appointmentData);
+
+      // Log successful creation
+      logCreate('NewAppointmentForm', appointmentData, {
+        module: 'Scheduling',
+        resource_id: newAppointment.id,
+        patient_id: formData.patientId,
+        provider_id: formData.providerId,
+        metadata: {
+          appointmentType: formData.type,
+          duration: formData.duration,
+          offering_id: formData.offeringId,
+        },
+      });
 
       const patient = patients.find(p => p.id.toString() === formData.patientId);
       const patientName = patient ? `${patient.first_name} ${patient.last_name}` : t.patient || 'patient';
@@ -149,6 +181,14 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     } catch (err) {
       console.error('Error creating appointment:', err);
       addNotification('alert', t.failedToCreateAppointment || 'Failed to create appointment. Please try again.');
+
+      // Log error
+      logError('NewAppointmentForm', 'form', err.message || 'Failed to create appointment', {
+        module: 'Scheduling',
+        patient_id: formData.patientId,
+        provider_id: formData.providerId,
+        metadata: { formData: appointmentData },
+      });
     }
   };
 

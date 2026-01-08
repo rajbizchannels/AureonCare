@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FileCheck, X, Save, Search, Plus, Trash2, Printer, AlertCircle, Shield } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotification, t }) => {
+  const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patientId: '',
     insurancePayerId: '',
@@ -29,6 +31,18 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
   const [diagnoses, setDiagnoses] = useState([]);
   const [loadingDiagnoses, setLoadingDiagnoses] = useState(false);
   const [selectedDiagnosisId, setSelectedDiagnosisId] = useState('');
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewPreapprovalForm', {
+      module: 'RCM',
+      patient_id: formData.patientId,
+      metadata: {
+        mode: 'create',
+      },
+    });
+  }, []);
 
   // Load diagnoses when patient is selected
   useEffect(() => {
@@ -269,31 +283,51 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
   };
 
   const submitPreapproval = async (submitToClearinghouse = false) => {
+    // Generate preapproval number
+    const timestamp = Date.now();
+    const preapprovalNumber = `PA-${timestamp}`;
+
+    const preapprovalData = {
+      preapproval_number: preapprovalNumber,
+      patient_id: formData.patientId,
+      insurance_payer_id: formData.insurancePayerId,
+      requested_service: formData.requestedService,
+      diagnosis_codes: JSON.stringify(selectedDiagnoses.map(d => ({ code: d.code, display: d.display }))),
+      procedure_codes: JSON.stringify(selectedProcedures.map(p => ({ code: p.code, display: p.display }))),
+      service_start_date: formData.serviceStartDate,
+      service_end_date: formData.serviceEndDate,
+      estimated_cost: parseFloat(formData.estimatedCost) || 0,
+      clinical_notes: formData.clinicalNotes,
+      submitToClearinghouse: submitToClearinghouse
+    };
+
     try {
-      // Generate preapproval number
-      const timestamp = Date.now();
-      const preapprovalNumber = `PA-${timestamp}`;
-
-      const preapprovalData = {
-        preapproval_number: preapprovalNumber,
-        patient_id: formData.patientId,
-        insurance_payer_id: formData.insurancePayerId,
-        requested_service: formData.requestedService,
-        diagnosis_codes: JSON.stringify(selectedDiagnoses.map(d => ({ code: d.code, display: d.display }))),
-        procedure_codes: JSON.stringify(selectedProcedures.map(p => ({ code: p.code, display: p.display }))),
-        service_start_date: formData.serviceStartDate,
-        service_end_date: formData.serviceEndDate,
-        estimated_cost: parseFloat(formData.estimatedCost) || 0,
-        clinical_notes: formData.clinicalNotes,
-        submitToClearinghouse: submitToClearinghouse
-      };
-
       const newPreapproval = await api.createPreapproval(preapprovalData);
       addNotification('success', 'Pre-authorization request created successfully');
+
+      // Log successful creation
+      logCreate('NewPreapprovalForm', preapprovalData, {
+        module: 'RCM',
+        resource_id: newPreapproval.id,
+        patient_id: formData.patientId,
+        metadata: {
+          requestedService: formData.requestedService,
+          estimatedCost: formData.estimatedCost,
+          submitToClearinghouse,
+        },
+      });
+
       onSuccess(newPreapproval);
     } catch (error) {
       console.error('Error creating preapproval:', error);
       addNotification('alert', error.message || 'Failed to create pre-authorization request');
+
+      // Log error
+      logError('NewPreapprovalForm', 'form', error.message || 'Failed to create preapproval', {
+        module: 'RCM',
+        patient_id: formData.patientId,
+        metadata: { formData: preapprovalData },
+      });
     }
   };
 

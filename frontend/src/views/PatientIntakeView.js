@@ -5,6 +5,7 @@ import NewIntakeFormForm from '../components/forms/NewIntakeFormForm';
 import NewIntakeFlowForm from '../components/forms/NewIntakeFlowForm';
 import NewConsentFormForm from '../components/forms/NewConsentFormForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import { useAudit } from '../hooks/useAudit';
 
 const PatientIntakeView = ({
   theme,
@@ -45,6 +46,14 @@ const PatientIntakeView = ({
   const [intakeFormSearch, setIntakeFormSearch] = useState('');
   const [flowSearch, setFlowSearch] = useState('');
   const [consentSearch, setConsentSearch] = useState('');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('PatientIntakeView', {
+      module: 'Patient Intake',
+    });
+  }, []);
 
   // Close all forms when tab changes
   useEffect(() => {

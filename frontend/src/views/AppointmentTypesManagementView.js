@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentTypeForm from '../components/forms/NewAppointmentTypeForm';
+import { useAudit } from '../hooks/useAudit';
 
 const AppointmentTypesManagementView = ({
   theme,
@@ -19,6 +20,14 @@ const AppointmentTypesManagementView = ({
   const [showFormLocal, setShowFormLocal] = useState(false);
   const [editingAppointmentTypeLocal, setEditingAppointmentTypeLocal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('AppointmentTypesManagementView', {
+      module: 'Admin',
+    });
+  }, []);
 
   useEffect(() => {
     loadAppointmentTypes();

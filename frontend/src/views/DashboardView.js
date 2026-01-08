@@ -10,6 +10,7 @@ import NewTaskForm from '../components/forms/NewTaskForm';
 import NewClaimForm from '../components/forms/NewClaimForm';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
+import { useAudit } from '../hooks/useAudit';
 
 const DashboardView = ({
   theme,
@@ -42,6 +43,14 @@ const DashboardView = ({
   const [showEPrescribeModal, setShowEPrescribeModal] = useState(false);
   const [prescribePatient, setPrescribePatient] = useState(null);
   const [prescribeDiagnosis, setPrescribeDiagnosis] = useState(null);
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('DashboardView', {
+      module: 'Dashboard',
+    });
+  }, []);
 
   // Load clinic name from localStorage
   useEffect(() => {

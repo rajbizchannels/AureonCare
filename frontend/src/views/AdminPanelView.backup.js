@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, ArrowLeft, CreditCard, Check, Video, Plus, HardDrive, Cloud, Download, Upload, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import { useAudit } from '../hooks/useAudit';
 
 const AdminPanelView = ({
   theme,
@@ -64,6 +65,14 @@ const AdminPanelView = ({
     isOpen: false,
     details: null
   });
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('AdminPanelView', {
+      module: 'Admin',
+    });
+  }, []);
 
   // Load clinic settings from localStorage on mount
   useEffect(() => {
