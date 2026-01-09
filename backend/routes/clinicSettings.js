@@ -138,12 +138,11 @@ router.post('/', async (req, res) => {
           UPDATE organization_settings
           SET organization_name = $1,
               settings = jsonb_set(
-                COALESCE(settings, '{}'::jsonb),
-                '{website}',
-                $2::jsonb
-              ),
-              settings = jsonb_set(
-                COALESCE(settings, '{}'::jsonb),
+                jsonb_set(
+                  COALESCE(settings, '{}'::jsonb),
+                  '{website}',
+                  $2::jsonb
+                ),
                 '{npi}',
                 $3::jsonb
               ),
