@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../db');
+const pool = require('../db'); // Main database
+const { archivePool, ensureTableStructure, getArchiveTables, getTableRecordCount } = require('../archiveDb');
 const { requireAdmin } = require('../middleware/auth');
 
 // Middleware to ensure only admins can access archive endpoints
@@ -112,7 +113,7 @@ router.get('/modules', async (req, res) => {
 });
 
 /**
- * Create new archive with selected modules
+ * Create new archive - moves data from main DB to archive DB
  * POST /api/archive/create
  */
 router.post('/create', async (req, res) => {
@@ -135,60 +136,98 @@ router.post('/create', async (req, res) => {
 
     console.log(`Creating archive "${archiveName}" with modules:`, selectedModules);
 
-    const archiveData = {};
-    const metadata = {
-      recordCounts: {},
-      timestamp: new Date().toISOString()
-    };
+    const recordCounts = {};
+    const archivedTables = [];
     let totalRecords = 0;
 
-    // Archive data from selected modules
+    // Archive data from selected modules to archive database
     for (const moduleKey of selectedModules) {
       const moduleConfig = ARCHIVE_MODULES[moduleKey];
-      archiveData[moduleKey] = {};
 
-      for (const table of moduleConfig.tables) {
+      for (const tableName of moduleConfig.tables) {
         try {
-          const result = await pool.query(`SELECT * FROM ${table}`);
-          archiveData[moduleKey][table] = result.rows;
-          metadata.recordCounts[table] = result.rows.length;
-          totalRecords += result.rows.length;
-          console.log(`Archived ${table}: ${result.rows.length} rows`);
+          // Ensure table structure exists in archive database
+          await ensureTableStructure(pool, tableName);
+
+          // Copy data from main database to archive database
+          const mainClient = await pool.connect();
+          const archiveClient = await archivePool.connect();
+
+          try {
+            // Get data from main database
+            const selectQuery = `SELECT * FROM ${tableName}`;
+            const result = await mainClient.query(selectQuery);
+            const rows = result.rows;
+
+            if (rows.length > 0) {
+              // Insert data into archive database
+              for (const row of rows) {
+                const columns = Object.keys(row);
+                const values = Object.values(row);
+                const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+                const insertQuery = `
+                  INSERT INTO ${tableName} (${columns.join(', ')})
+                  VALUES (${placeholders})
+                  ON CONFLICT DO NOTHING
+                `;
+
+                await archiveClient.query(insertQuery, values);
+              }
+
+              recordCounts[tableName] = rows.length;
+              totalRecords += rows.length;
+              archivedTables.push(tableName);
+              console.log(`Archived ${tableName}: ${rows.length} rows`);
+            } else {
+              recordCounts[tableName] = 0;
+            }
+          } finally {
+            mainClient.release();
+            archiveClient.release();
+          }
         } catch (error) {
-          console.warn(`Warning: Could not archive table ${table}:`, error.message);
-          archiveData[moduleKey][table] = [];
-          metadata.recordCounts[table] = 0;
+          console.warn(`Warning: Could not archive table ${tableName}:`, error.message);
+          recordCounts[tableName] = 0;
         }
       }
     }
 
-    // Calculate size
-    const archiveJson = JSON.stringify(archiveData);
-    const sizeBytes = Buffer.byteLength(archiveJson, 'utf8');
-
-    // Store archive in database
-    const insertQuery = `
-      INSERT INTO archives (archive_name, description, modules, archive_data, metadata, created_by, size_bytes, record_count)
+    // Store metadata in archive database
+    const metadataQuery = `
+      INSERT INTO archive_metadata (
+        archive_name, description, archived_tables, archived_modules,
+        record_counts, archived_by, status, metadata
+      )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, archive_name, description, modules, created_at, size_bytes, record_count
+      RETURNING id, archive_name, description, archived_modules, archive_date, status
     `;
 
-    const result = await pool.query(insertQuery, [
+    const metadata = {
+      timestamp: new Date().toISOString()
+    };
+
+    const metadataResult = await archivePool.query(metadataQuery, [
       archiveName,
       description || null,
+      archivedTables,
       selectedModules,
-      archiveData,
-      metadata,
+      recordCounts,
       req.user?.id || req.headers['x-user-id'],
-      sizeBytes,
-      totalRecords
+      'active',
+      metadata
     ]);
 
-    console.log('Archive created successfully:', result.rows[0]);
+    console.log('Archive created successfully:', metadataResult.rows[0]);
+
     res.json({
       success: true,
       message: 'Archive created successfully',
-      archive: result.rows[0]
+      archive: {
+        ...metadataResult.rows[0],
+        record_count: totalRecords,
+        table_count: archivedTables.length
+      }
     });
   } catch (error) {
     console.error('Error creating archive:', error);
@@ -197,7 +236,7 @@ router.post('/create', async (req, res) => {
 });
 
 /**
- * List all archives
+ * List all archives from archive database
  * GET /api/archive/list
  */
 router.get('/list', async (req, res) => {
@@ -209,23 +248,34 @@ router.get('/list', async (req, res) => {
         id,
         archive_name,
         description,
-        modules,
-        metadata,
-        created_at,
-        size_bytes,
-        record_count,
+        archived_modules,
+        archived_tables,
+        record_counts,
+        archive_date,
         status,
-        created_by
-      FROM archives
+        archived_by
+      FROM archive_metadata
       WHERE status = $1
-      ORDER BY created_at DESC
+      ORDER BY archive_date DESC
     `;
 
-    const result = await pool.query(query, [status]);
+    const result = await archivePool.query(query, [status]);
+
+    // Calculate total records for each archive
+    const archives = result.rows.map(archive => {
+      const recordCount = Object.values(archive.record_counts || {})
+        .reduce((sum, count) => sum + count, 0);
+
+      return {
+        ...archive,
+        record_count: recordCount,
+        modules: archive.archived_modules
+      };
+    });
 
     res.json({
-      archives: result.rows,
-      count: result.rows.length
+      archives,
+      count: archives.length
     });
   } catch (error) {
     console.error('Error listing archives:', error);
@@ -234,21 +284,30 @@ router.get('/list', async (req, res) => {
 });
 
 /**
- * Get archive details including data
+ * Get archive details including metadata
  * GET /api/archive/:id
  */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const query = 'SELECT * FROM archives WHERE id = $1';
-    const result = await pool.query(query, [id]);
+    const query = 'SELECT * FROM archive_metadata WHERE id = $1';
+    const result = await archivePool.query(query, [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Archive not found' });
     }
 
-    res.json({ archive: result.rows[0] });
+    const archive = result.rows[0];
+    const recordCount = Object.values(archive.record_counts || {})
+      .reduce((sum, count) => sum + count, 0);
+
+    res.json({
+      archive: {
+        ...archive,
+        record_count: recordCount
+      }
+    });
   } catch (error) {
     console.error('Error getting archive:', error);
     res.status(500).json({ error: 'Failed to get archive', details: error.message });
@@ -256,82 +315,165 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * Restore archive data with deduplication (ADD mode, not REPLACE)
+ * Browse archived data - preview data without restoring
+ * GET /api/archive/:id/browse
+ */
+router.get('/:id/browse', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { table, limit = 100, offset = 0 } = req.query;
+
+    // Get archive metadata
+    const metadataQuery = 'SELECT * FROM archive_metadata WHERE id = $1';
+    const metadataResult = await archivePool.query(metadataQuery, [id]);
+
+    if (metadataResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Archive not found' });
+    }
+
+    const archive = metadataResult.rows[0];
+
+    // If specific table requested, return its data
+    if (table) {
+      if (!archive.archived_tables.includes(table)) {
+        return res.status(404).json({ error: `Table ${table} not found in this archive` });
+      }
+
+      const dataQuery = `
+        SELECT * FROM ${table}
+        ORDER BY 1
+        LIMIT $1 OFFSET $2
+      `;
+
+      const countQuery = `SELECT COUNT(*) as count FROM ${table}`;
+
+      const [dataResult, countResult] = await Promise.all([
+        archivePool.query(dataQuery, [limit, offset]),
+        archivePool.query(countQuery)
+      ]);
+
+      return res.json({
+        table,
+        data: dataResult.rows,
+        pagination: {
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          total: parseInt(countResult.rows[0].count)
+        }
+      });
+    }
+
+    // Otherwise return summary of all tables
+    const tableSummaries = [];
+
+    for (const tableName of archive.archived_tables) {
+      try {
+        const count = await getTableRecordCount(tableName);
+        const previewQuery = `SELECT * FROM ${tableName} LIMIT 5`;
+        const preview = await archivePool.query(previewQuery);
+
+        tableSummaries.push({
+          table: tableName,
+          recordCount: count,
+          preview: preview.rows
+        });
+      } catch (error) {
+        console.warn(`Could not get data for ${tableName}:`, error.message);
+      }
+    }
+
+    res.json({
+      archive: {
+        id: archive.id,
+        name: archive.archive_name,
+        description: archive.description,
+        date: archive.archive_date
+      },
+      tables: tableSummaries
+    });
+  } catch (error) {
+    console.error('Error browsing archive:', error);
+    res.status(500).json({ error: 'Failed to browse archive', details: error.message });
+  }
+});
+
+/**
+ * Restore archive data from archive DB to main DB with deduplication
  * POST /api/archive/:id/restore
  */
 router.post('/:id/restore', async (req, res) => {
   try {
     const { id } = req.params;
+    const { tables } = req.body; // Optional: restore specific tables only
 
     console.log(`Restoring archive: ${id}`);
 
-    // Get archive data
-    const archiveQuery = 'SELECT * FROM archives WHERE id = $1';
-    const archiveResult = await pool.query(archiveQuery, [id]);
+    // Get archive metadata
+    const metadataQuery = 'SELECT * FROM archive_metadata WHERE id = $1';
+    const metadataResult = await archivePool.query(metadataQuery, [id]);
 
-    if (archiveResult.rows.length === 0) {
+    if (metadataResult.rows.length === 0) {
       return res.status(404).json({ error: 'Archive not found' });
     }
 
-    const archive = archiveResult.rows[0];
-    const archiveData = archive.archive_data;
+    const archive = metadataResult.rows[0];
+    const tablesToRestore = tables || archive.archived_tables;
 
     const restoredTables = [];
     const skippedRecords = {};
     const addedRecords = {};
     const errors = [];
 
-    // Restore each module
-    for (const [moduleKey, moduleData] of Object.entries(archiveData)) {
-      const moduleConfig = ARCHIVE_MODULES[moduleKey];
-
-      if (!moduleConfig) {
-        console.warn(`Warning: Unknown module ${moduleKey}, skipping`);
+    // Restore each table
+    for (const tableName of tablesToRestore) {
+      if (!archive.archived_tables.includes(tableName)) {
+        console.warn(`Table ${tableName} not in archive, skipping`);
         continue;
       }
 
-      // Restore each table in the module
-      for (const [tableName, rows] of Object.entries(moduleData)) {
-        if (!Array.isArray(rows) || rows.length === 0) {
-          console.log(`Skipping empty table: ${tableName}`);
-          continue;
-        }
+      try {
+        let added = 0;
+        let skipped = 0;
+
+        // Get data from archive database
+        const archiveClient = await archivePool.connect();
+        const mainClient = await pool.connect();
 
         try {
-          let added = 0;
-          let skipped = 0;
+          const selectQuery = `SELECT * FROM ${tableName}`;
+          const result = await archiveClient.query(selectQuery);
+          const rows = result.rows;
 
-          // Get table schema to identify primary key and unique constraints
+          // Get table schema to identify columns
           const schemaQuery = `
-            SELECT column_name, data_type
+            SELECT column_name
             FROM information_schema.columns
             WHERE table_name = $1
             ORDER BY ordinal_position
           `;
-          const schemaResult = await pool.query(schemaQuery, [tableName]);
+          const schemaResult = await mainClient.query(schemaQuery, [tableName]);
           const columns = schemaResult.rows.map(r => r.column_name);
 
-          // Insert each row with ON CONFLICT DO NOTHING for deduplication
+          // Insert each row with deduplication
           for (const row of rows) {
             try {
-              // Filter row to only include columns that exist in the table
               const validColumns = columns.filter(col => row.hasOwnProperty(col));
               const values = validColumns.map(col => row[col]);
               const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
-              const query = `
+              const insertQuery = `
                 INSERT INTO ${tableName} (${validColumns.join(', ')})
                 VALUES (${placeholders})
                 ON CONFLICT DO NOTHING
                 RETURNING *
               `;
 
-              const insertResult = await pool.query(query, values);
+              const insertResult = await mainClient.query(insertQuery, values);
 
               if (insertResult.rows.length > 0) {
                 added++;
               } else {
-                skipped++; // Record already exists (duplicate)
+                skipped++;
               }
             } catch (rowError) {
               console.warn(`Warning: Could not insert row in ${tableName}:`, rowError.message);
@@ -342,17 +484,20 @@ router.post('/:id/restore', async (req, res) => {
           restoredTables.push(tableName);
           addedRecords[tableName] = added;
           skippedRecords[tableName] = skipped;
-          console.log(`Restored ${tableName}: ${added} added, ${skipped} skipped (duplicates)`);
-        } catch (error) {
-          console.error(`Error restoring table ${tableName}:`, error.message);
-          errors.push({ table: tableName, error: error.message });
+          console.log(`Restored ${tableName}: ${added} added, ${skipped} skipped`);
+        } finally {
+          archiveClient.release();
+          mainClient.release();
         }
+      } catch (error) {
+        console.error(`Error restoring table ${tableName}:`, error.message);
+        errors.push({ table: tableName, error: error.message });
       }
     }
 
     // Update archive status
-    await pool.query(
-      'UPDATE archives SET status = $1 WHERE id = $2',
+    await archivePool.query(
+      'UPDATE archive_metadata SET status = $1 WHERE id = $2',
       ['restored', id]
     );
 
@@ -382,24 +527,45 @@ router.post('/:id/restore', async (req, res) => {
 });
 
 /**
- * Delete archive
+ * Delete archive from archive database
  * DELETE /api/archive/:id
  */
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const { deleteData = false } = req.query;
 
-    const query = 'DELETE FROM archives WHERE id = $1 RETURNING id, archive_name';
-    const result = await pool.query(query, [id]);
+    // Get archive metadata
+    const metadataQuery = 'SELECT * FROM archive_metadata WHERE id = $1';
+    const metadataResult = await archivePool.query(metadataQuery, [id]);
 
-    if (result.rows.length === 0) {
+    if (metadataResult.rows.length === 0) {
       return res.status(404).json({ error: 'Archive not found' });
     }
+
+    const archive = metadataResult.rows[0];
+
+    // If deleteData is true, also remove archived data from tables
+    if (deleteData === 'true') {
+      for (const tableName of archive.archived_tables) {
+        try {
+          await archivePool.query(`TRUNCATE TABLE ${tableName} CASCADE`);
+          console.log(`Cleared data from ${tableName} in archive database`);
+        } catch (error) {
+          console.warn(`Could not clear ${tableName}:`, error.message);
+        }
+      }
+    }
+
+    // Delete metadata
+    const deleteQuery = 'DELETE FROM archive_metadata WHERE id = $1 RETURNING id, archive_name';
+    const deleteResult = await archivePool.query(deleteQuery, [id]);
 
     res.json({
       success: true,
       message: 'Archive deleted successfully',
-      archive: result.rows[0]
+      archive: deleteResult.rows[0],
+      dataDeleted: deleteData === 'true'
     });
   } catch (error) {
     console.error('Error deleting archive:', error);
@@ -409,24 +575,38 @@ router.delete('/:id', async (req, res) => {
 
 /**
  * Get archive statistics
- * GET /api/archive/stats
+ * GET /api/archive/stats/summary
  */
 router.get('/stats/summary', async (req, res) => {
   try {
     const statsQuery = `
       SELECT
         COUNT(*) as total_archives,
-        SUM(record_count) as total_records,
-        SUM(size_bytes) as total_size_bytes,
         COUNT(CASE WHEN status = 'active' THEN 1 END) as active_archives,
         COUNT(CASE WHEN status = 'restored' THEN 1 END) as restored_archives
-      FROM archives
+      FROM archive_metadata
     `;
 
-    const result = await pool.query(statsQuery);
+    const result = await archivePool.query(statsQuery);
+    const stats = result.rows[0];
+
+    // Calculate total records across all archives
+    const recordQuery = 'SELECT record_counts FROM archive_metadata';
+    const recordResult = await archivePool.query(recordQuery);
+
+    let totalRecords = 0;
+    recordResult.rows.forEach(row => {
+      if (row.record_counts) {
+        totalRecords += Object.values(row.record_counts).reduce((sum, count) => sum + count, 0);
+      }
+    });
 
     res.json({
-      stats: result.rows[0]
+      stats: {
+        ...stats,
+        total_records: totalRecords,
+        total_size_bytes: 0 // Size calculation could be added if needed
+      }
     });
   } catch (error) {
     console.error('Error getting archive stats:', error);
