@@ -18,6 +18,8 @@ import {
   HardDrive,
   ChevronDown,
   ChevronUp,
+  Eye,
+  Table,
 } from 'lucide-react';
 
 /**
@@ -75,6 +77,12 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
 
   // Restore state
   const [restoring, setRestoring] = useState(false);
+
+  // Browse state
+  const [showBrowseModal, setShowBrowseModal] = useState(false);
+  const [browseData, setBrowseData] = useState(null);
+  const [browsing, setBrowsing] = useState(false);
+  const [selectedTable, setSelectedTable] = useState(null);
 
   // Load archives
   const loadArchives = useCallback(async () => {
@@ -265,6 +273,62 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
     } catch (error) {
       console.error('Error deleting archive:', error);
       addNotification('error', error.message || 'Failed to delete archive');
+    }
+  };
+
+  // Handle browse archive
+  const handleBrowseArchive = async (archiveId, archiveName) => {
+    setBrowsing(true);
+    setShowBrowseModal(true);
+    setSelectedArchive({ id: archiveId, name: archiveName });
+    setSelectedTable(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/archive/${archiveId}/browse`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to browse archive');
+      }
+
+      const data = await response.json();
+      setBrowseData(data);
+    } catch (error) {
+      console.error('Error browsing archive:', error);
+      addNotification('error', error.message || 'Failed to browse archive');
+      setShowBrowseModal(false);
+    } finally {
+      setBrowsing(false);
+    }
+  };
+
+  // Handle browse specific table
+  const handleBrowseTable = async (archiveId, tableName) => {
+    setBrowsing(true);
+    setSelectedTable(tableName);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/archive/${archiveId}/browse?table=${tableName}&limit=100`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to browse table');
+      }
+
+      const data = await response.json();
+      setBrowseData(prev => ({
+        ...prev,
+        selectedTableData: data
+      }));
+    } catch (error) {
+      console.error('Error browsing table:', error);
+      addNotification('error', error.message || 'Failed to browse table');
+    } finally {
+      setBrowsing(false);
     }
   };
 
@@ -512,6 +576,13 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                     {/* Actions */}
                     <div className="flex gap-2 ml-4">
                       <button
+                        onClick={() => handleBrowseArchive(archive.id, archive.archive_name)}
+                        className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        title="Browse Archive Data"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => handleRestoreArchive(archive.id, archive.archive_name)}
                         disabled={restoring}
                         className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50"
@@ -685,6 +756,175 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                 {creating && <RefreshCw className="w-4 h-4 animate-spin" />}
                 {creating ? 'Creating Archive...' : 'Create Archive'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Browse Archive Modal */}
+      {showBrowseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`max-w-6xl w-full rounded-lg shadow-xl max-h-[90vh] overflow-auto ${
+            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className="p-6 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-inherit z-10">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Browse Archive: {selectedArchive?.name}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowBrowseModal(false);
+                  setBrowseData(null);
+                  setSelectedTable(null);
+                }}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {browsing ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-blue-600" />
+                  <p>Loading archive data...</p>
+                </div>
+              ) : browseData ? (
+                <div className="space-y-6">
+                  {/* Archive Info */}
+                  {browseData.archive && (
+                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-750' : 'bg-gray-50'}`}>
+                      <h4 className="font-semibold mb-2">Archive Information</h4>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Name:</span>
+                          <p className="font-medium">{browseData.archive.name}</p>
+                        </div>
+                        <div>
+                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Date:</span>
+                          <p className="font-medium">{formatDate(browseData.archive.date)}</p>
+                        </div>
+                      </div>
+                      {browseData.archive.description && (
+                        <p className="text-sm mt-2">{browseData.archive.description}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tables List */}
+                  {browseData.tables && !selectedTable && (
+                    <div>
+                      <h4 className="font-semibold mb-3">Archived Tables</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {browseData.tables.map((tableInfo) => (
+                          <div
+                            key={tableInfo.table}
+                            className={`p-4 rounded-lg border ${
+                              theme === 'dark' ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <Table className="w-4 h-4 text-blue-600" />
+                                  <h5 className="font-semibold">{tableInfo.table}</h5>
+                                </div>
+                                <p className="text-sm text-gray-400 mt-1">
+                                  {tableInfo.recordCount} record{tableInfo.recordCount !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => handleBrowseTable(selectedArchive.id, tableInfo.table)}
+                                className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                              >
+                                View Data
+                              </button>
+                            </div>
+
+                            {/* Preview */}
+                            {tableInfo.preview && tableInfo.preview.length > 0 && (
+                              <div className="mt-3 text-sm">
+                                <p className="text-gray-400 mb-2">Preview (first row):</p>
+                                <div className={`p-2 rounded text-xs overflow-auto ${
+                                  theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+                                }`}>
+                                  <pre>{JSON.stringify(tableInfo.preview[0], null, 2)}</pre>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Selected Table Data */}
+                  {selectedTable && browseData.selectedTableData && (
+                    <div>
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-semibold flex items-center gap-2">
+                          <Table className="w-5 h-5" />
+                          {selectedTable}
+                        </h4>
+                        <button
+                          onClick={() => {
+                            setSelectedTable(null);
+                            handleBrowseArchive(selectedArchive.id, selectedArchive.name);
+                          }}
+                          className="text-sm text-blue-600 hover:text-blue-700"
+                        >
+                          ← Back to Tables
+                        </button>
+                      </div>
+
+                      <p className="text-sm text-gray-400 mb-3">
+                        Showing {browseData.selectedTableData.data?.length || 0} of {browseData.selectedTableData.pagination?.total || 0} records
+                      </p>
+
+                      {/* Data Table */}
+                      <div className="overflow-x-auto">
+                        <table className={`min-w-full text-sm ${theme === 'dark' ? 'bg-gray-750' : 'bg-white'}`}>
+                          <thead className={theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}>
+                            <tr>
+                              {browseData.selectedTableData.data && browseData.selectedTableData.data[0] &&
+                                Object.keys(browseData.selectedTableData.data[0]).map((column) => (
+                                  <th key={column} className="px-4 py-2 text-left font-medium">
+                                    {column}
+                                  </th>
+                                ))
+                              }
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {browseData.selectedTableData.data?.map((row, idx) => (
+                              <tr key={idx} className={theme === 'dark' ? 'border-t border-gray-700' : 'border-t border-gray-200'}>
+                                {Object.values(row).map((value, cellIdx) => (
+                                  <td key={cellIdx} className="px-4 py-2">
+                                    {typeof value === 'object' && value !== null
+                                      ? JSON.stringify(value)
+                                      : String(value || '')}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {browseData.selectedTableData.data && browseData.selectedTableData.data.length === 0 && (
+                        <div className="text-center py-8 text-gray-400">
+                          No data found in this table
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  No data available
+                </div>
+              )}
             </div>
           </div>
         </div>
