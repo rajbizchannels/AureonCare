@@ -26,6 +26,7 @@ import {
   Settings,
 } from 'lucide-react';
 import Toggle from '../Toggle';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 /**
  * ArchiveManagementTab - Comprehensive archive management for AdminPanel
@@ -104,6 +105,15 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
     scheduleDayOfWeek: 0,
     scheduleDayOfMonth: 1,
     retentionDays: null
+  });
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'confirm',
+    onConfirm: null
   });
 
   // Load archives
@@ -260,64 +270,70 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   };
 
   // Handle restore archive
-  const handleRestoreArchive = async (archiveId, archiveName) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Are you sure you want to restore archive "${archiveName}"?\n\nThis will merge the archived data with existing data. Duplicates will be skipped automatically.`)) {
-      return;
-    }
+  const handleRestoreArchive = (archiveId, archiveName) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Restore Archive',
+      message: `Are you sure you want to restore archive "${archiveName}"?\n\nThis will merge the archived data with existing data. Duplicates will be skipped automatically.`,
+      type: 'confirm',
+      onConfirm: async () => {
+        setRestoring(true);
+        try {
+          const response = await fetch(`${API_BASE_URL}/archive/${archiveId}/restore`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+          });
 
-    setRestoring(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/archive/${archiveId}/restore`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to restore archive');
+          }
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to restore archive');
+          const data = await response.json();
+
+          const message = `Archive restored successfully!\n\nAdded: ${data.totalAdded} records\nSkipped (duplicates): ${data.totalSkipped} records\nTables: ${data.totalTables}`;
+
+          addNotification('success', message);
+          loadArchives();
+          loadStats();
+        } catch (error) {
+          console.error('Error restoring archive:', error);
+          addNotification('error', error.message || 'Failed to restore archive');
+        } finally {
+          setRestoring(false);
+        }
       }
-
-      const data = await response.json();
-
-      const message = `Archive restored successfully!\n\nAdded: ${data.totalAdded} records\nSkipped (duplicates): ${data.totalSkipped} records\nTables: ${data.totalTables}`;
-
-      addNotification('success', message);
-      loadArchives();
-      loadStats();
-    } catch (error) {
-      console.error('Error restoring archive:', error);
-      addNotification('error', error.message || 'Failed to restore archive');
-    } finally {
-      setRestoring(false);
-    }
+    });
   };
 
   // Handle delete archive
-  const handleDeleteArchive = async (archiveId, archiveName) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Are you sure you want to delete archive "${archiveName}"?\n\nThis action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteArchive = (archiveId, archiveName) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Archive',
+      message: `Are you sure you want to delete archive "${archiveName}"?\n\nThis action cannot be undone.`,
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/archive/${archiveId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+          });
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/archive/${archiveId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to delete archive');
+          }
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete archive');
+          addNotification('success', `Archive "${archiveName}" deleted successfully`);
+          loadArchives();
+          loadStats();
+        } catch (error) {
+          console.error('Error deleting archive:', error);
+          addNotification('error', error.message || 'Failed to delete archive');
+        }
       }
-
-      addNotification('success', `Archive "${archiveName}" deleted successfully`);
-      loadArchives();
-      loadStats();
-    } catch (error) {
-      console.error('Error deleting archive:', error);
-      addNotification('error', error.message || 'Failed to delete archive');
-    }
+    });
   };
 
   // Handle browse archive
@@ -460,29 +476,32 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   };
 
   // Handle delete rule
-  const handleDeleteRule = async (ruleId, ruleName) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Are you sure you want to delete rule "${ruleName}"?`)) {
-      return;
-    }
+  const handleDeleteRule = (ruleId, ruleName) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Archive Rule',
+      message: `Are you sure you want to delete rule "${ruleName}"?\n\nThis will stop automatic archiving for this rule.`,
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/archive-rules/${ruleId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+          });
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/archive-rules/${ruleId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to delete rule');
+          }
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete rule');
+          addNotification('success', 'Archive rule deleted successfully');
+          loadArchiveRules();
+        } catch (error) {
+          console.error('Error deleting rule:', error);
+          addNotification('error', error.message || 'Failed to delete rule');
+        }
       }
-
-      addNotification('success', 'Archive rule deleted successfully');
-      loadArchiveRules();
-    } catch (error) {
-      console.error('Error deleting rule:', error);
-      addNotification('error', error.message || 'Failed to delete rule');
-    }
+    });
   };
 
   // Handle toggle rule enabled/disabled
@@ -507,44 +526,47 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   };
 
   // Handle trigger rule manually
-  const handleTriggerRule = async (ruleId, ruleName) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Trigger archive rule "${ruleName}" now?`)) {
-      return;
-    }
+  const handleTriggerRule = (ruleId, ruleName) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Trigger Archive Rule',
+      message: `Trigger archive rule "${ruleName}" now?\n\nThis will create a new archive based on the rule settings.`,
+      type: 'info',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/archive-rules/${ruleId}/trigger`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+          });
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/archive-rules/${ruleId}/trigger`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to trigger rule');
+          }
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to trigger rule');
+          addNotification('success', 'Archive rule triggered successfully. The archive will appear in a few moments...');
+          loadArchiveRules();
+
+          // Reload archives immediately
+          loadArchives();
+
+          // Reload again after a delay to catch the newly created archive
+          setTimeout(() => {
+            loadArchives();
+            loadStats();
+          }, 3000);
+
+          // And once more after a longer delay for large archives
+          setTimeout(() => {
+            loadArchives();
+            loadStats();
+          }, 8000);
+        } catch (error) {
+          console.error('Error triggering rule:', error);
+          addNotification('error', error.message || 'Failed to trigger rule');
+        }
       }
-
-      addNotification('success', 'Archive rule triggered successfully. The archive will appear in a few moments...');
-      loadArchiveRules();
-
-      // Reload archives immediately
-      loadArchives();
-
-      // Reload again after a delay to catch the newly created archive
-      setTimeout(() => {
-        loadArchives();
-        loadStats();
-      }, 3000);
-
-      // And once more after a longer delay for large archives
-      setTimeout(() => {
-        loadArchives();
-        loadStats();
-      }, 8000);
-    } catch (error) {
-      console.error('Error triggering rule:', error);
-      addNotification('error', error.message || 'Failed to trigger rule');
-    }
+    });
   };
 
   // Toggle rule module selection
@@ -1331,6 +1353,19 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText="Confirm"
+        cancelText="Cancel"
+      />
 
       {/* Create/Edit Rule Modal */}
       {showRuleModal && (
