@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Pill, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import Toggle from '../Toggle';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewPharmacyForm = ({ theme, api, editingPharmacy, onClose, onSuccess, addNotification, t }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     pharmacyName: '',
     chainName: '',
@@ -27,6 +29,18 @@ const NewPharmacyForm = ({ theme, api, editingPharmacy, onClose, onSuccess, addN
     isActive: true
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewPharmacyForm', {
+      module: 'EHR',
+      metadata: {
+        mode: editingPharmacy ? 'edit' : 'create',
+        pharmacy_id: editingPharmacy?.id,
+      },
+    });
+  }, []);
 
   // Preload form data when editing
   useEffect(() => {
@@ -81,16 +95,42 @@ const NewPharmacyForm = ({ theme, api, editingPharmacy, onClose, onSuccess, addN
         // Update existing pharmacy
         pharmacy = await api.updatePharmacy(editingPharmacy.id, formData);
         await addNotification('success', `Pharmacy updated: ${pharmacy.pharmacyName}`);
+
+        // Log successful update
+        logUpdate('NewPharmacyForm', editingPharmacy, formData, {
+          module: 'EHR',
+          resource_id: editingPharmacy.id,
+          metadata: {
+            pharmacyName: formData.pharmacyName,
+            ncpdpId: formData.ncpdpId,
+          },
+        });
       } else {
         // Create new pharmacy
         pharmacy = await api.createPharmacy(formData);
         await addNotification('success', `New pharmacy added: ${pharmacy.pharmacyName}`);
+
+        // Log successful creation
+        logCreate('NewPharmacyForm', formData, {
+          module: 'EHR',
+          resource_id: pharmacy.id,
+          metadata: {
+            pharmacyName: formData.pharmacyName,
+            ncpdpId: formData.ncpdpId,
+          },
+        });
       }
       onSuccess(pharmacy);
       onClose();
     } catch (err) {
       console.error(`Error ${editingPharmacy ? 'updating' : 'creating'} pharmacy:`, err);
       addNotification('alert', `Failed to ${editingPharmacy ? 'update' : 'create'} pharmacy`);
+
+      // Log error
+      logError('NewPharmacyForm', 'form', err.message || 'Failed to save pharmacy', {
+        module: 'EHR',
+        metadata: { formData },
+      });
     }
   };
 

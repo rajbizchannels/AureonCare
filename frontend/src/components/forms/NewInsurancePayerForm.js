@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification, t, editPayer = null }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     payerId: editPayer?.payer_id || '',
     name: editPayer?.name || '',
@@ -28,6 +30,18 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
   const [showConfirmation, setShowConfirmation] = useState(false);
   const isEditing = !!editPayer;
 
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewInsurancePayerForm', {
+      module: 'RCM',
+      metadata: {
+        mode: isEditing ? 'edit' : 'create',
+        payer_id: editPayer?.id || null,
+      },
+    });
+  }, []);
+
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e) => {
@@ -49,37 +63,61 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
   };
 
   const handleActualSubmit = async () => {
-    try {
-      const payerData = {
-        payer_id: formData.payerId,
-        name: formData.name,
-        payer_type: formData.payerType,
-        phone: formData.phone,
-        email: formData.email,
-        website: formData.website,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        zip_code: formData.zipCode,
-        contact_person: formData.contactPerson,
-        contact_phone: formData.contactPhone,
-        contact_email: formData.contactEmail,
-        claim_submission_method: formData.claimSubmissionMethod,
-        claim_submission_address: formData.claimSubmissionAddress,
-        electronic_payer_id: formData.electronicPayerId,
-        timely_filing_limit: parseInt(formData.timelyFilingLimit) || 365,
-        prior_authorization_required: formData.priorAuthorizationRequired,
-        accepts_assignment: formData.acceptsAssignment,
-        notes: formData.notes,
-        is_active: true
-      };
+    const payerData = {
+      payer_id: formData.payerId,
+      name: formData.name,
+      payer_type: formData.payerType,
+      phone: formData.phone,
+      email: formData.email,
+      website: formData.website,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      zip_code: formData.zipCode,
+      contact_person: formData.contactPerson,
+      contact_phone: formData.contactPhone,
+      contact_email: formData.contactEmail,
+      claim_submission_method: formData.claimSubmissionMethod,
+      claim_submission_address: formData.claimSubmissionAddress,
+      electronic_payer_id: formData.electronicPayerId,
+      timely_filing_limit: parseInt(formData.timelyFilingLimit) || 365,
+      prior_authorization_required: formData.priorAuthorizationRequired,
+      accepts_assignment: formData.acceptsAssignment,
+      notes: formData.notes,
+      is_active: true
+    };
 
+    try {
       let savedPayer;
       if (isEditing) {
         savedPayer = await api.updateInsurancePayer(editPayer.id, payerData);
+
+        // Log successful update
+        logUpdate('NewInsurancePayerForm', payerData, {
+          module: 'RCM',
+          resource_id: editPayer.id,
+          metadata: {
+            payer_name: formData.name,
+            payer_id: formData.payerId,
+            payer_type: formData.payerType,
+          },
+        });
+
         await addNotification('success', `${t.insurancePayerUpdated || 'Insurance payer updated'}: ${savedPayer.name}`);
       } else {
         savedPayer = await api.createInsurancePayer(payerData);
+
+        // Log successful creation
+        logCreate('NewInsurancePayerForm', payerData, {
+          module: 'RCM',
+          resource_id: savedPayer.id,
+          metadata: {
+            payer_name: formData.name,
+            payer_id: formData.payerId,
+            payer_type: formData.payerType,
+          },
+        });
+
         await addNotification('success', `${t.newInsurancePayerAdded || 'New insurance payer added'}: ${savedPayer.name}`);
       }
 
@@ -87,6 +125,13 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
       onClose();
     } catch (err) {
       console.error(`Error ${isEditing ? 'updating' : 'creating'} insurance payer:`, err);
+
+      // Log error
+      logError('NewInsurancePayerForm', 'form', err.message || `Failed to ${isEditing ? 'update' : 'create'} insurance payer`, {
+        module: 'RCM',
+        metadata: { formData: payerData },
+      });
+
       addNotification('alert', isEditing ? (t.failedToUpdateInsurancePayer || 'Failed to update insurance payer. Please try again.') : (t.failedToCreateInsurancePayer || 'Failed to create insurance payer. Please try again.'));
     }
   };

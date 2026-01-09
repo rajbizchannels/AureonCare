@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { DoctorAvailabilityManager } from '../components/scheduling';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import { useAudit } from '../hooks/useAudit';
 
 // Helper function to get authentication headers
 const getAuthHeaders = () => {
@@ -39,6 +40,14 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('ProviderManagementView', {
+      module: 'Admin',
+    });
+  }, []);
 
   useEffect(() => {
     fetchProviders();

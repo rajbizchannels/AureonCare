@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, FileText, Calendar, Phone, Mail, Edit, ArrowLeft, History, Pill, User, Search, Video } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 import NewPatientForm from '../components/forms/NewPatientForm';
 import ViewEditModal from '../components/modals/ViewEditModal';
+import { useAudit } from '../hooks/useAudit';
 
 const EHRView = ({
   theme,
@@ -29,6 +30,14 @@ const EHRView = ({
   onViewTelehealth
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('EHRView', {
+      module: 'EHR',
+    });
+  }, []);
 
   // Filter patients based on search
   const filteredPatients = patients.filter(patient => {

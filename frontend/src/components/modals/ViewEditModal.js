@@ -4,6 +4,7 @@ import { formatDate, formatTime, formatCurrency } from '../../utils/formatters';
 import EPrescribeModal from './ePrescribeModal';
 import { useApp } from '../../context/AppContext';
 import ConfirmationModal from './ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const ViewEditModal = ({
   theme,
@@ -23,6 +24,7 @@ const ViewEditModal = ({
   user,
   t
 }) => {
+  const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const [editData, setEditData] = useState(editingItem?.data || {});
   const [availableRoles, setAvailableRoles] = useState([]);
   const [loadingRoles, setLoadingRoles] = useState(true);
@@ -42,6 +44,20 @@ const ViewEditModal = ({
 
   // Get setLanguage from AppContext for updating language preference
   const { setLanguage } = useApp();
+
+  // Log modal open when editingItem changes
+  useEffect(() => {
+    if (editingItem?.data) {
+      startAction();
+      logModalOpen('ViewEditModal', {
+        module: 'General',
+        metadata: {
+          type: editingItem?.type,
+          mode: currentView,
+        },
+      });
+    }
+  }, [editingItem, currentView, logModalOpen, startAction]);
 
   // Update editData when editingItem changes
   useEffect(() => {
@@ -285,18 +301,30 @@ const ViewEditModal = ({
     }
   }, [editingItem]);
 
+  // Handle close with audit logging
+  const handleClose = () => {
+    logModalClose('ViewEditModal', {
+      module: 'General',
+      metadata: {
+        type: editingItem?.type,
+        mode: currentView,
+      },
+    });
+    onClose();
+  };
+
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         e.stopImmediatePropagation();
         e.preventDefault();
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleEsc, true); // Use capture phase
     return () => window.removeEventListener('keydown', handleEsc, true);
-  }, [onClose]);
+  }, [handleClose]);
 
   // Auto-calculate quantity in edit prescription form based on frequency and duration
   useEffect(() => {
@@ -540,9 +568,16 @@ const ViewEditModal = ({
         ));
         await addNotification('success', t.claimUpdatedSuccessfully || 'Claim updated successfully');
       }
-      onClose();
+      handleClose();
     } catch (err) {
       console.error('Error saving:', err);
+      logError('ViewEditModal', 'modal', err.message, {
+        module: 'General',
+        metadata: {
+          type: editingItem?.type,
+          mode: currentView,
+        },
+      });
       await addNotification('alert', t.failedToSaveChanges || 'Failed to save changes. Please try again.');
     }
   };

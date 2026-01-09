@@ -2012,6 +2012,60 @@ const api = {
     return response.json();
   },
 
+  // Audit Logs
+  createAuditLog: async (auditData) => {
+    try {
+      const response = await authenticatedFetch(`${API_BASE_URL}/audit`, {
+        method: 'POST',
+        body: JSON.stringify(auditData)
+      });
+      if (!response.ok) {
+        console.warn('Failed to create audit log:', response.status);
+        return null;
+      }
+      return response.json();
+    } catch (error) {
+      // Don't throw - audit logging should never block the main application
+      console.warn('Error creating audit log:', error);
+      return null;
+    }
+  },
+  getAuditLogs: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await authenticatedFetch(`${API_BASE_URL}/audit?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch audit logs');
+    return response.json();
+  },
+  getAuditLog: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/audit/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch audit log');
+    return response.json();
+  },
+  getAuditStats: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await authenticatedFetch(`${API_BASE_URL}/audit/stats/summary?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch audit statistics');
+    return response.json();
+  },
+  getTopUsers: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await authenticatedFetch(`${API_BASE_URL}/audit/stats/top-users?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch top users');
+    return response.json();
+  },
+  getTopResources: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await authenticatedFetch(`${API_BASE_URL}/audit/stats/top-resources?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch top resources');
+    return response.json();
+  },
+  exportAuditLogsCSV: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await authenticatedFetch(`${API_BASE_URL}/audit/export/csv?${params}`);
+    if (!response.ok) throw new Error('Failed to export audit logs');
+    return response.blob();
+  },
+
   // Add baseURL property for components that need it
   baseURL: API_BASE_URL
 };

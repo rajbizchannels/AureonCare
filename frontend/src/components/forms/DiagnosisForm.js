@@ -5,6 +5,7 @@ import LabCPTMultiSelect from './LabCPTMultiSelect';
 import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import EPrescribeModal from '../modals/ePrescribeModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const DiagnosisForm = ({
   theme,
@@ -53,6 +54,22 @@ const DiagnosisForm = ({
   // ePrescribe modal state
   const [showEPrescribeForm, setShowEPrescribeForm] = useState(false);
   const [preSelectedMedication, setPreSelectedMedication] = useState(null);
+
+  // AUDIT LOGGING: Initialize audit hook
+  const { logFormView, logFormSubmit, logCreate, logUpdate, logError, startAction } = useAudit();
+
+  // AUDIT LOGGING: Log form view when component mounts
+  useEffect(() => {
+    startAction(); // Start timing for duration tracking
+    logFormView('DiagnosisForm', {
+      module: 'EHR',
+      patient_id: patient?.id || formData.patientId,
+      metadata: {
+        mode: editDiagnosis ? 'edit' : 'create',
+        diagnosis_id: editDiagnosis?.id,
+      },
+    });
+  }, []); // Only log once on mount
 
   // Load laboratories on mount
   useEffect(() => {
@@ -304,25 +321,26 @@ const DiagnosisForm = ({
   const handleActualSubmit = async () => {
     setIsSubmitting(true);
 
+    // Prepare diagnosis data - store codes as comma-separated string for backward compatibility
+    const diagnosisData = {
+      patientId: formData.patientId,
+      providerId: formData.providerId || null,
+      appointmentId: null,
+      diagnosisCode: formData.icdCodes.length > 0 ? formData.icdCodes.map(c => c.code).join(', ') : null,
+      diagnosisName: formData.diagnosisName || (formData.icdCodes.length > 0 ? formData.icdCodes[0].description : ''),
+      description: formData.description || null,
+      severity: formData.severity,
+      status: formData.status,
+      diagnosedDate: formData.diagnosedDate,
+      notes: formData.notes || null,
+      // Store additional metadata in notes for full details
+      metadata: {
+        icdCodes: formData.icdCodes,
+        cptCodes: formData.cptCodes
+      }
+    };
+
     try {
-      // Prepare diagnosis data - store codes as comma-separated string for backward compatibility
-      const diagnosisData = {
-        patientId: formData.patientId,
-        providerId: formData.providerId || null,
-        appointmentId: null,
-        diagnosisCode: formData.icdCodes.length > 0 ? formData.icdCodes.map(c => c.code).join(', ') : null,
-        diagnosisName: formData.diagnosisName || (formData.icdCodes.length > 0 ? formData.icdCodes[0].description : ''),
-        description: formData.description || null,
-        severity: formData.severity,
-        status: formData.status,
-        diagnosedDate: formData.diagnosedDate,
-        notes: formData.notes || null,
-        // Store additional metadata in notes for full details
-        metadata: {
-          icdCodes: formData.icdCodes,
-          cptCodes: formData.cptCodes
-        }
-      };
 
       // Append metadata to notes if not empty
       if (diagnosisData.metadata.icdCodes.length > 0 || diagnosisData.metadata.cptCodes.length > 0) {
@@ -424,6 +442,39 @@ const DiagnosisForm = ({
       // Save result for potential prescription creation
       setSavedDiagnosisResult({ result, selectedPatient, createdPrescriptions });
 
+      // AUDIT LOGGING: Log successful form submission
+      if (editDiagnosis) {
+        logUpdate(
+          'DiagnosisForm',
+          {
+            ...editDiagnosis,
+            diagnosisCode: editDiagnosis.diagnosisCode,
+          },
+          diagnosisData,
+          {
+            module: 'EHR',
+            resource_id: result.id,
+            patient_id: formData.patientId,
+            provider_id: formData.providerId,
+            metadata: {
+              prescriptions_created: createdPrescriptions.length,
+              lab_orders_created: createdLabOrders.length,
+            },
+          }
+        );
+      } else {
+        logCreate('DiagnosisForm', diagnosisData, {
+          module: 'EHR',
+          resource_id: result.id,
+          patient_id: formData.patientId,
+          provider_id: formData.providerId,
+          metadata: {
+            prescriptions_created: createdPrescriptions.length,
+            lab_orders_created: createdLabOrders.length,
+          },
+        });
+      }
+
       // Show success confirmation and auto-close after 2 seconds
       setShowSuccessConfirmation(true);
       setTimeout(() => {
@@ -433,6 +484,18 @@ const DiagnosisForm = ({
     } catch (err) {
       console.error('Error saving diagnosis:', err);
       const action = editDiagnosis ? 'update' : 'create';
+
+      // AUDIT LOGGING: Log error
+      logError('DiagnosisForm', 'form', err.message || `Failed to ${action} diagnosis`, {
+        module: 'EHR',
+        patient_id: formData.patientId,
+        provider_id: formData.providerId,
+        metadata: {
+          action,
+          formData: diagnosisData,
+        },
+      });
+
       addNotification('alert', `Failed to ${action} diagnosis. Please try again.`);
     } finally {
       setIsSubmitting(false);

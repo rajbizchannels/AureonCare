@@ -4,6 +4,7 @@ import { formatDate, formatTime } from '../utils/formatters';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import ViewEditModal from '../components/modals/ViewEditModal';
+import { useAudit } from '../hooks/useAudit';
 
 const PracticeManagementView = ({
   theme,
@@ -47,6 +48,14 @@ const PracticeManagementView = ({
   const [waitlistStatusFilter, setWaitlistStatusFilter] = useState('active');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedWaitlistEntry, setSelectedWaitlistEntry] = useState(null);
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('PracticeManagementView', {
+      module: 'Practice Management',
+    });
+  }, []);
 
   // Load waitlist when switching to waitlist view
   useEffect(() => {

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X, Heart, Clock, Tag, Shield, AlertCircle } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotification, t, editingOffering = null }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -29,6 +31,18 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
     consentFormRequired: false,
     consentFormUrl: ''
   });
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewHealthcareOfferingForm', {
+      module: 'Offerings',
+      metadata: {
+        mode: editingOffering ? 'edit' : 'create',
+        offering_id: editingOffering?.id || null,
+      },
+    });
+  }, []);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -117,44 +131,75 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
     setLoading(true);
     setShowConfirmation(false);
 
+    // Extract code strings from code objects
+    const cptCodesArray = formData.cptCodes.map(code => code.code);
+    const icdCodesArray = formData.icdCodes.map(code => code.code);
+
+    const offeringData = {
+      name: formData.name.trim(),
+      description: formData.description.trim() || null,
+      categoryId: formData.categoryId || null,
+      durationMinutes: parseInt(formData.durationMinutes) || 30,
+      requiresPreparation: formData.requiresPreparation,
+      preparationInstructions: formData.requiresPreparation ? formData.preparationInstructions.trim() || null : null,
+      isActive: formData.isActive,
+      isFeatured: formData.isFeatured,
+      availableOnline: formData.availableOnline,
+      requiresReferral: formData.requiresReferral,
+      cptCodes: cptCodesArray.length > 0 ? cptCodesArray : null,
+      icdCodes: icdCodesArray.length > 0 ? icdCodesArray : null,
+      minAge: formData.minAge ? parseInt(formData.minAge) : null,
+      maxAge: formData.maxAge ? parseInt(formData.maxAge) : null,
+      genderRestriction: formData.genderRestriction || 'any',
+      contraindications: formData.contraindications.trim() || null,
+      imageUrl: formData.imageUrl.trim() || null,
+      consentFormRequired: formData.consentFormRequired,
+      consentFormUrl: formData.consentFormRequired ? formData.consentFormUrl.trim() || null : null
+    };
+
     try {
-      // Extract code strings from code objects
-      const cptCodesArray = formData.cptCodes.map(code => code.code);
-      const icdCodesArray = formData.icdCodes.map(code => code.code);
-
-      const offeringData = {
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        categoryId: formData.categoryId || null,
-        durationMinutes: parseInt(formData.durationMinutes) || 30,
-        requiresPreparation: formData.requiresPreparation,
-        preparationInstructions: formData.requiresPreparation ? formData.preparationInstructions.trim() || null : null,
-        isActive: formData.isActive,
-        isFeatured: formData.isFeatured,
-        availableOnline: formData.availableOnline,
-        requiresReferral: formData.requiresReferral,
-        cptCodes: cptCodesArray.length > 0 ? cptCodesArray : null,
-        icdCodes: icdCodesArray.length > 0 ? icdCodesArray : null,
-        minAge: formData.minAge ? parseInt(formData.minAge) : null,
-        maxAge: formData.maxAge ? parseInt(formData.maxAge) : null,
-        genderRestriction: formData.genderRestriction || 'any',
-        contraindications: formData.contraindications.trim() || null,
-        imageUrl: formData.imageUrl.trim() || null,
-        consentFormRequired: formData.consentFormRequired,
-        consentFormUrl: formData.consentFormRequired ? formData.consentFormUrl.trim() || null : null
-      };
-
       let result;
       if (editingOffering) {
         result = await api.updateOffering(editingOffering.id, offeringData);
+
+        // Log successful update
+        logUpdate('NewHealthcareOfferingForm', offeringData, {
+          module: 'Offerings',
+          resource_id: editingOffering.id,
+          metadata: {
+            offering_name: formData.name,
+            category_id: formData.categoryId,
+            duration: formData.durationMinutes,
+          },
+        });
+
         addNotification('success', t.offeringUpdatedSuccessfully || 'Healthcare offering updated successfully');
       } else {
         result = await api.createOffering(offeringData);
+
+        // Log successful creation
+        logCreate('NewHealthcareOfferingForm', offeringData, {
+          module: 'Offerings',
+          resource_id: result.id,
+          metadata: {
+            offering_name: formData.name,
+            category_id: formData.categoryId,
+            duration: formData.durationMinutes,
+          },
+        });
+
         addNotification('success', t.offeringCreatedSuccessfully || 'Healthcare offering created successfully');
       }
       onSuccess(result);
     } catch (error) {
       console.error(`Error ${editingOffering ? 'updating' : 'creating'} healthcare offering:`, error);
+
+      // Log error
+      logError('NewHealthcareOfferingForm', 'form', error.message || `Failed to ${editingOffering ? 'update' : 'create'} healthcare offering`, {
+        module: 'Offerings',
+        metadata: { formData: offeringData },
+      });
+
       addNotification('alert', error.message || `Failed to ${editingOffering ? 'update' : 'create'} healthcare offering`);
     } finally {
       setLoading(false);

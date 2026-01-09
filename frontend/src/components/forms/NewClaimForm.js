@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, X, Save, Bot, Search, Plus, Trash2, Shield } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onSuccess, addNotification, t }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patientId: editingClaim?.patient_id?.toString() || '',
     payerId: editingClaim?.payer_id?.toString() || '',
@@ -41,6 +43,19 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
   const [loadingDiagnoses, setLoadingDiagnoses] = useState(false);
 
   const [selectedPatientInsurer, setSelectedPatientInsurer] = useState(null);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewClaimForm', {
+      module: 'RCM',
+      patient_id: editingClaim?.patient_id,
+      metadata: {
+        mode: editingClaim ? 'edit' : 'create',
+        claim_id: editingClaim?.id,
+      },
+    });
+  }, []);
 
   // Auto-load insurance payer from patient profile when patient is selected
   useEffect(() => {
@@ -268,26 +283,39 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
   const handleActualSubmit = async () => {
     setShowSubmitConfirmation(false);
 
+    const patient = patients.find(p => p.id.toString() === formData.patientId);
+    const payer = insurancePayers.find(p => p.id.toString() === formData.payerId);
+
+    const claimData = {
+      patient_id: formData.patientId,
+      payer: payer?.name || 'Unknown',
+      payer_id: formData.payerId,
+      amount: parseFloat(formData.amount),
+      service_date: formData.serviceDate,
+      diagnosis_codes: selectedDiagnoses.map(d => d.code || d),
+      procedure_codes: selectedProcedures.map(p => p.code || p),
+      notes: formData.notes,
+      preapproval_id: formData.preapprovalId || null
+    };
+
     try {
-      const patient = patients.find(p => p.id.toString() === formData.patientId);
-      const payer = insurancePayers.find(p => p.id.toString() === formData.payerId);
-
-      const claimData = {
-        patient_id: formData.patientId,
-        payer: payer?.name || 'Unknown',
-        payer_id: formData.payerId,
-        amount: parseFloat(formData.amount),
-        service_date: formData.serviceDate,
-        diagnosis_codes: selectedDiagnoses.map(d => d.code || d),
-        procedure_codes: selectedProcedures.map(p => p.code || p),
-        notes: formData.notes,
-        preapproval_id: formData.preapprovalId || null
-      };
-
       let claim;
       if (editingClaim) {
         // Update existing claim
         claim = await api.updateClaim(editingClaim.id, claimData);
+
+        // Log update
+        logUpdate('NewClaimForm', editingClaim, claimData, {
+          module: 'RCM',
+          resource_id: editingClaim.id,
+          patient_id: formData.patientId,
+          metadata: {
+            amount: claimData.amount,
+            diagnosis_count: claimData.diagnosis_codes.length,
+            procedure_count: claimData.procedure_codes.length,
+          },
+        });
+
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : t.patient || 'patient';
         await addNotification('success', `Claim updated successfully for ${patientName}`);
       } else {
@@ -296,6 +324,20 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
         claimData.claim_number = claimNo;
         claimData.status = 'pending';
         claim = await api.createClaim(claimData);
+
+        // Log creation
+        logCreate('NewClaimForm', claimData, {
+          module: 'RCM',
+          resource_id: claim.id,
+          patient_id: formData.patientId,
+          metadata: {
+            claim_number: claimNo,
+            amount: claimData.amount,
+            diagnosis_count: claimData.diagnosis_codes.length,
+            procedure_count: claimData.procedure_codes.length,
+          },
+        });
+
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : t.patient || 'patient';
         await addNotification('claim', `${t.newClaimCreated || 'New claim'} ${claimNo} ${t.createdFor || 'created for'} ${patientName}`);
       }
@@ -311,6 +353,13 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
     } catch (err) {
       console.error('Error saving claim:', err);
       addNotification('alert', editingClaim ? 'Failed to update claim. Please try again.' : (t.failedToCreateClaim || 'Failed to create claim. Please try again.'));
+
+      // Log error
+      logError('NewClaimForm', 'form', err.message || `Failed to ${editingClaim ? 'update' : 'create'} claim`, {
+        module: 'RCM',
+        patient_id: formData.patientId,
+        metadata: { formData: claimData, mode: editingClaim ? 'edit' : 'create' },
+      });
     }
   };
 
