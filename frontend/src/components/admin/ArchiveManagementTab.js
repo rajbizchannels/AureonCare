@@ -240,6 +240,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
 
   // Handle restore archive
   const handleRestoreArchive = async (archiveId, archiveName) => {
+    // eslint-disable-next-line no-restricted-globals
     if (!confirm(`Are you sure you want to restore archive "${archiveName}"?\n\nThis will merge the archived data with existing data. Duplicates will be skipped automatically.`)) {
       return;
     }
@@ -273,6 +274,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
 
   // Handle delete archive
   const handleDeleteArchive = async (archiveId, archiveName) => {
+    // eslint-disable-next-line no-restricted-globals
     if (!confirm(`Are you sure you want to delete archive "${archiveName}"?\n\nThis action cannot be undone.`)) {
       return;
     }
