@@ -138,6 +138,7 @@ app.use('/api/insurance-payers', require('./routes/insurance-payers'));
 app.use('/api/intake-forms', require('./routes/intake-forms'));
 app.use('/api/backup', require('./routes/backup'));
 app.use('/api/archive', require('./routes/archive'));
+app.use('/api/archive-rules', require('./routes/archiveRules'));
 app.use('/api/audit', require('./routes/audit'));
 
 // Serve uploaded files
@@ -182,6 +183,16 @@ async function startServer() {
       }
     } else {
       console.log('⚠️  Redis not configured (continuing without cache)');
+    }
+
+    // Start Archive Scheduler
+    let stopScheduler = null;
+    try {
+      const { startScheduler } = require('./services/archiveScheduler');
+      stopScheduler = startScheduler();
+      console.log('✓ Archive scheduler started');
+    } catch (schedulerError) {
+      console.log('⚠️  Archive scheduler not started:', schedulerError.message);
     }
 
     // Start Express server
