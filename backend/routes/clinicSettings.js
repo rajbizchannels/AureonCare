@@ -61,6 +61,157 @@ router.get('/info', async (req, res) => {
 });
 
 /**
+ * Get full clinic settings
+ * GET /api/clinic-settings
+ */
+router.get('/', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+
+    // Get organization settings
+    const orgResult = await pool.query(`
+      SELECT organization_name, settings
+      FROM organization_settings
+      LIMIT 1
+    `);
+
+    // Get practice settings
+    const practiceResult = await pool.query(`
+      SELECT name, tax_id, phone, email, address, plan_tier
+      FROM practices
+      ORDER BY created_at ASC
+      LIMIT 1
+    `);
+
+    let settings = {};
+
+    // Merge organization and practice data
+    if (orgResult.rows.length > 0) {
+      const orgSettings = orgResult.rows[0].settings || {};
+      settings = {
+        name: orgResult.rows[0].organization_name || '',
+        website: orgSettings.website || '',
+        npi: orgSettings.npi || '',
+      };
+    }
+
+    if (practiceResult.rows.length > 0) {
+      const practice = practiceResult.rows[0];
+      settings = {
+        ...settings,
+        name: settings.name || practice.name || '',
+        taxId: practice.tax_id || '',
+        phone: practice.phone || '',
+        email: practice.email || '',
+        address: typeof practice.address === 'string' ? practice.address : (practice.address?.street || ''),
+      };
+    }
+
+    res.json(settings);
+  } catch (error) {
+    console.error('Error fetching clinic settings:', error);
+    res.status(500).json({ error: 'Failed to fetch clinic settings' });
+  }
+});
+
+/**
+ * Save clinic settings
+ * POST /api/clinic-settings
+ */
+router.post('/', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { name, address, phone, email, website, taxId, npi } = req.body;
+
+    // Start transaction
+    await pool.query('BEGIN');
+
+    try {
+      // Update or insert into organization_settings
+      const orgResult = await pool.query(`
+        SELECT id FROM organization_settings LIMIT 1
+      `);
+
+      if (orgResult.rows.length > 0) {
+        // Update existing organization settings
+        await pool.query(`
+          UPDATE organization_settings
+          SET organization_name = $1,
+              settings = jsonb_set(
+                COALESCE(settings, '{}'::jsonb),
+                '{website}',
+                $2::jsonb
+              ),
+              settings = jsonb_set(
+                COALESCE(settings, '{}'::jsonb),
+                '{npi}',
+                $3::jsonb
+              ),
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $4
+        `, [name, JSON.stringify(website || ''), JSON.stringify(npi || ''), orgResult.rows[0].id]);
+      } else {
+        // Insert new organization settings
+        await pool.query(`
+          INSERT INTO organization_settings (organization_name, settings)
+          VALUES ($1, $2)
+        `, [name, JSON.stringify({ website: website || '', npi: npi || '' })]);
+      }
+
+      // Update or insert into practices table
+      const practiceResult = await pool.query(`
+        SELECT id FROM practices ORDER BY created_at ASC LIMIT 1
+      `);
+
+      if (practiceResult.rows.length > 0) {
+        // Update existing practice
+        await pool.query(`
+          UPDATE practices
+          SET name = $1,
+              tax_id = $2,
+              phone = $3,
+              email = $4,
+              address = $5::jsonb,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $6
+        `, [
+          name,
+          taxId || null,
+          phone || null,
+          email || null,
+          JSON.stringify({ street: address || '' }),
+          practiceResult.rows[0].id
+        ]);
+      } else {
+        // Insert new practice
+        await pool.query(`
+          INSERT INTO practices (name, tax_id, phone, email, address)
+          VALUES ($1, $2, $3, $4, $5::jsonb)
+        `, [
+          name,
+          taxId || null,
+          phone || null,
+          email || null,
+          JSON.stringify({ street: address || '' })
+        ]);
+      }
+
+      // Commit transaction
+      await pool.query('COMMIT');
+
+      res.json({ success: true, message: 'Clinic settings saved successfully' });
+    } catch (error) {
+      // Rollback on error
+      await pool.query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error saving clinic settings:', error);
+    res.status(500).json({ error: 'Failed to save clinic settings' });
+  }
+});
+
+/**
  * Get working hours
  * GET /api/clinic-settings/working-hours
  */
