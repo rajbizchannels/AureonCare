@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, User, Mail, Phone, Lock, Shield } from 'lucide-react';
+import { X, User, Mail, Phone, Lock, Shield, Building, FileText, Stethoscope, Globe, Clock, Languages } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 
 /**
@@ -14,6 +14,13 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
     email: '',
     phone: '',
     role: 'patient',
+    practice: '',
+    license: '',
+    specialty: '',
+    country: '',
+    timezone: '',
+    license_number: '',
+    language: '',
     password: '',
     confirmPassword: '',
   });
@@ -44,6 +51,13 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
         email: user.email || '',
         phone: user.phone || '',
         role: user.role || 'patient',
+        practice: user.practice || '',
+        license: user.license || '',
+        specialty: user.specialty || '',
+        country: user.country || '',
+        timezone: user.timezone || '',
+        license_number: user.license_number || '',
+        language: user.language || '',
         password: '',
         confirmPassword: '',
       });
@@ -54,6 +68,13 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
         email: '',
         phone: '',
         role: 'patient',
+        practice: '',
+        license: '',
+        specialty: '',
+        country: '',
+        timezone: '',
+        license_number: '',
+        language: '',
         password: '',
         confirmPassword: '',
       });
@@ -141,6 +162,13 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
       email: '',
       phone: '',
       role: 'patient',
+      practice: '',
+      license: '',
+      specialty: '',
+      country: '',
+      timezone: '',
+      license_number: '',
+      language: '',
       password: '',
       confirmPassword: '',
     });
@@ -292,6 +320,215 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
                 }`}
                 placeholder="+1 (555) 123-4567"
               />
+            </div>
+          </div>
+
+          {/* Practice */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${
+              theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+            }`}>
+              {t.practice || 'Practice'}
+            </label>
+            <div className="relative">
+              <Building className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+              }`} />
+              <input
+                type="text"
+                value={formData.practice}
+                onChange={(e) => handleChange('practice', e.target.value)}
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                placeholder="Medical Center Name"
+              />
+            </div>
+          </div>
+
+          {/* License and License Number */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* License */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+              }`}>
+                {t.license || 'License'}
+              </label>
+              <div className="relative">
+                <FileText className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                  theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                }`} />
+                <input
+                  type="text"
+                  value={formData.license}
+                  onChange={(e) => handleChange('license', e.target.value)}
+                  disabled={formData.role === 'patient'}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  } ${formData.role === 'patient' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  placeholder="License Type"
+                />
+              </div>
+            </div>
+
+            {/* License Number */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+              }`}>
+                {t.licenseNumber || 'License Number'}
+              </label>
+              <input
+                type="text"
+                value={formData.license_number}
+                onChange={(e) => handleChange('license_number', e.target.value)}
+                disabled={formData.role === 'patient'}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                } ${formData.role === 'patient' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                placeholder="12345678"
+              />
+            </div>
+          </div>
+
+          {/* Specialty */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${
+              theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+            }`}>
+              {t.specialty || 'Specialty'}
+            </label>
+            <div className="relative">
+              <Stethoscope className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+              }`} />
+              <input
+                type="text"
+                value={formData.specialty}
+                onChange={(e) => handleChange('specialty', e.target.value)}
+                disabled={formData.role === 'patient'}
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                } ${formData.role === 'patient' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                placeholder="Cardiology, Pediatrics, etc."
+              />
+            </div>
+          </div>
+
+          {/* Country and Timezone */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Country */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+              }`}>
+                {t.country || 'Country'}
+              </label>
+              <div className="relative">
+                <Globe className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                  theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                }`} />
+                <select
+                  value={formData.country}
+                  onChange={(e) => handleChange('country', e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="">Select Country</option>
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="AU">Australia</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="IN">India</option>
+                  <option value="JP">Japan</option>
+                  <option value="CN">China</option>
+                  <option value="BR">Brazil</option>
+                  <option value="MX">Mexico</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Timezone */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+              }`}>
+                {t.timezone || 'Timezone'}
+              </label>
+              <div className="relative">
+                <Clock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                  theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                }`} />
+                <select
+                  value={formData.timezone}
+                  onChange={(e) => handleChange('timezone', e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="">Select Timezone</option>
+                  <option value="America/New_York">Eastern Time (ET)</option>
+                  <option value="America/Chicago">Central Time (CT)</option>
+                  <option value="America/Denver">Mountain Time (MT)</option>
+                  <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                  <option value="America/Anchorage">Alaska Time (AKT)</option>
+                  <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+                  <option value="Europe/London">London (GMT)</option>
+                  <option value="Europe/Paris">Paris (CET)</option>
+                  <option value="Europe/Berlin">Berlin (CET)</option>
+                  <option value="Asia/Tokyo">Tokyo (JST)</option>
+                  <option value="Asia/Shanghai">Shanghai (CST)</option>
+                  <option value="Asia/Dubai">Dubai (GST)</option>
+                  <option value="Asia/Kolkata">India (IST)</option>
+                  <option value="Australia/Sydney">Sydney (AEDT)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Language */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${
+              theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+            }`}>
+              {t.language || 'Language'}
+            </label>
+            <div className="relative">
+              <Languages className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+              }`} />
+              <select
+                value={formData.language}
+                onChange={(e) => handleChange('language', e.target.value)}
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              >
+                <option value="">Select Language</option>
+                <option value="en">English</option>
+                <option value="es">Español (Spanish)</option>
+                <option value="fr">Français (French)</option>
+                <option value="de">Deutsch (German)</option>
+                <option value="ar">العربية (Arabic)</option>
+              </select>
             </div>
           </div>
 
