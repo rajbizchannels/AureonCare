@@ -7,6 +7,46 @@ const router = express.Router();
  */
 
 /**
+ * Get clinic info (name, address, etc.)
+ * GET /api/clinic-settings/info
+ */
+router.get('/info', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+
+    // Create table if it doesn't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS clinic_info (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) DEFAULT 'Medical Practice',
+        address TEXT,
+        phone VARCHAR(50),
+        email VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    const result = await pool.query('SELECT * FROM clinic_info LIMIT 1');
+
+    // If no data exists, insert default and return it
+    if (result.rows.length === 0) {
+      const insertResult = await pool.query(`
+        INSERT INTO clinic_info (name)
+        VALUES ('Medical Practice')
+        RETURNING *
+      `);
+      return res.json(insertResult.rows[0]);
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching clinic info:', error);
+    res.status(500).json({ error: 'Failed to fetch clinic info' });
+  }
+});
+
+/**
  * Get working hours
  * GET /api/clinic-settings/working-hours
  */

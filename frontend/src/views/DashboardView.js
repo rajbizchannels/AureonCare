@@ -43,20 +43,33 @@ const DashboardView = ({
   const [prescribePatient, setPrescribePatient] = useState(null);
   const [prescribeDiagnosis, setPrescribeDiagnosis] = useState(null);
 
-  // Load clinic name from localStorage
+  // Load clinic name from database dynamically
   useEffect(() => {
-    try {
-      const savedSettings = localStorage.getItem('clinicSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        if (settings.name) {
-          setClinicName(settings.name);
+    const fetchClinicInfo = async () => {
+      try {
+        const clinicInfo = await api.getClinicInfo();
+        if (clinicInfo && clinicInfo.name) {
+          setClinicName(clinicInfo.name);
+        }
+      } catch (error) {
+        console.error('Error loading clinic name:', error);
+        // Fallback to localStorage if API fails
+        try {
+          const savedSettings = localStorage.getItem('clinicSettings');
+          if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            if (settings.name) {
+              setClinicName(settings.name);
+            }
+          }
+        } catch (localError) {
+          console.error('Error loading clinic name from localStorage:', localError);
         }
       }
-    } catch (error) {
-      console.error('Error loading clinic name:', error);
-    }
-  }, []);
+    };
+
+    fetchClinicInfo();
+  }, [api]);
 
   // Define all available quick actions with permission requirements
   const allQuickActions = [
@@ -226,28 +239,26 @@ const DashboardView = ({
           onClick={() => setSelectedItem('tasks')}
         />
 
-        {/* Revenue - Show only if user can view billing */}
-        {hasPermission(user, 'billing', 'view') && (
-          <StatCard
-            title={t.revenue}
-            value={(() => {
-              const totalRevenue = claims.reduce((sum, c) => {
-                const amount = typeof c.amount === 'string' ? parseFloat(c.amount) : (c.amount || 0);
-                return sum + amount;
-              }, 0);
-              return totalRevenue >= 1000 ? `$${(totalRevenue / 1000).toFixed(1)}K` : `$${totalRevenue.toFixed(0)}`;
-            })()}
-            icon={DollarSign}
-            trend={(() => {
-              const totalRevenue = claims.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
-              const approvedRevenue = claims.filter(c => c.status === 'Approved' || c.status === 'Paid').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
-              const approvalRate = totalRevenue > 0 ? Math.round((approvedRevenue / totalRevenue) * 100) : 0;
-              return `${approvalRate}% ${t.approved}`;
-            })()}
-            color="from-green-500 to-emerald-500"
-            onClick={() => setSelectedItem('revenue')}
-          />
-        )}
+        {/* Revenue - Show for all authenticated users */}
+        <StatCard
+          title={t.revenue}
+          value={(() => {
+            const totalRevenue = claims.reduce((sum, c) => {
+              const amount = typeof c.amount === 'string' ? parseFloat(c.amount) : (c.amount || 0);
+              return sum + amount;
+            }, 0);
+            return totalRevenue >= 1000 ? `$${(totalRevenue / 1000).toFixed(1)}K` : `$${totalRevenue.toFixed(0)}`;
+          })()}
+          icon={DollarSign}
+          trend={(() => {
+            const totalRevenue = claims.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+            const approvedRevenue = claims.filter(c => c.status === 'Approved' || c.status === 'Paid').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+            const approvalRate = totalRevenue > 0 ? Math.round((approvedRevenue / totalRevenue) * 100) : 0;
+            return `${approvalRate}% ${t.approved}`;
+          })()}
+          color="from-green-500 to-emerald-500"
+          onClick={() => setSelectedItem('revenue')}
+        />
 
         {/* Active Patients - Show if user can view patients */}
         {hasPermission(user, 'patients', 'view') && (
