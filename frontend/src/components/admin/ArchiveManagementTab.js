@@ -20,6 +20,10 @@ import {
   ChevronUp,
   Eye,
   Table,
+  Clock,
+  Play,
+  Power,
+  Settings,
 } from 'lucide-react';
 
 /**
@@ -83,6 +87,23 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   const [browseData, setBrowseData] = useState(null);
   const [browsing, setBrowsing] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
+
+  // Archive Rules state
+  const [archiveRules, setArchiveRules] = useState([]);
+  const [showRulesSection, setShowRulesSection] = useState(true);
+  const [showRuleModal, setShowRuleModal] = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
+  const [ruleForm, setRuleForm] = useState({
+    ruleName: '',
+    description: '',
+    enabled: true,
+    selectedModules: [],
+    scheduleType: 'daily',
+    scheduleTime: '02:00',
+    scheduleDayOfWeek: 0,
+    scheduleDayOfMonth: 1,
+    retentionDays: null
+  });
 
   // Load archives
   const loadArchives = useCallback(async () => {
