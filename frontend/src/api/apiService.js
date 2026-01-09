@@ -1985,6 +1985,19 @@ const api = {
     if (!response.ok) throw new Error('Failed to fetch clinic info');
     return response.json();
   },
+  getClinicSettings: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/clinic-settings`);
+    if (!response.ok) throw new Error('Failed to fetch clinic settings');
+    return response.json();
+  },
+  saveClinicSettings: async (settings) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/clinic-settings`, {
+      method: 'POST',
+      body: JSON.stringify(settings)
+    });
+    if (!response.ok) throw new Error('Failed to save clinic settings');
+    return response.json();
+  },
   getWorkingHours: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/clinic-settings/working-hours`);
     if (!response.ok) throw new Error('Failed to fetch working hours');

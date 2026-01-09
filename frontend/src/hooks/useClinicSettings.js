@@ -4,8 +4,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { validateClinicSettings, safeLocalStorageLoad, safeLocalStorageSave } from '../utils/validators';
-import { STORAGE_KEYS } from '../constants/adminConstants';
+import { validateClinicSettings } from '../utils/validators';
+import api from '../api/apiService';
 
 const DEFAULT_CLINIC_SETTINGS = {
   name: 'MedFlow Medical Center',
@@ -27,12 +27,21 @@ export const useClinicSettings = (addNotification) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load clinic settings from localStorage on mount
+  // Load clinic settings from database on mount
   useEffect(() => {
-    const savedSettings = safeLocalStorageLoad(STORAGE_KEYS.CLINIC_SETTINGS);
-    if (savedSettings) {
-      setClinicSettings(savedSettings);
-    }
+    const fetchClinicSettings = async () => {
+      try {
+        const settings = await api.getClinicSettings();
+        if (settings && Object.keys(settings).length > 0) {
+          setClinicSettings({ ...DEFAULT_CLINIC_SETTINGS, ...settings });
+        }
+      } catch (error) {
+        console.error('Error fetching clinic settings:', error);
+        // Keep default settings if fetch fails
+      }
+    };
+
+    fetchClinicSettings();
   }, []);
 
   /**
@@ -72,25 +81,25 @@ export const useClinicSettings = (addNotification) => {
       return { success: false, errors: validation.errors };
     }
 
-    // Save to localStorage (temporary until backend API is implemented)
-    // TODO: Replace with proper backend API call
-    const saveResult = safeLocalStorageSave(STORAGE_KEYS.CLINIC_SETTINGS, clinicSettings);
+    try {
+      // Save to database via API
+      const result = await api.saveClinicSettings(clinicSettings);
 
-    if (!saveResult.success) {
       if (addNotification) {
-        await addNotification('alert', saveResult.error);
+        await addNotification('success', result.message || 'Clinic settings saved successfully');
+      }
+
+      setValidationErrors({});
+      setIsSaving(false);
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving clinic settings:', error);
+      if (addNotification) {
+        await addNotification('alert', error.message || 'Failed to save clinic settings');
       }
       setIsSaving(false);
-      return { success: false, error: saveResult.error };
+      return { success: false, error: error.message };
     }
-
-    if (addNotification) {
-      await addNotification('success', 'Clinic settings saved successfully');
-    }
-
-    setValidationErrors({});
-    setIsSaving(false);
-    return { success: true };
   }, [clinicSettings, addNotification]);
 
   return {
