@@ -25,6 +25,7 @@ import {
   Power,
   Settings,
 } from 'lucide-react';
+import Toggle from '../Toggle';
 
 /**
  * ArchiveManagementTab - Comprehensive archive management for AdminPanel
@@ -523,9 +524,23 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
         throw new Error(error.error || 'Failed to trigger rule');
       }
 
-      addNotification('success', 'Archive rule triggered successfully');
+      addNotification('success', 'Archive rule triggered successfully. The archive will appear in a few moments...');
       loadArchiveRules();
-      loadArchives(); // Reload archives to show the new one
+
+      // Reload archives immediately
+      loadArchives();
+
+      // Reload again after a delay to catch the newly created archive
+      setTimeout(() => {
+        loadArchives();
+        loadStats();
+      }, 3000);
+
+      // And once more after a longer delay for large archives
+      setTimeout(() => {
+        loadArchives();
+        loadStats();
+      }, 8000);
     } catch (error) {
       console.error('Error triggering rule:', error);
       addNotification('error', error.message || 'Failed to trigger rule');
@@ -1569,17 +1584,14 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
               </div>
 
               {/* Enable/Disable */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="ruleEnabled"
+              <div>
+                <Toggle
                   checked={ruleForm.enabled}
-                  onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
-                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                  onChange={(checked) => setRuleForm({ ...ruleForm, enabled: checked })}
+                  label="Enable this rule immediately"
+                  theme={theme}
+                  size="md"
                 />
-                <label htmlFor="ruleEnabled" className="text-sm font-medium cursor-pointer">
-                  Enable this rule immediately
-                </label>
               </div>
             </div>
 
