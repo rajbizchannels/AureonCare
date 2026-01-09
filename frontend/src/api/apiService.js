@@ -1980,6 +1980,11 @@ const api = {
   },
 
   // Clinic Settings
+  getClinicInfo: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/clinic-settings/info`);
+    if (!response.ok) throw new Error('Failed to fetch clinic info');
+    return response.json();
+  },
   getWorkingHours: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/clinic-settings/working-hours`);
     if (!response.ok) throw new Error('Failed to fetch working hours');

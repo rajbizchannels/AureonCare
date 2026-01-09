@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, User, Mail, Phone, Lock, Shield, Building, FileText, Stethoscope, Globe, Clock, Languages } from 'lucide-react';
+import { X, User, Mail, Phone, Lock, Shield, Building, FileText, Stethoscope, Globe, Clock, Languages, MapPin } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 
 /**
@@ -13,6 +13,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
     lastName: '',
     email: '',
     phone: '',
+    address: '',
     role: 'patient',
     practice: '',
     license: '',
@@ -50,6 +51,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
         lastName: user.lastName || '',
         email: user.email || '',
         phone: user.phone || '',
+        address: user.address || '',
         role: user.role || 'patient',
         practice: user.practice || '',
         license: user.license || '',
@@ -67,6 +69,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
         lastName: '',
         email: '',
         phone: '',
+        address: '',
         role: 'patient',
         practice: '',
         license: '',
@@ -161,6 +164,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
       lastName: '',
       email: '',
       phone: '',
+      address: '',
       role: 'patient',
       practice: '',
       license: '',
@@ -319,6 +323,31 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
                     : 'bg-white border-gray-300 text-gray-900'
                 }`}
                 placeholder="+1 (555) 123-4567"
+              />
+            </div>
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${
+              theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+            }`}>
+              {t.address || 'Address'}
+            </label>
+            <div className="relative">
+              <MapPin className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+              }`} />
+              <input
+                type="text"
+                value={formData.address}
+                onChange={(e) => handleChange('address', e.target.value)}
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                placeholder="123 Main St, City, State, ZIP"
               />
             </div>
           </div>
