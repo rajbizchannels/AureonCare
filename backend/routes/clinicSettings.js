@@ -9,37 +9,51 @@ const router = express.Router();
 /**
  * Get clinic info (name, address, etc.)
  * GET /api/clinic-settings/info
+ * Fetches from organization_settings and practices tables
  */
 router.get('/info', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 
-    // Create table if it doesn't exist
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS clinic_info (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) DEFAULT 'Medical Practice',
-        address TEXT,
-        phone VARCHAR(50),
-        email VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
+    // Try to get organization name from organization_settings first
+    const orgResult = await pool.query(`
+      SELECT organization_name as name, settings
+      FROM organization_settings
+      LIMIT 1
     `);
 
-    const result = await pool.query('SELECT * FROM clinic_info LIMIT 1');
-
-    // If no data exists, insert default and return it
-    if (result.rows.length === 0) {
-      const insertResult = await pool.query(`
-        INSERT INTO clinic_info (name)
-        VALUES ('Medical Practice')
-        RETURNING *
-      `);
-      return res.json(insertResult.rows[0]);
+    // If organization name exists, return it
+    if (orgResult.rows.length > 0 && orgResult.rows[0].name) {
+      return res.json({
+        name: orgResult.rows[0].name,
+        source: 'organization_settings'
+      });
     }
 
-    res.json(result.rows[0]);
+    // Fall back to practices table
+    const practiceResult = await pool.query(`
+      SELECT name, phone, email, address
+      FROM practices
+      ORDER BY created_at ASC
+      LIMIT 1
+    `);
+
+    // If practice exists, return it
+    if (practiceResult.rows.length > 0) {
+      return res.json({
+        name: practiceResult.rows[0].name,
+        phone: practiceResult.rows[0].phone,
+        email: practiceResult.rows[0].email,
+        address: practiceResult.rows[0].address,
+        source: 'practices'
+      });
+    }
+
+    // If neither exists, return default
+    res.json({
+      name: 'Medical Practice',
+      source: 'default'
+    });
   } catch (error) {
     console.error('Error fetching clinic info:', error);
     res.status(500).json({ error: 'Failed to fetch clinic info' });
