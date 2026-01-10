@@ -724,7 +724,7 @@ const AdminPanelView = ({
   );
 
   /**
-   * Create custom role
+   * Create or update custom role
    */
   const handleCreateCustomRole = useCallback(
     async (roleName, permissions) => {
@@ -732,23 +732,40 @@ const AdminPanelView = ({
         // Sanitize role name
         const sanitizedName = sanitizeString(roleName);
 
+        // Check if role already exists (editing mode)
+        const isEditMode = rolePermissions.hasOwnProperty(sanitizedName);
+
         // Add to state
         setRolePermissions((prev) => ({
           ...prev,
           [sanitizedName]: permissions,
         }));
 
-        // Save to API
-        await api.createRole({ name: sanitizedName, permissions });
-        await addNotification('success', `Custom role "${sanitizedName}" created successfully`);
+        // Save to API using updateRolePermissions
+        await api.updateRolePermissions(sanitizedName, permissions);
+
+        await addNotification(
+          'success',
+          isEditMode
+            ? `Role "${sanitizedName}" updated successfully`
+            : `Custom role "${sanitizedName}" created successfully`
+        );
+
         setShowCustomRoleForm(false);
         setCustomRoleName('');
+        setCustomRolePermissions({
+          patients: { view: false, create: false, edit: false, delete: false },
+          appointments: { view: false, create: false, edit: false, delete: false },
+          claims: { view: false, create: false, edit: false, delete: false },
+          ehr: { view: false, create: false, edit: false, delete: false },
+          settings: { view: false, create: false, edit: false, delete: false },
+        });
       } catch (error) {
-        console.error('Error creating custom role:', error);
-        await addNotification('alert', 'Failed to create custom role');
+        console.error('Error saving custom role:', error);
+        await addNotification('alert', 'Failed to save custom role');
       }
     },
-    [api, addNotification]
+    [api, addNotification, rolePermissions]
   );
 
   /**
@@ -2586,7 +2603,7 @@ const AdminPanelView = ({
                 onClick={handleSubmitCustomRole}
                 className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
               >
-                {customRoleName && !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName) ? 'Update Role' : 'Create Role'}
+                {customRoleName && rolePermissions.hasOwnProperty(customRoleName.toLowerCase().replace(/\s+/g, '_')) ? 'Update Role' : 'Create Role'}
               </button>
             </div>
           </div>
