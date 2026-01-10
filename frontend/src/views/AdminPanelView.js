@@ -758,7 +758,10 @@ const AdminPanelView = ({
           appointments: { view: false, create: false, edit: false, delete: false },
           claims: { view: false, create: false, edit: false, delete: false },
           ehr: { view: false, create: false, edit: false, delete: false },
+          users: { view: false, create: false, edit: false, delete: false },
+          reports: { view: false, create: false, edit: false, delete: false },
           settings: { view: false, create: false, edit: false, delete: false },
+          backup: { view: false, create: false, edit: false, delete: false },
         });
       } catch (error) {
         console.error('Error saving custom role:', error);
@@ -2503,6 +2506,42 @@ const AdminPanelView = ({
             Create Custom Role
           </button>
         </div>
+        <button
+          onClick={() => {
+            if (showCustomRoleForm) {
+              setShowCustomRoleForm(false);
+              setCustomRoleName('');
+              setCustomRolePermissions({
+                patients: { view: false, create: false, edit: false, delete: false },
+                appointments: { view: false, create: false, edit: false, delete: false },
+                claims: { view: false, create: false, edit: false, delete: false },
+                ehr: { view: false, create: false, edit: false, delete: false },
+                users: { view: false, create: false, edit: false, delete: false },
+                reports: { view: false, create: false, edit: false, delete: false },
+                settings: { view: false, create: false, edit: false, delete: false },
+                backup: { view: false, create: false, edit: false, delete: false },
+              });
+            } else {
+              setShowCustomRoleForm(true);
+              setCustomRoleName('');
+              setCustomRolePermissions({
+                patients: { view: false, create: false, edit: false, delete: false },
+                appointments: { view: false, create: false, edit: false, delete: false },
+                claims: { view: false, create: false, edit: false, delete: false },
+                ehr: { view: false, create: false, edit: false, delete: false },
+                users: { view: false, create: false, edit: false, delete: false },
+                reports: { view: false, create: false, edit: false, delete: false },
+                settings: { view: false, create: false, edit: false, delete: false },
+                backup: { view: false, create: false, edit: false, delete: false },
+              });
+            }
+          }}
+          className={`flex items-center gap-2 px-4 py-2 ${showCustomRoleForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-purple-500 hover:bg-purple-600'} text-white rounded-lg font-medium transition-colors`}
+        >
+          {showCustomRoleForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+          {showCustomRoleForm ? 'Cancel' : 'Create Custom Role'}
+        </button>
+      </div>
 
       {/* Inline Custom Role Form */}
       {showCustomRoleForm && (
@@ -2548,7 +2587,7 @@ const AdminPanelView = ({
                 Permissions
               </h4>
               <div className="space-y-4">
-                {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => {
+                {['patients', 'appointments', 'claims', 'ehr', 'users', 'reports', 'settings', 'backup'].map((module) => {
                   return (
                     <div key={module} className={`p-4 border rounded-lg ${
                       theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-gray-50'
@@ -2590,7 +2629,10 @@ const AdminPanelView = ({
                     appointments: { view: false, create: false, edit: false, delete: false },
                     claims: { view: false, create: false, edit: false, delete: false },
                     ehr: { view: false, create: false, edit: false, delete: false },
+                    users: { view: false, create: false, edit: false, delete: false },
+                    reports: { view: false, create: false, edit: false, delete: false },
                     settings: { view: false, create: false, edit: false, delete: false },
+                    backup: { view: false, create: false, edit: false, delete: false },
                   });
                 }}
                 className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors ${
@@ -2629,6 +2671,19 @@ const AdminPanelView = ({
               <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 EHR
               </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Users
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Reports
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Settings
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                Backup
+              </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
               <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Telehealth
               </th>
@@ -2643,18 +2698,6 @@ const AdminPanelView = ({
               </th>
               <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Clinical
-              </th>
-              <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Reports
-              </th>
-              <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Users
-              </th>
-              <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Settings
-              </th>
-              <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Backup
               </th>
               <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Audit
