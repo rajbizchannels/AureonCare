@@ -234,7 +234,7 @@ router.get('/', async (req, res) => {
       )
     );
 
-    // Search Diagnosis (code not icd_code, date not diagnosed_date)
+    // Search Diagnosis (diagnosis_code, diagnosis_name, diagnosed_date)
     searchPromises.push(
       safeSearch(
         () => pool.query(`
@@ -242,9 +242,10 @@ router.get('/', async (req, res) => {
             d.id,
             d.patient_id,
             d.provider_id,
-            d.code,
+            d.diagnosis_code,
+            d.diagnosis_name,
             d.description,
-            d.date,
+            d.diagnosed_date,
             p.first_name as patient_first_name,
             p.last_name as patient_last_name,
             prov.first_name as provider_first_name,
@@ -255,10 +256,11 @@ router.get('/', async (req, res) => {
           LEFT JOIN patients p ON d.patient_id::text = p.id::text
           LEFT JOIN providers prov ON d.provider_id::text = prov.id::text
           WHERE
-            LOWER(COALESCE(d.code, '')) LIKE LOWER($1)
+            LOWER(COALESCE(d.diagnosis_code, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(d.diagnosis_name, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(d.description, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
-          ORDER BY d.date DESC
+          ORDER BY d.diagnosed_date DESC
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Diagnosis'
@@ -435,7 +437,7 @@ function getDisplayName(result) {
     case 'lab_order':
       return `Lab Order #${result.order_number || result.order_type || 'N/A'}`;
     case 'diagnosis':
-      return result.description || result.code || 'Diagnosis';
+      return result.diagnosis_name || result.description || result.diagnosis_code || 'Diagnosis';
     case 'task':
       return result.title || 'Task';
     case 'offering':
@@ -472,7 +474,7 @@ function getDisplaySubtitle(result) {
     case 'lab_order':
       return `${result.order_type || ''} - ${result.status || 'Pending'}`;
     case 'diagnosis':
-      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - Code: ${result.code || ''}`;
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - Code: ${result.diagnosis_code || ''}`;
     case 'task':
       return `${result.priority || ''} ${result.priority ? '-' : ''} ${result.status || ''}`.trim();
     case 'offering':
