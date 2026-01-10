@@ -2616,63 +2616,112 @@ const AdminPanelView = ({
         </div>
       )}
 
+      {/* Permission Legend */}
+      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700' : 'bg-gray-50 border border-gray-300'}`}>
+        <h4 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Permission Legend
+        </h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-green-500 font-semibold text-lg">V</span>
+            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>View</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-blue-500 font-semibold text-lg">C</span>
+            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Create</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-yellow-500 font-semibold text-lg">E</span>
+            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Edit</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-red-500 font-semibold text-lg">D</span>
+            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Delete</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Roles & Permissions Table */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-max">
+        <table className="w-full border-collapse">
           <thead>
-            <tr className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
-              <th className={`px-2 py-3 text-left text-xs font-semibold sticky left-0 ${theme === 'dark' ? 'text-slate-300 bg-slate-900' : 'text-gray-700 bg-white'}`}>
+            <tr className={`${theme === 'dark' ? 'bg-slate-800 border-b-2 border-slate-700' : 'bg-gray-100 border-b-2 border-gray-300'}`}>
+              <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                 Role
               </th>
-              <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                 Patients
               </th>
-              <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Appts
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
+                Appointments
               </th>
-              <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                 Claims
               </th>
-              <th className={`px-2 py-3 text-center text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                 EHR
               </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                 Users
               </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                 Reports
               </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                 Settings
               </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                 Backup
               </th>
-                <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Audit
-                </th>
-                <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Actions
-                </th>
+              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
-            {rolePermissionEntries.map(([role, permissions]) => (
-              <tr key={role} className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'}`}>
-                <td className={`px-2 py-3 font-medium capitalize sticky left-0 text-xs ${theme === 'dark' ? 'text-white bg-slate-900' : 'text-gray-900 bg-white'}`}>
-                  {role}
-                  {role === 'admin' && <span className={`ml-1 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>(Protected)</span>}
+            {rolePermissionEntries.map(([role, permissions], index) => (
+              <tr
+                key={role}
+                className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'} ${
+                  index % 2 === 0
+                    ? theme === 'dark' ? 'bg-slate-900/30' : 'bg-white'
+                    : theme === 'dark' ? 'bg-slate-900/50' : 'bg-gray-50'
+                } hover:${theme === 'dark' ? 'bg-slate-800' : 'bg-blue-50'} transition-colors`}
+              >
+                <td className={`px-4 py-4 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  <div className="flex items-center gap-2">
+                    <span>{role.replace(/_/g, ' ')}</span>
+                    {role === 'admin' && (
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${
+                        theme === 'dark' ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-700'
+                      }`}>
+                        Protected
+                      </span>
+                    )}
+                  </div>
                 </td>
-                {['patients', 'appointments', 'claims', 'ehr', 'telehealth', 'crm', 'rcm', 'practiceManagement', 'clinicalServices', 'reports', 'users', 'settings', 'backup', 'audit'].map((module) => (
-                  <td key={module} className="px-2 py-3 text-center">
-                    <div className="flex justify-center gap-1">
-                      {permissions[module]?.view && <span className="text-green-500 font-semibold text-xs" title="View">V</span>}
-                      {permissions[module]?.create && <span className="text-blue-500 font-semibold text-xs" title="Create">C</span>}
-                      {permissions[module]?.edit && <span className="text-yellow-500 font-semibold text-xs" title="Edit">E</span>}
-                      {permissions[module]?.delete && <span className="text-red-500 font-semibold text-xs" title="Delete">D</span>}
+                {['patients', 'appointments', 'claims', 'ehr', 'users', 'reports', 'settings', 'backup'].map((module) => (
+                  <td key={module} className="px-4 py-4">
+                    <div className="flex justify-center gap-1.5">
+                      {permissions[module]?.view && (
+                        <span className="text-green-500 font-bold text-base" title="View">V</span>
+                      )}
+                      {permissions[module]?.create && (
+                        <span className="text-blue-500 font-bold text-base" title="Create">C</span>
+                      )}
+                      {permissions[module]?.edit && (
+                        <span className="text-yellow-500 font-bold text-base" title="Edit">E</span>
+                      )}
+                      {permissions[module]?.delete && (
+                        <span className="text-red-500 font-bold text-base" title="Delete">D</span>
+                      )}
+                      {!permissions[module]?.view && !permissions[module]?.create && !permissions[module]?.edit && !permissions[module]?.delete && (
+                        <span className={`text-xs ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`}>-</span>
+                      )}
                     </div>
                   </td>
                 ))}
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-4">
                   <div className="flex justify-center gap-2">
                     {/* Allow editing for doctor and staff roles */}
                     {(['doctor', 'staff'].includes(role)) && (
@@ -2682,18 +2731,17 @@ const AdminPanelView = ({
                           setCustomRolePermissions(permissions);
                           setShowCustomRoleForm(true);
                         }}
-                        disabled={!canManageRoles}
                         className={`p-2 rounded-lg transition-colors ${
-                          canManageRoles
-                            ? theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
-                            : 'opacity-50 cursor-not-allowed'
+                          theme === 'dark'
+                            ? 'hover:bg-slate-700 bg-slate-800'
+                            : 'hover:bg-blue-50 bg-white border border-gray-300'
                         }`}
-                        title={canManageRoles ? "Edit permissions" : "Only administrators can edit permissions"}
+                        title="Edit permissions"
                       >
                         <Edit className="w-4 h-4 text-blue-500" />
                       </button>
                     )}
-                    {/* Allow deleting custom roles only */}
+                    {/* Allow editing and deleting custom roles only */}
                     {!['admin', 'doctor', 'staff', 'patient'].includes(role) && (
                       <>
                         <button
@@ -2702,29 +2750,37 @@ const AdminPanelView = ({
                             setCustomRolePermissions(permissions);
                             setShowCustomRoleForm(true);
                           }}
-                          disabled={!canManageRoles}
                           className={`p-2 rounded-lg transition-colors ${
-                            canManageRoles
-                              ? theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
-                              : 'opacity-50 cursor-not-allowed'
+                            theme === 'dark'
+                              ? 'hover:bg-slate-700 bg-slate-800'
+                              : 'hover:bg-blue-50 bg-white border border-gray-300'
                           }`}
-                          title={canManageRoles ? "Edit permissions" : "Only administrators can edit permissions"}
+                          title="Edit permissions"
                         >
                           <Edit className="w-4 h-4 text-blue-500" />
                         </button>
                         <button
                           onClick={() => handleDeleteCustomRole(role)}
-                          disabled={!canManageRoles}
                           className={`p-2 rounded-lg transition-colors ${
-                            canManageRoles
-                              ? theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
-                              : 'opacity-50 cursor-not-allowed'
+                            theme === 'dark'
+                              ? 'hover:bg-red-900/30 bg-slate-800'
+                              : 'hover:bg-red-50 bg-white border border-gray-300'
                           }`}
-                          title={canManageRoles ? "Delete role" : "Only administrators can delete roles"}
+                          title="Delete role"
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </button>
                       </>
+                    )}
+                    {role === 'admin' && (
+                      <span className={`px-3 py-2 text-xs ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`}>
+                        N/A
+                      </span>
+                    )}
+                    {role === 'patient' && (
+                      <span className={`px-3 py-2 text-xs ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`}>
+                        N/A
+                      </span>
                     )}
                   </div>
                 </td>
