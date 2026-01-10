@@ -2503,36 +2503,6 @@ const AdminPanelView = ({
             Create Custom Role
           </button>
         </div>
-        <button
-          onClick={() => {
-            if (showCustomRoleForm) {
-              setShowCustomRoleForm(false);
-              setCustomRoleName('');
-              setCustomRolePermissions({
-                patients: { view: false, create: false, edit: false, delete: false },
-                appointments: { view: false, create: false, edit: false, delete: false },
-                claims: { view: false, create: false, edit: false, delete: false },
-                ehr: { view: false, create: false, edit: false, delete: false },
-                settings: { view: false, create: false, edit: false, delete: false },
-              });
-            } else {
-              setShowCustomRoleForm(true);
-              setCustomRoleName('');
-              setCustomRolePermissions({
-                patients: { view: false, create: false, edit: false, delete: false },
-                appointments: { view: false, create: false, edit: false, delete: false },
-                claims: { view: false, create: false, edit: false, delete: false },
-                ehr: { view: false, create: false, edit: false, delete: false },
-                settings: { view: false, create: false, edit: false, delete: false },
-              });
-            }
-          }}
-          className={`flex items-center gap-2 px-4 py-2 ${showCustomRoleForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-purple-500 hover:bg-purple-600'} text-white rounded-lg font-medium transition-colors`}
-        >
-          {showCustomRoleForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-          {showCustomRoleForm ? 'Cancel' : 'Create Custom Role'}
-        </button>
-      </div>
 
       {/* Inline Custom Role Form */}
       {showCustomRoleForm && (
@@ -2774,6 +2744,7 @@ const AdminPanelView = ({
       </div>
     </div>
   );
+};
 
   /**
    * Render Subscription Plans Tab
