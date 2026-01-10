@@ -2079,6 +2079,20 @@ const api = {
     return response.blob();
   },
 
+  // Universal Search
+  universalSearch: async (query, limit = 20) => {
+    if (!query || query.trim().length < 2) {
+      return [];
+    }
+    const params = new URLSearchParams({
+      q: query.trim(),
+      limit: limit
+    });
+    const response = await authenticatedFetch(`${API_BASE_URL}/search?${params}`);
+    if (!response.ok) throw new Error('Failed to perform search');
+    return response.json();
+  },
+
   // Add baseURL property for components that need it
   baseURL: API_BASE_URL
 };
