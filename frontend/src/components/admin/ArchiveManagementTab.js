@@ -253,15 +253,28 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
       }
 
       const data = await response.json();
-      addNotification('success', `Archive "${archiveName}" created successfully`);
+      addNotification('success', `Archive "${archiveName}" created successfully. Reloading...`);
 
-      // Reset form and reload
+      // Reset form and close
       setShowCreateModal(false);
       setArchiveName('');
       setArchiveDescription('');
       setSelectedModules([]);
+
+      // Reload archives immediately
       loadArchives();
       loadStats();
+
+      // Reload again after delays to ensure the archive appears
+      setTimeout(() => {
+        loadArchives();
+        loadStats();
+      }, 2000);
+
+      setTimeout(() => {
+        loadArchives();
+        loadStats();
+      }, 5000);
     } catch (error) {
       console.error('Error creating archive:', error);
       addNotification('error', error.message || 'Failed to create archive');
@@ -641,14 +654,160 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
             Refresh
           </button>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => setShowCreateModal(!showCreateModal)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Create Archive
+            {showCreateModal ? 'Cancel' : 'Create Archive'}
           </button>
         </div>
       </div>
+
+      {/* Inline Create Archive Form */}
+      {showCreateModal && (
+        <div className={`rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow`}>
+          <div className="p-6 space-y-6">
+            {/* Form Header */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Database className="w-5 h-5 text-blue-600" />
+                Create New Archive
+              </h3>
+            </div>
+
+            {/* Archive Name */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Archive Name *
+              </label>
+              <input
+                type="text"
+                value={archiveName}
+                onChange={(e) => setArchiveName(e.target.value)}
+                placeholder="e.g., Q4-2024-Archive"
+                className={`w-full px-4 py-2 rounded-lg ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600'
+                    : 'bg-white border-gray-300'
+                } border focus:ring-2 focus:ring-blue-500`}
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Description (Optional)
+              </label>
+              <textarea
+                value={archiveDescription}
+                onChange={(e) => setArchiveDescription(e.target.value)}
+                placeholder="Brief description of what this archive contains..."
+                rows={2}
+                className={`w-full px-4 py-2 rounded-lg ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600'
+                    : 'bg-white border-gray-300'
+                } border focus:ring-2 focus:ring-blue-500`}
+              />
+            </div>
+
+            {/* Module Selection */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <label className="block text-sm font-medium">
+                  Select Modules to Archive *
+                </label>
+                <button
+                  onClick={handleSelectAll}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  {selectedModules.length === modules.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-auto p-2">
+                {modules.map((module) => (
+                  <div
+                    key={module.key}
+                    onClick={() => toggleModule(module.key)}
+                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                      selectedModules.includes(module.key)
+                        ? 'border-blue-600 bg-blue-600/10'
+                        : theme === 'dark'
+                        ? 'border-gray-700 bg-gray-750 hover:border-gray-600'
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="flex-shrink-0 mt-0.5">
+                        {selectedModules.includes(module.key) ? (
+                          <CheckCircle className="w-4 h-4 text-blue-600" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border-2 border-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-xs mb-0.5 truncate">{module.name}</h4>
+                        <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} truncate`}>
+                          {module.description}
+                        </p>
+                        <p className="text-xs mt-0.5 opacity-70">
+                          {module.tableCount} table{module.tableCount !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Selected Summary */}
+              {selectedModules.length > 0 && (
+                <div className={`mt-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-750' : 'bg-gray-100'}`}>
+                  <p className="text-sm font-medium mb-2">
+                    Selected: {selectedModules.length} module{selectedModules.length !== 1 ? 's' : ''}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedModules.map((key) => {
+                      const module = modules.find(m => m.key === key);
+                      return (
+                        <span
+                          key={key}
+                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
+                        >
+                          {module?.name || key}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                disabled={creating}
+                className={`px-6 py-2 rounded-lg ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 hover:bg-gray-600'
+                    : 'bg-gray-200 hover:bg-gray-300'
+                } transition-colors`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateArchive}
+                disabled={creating || !archiveName.trim() || selectedModules.length === 0}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {creating && <RefreshCw className="w-4 h-4 animate-spin" />}
+                {creating ? 'Creating Archive...' : 'Create Archive'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Statistics */}
       {stats && (
@@ -1319,161 +1478,6 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
           )}
         </div>
       </div>
-
-      {/* Create Archive Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`max-w-4xl w-full rounded-lg shadow-xl max-h-[90vh] overflow-auto ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <div className="p-6 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-inherit z-10">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Create New Archive
-              </h3>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Archive Name */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Archive Name *
-                </label>
-                <input
-                  type="text"
-                  value={archiveName}
-                  onChange={(e) => setArchiveName(e.target.value)}
-                  placeholder="e.g., Q4-2024-Archive"
-                  className={`w-full px-4 py-2 rounded-lg ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600'
-                      : 'bg-white border-gray-300'
-                  } border focus:ring-2 focus:ring-blue-500`}
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Description (Optional)
-                </label>
-                <textarea
-                  value={archiveDescription}
-                  onChange={(e) => setArchiveDescription(e.target.value)}
-                  placeholder="Brief description of what this archive contains..."
-                  rows={3}
-                  className={`w-full px-4 py-2 rounded-lg ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600'
-                      : 'bg-white border-gray-300'
-                  } border focus:ring-2 focus:ring-blue-500`}
-                />
-              </div>
-
-              {/* Module Selection */}
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <label className="block text-sm font-medium">
-                    Select Modules to Archive *
-                  </label>
-                  <button
-                    onClick={handleSelectAll}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    {selectedModules.length === modules.length ? 'Deselect All' : 'Select All'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-auto p-2">
-                  {modules.map((module) => (
-                    <div
-                      key={module.key}
-                      onClick={() => toggleModule(module.key)}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                        selectedModules.includes(module.key)
-                          ? 'border-blue-600 bg-blue-600/10'
-                          : theme === 'dark'
-                          ? 'border-gray-700 bg-gray-750 hover:border-gray-600'
-                          : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-1">
-                          {selectedModules.includes(module.key) ? (
-                            <CheckCircle className="w-5 h-5 text-blue-600" />
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-gray-400" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold mb-1">{module.name}</h4>
-                          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {module.description}
-                          </p>
-                          <p className="text-xs mt-1 opacity-70">
-                            {module.tableCount} table{module.tableCount !== 1 ? 's' : ''}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Selected Summary */}
-              {selectedModules.length > 0 && (
-                <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-750' : 'bg-gray-100'}`}>
-                  <p className="text-sm font-medium mb-2">
-                    Selected: {selectedModules.length} module{selectedModules.length !== 1 ? 's' : ''}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedModules.map((key) => {
-                      const module = modules.find(m => m.key === key);
-                      return (
-                        <span
-                          key={key}
-                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
-                        >
-                          {module?.name || key}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Actions */}
-            <div className="p-6 border-t border-gray-700 flex justify-end gap-3 sticky bottom-0 bg-inherit">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                disabled={creating}
-                className={`px-6 py-2 rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 hover:bg-gray-600'
-                    : 'bg-gray-200 hover:bg-gray-300'
-                } transition-colors`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateArchive}
-                disabled={creating || !archiveName.trim() || selectedModules.length === 0}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {creating && <RefreshCw className="w-4 h-4 animate-spin" />}
-                {creating ? 'Creating Archive...' : 'Create Archive'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Browse Archive Modal */}
       {showBrowseModal && (
