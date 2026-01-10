@@ -2578,32 +2578,34 @@ const AdminPanelView = ({
                 Permissions
               </h4>
               <div className="space-y-4">
-                {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => (
-                  <div key={module} className={`p-4 border rounded-lg ${
-                    theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-gray-50'
-                  }`}>
-                    <h5 className={`font-medium mb-3 capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {module}
-                    </h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {['view', 'create', 'edit', 'delete'].map((action) => {
-                        return (
-                          <label key={action} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={customRolePermissions[module]?.[action] || false}
-                              onChange={() => handleToggleCustomRolePermission(module, action)}
-                              className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
-                            />
-                            <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                              {action}
-                            </span>
-                          </label>
-                        );
-                      })}
+                {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => {
+                  return (
+                    <div key={module} className={`p-4 border rounded-lg ${
+                      theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-gray-50'
+                    }`}>
+                      <h5 className={`font-medium mb-3 capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {module}
+                      </h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {['view', 'create', 'edit', 'delete'].map((action) => {
+                          return (
+                            <label key={action} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={customRolePermissions[module]?.[action] || false}
+                                onChange={() => handleToggleCustomRolePermission(module, action)}
+                                className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                              <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                                {action}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
