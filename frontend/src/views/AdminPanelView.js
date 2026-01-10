@@ -1923,7 +1923,7 @@ const AdminPanelView = ({
                   {t.practice || 'Practice'}
                 </label>
                 <div className="relative">
-                  <Building className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <Building2 className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
                   <input
                     type="text"
                     value={userFormData.practice}
