@@ -96,7 +96,7 @@ router.get('/', async (req, res) => {
       )
     );
 
-    // Search Providers
+    // Search Providers (specialization not specialty, no npi)
     searchPromises.push(
       safeSearch(
         () => pool.query(`
@@ -106,16 +106,16 @@ router.get('/', async (req, res) => {
             last_name,
             email,
             phone,
-            specialty,
-            npi,
+            specialization,
+            license_number,
             'provider' as result_type,
             'providerManagement' as module
           FROM providers
           WHERE
             LOWER(first_name || ' ' || last_name) LIKE LOWER($1)
             OR LOWER(COALESCE(email, '')) LIKE LOWER($1)
-            OR LOWER(COALESCE(specialty, '')) LIKE LOWER($1)
-            OR LOWER(COALESCE(npi, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(specialization, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(license_number, '')) LIKE LOWER($1)
           ORDER BY last_name, first_name
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
@@ -123,7 +123,7 @@ router.get('/', async (req, res) => {
       )
     );
 
-    // Search Claims
+    // Search Claims (amount not total_charge, service_date not date_of_service)
     searchPromises.push(
       safeSearch(
         () => pool.query(`
@@ -132,8 +132,8 @@ router.get('/', async (req, res) => {
             c.claim_number,
             c.patient_id,
             c.status,
-            c.total_charge,
-            c.date_of_service,
+            c.amount,
+            c.service_date,
             p.first_name as patient_first_name,
             p.last_name as patient_last_name,
             'claim' as result_type,
@@ -157,12 +157,9 @@ router.get('/', async (req, res) => {
         () => pool.query(`
           SELECT
             pay.id,
-            pay.payment_number,
             pay.patient_id,
             pay.amount,
-            pay.payment_date,
             pay.payment_method,
-            pay.status,
             p.first_name as patient_first_name,
             p.last_name as patient_last_name,
             'payment' as result_type,
@@ -170,10 +167,9 @@ router.get('/', async (req, res) => {
           FROM payments pay
           LEFT JOIN patients p ON pay.patient_id::text = p.id::text
           WHERE
-            LOWER(COALESCE(pay.payment_number, '')) LIKE LOWER($1)
-            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+            LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(pay.payment_method, '')) LIKE LOWER($1)
-          ORDER BY pay.payment_date DESC
+          ORDER BY pay.created_at DESC
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Payments'
@@ -212,7 +208,7 @@ router.get('/', async (req, res) => {
       )
     );
 
-    // Search Lab Orders
+    // Search Lab Orders (order_number, order_type, status, collection_date)
     searchPromises.push(
       safeSearch(
         () => pool.query(`
@@ -220,23 +216,25 @@ router.get('/', async (req, res) => {
             lo.id,
             lo.patient_id,
             lo.provider_id,
-            lo.test_name,
+            lo.order_number,
+            lo.order_type,
             lo.status,
-            lo.order_date,
+            lo.collection_date,
             'lab_order' as result_type,
             'ehr' as module
           FROM lab_orders lo
           WHERE
-            LOWER(COALESCE(lo.test_name, '')) LIKE LOWER($1)
+            LOWER(COALESCE(lo.order_number, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(lo.order_type, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(lo.status, '')) LIKE LOWER($1)
-          ORDER BY lo.order_date DESC
+          ORDER BY lo.created_at DESC
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Lab Orders'
       )
     );
 
-    // Search Diagnosis (table name is 'diagnosis', not 'diagnoses')
+    // Search Diagnosis (code not icd_code, date not diagnosed_date)
     searchPromises.push(
       safeSearch(
         () => pool.query(`
@@ -244,10 +242,9 @@ router.get('/', async (req, res) => {
             d.id,
             d.patient_id,
             d.provider_id,
-            d.icd_code,
+            d.code,
             d.description,
-            d.diagnosed_date,
-            d.status,
+            d.date,
             p.first_name as patient_first_name,
             p.last_name as patient_last_name,
             prov.first_name as provider_first_name,
@@ -258,17 +255,17 @@ router.get('/', async (req, res) => {
           LEFT JOIN patients p ON d.patient_id::text = p.id::text
           LEFT JOIN providers prov ON d.provider_id::text = prov.id::text
           WHERE
-            LOWER(COALESCE(d.icd_code, '')) LIKE LOWER($1)
+            LOWER(COALESCE(d.code, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(d.description, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
-          ORDER BY d.diagnosed_date DESC
+          ORDER BY d.date DESC
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Diagnosis'
       )
     );
 
-    // Search Tasks
+    // Search Tasks (users.name not username)
     searchPromises.push(
       safeSearch(
         () => pool.query(`
@@ -280,7 +277,7 @@ router.get('/', async (req, res) => {
             t.priority,
             t.assigned_to,
             t.due_date,
-            u.username as assigned_to_name,
+            u.name as assigned_to_name,
             'task' as result_type,
             'dashboard' as module
           FROM tasks t
@@ -288,7 +285,7 @@ router.get('/', async (req, res) => {
           WHERE
             LOWER(COALESCE(t.title, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(t.description, '')) LIKE LOWER($1)
-            OR LOWER(COALESCE(u.username, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(u.name, '')) LIKE LOWER($1)
           ORDER BY t.created_at DESC
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
@@ -296,7 +293,7 @@ router.get('/', async (req, res) => {
       )
     );
 
-    // Search Healthcare Offerings (table name is 'healthcare_offerings', not 'offerings')
+    // Search Healthcare Offerings (duration_minutes, no price, no specialization)
     searchPromises.push(
       safeSearch(
         () => pool.query(`
@@ -304,16 +301,13 @@ router.get('/', async (req, res) => {
             o.id,
             o.name,
             o.description,
-            o.price,
-            o.duration,
-            o.specialization,
+            o.duration_minutes,
             'offering' as result_type,
             'clinicalServices' as module
           FROM healthcare_offerings o
           WHERE
             LOWER(COALESCE(o.name, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(o.description, '')) LIKE LOWER($1)
-            OR LOWER(COALESCE(o.specialization, '')) LIKE LOWER($1)
           ORDER BY o.name
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
@@ -346,7 +340,7 @@ router.get('/', async (req, res) => {
       )
     );
 
-    // Search Preapprovals
+    // Search Preapprovals (requested_service not service_type, created_at not request_date)
     searchPromises.push(
       safeSearch(
         () => pool.query(`
@@ -355,8 +349,8 @@ router.get('/', async (req, res) => {
             pa.patient_id,
             pa.authorization_number,
             pa.status,
-            pa.service_type,
-            pa.request_date,
+            pa.requested_service,
+            pa.created_at as request_date,
             p.first_name as patient_first_name,
             p.last_name as patient_last_name,
             'preapproval' as result_type,
@@ -365,32 +359,32 @@ router.get('/', async (req, res) => {
           LEFT JOIN patients p ON pa.patient_id::text = p.id::text
           WHERE
             LOWER(COALESCE(pa.authorization_number, '')) LIKE LOWER($1)
-            OR LOWER(COALESCE(pa.service_type, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(pa.requested_service, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
-          ORDER BY pa.request_date DESC
+          ORDER BY pa.created_at DESC
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Preapprovals'
       )
     );
 
-    // Search Denials
+    // Search Denials (denial_reason_code, denial_reason_description)
     searchPromises.push(
       safeSearch(
         () => pool.query(`
           SELECT
             d.id,
             d.claim_id,
-            d.denial_code,
-            d.denial_reason,
+            d.denial_reason_code,
+            d.denial_reason_description,
             d.status,
             d.denial_date,
             'denial' as result_type,
             'rcm' as module
           FROM denials d
           WHERE
-            LOWER(COALESCE(d.denial_code, '')) LIKE LOWER($1)
-            OR LOWER(COALESCE(d.denial_reason, '')) LIKE LOWER($1)
+            LOWER(COALESCE(d.denial_reason_code, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(d.denial_reason_description, '')) LIKE LOWER($1)
             OR LOWER(COALESCE(d.status, '')) LIKE LOWER($1)
           ORDER BY d.denial_date DESC
           LIMIT $2
@@ -431,17 +425,17 @@ function getDisplayName(result) {
     case 'appointment':
       return `${result.patient_first_name || ''} ${result.patient_last_name || ''}`.trim() || 'Unknown Patient';
     case 'provider':
-      return `${result.first_name || ''} ${result.last_name || ''}`.trim() || 'Unknown Provider';
+      return `Dr. ${result.first_name || ''} ${result.last_name || ''}`.trim() || 'Unknown Provider';
     case 'claim':
       return `Claim #${result.claim_number || 'N/A'}`;
     case 'payment':
-      return `Payment #${result.payment_number || 'N/A'}`;
+      return `Payment - $${result.amount || 'N/A'}`;
     case 'prescription':
       return result.medication_name || 'Unknown Medication';
     case 'lab_order':
-      return result.test_name || 'Lab Order';
+      return `Lab Order #${result.order_number || result.order_type || 'N/A'}`;
     case 'diagnosis':
-      return result.description || result.icd_code || 'Diagnosis';
+      return result.description || result.code || 'Diagnosis';
     case 'task':
       return result.title || 'Task';
     case 'offering':
@@ -451,7 +445,7 @@ function getDisplayName(result) {
     case 'preapproval':
       return `Authorization #${result.authorization_number || 'N/A'}`;
     case 'denial':
-      return `Denial - ${result.denial_reason || 'N/A'}`;
+      return `Denial - ${result.denial_reason_description || result.denial_reason_code || 'N/A'}`;
     default:
       return 'Unknown';
   }
@@ -468,27 +462,27 @@ function getDisplaySubtitle(result) {
       const appointmentDate = result.start_time ? new Date(result.start_time).toLocaleString() : 'N/A';
       return `${appointmentDate} - ${result.status || 'N/A'}`;
     case 'provider':
-      return result.specialty || result.email || '';
+      return result.specialization || result.email || '';
     case 'claim':
       return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.status || 'N/A'}`;
     case 'payment':
-      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - $${result.amount || 'N/A'}`;
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''}`;
     case 'prescription':
       return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.dosage || ''}`;
     case 'lab_order':
-      return `${result.status || 'Pending'}`;
+      return `${result.order_type || ''} - ${result.status || 'Pending'}`;
     case 'diagnosis':
-      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.icd_code || ''}`;
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - Code: ${result.code || ''}`;
     case 'task':
       return `${result.priority || ''} ${result.priority ? '-' : ''} ${result.status || ''}`.trim();
     case 'offering':
-      return `$${result.price || 'N/A'} ${result.duration ? `- ${result.duration} mins` : ''}`.trim();
+      return result.duration_minutes ? `${result.duration_minutes} minutes` : '';
     case 'campaign':
       return result.status || '';
     case 'preapproval':
       return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.status || 'N/A'}`;
     case 'denial':
-      return `Code: ${result.denial_code || 'N/A'} - ${result.status || 'N/A'}`;
+      return `Code: ${result.denial_reason_code || 'N/A'} - ${result.status || 'N/A'}`;
     default:
       return '';
   }
