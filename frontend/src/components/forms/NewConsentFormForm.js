@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FileCheck, X, Save } from 'lucide-react';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewConsentFormForm = ({ theme, api, patients, editingConsent, onClose, onSuccess, addNotification }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patient_id: editingConsent?.patient_id || '',
     consent_type: editingConsent?.consent_type || 'treatment',
@@ -13,6 +15,19 @@ const NewConsentFormForm = ({ theme, api, patients, editingConsent, onClose, onS
   });
 
   const [processing, setProcessing] = useState(false);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewConsentFormForm', {
+      module: 'Admin',
+      patient_id: editingConsent?.patient_id,
+      metadata: {
+        mode: editingConsent ? 'edit' : 'create',
+        consent_type: editingConsent?.consent_type,
+      },
+    });
+  }, []);
 
   const consentTypes = [
     { id: 'treatment', name: 'Treatment Consent' },
@@ -48,26 +63,52 @@ const NewConsentFormForm = ({ theme, api, patients, editingConsent, onClose, onS
     e.preventDefault();
     setProcessing(true);
 
+    const patient = patients.find(p => p.id?.toString() === formData.patient_id);
+
+    const consentData = {
+      patient_id: formData.patient_id,
+      consent_type: formData.consent_type,
+      consent_title: formData.consent_title,
+      consent_description: formData.consent_description,
+      consent_content: formData.consent_content,
+      version: formData.version,
+      status: formData.status
+    };
+
     try {
-      const patient = patients.find(p => p.id?.toString() === formData.patient_id);
-
-      const consentData = {
-        patient_id: formData.patient_id,
-        consent_type: formData.consent_type,
-        consent_title: formData.consent_title,
-        consent_description: formData.consent_description,
-        consent_content: formData.consent_content,
-        version: formData.version,
-        status: formData.status
-      };
-
       let result;
       if (editingConsent) {
         result = await api.updateConsentForm(editingConsent.id, consentData);
+
+        // Log update
+        logUpdate('NewConsentFormForm', editingConsent, consentData, {
+          module: 'Admin',
+          resource_id: editingConsent.id,
+          patient_id: formData.patient_id,
+          metadata: {
+            consent_type: consentData.consent_type,
+            consent_title: consentData.consent_title,
+            status: consentData.status,
+          },
+        });
+
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
         await addNotification('success', `Consent form updated successfully for ${patientName}`);
       } else {
         result = await api.createConsentForm(consentData);
+
+        // Log creation
+        logCreate('NewConsentFormForm', consentData, {
+          module: 'Admin',
+          resource_id: result.id,
+          patient_id: formData.patient_id,
+          metadata: {
+            consent_type: consentData.consent_type,
+            consent_title: consentData.consent_title,
+            status: consentData.status,
+          },
+        });
+
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
         await addNotification('success', `Consent form created successfully for ${patientName}`);
       }
@@ -76,6 +117,13 @@ const NewConsentFormForm = ({ theme, api, patients, editingConsent, onClose, onS
     } catch (err) {
       console.error('Error saving consent form:', err);
       await addNotification('error', editingConsent ? 'Failed to update consent form' : 'Failed to create consent form');
+
+      // Log error
+      logError('NewConsentFormForm', 'form', err.message || `Failed to ${editingConsent ? 'update' : 'create'} consent form`, {
+        module: 'Admin',
+        patient_id: formData.patient_id,
+        metadata: { formData: consentData, mode: editingConsent ? 'edit' : 'create' },
+      });
     } finally {
       setProcessing(false);
     }

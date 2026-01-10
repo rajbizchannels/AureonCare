@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Microscope, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewLaboratoryForm = ({ theme, api, editingLaboratory, onClose, onSuccess, addNotification, t }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     labName: '',
     addressLine1: '',
@@ -21,6 +23,18 @@ const NewLaboratoryForm = ({ theme, api, editingLaboratory, onClose, onSuccess, 
     acceptsElectronicOrders: true
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewLaboratoryForm', {
+      module: 'EHR',
+      metadata: {
+        mode: editingLaboratory ? 'edit' : 'create',
+        laboratory_id: editingLaboratory?.id,
+      },
+    });
+  }, []);
 
   // Preload form data when editing
   useEffect(() => {
@@ -70,16 +84,42 @@ const NewLaboratoryForm = ({ theme, api, editingLaboratory, onClose, onSuccess, 
         // Update existing laboratory
         laboratory = await api.updateLaboratory(editingLaboratory.id, formData);
         await addNotification('success', `Laboratory updated: ${laboratory.labName}`);
+
+        // Log successful update
+        logUpdate('NewLaboratoryForm', editingLaboratory, formData, {
+          module: 'EHR',
+          resource_id: editingLaboratory.id,
+          metadata: {
+            labName: formData.labName,
+            cliaNumber: formData.cliaNumber,
+          },
+        });
       } else {
         // Create new laboratory
         laboratory = await api.createLaboratory(formData);
         await addNotification('success', `New laboratory added: ${laboratory.labName}`);
+
+        // Log successful creation
+        logCreate('NewLaboratoryForm', formData, {
+          module: 'EHR',
+          resource_id: laboratory.id,
+          metadata: {
+            labName: formData.labName,
+            cliaNumber: formData.cliaNumber,
+          },
+        });
       }
       onSuccess(laboratory);
       onClose();
     } catch (err) {
       console.error(`Error ${editingLaboratory ? 'updating' : 'creating'} laboratory:`, err);
       addNotification('alert', `Failed to ${editingLaboratory ? 'update' : 'create'} laboratory`);
+
+      // Log error
+      logError('NewLaboratoryForm', 'form', err.message || 'Failed to save laboratory', {
+        module: 'EHR',
+        metadata: { formData },
+      });
     }
   };
 

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => {
+  const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -13,6 +15,17 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewAppointmentTypeForm', {
+      module: 'Admin',
+      metadata: {
+        mode: 'create',
+      },
+    });
+  }, []);
 
   // ESC key handler
   useEffect(() => {
@@ -38,17 +51,29 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
   const handleActualSubmit = async () => {
     setShowConfirmation(false);
 
-    try {
-      const appointmentTypeData = {
-        name: formData.name,
-        description: formData.description,
-        durationMinutes: parseInt(formData.durationMinutes) || 30,
-        color: formData.color,
-        isActive: formData.isActive,
-        displayOrder: parseInt(formData.displayOrder) || 0
-      };
+    const appointmentTypeData = {
+      name: formData.name,
+      description: formData.description,
+      durationMinutes: parseInt(formData.durationMinutes) || 30,
+      color: formData.color,
+      isActive: formData.isActive,
+      displayOrder: parseInt(formData.displayOrder) || 0
+    };
 
+    try {
       const newAppointmentType = await api.createAppointmentType(appointmentTypeData);
+
+      // Log successful creation
+      logCreate('NewAppointmentTypeForm', appointmentTypeData, {
+        module: 'Admin',
+        resource_id: newAppointmentType.id,
+        metadata: {
+          name: appointmentTypeData.name,
+          durationMinutes: appointmentTypeData.durationMinutes,
+          color: appointmentTypeData.color,
+        },
+      });
+
       await addNotification('success', `${t.newAppointmentTypeAdded || 'New appointment type added'}: ${newAppointmentType.name}`);
 
       // Show success confirmation
@@ -62,6 +87,12 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
     } catch (err) {
       console.error('Error creating appointment type:', err);
       addNotification('alert', err.message || t.failedToCreateAppointmentType || 'Failed to create appointment type. Please try again.');
+
+      // Log error
+      logError('NewAppointmentTypeForm', 'form', err.message || 'Failed to create appointment type', {
+        module: 'Admin',
+        metadata: { formData: appointmentTypeData },
+      });
     }
   };
 

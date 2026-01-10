@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Save } from 'lucide-react';
 import api from '../api/apiService';
+import { useAudit } from '../hooks/useAudit';
 
 const IntegrationsView = ({ theme, setCurrentModule, t }) => {
   const [vendorIntegrations, setVendorIntegrations] = useState([]);
@@ -12,6 +13,14 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
   const [formData, setFormData] = useState({});
   const [originalData, setOriginalData] = useState({});
   const [saving, setSaving] = useState({});
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('IntegrationsView', {
+      module: 'Admin',
+    });
+  }, []);
 
   useEffect(() => {
     fetchIntegrations();

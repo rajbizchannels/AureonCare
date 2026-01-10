@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useAudit } from '../../hooks/useAudit';
 
 const ForgotPasswordModal = ({ theme, api, onClose }) => {
+  const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const [email, setEmail] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -10,18 +12,41 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
 
+  // Log modal open on mount
+  useEffect(() => {
+    startAction();
+    logModalOpen('ForgotPasswordModal', {
+      module: 'Auth',
+      metadata: {
+        step: 1,
+      },
+    });
+  }, []);
+
+  // Handle close with audit logging
+  const handleClose = () => {
+    logModalClose('ForgotPasswordModal', {
+      module: 'Auth',
+      metadata: {
+        step: step,
+        resetSuccess: !!resetSuccess,
+      },
+    });
+    onClose();
+  };
+
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         e.stopImmediatePropagation();
         e.preventDefault();
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleEsc, true); // Use capture phase
     return () => window.removeEventListener('keydown', handleEsc, true);
-  }, [onClose]);
+  }, [handleClose]);
 
   const handleRequestReset = async (e) => {
     e.preventDefault();
@@ -56,7 +81,7 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
       await api.resetPassword(resetToken, newPassword);
       setResetSuccess('Password reset successfully! You can now login.');
       setTimeout(() => {
-        onClose();
+        handleClose();
         setStep(1);
         setEmail('');
         setResetToken('');
@@ -64,18 +89,24 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
         setConfirmPassword('');
       }, 2000);
     } catch (error) {
+      logError('ForgotPasswordModal', 'modal', error.message, {
+        module: 'Auth',
+        metadata: {
+          step: 2,
+        },
+      });
       setResetError(error.message || 'Failed to reset password');
     }
   };
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
+    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={handleClose}>
       <div className={`rounded-xl border max-w-md w-full p-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {step === 1 ? 'Forgot Password' : 'Reset Password'}
           </h2>
-          <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
+          <button onClick={handleClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
         </div>

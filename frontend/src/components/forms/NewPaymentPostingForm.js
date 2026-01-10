@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, X, Save, FileText } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, onClose, onSuccess, addNotification }) => {
+  const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patientId: '',
     claimId: '',
@@ -43,6 +45,18 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
     { code: 'PI', description: 'Payer Initiated Reduction' },
     { code: 'CR', description: 'Correction and Reversal' }
   ];
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewPaymentPostingForm', {
+      module: 'RCM',
+      patient_id: formData.patientId,
+      metadata: {
+        mode: 'create',
+      },
+    });
+  }, []);
 
   // ESC key handler
   useEffect(() => {
@@ -104,40 +118,52 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
   const handleActualSubmit = async () => {
     setProcessing(true);
 
+    const patient = patients.find(p => p.id.toString() === formData.patientId);
+    const claim = claims.find(c => c.id.toString() === formData.claimId);
+    const payer = insurancePayers.find(ip => ip.id === formData.insurance_payer_id);
+
+    const postingData = {
+      claim_id: formData.claimId,
+      patient_id: formData.patientId,
+      insurance_payer_id: formData.insurance_payer_id,
+      check_number: formData.check_number,
+      check_date: formData.check_date || null,
+      payment_amount: parseFloat(formData.payment_amount),
+      allowed_amount: parseFloat(formData.allowed_amount) || null,
+      deductible_amount: parseFloat(formData.deductible_amount) || 0,
+      coinsurance_amount: parseFloat(formData.coinsurance_amount) || 0,
+      copay_amount: parseFloat(formData.copay_amount) || 0,
+      adjustment_amount: parseFloat(formData.adjustment_amount) || 0,
+      adjustment_reason: formData.adjustment_reason,
+      adjustment_code: formData.adjustment_code,
+      posting_date: formData.posting_date,
+      status: 'posted',
+      payment_method: formData.payment_method,
+      era_number: formData.era_number,
+      eob_number: formData.eob_number,
+      notes: formData.notes,
+      posted_by: 'Current User' // This should come from auth context
+    };
+
     try {
-      const patient = patients.find(p => p.id.toString() === formData.patientId);
-      const claim = claims.find(c => c.id.toString() === formData.claimId);
-      const payer = insurancePayers.find(ip => ip.id === formData.insurance_payer_id);
-
-      const postingData = {
-        claim_id: formData.claimId,
-        patient_id: formData.patientId,
-        insurance_payer_id: formData.insurance_payer_id,
-        check_number: formData.check_number,
-        check_date: formData.check_date || null,
-        payment_amount: parseFloat(formData.payment_amount),
-        allowed_amount: parseFloat(formData.allowed_amount) || null,
-        deductible_amount: parseFloat(formData.deductible_amount) || 0,
-        coinsurance_amount: parseFloat(formData.coinsurance_amount) || 0,
-        copay_amount: parseFloat(formData.copay_amount) || 0,
-        adjustment_amount: parseFloat(formData.adjustment_amount) || 0,
-        adjustment_reason: formData.adjustment_reason,
-        adjustment_code: formData.adjustment_code,
-        posting_date: formData.posting_date,
-        status: 'posted',
-        payment_method: formData.payment_method,
-        era_number: formData.era_number,
-        eob_number: formData.eob_number,
-        notes: formData.notes,
-        posted_by: 'Current User' // This should come from auth context
-      };
-
-      await api.createPaymentPosting(postingData);
+      const result = await api.createPaymentPosting(postingData);
 
       addNotification(
         `Payment posting created successfully for ${patient?.first_name} ${patient?.last_name}`,
         'success'
       );
+
+      // Log successful creation
+      logCreate('NewPaymentPostingForm', postingData, {
+        module: 'RCM',
+        resource_id: result.id,
+        patient_id: formData.patientId,
+        metadata: {
+          claimId: formData.claimId,
+          paymentAmount: formData.payment_amount,
+          paymentMethod: formData.payment_method,
+        },
+      });
 
       setShowConfirmation(false);
       onSuccess();
@@ -145,6 +171,13 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
     } catch (error) {
       console.error('Error creating payment posting:', error);
       addNotification(error.message || 'Failed to create payment posting', 'error');
+
+      // Log error
+      logError('NewPaymentPostingForm', 'form', error.message || 'Failed to create payment posting', {
+        module: 'RCM',
+        patient_id: formData.patientId,
+        metadata: { formData: postingData },
+      });
     } finally {
       setProcessing(false);
     }
