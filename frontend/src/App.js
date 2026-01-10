@@ -990,19 +990,54 @@ function App() {
       {showSearch && (
         <SearchPanel
           theme={theme}
-          patients={patients}
-          appointments={appointments}
           onClose={() => setShowSearch(false)}
           onSelectResult={(result) => {
             setShowSearch(false);
-            // Handle navigation to result
-            if (result.type === 'patient') {
-              handleSetEditingItem({ type: 'patient', data: result });
-              setCurrentView('view');
-            } else if (result.type === 'appointment') {
-              handleSetEditingItem({ type: 'appointment', data: result });
-              setCurrentView('view');
-            }
+
+            // Navigate to the appropriate module and open the record
+            const moduleMap = {
+              'patient': 'ehr',
+              'appointment': 'practiceManagement',
+              'provider': 'providerManagement',
+              'claim': 'rcm',
+              'payment': 'rcm',
+              'prescription': 'ehr',
+              'lab_order': 'ehr',
+              'diagnosis': 'ehr',
+              'task': 'dashboard',
+              'offering': 'clinicalServices',
+              'campaign': 'crm',
+              'preapproval': 'rcm',
+              'denial': 'rcm'
+            };
+
+            const typeMap = {
+              'patient': 'patient',
+              'appointment': 'appointment',
+              'provider': 'provider',
+              'claim': 'claim',
+              'payment': 'payment',
+              'prescription': 'prescription',
+              'lab_order': 'labOrder',
+              'diagnosis': 'diagnosis',
+              'task': 'task',
+              'offering': 'offering',
+              'campaign': 'campaign',
+              'preapproval': 'preapproval',
+              'denial': 'denial'
+            };
+
+            const targetModule = moduleMap[result.result_type] || result.module || 'dashboard';
+            const itemType = typeMap[result.result_type] || result.result_type;
+
+            // Switch to the appropriate module
+            setCurrentModule(targetModule);
+
+            // Set the editing item to open the record
+            handleSetEditingItem({ type: itemType, data: result });
+
+            // Set view to 'view' to show the detail view
+            setCurrentView('view');
           }}
         />
       )}

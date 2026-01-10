@@ -95,6 +95,7 @@ app.get('/api/test', (req, res) => {
 
 // Import and use routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/appointment-types', require('./routes/appointment-types'));
 app.use('/api/waitlist', require('./routes/waitlist'));
