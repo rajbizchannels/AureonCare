@@ -1,10 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
 
 /**
  * Universal search endpoint that searches across all modules
@@ -12,6 +7,7 @@ const pool = new Pool({
  */
 router.get('/', async (req, res) => {
   try {
+    const pool = req.app.locals.pool;
     const { q: query, limit = 20 } = req.query;
 
     if (!query || query.trim().length < 2) {
@@ -21,358 +17,399 @@ router.get('/', async (req, res) => {
     const searchQuery = query.trim();
     const searchLimit = Math.min(parseInt(limit) || 20, 100);
 
-    // Perform searches in parallel across all tables
-    const [
-      patients,
-      appointments,
-      providers,
-      claims,
-      payments,
-      prescriptions,
-      labOrders,
-      diagnoses,
-      tasks,
-      offerings,
-      campaigns,
-      preapprovals,
-      denials
-    ] = await Promise.all([
-      // Search Patients
-      pool.query(`
-        SELECT
-          id,
-          first_name,
-          last_name,
-          mrn,
-          email,
-          phone,
-          date_of_birth,
-          'patient' as result_type,
-          'ehr' as module
-        FROM patients
-        WHERE
-          LOWER(first_name || ' ' || last_name) LIKE LOWER($1)
-          OR LOWER(mrn) LIKE LOWER($1)
-          OR LOWER(email) LIKE LOWER($1)
-          OR LOWER(phone) LIKE LOWER($1)
-        ORDER BY
-          CASE
-            WHEN LOWER(first_name || ' ' || last_name) = LOWER($2) THEN 1
-            WHEN LOWER(first_name || ' ' || last_name) LIKE LOWER($2 || '%') THEN 2
-            ELSE 3
-          END
-        LIMIT $3
-      `, [`%${searchQuery}%`, searchQuery, searchLimit]),
+    // Array to hold all search promises
+    const searchPromises = [];
 
-      // Search Appointments
-      pool.query(`
-        SELECT
-          a.id,
-          a.patient_id,
-          a.provider_id,
-          a.start_time,
-          a.end_time,
-          a.status,
-          a.appointment_type,
-          a.reason,
-          p.first_name as patient_first_name,
-          p.last_name as patient_last_name,
-          pr.first_name as provider_first_name,
-          pr.last_name as provider_last_name,
-          'appointment' as result_type,
-          'practiceManagement' as module
-        FROM appointments a
-        LEFT JOIN patients p ON a.patient_id = p.id
-        LEFT JOIN providers pr ON a.provider_id = pr.id
-        WHERE
-          LOWER(p.first_name || ' ' || p.last_name) LIKE LOWER($1)
-          OR LOWER(pr.first_name || ' ' || pr.last_name) LIKE LOWER($1)
-          OR LOWER(a.reason) LIKE LOWER($1)
-          OR LOWER(a.appointment_type) LIKE LOWER($1)
-        ORDER BY a.start_time DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Helper function to safely execute search queries
+    const safeSearch = async (searchFn, errorLabel) => {
+      try {
+        return await searchFn();
+      } catch (error) {
+        console.error(`${errorLabel} search error:`, error.message);
+        return { rows: [] };
+      }
+    };
 
-      // Search Providers
-      pool.query(`
-        SELECT
-          id,
-          first_name,
-          last_name,
-          email,
-          phone,
-          specialty,
-          npi,
-          'provider' as result_type,
-          'providerManagement' as module
-        FROM providers
-        WHERE
-          LOWER(first_name || ' ' || last_name) LIKE LOWER($1)
-          OR LOWER(email) LIKE LOWER($1)
-          OR LOWER(specialty) LIKE LOWER($1)
-          OR LOWER(npi) LIKE LOWER($1)
-        ORDER BY last_name, first_name
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Patients
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            id,
+            first_name,
+            last_name,
+            mrn,
+            email,
+            phone,
+            date_of_birth,
+            'patient' as result_type,
+            'ehr' as module
+          FROM patients
+          WHERE
+            LOWER(first_name || ' ' || last_name) LIKE LOWER($1)
+            OR LOWER(COALESCE(mrn, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(email, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(phone, '')) LIKE LOWER($1)
+          ORDER BY
+            CASE
+              WHEN LOWER(first_name || ' ' || last_name) = LOWER($2) THEN 1
+              WHEN LOWER(first_name || ' ' || last_name) LIKE LOWER($2 || '%') THEN 2
+              ELSE 3
+            END
+          LIMIT $3
+        `, [`%${searchQuery}%`, searchQuery, searchLimit]),
+        'Patients'
+      )
+    );
 
-      // Search Claims
-      pool.query(`
-        SELECT
-          c.id,
-          c.claim_number,
-          c.patient_id,
-          c.status,
-          c.total_charge,
-          c.date_of_service,
-          p.first_name as patient_first_name,
-          p.last_name as patient_last_name,
-          'claim' as result_type,
-          'rcm' as module
-        FROM claims c
-        LEFT JOIN patients p ON c.patient_id = p.id
-        WHERE
-          LOWER(c.claim_number) LIKE LOWER($1)
-          OR LOWER(p.first_name || ' ' || p.last_name) LIKE LOWER($1)
-          OR LOWER(c.status) LIKE LOWER($1)
-        ORDER BY c.created_at DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Appointments
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            a.id,
+            a.patient_id,
+            a.provider_id,
+            a.start_time,
+            a.end_time,
+            a.status,
+            a.appointment_type,
+            a.reason,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            pr.first_name as provider_first_name,
+            pr.last_name as provider_last_name,
+            'appointment' as result_type,
+            'practiceManagement' as module
+          FROM appointments a
+          LEFT JOIN patients p ON a.patient_id::text = p.id::text
+          LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+          WHERE
+            LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(pr.first_name || ' ' || pr.last_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(a.reason, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(a.appointment_type, '')) LIKE LOWER($1)
+          ORDER BY a.start_time DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Appointments'
+      )
+    );
 
-      // Search Payments
-      pool.query(`
-        SELECT
-          pay.id,
-          pay.payment_number,
-          pay.patient_id,
-          pay.amount,
-          pay.payment_date,
-          pay.payment_method,
-          pay.status,
-          p.first_name as patient_first_name,
-          p.last_name as patient_last_name,
-          'payment' as result_type,
-          'rcm' as module
-        FROM payments pay
-        LEFT JOIN patients p ON pay.patient_id = p.id
-        WHERE
-          LOWER(pay.payment_number) LIKE LOWER($1)
-          OR LOWER(p.first_name || ' ' || p.last_name) LIKE LOWER($1)
-          OR LOWER(pay.payment_method) LIKE LOWER($1)
-        ORDER BY pay.payment_date DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Providers
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            id,
+            first_name,
+            last_name,
+            email,
+            phone,
+            specialty,
+            npi,
+            'provider' as result_type,
+            'providerManagement' as module
+          FROM providers
+          WHERE
+            LOWER(first_name || ' ' || last_name) LIKE LOWER($1)
+            OR LOWER(COALESCE(email, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(specialty, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(npi, '')) LIKE LOWER($1)
+          ORDER BY last_name, first_name
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Providers'
+      )
+    );
 
-      // Search Prescriptions
-      pool.query(`
-        SELECT
-          pr.id,
-          pr.patient_id,
-          pr.provider_id,
-          pr.medication_name,
-          pr.dosage,
-          pr.frequency,
-          pr.status,
-          p.first_name as patient_first_name,
-          p.last_name as patient_last_name,
-          prov.first_name as provider_first_name,
-          prov.last_name as provider_last_name,
-          'prescription' as result_type,
-          'ehr' as module
-        FROM prescriptions pr
-        LEFT JOIN patients p ON pr.patient_id = p.id
-        LEFT JOIN providers prov ON pr.provider_id = prov.id
-        WHERE
-          LOWER(pr.medication_name) LIKE LOWER($1)
-          OR LOWER(p.first_name || ' ' || p.last_name) LIKE LOWER($1)
-          OR LOWER(prov.first_name || ' ' || prov.last_name) LIKE LOWER($1)
-        ORDER BY pr.created_at DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Claims
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            c.id,
+            c.claim_number,
+            c.patient_id,
+            c.status,
+            c.total_charge,
+            c.date_of_service,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            'claim' as result_type,
+            'rcm' as module
+          FROM claims c
+          LEFT JOIN patients p ON c.patient_id::text = p.id::text
+          WHERE
+            LOWER(COALESCE(c.claim_number, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(c.status, '')) LIKE LOWER($1)
+          ORDER BY c.created_at DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Claims'
+      )
+    );
 
-      // Search Lab Orders
-      pool.query(`
-        SELECT
-          lo.id,
-          lo.patient_id,
-          lo.provider_id,
-          lo.test_name,
-          lo.status,
-          lo.order_date,
-          p.first_name as patient_first_name,
-          p.last_name as patient_last_name,
-          prov.first_name as provider_first_name,
-          prov.last_name as provider_last_name,
-          'lab_order' as result_type,
-          'ehr' as module
-        FROM lab_orders lo
-        LEFT JOIN patients p ON lo.patient_id = p.id
-        LEFT JOIN providers prov ON lo.provider_id = prov.id
-        WHERE
-          LOWER(lo.test_name) LIKE LOWER($1)
-          OR LOWER(p.first_name || ' ' || p.last_name) LIKE LOWER($1)
-          OR LOWER(lo.status) LIKE LOWER($1)
-        ORDER BY lo.order_date DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Payments
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            pay.id,
+            pay.payment_number,
+            pay.patient_id,
+            pay.amount,
+            pay.payment_date,
+            pay.payment_method,
+            pay.status,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            'payment' as result_type,
+            'rcm' as module
+          FROM payments pay
+          LEFT JOIN patients p ON pay.patient_id::text = p.id::text
+          WHERE
+            LOWER(COALESCE(pay.payment_number, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(pay.payment_method, '')) LIKE LOWER($1)
+          ORDER BY pay.payment_date DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Payments'
+      )
+    );
 
-      // Search Diagnoses
-      pool.query(`
-        SELECT
-          d.id,
-          d.patient_id,
-          d.provider_id,
-          d.icd_code,
-          d.description,
-          d.diagnosis_date,
-          d.status,
-          p.first_name as patient_first_name,
-          p.last_name as patient_last_name,
-          prov.first_name as provider_first_name,
-          prov.last_name as provider_last_name,
-          'diagnosis' as result_type,
-          'ehr' as module
-        FROM diagnoses d
-        LEFT JOIN patients p ON d.patient_id = p.id
-        LEFT JOIN providers prov ON d.provider_id = prov.id
-        WHERE
-          LOWER(d.icd_code) LIKE LOWER($1)
-          OR LOWER(d.description) LIKE LOWER($1)
-          OR LOWER(p.first_name || ' ' || p.last_name) LIKE LOWER($1)
-        ORDER BY d.diagnosis_date DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Prescriptions
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            pr.id,
+            pr.patient_id,
+            pr.provider_id,
+            pr.medication_name,
+            pr.dosage,
+            pr.frequency,
+            pr.status,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            prov.first_name as provider_first_name,
+            prov.last_name as provider_last_name,
+            'prescription' as result_type,
+            'ehr' as module
+          FROM prescriptions pr
+          LEFT JOIN patients p ON pr.patient_id::text = p.id::text
+          LEFT JOIN providers prov ON pr.provider_id::text = prov.id::text
+          WHERE
+            LOWER(COALESCE(pr.medication_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(prov.first_name || ' ' || prov.last_name, '')) LIKE LOWER($1)
+          ORDER BY pr.created_at DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Prescriptions'
+      )
+    );
 
-      // Search Tasks
-      pool.query(`
-        SELECT
-          t.id,
-          t.title,
-          t.description,
-          t.status,
-          t.priority,
-          t.assigned_to,
-          t.due_date,
-          u.username as assigned_to_name,
-          'task' as result_type,
-          'dashboard' as module
-        FROM tasks t
-        LEFT JOIN users u ON t.assigned_to = u.id
-        WHERE
-          LOWER(t.title) LIKE LOWER($1)
-          OR LOWER(t.description) LIKE LOWER($1)
-          OR LOWER(u.username) LIKE LOWER($1)
-        ORDER BY t.created_at DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Lab Orders
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            lo.id,
+            lo.patient_id,
+            lo.provider_id,
+            lo.test_name,
+            lo.status,
+            lo.order_date,
+            'lab_order' as result_type,
+            'ehr' as module
+          FROM lab_orders lo
+          WHERE
+            LOWER(COALESCE(lo.test_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(lo.status, '')) LIKE LOWER($1)
+          ORDER BY lo.order_date DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Lab Orders'
+      )
+    );
 
-      // Search Clinical Service Offerings
-      pool.query(`
-        SELECT
-          o.id,
-          o.name,
-          o.description,
-          o.price,
-          o.duration,
-          o.specialization,
-          'offering' as result_type,
-          'clinicalServices' as module
-        FROM offerings o
-        WHERE
-          LOWER(o.name) LIKE LOWER($1)
-          OR LOWER(o.description) LIKE LOWER($1)
-          OR LOWER(o.specialization) LIKE LOWER($1)
-        ORDER BY o.name
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Diagnosis (table name is 'diagnosis', not 'diagnoses')
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            d.id,
+            d.patient_id,
+            d.provider_id,
+            d.icd_code,
+            d.description,
+            d.diagnosed_date,
+            d.status,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            prov.first_name as provider_first_name,
+            prov.last_name as provider_last_name,
+            'diagnosis' as result_type,
+            'ehr' as module
+          FROM diagnosis d
+          LEFT JOIN patients p ON d.patient_id::text = p.id::text
+          LEFT JOIN providers prov ON d.provider_id::text = prov.id::text
+          WHERE
+            LOWER(COALESCE(d.icd_code, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(d.description, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+          ORDER BY d.diagnosed_date DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Diagnosis'
+      )
+    );
 
-      // Search Campaigns
-      pool.query(`
-        SELECT
-          c.id,
-          c.name,
-          c.description,
-          c.status,
-          c.start_date,
-          c.end_date,
-          c.target_audience,
-          'campaign' as result_type,
-          'crm' as module
-        FROM campaigns c
-        WHERE
-          LOWER(c.name) LIKE LOWER($1)
-          OR LOWER(c.description) LIKE LOWER($1)
-          OR LOWER(c.target_audience) LIKE LOWER($1)
-        ORDER BY c.created_at DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Tasks
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            t.id,
+            t.title,
+            t.description,
+            t.status,
+            t.priority,
+            t.assigned_to,
+            t.due_date,
+            u.username as assigned_to_name,
+            'task' as result_type,
+            'dashboard' as module
+          FROM tasks t
+          LEFT JOIN users u ON t.assigned_to::text = u.id::text
+          WHERE
+            LOWER(COALESCE(t.title, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(t.description, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(u.username, '')) LIKE LOWER($1)
+          ORDER BY t.created_at DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Tasks'
+      )
+    );
 
-      // Search Preapprovals
-      pool.query(`
-        SELECT
-          pa.id,
-          pa.patient_id,
-          pa.authorization_number,
-          pa.status,
-          pa.service_type,
-          pa.request_date,
-          p.first_name as patient_first_name,
-          p.last_name as patient_last_name,
-          'preapproval' as result_type,
-          'rcm' as module
-        FROM preapprovals pa
-        LEFT JOIN patients p ON pa.patient_id = p.id
-        WHERE
-          LOWER(pa.authorization_number) LIKE LOWER($1)
-          OR LOWER(pa.service_type) LIKE LOWER($1)
-          OR LOWER(p.first_name || ' ' || p.last_name) LIKE LOWER($1)
-        ORDER BY pa.request_date DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit]),
+    // Search Healthcare Offerings (table name is 'healthcare_offerings', not 'offerings')
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            o.id,
+            o.name,
+            o.description,
+            o.price,
+            o.duration,
+            o.specialization,
+            'offering' as result_type,
+            'clinicalServices' as module
+          FROM healthcare_offerings o
+          WHERE
+            LOWER(COALESCE(o.name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(o.description, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(o.specialization, '')) LIKE LOWER($1)
+          ORDER BY o.name
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Healthcare Offerings'
+      )
+    );
 
-      // Search Denials
-      pool.query(`
-        SELECT
-          d.id,
-          d.claim_id,
-          d.denial_code,
-          d.denial_reason,
-          d.status,
-          d.denial_date,
-          'denial' as result_type,
-          'rcm' as module
-        FROM denials d
-        WHERE
-          LOWER(d.denial_code) LIKE LOWER($1)
-          OR LOWER(d.denial_reason) LIKE LOWER($1)
-          OR LOWER(d.status) LIKE LOWER($1)
-        ORDER BY d.denial_date DESC
-        LIMIT $2
-      `, [`%${searchQuery}%`, searchLimit])
-    ]);
+    // Search Campaigns
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            c.id,
+            c.name,
+            c.email_content as description,
+            c.status,
+            c.scheduled_date as start_date,
+            c.target_audience,
+            'campaign' as result_type,
+            'crm' as module
+          FROM campaigns c
+          WHERE
+            LOWER(COALESCE(c.name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(c.email_content, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(c.target_audience, '')) LIKE LOWER($1)
+          ORDER BY c.created_at DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Campaigns'
+      )
+    );
+
+    // Search Preapprovals
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            pa.id,
+            pa.patient_id,
+            pa.authorization_number,
+            pa.status,
+            pa.service_type,
+            pa.request_date,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            'preapproval' as result_type,
+            'rcm' as module
+          FROM preapprovals pa
+          LEFT JOIN patients p ON pa.patient_id::text = p.id::text
+          WHERE
+            LOWER(COALESCE(pa.authorization_number, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(pa.service_type, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+          ORDER BY pa.request_date DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Preapprovals'
+      )
+    );
+
+    // Search Denials
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            d.id,
+            d.claim_id,
+            d.denial_code,
+            d.denial_reason,
+            d.status,
+            d.denial_date,
+            'denial' as result_type,
+            'rcm' as module
+          FROM denials d
+          WHERE
+            LOWER(COALESCE(d.denial_code, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(d.denial_reason, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(d.status, '')) LIKE LOWER($1)
+          ORDER BY d.denial_date DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Denials'
+      )
+    );
+
+    // Execute all searches in parallel
+    const results = await Promise.all(searchPromises);
 
     // Combine all results
-    const allResults = [
-      ...patients.rows,
-      ...appointments.rows,
-      ...providers.rows,
-      ...claims.rows,
-      ...payments.rows,
-      ...prescriptions.rows,
-      ...labOrders.rows,
-      ...diagnoses.rows,
-      ...tasks.rows,
-      ...offerings.rows,
-      ...campaigns.rows,
-      ...preapprovals.rows,
-      ...denials.rows
-    ];
+    const allResults = results.flatMap(result => result.rows || []);
 
     // Sort by relevance and limit
     const sortedResults = allResults
       .slice(0, searchLimit)
       .map(result => ({
         ...result,
-        // Add display name for easier rendering
         display_name: getDisplayName(result),
         display_subtitle: getDisplaySubtitle(result)
       }));
@@ -380,7 +417,7 @@ router.get('/', async (req, res) => {
     res.json(sortedResults);
   } catch (error) {
     console.error('Search error:', error);
-    res.status(500).json({ error: 'Failed to perform search' });
+    res.status(500).json({ error: 'Failed to perform search', details: error.message });
   }
 });
 
@@ -390,31 +427,31 @@ router.get('/', async (req, res) => {
 function getDisplayName(result) {
   switch (result.result_type) {
     case 'patient':
-      return `${result.first_name || ''} ${result.last_name || ''}`.trim();
+      return `${result.first_name || ''} ${result.last_name || ''}`.trim() || 'Unknown Patient';
     case 'appointment':
-      return `${result.patient_first_name || ''} ${result.patient_last_name || ''}`.trim();
+      return `${result.patient_first_name || ''} ${result.patient_last_name || ''}`.trim() || 'Unknown Patient';
     case 'provider':
-      return `${result.first_name || ''} ${result.last_name || ''}`.trim();
+      return `${result.first_name || ''} ${result.last_name || ''}`.trim() || 'Unknown Provider';
     case 'claim':
-      return `Claim #${result.claim_number}`;
+      return `Claim #${result.claim_number || 'N/A'}`;
     case 'payment':
-      return `Payment #${result.payment_number}`;
+      return `Payment #${result.payment_number || 'N/A'}`;
     case 'prescription':
-      return result.medication_name;
+      return result.medication_name || 'Unknown Medication';
     case 'lab_order':
-      return result.test_name;
+      return result.test_name || 'Lab Order';
     case 'diagnosis':
-      return result.description || result.icd_code;
+      return result.description || result.icd_code || 'Diagnosis';
     case 'task':
-      return result.title;
+      return result.title || 'Task';
     case 'offering':
-      return result.name;
+      return result.name || 'Service Offering';
     case 'campaign':
-      return result.name;
+      return result.name || 'Campaign';
     case 'preapproval':
-      return `Authorization #${result.authorization_number}`;
+      return `Authorization #${result.authorization_number || 'N/A'}`;
     case 'denial':
-      return `Denial - ${result.denial_reason}`;
+      return `Denial - ${result.denial_reason || 'N/A'}`;
     default:
       return 'Unknown';
   }
@@ -433,25 +470,25 @@ function getDisplaySubtitle(result) {
     case 'provider':
       return result.specialty || result.email || '';
     case 'claim':
-      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.status}`;
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.status || 'N/A'}`;
     case 'payment':
-      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - $${result.amount}`;
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - $${result.amount || 'N/A'}`;
     case 'prescription':
       return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.dosage || ''}`;
     case 'lab_order':
-      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.status}`;
+      return `${result.status || 'Pending'}`;
     case 'diagnosis':
-      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.icd_code}`;
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.icd_code || ''}`;
     case 'task':
-      return `${result.priority || ''} - ${result.status || ''}`;
+      return `${result.priority || ''} ${result.priority ? '-' : ''} ${result.status || ''}`.trim();
     case 'offering':
-      return `$${result.price || 'N/A'} - ${result.duration || ''} mins`;
+      return `$${result.price || 'N/A'} ${result.duration ? `- ${result.duration} mins` : ''}`.trim();
     case 'campaign':
       return result.status || '';
     case 'preapproval':
-      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.status}`;
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.status || 'N/A'}`;
     case 'denial':
-      return `Code: ${result.denial_code} - ${result.status}`;
+      return `Code: ${result.denial_code || 'N/A'} - ${result.status || 'N/A'}`;
     default:
       return '';
   }
