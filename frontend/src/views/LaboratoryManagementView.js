@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Microscope, Plus, Edit, Trash2, ArrowLeft, RefreshCw, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewLaboratoryForm from '../components/forms/NewLaboratoryForm';
+import { useAudit } from '../hooks/useAudit';
 
 const LaboratoryManagementView = ({
   theme,
@@ -16,6 +17,14 @@ const LaboratoryManagementView = ({
   const [editingLaboratory, setEditingLaboratory] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('LaboratoryManagementView', {
+      module: 'EHR',
+    });
+  }, []);
 
   const loadLaboratories = async () => {
     setLoading(true);

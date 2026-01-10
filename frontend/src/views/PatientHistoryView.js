@@ -13,6 +13,7 @@ import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
 import ViewEditModal from '../components/modals/ViewEditModal';
+import { useAudit } from '../hooks/useAudit';
 
 // Helper function to convert string to Title Case
 const toTitleCase = (str) => {
@@ -67,6 +68,15 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   // Lab order filter state
   const [labOrderStatusFilter, setLabOrderStatusFilter] = useState('all');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('PatientHistoryView', {
+      module: 'EHR',
+      patient_id: patient?.id,
+    });
+  }, []);
 
   useEffect(() => {
     if (patient?.id) {

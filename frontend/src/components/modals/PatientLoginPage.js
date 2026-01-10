@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart, Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
+import { useAudit } from '../../hooks/useAudit';
 
 const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
+  const { logViewAccess, logError } = useAudit();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
   const { instance } = useMsal();
+
+  // Log page access on mount
+  useEffect(() => {
+    logViewAccess('PatientLoginPage', {
+      module: 'Patient Portal',
+    });
+  }, []);
 
   // Helper function to route patient to patient portal
   const routePatient = () => {
@@ -32,6 +41,13 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
 
       await addNotification('success', 'Welcome to your patient portal');
     } catch (error) {
+      logError('PatientLoginPage', 'view', error.message, {
+        module: 'Patient Portal',
+        metadata: {
+          // DO NOT log password or sensitive data
+          loginMethod: 'email',
+        },
+      });
       setLoginError(error.message || 'Login failed. Please check your credentials.');
     }
   };
@@ -66,10 +82,22 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
 
         await addNotification('success', 'Welcome to your patient portal');
       } catch (error) {
+        logError('PatientLoginPage', 'view', error.message, {
+          module: 'Patient Portal',
+          metadata: {
+            loginMethod: 'google',
+          },
+        });
         setLoginError(error.message || 'Google login failed. Please ensure your account is linked to a patient record.');
       }
     },
     onError: (error) => {
+      logError('PatientLoginPage', 'view', 'Google OAuth error', {
+        module: 'Patient Portal',
+        metadata: {
+          loginMethod: 'google',
+        },
+      });
       setLoginError('Google login failed');
       console.error('Google login error:', error);
     }
@@ -103,6 +131,12 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
 
       await addNotification('success', 'Welcome to your patient portal');
     } catch (error) {
+      logError('PatientLoginPage', 'view', error.message, {
+        module: 'Patient Portal',
+        metadata: {
+          loginMethod: 'microsoft',
+        },
+      });
       setLoginError(error.message || 'Microsoft login failed. Please ensure your account is linked to a patient record.');
       console.error('Microsoft login error:', error);
     }

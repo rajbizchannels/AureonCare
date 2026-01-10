@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Pill, Plus, Edit, Trash2, ArrowLeft, RefreshCw, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewPharmacyForm from '../components/forms/NewPharmacyForm';
+import { useAudit } from '../hooks/useAudit';
 
 const PharmacyManagementView = ({
   theme,
@@ -16,6 +17,14 @@ const PharmacyManagementView = ({
   const [editingPharmacy, setEditingPharmacy] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('PharmacyManagementView', {
+      module: 'EHR',
+    });
+  }, []);
 
   const loadPharmacies = async () => {
     setLoading(true);

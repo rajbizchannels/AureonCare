@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import api from '../api/apiService';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewHealthcareOfferingForm from '../components/forms/NewHealthcareOfferingForm';
+import { useAudit } from '../hooks/useAudit';
 import {
   Package,
   FolderTree,
@@ -49,6 +50,14 @@ const OfferingManagementView = () => {
   const [formData, setFormData] = useState({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteInfo, setDeleteInfo] = useState({ id: null, type: null });
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('OfferingManagementView', {
+      module: 'Offerings',
+    });
+  }, []);
 
   useEffect(() => {
     fetchData();

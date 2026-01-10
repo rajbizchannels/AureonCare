@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, X, Save } from 'lucide-react';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewIntakeFormForm = ({ theme, api, patients, editingForm, onClose, onSuccess, addNotification }) => {
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     patient_id: editingForm?.patient_id || '',
     form_type: editingForm?.form_type || 'general',
@@ -20,6 +22,19 @@ const NewIntakeFormForm = ({ theme, api, patients, editingForm, onClose, onSucce
   });
 
   const [processing, setProcessing] = useState(false);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewIntakeFormForm', {
+      module: 'Patient Intake',
+      patient_id: editingForm?.patient_id,
+      metadata: {
+        mode: editingForm ? 'edit' : 'create',
+        form_id: editingForm?.id,
+      },
+    });
+  }, []);
 
   const formTypes = [
     { id: 'general', name: 'General Intake' },
@@ -54,45 +69,74 @@ const NewIntakeFormForm = ({ theme, api, patients, editingForm, onClose, onSucce
     e.preventDefault();
     setProcessing(true);
 
+    const patient = patients.find(p => p.id?.toString() === formData.patient_id);
+
+    // Build form_data JSON from individual fields
+    const form_data = {
+      chief_complaint: formData.chief_complaint,
+      medical_history: formData.medical_history,
+      current_medications: formData.current_medications,
+      allergies: formData.allergies,
+      emergency_contact_name: formData.emergency_contact_name,
+      emergency_contact_phone: formData.emergency_contact_phone,
+      insurance_provider: formData.insurance_provider,
+      insurance_policy_number: formData.insurance_policy_number
+    };
+
+    const intakeFormData = {
+      patient_id: formData.patient_id,
+      form_type: formData.form_type,
+      form_name: formData.form_name,
+      form_data: form_data,
+      status: formData.status,
+      notes: formData.notes
+    };
+
     try {
-      const patient = patients.find(p => p.id?.toString() === formData.patient_id);
-
-      // Build form_data JSON from individual fields
-      const form_data = {
-        chief_complaint: formData.chief_complaint,
-        medical_history: formData.medical_history,
-        current_medications: formData.current_medications,
-        allergies: formData.allergies,
-        emergency_contact_name: formData.emergency_contact_name,
-        emergency_contact_phone: formData.emergency_contact_phone,
-        insurance_provider: formData.insurance_provider,
-        insurance_policy_number: formData.insurance_policy_number
-      };
-
-      const intakeFormData = {
-        patient_id: formData.patient_id,
-        form_type: formData.form_type,
-        form_name: formData.form_name,
-        form_data: form_data,
-        status: formData.status,
-        notes: formData.notes
-      };
-
       let result;
       if (editingForm) {
         result = await api.updateIntakeForm(editingForm.id, intakeFormData);
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
         await addNotification('success', `Intake form updated successfully for ${patientName}`);
+
+        // Log successful update
+        logUpdate('NewIntakeFormForm', editingForm, intakeFormData, {
+          module: 'Patient Intake',
+          resource_id: editingForm.id,
+          patient_id: formData.patient_id,
+          metadata: {
+            formType: formData.form_type,
+            status: formData.status,
+          },
+        });
       } else {
         result = await api.createIntakeForm(intakeFormData);
         const patientName = patient ? `${patient.first_name} ${patient.last_name}` : 'patient';
         await addNotification('success', `Intake form created successfully for ${patientName}`);
+
+        // Log successful creation
+        logCreate('NewIntakeFormForm', intakeFormData, {
+          module: 'Patient Intake',
+          resource_id: result.id,
+          patient_id: formData.patient_id,
+          metadata: {
+            formType: formData.form_type,
+            status: formData.status,
+          },
+        });
       }
 
       onSuccess(result);
     } catch (err) {
       console.error('Error saving intake form:', err);
       await addNotification('error', editingForm ? 'Failed to update intake form' : 'Failed to create intake form');
+
+      // Log error
+      logError('NewIntakeFormForm', 'form', err.message || 'Failed to save intake form', {
+        module: 'Patient Intake',
+        patient_id: formData.patient_id,
+        metadata: { formData: intakeFormData },
+      });
     } finally {
       setProcessing(false);
     }

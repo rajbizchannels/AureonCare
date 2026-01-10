@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Zap, Mail, MessageCircle } from 'lucide-react';
 import { getTranslations } from '../../config/translations';
 import ConfirmationModal from './ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const SettingsModal = ({
   theme,
@@ -20,11 +21,23 @@ const SettingsModal = ({
   api,
   addNotification
 }) => {
+  const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const t = getTranslations(language);
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
   const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Log modal open on mount
+  useEffect(() => {
+    startAction();
+    logModalOpen('SettingsModal', {
+      module: 'Settings',
+      metadata: {
+        userRole: user?.role,
+      },
+    });
+  }, []);
 
   // Load WhatsApp notification preference
   useEffect(() => {
@@ -54,18 +67,29 @@ const SettingsModal = ({
     loadWhatsAppPreference();
   }, [user.id, user.role, user.phone, api]);
 
+  // Handle close with audit logging
+  const handleClose = () => {
+    logModalClose('SettingsModal', {
+      module: 'Settings',
+      metadata: {
+        userRole: user?.role,
+      },
+    });
+    onClose();
+  };
+
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         e.stopImmediatePropagation();
         e.preventDefault();
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleEsc, true); // Use capture phase
     return () => window.removeEventListener('keydown', handleEsc, true);
-  }, [onClose]);
+  }, [handleClose]);
 
   const handleWhatsAppPhoneUpdate = async () => {
     try {
@@ -85,7 +109,7 @@ const SettingsModal = ({
   const handleActualSubmit = async () => {
     setShowConfirmation(false);
     await addNotification('success', t.settingsSaved);
-    onClose();
+    handleClose();
   };
 
   return (
@@ -101,11 +125,11 @@ const SettingsModal = ({
         confirmText={t.saveChanges || 'Save Changes'}
         cancelText={t.cancel || 'Cancel'}
       />
-    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={onClose}>
+    <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`} onClick={handleClose}>
       <div className={`rounded-xl border max-w-3xl w-full max-h-[90vh] overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`} onClick={e => e.stopPropagation()}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.settings}</h2>
-          <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
+          <button onClick={handleClose} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}>
             <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
         </div>
@@ -124,7 +148,7 @@ const SettingsModal = ({
                   </div>
                   <button
                     onClick={() => {
-                      onClose();
+                      handleClose();
                       setCurrentModule('admin');
                     }}
                     className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white"
@@ -343,7 +367,7 @@ const SettingsModal = ({
 
         <div className="flex gap-3 mt-6 p-6 pt-0">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
           >
             {t.close}

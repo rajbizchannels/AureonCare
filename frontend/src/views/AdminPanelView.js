@@ -50,11 +50,15 @@ import {
   Globe,
   Languages,
   MapPin,
+  Archive,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import CredentialModal from '../components/modals/CredentialModal';
+import { useAudit } from '../hooks/useAudit';
 import IntegrationCard from '../components/IntegrationCard';
+import AuditLogsTab from '../components/admin/AuditLogsTab';
+import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import { useClinicSettings } from '../hooks/useClinicSettings';
 import {
   USER_ROLES,
@@ -76,6 +80,7 @@ import {
   sanitizeString,
   safeJSONParse,
 } from '../utils/validators';
+import { hasPermission, isAdmin } from '../utils/rolePermissions';
 
 /**
  * Main Admin Panel View Component
@@ -106,7 +111,7 @@ const AdminPanelView = ({
   t,
 }) => {
   // ==================== CONTEXT ====================
-  const { setPlanTier, updateUserPreferences, planTier } = useApp();
+  const { setPlanTier, updateUserPreferences, planTier, user } = useApp();
 
   // ==================== STATE ====================
   const [activeTab, setActiveTab] = useState(ADMIN_TABS.CLINIC);
@@ -182,10 +187,16 @@ const AdminPanelView = ({
     appointments: { view: false, create: false, edit: false, delete: false },
     claims: { view: false, create: false, edit: false, delete: false },
     ehr: { view: false, create: false, edit: false, delete: false },
-    users: { view: false, create: false, edit: false, delete: false },
+    telehealth: { view: false, create: false, edit: false, delete: false },
+    crm: { view: false, create: false, edit: false, delete: false },
+    rcm: { view: false, create: false, edit: false, delete: false },
+    practiceManagement: { view: false, create: false, edit: false, delete: false },
+    clinicalServices: { view: false, create: false, edit: false, delete: false },
     reports: { view: false, create: false, edit: false, delete: false },
+    users: { view: false, create: false, edit: false, delete: false },
     settings: { view: false, create: false, edit: false, delete: false },
     backup: { view: false, create: false, edit: false, delete: false },
+    audit: { view: false, create: false, edit: false, delete: false },
   });
 
   // Confirmation modal state
@@ -246,6 +257,8 @@ const AdminPanelView = ({
       { id: ADMIN_TABS.HOURS, label: t.workingHours || 'Working Hours', icon: Clock },
       { id: ADMIN_TABS.APPOINTMENTS, label: t.appointmentSettings || 'Appointment Settings', icon: Settings },
       { id: ADMIN_TABS.BACKUP, label: 'Backup & Restore', icon: HardDrive },
+      { id: ADMIN_TABS.ARCHIVE, label: 'Archive Management', icon: Archive },
+      { id: ADMIN_TABS.AUDIT, label: 'Audit Logs', icon: FileText },
     ],
     [t]
   );
@@ -276,7 +289,20 @@ const AdminPanelView = ({
     [users]
   );
 
+  // ==================== AUDIT HOOK ====================
+
+  const { logViewAccess } = useAudit();
+
   // ==================== EFFECTS ====================
+
+  /**
+   * Log view access on mount
+   */
+  useEffect(() => {
+    logViewAccess('AdminPanelView', {
+      module: 'Admin',
+    });
+  }, []);
 
   /**
    * Sync currentPlan with planTier from context
@@ -2429,65 +2455,57 @@ const AdminPanelView = ({
    * Render Roles & Permissions Tab
    * TODO: Extract to separate component RolesPermissionsTab.js
    */
-  const renderRolesPermissionsTab = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Role Permissions
-          </h2>
-          {/* Legend */}
-          <div className={`flex gap-4 mt-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            <span className="flex items-center gap-1">
-              <span className="text-green-500 font-semibold">V</span> = View
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-blue-500 font-semibold">C</span> = Create
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-yellow-500 font-semibold">E</span> = Edit
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-red-500 font-semibold">D</span> = Delete
-            </span>
+  const renderRolesPermissionsTab = () => {
+    // Check if user has permission to manage roles (admin only)
+    const canManageRoles = hasPermission(user, 'admin', 'roles');
+
+    return (
+      <div className="space-y-6">
+        {/* Permission Warning */}
+        {!canManageRoles && (
+          <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-yellow-50 border-yellow-300 text-yellow-800'}`}>
+            <div className="flex items-center gap-2">
+              <Lock className="w-5 h-5" />
+              <span className="font-medium">Read-only mode: Only administrators can modify role permissions</span>
+            </div>
           </div>
+        )}
+
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Role Permissions
+            </h2>
+            {/* Legend */}
+            <div className={`flex gap-4 mt-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              <span className="flex items-center gap-1">
+                <span className="text-green-500 font-semibold">V</span> = View
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-blue-500 font-semibold">C</span> = Create
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-yellow-500 font-semibold">E</span> = Edit
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-red-500 font-semibold">D</span> = Delete
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowCustomRoleForm(true)}
+            disabled={!canManageRoles}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              canManageRoles
+                ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                : 'bg-gray-400 cursor-not-allowed text-gray-200'
+            }`}
+            title={!canManageRoles ? 'Only administrators can create custom roles' : 'Create Custom Role'}
+          >
+            <Plus className="w-5 h-5" />
+            Create Custom Role
+          </button>
         </div>
-        <button
-          onClick={() => {
-            if (showCustomRoleForm) {
-              setShowCustomRoleForm(false);
-              setCustomRoleName('');
-              setCustomRolePermissions({
-                patients: { view: false, create: false, edit: false, delete: false },
-                appointments: { view: false, create: false, edit: false, delete: false },
-                claims: { view: false, create: false, edit: false, delete: false },
-                ehr: { view: false, create: false, edit: false, delete: false },
-                users: { view: false, create: false, edit: false, delete: false },
-                reports: { view: false, create: false, edit: false, delete: false },
-                settings: { view: false, create: false, edit: false, delete: false },
-                backup: { view: false, create: false, edit: false, delete: false },
-              });
-            } else {
-              setShowCustomRoleForm(true);
-              setCustomRoleName('');
-              setCustomRolePermissions({
-                patients: { view: false, create: false, edit: false, delete: false },
-                appointments: { view: false, create: false, edit: false, delete: false },
-                claims: { view: false, create: false, edit: false, delete: false },
-                ehr: { view: false, create: false, edit: false, delete: false },
-                users: { view: false, create: false, edit: false, delete: false },
-                reports: { view: false, create: false, edit: false, delete: false },
-                settings: { view: false, create: false, edit: false, delete: false },
-                backup: { view: false, create: false, edit: false, delete: false },
-              });
-            }
-          }}
-          className={`flex items-center gap-2 px-4 py-2 ${showCustomRoleForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-purple-500 hover:bg-purple-600'} text-white rounded-lg font-medium transition-colors`}
-        >
-          {showCustomRoleForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-          {showCustomRoleForm ? 'Cancel' : 'Create Custom Role'}
-        </button>
-      </div>
 
       {/* Inline Custom Role Form */}
       {showCustomRoleForm && (
@@ -2773,6 +2791,7 @@ const AdminPanelView = ({
       </div>
     </div>
   );
+};
 
   /**
    * Render Subscription Plans Tab
@@ -3314,6 +3333,8 @@ const AdminPanelView = ({
           {activeTab === ADMIN_TABS.HOURS && renderWorkingHoursTab()}
           {activeTab === ADMIN_TABS.APPOINTMENTS && renderAppointmentSettingsTab()}
           {activeTab === ADMIN_TABS.BACKUP && renderBackupRestoreTab()}
+          {activeTab === ADMIN_TABS.ARCHIVE && <ArchiveManagementTab theme={theme} api={api} addNotification={addNotification} />}
+          {activeTab === ADMIN_TABS.AUDIT && <AuditLogsTab theme={theme} api={api} addNotification={addNotification} />}
         </div>
       </div>
 

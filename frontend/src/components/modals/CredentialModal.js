@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { X, Key, User } from 'lucide-react';
+import { useAudit } from '../../hooks/useAudit';
 
 /**
  * CredentialModal - Themed modal for collecting OAuth credentials
@@ -16,12 +17,28 @@ const CredentialModal = ({
   credentialType = 'oauth',
   existingCredentials = null // For edit mode
 }) => {
+  const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [errors, setErrors] = useState({});
 
   const isEditMode = Boolean(existingCredentials);
+
+  // Log modal open
+  useEffect(() => {
+    if (isOpen) {
+      startAction();
+      logModalOpen('CredentialModal', {
+        module: 'Admin',
+        metadata: {
+          provider: providerName,
+          credentialType: credentialType,
+          mode: isEditMode ? 'edit' : 'create',
+        },
+      });
+    }
+  }, [isOpen, logModalOpen, startAction, providerName, credentialType, isEditMode]);
 
   // Pre-populate form when editing
   useEffect(() => {
@@ -80,6 +97,13 @@ const CredentialModal = ({
   };
 
   const handleClose = () => {
+    logModalClose('CredentialModal', {
+      module: 'Admin',
+      metadata: {
+        provider: providerName,
+        credentialType: credentialType,
+      },
+    });
     setClientId('');
     setClientSecret('');
     setApiKey('');

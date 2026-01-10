@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, MessageSquare, Phone, ArrowLeft, Calendar, Plus, Heart, Clock, Edit, FileText } from 'lucide-react';
+import { useAudit } from '../hooks/useAudit';
 
 const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefreshKey, api, t }) => {
   const [campaignCount, setCampaignCount] = useState(0);
@@ -7,6 +8,14 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefre
   const [appointmentTypeCount, setAppointmentTypeCount] = useState(0);
   const [intakeFormCount, setIntakeFormCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('CRMView', {
+      module: 'CRM',
+    });
+  }, []);
 
   // Fetch counts whenever we navigate to CRM view or when crmRefreshKey changes
   useEffect(() => {

@@ -8,6 +8,7 @@ import NewPreapprovalForm from '../components/forms/NewPreapprovalForm';
 import NewPaymentPostingForm from '../components/forms/NewPaymentPostingForm';
 import NewDenialForm from '../components/forms/NewDenialForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import { useAudit } from '../hooks/useAudit';
 
 const RCMView = ({
   theme,
@@ -58,6 +59,14 @@ const RCMView = ({
   const [paymentPostingSearch, setPaymentPostingSearch] = useState('');
   const [denialSearch, setDenialSearch] = useState('');
   const [payerSearch, setPayerSearch] = useState('');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('RCMView', {
+      module: 'RCM',
+    });
+  }, []);
 
   // Close all forms when tab changes
   useEffect(() => {
