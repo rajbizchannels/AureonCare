@@ -2534,7 +2534,7 @@ const AdminPanelView = ({
                           <input
                             type="checkbox"
                             checked={customRolePermissions[module]?.[action] || false}
-                            onChange={() => handleToggleCustomRolePermission(module, action)}
+                            onChange={(e) => handleToggleCustomRolePermission(module, action)}
                             className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
                           />
                           <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
