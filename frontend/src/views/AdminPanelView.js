@@ -618,15 +618,10 @@ const AdminPanelView = ({
           const updatedUser = await api.updateUser(editingUser.id, updateData);
           setUsers((prevUsers) => prevUsers.map((u) => (u.id === editingUser.id ? updatedUser : u)));
 
-          // Close user form and show success modal
+          // Close user form and show success notification
           setShowUserForm(false);
           setEditingUser(null);
-          setUserResultModalConfig({
-            type: 'success',
-            title: t.success || 'Success',
-            message: (t.userUpdatedSuccessfully || 'User updated successfully') + '. Changes will take effect after logout and login.',
-          });
-          setShowUserResultModal(true);
+          await addNotification('success', (t.userUpdatedSuccessfully || 'User updated successfully') + '. Changes will take effect after logout and login.');
         } else {
           // Create new user
           const userData = {
@@ -649,30 +644,18 @@ const AdminPanelView = ({
           const newUser = await api.createUser(userData);
           setUsers((prevUsers) => [...prevUsers, newUser]);
 
-          // Close user form and show success modal
+          // Close user form and show success notification
           setShowUserForm(false);
           setEditingUser(null);
-          setUserResultModalConfig({
-            type: 'success',
-            title: t.success || 'Success',
-            message: (t.userCreatedSuccessfully || 'User created successfully') + '. Changes will take effect after logout and login.',
-          });
-          setShowUserResultModal(true);
+          await addNotification('success', (t.userCreatedSuccessfully || 'User created successfully') + '. Changes will take effect after logout and login.');
         }
       } catch (error) {
         console.error('Error saving user:', error);
-
-        // Show error modal (keep user form open)
-        setUserResultModalConfig({
-          type: 'warning',
-          title: t.error || 'Error',
-          message: error.message || (editingUser ? 'Failed to update user' : 'Failed to create user'),
-        });
-        setShowUserResultModal(true);
-        throw error; // Re-throw to keep modal open
+        await addNotification('alert', error.message || (editingUser ? 'Failed to update user' : 'Failed to create user'));
+        throw error; // Re-throw to keep form open
       }
     },
-    [editingUser, api, setUsers, t]
+    [editingUser, api, setUsers, t, addNotification]
   );
 
   /**
@@ -3398,19 +3381,6 @@ const AdminPanelView = ({
             : 'Data has been successfully restored from backup.'
         }
         type={restoreSuccessModal.details?.errors?.length > 0 ? 'warning' : 'success'}
-        confirmText="OK"
-        showCancel={false}
-      />
-
-      {/* User Form Result Modal (Success/Error) */}
-      <ConfirmationModal
-        theme={theme}
-        isOpen={showUserResultModal}
-        onClose={() => setShowUserResultModal(false)}
-        onConfirm={() => setShowUserResultModal(false)}
-        title={userResultModalConfig.title}
-        message={userResultModalConfig.message}
-        type={userResultModalConfig.type}
         confirmText="OK"
         showCancel={false}
       />
