@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Users, Calendar, FileText, Download, Filter, ArrowLeft } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { useAudit } from '../hooks/useAudit';
 
 const ReportsView = ({
   theme,
@@ -17,6 +18,14 @@ const ReportsView = ({
   const [dateRange, setDateRange] = useState('30'); // Days
   const [selectedReport, setSelectedReport] = useState('overview');
   const [exportFormat, setExportFormat] = useState('pdf'); // pdf or xlsx
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('ReportsView', {
+      module: 'Reports',
+    });
+  }, []);
 
   // Calculate date range
   const getFilteredData = (data, dateField = 'created_at') => {

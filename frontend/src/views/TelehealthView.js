@@ -4,6 +4,7 @@ import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import { useAudit } from '../hooks/useAudit';
 
 const TelehealthView = ({ theme, api, appointments, patients, addNotification, setCurrentModule }) => {
   const { language } = useApp();
@@ -19,6 +20,14 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
   const [showJoinConfirmation, setShowJoinConfirmation] = useState(false);
   const [pendingCreateData, setPendingCreateData] = useState(null);
   const [pendingJoinSessionId, setPendingJoinSessionId] = useState(null);
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('TelehealthView', {
+      module: 'Telehealth',
+    });
+  }, []);
 
   useEffect(() => {
     fetchSessions();

@@ -10,6 +10,7 @@ import NewTaskForm from '../components/forms/NewTaskForm';
 import NewClaimForm from '../components/forms/NewClaimForm';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
+import { useAudit } from '../hooks/useAudit';
 
 const DashboardView = ({
   theme,
@@ -44,6 +45,15 @@ const DashboardView = ({
   const [prescribeDiagnosis, setPrescribeDiagnosis] = useState(null);
 
   // Load clinic name from database dynamically
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('DashboardView', {
+      module: 'Dashboard',
+    });
+  }, []);
+
+  // Load clinic name from localStorage
   useEffect(() => {
     const fetchClinicInfo = async () => {
       try {

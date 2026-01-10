@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useAudit } from '../../hooks/useAudit';
 
 const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) => {
+  const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -19,6 +21,17 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [availableRoles, setAvailableRoles] = useState([]);
   const [loadingRoles, setLoadingRoles] = useState(true);
+
+  // Log form view on mount
+  useEffect(() => {
+    startAction();
+    logFormView('NewUserForm', {
+      module: 'Admin',
+      metadata: {
+        mode: 'create',
+      },
+    });
+  }, []);
 
   // Fetch available roles (including system roles for assignment)
   useEffect(() => {
@@ -101,30 +114,40 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
   const handleActualSubmit = async () => {
     setShowConfirmation(false);
 
+    const initials = `${formData.firstName.charAt(0)}${formData.lastName.charAt(0)}`.toUpperCase();
+
+    const userData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password, // Include password in user data
+      role: formData.role,
+      specialty: formData.specialty,
+      license: formData.license,
+      practice: formData.practice,
+      avatar: initials,
+      preferences: {
+        emailNotifications: true,
+        smsAlerts: false,
+        darkMode: false
+      }
+    };
+
     try {
-      const initials = `${formData.firstName.charAt(0)}${formData.lastName.charAt(0)}`.toUpperCase();
-
-      const userData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password, // Include password in user data
-        role: formData.role,
-        specialty: formData.specialty,
-        license: formData.license,
-        practice: formData.practice,
-        avatar: initials,
-        preferences: {
-          emailNotifications: true,
-          smsAlerts: false,
-          darkMode: false
-        }
-      };
-
       const newUser = await api.createUser(userData);
 
       await addNotification('alert', 'User created successfully');
+
+      // Log successful creation
+      logCreate('NewUserForm', { ...userData, password: '[REDACTED]' }, {
+        module: 'Admin',
+        resource_id: newUser.id,
+        metadata: {
+          role: formData.role,
+          email: formData.email,
+        },
+      });
 
       // Show success confirmation
       setShowSuccessConfirmation(true);
@@ -137,6 +160,12 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
     } catch (err) {
       console.error('Error creating user:', err);
       addNotification('alert', 'Failed to create user. Please try again.');
+
+      // Log error
+      logError('NewUserForm', 'form', err.message || 'Failed to create user', {
+        module: 'Admin',
+        metadata: { formData: { ...userData, password: '[REDACTED]' } },
+      });
     }
   };
 

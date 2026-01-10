@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, XCircle, Bell, User, Calendar, ArrowLeft, RefreshCw } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { formatDate } from '../utils/formatters';
+import { useAudit } from '../hooks/useAudit';
 
 const WaitlistManagementView = ({
   theme,
@@ -15,6 +16,14 @@ const WaitlistManagementView = ({
   const [statusFilter, setStatusFilter] = useState('active');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('WaitlistManagementView', {
+      module: 'Scheduling',
+    });
+  }, []);
 
   const loadWaitlist = async () => {
     setLoading(true);

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { X, User, Mail, Phone, Lock, Shield, Building, FileText, Stethoscope, Globe, Clock, Languages, MapPin } from 'lucide-react';
+import { useAudit } from '../../hooks/useAudit';
 
 /**
  * UserFormModal - Modal for adding/editing users
  */
 const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
+  const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -27,6 +29,20 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditMode = Boolean(user);
+
+  // Log modal open
+  useEffect(() => {
+    if (isOpen) {
+      startAction();
+      logModalOpen('UserFormModal', {
+        module: 'Admin',
+        metadata: {
+          mode: isEditMode ? 'edit' : 'create',
+          userId: user?.id,
+        },
+      });
+    }
+  }, [isOpen, logModalOpen, startAction, isEditMode, user]);
 
   useEffect(() => {
     if (user) {
@@ -125,12 +141,24 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
       handleClose();
     } catch (error) {
       console.error('Error submitting user form:', error);
+      logError('UserFormModal', 'modal', error.message, {
+        module: 'Admin',
+        metadata: {
+          mode: isEditMode ? 'edit' : 'create',
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
+    logModalClose('UserFormModal', {
+      module: 'Admin',
+      metadata: {
+        mode: isEditMode ? 'edit' : 'create',
+      },
+    });
     setFormData({
       firstName: '',
       lastName: '',
