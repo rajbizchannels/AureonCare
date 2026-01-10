@@ -120,7 +120,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   const loadArchives = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/archive/list`, {
+      // Don't filter by status - get ALL archives
+      const response = await fetch(`${API_BASE_URL}/archive/list?status=`, {
         headers: getAuthHeaders(),
       });
 
@@ -406,8 +407,15 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
     return new Date(dateString).toLocaleString();
   };
 
-  // Handle create/edit rule modal
+  // Handle create/edit rule form
   const openRuleModal = (rule = null) => {
+    // If form is open and clicking without a rule, close it
+    if (showRuleModal && !rule) {
+      setShowRuleModal(false);
+      setEditingRule(null);
+      return;
+    }
+
     if (rule) {
       setEditingRule(rule);
       setRuleForm({
@@ -467,7 +475,11 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
       }
 
       addNotification('success', `Archive rule ${editingRule ? 'updated' : 'created'} successfully`);
+
+      // Close the form and reset
       setShowRuleModal(false);
+      setEditingRule(null);
+
       loadArchiveRules();
     } catch (error) {
       console.error('Error saving rule:', error);
@@ -721,14 +733,292 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
               className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Create Rule
+              {showRuleModal ? 'Cancel' : 'Create Rule'}
             </button>
           </div>
         </div>
 
+        {/* Inline Create/Edit Rule Form */}
+        {showRuleModal && (
+          <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="space-y-6">
+              {/* Form Header */}
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-semibold flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-purple-600" />
+                  {editingRule ? 'Edit Archive Rule' : 'Create New Archive Rule'}
+                </h4>
+              </div>
+
+              {/* Rule Name */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Rule Name *
+                </label>
+                <input
+                  type="text"
+                  value={ruleForm.ruleName}
+                  onChange={(e) => setRuleForm({ ...ruleForm, ruleName: e.target.value })}
+                  placeholder="e.g., Monthly Patient Data Archive"
+                  className={`w-full px-4 py-2 rounded-lg ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600'
+                      : 'bg-white border-gray-300'
+                  } border focus:ring-2 focus:ring-purple-500`}
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={ruleForm.description}
+                  onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })}
+                  placeholder="Describe what this rule does..."
+                  rows={2}
+                  className={`w-full px-4 py-2 rounded-lg ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600'
+                      : 'bg-white border-gray-300'
+                  } border focus:ring-2 focus:ring-purple-500`}
+                />
+              </div>
+
+              {/* Module Selection */}
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <label className="block text-sm font-medium">
+                    Select Modules to Archive *
+                  </label>
+                  <button
+                    onClick={() => {
+                      if (ruleForm.selectedModules.length === modules.length) {
+                        setRuleForm({ ...ruleForm, selectedModules: [] });
+                      } else {
+                        setRuleForm({ ...ruleForm, selectedModules: modules.map(m => m.key) });
+                      }
+                    }}
+                    className="text-sm text-purple-600 hover:text-purple-700"
+                  >
+                    {ruleForm.selectedModules.length === modules.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-64 overflow-auto p-2">
+                  {modules.map((module) => (
+                    <div
+                      key={module.key}
+                      onClick={() => toggleRuleModule(module.key)}
+                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                        ruleForm.selectedModules.includes(module.key)
+                          ? 'border-purple-600 bg-purple-600/10'
+                          : theme === 'dark'
+                          ? 'border-gray-700 bg-gray-750 hover:border-gray-600'
+                          : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="flex-shrink-0 mt-0.5">
+                          {ruleForm.selectedModules.includes(module.key) ? (
+                            <CheckCircle className="w-4 h-4 text-purple-600" />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full border-2 border-gray-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-xs mb-0.5 truncate">{module.name}</h4>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {module.tableCount} table{module.tableCount !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Selected Summary */}
+                {ruleForm.selectedModules.length > 0 && (
+                  <div className={`mt-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-750' : 'bg-gray-100'}`}>
+                    <p className="text-sm">
+                      Selected: {ruleForm.selectedModules.length} module{ruleForm.selectedModules.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Schedule Configuration */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Schedule Configuration</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Schedule Type */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Schedule Type *
+                    </label>
+                    <select
+                      value={ruleForm.scheduleType}
+                      onChange={(e) => setRuleForm({ ...ruleForm, scheduleType: e.target.value })}
+                      className={`w-full px-4 py-2 rounded-lg ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 border-gray-600'
+                          : 'bg-white border-gray-300'
+                      } border focus:ring-2 focus:ring-purple-500`}
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="custom">Custom (Cron)</option>
+                    </select>
+                  </div>
+
+                  {/* Schedule Time */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Time *
+                    </label>
+                    <input
+                      type="time"
+                      value={ruleForm.scheduleTime}
+                      onChange={(e) => setRuleForm({ ...ruleForm, scheduleTime: e.target.value })}
+                      className={`w-full px-4 py-2 rounded-lg ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 border-gray-600'
+                          : 'bg-white border-gray-300'
+                      } border focus:ring-2 focus:ring-purple-500`}
+                    />
+                  </div>
+                </div>
+
+                {/* Conditional Schedule Fields */}
+                {ruleForm.scheduleType === 'weekly' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Day of Week *
+                    </label>
+                    <select
+                      value={ruleForm.scheduleDayOfWeek}
+                      onChange={(e) => setRuleForm({ ...ruleForm, scheduleDayOfWeek: parseInt(e.target.value) })}
+                      className={`w-full px-4 py-2 rounded-lg ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 border-gray-600'
+                          : 'bg-white border-gray-300'
+                      } border focus:ring-2 focus:ring-purple-500`}
+                    >
+                      <option value="0">Sunday</option>
+                      <option value="1">Monday</option>
+                      <option value="2">Tuesday</option>
+                      <option value="3">Wednesday</option>
+                      <option value="4">Thursday</option>
+                      <option value="5">Friday</option>
+                      <option value="6">Saturday</option>
+                    </select>
+                  </div>
+                )}
+
+                {ruleForm.scheduleType === 'monthly' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Day of Month * (1-31)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={ruleForm.scheduleDayOfMonth}
+                      onChange={(e) => setRuleForm({ ...ruleForm, scheduleDayOfMonth: parseInt(e.target.value) || 1 })}
+                      className={`w-full px-4 py-2 rounded-lg ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 border-gray-600'
+                          : 'bg-white border-gray-300'
+                      } border focus:ring-2 focus:ring-purple-500`}
+                    />
+                  </div>
+                )}
+
+                {ruleForm.scheduleType === 'custom' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Cron Expression
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., 0 2 * * *"
+                      className={`w-full px-4 py-2 rounded-lg ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 border-gray-600'
+                          : 'bg-white border-gray-300'
+                      } border focus:ring-2 focus:ring-purple-500`}
+                    />
+                    <p className="text-xs mt-1 text-gray-400">
+                      Standard cron format: minute hour day month weekday
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Retention Configuration */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Retention Days (Optional)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={ruleForm.retentionDays || ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, retentionDays: e.target.value ? parseInt(e.target.value) : null })}
+                  placeholder="e.g., 365 (archive data older than 365 days)"
+                  className={`w-full px-4 py-2 rounded-lg ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600'
+                      : 'bg-white border-gray-300'
+                  } border focus:ring-2 focus:ring-purple-500`}
+                />
+                <p className="text-xs mt-1 text-gray-400">
+                  If set, only data older than this many days will be archived. Leave empty to archive all data.
+                </p>
+              </div>
+
+              {/* Enable/Disable */}
+              <div>
+                <Toggle
+                  checked={ruleForm.enabled}
+                  onChange={(checked) => setRuleForm({ ...ruleForm, enabled: checked })}
+                  label="Enable this rule immediately"
+                  theme={theme}
+                  size="md"
+                />
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+                <button
+                  onClick={() => setShowRuleModal(false)}
+                  className={`px-6 py-2 rounded-lg ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 hover:bg-gray-600'
+                      : 'bg-gray-200 hover:bg-gray-300'
+                  } transition-colors`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveRule}
+                  disabled={!ruleForm.ruleName.trim() || ruleForm.selectedModules.length === 0}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {editingRule ? 'Update Rule' : 'Create Rule'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showRulesSection && (
           <div className="p-4">
-            {archiveRules.length === 0 ? (
+            {archiveRules.length === 0 && !showRuleModal ? (
               <div className="text-center py-8">
                 <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>No automatic archive rules configured</p>
@@ -1366,293 +1656,6 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
         confirmText="Confirm"
         cancelText="Cancel"
       />
-
-      {/* Create/Edit Rule Modal */}
-      {showRuleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`max-w-4xl w-full rounded-lg shadow-xl max-h-[90vh] overflow-auto ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <div className="p-6 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-inherit z-10">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                {editingRule ? 'Edit Archive Rule' : 'Create Archive Rule'}
-              </h3>
-              <button
-                onClick={() => setShowRuleModal(false)}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Rule Name */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Rule Name *
-                </label>
-                <input
-                  type="text"
-                  value={ruleForm.ruleName}
-                  onChange={(e) => setRuleForm({ ...ruleForm, ruleName: e.target.value })}
-                  placeholder="e.g., Monthly Patient Data Archive"
-                  className={`w-full px-4 py-2 rounded-lg ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600'
-                      : 'bg-white border-gray-300'
-                  } border focus:ring-2 focus:ring-purple-500`}
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Description (Optional)
-                </label>
-                <textarea
-                  value={ruleForm.description}
-                  onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })}
-                  placeholder="Describe what this rule does..."
-                  rows={2}
-                  className={`w-full px-4 py-2 rounded-lg ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600'
-                      : 'bg-white border-gray-300'
-                  } border focus:ring-2 focus:ring-purple-500`}
-                />
-              </div>
-
-              {/* Module Selection */}
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <label className="block text-sm font-medium">
-                    Select Modules to Archive *
-                  </label>
-                  <button
-                    onClick={() => {
-                      if (ruleForm.selectedModules.length === modules.length) {
-                        setRuleForm({ ...ruleForm, selectedModules: [] });
-                      } else {
-                        setRuleForm({ ...ruleForm, selectedModules: modules.map(m => m.key) });
-                      }
-                    }}
-                    className="text-sm text-purple-600 hover:text-purple-700"
-                  >
-                    {ruleForm.selectedModules.length === modules.length ? 'Deselect All' : 'Select All'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-auto p-2">
-                  {modules.map((module) => (
-                    <div
-                      key={module.key}
-                      onClick={() => toggleRuleModule(module.key)}
-                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                        ruleForm.selectedModules.includes(module.key)
-                          ? 'border-purple-600 bg-purple-600/10'
-                          : theme === 'dark'
-                          ? 'border-gray-700 bg-gray-750 hover:border-gray-600'
-                          : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-1">
-                          {ruleForm.selectedModules.includes(module.key) ? (
-                            <CheckCircle className="w-5 h-5 text-purple-600" />
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-gray-400" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-sm mb-1">{module.name}</h4>
-                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {module.tableCount} table{module.tableCount !== 1 ? 's' : ''}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Selected Summary */}
-                {ruleForm.selectedModules.length > 0 && (
-                  <div className={`mt-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-750' : 'bg-gray-100'}`}>
-                    <p className="text-sm">
-                      Selected: {ruleForm.selectedModules.length} module{ruleForm.selectedModules.length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Schedule Configuration */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Schedule Configuration</h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Schedule Type */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Schedule Type *
-                    </label>
-                    <select
-                      value={ruleForm.scheduleType}
-                      onChange={(e) => setRuleForm({ ...ruleForm, scheduleType: e.target.value })}
-                      className={`w-full px-4 py-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600'
-                          : 'bg-white border-gray-300'
-                      } border focus:ring-2 focus:ring-purple-500`}
-                    >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="custom">Custom (Cron)</option>
-                    </select>
-                  </div>
-
-                  {/* Schedule Time */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Time *
-                    </label>
-                    <input
-                      type="time"
-                      value={ruleForm.scheduleTime}
-                      onChange={(e) => setRuleForm({ ...ruleForm, scheduleTime: e.target.value })}
-                      className={`w-full px-4 py-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600'
-                          : 'bg-white border-gray-300'
-                      } border focus:ring-2 focus:ring-purple-500`}
-                    />
-                  </div>
-                </div>
-
-                {/* Conditional Schedule Fields */}
-                {ruleForm.scheduleType === 'weekly' && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Day of Week *
-                    </label>
-                    <select
-                      value={ruleForm.scheduleDayOfWeek}
-                      onChange={(e) => setRuleForm({ ...ruleForm, scheduleDayOfWeek: parseInt(e.target.value) })}
-                      className={`w-full px-4 py-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600'
-                          : 'bg-white border-gray-300'
-                      } border focus:ring-2 focus:ring-purple-500`}
-                    >
-                      <option value="0">Sunday</option>
-                      <option value="1">Monday</option>
-                      <option value="2">Tuesday</option>
-                      <option value="3">Wednesday</option>
-                      <option value="4">Thursday</option>
-                      <option value="5">Friday</option>
-                      <option value="6">Saturday</option>
-                    </select>
-                  </div>
-                )}
-
-                {ruleForm.scheduleType === 'monthly' && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Day of Month * (1-31)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={ruleForm.scheduleDayOfMonth}
-                      onChange={(e) => setRuleForm({ ...ruleForm, scheduleDayOfMonth: parseInt(e.target.value) || 1 })}
-                      className={`w-full px-4 py-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600'
-                          : 'bg-white border-gray-300'
-                      } border focus:ring-2 focus:ring-purple-500`}
-                    />
-                  </div>
-                )}
-
-                {ruleForm.scheduleType === 'custom' && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Cron Expression
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., 0 2 * * *"
-                      className={`w-full px-4 py-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600'
-                          : 'bg-white border-gray-300'
-                      } border focus:ring-2 focus:ring-purple-500`}
-                    />
-                    <p className="text-xs mt-1 text-gray-400">
-                      Standard cron format: minute hour day month weekday
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Retention Configuration */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Retention Days (Optional)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={ruleForm.retentionDays || ''}
-                  onChange={(e) => setRuleForm({ ...ruleForm, retentionDays: e.target.value ? parseInt(e.target.value) : null })}
-                  placeholder="e.g., 365 (archive data older than 365 days)"
-                  className={`w-full px-4 py-2 rounded-lg ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600'
-                      : 'bg-white border-gray-300'
-                  } border focus:ring-2 focus:ring-purple-500`}
-                />
-                <p className="text-xs mt-1 text-gray-400">
-                  If set, only data older than this many days will be archived. Leave empty to archive all data.
-                </p>
-              </div>
-
-              {/* Enable/Disable */}
-              <div>
-                <Toggle
-                  checked={ruleForm.enabled}
-                  onChange={(checked) => setRuleForm({ ...ruleForm, enabled: checked })}
-                  label="Enable this rule immediately"
-                  theme={theme}
-                  size="md"
-                />
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="p-6 border-t border-gray-700 flex justify-end gap-3 sticky bottom-0 bg-inherit">
-              <button
-                onClick={() => setShowRuleModal(false)}
-                className={`px-6 py-2 rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 hover:bg-gray-600'
-                    : 'bg-gray-200 hover:bg-gray-300'
-                } transition-colors`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveRule}
-                disabled={!ruleForm.ruleName.trim() || ruleForm.selectedModules.length === 0}
-                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {editingRule ? 'Update Rule' : 'Create Rule'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

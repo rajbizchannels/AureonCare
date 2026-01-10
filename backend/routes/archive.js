@@ -241,25 +241,49 @@ router.post('/create', async (req, res) => {
  */
 router.get('/list', async (req, res) => {
   try {
-    const { status = 'active' } = req.query;
+    const { status } = req.query;
 
-    const query = `
-      SELECT
-        id,
-        archive_name,
-        description,
-        archived_modules,
-        archived_tables,
-        record_counts,
-        archive_date,
-        status,
-        archived_by
-      FROM archive_metadata
-      WHERE status = $1
-      ORDER BY archive_date DESC
-    `;
+    let query;
+    let queryParams = [];
 
-    const result = await archivePool.query(query, [status]);
+    if (status && status.trim() !== '') {
+      // Filter by specific status
+      query = `
+        SELECT
+          id,
+          archive_name,
+          description,
+          archived_modules,
+          archived_tables,
+          record_counts,
+          archive_date,
+          status,
+          archived_by
+        FROM archive_metadata
+        WHERE status = $1
+        ORDER BY archive_date DESC
+      `;
+      queryParams = [status];
+    } else {
+      // Get ALL archives regardless of status
+      query = `
+        SELECT
+          id,
+          archive_name,
+          description,
+          archived_modules,
+          archived_tables,
+          record_counts,
+          archive_date,
+          status,
+          archived_by
+        FROM archive_metadata
+        ORDER BY archive_date DESC
+      `;
+      queryParams = [];
+    }
+
+    const result = await archivePool.query(query, queryParams);
 
     // Calculate total records for each archive
     const archives = result.rows.map(archive => {
