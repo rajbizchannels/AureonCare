@@ -2586,19 +2586,21 @@ const AdminPanelView = ({
                       {module}
                     </h5>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {['view', 'create', 'edit', 'delete'].map((action) => (
-                        <label key={action} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={customRolePermissions[module]?.[action] || false}
-                            onChange={(e) => handleToggleCustomRolePermission(module, action)}
-                            className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
-                          />
-                          <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                            {action}
-                          </span>
-                        </label>
-                      ))}
+                      {['view', 'create', 'edit', 'delete'].map((action) => {
+                        return (
+                          <label key={action} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={customRolePermissions[module]?.[action] || false}
+                              onChange={() => handleToggleCustomRolePermission(module, action)}
+                              className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                              {action}
+                            </span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
