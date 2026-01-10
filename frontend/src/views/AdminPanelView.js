@@ -42,10 +42,17 @@ import {
   Upload,
   RefreshCw,
   X,
+  User,
+  Mail,
+  Phone,
+  FileText,
+  Stethoscope,
+  Globe,
+  Languages,
+  MapPin,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
-import UserFormModal from '../components/modals/UserFormModal';
 import CredentialModal from '../components/modals/CredentialModal';
 import IntegrationCard from '../components/IntegrationCard';
 import { useClinicSettings } from '../hooks/useClinicSettings';
@@ -188,15 +195,28 @@ const AdminPanelView = ({
     onConfirm: null,
   });
 
-  // User form modal state
+  // User form inline state
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [showUserResultModal, setShowUserResultModal] = useState(false);
-  const [userResultModalConfig, setUserResultModalConfig] = useState({
-    type: 'success',
-    title: '',
-    message: '',
+  const [userFormData, setUserFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    role: 'patient',
+    practice: '',
+    license: '',
+    specialty: '',
+    country: '',
+    timezone: '',
+    license_number: '',
+    language: '',
+    password: '',
+    confirmPassword: '',
   });
+  const [userFormErrors, setUserFormErrors] = useState({});
+  const [isUserFormSubmitting, setIsUserFormSubmitting] = useState(false);
 
   // Credential modal state
   const [showCredentialModal, setShowCredentialModal] = useState(false);
@@ -1599,8 +1619,145 @@ const AdminPanelView = ({
     </div>
   );
 
+  // ==================== USER FORM HELPERS ====================
+
   /**
-   * Render User Management Tab
+   * Sync user form data when editing user changes
+   */
+  useEffect(() => {
+    if (showUserForm && editingUser) {
+      setUserFormData({
+        firstName: editingUser.firstName || '',
+        lastName: editingUser.lastName || '',
+        email: editingUser.email || '',
+        phone: editingUser.phone || '',
+        address: editingUser.address || '',
+        role: editingUser.role || 'patient',
+        practice: editingUser.practice || '',
+        license: editingUser.license || '',
+        specialty: editingUser.specialty || '',
+        country: editingUser.country || '',
+        timezone: editingUser.timezone || '',
+        license_number: editingUser.license_number || '',
+        language: editingUser.language || '',
+        password: '',
+        confirmPassword: '',
+      });
+    } else if (showUserForm && !editingUser) {
+      setUserFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        address: '',
+        role: 'patient',
+        practice: '',
+        license: '',
+        specialty: '',
+        country: '',
+        timezone: '',
+        license_number: '',
+        language: '',
+        password: '',
+        confirmPassword: '',
+      });
+    }
+    setUserFormErrors({});
+  }, [showUserForm, editingUser]);
+
+  const validateUserForm = () => {
+    const newErrors = {};
+    const isEditMode = Boolean(editingUser);
+
+    if (!userFormData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+
+    if (!userFormData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    }
+
+    if (!userFormData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userFormData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+
+    if (!isEditMode) {
+      if (!userFormData.password) {
+        newErrors.password = 'Password is required';
+      } else if (userFormData.password.length < 6) {
+        newErrors.password = 'Password must be at least 6 characters';
+      }
+
+      if (userFormData.password !== userFormData.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match';
+      }
+    } else if (userFormData.password) {
+      if (userFormData.password.length < 6) {
+        newErrors.password = 'Password must be at least 6 characters';
+      }
+      if (userFormData.password !== userFormData.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match';
+      }
+    }
+
+    return newErrors;
+  };
+
+  const handleUserFormChange = (field, value) => {
+    setUserFormData({ ...userFormData, [field]: value });
+    if (userFormErrors[field]) {
+      setUserFormErrors({ ...userFormErrors, [field]: null });
+    }
+  };
+
+  const handleInlineUserFormSubmit = async (e) => {
+    e.preventDefault();
+    const newErrors = validateUserForm();
+
+    if (Object.keys(newErrors).length > 0) {
+      setUserFormErrors(newErrors);
+      return;
+    }
+
+    setIsUserFormSubmitting(true);
+    try {
+      await handleUserFormSubmit(userFormData);
+    } catch (error) {
+      console.error('Error submitting user form:', error);
+    } finally {
+      setIsUserFormSubmitting(false);
+    }
+  };
+
+  const handleCloseUserForm = () => {
+    setShowUserForm(false);
+    setEditingUser(null);
+    setUserFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      address: '',
+      role: 'patient',
+      practice: '',
+      license: '',
+      specialty: '',
+      country: '',
+      timezone: '',
+      license_number: '',
+      language: '',
+      password: '',
+      confirmPassword: '',
+    });
+    setUserFormErrors({});
+  };
+
+  // ==================== RENDER FUNCTIONS ====================
+
+  /**
+   * Render User Management Tab with inline form
    * TODO: Extract to separate component UserManagementTab.js
    */
   const renderUserManagementTab = () => (
@@ -1611,15 +1768,361 @@ const AdminPanelView = ({
         </h2>
         <button
           onClick={() => {
-            setEditingUser(null);
-            setShowUserForm(true);
+            if (showUserForm) {
+              handleCloseUserForm();
+            } else {
+              setEditingUser(null);
+              setShowUserForm(true);
+            }
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+          className={`flex items-center gap-2 px-4 py-2 ${showUserForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-lg font-medium transition-colors`}
         >
-          <UserPlus className="w-5 h-5" />
-          Add User
+          {showUserForm ? <X className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+          {showUserForm ? 'Cancel' : 'Add User'}
         </button>
       </div>
+
+      {/* Inline User Form */}
+      {showUserForm && (
+        <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-300'}`}>
+          <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {editingUser ? (t.editUser || 'Edit User') : (t.addUser || 'Add New User')}
+          </h3>
+
+          <form onSubmit={handleInlineUserFormSubmit} className="space-y-4">
+            {/* First Name and Last Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.firstName || 'First Name'} <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <input
+                    type="text"
+                    value={userFormData.firstName}
+                    onChange={(e) => handleUserFormChange('firstName', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    } ${userFormErrors.firstName ? 'border-red-500' : ''}`}
+                    placeholder="John"
+                  />
+                </div>
+                {userFormErrors.firstName && <p className="mt-1 text-sm text-red-500">{userFormErrors.firstName}</p>}
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.lastName || 'Last Name'} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={userFormData.lastName}
+                  onChange={(e) => handleUserFormChange('lastName', e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  } ${userFormErrors.lastName ? 'border-red-500' : ''}`}
+                  placeholder="Doe"
+                />
+                {userFormErrors.lastName && <p className="mt-1 text-sm text-red-500">{userFormErrors.lastName}</p>}
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.email || 'Email'} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                <input
+                  type="email"
+                  value={userFormData.email}
+                  onChange={(e) => handleUserFormChange('email', e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  } ${userFormErrors.email ? 'border-red-500' : ''}`}
+                  placeholder="email@example.com"
+                />
+              </div>
+              {userFormErrors.email && <p className="mt-1 text-sm text-red-500">{userFormErrors.email}</p>}
+            </div>
+
+            {/* Phone and Address in 2 columns */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.phone || 'Phone'}
+                </label>
+                <div className="relative">
+                  <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <input
+                    type="tel"
+                    value={userFormData.phone}
+                    onChange={(e) => handleUserFormChange('phone', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.address || 'Address'}
+                </label>
+                <div className="relative">
+                  <MapPin className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <input
+                    type="text"
+                    value={userFormData.address}
+                    onChange={(e) => handleUserFormChange('address', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    placeholder="123 Main St"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Practice, License, License Number in 3 columns */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.practice || 'Practice'}
+                </label>
+                <div className="relative">
+                  <Building className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <input
+                    type="text"
+                    value={userFormData.practice}
+                    onChange={(e) => handleUserFormChange('practice', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    placeholder="Medical Center"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.license || 'License'}
+                </label>
+                <div className="relative">
+                  <FileText className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <input
+                    type="text"
+                    value={userFormData.license}
+                    onChange={(e) => handleUserFormChange('license', e.target.value)}
+                    disabled={userFormData.role === 'patient'}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    } ${userFormData.role === 'patient' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    placeholder="License Type"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.licenseNumber || 'License #'}
+                </label>
+                <input
+                  type="text"
+                  value={userFormData.license_number}
+                  onChange={(e) => handleUserFormChange('license_number', e.target.value)}
+                  disabled={userFormData.role === 'patient'}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  } ${userFormData.role === 'patient' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  placeholder="12345678"
+                />
+              </div>
+            </div>
+
+            {/* Specialty, Country, Timezone, Language in 4 columns */}
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.specialty || 'Specialty'}
+                </label>
+                <div className="relative">
+                  <Stethoscope className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <input
+                    type="text"
+                    value={userFormData.specialty}
+                    onChange={(e) => handleUserFormChange('specialty', e.target.value)}
+                    disabled={userFormData.role === 'patient'}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    } ${userFormData.role === 'patient' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    placeholder="Cardiology"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.country || 'Country'}
+                </label>
+                <div className="relative">
+                  <Globe className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <select
+                    value={userFormData.country}
+                    onChange={(e) => handleUserFormChange('country', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  >
+                    <option value="">Select</option>
+                    <option value="US">US</option>
+                    <option value="CA">Canada</option>
+                    <option value="GB">UK</option>
+                    <option value="AU">Australia</option>
+                    <option value="DE">Germany</option>
+                    <option value="FR">France</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.timezone || 'Timezone'}
+                </label>
+                <div className="relative">
+                  <Clock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <select
+                    value={userFormData.timezone}
+                    onChange={(e) => handleUserFormChange('timezone', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  >
+                    <option value="">Select</option>
+                    <option value="America/New_York">ET</option>
+                    <option value="America/Chicago">CT</option>
+                    <option value="America/Denver">MT</option>
+                    <option value="America/Los_Angeles">PT</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.language || 'Language'}
+                </label>
+                <div className="relative">
+                  <Languages className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <select
+                    value={userFormData.language}
+                    onChange={(e) => handleUserFormChange('language', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  >
+                    <option value="">Select</option>
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                    <option value="ar">العربية</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Role */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.role || 'Role'} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Shield className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                <select
+                  value={userFormData.role}
+                  onChange={(e) => handleUserFormChange('role', e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="admin">Admin</option>
+                  <option value="doctor">Doctor</option>
+                  <option value="staff">Staff</option>
+                  <option value="patient">Patient</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Password fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.password || 'Password'} {!editingUser && <span className="text-red-500">*</span>}
+                  {editingUser && <span className={`text-sm font-normal ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}> (leave blank to keep current)</span>}
+                </label>
+                <div className="relative">
+                  <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <input
+                    type="password"
+                    value={userFormData.password}
+                    onChange={(e) => handleUserFormChange('password', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    } ${userFormErrors.password ? 'border-red-500' : ''}`}
+                    placeholder="Enter password"
+                  />
+                </div>
+                {userFormErrors.password && <p className="mt-1 text-sm text-red-500">{userFormErrors.password}</p>}
+              </div>
+
+              {(!editingUser || userFormData.password) && (
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.confirmPassword || 'Confirm Password'} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                    <input
+                      type="password"
+                      value={userFormData.confirmPassword}
+                      onChange={(e) => handleUserFormChange('confirmPassword', e.target.value)}
+                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      } ${userFormErrors.confirmPassword ? 'border-red-500' : ''}`}
+                      placeholder="Confirm password"
+                    />
+                  </div>
+                  {userFormErrors.confirmPassword && <p className="mt-1 text-sm text-red-500">{userFormErrors.confirmPassword}</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={handleCloseUserForm}
+                className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors ${
+                  theme === 'dark' ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+                disabled={isUserFormSubmitting}
+              >
+                {t.cancel || 'Cancel'}
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+                disabled={isUserFormSubmitting}
+              >
+                {isUserFormSubmitting ? (t.saving || 'Saving...') : (editingUser ? (t.update || 'Update') : (t.create || 'Create'))}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Active Users */}
       {activeUsers.length > 0 && (
@@ -1944,13 +2447,137 @@ const AdminPanelView = ({
           </div>
         </div>
         <button
-          onClick={() => setShowCustomRoleForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
+          onClick={() => {
+            if (showCustomRoleForm) {
+              setShowCustomRoleForm(false);
+              setCustomRoleName('');
+              setCustomRolePermissions({
+                patients: { view: false, create: false, edit: false, delete: false },
+                appointments: { view: false, create: false, edit: false, delete: false },
+                claims: { view: false, create: false, edit: false, delete: false },
+                ehr: { view: false, create: false, edit: false, delete: false },
+                settings: { view: false, create: false, edit: false, delete: false },
+              });
+            } else {
+              setShowCustomRoleForm(true);
+              setCustomRoleName('');
+              setCustomRolePermissions({
+                patients: { view: false, create: false, edit: false, delete: false },
+                appointments: { view: false, create: false, edit: false, delete: false },
+                claims: { view: false, create: false, edit: false, delete: false },
+                ehr: { view: false, create: false, edit: false, delete: false },
+                settings: { view: false, create: false, edit: false, delete: false },
+              });
+            }
+          }}
+          className={`flex items-center gap-2 px-4 py-2 ${showCustomRoleForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-purple-500 hover:bg-purple-600'} text-white rounded-lg font-medium transition-colors`}
         >
-          <Plus className="w-5 h-5" />
-          Create Custom Role
+          {showCustomRoleForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+          {showCustomRoleForm ? 'Cancel' : 'Create Custom Role'}
         </button>
       </div>
+
+      {/* Inline Custom Role Form */}
+      {showCustomRoleForm && (
+        <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-300'}`}>
+          <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {customRoleName && !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName)
+              ? 'Edit Custom Role'
+              : customRoleName
+                ? `Edit ${customRoleName.charAt(0).toUpperCase() + customRoleName.slice(1)} Permissions`
+                : 'Create Custom Role'}
+          </h3>
+
+          <div className="space-y-6">
+            {/* Role Name - only editable for new roles */}
+            {!customRoleName || !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName) ? (
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Role Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={customRoleName}
+                  onChange={(e) => setCustomRoleName(e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  placeholder="e.g., Nurse, Receptionist, Billing Manager"
+                />
+              </div>
+            ) : (
+              <div className={`p-4 rounded-lg ${
+                theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'
+              }`}>
+                <p className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
+                  Editing permissions for <strong>{customRoleName}</strong> role
+                </p>
+              </div>
+            )}
+
+            {/* Permissions Grid */}
+            <div>
+              <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Permissions
+              </h4>
+              <div className="space-y-4">
+                {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => (
+                  <div key={module} className={`p-4 border rounded-lg ${
+                    theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-gray-50'
+                  }`}>
+                    <h5 className={`font-medium mb-3 capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {module}
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {['view', 'create', 'edit', 'delete'].map((action) => (
+                        <label key={action} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={customRolePermissions[module]?.[action] || false}
+                            onChange={() => handleToggleCustomRolePermission(module, action)}
+                            className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                            {action}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCustomRoleForm(false);
+                  setCustomRoleName('');
+                  setCustomRolePermissions({
+                    patients: { view: false, create: false, edit: false, delete: false },
+                    appointments: { view: false, create: false, edit: false, delete: false },
+                    claims: { view: false, create: false, edit: false, delete: false },
+                    ehr: { view: false, create: false, edit: false, delete: false },
+                    settings: { view: false, create: false, edit: false, delete: false },
+                  });
+                }}
+                className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors ${
+                  theme === 'dark' ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitCustomRole}
+                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+              >
+                {customRoleName && !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName) ? 'Update Role' : 'Create Role'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -2041,16 +2668,6 @@ const AdminPanelView = ({
             ))}
           </tbody>
         </table>
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          onClick={handleSaveRolePermissionsClick}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
-        >
-          <Save className="w-5 h-5" />
-          Save Permissions
-        </button>
       </div>
     </div>
   );
@@ -2530,142 +3147,6 @@ const AdminPanelView = ({
 
   return (
     <>
-      {/* Custom Role Creation Modal */}
-      {showCustomRoleForm && (
-        <div
-          className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${
-            theme === 'dark' ? 'bg-black/50' : 'bg-black/30'
-          }`}
-          onClick={() => setShowCustomRoleForm(false)}
-        >
-          <div
-            className={`rounded-xl border max-w-4xl w-full max-h-[90vh] overflow-hidden ${
-              theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'
-            }`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className={`flex items-center justify-between p-6 border-b ${
-              theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
-            }`}>
-              <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {customRoleName && !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName)
-                  ? 'Edit Custom Role'
-                  : customRoleName
-                    ? `Edit ${customRoleName.charAt(0).toUpperCase() + customRoleName.slice(1)} Permissions`
-                    : 'Create Custom Role'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowCustomRoleForm(false);
-                  setCustomRoleName('');
-                  setCustomRolePermissions({});
-                }}
-                className={`p-2 rounded-lg transition-colors ${
-                  theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
-                }`}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-              {/* Role Name - only editable for new roles */}
-              {!customRoleName || !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName) ? (
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${
-                    theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
-                  }`}>
-                    Role Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={customRoleName}
-                    onChange={(e) => setCustomRoleName(e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-700 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                    placeholder="e.g., Nurse, Receptionist, Billing Manager"
-                  />
-                </div>
-              ) : (
-                <div className={`p-4 rounded-lg ${
-                  theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'
-                }`}>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
-                    Editing permissions for <strong>{customRoleName}</strong> role
-                  </p>
-                </div>
-              )}
-
-              {/* Permissions Grid */}
-              <div>
-                <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Permissions
-                </h3>
-                <div className="space-y-4">
-                  {['patients', 'appointments', 'claims', 'ehr', 'settings'].map((module) => (
-                    <div key={module} className={`p-4 border rounded-lg ${
-                      theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-gray-50'
-                    }`}>
-                      <h4 className={`font-medium mb-3 capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {module}
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {['view', 'create', 'edit', 'delete'].map((action) => (
-                          <label key={action} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={customRolePermissions[module]?.[action] || false}
-                              onChange={() => handleToggleCustomRolePermission(module, action)}
-                              className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
-                            />
-                            <span className={`text-sm capitalize ${
-                              theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
-                            }`}>
-                              {action}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className={`flex gap-3 p-6 border-t ${
-              theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
-            }`}>
-              <button
-                onClick={() => {
-                  setShowCustomRoleForm(false);
-                  setCustomRoleName('');
-                  setCustomRolePermissions({});
-                }}
-                className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors ${
-                  theme === 'dark'
-                    ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitCustomRole}
-                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
-              >
-                {customRoleName && !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName) ? 'Update Role' : 'Create Role'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -2788,19 +3269,6 @@ const AdminPanelView = ({
         type="success"
         confirmText="OK"
         showCancel={false}
-      />
-
-      {/* User Form Modal */}
-      <UserFormModal
-        isOpen={showUserForm}
-        onClose={() => {
-          setShowUserForm(false);
-          setEditingUser(null);
-        }}
-        onSubmit={handleUserFormSubmit}
-        user={editingUser}
-        theme={theme}
-        t={t}
       />
 
       {/* Credential Modal */}
