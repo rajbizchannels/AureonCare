@@ -1012,26 +1012,9 @@ function App() {
               'denial': 'rcm'
             };
 
-            const typeMap = {
-              'patient': 'patient',
-              'appointment': 'appointment',
-              'provider': 'provider',
-              'claim': 'claim',
-              'payment': 'payment',
-              'prescription': 'prescription',
-              'lab_order': 'labOrder',
-              'diagnosis': 'diagnosis',
-              'task': 'task',
-              'offering': 'offering',
-              'campaign': 'campaign',
-              'preapproval': 'preapproval',
-              'denial': 'denial'
-            };
-
             const targetModule = moduleMap[result.result_type] || result.module || 'dashboard';
-            const itemType = typeMap[result.result_type] || result.result_type;
 
-            console.log('Navigating to module:', targetModule, 'with type:', itemType);
+            console.log('Navigating to module:', targetModule, 'with result type:', result.result_type);
 
             // Clear previous state first to avoid conflicts
             setEditingItem(null);
@@ -1043,11 +1026,50 @@ function App() {
               // Switch to the appropriate module
               setCurrentModule(targetModule);
 
-              // Set the editing item to open the record
-              handleSetEditingItem({ type: itemType, data: result });
-
-              // Set view to 'view' to show the detail view
-              setCurrentView('view');
+              // For items that modules can directly handle via editingItem
+              if (result.result_type === 'appointment') {
+                // Practice Management handles appointments
+                handleSetEditingItem({ type: 'appointment', data: result });
+                setCurrentView('view');
+              } else if (result.result_type === 'patient') {
+                // EHR handles patients
+                handleSetEditingItem({ type: 'patient', data: result });
+                setCurrentView('view');
+              } else if (result.result_type === 'provider') {
+                // Provider Management handles providers
+                handleSetEditingItem({ type: 'provider', data: result });
+                setCurrentView('view');
+              } else if (['prescription', 'diagnosis', 'lab_order'].includes(result.result_type)) {
+                // For EHR sub-items, navigate to the patient if available
+                if (result.patient_id) {
+                  // Find the patient and open their record
+                  const patient = patients.find(p => p.id === result.patient_id || p.id.toString() === result.patient_id.toString());
+                  if (patient) {
+                    handleSetEditingItem({ type: 'patient', data: patient });
+                    setCurrentView('view');
+                    addNotification('info', `Viewing patient record. Navigate to ${result.result_type} within the patient details.`);
+                  } else {
+                    // Patient not found, just show the module
+                    addNotification('info', `Navigated to EHR module. Search for the patient to view their ${result.result_type}.`);
+                  }
+                } else {
+                  // No patient ID, just navigate to module
+                  addNotification('info', `Navigated to EHR module for ${result.result_type}.`);
+                }
+              } else if (['claim', 'payment', 'denial', 'preapproval'].includes(result.result_type)) {
+                // For RCM items, just navigate to the module
+                // The module will show the list and user can find their item
+                addNotification('info', `Navigated to RCM module. Look for ${result.result_type} in the relevant tab.`);
+              } else if (result.result_type === 'task') {
+                // Tasks are shown in dashboard
+                addNotification('info', 'Navigated to Dashboard. Find the task in your task list.');
+              } else if (result.result_type === 'offering') {
+                // Clinical Services
+                addNotification('info', 'Navigated to Clinical Services module.');
+              } else if (result.result_type === 'campaign') {
+                // CRM
+                addNotification('info', 'Navigated to CRM module.');
+              }
             }, 50);
           }}
         />
