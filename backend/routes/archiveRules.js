@@ -381,6 +381,8 @@ router.post('/:id/trigger', async (req, res) => {
   try {
     const { id } = req.params;
 
+    console.log(`[Manual Trigger] Received trigger request for rule ID: ${id}`);
+
     // Get rule details
     const ruleQuery = 'SELECT * FROM archive_rules WHERE id = $1';
     const ruleResult = await pool.query(ruleQuery, [id]);
@@ -391,91 +393,35 @@ router.post('/:id/trigger', async (req, res) => {
 
     const rule = ruleResult.rows[0];
 
-    // Update status to running
-    await pool.query(
-      'UPDATE archive_rules SET last_run_status = $1, last_run_at = $2 WHERE id = $3',
-      ['running', new Date(), id]
-    );
+    console.log(`[Manual Trigger] Triggering rule: ${rule.rule_name}`);
+    console.log(`[Manual Trigger] Selected modules:`, rule.selected_modules);
 
-    // Import and execute the rule (we'll call the archive creation logic)
-    const archiveModule = require('./archive');
+    // Import and execute the rule using the scheduler's logic
+    const { executeArchiveRule } = require('../services/archiveScheduler');
 
-    // Create archive name with timestamp
-    const archiveName = `${rule.rule_name}_${new Date().toISOString().split('T')[0]}_${Date.now()}`;
-
-    // Build request object for archive creation
-    const archiveReq = {
-      body: {
-        archiveName,
-        description: `Automatic archive from rule: ${rule.rule_name}`,
-        selectedModules: rule.selected_modules
-      },
-      user: req.user,
-      headers: req.headers
-    };
-
-    // Mock response object to capture result
-    let archiveResult = null;
-    let archiveError = null;
-    const archiveRes = {
-      json: (data) => { archiveResult = data; },
-      status: (code) => ({
-        json: (data) => { archiveError = { code, ...data }; }
-      })
-    };
-
-    // Note: This is a simplified trigger - in production, you'd want to
-    // queue this job to run asynchronously via a job queue system
-    console.log(`Manually triggering archive rule: ${rule.rule_name}`);
-
-    // Calculate next run
-    const nextRunAt = calculateNextRun(
-      rule.schedule_type,
-      rule.schedule_time,
-      rule.schedule_day_of_week,
-      rule.schedule_day_of_month,
-      rule.schedule_cron
-    );
-
-    // Update rule with execution details
-    const updateQuery = `
-      UPDATE archive_rules
-      SET
-        last_run_at = $1,
-        last_run_status = $2,
-        last_run_details = $3,
-        next_run_at = $4
-      WHERE id = $5
-      RETURNING *
-    `;
-
-    const executionDetails = {
-      triggered_by: 'manual',
-      triggered_at: new Date().toISOString(),
-      archive_name: archiveName,
-      user_id: req.user?.id || req.headers['x-user-id']
-    };
-
-    const result = await pool.query(updateQuery, [
-      new Date(),
-      'success',
-      executionDetails,
-      nextRunAt,
-      id
-    ]);
-
+    // Respond immediately - execution happens in background
     res.json({
       success: true,
-      message: 'Archive rule triggered successfully',
-      rule: result.rows[0],
-      execution: {
-        archiveName,
-        triggeredAt: new Date().toISOString(),
-        nextRunAt
+      message: `Archive rule "${rule.rule_name}" triggered successfully`,
+      rule_name: rule.rule_name,
+      rule_id: id,
+      status: 'started'
+    });
+
+    // Execute in background
+    setImmediate(async () => {
+      try {
+        console.log(`[Manual Trigger] Starting archive execution for rule: ${rule.rule_name}`);
+        await executeArchiveRule(rule);
+        console.log(`[Manual Trigger] Archive execution completed for rule: ${rule.rule_name}`);
+      } catch (error) {
+        console.error(`[Manual Trigger] Error executing rule ${rule.rule_name}:`, error);
+        console.error(`[Manual Trigger] Error stack:`, error.stack);
       }
     });
+
   } catch (error) {
-    console.error('Error triggering archive rule:', error);
+    console.error('[Manual Trigger] Error triggering archive rule:', error);
 
     // Update rule status to failed
     await pool.query(

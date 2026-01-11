@@ -245,6 +245,8 @@ router.get('/list', async (req, res) => {
   try {
     const { status } = req.query;
 
+    console.log('[Archive API] GET /list - Status filter:', status || '(all)');
+
     let query;
     let queryParams = [];
 
@@ -287,6 +289,17 @@ router.get('/list', async (req, res) => {
 
     const result = await archivePool.query(query, queryParams);
 
+    console.log(`[Archive API] Found ${result.rows.length} archives in archive database`);
+    if (result.rows.length > 0) {
+      console.log('[Archive API] Most recent archive:', {
+        name: result.rows[0].archive_name,
+        date: result.rows[0].archive_date,
+        status: result.rows[0].status,
+        modules: result.rows[0].archived_modules,
+        tableCount: result.rows[0].archived_tables?.length || 0
+      });
+    }
+
     // Calculate total records for each archive
     const archives = result.rows.map(archive => {
       const recordCount = Object.values(archive.record_counts || {})
@@ -299,12 +312,16 @@ router.get('/list', async (req, res) => {
       };
     });
 
+    console.log(`[Archive API] Returning ${archives.length} archives to client`);
+
     res.json({
       archives,
       count: archives.length
     });
   } catch (error) {
-    console.error('Error listing archives:', error);
+    console.error('[Archive API] ERROR listing archives:', error);
+    console.error('[Archive API] Error details:', error.message);
+    console.error('[Archive API] Stack:', error.stack);
     res.status(500).json({ error: 'Failed to list archives', details: error.message });
   }
 });

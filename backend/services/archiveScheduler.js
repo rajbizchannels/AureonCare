@@ -154,13 +154,15 @@ async function executeArchiveRule(rule) {
     }
 
     // Store metadata in archive database
+    console.log(`[Archive Scheduler] Storing metadata for ${archivedTables.length} tables...`);
+
     const metadataQuery = `
       INSERT INTO archive_metadata (
         archive_name, description, archived_tables, archived_modules,
         record_counts, archived_by, status, metadata
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id
+      RETURNING id, archive_name, archive_date
     `;
 
     const metadata = {
@@ -181,6 +183,11 @@ async function executeArchiveRule(rule) {
       metadata
     ]);
 
+    console.log(`[Archive Scheduler] ✓ Metadata saved to archive database`);
+    console.log(`[Archive Scheduler]   - Archive ID: ${metadataResult.rows[0].id}`);
+    console.log(`[Archive Scheduler]   - Archive Name: ${metadataResult.rows[0].archive_name}`);
+    console.log(`[Archive Scheduler]   - Archive Date: ${metadataResult.rows[0].archive_date}`);
+
     // Calculate next run time
     const nextRunAt = calculateNextRun(rule);
 
@@ -190,6 +197,7 @@ async function executeArchiveRule(rule) {
       archive_name: archiveName,
       total_records: totalRecords,
       tables_archived: archivedTables.length,
+      tables_list: archivedTables,
       execution_time: new Date().toISOString(),
       status: 'success'
     };
@@ -204,9 +212,9 @@ async function executeArchiveRule(rule) {
     );
 
     console.log(`[Archive Scheduler] ✓ Rule executed successfully: ${rule.rule_name}`);
-    console.log(`[Archive Scheduler]   - Archive ID: ${metadataResult.rows[0].id}`);
-    console.log(`[Archive Scheduler]   - Records archived: ${totalRecords}`);
-    console.log(`[Archive Scheduler]   - Next run: ${nextRunAt}`);
+    console.log(`[Archive Scheduler]   - Total records archived: ${totalRecords}`);
+    console.log(`[Archive Scheduler]   - Tables archived: ${archivedTables.join(', ')}`);
+    console.log(`[Archive Scheduler]   - Next run scheduled: ${nextRunAt}`);
 
   } catch (error) {
     console.error(`[Archive Scheduler] ✗ Error executing rule ${rule.rule_name}:`, error);
