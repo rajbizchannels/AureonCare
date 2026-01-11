@@ -992,6 +992,7 @@ function App() {
           theme={theme}
           onClose={() => setShowSearch(false)}
           onSelectResult={(result) => {
+            console.log('Search result selected:', result);
             setShowSearch(false);
 
             // Navigate to the appropriate module and open the record
@@ -1030,14 +1031,24 @@ function App() {
             const targetModule = moduleMap[result.result_type] || result.module || 'dashboard';
             const itemType = typeMap[result.result_type] || result.result_type;
 
-            // Switch to the appropriate module
-            setCurrentModule(targetModule);
+            console.log('Navigating to module:', targetModule, 'with type:', itemType);
 
-            // Set the editing item to open the record
-            handleSetEditingItem({ type: itemType, data: result });
+            // Clear previous state first to avoid conflicts
+            setEditingItem(null);
+            setSelectedItem(null);
+            setCurrentView('list');
 
-            // Set view to 'view' to show the detail view
-            setCurrentView('view');
+            // Use setTimeout to ensure state is cleared before setting new state
+            setTimeout(() => {
+              // Switch to the appropriate module
+              setCurrentModule(targetModule);
+
+              // Set the editing item to open the record
+              handleSetEditingItem({ type: itemType, data: result });
+
+              // Set view to 'view' to show the detail view
+              setCurrentView('view');
+            }, 50);
           }}
         />
       )}
