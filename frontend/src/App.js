@@ -1002,9 +1002,9 @@ function App() {
               'provider': 'providerManagement',
               'claim': 'rcm',
               'payment': 'rcm',
-              'prescription': 'ehr',
-              'lab_order': 'ehr',
-              'diagnosis': 'ehr',
+              'prescription': 'patientHistory',
+              'lab_order': 'patientHistory',
+              'diagnosis': 'patientHistory',
               'task': 'dashboard',
               'offering': 'clinicalServices',
               'campaign': 'crm',
@@ -1023,40 +1023,75 @@ function App() {
 
             // Use setTimeout to ensure state is cleared before setting new state
             setTimeout(() => {
-              // Switch to the appropriate module
-              setCurrentModule(targetModule);
-
               // Handle different result types based on how each module works
               if (result.result_type === 'appointment') {
                 // Practice Management handles appointments via editingItem
+                setCurrentModule(targetModule);
                 handleSetEditingItem({ type: 'appointment', data: result });
                 setCurrentView('view');
               } else if (result.result_type === 'patient') {
                 // EHR handles patients via editingItem
+                setCurrentModule(targetModule);
                 handleSetEditingItem({ type: 'patient', data: result });
                 setCurrentView('view');
               } else if (result.result_type === 'provider') {
                 // Provider Management uses its own internal state, just navigate to module
+                setCurrentModule(targetModule);
                 addNotification('info', `Navigated to Provider Management. Select the provider from the list.`);
-              } else if (['prescription', 'diagnosis', 'lab_order'].includes(result.result_type)) {
-                // For EHR sub-items, navigate to the patient if available
+              } else if (result.result_type === 'prescription') {
+                // For prescriptions, navigate to patient history with prescriptions tab
                 if (result.patient_id) {
-                  // Find the patient and open their record
                   const patient = patients.find(p => p.id === result.patient_id || p.id.toString() === result.patient_id.toString());
                   if (patient) {
-                    handleSetEditingItem({ type: 'patient', data: patient });
-                    setCurrentView('view');
-                    addNotification('info', `Opened patient record. Navigate to the ${result.result_type.replace('_', ' ')} tab within patient details.`);
+                    setSelectedPatient(patient);
+                    setPatientHistoryInitialTab('prescriptions');
+                    setCurrentModule('patientHistory');
+                    addNotification('success', `Opened patient prescriptions for ${patient.first_name} ${patient.last_name}`);
                   } else {
-                    // Patient not found, just show the module
-                    addNotification('info', `Navigated to EHR module. Search for the patient to view their ${result.result_type.replace('_', ' ')}.`);
+                    setCurrentModule('ehr');
+                    addNotification('warning', `Patient not found. Navigated to EHR module.`);
                   }
                 } else {
-                  // No patient ID, just navigate to module
+                  setCurrentModule('ehr');
+                  addNotification('info', `Navigated to EHR module.`);
+                }
+              } else if (result.result_type === 'diagnosis') {
+                // For diagnoses, navigate to patient history with diagnoses tab
+                if (result.patient_id) {
+                  const patient = patients.find(p => p.id === result.patient_id || p.id.toString() === result.patient_id.toString());
+                  if (patient) {
+                    setSelectedPatient(patient);
+                    setPatientHistoryInitialTab('diagnoses');
+                    setCurrentModule('patientHistory');
+                    addNotification('success', `Opened patient diagnoses for ${patient.first_name} ${patient.last_name}`);
+                  } else {
+                    setCurrentModule('ehr');
+                    addNotification('warning', `Patient not found. Navigated to EHR module.`);
+                  }
+                } else {
+                  setCurrentModule('ehr');
+                  addNotification('info', `Navigated to EHR module.`);
+                }
+              } else if (result.result_type === 'lab_order') {
+                // For lab orders, navigate to patient history with lab orders tab
+                if (result.patient_id) {
+                  const patient = patients.find(p => p.id === result.patient_id || p.id.toString() === result.patient_id.toString());
+                  if (patient) {
+                    setSelectedPatient(patient);
+                    setPatientHistoryInitialTab('labOrders');
+                    setCurrentModule('patientHistory');
+                    addNotification('success', `Opened patient lab orders for ${patient.first_name} ${patient.last_name}`);
+                  } else {
+                    setCurrentModule('ehr');
+                    addNotification('warning', `Patient not found. Navigated to EHR module.`);
+                  }
+                } else {
+                  setCurrentModule('ehr');
                   addNotification('info', `Navigated to EHR module.`);
                 }
               } else if (['claim', 'payment', 'denial', 'preapproval'].includes(result.result_type)) {
                 // For RCM items, navigate to the module (it uses local state)
+                setCurrentModule(targetModule);
                 const tabNames = {
                   'claim': 'Claims',
                   'payment': 'Payments',
@@ -1066,12 +1101,15 @@ function App() {
                 addNotification('info', `Navigated to RCM module. Find your ${result.result_type} in the ${tabNames[result.result_type]} tab.`);
               } else if (result.result_type === 'task') {
                 // Tasks are shown in dashboard
+                setCurrentModule(targetModule);
                 addNotification('info', 'Navigated to Dashboard. Find the task in your task list.');
               } else if (result.result_type === 'offering') {
                 // Clinical Services
+                setCurrentModule(targetModule);
                 addNotification('info', 'Navigated to Clinical Services module. Find the service offering in the list.');
               } else if (result.result_type === 'campaign') {
                 // CRM
+                setCurrentModule(targetModule);
                 addNotification('info', 'Navigated to CRM module. Find the campaign in the campaigns list.');
               }
             }, 50);
