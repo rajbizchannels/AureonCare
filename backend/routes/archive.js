@@ -159,6 +159,10 @@ router.post('/create', async (req, res) => {
             const result = await mainClient.query(selectQuery);
             const rows = result.rows;
 
+            // Always add table to archived list, even if empty
+            archivedTables.push(tableName);
+            recordCounts[tableName] = rows.length;
+
             if (rows.length > 0) {
               // Insert data into archive database
               for (const row of rows) {
@@ -175,12 +179,10 @@ router.post('/create', async (req, res) => {
                 await archiveClient.query(insertQuery, values);
               }
 
-              recordCounts[tableName] = rows.length;
               totalRecords += rows.length;
-              archivedTables.push(tableName);
               console.log(`Archived ${tableName}: ${rows.length} rows`);
             } else {
-              recordCounts[tableName] = 0;
+              console.log(`Table ${tableName} is empty (0 rows)`);
             }
           } finally {
             mainClient.release();

@@ -112,6 +112,10 @@ async function executeArchiveRule(rule) {
           const result = await pool.query(selectQuery, whereParams);
           const rows = result.rows;
 
+          // Always add table to archived list, even if empty
+          archivedTables.push(tableName);
+          recordCounts[tableName] = rows.length;
+
           if (rows.length > 0) {
             // Ensure table structure exists in archive database
             const { ensureTableStructure } = require('../archiveDb');
@@ -137,12 +141,10 @@ async function executeArchiveRule(rule) {
               archiveClient.release();
             }
 
-            recordCounts[tableName] = rows.length;
             totalRecords += rows.length;
-            archivedTables.push(tableName);
             console.log(`[Archive Scheduler] Archived ${tableName}: ${rows.length} rows`);
           } else {
-            recordCounts[tableName] = 0;
+            console.log(`[Archive Scheduler] Table ${tableName} is empty (0 rows)`);
           }
         } catch (error) {
           console.error(`[Archive Scheduler] Error archiving ${tableName}:`, error.message);
