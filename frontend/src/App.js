@@ -1026,19 +1026,18 @@ function App() {
               // Switch to the appropriate module
               setCurrentModule(targetModule);
 
-              // For items that modules can directly handle via editingItem
+              // Handle different result types based on how each module works
               if (result.result_type === 'appointment') {
-                // Practice Management handles appointments
+                // Practice Management handles appointments via editingItem
                 handleSetEditingItem({ type: 'appointment', data: result });
                 setCurrentView('view');
               } else if (result.result_type === 'patient') {
-                // EHR handles patients
+                // EHR handles patients via editingItem
                 handleSetEditingItem({ type: 'patient', data: result });
                 setCurrentView('view');
               } else if (result.result_type === 'provider') {
-                // Provider Management handles providers
-                handleSetEditingItem({ type: 'provider', data: result });
-                setCurrentView('view');
+                // Provider Management uses its own internal state, just navigate to module
+                addNotification('info', `Navigated to Provider Management. Select the provider from the list.`);
               } else if (['prescription', 'diagnosis', 'lab_order'].includes(result.result_type)) {
                 // For EHR sub-items, navigate to the patient if available
                 if (result.patient_id) {
@@ -1047,28 +1046,33 @@ function App() {
                   if (patient) {
                     handleSetEditingItem({ type: 'patient', data: patient });
                     setCurrentView('view');
-                    addNotification('info', `Viewing patient record. Navigate to ${result.result_type} within the patient details.`);
+                    addNotification('info', `Opened patient record. Navigate to the ${result.result_type.replace('_', ' ')} tab within patient details.`);
                   } else {
                     // Patient not found, just show the module
-                    addNotification('info', `Navigated to EHR module. Search for the patient to view their ${result.result_type}.`);
+                    addNotification('info', `Navigated to EHR module. Search for the patient to view their ${result.result_type.replace('_', ' ')}.`);
                   }
                 } else {
                   // No patient ID, just navigate to module
-                  addNotification('info', `Navigated to EHR module for ${result.result_type}.`);
+                  addNotification('info', `Navigated to EHR module.`);
                 }
               } else if (['claim', 'payment', 'denial', 'preapproval'].includes(result.result_type)) {
-                // For RCM items, just navigate to the module
-                // The module will show the list and user can find their item
-                addNotification('info', `Navigated to RCM module. Look for ${result.result_type} in the relevant tab.`);
+                // For RCM items, navigate to the module (it uses local state)
+                const tabNames = {
+                  'claim': 'Claims',
+                  'payment': 'Payments',
+                  'denial': 'Denials',
+                  'preapproval': 'Pre-approvals'
+                };
+                addNotification('info', `Navigated to RCM module. Find your ${result.result_type} in the ${tabNames[result.result_type]} tab.`);
               } else if (result.result_type === 'task') {
                 // Tasks are shown in dashboard
                 addNotification('info', 'Navigated to Dashboard. Find the task in your task list.');
               } else if (result.result_type === 'offering') {
                 // Clinical Services
-                addNotification('info', 'Navigated to Clinical Services module.');
+                addNotification('info', 'Navigated to Clinical Services module. Find the service offering in the list.');
               } else if (result.result_type === 'campaign') {
                 // CRM
-                addNotification('info', 'Navigated to CRM module.');
+                addNotification('info', 'Navigated to CRM module. Find the campaign in the campaigns list.');
               }
             }, 50);
           }}
