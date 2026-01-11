@@ -269,12 +269,17 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
       setTimeout(() => {
         loadArchives();
         loadStats();
-      }, 2000);
+      }, 3000);
 
       setTimeout(() => {
         loadArchives();
         loadStats();
-      }, 5000);
+      }, 8000);
+
+      setTimeout(() => {
+        loadArchives();
+        loadStats();
+      }, 15000);
     } catch (error) {
       console.error('Error creating archive:', error);
       addNotification('error', error.message || 'Failed to create archive');
@@ -575,17 +580,22 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
           // Reload archives immediately
           loadArchives();
 
-          // Reload again after a delay to catch the newly created archive
+          // Reload again after delays to catch the newly created archive
           setTimeout(() => {
             loadArchives();
             loadStats();
           }, 3000);
 
-          // And once more after a longer delay for large archives
           setTimeout(() => {
             loadArchives();
             loadStats();
           }, 8000);
+
+          // Final reload for large archives
+          setTimeout(() => {
+            loadArchives();
+            loadStats();
+          }, 15000);
         } catch (error) {
           console.error('Error triggering rule:', error);
           addNotification('error', error.message || 'Failed to trigger rule');
@@ -1376,7 +1386,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
                         <div>
                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Created:</span>
-                          <p className="font-medium">{formatDate(archive.created_at)}</p>
+                          <p className="font-medium">{archive.archive_date ? formatDate(archive.archive_date) : 'N/A'}</p>
                         </div>
                         <div>
                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Records:</span>
@@ -1384,7 +1394,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                         </div>
                         <div>
                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Size:</span>
-                          <p className="font-medium">{formatBytes(archive.size_bytes)}</p>
+                          <p className="font-medium">{formatBytes(archive.size_bytes || 0)}</p>
                         </div>
                         <div>
                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Modules:</span>
