@@ -182,7 +182,7 @@ router.post('/create', async (req, res) => {
               totalRecords += rows.length;
               console.log(`Archived ${tableName}: ${rows.length} rows`);
             } else {
-              console.log(`Table ${tableName} is empty (0 rows)`);
+              console.log(`Table ${tableName} is empty (0 rows) - structure created`);
             }
           } finally {
             mainClient.release();
