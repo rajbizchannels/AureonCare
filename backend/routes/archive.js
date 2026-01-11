@@ -139,6 +139,7 @@ router.post('/create', async (req, res) => {
     const recordCounts = {};
     const archivedTables = [];
     let totalRecords = 0;
+    let totalSizeBytes = 0;
 
     // Archive data from selected modules to archive database
     for (const moduleKey of selectedModules) {
@@ -146,6 +147,8 @@ router.post('/create', async (req, res) => {
 
       for (const tableName of moduleConfig.tables) {
         try {
+          console.log(`[Archive] Processing table: ${tableName}`);
+
           // Ensure table structure exists in archive database
           await ensureTableStructure(pool, tableName);
 
@@ -156,15 +159,26 @@ router.post('/create', async (req, res) => {
           try {
             // Get data from main database
             const selectQuery = `SELECT * FROM ${tableName}`;
+            console.log(`[Archive] Querying ${tableName} from main database...`);
             const result = await mainClient.query(selectQuery);
             const rows = result.rows;
+
+            console.log(`[Archive] Found ${rows.length} rows in ${tableName}`);
 
             // Always add table to archived list, even if empty
             archivedTables.push(tableName);
             recordCounts[tableName] = rows.length;
 
             if (rows.length > 0) {
+              // Calculate approximate size
+              const rowSize = JSON.stringify(rows[0]).length;
+              const tableSize = rowSize * rows.length;
+              totalSizeBytes += tableSize;
+
+              console.log(`[Archive] Inserting ${rows.length} rows into archive database...`);
+
               // Insert data into archive database
+              let insertedCount = 0;
               for (const row of rows) {
                 const columns = Object.keys(row);
                 const values = Object.values(row);
@@ -174,15 +188,19 @@ router.post('/create', async (req, res) => {
                   INSERT INTO ${tableName} (${columns.join(', ')})
                   VALUES (${placeholders})
                   ON CONFLICT DO NOTHING
+                  RETURNING *
                 `;
 
-                await archiveClient.query(insertQuery, values);
+                const insertResult = await archiveClient.query(insertQuery, values);
+                if (insertResult.rows.length > 0) {
+                  insertedCount++;
+                }
               }
 
-              totalRecords += rows.length;
-              console.log(`Archived ${tableName}: ${rows.length} rows`);
+              totalRecords += insertedCount;
+              console.log(`[Archive] ✓ ${tableName}: ${insertedCount}/${rows.length} rows inserted (${tableSize} bytes)`);
             } else {
-              console.log(`Table ${tableName} is empty (0 rows) - structure created`);
+              console.log(`[Archive] Table ${tableName} is empty (0 rows) - structure created`);
             }
           } finally {
             mainClient.release();
@@ -206,7 +224,9 @@ router.post('/create', async (req, res) => {
     `;
 
     const metadata = {
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      total_size_bytes: totalSizeBytes,
+      total_records: totalRecords
     };
 
     const metadataResult = await archivePool.query(metadataQuery, [
@@ -220,7 +240,11 @@ router.post('/create', async (req, res) => {
       metadata
     ]);
 
-    console.log('Archive created successfully:', metadataResult.rows[0]);
+    console.log('[Archive] ✓ Archive created successfully!');
+    console.log('[Archive]   - Archive ID:', metadataResult.rows[0].id);
+    console.log('[Archive]   - Total records:', totalRecords);
+    console.log('[Archive]   - Total size:', totalSizeBytes, 'bytes');
+    console.log('[Archive]   - Tables:', archivedTables.length);
 
     res.json({
       success: true,
@@ -228,7 +252,8 @@ router.post('/create', async (req, res) => {
       archive: {
         ...metadataResult.rows[0],
         record_count: totalRecords,
-        table_count: archivedTables.length
+        table_count: archivedTables.length,
+        size_bytes: totalSizeBytes
       }
     });
   } catch (error) {
@@ -300,14 +325,17 @@ router.get('/list', async (req, res) => {
       });
     }
 
-    // Calculate total records for each archive
+    // Calculate total records and extract size for each archive
     const archives = result.rows.map(archive => {
       const recordCount = Object.values(archive.record_counts || {})
         .reduce((sum, count) => sum + count, 0);
 
+      const sizeBytes = archive.metadata?.total_size_bytes || 0;
+
       return {
         ...archive,
         record_count: recordCount,
+        size_bytes: sizeBytes,
         modules: archive.archived_modules
       };
     });
@@ -633,14 +661,19 @@ router.get('/stats/summary', async (req, res) => {
     const result = await archivePool.query(statsQuery);
     const stats = result.rows[0];
 
-    // Calculate total records across all archives
-    const recordQuery = 'SELECT record_counts FROM archive_metadata';
+    // Calculate total records and size across all archives
+    const recordQuery = 'SELECT record_counts, metadata FROM archive_metadata';
     const recordResult = await archivePool.query(recordQuery);
 
     let totalRecords = 0;
+    let totalSizeBytes = 0;
+
     recordResult.rows.forEach(row => {
       if (row.record_counts) {
         totalRecords += Object.values(row.record_counts).reduce((sum, count) => sum + count, 0);
+      }
+      if (row.metadata && row.metadata.total_size_bytes) {
+        totalSizeBytes += row.metadata.total_size_bytes;
       }
     });
 
@@ -648,7 +681,7 @@ router.get('/stats/summary', async (req, res) => {
       stats: {
         ...stats,
         total_records: totalRecords,
-        total_size_bytes: 0 // Size calculation could be added if needed
+        total_size_bytes: totalSizeBytes
       }
     });
   } catch (error) {

@@ -43,6 +43,7 @@ async function executeArchiveRule(rule) {
     const recordCounts = {};
     const archivedTables = [];
     let totalRecords = 0;
+    let totalSizeBytes = 0;
 
     // Get module definitions (simplified - in production, import from archive.js)
     const ARCHIVE_MODULES = {
@@ -121,6 +122,11 @@ async function executeArchiveRule(rule) {
           recordCounts[tableName] = rows.length;
 
           if (rows.length > 0) {
+            // Calculate approximate size
+            const rowSize = JSON.stringify(rows[0]).length;
+            const tableSize = rowSize * rows.length;
+            totalSizeBytes += tableSize;
+
             // Insert data into archive database
             const archiveClient = await archivePool.connect();
             try {
@@ -142,7 +148,7 @@ async function executeArchiveRule(rule) {
             }
 
             totalRecords += rows.length;
-            console.log(`[Archive Scheduler] Archived ${tableName}: ${rows.length} rows`);
+            console.log(`[Archive Scheduler] Archived ${tableName}: ${rows.length} rows (${tableSize} bytes)`);
           } else {
             console.log(`[Archive Scheduler] Table ${tableName} is empty (0 rows) - structure created`);
           }
@@ -169,7 +175,9 @@ async function executeArchiveRule(rule) {
       timestamp: new Date().toISOString(),
       automated: true,
       rule_id: ruleId,
-      rule_name: rule.rule_name
+      rule_name: rule.rule_name,
+      total_size_bytes: totalSizeBytes,
+      total_records: totalRecords
     };
 
     const metadataResult = await archivePool.query(metadataQuery, [
@@ -213,6 +221,7 @@ async function executeArchiveRule(rule) {
 
     console.log(`[Archive Scheduler] ✓ Rule executed successfully: ${rule.rule_name}`);
     console.log(`[Archive Scheduler]   - Total records archived: ${totalRecords}`);
+    console.log(`[Archive Scheduler]   - Total size: ${totalSizeBytes} bytes`);
     console.log(`[Archive Scheduler]   - Tables archived: ${archivedTables.join(', ')}`);
     console.log(`[Archive Scheduler]   - Next run scheduled: ${nextRunAt}`);
 
