@@ -107,6 +107,10 @@ async function executeArchiveRule(rule) {
             whereClause = `WHERE created_at < NOW() - INTERVAL '${rule.retention_days} days'`;
           }
 
+          // ALWAYS ensure table structure exists in archive database first
+          const { ensureTableStructure } = require('../archiveDb');
+          await ensureTableStructure(pool, tableName);
+
           // Get data from main database
           const selectQuery = `SELECT * FROM ${tableName} ${whereClause}`;
           const result = await pool.query(selectQuery, whereParams);
@@ -117,10 +121,6 @@ async function executeArchiveRule(rule) {
           recordCounts[tableName] = rows.length;
 
           if (rows.length > 0) {
-            // Ensure table structure exists in archive database
-            const { ensureTableStructure } = require('../archiveDb');
-            await ensureTableStructure(pool, tableName);
-
             // Insert data into archive database
             const archiveClient = await archivePool.connect();
             try {
@@ -144,7 +144,7 @@ async function executeArchiveRule(rule) {
             totalRecords += rows.length;
             console.log(`[Archive Scheduler] Archived ${tableName}: ${rows.length} rows`);
           } else {
-            console.log(`[Archive Scheduler] Table ${tableName} is empty (0 rows)`);
+            console.log(`[Archive Scheduler] Table ${tableName} is empty (0 rows) - structure created`);
           }
         } catch (error) {
           console.error(`[Archive Scheduler] Error archiving ${tableName}:`, error.message);
