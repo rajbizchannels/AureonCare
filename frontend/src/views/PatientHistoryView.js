@@ -71,6 +71,11 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   const { logViewAccess } = useAudit();
 
+  // Update active tab when initialTab prop changes (for search navigation)
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   useEffect(() => {
     logViewAccess('PatientHistoryView', {
       module: 'EHR',
