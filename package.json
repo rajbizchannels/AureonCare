@@ -4,8 +4,8 @@
   "description": "MedFlow Practice Management System - Backend",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
     "migrate": "node scripts/migrate.js",
     "migrate:preauth": "node backend/scripts/run-preapprovals-migration.js",
     "seed": "node scripts/seed.js",
