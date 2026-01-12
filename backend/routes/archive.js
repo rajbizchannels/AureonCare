@@ -167,7 +167,6 @@ router.post('/create', async (req, res) => {
 
             // Always add table to archived list, even if empty
             archivedTables.push(tableName);
-            recordCounts[tableName] = rows.length;
 
             if (rows.length > 0) {
               // Calculate approximate size
@@ -179,27 +178,62 @@ router.post('/create', async (req, res) => {
 
               // Insert data into archive database
               let insertedCount = 0;
-              for (const row of rows) {
-                const columns = Object.keys(row);
-                const values = Object.values(row);
-                const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+              let skippedCount = 0;
+              let errorCount = 0;
 
-                const insertQuery = `
-                  INSERT INTO ${tableName} (${columns.join(', ')})
-                  VALUES (${placeholders})
-                  ON CONFLICT DO NOTHING
-                  RETURNING *
-                `;
+              for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
 
-                const insertResult = await archiveClient.query(insertQuery, values);
-                if (insertResult.rows.length > 0) {
-                  insertedCount++;
+                // Log first 3 and last row for debugging
+                if (i < 3 || i === rows.length - 1) {
+                  console.log(`[Archive] Processing row ${i + 1}/${rows.length}...`);
+                }
+
+                try {
+                  const columns = Object.keys(row);
+                  const values = Object.values(row);
+                  const placeholders = values.map((_, idx) => `$${idx + 1}`).join(', ');
+
+                  const insertQuery = `
+                    INSERT INTO ${tableName} (${columns.join(', ')})
+                    VALUES (${placeholders})
+                    ON CONFLICT DO NOTHING
+                    RETURNING *
+                  `;
+
+                  const insertResult = await archiveClient.query(insertQuery, values);
+
+                  if (insertResult.rows.length > 0) {
+                    insertedCount++;
+                    if (i < 3 || i === rows.length - 1) {
+                      console.log(`[Archive] ✓ Row ${i + 1} INSERTED`);
+                    }
+                  } else {
+                    skippedCount++;
+                    if (i < 3 || i === rows.length - 1) {
+                      console.log(`[Archive] ⊘ Row ${i + 1} SKIPPED (conflict)`);
+                    }
+                  }
+                } catch (rowError) {
+                  errorCount++;
+                  console.error(`[Archive] ✗ Row ${i + 1} ERROR:`, rowError.message);
+                  if (i < 2) {
+                    console.error(`[Archive] Row data sample:`, JSON.stringify(row).substring(0, 200));
+                  }
                 }
               }
 
+              console.log(`[Archive] Insert summary for ${tableName}:`);
+              console.log(`[Archive]   - Inserted: ${insertedCount}`);
+              console.log(`[Archive]   - Skipped: ${skippedCount}`);
+              console.log(`[Archive]   - Errors: ${errorCount}`);
+              console.log(`[Archive]   - Total processed: ${rows.length}`);
+
+              recordCounts[tableName] = insertedCount;
               totalRecords += insertedCount;
               console.log(`[Archive] ✓ ${tableName}: ${insertedCount}/${rows.length} rows inserted (${tableSize} bytes)`);
             } else {
+              recordCounts[tableName] = 0;
               console.log(`[Archive] Table ${tableName} is empty (0 rows) - structure created`);
             }
           } finally {
