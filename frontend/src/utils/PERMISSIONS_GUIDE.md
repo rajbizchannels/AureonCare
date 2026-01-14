@@ -1,10 +1,10 @@
 # Role-Based Access Control (RBAC) Guide
 
-This guide explains how to use the role-based permission system in MedFlow.
+This guide explains how to use the role-based permission system in AureonCare.
 
 ## Overview
 
-MedFlow uses a comprehensive RBAC system that controls access to modules and features based on user roles. The system combines:
+AureonCare uses a comprehensive RBAC system that controls access to modules and features based on user roles. The system combines:
 - **Plan-based access** (starter, professional, enterprise)
 - **Role-based permissions** (admin, doctor, patient, nurse, receptionist, billing_manager, crm_manager, staff)
 

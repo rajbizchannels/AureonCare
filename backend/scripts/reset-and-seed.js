@@ -19,7 +19,7 @@ const path = require('path');
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
   host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'medflow',
+  database: process.env.DB_NAME || 'aureoncare',
   password: process.env.DB_PASSWORD || '*Smbz786#',
   port: process.env.DB_PORT || 5432,
   // Explicitly set search_path to ensure tables are found
@@ -115,7 +115,7 @@ async function runMigration(migrationFile) {
 
 async function main() {
   try {
-    logSection('🚀 MEDFLOW DATABASE RESET AND SEED');
+    logSection('🚀 AUREONCARE DATABASE RESET AND SEED');
 
     // Test database connection
     log('Testing database connection...', 'yellow');
@@ -200,12 +200,12 @@ async function main() {
     log('Password for all accounts: password123\n', 'yellow');
 
     log('Admin:', 'bright');
-    log('  Email: admin@medflow.com', 'white');
+    log('  Email: admin@aureoncare.com', 'white');
 
     log('\nDoctors:', 'bright');
-    log('  Email: dr.smith@medflow.com (Family Medicine)', 'white');
-    log('  Email: dr.johnson@medflow.com (Cardiology)', 'white');
-    log('  Email: dr.williams@medflow.com (Pediatrics)', 'white');
+    log('  Email: dr.smith@aureoncare.com (Family Medicine)', 'white');
+    log('  Email: dr.johnson@aureoncare.com (Cardiology)', 'white');
+    log('  Email: dr.williams@aureoncare.com (Pediatrics)', 'white');
 
     log('\nPatients:', 'bright');
     log('  Email: john.doe@example.com', 'white');
@@ -214,7 +214,7 @@ async function main() {
     log('  Email: alice.brown@example.com', 'white');
 
     log('\nStaff:', 'bright');
-    log('  Email: staff@medflow.com', 'white');
+    log('  Email: staff@aureoncare.com', 'white');
 
     logSection('🎉 SUCCESS - Database Reset and Seed Complete!');
 

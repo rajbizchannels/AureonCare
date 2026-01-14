@@ -32,7 +32,7 @@ BEGIN
         WHERE table_name = 'telehealth_sessions' AND column_name = 'provider_type'
     ) THEN
         ALTER TABLE public.telehealth_sessions
-        ADD COLUMN provider_type character varying(50) DEFAULT 'medflow';
+        ADD COLUMN provider_type character varying(50) DEFAULT 'aureoncare';
     END IF;
 END $$;
 

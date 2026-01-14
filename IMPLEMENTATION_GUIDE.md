@@ -48,7 +48,7 @@ node run-migrations.js
 
 **Option B: Manual execution**
 ```bash
-psql -U postgres -d medflow -f backend/migrations/20251121000000_add_country_field.sql
+psql -U postgres -d aureoncare -f backend/migrations/20251121000000_add_country_field.sql
 ```
 
 **What this migration does:**

@@ -61,5 +61,5 @@ CREATE INDEX IF NOT EXISTS idx_role_permissions_role ON role_permissions(role);
 CREATE INDEX IF NOT EXISTS idx_role_permissions_module ON role_permissions(module);
 
 -- Grant permissions to database user
-GRANT ALL PRIVILEGES ON TABLE role_permissions TO medflow_user;
-GRANT USAGE, SELECT ON SEQUENCE role_permissions_id_seq TO medflow_user;
+GRANT ALL PRIVILEGES ON TABLE role_permissions TO aureoncare_user;
+GRANT USAGE, SELECT ON SEQUENCE role_permissions_id_seq TO aureoncare_user;

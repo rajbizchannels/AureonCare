@@ -42,7 +42,7 @@ const EnhancedAIAssistant = ({
     setMessages([
       {
         type: 'ai',
-        content: "👋 Hi! I'm your MedFlow AI Assistant. I can help you with:\n\n• Finding features and documentation\n• Answering questions about workflows\n• Providing contextual help\n• Suggesting best practices\n\nHow can I help you today?",
+        content: "👋 Hi! I'm your AureonCare AI Assistant. I can help you with:\n\n• Finding features and documentation\n• Answering questions about workflows\n• Providing contextual help\n• Suggesting best practices\n\nHow can I help you today?",
         timestamp: new Date()
       }
     ]);
@@ -178,7 +178,7 @@ const EnhancedAIAssistant = ({
             </h3>
             <p className="text-cyan-500 text-xs flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
-              Powered by MedFlow Docs
+              Powered by AureonCare Docs
             </p>
           </div>
           <button

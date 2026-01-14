@@ -2,7 +2,7 @@
 
 ## Overview
 
-Users in MedFlow can have multiple roles simultaneously. For example, a doctor (provider) can also be a patient at the same facility. This document explains the design decision and implementation.
+Users in AureonCare can have multiple roles simultaneously. For example, a doctor (provider) can also be a patient at the same facility. This document explains the design decision and implementation.
 
 ## The Problem
 
@@ -209,7 +209,7 @@ When changing a user's role in the Admin Panel:
 
 ```bash
 cd backend
-psql -h localhost -U medflow_user -d medflow -f migrations/013_support_multiple_user_roles.sql
+psql -h localhost -U aureoncare_user -d aureoncare -f migrations/013_support_multiple_user_roles.sql
 ```
 
 ### Expected Output

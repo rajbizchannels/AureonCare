@@ -188,7 +188,7 @@ router.get('/active/provider', async (req, res) => {
     `);
 
     if (result.rows.length === 0) {
-      return res.json({ provider_type: 'medflow', is_enabled: false });
+      return res.json({ provider_type: 'aureoncare', is_enabled: false });
     }
 
     res.json(result.rows[0]);

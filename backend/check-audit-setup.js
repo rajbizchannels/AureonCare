@@ -8,9 +8,9 @@ const { Pool } = require('pg');
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'medflow_app',
-  password: 'MedFlow2024!',
+  database: process.env.DB_NAME || 'aureoncare',
+  user: process.env.DB_USER || 'aureoncare_app',
+  password: 'AureonCare2024!',
 });
 
 async function checkAuditSetup() {
@@ -90,7 +90,7 @@ async function checkAuditSetup() {
       console.log('   ❌ audit_logs table DOES NOT EXIST\n');
       console.log('   📝 You need to run the migration:');
       console.log('   Run this command:');
-      console.log('   psql -U medflow_app -d medflow -f backend/migrations/040_create_audit_logs_table.sql\n');
+      console.log('   psql -U aureoncare_app -d aureoncare -f backend/migrations/040_create_audit_logs_table.sql\n');
     }
 
     console.log('\n✅ Diagnostic complete!');

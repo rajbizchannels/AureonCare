@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Create a single-slide executive presentation for MedFlow
+Create a single-slide executive presentation for AureonCare
 """
 
 from pptx import Presentation
@@ -37,7 +37,7 @@ def create_executive_slide():
     # Title
     title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(9), Inches(0.8))
     title_frame = title_box.text_frame
-    title_frame.text = "MedFlow: All-in-One Healthcare Platform"
+    title_frame.text = "AureonCare: All-in-One Healthcare Platform"
     title_para = title_frame.paragraphs[0]
     title_para.alignment = PP_ALIGN.CENTER
     title_para.font.size = Pt(44)
@@ -256,8 +256,8 @@ def create_executive_slide():
     footer_para.font.color.rgb = green
 
     # Save presentation
-    prs.save('MEDFLOW_EXECUTIVE_PRESENTATION.pptx')
-    print("✅ Successfully created MEDFLOW_EXECUTIVE_PRESENTATION.pptx")
+    prs.save('AUREONCARE_EXECUTIVE_PRESENTATION.pptx')
+    print("✅ Successfully created AUREONCARE_EXECUTIVE_PRESENTATION.pptx")
 
 if __name__ == '__main__':
     create_executive_slide()

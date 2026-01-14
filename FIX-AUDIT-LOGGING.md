@@ -24,7 +24,7 @@ The `audit_logs` table must be created in the database:
 
 ```bash
 # Using psql directly
-psql -U medflow_app -d medflow -f backend/migrations/040_create_audit_logs_table.sql
+psql -U aureoncare_app -d aureoncare -f backend/migrations/040_create_audit_logs_table.sql
 
 # Or using the migration script
 cd backend
@@ -95,17 +95,17 @@ curl http://localhost:3000/health
 
 ### Check if audit_logs table exists:
 ```bash
-psql -U medflow_app -d medflow -c "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'audit_logs');"
+psql -U aureoncare_app -d aureoncare -c "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'audit_logs');"
 ```
 
 ### Check if any audit logs exist:
 ```bash
-psql -U medflow_app -d medflow -c "SELECT COUNT(*) FROM audit_logs;"
+psql -U aureoncare_app -d aureoncare -c "SELECT COUNT(*) FROM audit_logs;"
 ```
 
 ### View recent audit logs directly:
 ```bash
-psql -U medflow_app -d medflow -c "SELECT resource_name, action_type, module, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 10;"
+psql -U aureoncare_app -d aureoncare -c "SELECT resource_name, action_type, module, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 10;"
 ```
 
 ---

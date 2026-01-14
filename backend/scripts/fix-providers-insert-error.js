@@ -4,8 +4,8 @@ require('dotenv').config();
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'medflow_user',
+  database: process.env.DB_NAME || 'aureoncare',
+  user: process.env.DB_USER || 'aureoncare_user',
   password: process.env.DB_PASSWORD,
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
@@ -134,8 +134,8 @@ async function fixProvidersInsertError() {
     // Summary
     console.log('\n=== Summary ===');
     console.log('To fix the error, run these migrations in order:');
-    console.log('1. psql -d medflow -U medflow_user -f migrations/011_fix_providers_id_sequence.sql');
-    console.log('2. psql -d medflow -U medflow_user -f migrations/012_add_first_last_name_to_users.sql');
+    console.log('1. psql -d aureoncare -U aureoncare_user -f migrations/011_fix_providers_id_sequence.sql');
+    console.log('2. psql -d aureoncare -U aureoncare_user -f migrations/012_add_first_last_name_to_users.sql');
     console.log('\nOn Windows:');
     console.log('1. Run the migrations from pgAdmin or command line');
     console.log('2. Restart your backend server\n');

@@ -1,4 +1,4 @@
-# MedFlow Executive Demo - Voiceover Script
+# AureonCare Executive Demo - Voiceover Script
 
 **Duration:** 13 minutes 30 seconds
 **Word Count:** ~1,890 words
@@ -38,7 +38,7 @@
 
 **[0:00 - 0:20] | 46 words**
 
-Welcome to MedFlow—the **unified healthcare platform** that supports the entire patient journey. [PAUSE] In the next 13 minutes, you'll see how we transform healthcare delivery through **one platform, one patient record,** and **end-to-end care coordination**.
+Welcome to AureonCare—the **unified healthcare platform** that supports the entire patient journey. [PAUSE] In the next 13 minutes, you'll see how we transform healthcare delivery through **one platform, one patient record,** and **end-to-end care coordination**.
 
 **[End of Scene 1]**
 
@@ -48,11 +48,11 @@ Welcome to MedFlow—the **unified healthcare platform** that supports the entir
 
 **[0:20 - 1:20] | 140 words**
 
-MedFlow is a **comprehensive healthcare suite** with six integrated modules: [PAUSE] EHR for clinical documentation, Telehealth for virtual care, Scheduling for appointments, Lab Orders for diagnostics, Revenue Cycle Management for billing, and an Integration Engine for seamless data exchange.
+AureonCare is a **comprehensive healthcare suite** with six integrated modules: [PAUSE] EHR for clinical documentation, Telehealth for virtual care, Scheduling for appointments, Lab Orders for diagnostics, Revenue Cycle Management for billing, and an Integration Engine for seamless data exchange.
 
 [PAUSE]
 
-Each module shares a **single patient record**—stored in FHIR-compliant format. [PAUSE] This means **no data duplication, no synchronization delays,** and **no integration headaches**. [PAUSE] Whether you're a small clinic or a large health system, MedFlow scales with you.
+Each module shares a **single patient record**—stored in FHIR-compliant format. [PAUSE] This means **no data duplication, no synchronization delays,** and **no integration headaches**. [PAUSE] Whether you're a small clinic or a large health system, AureonCare scales with you.
 
 **[End of Scene 2]**
 
@@ -90,7 +90,7 @@ With one click, the appointment is booked. [PAUSE] Sarah receives an automated c
 
 **[2:50 - 4:00] | 164 words**
 
-Now we're in the **clinical heart of MedFlow**—the Electronic Health Record.
+Now we're in the **clinical heart of AureonCare**—the Electronic Health Record.
 
 [PAUSE]
 
@@ -138,7 +138,7 @@ Telehealth is no longer optional—it's essential. [PAUSE] But most systems trea
 
 [PAUSE]
 
-In MedFlow, telehealth is **fully embedded**. [PAUSE] I click 'Start Session,' choose Zoom as the provider, and within seconds, a meeting is created.
+In AureonCare, telehealth is **fully embedded**. [PAUSE] I click 'Start Session,' choose Zoom as the provider, and within seconds, a meeting is created.
 
 [PAUSE]
 
@@ -182,7 +182,7 @@ He selects the test, chooses Labcorp, links it to her diabetes diagnosis for pro
 
 [PAUSE]
 
-MedFlow transmits this electronically to Labcorp using **FHIR ServiceRequest standards**. [PAUSE] The order gets a unique tracking number—LAB-123456.
+AureonCare transmits this electronically to Labcorp using **FHIR ServiceRequest standards**. [PAUSE] The order gets a unique tracking number—LAB-123456.
 
 [PAUSE]
 
@@ -226,7 +226,7 @@ Healthcare doesn't exist in a vacuum. [PAUSE] Your systems need to communicate w
 
 [PAUSE]
 
-This is MedFlow's **Integration Hub**. [PAUSE] We're already integrated with Labcorp for lab orders, Surescripts for ePrescribing to 95% of US pharmacies, Optum for claim submission to hundreds of payers, and Zoom for telehealth.
+This is AureonCare's **Integration Hub**. [PAUSE] We're already integrated with Labcorp for lab orders, Surescripts for ePrescribing to 95% of US pharmacies, Optum for claim submission to hundreds of payers, and Zoom for telehealth.
 
 [PAUSE]
 
@@ -234,11 +234,11 @@ Everything runs on **FHIR R4**—the global standard for healthcare data exchang
 
 [PAUSE]
 
-What does this mean? [PAUSE] MedFlow can exchange data with virtually any modern healthcare system—EHRs, labs, pharmacies, health information exchanges. [PAUSE] For larger health systems, MedFlow connects to HIEs using standard FHIR APIs.
+What does this mean? [PAUSE] AureonCare can exchange data with virtually any modern healthcare system—EHRs, labs, pharmacies, health information exchanges. [PAUSE] For larger health systems, AureonCare connects to HIEs using standard FHIR APIs.
 
 [PAUSE]
 
-The key insight: **MedFlow fits into your existing ecosystem** rather than replacing everything.
+The key insight: **AureonCare fits into your existing ecosystem** rather than replacing everything.
 
 **[End of Scene 11]**
 
@@ -248,7 +248,7 @@ The key insight: **MedFlow fits into your existing ecosystem** rather than repla
 
 **[10:00 - 11:20] | 187 words**
 
-Data without insights is just noise. [PAUSE] MedFlow turns operational data into **actionable intelligence**.
+Data without insights is just noise. [PAUSE] AureonCare turns operational data into **actionable intelligence**.
 
 [PAUSE]
 
@@ -278,7 +278,7 @@ Security and compliance aren't afterthoughts—they're **built into every layer*
 
 [PAUSE]
 
-MedFlow uses **role-based access control**. [PAUSE] Every user has a specific role—Admin, Doctor, Nurse, Receptionist, Patient—with granular permissions. [PAUSE] A receptionist can schedule appointments but cannot access clinical documentation.
+AureonCare uses **role-based access control**. [PAUSE] Every user has a specific role—Admin, Doctor, Nurse, Receptionist, Patient—with granular permissions. [PAUSE] A receptionist can schedule appointments but cannot access clinical documentation.
 
 [PAUSE]
 
@@ -286,7 +286,7 @@ All data is encrypted at rest and in transit. Every action is logged—who acces
 
 [PAUSE]
 
-MedFlow is **HIPAA and GDPR ready** with Business Associate Agreements available. [PAUSE] You can deploy in the cloud or on-premises, and the platform **scales from 5-person clinics to 500-provider health systems**.
+AureonCare is **HIPAA and GDPR ready** with Business Associate Agreements available. [PAUSE] You can deploy in the cloud or on-premises, and the platform **scales from 5-person clinics to 500-provider health systems**.
 
 **[End of Scene 13]**
 
@@ -300,7 +300,7 @@ Let's recap what you've seen.
 
 [PAUSE]
 
-**One patient, one record.** [PAUSE] MedFlow unifies your entire practice on a single platform. No more switching between systems. No more duplicate data entry.
+**One patient, one record.** [PAUSE] AureonCare unifies your entire practice on a single platform. No more switching between systems. No more duplicate data entry.
 
 [PAUSE]
 
@@ -326,7 +326,7 @@ This is the future of healthcare operations. **Efficient. Integrated. Intelligen
 
 **[13:00 - 13:30] | 70 words**
 
-Thank you for watching this demonstration. [PAUSE] We're excited about the potential of MedFlow to transform your organization.
+Thank you for watching this demonstration. [PAUSE] We're excited about the potential of AureonCare to transform your organization.
 
 [PAUSE]
 
@@ -501,11 +501,11 @@ After recording, edit the audio:
 
 **Practice this section to get a feel for pace and tone:**
 
-> "Welcome to MedFlow—the **unified healthcare platform** that supports the entire patient journey. [PAUSE for 1 second] In the next 13 minutes, you'll see how we transform healthcare delivery through **one platform, one patient record,** and **end-to-end care coordination**."
+> "Welcome to AureonCare—the **unified healthcare platform** that supports the entire patient journey. [PAUSE for 1 second] In the next 13 minutes, you'll see how we transform healthcare delivery through **one platform, one patient record,** and **end-to-end care coordination**."
 >
 > [PAUSE for 2 seconds - transition]
 >
-> "MedFlow is a **comprehensive healthcare suite** with six integrated modules: [PAUSE for 0.5 seconds] EHR for clinical documentation, Telehealth for virtual care, Scheduling for appointments, Lab Orders for diagnostics, Revenue Cycle Management for billing, and an Integration Engine for seamless data exchange."
+> "AureonCare is a **comprehensive healthcare suite** with six integrated modules: [PAUSE for 0.5 seconds] EHR for clinical documentation, Telehealth for virtual care, Scheduling for appointments, Lab Orders for diagnostics, Revenue Cycle Management for billing, and an Integration Engine for seamless data exchange."
 
 **Timing for this sample:** Should take approximately 35-40 seconds at the correct pace.
 

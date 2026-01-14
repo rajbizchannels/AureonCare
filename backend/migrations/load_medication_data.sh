@@ -12,13 +12,13 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Database configuration
-DB_NAME="${DB_NAME:-medflow_db}"
+DB_NAME="${DB_NAME:-aureoncare_db}"
 DB_USER="${DB_USER:-postgres}"
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}MedFlow Medication Data Loader${NC}"
+echo -e "${BLUE}AureonCare Medication Data Loader${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 

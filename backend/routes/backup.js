@@ -127,7 +127,7 @@ router.post('/google-drive', async (req, res) => {
 
     // Create file metadata
     const fileMetadata = {
-      name: `medflow-backup-${new Date().toISOString().split('T')[0]}.json`,
+      name: `aureoncare-backup-${new Date().toISOString().split('T')[0]}.json`,
       mimeType: 'application/json'
     };
 
@@ -198,7 +198,7 @@ router.post('/onedrive', async (req, res) => {
     });
 
     // Upload to OneDrive
-    const fileName = `medflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+    const fileName = `aureoncare-backup-${new Date().toISOString().split('T')[0]}.json`;
     const uploadedFile = await client
       .api('/me/drive/root/children')
       .post({

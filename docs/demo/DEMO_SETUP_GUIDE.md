@@ -1,6 +1,6 @@
-# MedFlow Executive Demo - Setup & Preparation Guide
+# AureonCare Executive Demo - Setup & Preparation Guide
 
-**Purpose:** This guide ensures you have a fully functional MedFlow demo environment with realistic data for the executive presentation.
+**Purpose:** This guide ensures you have a fully functional AureonCare demo environment with realistic data for the executive presentation.
 
 **Time Required:** 30-45 minutes
 **Skill Level:** Intermediate (requires basic command-line and database knowledge)
@@ -63,8 +63,8 @@
 
 ```bash
 # If not already cloned
-git clone https://github.com/rajbizchannels/MedFlow.git
-cd MedFlow
+git clone https://github.com/rajbizchannels/AureonCare.git
+cd AureonCare
 ```
 
 ### Step 2: Install Dependencies
@@ -91,8 +91,8 @@ Create a file: `/backend/.env`
 # Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=medflow_demo
-DB_USER=medflow_app
+DB_NAME=aureoncare_demo
+DB_USER=aureoncare_app
 DB_PASSWORD=your_secure_password_here
 
 # Server Configuration
@@ -188,9 +188,9 @@ npm start
 sudo -u postgres psql
 
 # Create database and user
-CREATE DATABASE medflow_demo;
-CREATE USER medflow_app WITH PASSWORD 'your_secure_password_here';
-GRANT ALL PRIVILEGES ON DATABASE medflow_demo TO medflow_app;
+CREATE DATABASE aureoncare_demo;
+CREATE USER aureoncare_app WITH PASSWORD 'your_secure_password_here';
+GRANT ALL PRIVILEGES ON DATABASE aureoncare_demo TO aureoncare_app;
 
 # Exit psql
 \q
@@ -198,35 +198,35 @@ GRANT ALL PRIVILEGES ON DATABASE medflow_demo TO medflow_app;
 
 ### Step 2: Run Database Migrations
 
-MedFlow uses schema files located in `/backend/db/`.
+AureonCare uses schema files located in `/backend/db/`.
 
 ```bash
 cd backend
 
 # Run all schema creation scripts
-psql -U medflow_app -d medflow_demo -f db/schema.sql
-psql -U medflow_app -d medflow_demo -f db/users.sql
-psql -U medflow_app -d medflow_demo -f db/patients.sql
-psql -U medflow_app -d medflow_demo -f db/appointments.sql
-psql -U medflow_app -d medflow_demo -f db/medical-records.sql
-psql -U medflow_app -d medflow_demo -f db/prescriptions.sql
-psql -U medflow_app -d medflow_demo -f db/lab-orders.sql
-psql -U medflow_app -d medflow_demo -f db/claims.sql
-psql -U medflow_app -d medflow_demo -f db/fhir.sql
-psql -U medflow_app -d medflow_demo -f db/integrations.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/schema.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/users.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/patients.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/appointments.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/medical-records.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/prescriptions.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/lab-orders.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/claims.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/fhir.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/integrations.sql
 ```
 
 **Or use a single migration script:**
 
 ```bash
 # If you have a combined migration file
-psql -U medflow_app -d medflow_demo -f db/migrations/initial_setup.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/migrations/initial_setup.sql
 ```
 
 ### Step 3: Verify Database Schema
 
 ```bash
-psql -U medflow_app -d medflow_demo
+psql -U aureoncare_app -d aureoncare_demo
 
 # List all tables
 \dt
@@ -272,7 +272,7 @@ ON CONFLICT (role_name) DO NOTHING;
 -- Insert Admin User
 INSERT INTO users (user_id, email, password_hash, first_name, last_name, status, created_at)
 VALUES
-('admin-001', 'admin@medflow.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Admin', 'User', 'active', NOW())
+('admin-001', 'admin@aureoncare.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Admin', 'User', 'active', NOW())
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role_name) VALUES ('admin-001', 'admin') ON CONFLICT DO NOTHING;
@@ -280,8 +280,8 @@ INSERT INTO user_roles (user_id, role_name) VALUES ('admin-001', 'admin') ON CON
 -- Insert Doctor Users
 INSERT INTO users (user_id, email, password_hash, first_name, last_name, status, created_at)
 VALUES
-('doctor-001', 'dr.anderson@medflow.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Michael', 'Anderson', 'active', NOW()),
-('doctor-002', 'dr.patel@medflow.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Priya', 'Patel', 'active', NOW())
+('doctor-001', 'dr.anderson@aureoncare.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Michael', 'Anderson', 'active', NOW()),
+('doctor-002', 'dr.patel@aureoncare.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Priya', 'Patel', 'active', NOW())
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role_name) VALUES
@@ -292,7 +292,7 @@ ON CONFLICT DO NOTHING;
 -- Insert Receptionist User
 INSERT INTO users (user_id, email, password_hash, first_name, last_name, status, created_at)
 VALUES
-('recep-001', 'frontdesk@medflow.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Jessica', 'Chen', 'active', NOW())
+('recep-001', 'frontdesk@aureoncare.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Jessica', 'Chen', 'active', NOW())
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role_name) VALUES ('recep-001', 'receptionist') ON CONFLICT DO NOTHING;
@@ -433,7 +433,7 @@ ON CONFLICT (tracking_id) DO NOTHING;
 -- Tracking events
 INSERT INTO fhir_tracking_events (event_id, tracking_id, event_type, status, message, created_at)
 VALUES
-('event-001', 'track-001', 'created', 'success', 'Prescription created in MedFlow', NOW() - INTERVAL '60 days'),
+('event-001', 'track-001', 'created', 'success', 'Prescription created in AureonCare', NOW() - INTERVAL '60 days'),
 ('event-002', 'track-001', 'transmitted', 'success', 'Sent to Surescripts network', NOW() - INTERVAL '60 days' + INTERVAL '5 minutes'),
 ('event-003', 'track-001', 'received_by_pharmacy', 'success', 'CVS Pharmacy received prescription', NOW() - INTERVAL '60 days' + INTERVAL '10 minutes'),
 ('event-004', 'track-001', 'filled', 'success', 'Prescription filled by pharmacy', NOW() - INTERVAL '60 days' + INTERVAL '2 hours')
@@ -563,7 +563,7 @@ SELECT 'Claims created: ' || COUNT(*) AS claims_count FROM claims;
 **Load the demo data:**
 
 ```bash
-psql -U medflow_app -d medflow_demo -f db/demo_data.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/demo_data.sql
 ```
 
 ### Option 2: Use API to Create Demo Data (Alternative)
@@ -647,7 +647,7 @@ If you prefer to create demo data via API calls, use the provided Postman collec
 
 ### Mock Mode (No Vendor Accounts)
 
-If you don't have vendor credentials, MedFlow can run in **mock mode**:
+If you don't have vendor credentials, AureonCare can run in **mock mode**:
 
 **In `/backend/.env`:**
 ```env
@@ -668,10 +668,10 @@ This will simulate all vendor responses for demo purposes.
 
 | Role | Email | Password | Purpose |
 |------|-------|----------|---------|
-| Admin | admin@medflow.com | Demo123! | System administration |
-| Doctor | dr.anderson@medflow.com | Demo123! | Primary clinician for demo |
-| Doctor | dr.patel@medflow.com | Demo123! | Secondary clinician |
-| Receptionist | frontdesk@medflow.com | Demo123! | Front desk operations |
+| Admin | admin@aureoncare.com | Demo123! | System administration |
+| Doctor | dr.anderson@aureoncare.com | Demo123! | Primary clinician for demo |
+| Doctor | dr.patel@aureoncare.com | Demo123! | Secondary clinician |
+| Receptionist | frontdesk@aureoncare.com | Demo123! | Front desk operations |
 | Patient | sarah.williams@email.com | Demo123! | Demo patient (Sarah Williams) |
 | Patient | robert.johnson@email.com | Demo123! | Additional patient |
 
@@ -705,19 +705,19 @@ curl http://localhost:3000/health
 ### Step 2: Test Frontend
 
 1. Open browser: http://localhost:3001
-2. You should see MedFlow login page
-3. Login with: `admin@medflow.com` / `Demo123!`
+2. You should see AureonCare login page
+3. Login with: `admin@aureoncare.com` / `Demo123!`
 
 ### Step 3: Test Key Demo Flows
 
 **Scheduling Flow:**
-1. Login as receptionist: `frontdesk@medflow.com`
+1. Login as receptionist: `frontdesk@aureoncare.com`
 2. Navigate to "Practice Management"
 3. Search for "Sarah Williams"
 4. Verify patient appears in search results
 
 **Clinical Flow:**
-1. Login as doctor: `dr.anderson@medflow.com`
+1. Login as doctor: `dr.anderson@aureoncare.com`
 2. Navigate to "EHR"
 3. Search for "Sarah Williams"
 4. Verify:
@@ -726,14 +726,14 @@ curl http://localhost:3000/health
    - Medications show Metformin
 
 **Telehealth Flow:**
-1. Login as doctor: `dr.anderson@medflow.com`
+1. Login as doctor: `dr.anderson@aureoncare.com`
 2. Navigate to "Telehealth"
 3. Find Sarah Williams' upcoming appointment
 4. Click "Start Session"
 5. Verify session creation (Zoom link generated if configured)
 
 **RCM Flow:**
-1. Login as admin: `admin@medflow.com`
+1. Login as admin: `admin@aureoncare.com`
 2. Navigate to "RCM"
 3. Verify dashboard shows:
    - Total claims
@@ -741,7 +741,7 @@ curl http://localhost:3000/health
    - Revenue metrics
 
 **Reports Flow:**
-1. Login as admin: `admin@medflow.com`
+1. Login as admin: `admin@aureoncare.com`
 2. Navigate to "Reports & Analytics"
 3. Verify dashboards display:
    - Clinical metrics
@@ -800,13 +800,13 @@ sudo systemctl start postgresql
 **Solution:**
 - Verify user exists in database:
   ```sql
-  SELECT * FROM users WHERE email = 'admin@medflow.com';
+  SELECT * FROM users WHERE email = 'admin@aureoncare.com';
   ```
 - Reset password:
   ```sql
   UPDATE users
   SET password_hash = '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k'
-  WHERE email = 'admin@medflow.com';
+  WHERE email = 'admin@aureoncare.com';
   ```
 
 ### Issue 4: Telehealth session creation fails
@@ -823,7 +823,7 @@ sudo systemctl start postgresql
 **Solution:**
 ```bash
 # Clear database and reload
-psql -U medflow_app -d medflow_demo
+psql -U aureoncare_app -d aureoncare_demo
 
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
@@ -852,7 +852,7 @@ CREATE SCHEMA public;
 - [ ] Open browser tabs:
   - [ ] Frontend (http://localhost:3001)
   - [ ] Backup tab (in case first tab has issues)
-- [ ] Login as doctor (`dr.anderson@medflow.com`)
+- [ ] Login as doctor (`dr.anderson@aureoncare.com`)
 - [ ] Verify Sarah Williams patient exists and has data
 - [ ] Test telehealth session creation (but don't start actual call)
 - [ ] Close unnecessary applications (to free resources)
@@ -888,14 +888,14 @@ CREATE SCHEMA public;
 ## Additional Resources
 
 **Documentation:**
-- MedFlow User Manual: `/docs/user-manual/`
+- AureonCare User Manual: `/docs/user-manual/`
 - API Documentation: `/docs/api/`
 - FHIR Implementation: `/docs/FHIR_TRACKING.md`
 
 **Support:**
-- GitHub Issues: https://github.com/rajbizchannels/MedFlow/issues
+- GitHub Issues: https://github.com/rajbizchannels/AureonCare/issues
 - Community Forum: [link]
-- Email: support@medflow.com
+- Email: support@aureoncare.com
 
 **Demo Recording Examples:**
 - [Link to sample demo video]
@@ -911,10 +911,10 @@ Refresh demo data weekly:
 
 ```bash
 # Backup current database
-pg_dump -U medflow_app medflow_demo > backup_$(date +%Y%m%d).sql
+pg_dump -U aureoncare_app aureoncare_demo > backup_$(date +%Y%m%d).sql
 
 # Reload demo data
-psql -U medflow_app -d medflow_demo -f db/demo_data.sql
+psql -U aureoncare_app -d aureoncare_demo -f db/demo_data.sql
 ```
 
 ### Performance Optimization
@@ -926,7 +926,7 @@ Before demo, optimize database:
 ANALYZE;
 
 -- Reindex for performance
-REINDEX DATABASE medflow_demo;
+REINDEX DATABASE aureoncare_demo;
 
 -- Vacuum to reclaim space
 VACUUM FULL;

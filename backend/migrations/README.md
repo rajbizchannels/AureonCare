@@ -1,4 +1,4 @@
-# MedFlow Database Migrations
+# AureonCare Database Migrations
 
 This directory contains SQL migration scripts to update the database schema.
 
@@ -14,8 +14,8 @@ Or manually run each migration:
 
 ```bash
 cd backend
-psql -d medflow -U medflow_user -f migrations/001_update_users_table.sql
-psql -d medflow -U medflow_user -f migrations/002_update_tasks_table.sql
+psql -d aureoncare -U aureoncare_user -f migrations/001_update_users_table.sql
+psql -d aureoncare -U aureoncare_user -f migrations/002_update_tasks_table.sql
 ```
 
 ## Migrations

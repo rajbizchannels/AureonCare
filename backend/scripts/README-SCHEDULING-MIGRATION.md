@@ -41,7 +41,7 @@ Replace `[DB_USER]`, `[DB_HOST]`, and `[DB_NAME]` with your actual database cred
 
 Example:
 ```bash
-psql -U postgres -h localhost -d medflow -f migrations/017_create_scheduling_system.sql
+psql -U postgres -h localhost -d aureoncare -f migrations/017_create_scheduling_system.sql
 ```
 
 ### Option 3: Run the migration with the provided script

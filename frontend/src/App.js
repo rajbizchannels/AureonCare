@@ -636,7 +636,7 @@ function App() {
                 <Stethoscope className={`w-6 h-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
               </div>
               <div>
-                <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>MedFlow</h1>
+                <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AureonCare</h1>
                 {user?.role === 'admin' && (
                   <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{planTier} Plan</p>
                 )}

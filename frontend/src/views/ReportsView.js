@@ -92,7 +92,7 @@ const ReportsView = ({
 
     // Header
     doc.setFontSize(20);
-    doc.text('MedFlow - ' + reportTypes.find(r => r.id === selectedReport)?.name, 14, 22);
+    doc.text('AureonCare - ' + reportTypes.find(r => r.id === selectedReport)?.name, 14, 22);
     doc.setFontSize(10);
     doc.text('Generated: ' + new Date().toLocaleString(), 14, 30);
     doc.text('Date Range: ' + (dateRange === 'all' ? 'All Time' : `Last ${dateRange} Days`), 14, 36);
@@ -170,7 +170,7 @@ const ReportsView = ({
     }
 
     // Save PDF
-    doc.save(`medflow-report-${selectedReport}-${dateStr}.pdf`);
+    doc.save(`aureoncare-report-${selectedReport}-${dateStr}.pdf`);
     addNotification('success', 'Report exported to PDF successfully');
   };
 
@@ -180,7 +180,7 @@ const ReportsView = ({
 
     // Summary Sheet
     const summaryData = [
-      ['MedFlow Report', reportTypes.find(r => r.id === selectedReport)?.name],
+      ['AureonCare Report', reportTypes.find(r => r.id === selectedReport)?.name],
       ['Generated', new Date().toLocaleString()],
       ['Date Range', dateRange === 'all' ? 'All Time' : `Last ${dateRange} Days`],
       [],
@@ -246,7 +246,7 @@ const ReportsView = ({
     }
 
     // Save XLSX
-    XLSX.writeFile(workbook, `medflow-report-${selectedReport}-${dateStr}.xlsx`);
+    XLSX.writeFile(workbook, `aureoncare-report-${selectedReport}-${dateStr}.xlsx`);
     addNotification('success', 'Report exported to Excel successfully');
   };
 

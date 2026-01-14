@@ -35,7 +35,7 @@ function generate837File(claimData, submitterInfo) {
     '00', // Security Information Qualifier
     '          ', // Security Information (10 spaces)
     'ZZ', // Interchange ID Qualifier (Submitter)
-    padRight(submitterInfo.submitterId || 'MEDFLOW', 15),
+    padRight(submitterInfo.submitterId || 'AUREONCARE', 15),
     'ZZ', // Interchange ID Qualifier (Receiver)
     padRight(submitterInfo.receiverId || 'CLEARHOUSE', 15),
     currentDate, // Interchange Date
@@ -52,7 +52,7 @@ function generate837File(claimData, submitterInfo) {
   segments.push([
     'GS',
     'HC', // Functional Identifier Code (HC = Health Care Claim)
-    submitterInfo.submitterId || 'MEDFLOW', // Application Sender Code
+    submitterInfo.submitterId || 'AUREONCARE', // Application Sender Code
     submitterInfo.receiverId || 'CLEARHOUSE', // Application Receiver Code
     currentDateLong, // Date
     currentTime.substring(0, 4), // Time (HHMM)
@@ -84,7 +84,7 @@ function generate837File(claimData, submitterInfo) {
 
   // 1000A - Submitter Name
   const submitterHL = hierarchicalIdCounter++;
-  segments.push(`NM1*41*2*${submitterInfo.organizationName || 'MEDFLOW'}*****46*${submitterInfo.submitterId || 'MEDFLOW'}`);
+  segments.push(`NM1*41*2*${submitterInfo.organizationName || 'AUREONCARE'}*****46*${submitterInfo.submitterId || 'AUREONCARE'}`);
   segments.push(`PER*IC*${submitterInfo.contactName || 'Billing Contact'}*TE*${submitterInfo.contactPhone || '5555555555'}`);
 
   // 1000B - Receiver Name

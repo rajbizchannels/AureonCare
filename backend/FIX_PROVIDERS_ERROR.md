@@ -37,12 +37,12 @@ Apply the following migrations in order:
 
 **Windows (Command Prompt):**
 ```cmd
-psql -h localhost -U medflow_user -d medflow -f migrations/011_fix_providers_id_sequence.sql
+psql -h localhost -U aureoncare_user -d aureoncare -f migrations/011_fix_providers_id_sequence.sql
 ```
 
 **Windows (PowerShell):**
 ```powershell
-psql -h localhost -U medflow_user -d medflow -f migrations\011_fix_providers_id_sequence.sql
+psql -h localhost -U aureoncare_user -d aureoncare -f migrations\011_fix_providers_id_sequence.sql
 ```
 
 **What it does:**
@@ -55,12 +55,12 @@ psql -h localhost -U medflow_user -d medflow -f migrations\011_fix_providers_id_
 
 **Windows (Command Prompt):**
 ```cmd
-psql -h localhost -U medflow_user -d medflow -f migrations/012_add_first_last_name_to_users.sql
+psql -h localhost -U aureoncare_user -d aureoncare -f migrations/012_add_first_last_name_to_users.sql
 ```
 
 **Windows (PowerShell):**
 ```powershell
-psql -h localhost -U medflow_user -d medflow -f migrations\012_add_first_last_name_to_users.sql
+psql -h localhost -U aureoncare_user -d aureoncare -f migrations\012_add_first_last_name_to_users.sql
 ```
 
 **What it does:**
@@ -100,7 +100,7 @@ Try changing a user's role to 'doctor' from the admin panel. The error should no
 
 If you prefer using pgAdmin GUI:
 
-1. Open pgAdmin and connect to your `medflow` database
+1. Open pgAdmin and connect to your `aureoncare` database
 2. Open the Query Tool (Tools → Query Tool)
 3. Copy and paste the content of `migrations/011_fix_providers_id_sequence.sql`
 4. Click Execute (F5)
@@ -185,7 +185,7 @@ When syncing a user to the providers table (role change to 'doctor'), the code e
 This is normal. The migration checks for existence and reuses the existing sequence.
 
 ### "permission denied" error
-Make sure you're running psql as the `medflow_user` or a user with sufficient privileges.
+Make sure you're running psql as the `aureoncare_user` or a user with sufficient privileges.
 
 ### Migration runs but error persists
 1. Verify migrations applied successfully (check for error messages)

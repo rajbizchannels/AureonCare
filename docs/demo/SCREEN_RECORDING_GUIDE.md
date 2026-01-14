@@ -1,6 +1,6 @@
-# MedFlow Executive Demo - Screen Recording Guide
+# AureonCare Executive Demo - Screen Recording Guide
 
-**Purpose:** Step-by-step guide for recording the MedFlow demo screen actions
+**Purpose:** Step-by-step guide for recording the AureonCare demo screen actions
 
 **Duration:** Plan for 15-20 minutes of recording (will be edited down to 11-12 minutes of screen time)
 
@@ -8,11 +8,11 @@
 
 ## Pre-Recording Setup
 
-### Step 1: Prepare MedFlow Environment
+### Step 1: Prepare AureonCare Environment
 
 **Backend:**
 ```bash
-cd /home/user/MedFlow/backend
+cd /home/user/AureonCare/backend
 npm start
 ```
 - Ensure backend is running on `localhost:3000`
@@ -20,7 +20,7 @@ npm start
 
 **Frontend:**
 ```bash
-cd /home/user/MedFlow/frontend
+cd /home/user/AureonCare/frontend
 npm start
 ```
 - Ensure frontend opens at `localhost:3001`
@@ -29,19 +29,19 @@ npm start
 ### Step 2: Load Demo Data
 
 ```bash
-psql -U medflow_app -d medflow_demo -f backend/db/demo_data.sql
+psql -U aureoncare_app -d aureoncare_demo -f backend/db/demo_data.sql
 ```
 
 Verify Sarah Williams exists:
 ```bash
-psql -U medflow_app -d medflow_demo -c "SELECT * FROM patients WHERE mrn = 'MRN-2025-001';"
+psql -U aureoncare_app -d aureoncare_demo -c "SELECT * FROM patients WHERE mrn = 'MRN-2025-001';"
 ```
 
-### Step 3: Login to MedFlow
+### Step 3: Login to AureonCare
 
 1. Open browser: `http://localhost:3001`
 2. Login with:
-   - **Email:** `dr.anderson@medflow.com`
+   - **Email:** `dr.anderson@aureoncare.com`
    - **Password:** `Demo123!`
 3. Wait for dashboard to load completely
 
@@ -68,7 +68,7 @@ psql -U medflow_app -d medflow_demo -c "SELECT * FROM patients WHERE mrn = 'MRN-
 ### Step 5: OBS Studio Setup (If Using)
 
 **Scene Setup:**
-1. Create scene: "MedFlow Demo"
+1. Create scene: "AureonCare Demo"
 2. Add source: "Window Capture" → Select browser window
 3. Fit to screen (1920x1080)
 
@@ -115,7 +115,7 @@ Skip to Scene 3.
 
 ### SCENE 3: Patient Search (1:20 - 2:10 in final video)
 
-**Starting Point:** MedFlow dashboard (after login)
+**Starting Point:** AureonCare dashboard (after login)
 
 **Actions:**
 1. Navigate to "Practice Management" module

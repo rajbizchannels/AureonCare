@@ -548,7 +548,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                psql -U medflow_app -d medflow -f backend/migrations/040_create_audit_logs_table.sql
+                psql -U aureoncare_app -d aureoncare -f backend/migrations/040_create_audit_logs_table.sql
               </div>
               <p
                 className={`text-sm ${

@@ -1,4 +1,4 @@
-# MedFlow User Manual
+# AureonCare User Manual
 
 **Version 1.1 - Updated December 2025**
 **Modern Healthcare Practice Management System**
@@ -35,9 +35,9 @@
 
 ## 1. Introduction
 
-### 1.1 About MedFlow
+### 1.1 About AureonCare
 
-MedFlow is a comprehensive, enterprise-grade medical practice management platform designed to streamline healthcare operations, enhance patient care, and optimize revenue cycles. The system integrates multiple healthcare functions into a single, unified platform.
+AureonCare is a comprehensive, enterprise-grade medical practice management platform designed to streamline healthcare operations, enhance patient care, and optimize revenue cycles. The system integrates multiple healthcare functions into a single, unified platform.
 
 **Key Capabilities:**
 - Electronic Health Records (EHR) management
@@ -145,7 +145,7 @@ This manual is designed for:
 
 **Staff Portal Login:**
 
-1. Navigate to the MedFlow URL provided by your administrator
+1. Navigate to the AureonCare URL provided by your administrator
 2. Enter your **Email Address**
 3. Enter your **Password**
 4. Click **Sign In**
@@ -180,13 +180,13 @@ When logging in for the first time:
 
 ### 2.3 Social Login (OAuth)
 
-MedFlow supports social login options:
+AureonCare supports social login options:
 
 1. On the login screen, click one of the social login buttons:
    - **Sign in with Google**
    - **Sign in with Microsoft**
    - **Sign in with Facebook**
-2. Authorize MedFlow to access your account
+2. Authorize AureonCare to access your account
 3. Complete your profile setup if this is your first login
 
 ### 2.4 Understanding the Interface
@@ -230,7 +230,7 @@ MedFlow supports social login options:
 
 ### 3.1 Understanding Roles
 
-MedFlow uses a Role-Based Access Control (RBAC) system with 8 predefined roles:
+AureonCare uses a Role-Based Access Control (RBAC) system with 8 predefined roles:
 
 #### 3.1.1 Administrator
 **Full system access for practice managers and IT staff**
@@ -788,7 +788,7 @@ Each appointment type has:
 ### 6.5 Appointment Reminders
 
 **Automatic Reminders:**
-MedFlow sends automatic appointment reminders via:
+AureonCare sends automatic appointment reminders via:
 - **Email** - 48 hours before appointment
 - **SMS** - 24 hours before appointment (if configured)
 - **WhatsApp** - 24 hours before appointment (if integrated)
@@ -1429,7 +1429,7 @@ When creating a prescription, the system automatically checks for:
 
 **Linking Prescriptions to Diagnoses:**
 
-MedFlow now supports linking prescriptions directly to diagnoses for better clinical documentation:
+AureonCare now supports linking prescriptions directly to diagnoses for better clinical documentation:
 
 **Benefits:**
 - Clear association between diagnosis and treatment
@@ -1691,7 +1691,7 @@ Session automatically linked to:
 
 **Test Selection (Enhanced CPT Code Multiselect):**
 
-MedFlow now features an advanced multiselect dropdown for laboratory tests with CPT codes:
+AureonCare now features an advanced multiselect dropdown for laboratory tests with CPT codes:
 
 1. Click on **Select Lab Tests** dropdown
 2. Search for tests by name or CPT code (80000-89999 range)
@@ -2629,7 +2629,7 @@ The Patient Portal is a secure online platform where patients can:
 
 ### 17.1 Available Reports
 
-MedFlow offers comprehensive reporting across all modules:
+AureonCare offers comprehensive reporting across all modules:
 
 #### Revenue Reports
 - Total revenue by period
@@ -2785,7 +2785,7 @@ Based on role permissions:
 
 **Types of Notifications:**
 
-MedFlow sends automatic notifications for:
+AureonCare sends automatic notifications for:
 - New appointment bookings
 - Appointment reminders
 - Appointment cancellations
@@ -3378,7 +3378,7 @@ A:
 
 **Q: How is my data protected?**
 
-A: MedFlow uses encryption, secure authentication, role-based access control, and follows HIPAA compliance standards to protect your health information.
+A: AureonCare uses encryption, secure authentication, role-based access control, and follows HIPAA compliance standards to protect your health information.
 
 **Q: Who can see my medical records?**
 
@@ -3415,7 +3415,7 @@ A: Credit card, debit card, cash, check, bank transfer, and insurance (varies by
 **Contact Methods:**
 
 **Technical Support:**
-- Email: support@medflow.com
+- Email: support@aureoncare.com
 - Phone: [Clinic phone number]
 - Live chat: Available during business hours
 
@@ -3428,7 +3428,7 @@ A: Credit card, debit card, cash, check, bank transfer, and insurance (varies by
 **Business Hours:**
 - [Insert clinic hours]
 
-⚠️ **For Medical Emergencies:** Call 911 or go to the nearest emergency room. Do not use MedFlow for emergencies.
+⚠️ **For Medical Emergencies:** Call 911 or go to the nearest emergency room. Do not use AureonCare for emergencies.
 
 ---
 
@@ -3722,10 +3722,10 @@ A: Credit card, debit card, cash, check, bank transfer, and insurance (varies by
 
 ## Appendix B: Contact Information
 
-**MedFlow Support:**
-- Email: support@medflow.com
-- Website: https://medflow.com
-- Documentation: https://docs.medflow.com
+**AureonCare Support:**
+- Email: support@aureoncare.com
+- Website: https://aureoncare.com
+- Documentation: https://docs.aureoncare.com
 
 **Emergency Support:**
 - For medical emergencies: Call 911
@@ -3779,4 +3779,4 @@ A: Credit card, debit card, cash, check, bank transfer, and insurance (varies by
 
 *This manual is subject to updates. Please check for the latest version regularly.*
 
-*MedFlow - Empowering Healthcare Practices with Modern Technology*
+*AureonCare - Empowering Healthcare Practices with Modern Technology*

@@ -239,7 +239,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                  placeholder="john.smith@medflow.com"
+                  placeholder="john.smith@aureoncare.com"
                 />
               </div>
 

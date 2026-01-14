@@ -88,8 +88,8 @@ CREATE INDEX idx_waitlist_active_lookup ON appointment_waitlist(provider_id, pre
 
 ### Using psql:
 ```bash
-psql -U postgres -d medflow -f backend/migrations/FIX_APPOINTMENT_TYPES_TABLE.sql
-psql -U postgres -d medflow -f backend/migrations/FIX_WAITLIST_TABLE.sql
+psql -U postgres -d aureoncare -f backend/migrations/FIX_APPOINTMENT_TYPES_TABLE.sql
+psql -U postgres -d aureoncare -f backend/migrations/FIX_WAITLIST_TABLE.sql
 ```
 
 ## Verify It Worked

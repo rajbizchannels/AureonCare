@@ -1,6 +1,6 @@
 # Database Scripts
 
-This directory contains scripts for managing the MedFlow database.
+This directory contains scripts for managing the AureonCare database.
 
 ## 🚀 Quick Start - Reset Database with Test Data
 
@@ -41,7 +41,7 @@ node backend/scripts/reset-and-seed.js
 
 **Usage:**
 ```bash
-psql -U postgres -d medflow -f backend/scripts/reset-database.sql
+psql -U postgres -d aureoncare -f backend/scripts/reset-database.sql
 ```
 
 **What it does:**
@@ -56,7 +56,7 @@ psql -U postgres -d medflow -f backend/scripts/reset-database.sql
 
 **Usage:**
 ```bash
-psql -U postgres -d medflow -f backend/scripts/seed-test-data.sql
+psql -U postgres -d aureoncare -f backend/scripts/seed-test-data.sql
 ```
 
 **What it does:**
@@ -75,13 +75,13 @@ After seeding, you can log in with these accounts:
 **Password for all accounts:** `password123`
 
 ### Admin
-- Email: `admin@medflow.com`
+- Email: `admin@aureoncare.com`
 - Role: Administrator
 
 ### Doctors
-- Email: `dr.smith@medflow.com` (Family Medicine)
-- Email: `dr.johnson@medflow.com` (Cardiology)
-- Email: `dr.williams@medflow.com` (Pediatrics)
+- Email: `dr.smith@aureoncare.com` (Family Medicine)
+- Email: `dr.johnson@aureoncare.com` (Cardiology)
+- Email: `dr.williams@aureoncare.com` (Pediatrics)
 
 ### Patients
 - Email: `john.doe@example.com`
@@ -90,7 +90,7 @@ After seeding, you can log in with these accounts:
 - Email: `alice.brown@example.com`
 
 ### Staff
-- Email: `staff@medflow.com`
+- Email: `staff@aureoncare.com`
 
 ## 📊 Test Data Summary
 
@@ -169,7 +169,7 @@ npm run migrate
 ```env
 DB_USER=postgres
 DB_HOST=localhost
-DB_NAME=medflow
+DB_NAME=aureoncare
 DB_PASSWORD=postgres
 DB_PORT=5432
 ```
@@ -177,7 +177,7 @@ DB_PORT=5432
 ### Want to keep some data?
 If you only want to add test data without deleting:
 ```bash
-psql -U postgres -d medflow -f backend/scripts/seed-test-data.sql
+psql -U postgres -d aureoncare -f backend/scripts/seed-test-data.sql
 ```
 **Warning:** This may cause duplicate key errors if data already exists.
 
@@ -185,7 +185,7 @@ psql -U postgres -d medflow -f backend/scripts/seed-test-data.sql
 
 ### Connect to Database
 ```bash
-psql -U postgres -d medflow
+psql -U postgres -d aureoncare
 ```
 
 ### View All Tables

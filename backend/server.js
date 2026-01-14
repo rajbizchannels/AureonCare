@@ -12,9 +12,9 @@ const PORT = process.env.PORT || 3000;
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'medflow_app',
-  password: 'MedFlow2024!',
+  database: process.env.DB_NAME || 'aureoncare',
+  user: process.env.DB_USER || 'aureoncare_app',
+  password: 'AureonCare2024!',
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
@@ -87,7 +87,7 @@ app.get('/health', async (req, res) => {
 // API routes
 app.get('/api/test', (req, res) => {
   res.json({ 
-    message: 'MedFlow API is running!',
+    message: 'AureonCare API is running!',
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development'
   });
@@ -157,11 +157,11 @@ app.use((err, req, res, next) => {
 // Start server
 async function startServer() {
   console.log('========================================');
-  console.log('MedFlow Backend Server Starting...');
+  console.log('AureonCare Backend Server Starting...');
   console.log('========================================');
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Port: ${PORT}`);
-  console.log(`Database: ${process.env.DB_NAME || 'medflow'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}`);
+  console.log(`Database: ${process.env.DB_NAME || 'aureoncare'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}`);
   console.log('========================================\n');
 
   try {
@@ -199,7 +199,7 @@ async function startServer() {
     // Start Express server
     app.listen(PORT, () => {
       console.log(`\n=================================`);
-      console.log(`🚀 MedFlow Backend Server Running`);
+      console.log(`🚀 AureonCare Backend Server Running`);
       console.log(`=================================`);
       console.log(`🌐 URL: http://localhost:${PORT}`);
       console.log(`🗄️  Database: ${process.env.DB_NAME}`);

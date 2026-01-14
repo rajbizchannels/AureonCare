@@ -48,13 +48,13 @@ class TelehealthProviderManager {
       );
 
       if (result.rows.length === 0) {
-        return { provider_type: 'medflow', is_enabled: false };
+        return { provider_type: 'aureoncare', is_enabled: false };
       }
 
       return result.rows[0];
     } catch (error) {
       console.error('Error getting active provider:', error);
-      return { provider_type: 'medflow', is_enabled: false };
+      return { provider_type: 'aureoncare', is_enabled: false };
     }
   }
 
@@ -105,7 +105,7 @@ class TelehealthProviderManager {
       if (!providerType) {
         const activeProvider = await this.getActiveProvider();
         if (!activeProvider.is_enabled) {
-          // Fall back to default MedFlow meeting
+          // Fall back to default AureonCare meeting
           return this.createDefaultMeeting(sessionData);
         }
         providerType = activeProvider.provider_type;
@@ -121,7 +121,7 @@ class TelehealthProviderManager {
   }
 
   /**
-   * Create a default MedFlow meeting (fallback)
+   * Create a default AureonCare meeting (fallback)
    */
   createDefaultMeeting(sessionData) {
     const crypto = require('crypto');
@@ -130,9 +130,9 @@ class TelehealthProviderManager {
     return {
       success: true,
       meetingId: roomId,
-      meetingUrl: `https://meet.medflow.com/${roomId}`,
+      meetingUrl: `https://meet.aureoncare.com/${roomId}`,
       roomId: roomId,
-      provider: 'medflow'
+      provider: 'aureoncare'
     };
   }
 
@@ -141,12 +141,12 @@ class TelehealthProviderManager {
    */
   async getMeeting(meetingId, providerType) {
     try {
-      if (providerType === 'medflow') {
+      if (providerType === 'aureoncare') {
         return {
           success: true,
           meeting: {
             id: meetingId,
-            provider: 'medflow'
+            provider: 'aureoncare'
           }
         };
       }
@@ -164,7 +164,7 @@ class TelehealthProviderManager {
    */
   async updateMeeting(meetingId, updates, providerType) {
     try {
-      if (providerType === 'medflow') {
+      if (providerType === 'aureoncare') {
         return {
           success: true,
           message: 'Default meeting updated'
@@ -184,7 +184,7 @@ class TelehealthProviderManager {
    */
   async deleteMeeting(meetingId, providerType) {
     try {
-      if (providerType === 'medflow') {
+      if (providerType === 'aureoncare') {
         return {
           success: true,
           message: 'Default meeting deleted'

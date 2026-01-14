@@ -5,16 +5,16 @@ console.log('Testing database connection...\n');
 console.log('Configuration:');
 console.log('Host:', process.env.DB_HOST || 'localhost');
 console.log('Port:', process.env.DB_PORT || 5432);
-console.log('Database:', process.env.DB_NAME || 'medflow');
-console.log('User:', process.env.DB_USER || 'medflow_user');
+console.log('Database:', process.env.DB_NAME || 'aureoncare');
+console.log('User:', process.env.DB_USER || 'aureoncare_user');
 console.log('Password:', process.env.DB_PASSWORD ? 'SET (length: ' + process.env.DB_PASSWORD.length + ')' : 'NOT SET');
 console.log('');
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'medflow_user',
+  database: process.env.DB_NAME || 'aureoncare',
+  user: process.env.DB_USER || 'aureoncare_user',
   password: process.env.DB_PASSWORD,
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
@@ -38,7 +38,7 @@ async function testConnection() {
     console.error('\nTroubleshooting steps:');
     console.error('1. Check PostgreSQL is running: net start postgresql-x64-15');
     console.error('2. Verify password in .env matches database');
-    console.error('3. Test manual connection: psql -U medflow_user -d medflow');
+    console.error('3. Test manual connection: psql -U aureoncare_user -d aureoncare');
     process.exit(1);
   }
 }

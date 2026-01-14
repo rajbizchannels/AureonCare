@@ -1,9 +1,9 @@
 @echo off
-REM Database Initialization Script for MedFlow (Windows)
+REM Database Initialization Script for AureonCare (Windows)
 REM This script sets up a fresh database with the new schema
 
 echo ==========================================
-echo MedFlow Database Initialization
+echo AureonCare Database Initialization
 echo ==========================================
 echo.
 
@@ -12,7 +12,7 @@ if "%DATABASE_URL%"=="" (
     echo ERROR: DATABASE_URL environment variable is not set
     echo.
     echo Please set it in your .env file or set it:
-    echo   set DATABASE_URL=postgresql://user:password@localhost:5432/medflow
+    echo   set DATABASE_URL=postgresql://user:password@localhost:5432/aureoncare
     exit /b 1
 )
 
@@ -83,7 +83,7 @@ echo Database initialization complete!
 echo ==========================================
 echo.
 echo Test credentials:
-echo   Admin: admin@medflow.com / password
+echo   Admin: admin@aureoncare.com / password
 echo   Patient Portal:
 echo     - john.doe@example.com
 echo     - jane.smith@example.com

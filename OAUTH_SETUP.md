@@ -38,14 +38,14 @@ Quick reference for setting up social login with Google, Microsoft, and Facebook
    - Click "Create Credentials" > "OAuth client ID"
    - If prompted, configure OAuth consent screen:
      - User Type: External
-     - App name: MedFlow
+     - App name: AureonCare
      - User support email: your email
      - Developer contact: your email
      - Save and continue through all steps
 
 5. **Configure OAuth Client**
    - Application type: **Web application**
-   - Name: MedFlow Web Client
+   - Name: AureonCare Web Client
    - Authorized JavaScript origins:
      ```
      http://localhost:3001
@@ -88,7 +88,7 @@ Quick reference for setting up social login with Google, Microsoft, and Facebook
    - Click "New registration"
 
 3. **Configure App Registration**
-   - Name: MedFlow
+   - Name: AureonCare
    - Supported account types:
      ```
      Accounts in any organizational directory (Any Azure AD directory - Multitenant)
@@ -144,7 +144,7 @@ Quick reference for setting up social login with Google, Microsoft, and Facebook
    - Click "Next"
 
 3. **Configure App**
-   - Display Name: MedFlow
+   - Display Name: AureonCare
    - App Contact Email: your email
    - Click "Create App"
 

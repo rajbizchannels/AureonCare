@@ -1,17 +1,17 @@
 #!/bin/bash
 # Check if PostgreSQL is running
-if ! pg_isready -U medflow_app -d medflow 2>/dev/null; then
+if ! pg_isready -U aureoncare_app -d aureoncare 2>/dev/null; then
     echo "PostgreSQL is not running or not accessible."
-    echo "Please start PostgreSQL and ensure the database 'medflow' exists."
+    echo "Please start PostgreSQL and ensure the database 'aureoncare' exists."
     echo ""
     echo "To run the migration manually:"
-    echo "  psql -U medflow_app -d medflow -f backend/migrations/040_create_audit_logs_table.sql"
+    echo "  psql -U aureoncare_app -d aureoncare -f backend/migrations/040_create_audit_logs_table.sql"
     exit 1
 fi
 
 # Run the migration
 echo "Running audit logs migration..."
-psql -U medflow_app -d medflow -f backend/migrations/040_create_audit_logs_table.sql
+psql -U aureoncare_app -d aureoncare -f backend/migrations/040_create_audit_logs_table.sql
 
 if [ $? -eq 0 ]; then
     echo "✅ Migration completed successfully!"

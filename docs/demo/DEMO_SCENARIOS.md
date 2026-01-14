@@ -1,4 +1,4 @@
-# MedFlow Executive Demo - Demo Scenarios & Patient Stories
+# AureonCare Executive Demo - Demo Scenarios & Patient Stories
 
 **Purpose:** This document provides detailed patient scenarios and narratives to make the demo more engaging and realistic.
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-The demo follows **Sarah Williams**, a 39-year-old patient with Type 2 Diabetes and Hypertension, through her complete care journey in MedFlow. This patient story demonstrates all key features of the platform in a cohesive, realistic narrative.
+The demo follows **Sarah Williams**, a 39-year-old patient with Type 2 Diabetes and Hypertension, through her complete care journey in AureonCare. This patient story demonstrates all key features of the platform in a cohesive, realistic narrative.
 
 ---
 
@@ -247,7 +247,7 @@ The demo follows **Sarah Williams**, a 39-year-old patient with Type 2 Diabetes 
 **Context:** Front desk receives a call from Sarah Williams requesting a telehealth appointment.
 
 **Talk Track:**
-> "Sarah Williams is an established patient with diabetes. She's calling to schedule a virtual visit because she's experiencing some dizziness. Let me show you how quick and easy this is in MedFlow.
+> "Sarah Williams is an established patient with diabetes. She's calling to schedule a virtual visit because she's experiencing some dizziness. Let me show you how quick and easy this is in AureonCare.
 >
 > [SEARCH] I type her name, and instantly, her record appears—complete with her medical history, active medications, and insurance information.
 >
@@ -277,7 +277,7 @@ The demo follows **Sarah Williams**, a 39-year-old patient with Type 2 Diabetes 
 **Context:** Dr. Anderson starts the telehealth session with Sarah.
 
 **Talk Track:**
-> "It's 10 AM. Dr. Anderson clicks 'Start Session.' MedFlow instantly creates a Zoom meeting and sends Sarah a join link via SMS.
+> "It's 10 AM. Dr. Anderson clicks 'Start Session.' AureonCare instantly creates a Zoom meeting and sends Sarah a join link via SMS.
 >
 > [VIDEO] Within seconds, they're face-to-face virtually. Sarah explains her dizziness symptoms.
 >
@@ -298,7 +298,7 @@ The demo follows **Sarah Williams**, a 39-year-old patient with Type 2 Diabetes 
 >
 > [ORDER] He orders the test right here in the encounter. He selects 'Lipid Panel,' chooses Labcorp, links it to her diabetes diagnosis for proper coding, and submits.
 >
-> [TRANSMIT] MedFlow sends a FHIR ServiceRequest to Labcorp electronically. Sarah receives instructions to visit any Labcorp location for a fasting blood draw.
+> [TRANSMIT] AureonCare sends a FHIR ServiceRequest to Labcorp electronically. Sarah receives instructions to visit any Labcorp location for a fasting blood draw.
 >
 > [TRACKING] The lab order gets a tracking number—LAB-123456. The system monitors it in real-time:
 > - Order created
@@ -312,17 +312,17 @@ The demo follows **Sarah Williams**, a 39-year-old patient with Type 2 Diabetes 
 
 ### Scenario 5: Revenue Cycle Management (Slide 7)
 
-**Context:** Behind the scenes, MedFlow automatically generates a claim for Sarah's visit.
+**Context:** Behind the scenes, AureonCare automatically generates a claim for Sarah's visit.
 
 **Talk Track:**
-> "Here's where MedFlow eliminates administrative burden.
+> "Here's where AureonCare eliminates administrative burden.
 >
 > [AUTO-CAPTURE] The moment Dr. Anderson saved Sarah's encounter, the system automatically:
 > - Captured the diagnosis codes (E11.9 for diabetes, I10 for hypertension)
 > - Assigned the procedure code (99214 for an established patient visit)
 > - Generated a claim form
 >
-> [ELIGIBILITY] Before submitting, MedFlow verified Sarah's insurance eligibility with Blue Cross Blue Shield. Her coverage is active, and her $30 co-pay is noted.
+> [ELIGIBILITY] Before submitting, AureonCare verified Sarah's insurance eligibility with Blue Cross Blue Shield. Her coverage is active, and her $30 co-pay is noted.
 >
 > [SUBMIT] The billing team clicks 'Submit to Clearinghouse.' The claim is transmitted to Optum, which routes it to Blue Cross.
 >
@@ -350,14 +350,14 @@ The demo follows **Sarah Williams**, a 39-year-old patient with Type 2 Diabetes 
 > [FHIR] Every data point in Sarah's record is stored in FHIR R4 format—the global standard for healthcare data exchange.
 >
 > [PRESCRIPTION] When Dr. Anderson prescribed Lisinopril:
-> - MedFlow created a FHIR MedicationRequest resource
+> - AureonCare created a FHIR MedicationRequest resource
 > - Transmitted it to Surescripts using national standards
 > - Surescripts routed it to CVS Pharmacy
 > - CVS confirmed receipt and filled the prescription
-> - Status updates flowed back to MedFlow in real-time
+> - Status updates flowed back to AureonCare in real-time
 >
 > [LAB ORDER] When Dr. Anderson ordered the lipid panel:
-> - MedFlow created a FHIR ServiceRequest resource
+> - AureonCare created a FHIR ServiceRequest resource
 > - Sent it to Labcorp via their API
 > - Labcorp acknowledged the order
 > - When results are ready, they'll come back as FHIR Observation resources
@@ -436,7 +436,7 @@ The demo follows **Sarah Williams**, a 39-year-old patient with Type 2 Diabetes 
    - Track appeal progress
 
 **Talk Track:**
-> "Denials happen. But MedFlow helps you manage them systematically. We flag denials immediately with the reason and deadline. Staff can prioritize high-value denials and track appeals to completion."
+> "Denials happen. But AureonCare helps you manage them systematically. We flag denials immediately with the reason and deadline. Staff can prioritize high-value denials and track appeals to completion."
 
 ### Scenario B: Patient Portal
 
@@ -466,7 +466,7 @@ The demo follows **Sarah Williams**, a 39-year-old patient with Type 2 Diabetes 
 4. Convert waitlist patient to scheduled appointment
 
 **Talk Track:**
-> "When a patient cancels, MedFlow automatically notifies patients on the waitlist for that time slot. One click converts them to a scheduled appointment. This optimizes provider schedules and reduces revenue loss from cancellations."
+> "When a patient cancels, AureonCare automatically notifies patients on the waitlist for that time slot. One click converts them to a scheduled appointment. This optimizes provider schedules and reduces revenue loss from cancellations."
 
 ---
 
@@ -557,7 +557,7 @@ Before the demo, verify:
 ✅ **Engagement:** Audience asks specific questions about features
 ✅ **Clarity:** Audience understands the value proposition
 ✅ **Interest:** Audience requests POC or follow-up meeting
-✅ **Confidence:** Audience believes MedFlow can solve their problems
+✅ **Confidence:** Audience believes AureonCare can solve their problems
 
 **Common positive signals:**
 - "How long would implementation take for our organization?"
@@ -569,4 +569,4 @@ Before the demo, verify:
 
 **End of Demo Scenarios**
 
-**You're ready to tell Sarah's story and showcase MedFlow! 🚀**
+**You're ready to tell Sarah's story and showcase AureonCare! 🚀**

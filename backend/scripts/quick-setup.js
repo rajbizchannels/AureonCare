@@ -10,14 +10,14 @@ const path = require('path');
 
 async function setupDatabase() {
   console.log('===========================================');
-  console.log('MedFlow Quick Database Setup');
+  console.log('AureonCare Quick Database Setup');
   console.log('===========================================\n');
 
   // Check DATABASE_URL
   if (!process.env.DATABASE_URL) {
     console.error('❌ ERROR: DATABASE_URL not set in .env file');
     console.error('\nPlease create backend/.env with:');
-    console.error('DATABASE_URL=postgresql://username:password@localhost:5432/medflow\n');
+    console.error('DATABASE_URL=postgresql://username:password@localhost:5432/aureoncare\n');
     process.exit(1);
   }
 

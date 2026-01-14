@@ -96,7 +96,7 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
             </div>
             <div>
               <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Create Account</h1>
-              <p className={`mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Register for MedFlow</p>
+              <p className={`mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Register for AureonCare</p>
             </div>
           </div>
         </div>

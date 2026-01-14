@@ -169,7 +169,7 @@ Please arrive 15 minutes early for check-in.
 
 If you need to cancel or reschedule, please contact us at least 24 hours in advance.
 
-Thank you for choosing ${process.env.CLINIC_NAME || 'MedFlow'}!
+Thank you for choosing ${process.env.CLINIC_NAME || 'AureonCare'}!
       `.trim();
 
       return await this.sendMessage(patient.phone, message);
@@ -308,7 +308,7 @@ ${pharmacy ? 'Your prescription has been sent to the pharmacy and should be read
 If you have any questions, please contact us.
 
 Thank you,
-${process.env.CLINIC_NAME || 'MedFlow'}
+${process.env.CLINIC_NAME || 'AureonCare'}
       `.trim();
 
       return await this.sendMessage(patient.phone, message);
@@ -370,7 +370,7 @@ ${updateType === 'cancelled' || updateType === 'canceled'
   : `Please arrive 15 minutes early for check-in.\n\nIf you need to make changes, please contact us at least 24 hours in advance.`
 }
 
-${process.env.CLINIC_NAME || 'MedFlow'}
+${process.env.CLINIC_NAME || 'AureonCare'}
       `.trim();
 
       return await this.sendMessage(patient.phone, message);

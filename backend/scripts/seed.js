@@ -5,8 +5,8 @@ const bcrypt = require('bcryptjs');
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'medflow_user',
+  database: process.env.DB_NAME || 'aureoncare',
+  user: process.env.DB_USER || 'aureoncare_user',
   password: process.env.DB_PASSWORD,
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
@@ -53,7 +53,7 @@ async function seedDatabase() {
     `, [
       'System',
       'Administrator',
-      'admin@medflow.com',
+      'admin@aureoncare.com',
       passwordHash,
       'admin',
       'active'
@@ -69,7 +69,7 @@ async function seedDatabase() {
     `, [
       'Sarah',
       'Chen',
-      'dr.chen@medflow.com',
+      'dr.chen@aureoncare.com',
       physicianPassword,
       'physician',
       '+1-555-0101',
@@ -103,8 +103,8 @@ async function seedDatabase() {
     console.log('\n✓ Database seeding completed successfully!');
     console.log('\nDefault Credentials:');
     console.log('-------------------');
-    console.log('Admin: admin@medflow.com / Admin123!');
-    console.log('Doctor: dr.chen@medflow.com / Doctor123!');
+    console.log('Admin: admin@aureoncare.com / Admin123!');
+    console.log('Doctor: dr.chen@aureoncare.com / Doctor123!');
     console.log('-------------------\n');
     
   } catch (error) {

@@ -1,8 +1,8 @@
-# MedFlow
+# AureonCare
 
 **Modern Healthcare Practice Management System**
 
-MedFlow is a comprehensive, enterprise-grade medical practice management platform designed to streamline healthcare operations, enhance patient care, and optimize revenue cycles. Built with modern web technologies and HIPAA compliance in mind.
+AureonCare is a comprehensive, enterprise-grade medical practice management platform designed to streamline healthcare operations, enhance patient care, and optimize revenue cycles. Built with modern web technologies and HIPAA compliance in mind.
 
 ---
 
@@ -20,7 +20,7 @@ MedFlow is a comprehensive, enterprise-grade medical practice management platfor
 
 ## Overview
 
-MedFlow is an all-in-one healthcare management solution that combines Electronic Health Records (EHR), Practice Management, Revenue Cycle Management (RCM), Telehealth, and Patient Engagement tools into a single, integrated platform. Designed for healthcare practices of all sizes, from solo practitioners to large multi-specialty groups.
+AureonCare is an all-in-one healthcare management solution that combines Electronic Health Records (EHR), Practice Management, Revenue Cycle Management (RCM), Telehealth, and Patient Engagement tools into a single, integrated platform. Designed for healthcare practices of all sizes, from solo practitioners to large multi-specialty groups.
 
 ### Built For
 
@@ -521,8 +521,8 @@ MedFlow is an all-in-one healthcare management solution that combines Electronic
 
 1. Clone the repository
 ```bash
-git clone https://github.com/rajbizchannels/MedFlow.git
-cd MedFlow
+git clone https://github.com/rajbizchannels/AureonCare.git
+cd AureonCare
 ```
 
 2. Install dependencies
@@ -553,7 +553,7 @@ npm run dev
 
 ### Configuration
 
-MedFlow requires the following environment variables:
+AureonCare requires the following environment variables:
 
 - `DATABASE_URL` - PostgreSQL connection string
 - `JWT_SECRET` - Secret key for JWT tokens
@@ -644,13 +644,13 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ## Contact
 
 For questions and support, please contact:
-- Email: support@medflow.com
-- Website: https://medflow.com
-- GitHub Issues: https://github.com/rajbizchannels/MedFlow/issues
+- Email: support@aureoncare.com
+- Website: https://aureoncare.com
+- GitHub Issues: https://github.com/rajbizchannels/AureonCare/issues
 
 ---
 
-**MedFlow** - Empowering Healthcare Practices with Modern Technology
+**AureonCare** - Empowering Healthcare Practices with Modern Technology
 
 ---
 

@@ -5,8 +5,8 @@ const { Pool } = require('pg');
 console.log('Environment check:');
 console.log('DB_HOST:', process.env.DB_HOST || 'localhost');
 console.log('DB_PORT:', process.env.DB_PORT || 5432);
-console.log('DB_NAME:', process.env.DB_NAME || 'medflow');
-console.log('DB_USER:', process.env.DB_USER || 'medflow_user');
+console.log('DB_NAME:', process.env.DB_NAME || 'aureoncare');
+console.log('DB_USER:', process.env.DB_USER || 'aureoncare_user');
 console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***SET***' : '***NOT SET***');
 console.log('');
 
@@ -22,8 +22,8 @@ if (!dbPassword) {
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'medflow_user',
+  database: process.env.DB_NAME || 'aureoncare',
+  user: process.env.DB_USER || 'aureoncare_user',
   password: dbPassword.toString(),
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',

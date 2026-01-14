@@ -14,32 +14,32 @@ This error occurs because the migration file was created but never executed on y
 1. Open Command Prompt or PowerShell
 2. Navigate to the migrations directory:
    ```bash
-   cd D:\MedFlow\backend\migrations
+   cd D:\AureonCare\backend\migrations
    ```
 
 3. Run the migration using psql:
    ```bash
-   psql -U postgres -d medflow -f RUN_032_INSURANCE_PAYER.sql
+   psql -U postgres -d aureoncare -f RUN_032_INSURANCE_PAYER.sql
    ```
 
-4. Enter your database password when prompted: `MedFlow2024!`
+4. Enter your database password when prompted: `AureonCare2024!`
 
 ### Method 2: Using pgAdmin
 
 1. Open pgAdmin
 2. Connect to your PostgreSQL server
-3. Select the `medflow` database
+3. Select the `aureoncare` database
 4. Click on **Tools** → **Query Tool**
-5. Open the file: `D:\MedFlow\backend\migrations\RUN_032_INSURANCE_PAYER.sql`
+5. Open the file: `D:\AureonCare\backend\migrations\RUN_032_INSURANCE_PAYER.sql`
 6. Click the **Execute** button (or press F5)
 7. You should see: "Migration 032 completed successfully!"
 
 ### Method 3: Using DBeaver or Other Database Client
 
 1. Open your database client
-2. Connect to the `medflow` database
+2. Connect to the `aureoncare` database
 3. Open SQL editor
-4. Load and execute: `D:\MedFlow\backend\migrations\RUN_032_INSURANCE_PAYER.sql`
+4. Load and execute: `D:\AureonCare\backend\migrations\RUN_032_INSURANCE_PAYER.sql`
 5. Verify the output shows success
 
 ### Method 4: Using Node.js Script
@@ -47,7 +47,7 @@ This error occurs because the migration file was created but never executed on y
 1. Make sure PostgreSQL is running
 2. Open Command Prompt in the backend directory:
    ```bash
-   cd D:\MedFlow\backend
+   cd D:\AureonCare\backend
    ```
 
 3. Run the migration script:
@@ -92,13 +92,13 @@ insurance_payer_id   | uuid      | YES
 
 **If you see "relation 'insurance_payers' does not exist":**
 - You need to run migration 031 first: `031_create_insurance_payers.sql`
-- Run: `psql -U postgres -d medflow -f 031_create_insurance_payers.sql`
+- Run: `psql -U postgres -d aureoncare -f 031_create_insurance_payers.sql`
 - Then run migration 032 again
 
 **If PostgreSQL is not in your PATH:**
 - Find your PostgreSQL installation (usually `C:\Program Files\PostgreSQL\16\bin\`)
-- Use the full path: `"C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -d medflow -f RUN_032_INSURANCE_PAYER.sql`
+- Use the full path: `"C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -d aureoncare -f RUN_032_INSURANCE_PAYER.sql`
 
 **If you can't remember your database password:**
-- Check your `.env` file: `D:\MedFlow\backend\.env`
-- Look for `DB_PASSWORD=MedFlow2024!`
+- Check your `.env` file: `D:\AureonCare\backend\.env`
+- Look for `DB_PASSWORD=AureonCare2024!`
