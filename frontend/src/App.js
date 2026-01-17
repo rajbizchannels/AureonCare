@@ -1031,9 +1031,28 @@ function App() {
                 setCurrentView('view');
               } else if (result.result_type === 'patient') {
                 // EHR handles patients via editingItem
+                // Fetch full patient data from API to get all fields (gender, address, insurance, etc.)
                 setCurrentModule(targetModule);
-                handleSetEditingItem({ type: 'patient', data: result });
-                setCurrentView('view');
+
+                // Find patient in local state first (might have full data)
+                const fullPatient = patients.find(p => p.id === result.id || p.id.toString() === result.id.toString());
+
+                if (fullPatient) {
+                  // Use full patient data from local state
+                  handleSetEditingItem({ type: 'patient', data: fullPatient });
+                  setCurrentView('view');
+                } else {
+                  // Fetch full patient data from API
+                  api.getPatient(result.id).then(patient => {
+                    handleSetEditingItem({ type: 'patient', data: patient });
+                    setCurrentView('view');
+                  }).catch(error => {
+                    console.error('Error fetching patient:', error);
+                    // Fallback to search result data if fetch fails
+                    handleSetEditingItem({ type: 'patient', data: result });
+                    setCurrentView('view');
+                  });
+                }
               } else if (result.result_type === 'provider') {
                 // Provider Management uses its own internal state, just navigate to module
                 setCurrentModule(targetModule);

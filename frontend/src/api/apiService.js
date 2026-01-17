@@ -97,6 +97,11 @@ const api = {
     if (!response.ok) throw new Error('Failed to fetch patients');
     return response.json();
   },
+  getPatient: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/patients/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch patient');
+    return response.json();
+  },
   createPatient: async (data) => {
     const response = await fetch(`${API_BASE_URL}/patients`, {
       method: 'POST',
