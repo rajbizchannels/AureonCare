@@ -41,7 +41,8 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
-    address, city, state, zip, insurance, insurance_id, insurance_payer_id, status, createUserAccount
+    address, city, state, zip, insurance, insurance_id, insurance_payer_id,
+    allergies, past_history, family_history, status, createUserAccount
   } = req.body;
 
   const pool = req.app.locals.pool;
@@ -94,18 +95,24 @@ router.post('/', async (req, res) => {
     const patientInsertQuery = userId
       ? `INSERT INTO patients
          (id, first_name, last_name, mrn, date_of_birth, gender, phone, email,
-          address, insurance_payer_id, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+          address, city, state, zip, insurance, insurance_id, insurance_payer_id,
+          allergies, past_history, family_history, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
          RETURNING *`
       : `INSERT INTO patients
          (first_name, last_name, mrn, date_of_birth, gender, phone, email,
-          address, insurance_payer_id, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+          address, city, state, zip, insurance, insurance_id, insurance_payer_id,
+          allergies, past_history, family_history, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
          RETURNING *`;
 
     const patientInsertParams = userId
-      ? [userId, first_name, last_name, mrn, birthDate, gender, phone, email, address, insurance_payer_id || null, status || 'active']
-      : [first_name, last_name, mrn, birthDate, gender, phone, email, address, insurance_payer_id || null, status || 'active'];
+      ? [userId, first_name, last_name, mrn, birthDate, gender, phone, email,
+         address, city, state, zip, insurance, insurance_id, insurance_payer_id || null,
+         allergies, past_history, family_history, status || 'active']
+      : [first_name, last_name, mrn, birthDate, gender, phone, email,
+         address, city, state, zip, insurance, insurance_id, insurance_payer_id || null,
+         allergies, past_history, family_history, status || 'active'];
 
     const patientResult = await client.query(patientInsertQuery, patientInsertParams);
     const newPatient = patientResult.rows[0];
@@ -144,22 +151,28 @@ router.put('/:id', async (req, res) => {
            phone = COALESCE($6, phone),
            email = COALESCE($7, email),
            address = COALESCE($8, address),
-           status = COALESCE($9, status),
-           height = COALESCE($10, height),
-           weight = COALESCE($11, weight),
-           blood_type = COALESCE($12, blood_type),
-           allergies = COALESCE($13, allergies),
-           past_history = COALESCE($14, past_history),
-           family_history = COALESCE($15, family_history),
-           current_medications = COALESCE($16, current_medications),
-           country = COALESCE($17, country),
-           insurance_payer_id = COALESCE($18, insurance_payer_id),
+           city = COALESCE($9, city),
+           state = COALESCE($10, state),
+           zip = COALESCE($11, zip),
+           insurance = COALESCE($12, insurance),
+           insurance_id = COALESCE($13, insurance_id),
+           insurance_payer_id = COALESCE($14, insurance_payer_id),
+           status = COALESCE($15, status),
+           height = COALESCE($16, height),
+           weight = COALESCE($17, weight),
+           blood_type = COALESCE($18, blood_type),
+           allergies = COALESCE($19, allergies),
+           past_history = COALESCE($20, past_history),
+           family_history = COALESCE($21, family_history),
+           current_medications = COALESCE($22, current_medications),
+           country = COALESCE($23, country),
            updated_at = NOW()
-       WHERE id::text = $19::text
+       WHERE id::text = $24::text
        RETURNING *`,
       [first_name, last_name, mrn, birthDate, gender, phone, email,
-       address, status, height, weight, blood_type, allergies,
-       past_history, family_history, current_medications, country, insurance_payer_id, req.params.id]
+       address, city, state, zip, insurance, insurance_id, insurance_payer_id,
+       status, height, weight, blood_type, allergies,
+       past_history, family_history, current_medications, country, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });
