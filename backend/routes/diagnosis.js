@@ -99,7 +99,6 @@ router.post('/', async (req, res) => {
     appointmentId,
     diagnosisCode,
     diagnosisName,
-    description,
     severity,
     status,
     diagnosedDate,
@@ -111,9 +110,9 @@ router.post('/', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO diagnosis (
         patient_id, provider_id, appointment_id, diagnosis_code,
-        diagnosis_name, description, severity, status, diagnosed_date, soap_notes
+        diagnosis_name, severity, status, diagnosed_date, soap_notes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *`,
       [
         patientId,
@@ -121,7 +120,6 @@ router.post('/', async (req, res) => {
         appointmentId,
         diagnosisCode,
         diagnosisName,
-        description,
         severity,
         status || 'Active',
         diagnosedDate || new Date().toISOString().split('T')[0],
@@ -140,7 +138,6 @@ router.put('/:id', async (req, res) => {
   const {
     diagnosisCode,
     diagnosisName,
-    description,
     severity,
     status,
     soapNotes
@@ -152,14 +149,13 @@ router.put('/:id', async (req, res) => {
       `UPDATE diagnosis SET
         diagnosis_code = COALESCE($1, diagnosis_code),
         diagnosis_name = COALESCE($2, diagnosis_name),
-        description = COALESCE($3, description),
-        severity = COALESCE($4, severity),
-        status = COALESCE($5, status),
-        soap_notes = COALESCE($6, soap_notes),
+        severity = COALESCE($3, severity),
+        status = COALESCE($4, status),
+        soap_notes = COALESCE($5, soap_notes),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
+      WHERE id = $6
       RETURNING *`,
-      [diagnosisCode, diagnosisName, description, severity, status, soapNotes, req.params.id]
+      [diagnosisCode, diagnosisName, severity, status, soapNotes, req.params.id]
     );
 
     if (result.rows.length === 0) {
