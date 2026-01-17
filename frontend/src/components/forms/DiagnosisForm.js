@@ -34,7 +34,6 @@ const DiagnosisForm = ({
     severity: 'Moderate',
     status: 'Active',
     diagnosedDate: new Date().toISOString().split('T')[0],
-    notes: '',
     soapNotes: ''
   });
   const [laboratories, setLaboratories] = useState([]);
@@ -104,7 +103,6 @@ const DiagnosisForm = ({
           severity: editDiagnosis.severity || 'Moderate',
           status: editDiagnosis.status || 'Active',
           diagnosedDate: editDiagnosis.diagnosedDate || new Date().toISOString().split('T')[0],
-          notes: editDiagnosis.notes || '',
           soapNotes: editDiagnosis.soapNotes || ''
         };
 
@@ -125,39 +123,6 @@ const DiagnosisForm = ({
 
           const icdCodesData = await Promise.all(icdCodePromises);
           newFormData.icdCodes = icdCodesData.filter(Boolean);
-        }
-
-        // Parse CPT codes from notes field if present
-        // Notes format: "CPT Codes: 99213 (Description); 85025 (Description)"
-        if (editDiagnosis.notes && typeof editDiagnosis.notes === 'string') {
-          const cptMatch = editDiagnosis.notes.match(/CPT Codes:\s*([^]*?)(?:\n\n|$)/);
-          if (cptMatch) {
-            // Extract code strings from format "99213 (Description); 85025 (Description)"
-            const cptSection = cptMatch[1];
-            const cptCodeMatches = cptSection.matchAll(/(\d+)\s*\(/g);
-            const cptCodeStrings = Array.from(cptCodeMatches).map(match => match[1]).filter(Boolean);
-
-            // Fetch full code objects for each CPT code
-            const cptCodePromises = cptCodeStrings.map(async (codeStr) => {
-              try {
-                const codeData = await api.getMedicalCodeByCode(codeStr);
-                return codeData;
-              } catch (err) {
-                console.warn(`Could not load CPT code ${codeStr}:`, err);
-                return null;
-              }
-            });
-
-            const cptCodesData = await Promise.all(cptCodePromises);
-            newFormData.cptCodes = cptCodesData.filter(Boolean);
-          }
-
-          // Clean up notes to remove metadata section for editing
-          // Remove "ICD Codes: ..." and "CPT Codes: ..." sections
-          let cleanedNotes = editDiagnosis.notes;
-          cleanedNotes = cleanedNotes.replace(/\n*ICD Codes:\s*[^]*?(?=\n\n|CPT Codes:|$)/g, '');
-          cleanedNotes = cleanedNotes.replace(/\n*CPT Codes:\s*[^]*?$/g, '');
-          newFormData.notes = cleanedNotes.trim();
         }
 
         setFormData(newFormData);
@@ -334,7 +299,6 @@ const DiagnosisForm = ({
       severity: formData.severity,
       status: formData.status,
       diagnosedDate: formData.diagnosedDate,
-      notes: formData.notes || null,
       soapNotes: formData.soapNotes || null,
       // Store additional metadata in notes for full details
       metadata: {
@@ -344,19 +308,6 @@ const DiagnosisForm = ({
     };
 
     try {
-
-      // Append metadata to notes if not empty
-      if (diagnosisData.metadata.icdCodes.length > 0 || diagnosisData.metadata.cptCodes.length > 0) {
-        const metadataText = [];
-        if (diagnosisData.metadata.icdCodes.length > 0) {
-          metadataText.push(`ICD Codes: ${diagnosisData.metadata.icdCodes.map(c => `${c.code} (${c.description})`).join('; ')}`);
-        }
-        if (diagnosisData.metadata.cptCodes.length > 0) {
-          metadataText.push(`CPT Codes: ${diagnosisData.metadata.cptCodes.map(c => `${c.code} (${c.description})`).join('; ')}`);
-        }
-        diagnosisData.notes = [diagnosisData.notes, ...metadataText].filter(Boolean).join('\n\n');
-      }
-
       let result;
       if (editDiagnosis) {
         // Update existing diagnosis
@@ -1145,24 +1096,6 @@ const DiagnosisForm = ({
                     <option value="Chronic">Chronic</option>
                   </select>
                 </div>
-              </div>
-
-              {/* Clinical Notes */}
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Clinical Notes
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Additional clinical notes, treatment plan, or observations..."
-                  rows={4}
-                  className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
-                  }`}
-                />
               </div>
 
               {/* SOAP Notes */}

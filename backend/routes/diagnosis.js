@@ -103,7 +103,6 @@ router.post('/', async (req, res) => {
     severity,
     status,
     diagnosedDate,
-    notes,
     soapNotes
   } = req.body;
 
@@ -112,9 +111,9 @@ router.post('/', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO diagnosis (
         patient_id, provider_id, appointment_id, diagnosis_code,
-        diagnosis_name, description, severity, status, diagnosed_date, notes, soap_notes
+        diagnosis_name, description, severity, status, diagnosed_date, soap_notes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *`,
       [
         patientId,
@@ -126,7 +125,6 @@ router.post('/', async (req, res) => {
         severity,
         status || 'Active',
         diagnosedDate || new Date().toISOString().split('T')[0],
-        notes,
         soapNotes
       ]
     );
@@ -145,7 +143,6 @@ router.put('/:id', async (req, res) => {
     description,
     severity,
     status,
-    notes,
     soapNotes
   } = req.body;
 
@@ -158,12 +155,11 @@ router.put('/:id', async (req, res) => {
         description = COALESCE($3, description),
         severity = COALESCE($4, severity),
         status = COALESCE($5, status),
-        notes = COALESCE($6, notes),
-        soap_notes = COALESCE($7, soap_notes),
+        soap_notes = COALESCE($6, soap_notes),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
+      WHERE id = $7
       RETURNING *`,
-      [diagnosisCode, diagnosisName, description, severity, status, notes, soapNotes, req.params.id]
+      [diagnosisCode, diagnosisName, description, severity, status, soapNotes, req.params.id]
     );
 
     if (result.rows.length === 0) {
