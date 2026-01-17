@@ -20,7 +20,10 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
     insuranceId: '',
     insurancePayerId: '',
     emergencyContact: '',
-    emergencyPhone: ''
+    emergencyPhone: '',
+    allergies: '',
+    pastHistory: '',
+    familyHistory: ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [insurancePayers, setInsurancePayers] = useState([]);
@@ -92,6 +95,9 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
       insurance: formData.insurance,
       insurance_id: formData.insuranceId,
       insurance_payer_id: formData.insurancePayerId || null,
+      allergies: formData.allergies,
+      past_history: formData.pastHistory,
+      family_history: formData.familyHistory,
       status: 'Active'
     };
 
@@ -385,6 +391,50 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                     value={formData.emergencyPhone}
                     onChange={(e) => setFormData({...formData, emergencyPhone: e.target.value})}
                     placeholder={t.emergencyContactPhonePlaceholder || '+1-555-0200'}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.medicalHistory || 'Medical History'}</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.allergies || 'Allergies'}
+                  </label>
+                  <textarea
+                    value={formData.allergies}
+                    onChange={(e) => setFormData({...formData, allergies: e.target.value})}
+                    placeholder={t.allergiesPlaceholder || 'List any known allergies (medications, food, environmental, etc.)'}
+                    rows="3"
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.pastHistory || 'Past Medical History'}
+                  </label>
+                  <textarea
+                    value={formData.pastHistory}
+                    onChange={(e) => setFormData({...formData, pastHistory: e.target.value})}
+                    placeholder={t.pastHistoryPlaceholder || 'Previous illnesses, surgeries, hospitalizations, etc.'}
+                    rows="3"
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.familyHistory || 'Family History'}
+                  </label>
+                  <textarea
+                    value={formData.familyHistory}
+                    onChange={(e) => setFormData({...formData, familyHistory: e.target.value})}
+                    placeholder={t.familyHistoryPlaceholder || 'Family medical history (e.g., diabetes, heart disease, cancer, etc.)'}
+                    rows="3"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
                   />
                 </div>
