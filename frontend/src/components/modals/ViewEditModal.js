@@ -224,14 +224,13 @@ const ViewEditModal = ({
     if (editingItem?.data) {
       const data = { ...editingItem.data };
 
-      // For patients, parse address if it's a string
-      if (editingItem.type === 'patient' && data.address && typeof data.address === 'string') {
-        const addressParts = data.address.split(',').map(p => p.trim());
-        data.address_street = addressParts[0] || '';
-        data.address_city = addressParts[1] || '';
-        const stateZip = (addressParts[2] || '').split(' ');
-        data.address_state = stateZip[0] || '';
-        data.address_zip = stateZip[1] || '';
+      // For patients, ensure address fields are properly mapped
+      // The database has separate columns: address, city, state, zip
+      // Don't parse the address string - use the separate fields directly
+      if (editingItem.type === 'patient') {
+        // If we have separate city/state/zip fields from database, use them directly
+        // No need to parse anything - the fields are already separate in the database
+        // The form fields already match: address, city, state, zip
       }
 
       // For appointments, extract date and time from start_time
@@ -455,25 +454,10 @@ const ViewEditModal = ({
           apt.id === editData.id ? enrichedAppointment : apt
         ));
       } else if (type === 'patient') {
-        // Prepare patient data
+        // Prepare patient data - send fields as-is to API
+        // The database has separate columns: address, city, state, zip
+        // Don't combine them - the API expects separate fields
         const patientData = { ...editData };
-
-        // Combine address fields into a single string
-        if (patientData.address_street || patientData.address_city || patientData.address_state || patientData.address_zip) {
-          const addressParts = [
-            patientData.address_street,
-            patientData.address_city,
-            `${patientData.address_state || ''} ${patientData.address_zip || ''}`.trim()
-          ].filter(part => part && part.trim());
-
-          patientData.address = addressParts.join(', ');
-
-          // Clean up individual address fields
-          delete patientData.address_street;
-          delete patientData.address_city;
-          delete patientData.address_state;
-          delete patientData.address_zip;
-        }
 
         const updated = await api.updatePatient(editData.id, patientData);
         setPatients(prev => prev.map(patient =>
