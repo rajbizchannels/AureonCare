@@ -30,7 +30,6 @@ const DiagnosisForm = ({
     medications: [], // Selected medications for automatic prescription creation
     labOrders: [], // Lab tests to order: [{cptCodes, laboratoryId, priority, instructions, status, statusDate, frequency, class, recipient}]
     diagnosisName: '',
-    description: '',
     severity: 'Moderate',
     status: 'Active',
     diagnosedDate: new Date().toISOString().split('T')[0],
@@ -99,7 +98,6 @@ const DiagnosisForm = ({
           medications: [], // Initialize for edit mode
           labOrders: [], // Initialize for edit mode
           diagnosisName: editDiagnosis.diagnosisName || '',
-          description: editDiagnosis.description || '',
           severity: editDiagnosis.severity || 'Moderate',
           status: editDiagnosis.status || 'Active',
           diagnosedDate: editDiagnosis.diagnosedDate || new Date().toISOString().split('T')[0],
@@ -295,7 +293,6 @@ const DiagnosisForm = ({
       appointmentId: null,
       diagnosisCode: formData.icdCodes.length > 0 ? formData.icdCodes.map(c => c.code).join(', ') : null,
       diagnosisName: formData.diagnosisName || (formData.icdCodes.length > 0 ? formData.icdCodes[0].description : ''),
-      description: formData.description || null,
       severity: formData.severity,
       status: formData.status,
       diagnosedDate: formData.diagnosedDate,
@@ -1001,24 +998,6 @@ const DiagnosisForm = ({
                       {laboratories.length === 0 ? 'No Labs Available' : 'Add Lab Order'}
                     </button>
                   </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Additional details about the diagnosis..."
-                  rows={3}
-                  className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
-                  }`}
-                />
               </div>
 
               {/* Row: Provider, Date */}
