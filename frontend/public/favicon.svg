@@ -1,0 +1,44 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#22c55e;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#16a34a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#15803d;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Shield outline -->
+  <path d="M 32 6 L 12 12 L 12 28 C 12 42 20 54 32 58 C 44 54 52 42 52 28 L 52 12 Z"
+        fill="url(#shieldGradient)"
+        stroke="#166534"
+        stroke-width="1.5"/>
+
+  <!-- Circuit board patterns -->
+  <!-- Vertical lines -->
+  <line x1="20" y1="16" x2="20" y2="24" stroke="#86efac" stroke-width="1.5" opacity="0.8"/>
+  <line x1="26" y1="20" x2="26" y2="32" stroke="#86efac" stroke-width="1.5" opacity="0.8"/>
+  <line x1="32" y1="14" x2="32" y2="28" stroke="#86efac" stroke-width="1.5" opacity="0.8"/>
+  <line x1="38" y1="20" x2="38" y2="32" stroke="#86efac" stroke-width="1.5" opacity="0.8"/>
+  <line x1="44" y1="16" x2="44" y2="24" stroke="#86efac" stroke-width="1.5" opacity="0.8"/>
+
+  <!-- Horizontal connectors -->
+  <line x1="20" y1="20" x2="26" y2="20" stroke="#86efac" stroke-width="1.5" opacity="0.8"/>
+  <line x1="26" y1="28" x2="38" y2="28" stroke="#86efac" stroke-width="1.5" opacity="0.8"/>
+  <line x1="38" y1="20" x2="44" y2="20" stroke="#86efac" stroke-width="1.5" opacity="0.8"/>
+
+  <!-- Circuit nodes -->
+  <circle cx="20" cy="20" r="2" fill="#dcfce7"/>
+  <circle cx="26" cy="20" r="2" fill="#dcfce7"/>
+  <circle cx="26" cy="28" r="2" fill="#dcfce7"/>
+  <circle cx="32" cy="20" r="2" fill="#dcfce7"/>
+  <circle cx="32" cy="28" r="2" fill="#dcfce7"/>
+  <circle cx="38" cy="20" r="2" fill="#dcfce7"/>
+  <circle cx="38" cy="28" r="2" fill="#dcfce7"/>
+  <circle cx="44" cy="20" r="2" fill="#dcfce7"/>
+
+  <!-- Medical cross symbol in lower part -->
+  <g transform="translate(32, 42)">
+    <rect x="-2" y="-6" width="4" height="12" fill="#dcfce7" rx="1"/>
+    <rect x="-6" y="-2" width="12" height="4" fill="#dcfce7" rx="1"/>
+  </g>
+</svg>
