@@ -633,7 +633,7 @@ function App() {
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <img
-                src="/assets/aureoncare-logo.svg"
+                src="/assets/aureoncare-logo.png"
                 alt="AureonCare Logo"
                 className="h-10 w-auto object-contain"
               />

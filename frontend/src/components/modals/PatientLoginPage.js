@@ -148,7 +148,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <img
-              src="/assets/aureoncare-logo.svg"
+              src="/assets/aureoncare-logo.png"
               alt="AureonCare Logo"
               className="h-16 w-auto object-contain"
             />

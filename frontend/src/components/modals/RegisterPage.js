@@ -92,7 +92,7 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
 
           <div className="flex items-center gap-4">
             <img
-              src="/assets/aureoncare-logo.svg"
+              src="/assets/aureoncare-logo.png"
               alt="AureonCare Logo"
               className="h-14 w-auto object-contain"
             />
