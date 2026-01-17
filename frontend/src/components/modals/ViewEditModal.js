@@ -903,6 +903,71 @@ const ViewEditModal = ({
                 </div>
               </div>
 
+              {/* Medical History Section */}
+              <div className={`mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {t.medicalHistory || 'Medical History'}
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.allergies || 'Allergies'}
+                    </label>
+                    {isView ? (
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} whitespace-pre-wrap`}>
+                        {editData.allergies || t.notApplicable || 'N/A'}
+                      </p>
+                    ) : (
+                      <textarea
+                        value={editData.allergies || ''}
+                        onChange={(e) => setEditData({...editData, allergies: e.target.value})}
+                        placeholder={t.allergiesPlaceholder || 'List any known allergies (medications, food, environmental, etc.)'}
+                        rows="3"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.pastHistory || 'Past Medical History'}
+                    </label>
+                    {isView ? (
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} whitespace-pre-wrap`}>
+                        {editData.past_history || t.notApplicable || 'N/A'}
+                      </p>
+                    ) : (
+                      <textarea
+                        value={editData.past_history || ''}
+                        onChange={(e) => setEditData({...editData, past_history: e.target.value})}
+                        placeholder={t.pastHistoryPlaceholder || 'Previous illnesses, surgeries, hospitalizations, etc.'}
+                        rows="3"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.familyHistory || 'Family History'}
+                    </label>
+                    {isView ? (
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} whitespace-pre-wrap`}>
+                        {editData.family_history || t.notApplicable || 'N/A'}
+                      </p>
+                    ) : (
+                      <textarea
+                        value={editData.family_history || ''}
+                        onChange={(e) => setEditData({...editData, family_history: e.target.value})}
+                        placeholder={t.familyHistoryPlaceholder || 'Family medical history (e.g., diabetes, heart disease, cancer, etc.)'}
+                        rows="3"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400'}`}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Insurance Payer Section */}
               <div className={`mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
                 <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
