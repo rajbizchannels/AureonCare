@@ -1,6 +1,6 @@
-# MedFlow Setup Guide
+# AureonCare Setup Guide
 
-Complete guide for setting up the MedFlow application with all features including OAuth social login, Telehealth, FHIR integration, and Patient Portal.
+Complete guide for setting up the AureonCare application with all features including OAuth social login, Telehealth, FHIR integration, and Patient Portal.
 
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
@@ -39,9 +39,9 @@ psql --version
 psql -U postgres
 
 # Create database and user
-CREATE DATABASE medflow;
-CREATE USER medflow_user WITH ENCRYPTED PASSWORD 'your_secure_password';
-GRANT ALL PRIVILEGES ON DATABASE medflow TO medflow_user;
+CREATE DATABASE aureoncare;
+CREATE USER aureoncare_user WITH ENCRYPTED PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE aureoncare TO aureoncare_user;
 \q
 ```
 
@@ -59,8 +59,8 @@ Edit `backend/.env` and update:
 ```env
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=medflow
-DB_USER=medflow_user
+DB_NAME=aureoncare
+DB_USER=aureoncare_user
 DB_PASSWORD=your_secure_password
 JWT_SECRET=your_jwt_secret_key_here
 ```
@@ -106,7 +106,7 @@ This will create the following tables:
 
 ```bash
 # Load sample data for testing
-psql -U medflow_user -d medflow -f scripts/seed-data.sql
+psql -U aureoncare_user -d aureoncare -f scripts/seed-data.sql
 ```
 
 ---
@@ -132,7 +132,7 @@ To enable social login (Google, Microsoft, Facebook), you need to obtain OAuth c
 1. Go to [Azure Portal](https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps)
 2. Click **New registration**
 3. Configure:
-   - Name: MedFlow
+   - Name: AureonCare
    - Supported account types: **Accounts in any organizational directory and personal Microsoft accounts**
    - Redirect URI: `http://localhost:3001`
 4. Copy the **Application (client) ID**
@@ -268,7 +268,7 @@ After running migrations, you can create a test user:
 -- Run in psql
 INSERT INTO users (email, password, first_name, last_name, role, plan_tier)
 VALUES (
-  'admin@medflow.com',
+  'admin@aureoncare.com',
   '$2a$10$YourHashedPasswordHere',  -- Use bcrypt to hash
   'Admin',
   'User',
@@ -282,7 +282,7 @@ Or use the registration endpoint:
 curl -X POST http://localhost:3000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@medflow.com",
+    "email": "admin@aureoncare.com",
     "password": "securepassword123",
     "firstName": "Admin",
     "lastName": "User",
@@ -337,7 +337,7 @@ sudo systemctl status postgresql
 sudo systemctl start postgresql
 
 # Check connection
-psql -U medflow_user -d medflow -c "SELECT 1"
+psql -U aureoncare_user -d aureoncare -c "SELECT 1"
 ```
 
 ### Migration Errors
@@ -353,7 +353,7 @@ node scripts/drop-tables.js
 node scripts/migrate-enhanced.js
 
 # Option 2: Drop tables manually in psql
-psql -U medflow_user -d medflow
+psql -U aureoncare_user -d aureoncare
 DROP TABLE IF EXISTS social_auth CASCADE;
 DROP TABLE IF EXISTS patient_portal_sessions CASCADE;
 DROP TABLE IF EXISTS medical_records CASCADE;
@@ -406,7 +406,7 @@ For production, update these in your hosting platform:
 ```env
 NODE_ENV=production
 DB_HOST=your-production-db-host
-DB_NAME=medflow_production
+DB_NAME=aureoncare_production
 JWT_SECRET=long-random-secure-string
 ```
 
@@ -459,4 +459,4 @@ For issues or questions:
 
 ## License
 
-Copyright 2025 MedFlow. All rights reserved.
+Copyright 2025 AureonCare. All rights reserved.

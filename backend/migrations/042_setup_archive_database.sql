@@ -1,5 +1,5 @@
 -- Migration 042: Setup Archive Database
--- This migration should be run on the ARCHIVE database (medflow_archive)
+-- This migration should be run on the ARCHIVE database (aureoncare_archive)
 -- It creates the necessary metadata tables to track archived data
 
 -- Create archive_metadata table to track what has been archived

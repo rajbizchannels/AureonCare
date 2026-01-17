@@ -1,4 +1,4 @@
-# MedFlow Database Setup Guide
+# AureonCare Database Setup Guide
 
 ## Overview
 This document describes the database setup process and fixes applied to resolve schema and connectivity issues.
@@ -6,8 +6,8 @@ This document describes the database setup process and fixes applied to resolve 
 ## Database Configuration
 
 ### Connection Details
-- **Database:** medflow
-- **User:** medflow_user
+- **Database:** aureoncare
+- **User:** aureoncare_user
 - **Host:** localhost
 - **Port:** 5432
 
@@ -17,10 +17,10 @@ Connection details are stored in `/backend/.env`
 
 ### 1. Database and User Creation
 ```sql
-CREATE DATABASE medflow;
-CREATE USER medflow_user WITH PASSWORD 'MedFlow2024SecurePass!';
-GRANT ALL PRIVILEGES ON DATABASE medflow TO medflow_user;
-GRANT ALL ON SCHEMA public TO medflow_user;
+CREATE DATABASE aureoncare;
+CREATE USER aureoncare_user WITH PASSWORD 'AureonCare2024SecurePass!';
+GRANT ALL PRIVILEGES ON DATABASE aureoncare TO aureoncare_user;
+GRANT ALL ON SCHEMA public TO aureoncare_user;
 ```
 
 ### 2. Schema Initialization
@@ -63,7 +63,7 @@ To enable Redis in production:
 
 ### Server Startup
 ```bash
-cd /home/user/MedFlow/backend
+cd /home/user/AureonCare/backend
 node server.js
 ```
 
@@ -85,12 +85,12 @@ curl http://localhost:3000/api/providers
 
 Check providers table schema:
 ```bash
-PGPASSWORD='MedFlow2024SecurePass!' psql -h localhost -U medflow_user -d medflow -c "\d providers"
+PGPASSWORD='AureonCare2024SecurePass!' psql -h localhost -U aureoncare_user -d aureoncare -c "\d providers"
 ```
 
 Check users table schema:
 ```bash
-PGPASSWORD='MedFlow2024SecurePass!' psql -h localhost -U medflow_user -d medflow -c "\d users"
+PGPASSWORD='AureonCare2024SecurePass!' psql -h localhost -U aureoncare_user -d aureoncare -c "\d users"
 ```
 
 ## Foreign Key Relationships
@@ -107,8 +107,8 @@ PGPASSWORD='MedFlow2024SecurePass!' psql -h localhost -U medflow_user -d medflow
 
 ## Issues Fixed
 
-1. **Database didn't exist** - Created medflow database
-2. **User didn't exist** - Created medflow_user with proper permissions
+1. **Database didn't exist** - Created aureoncare database
+2. **User didn't exist** - Created aureoncare_user with proper permissions
 3. **user_id columns missing** - Added via migration 008
 4. **status column missing** - Added via migration 010
 5. **Redis blocking startup** - Made Redis optional
@@ -118,7 +118,7 @@ PGPASSWORD='MedFlow2024SecurePass!' psql -h localhost -U medflow_user -d medflow
 
 For new deployments:
 1. Create database and user (see step 1 above)
-2. Run `psql -d medflow -U medflow_user -f schema.sql`
+2. Run `psql -d aureoncare -U aureoncare_user -f schema.sql`
 3. Run all migrations in order from `migrations/` directory
 4. Configure `.env` file with database credentials
 5. Start server with `node server.js`

@@ -1,5 +1,5 @@
 -- ============================================
--- MedFlow Database Migrations
+-- AureonCare Database Migrations
 -- Run these in your PostgreSQL database
 -- ============================================
 

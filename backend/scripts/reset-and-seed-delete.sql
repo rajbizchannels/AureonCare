@@ -1,4 +1,4 @@
--- MedFlow Database Reset and Seed Script (Using DELETE)
+-- AureonCare Database Reset and Seed Script (Using DELETE)
 -- This version uses DELETE instead of TRUNCATE and works with basic permissions
 -- Compatible with UUID-based schema
 
@@ -54,7 +54,7 @@ INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone,
 -- Admin/Doctors
 (
   '10000000-0000-0000-0000-000000000001',
-  'sarah.chen@medflow.com',
+  'sarah.chen@aureoncare.com',
   '$2a$10$8K1p/a0dL3LPkX0EZ7Y5COoIKqGlWh0YGvY8WxE/qR3Y5X0Y5X0Y5', -- password: 'password123'
   'Sarah',
   'Chen',
@@ -67,7 +67,7 @@ INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone,
 ),
 (
   '10000000-0000-0000-0000-000000000002',
-  'james.wilson@medflow.com',
+  'james.wilson@aureoncare.com',
   '$2a$10$8K1p/a0dL3LPkX0EZ7Y5COoIKqGlWh0YGvY8WxE/qR3Y5X0Y5X0Y5',
   'James',
   'Wilson',
@@ -80,7 +80,7 @@ INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone,
 ),
 (
   '10000000-0000-0000-0000-000000000003',
-  'emily.rodriguez@medflow.com',
+  'emily.rodriguez@aureoncare.com',
   '$2a$10$8K1p/a0dL3LPkX0EZ7Y5COoIKqGlWh0YGvY8WxE/qR3Y5X0Y5X0Y5',
   'Emily',
   'Rodriguez',
@@ -94,7 +94,7 @@ INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone,
 -- Nurses
 (
   '10000000-0000-0000-0000-000000000004',
-  'michael.brown@medflow.com',
+  'michael.brown@aureoncare.com',
   '$2a$10$8K1p/a0dL3LPkX0EZ7Y5COoIKqGlWh0YGvY8WxE/qR3Y5X0Y5X0Y5',
   'Michael',
   'Brown',
@@ -108,7 +108,7 @@ INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone,
 -- Reception
 (
   '10000000-0000-0000-0000-000000000005',
-  'lisa.anderson@medflow.com',
+  'lisa.anderson@aureoncare.com',
   '$2a$10$8K1p/a0dL3LPkX0EZ7Y5COoIKqGlWh0YGvY8WxE/qR3Y5X0Y5X0Y5',
   'Lisa',
   'Anderson',
@@ -693,7 +693,7 @@ BEGIN
   RAISE NOTICE '  Notifications: %', notifications_count;
   RAISE NOTICE '';
   RAISE NOTICE 'Test Credentials:';
-  RAISE NOTICE '  Admin: sarah.chen@medflow.com / password123';
+  RAISE NOTICE '  Admin: sarah.chen@aureoncare.com / password123';
   RAISE NOTICE '  Patient Portal: john.smith@email.com / password123';
   RAISE NOTICE '  Patient Portal: maria.garcia@email.com / password123';
   RAISE NOTICE '';

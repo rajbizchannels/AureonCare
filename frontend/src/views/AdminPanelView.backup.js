@@ -19,11 +19,11 @@ const AdminPanelView = ({
   const { setPlanTier, updateUserPreferences, planTier } = useApp();
   const [activeTab, setActiveTab] = useState('clinic');
   const [clinicSettings, setClinicSettings] = useState({
-    name: 'MedFlow Medical Center',
+    name: 'AureonCare Medical Center',
     address: '123 Healthcare Ave, Medical City, MC 12345',
     phone: '(555) 123-4567',
-    email: 'info@medflowclinic.com',
-    website: 'www.medflowclinic.com',
+    email: 'info@aureoncareclinic.com',
+    website: 'www.aureoncareclinic.com',
     taxId: '12-3456789',
     npi: '1234567890'
   });
@@ -715,7 +715,7 @@ const AdminPanelView = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `medflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `aureoncare-backup-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -725,7 +725,7 @@ const AdminPanelView = ({
       setBackupSuccessModal({
         isOpen: true,
         type: 'Local',
-        message: `Backup file has been downloaded successfully to your computer as medflow-backup-${new Date().toISOString().split('T')[0]}.json`
+        message: `Backup file has been downloaded successfully to your computer as aureoncare-backup-${new Date().toISOString().split('T')[0]}.json`
       });
     } catch (error) {
       console.error('Error creating local backup:', error);

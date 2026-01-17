@@ -195,7 +195,7 @@ router.post('/837/generate/:claimId', async (req, res) => {
     const providerInfo = {
       npi: '1234567890',
       tax_id: '123456789',
-      organization_name: 'MedFlow Medical Center',
+      organization_name: 'AureonCare Medical Center',
       address: '123 Medical Drive',
       city: 'Healthcare City',
       state: 'CA',
@@ -271,10 +271,10 @@ router.post('/837/generate/:claimId', async (req, res) => {
 
     // Get submitter information from settings or use defaults
     const submitterInfo = {
-      submitterId: 'MEDFLOW',
+      submitterId: 'AUREONCARE',
       receiverId: req.body.clearinghouseId || 'OPTUM',
       receiverName: req.body.clearinghouseName || 'Optum',
-      organizationName: 'MedFlow Medical Center',
+      organizationName: 'AureonCare Medical Center',
       contactName: 'Billing Department',
       contactPhone: '5555555555',
       testIndicator: req.body.testMode ? 'T' : 'P'

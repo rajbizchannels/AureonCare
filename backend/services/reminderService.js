@@ -69,7 +69,7 @@ async function sendConfirmationEmail(appointment, patient, provider) {
         });
 
         const mailOptions = {
-            from: `"${process.env.CLINIC_NAME || 'MedFlow'}" <${process.env.SMTP_USER}>`,
+            from: `"${process.env.CLINIC_NAME || 'AureonCare'}" <${process.env.SMTP_USER}>`,
             to: patient.email,
             subject: `Appointment Confirmation - ${formattedDate}`,
             html: `
@@ -196,11 +196,11 @@ async function sendConfirmationEmail(appointment, patient, provider) {
                                 If you need to cancel or reschedule, please do so at least 24 hours in advance.
                             </p>
 
-                            <p>Thank you for choosing ${process.env.CLINIC_NAME || 'MedFlow'}!</p>
+                            <p>Thank you for choosing ${process.env.CLINIC_NAME || 'AureonCare'}!</p>
                         </div>
                         <div class="footer">
                             <p>This is an automated message. Please do not reply to this email.</p>
-                            <p>&copy; ${new Date().getFullYear()} ${process.env.CLINIC_NAME || 'MedFlow'}. All rights reserved.</p>
+                            <p>&copy; ${new Date().getFullYear()} ${process.env.CLINIC_NAME || 'AureonCare'}. All rights reserved.</p>
                         </div>
                     </div>
                 </body>
@@ -273,7 +273,7 @@ async function sendReminderEmail(appointment, patient, provider) {
         const hoursUntil = Math.floor((appointmentDate - new Date()) / (1000 * 60 * 60));
 
         const mailOptions = {
-            from: `"${process.env.CLINIC_NAME || 'MedFlow'}" <${process.env.SMTP_USER}>`,
+            from: `"${process.env.CLINIC_NAME || 'AureonCare'}" <${process.env.SMTP_USER}>`,
             to: patient.email,
             subject: `Appointment Reminder - ${formattedDate}`,
             html: `
@@ -406,7 +406,7 @@ async function sendReminderEmail(appointment, patient, provider) {
                         </div>
                         <div class="footer">
                             <p>This is an automated reminder. Please do not reply to this email.</p>
-                            <p>&copy; ${new Date().getFullYear()} ${process.env.CLINIC_NAME || 'MedFlow'}. All rights reserved.</p>
+                            <p>&copy; ${new Date().getFullYear()} ${process.env.CLINIC_NAME || 'AureonCare'}. All rights reserved.</p>
                         </div>
                     </div>
                 </body>
@@ -475,7 +475,7 @@ async function sendCancellationEmail(appointment, patient, provider) {
         });
 
         const mailOptions = {
-            from: `"${process.env.CLINIC_NAME || 'MedFlow'}" <${process.env.SMTP_USER}>`,
+            from: `"${process.env.CLINIC_NAME || 'AureonCare'}" <${process.env.SMTP_USER}>`,
             to: patient.email,
             subject: `Appointment Cancelled - ${formattedDate}`,
             html: `
@@ -593,7 +593,7 @@ async function sendCancellationEmail(appointment, patient, provider) {
                         </div>
                         <div class="footer">
                             <p>This is an automated message. Please do not reply to this email.</p>
-                            <p>&copy; ${new Date().getFullYear()} ${process.env.CLINIC_NAME || 'MedFlow'}. All rights reserved.</p>
+                            <p>&copy; ${new Date().getFullYear()} ${process.env.CLINIC_NAME || 'AureonCare'}. All rights reserved.</p>
                         </div>
                     </div>
                 </body>

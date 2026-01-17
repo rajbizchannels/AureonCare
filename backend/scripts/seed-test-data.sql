@@ -13,13 +13,13 @@ BEGIN;
 
 -- Admin User
 INSERT INTO users (id, email, password_hash, role, first_name, last_name, created_at, updated_at) VALUES
-('a0000000-0000-0000-0000-000000000001', 'admin@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'admin', 'System', 'Administrator', NOW(), NOW());
+('a0000000-0000-0000-0000-000000000001', 'admin@aureoncare.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'admin', 'System', 'Administrator', NOW(), NOW());
 
 -- Doctor Users
 INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone, created_at, updated_at) VALUES
-('d0000000-0000-0000-0000-000000000001', 'dr.smith@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'doctor', 'Sarah', 'Smith', '555-0101', NOW(), NOW()),
-('d0000000-0000-0000-0000-000000000002', 'dr.johnson@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'doctor', 'Michael', 'Johnson', '555-0102', NOW(), NOW()),
-('d0000000-0000-0000-0000-000000000003', 'dr.williams@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'doctor', 'Emily', 'Williams', '555-0103', NOW(), NOW());
+('d0000000-0000-0000-0000-000000000001', 'dr.smith@aureoncare.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'doctor', 'Sarah', 'Smith', '555-0101', NOW(), NOW()),
+('d0000000-0000-0000-0000-000000000002', 'dr.johnson@aureoncare.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'doctor', 'Michael', 'Johnson', '555-0102', NOW(), NOW()),
+('d0000000-0000-0000-0000-000000000003', 'dr.williams@aureoncare.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'doctor', 'Emily', 'Williams', '555-0103', NOW(), NOW());
 
 -- Patient Users
 INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone, created_at, updated_at) VALUES
@@ -30,16 +30,16 @@ INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone,
 
 -- Staff User
 INSERT INTO users (id, email, password_hash, role, first_name, last_name, created_at, updated_at) VALUES
-('c0000000-0000-0000-0000-000000000001', 'staff@medflow.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'staff', 'Lisa', 'Martinez', NOW(), NOW());
+('c0000000-0000-0000-0000-000000000001', 'staff@aureoncare.com', '$2b$10$rZ1qH5YnXxEzKP9oGLKXW.8jxG5ZqHQJ5YvJzC4wZ8nH0KfJxC5Vy', 'staff', 'Lisa', 'Martinez', NOW(), NOW());
 
 -- ============================================================================
 -- 2. CREATE PROVIDERS (References users table)
 -- ============================================================================
 
 INSERT INTO providers (id, user_id, first_name, last_name, email, phone, specialization, license_number, created_at, updated_at) VALUES
-('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'Sarah', 'Smith', 'dr.smith@medflow.com', '555-0101', 'Family Medicine', 'MD-12345', NOW(), NOW()),
-('10000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002', 'Michael', 'Johnson', 'dr.johnson@medflow.com', '555-0102', 'Cardiology', 'MD-23456', NOW(), NOW()),
-('10000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000003', 'Emily', 'Williams', 'dr.williams@medflow.com', '555-0103', 'Pediatrics', 'MD-34567', NOW(), NOW());
+('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'Sarah', 'Smith', 'dr.smith@aureoncare.com', '555-0101', 'Family Medicine', 'MD-12345', NOW(), NOW()),
+('10000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002', 'Michael', 'Johnson', 'dr.johnson@aureoncare.com', '555-0102', 'Cardiology', 'MD-23456', NOW(), NOW()),
+('10000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000003', 'Emily', 'Williams', 'dr.williams@aureoncare.com', '555-0103', 'Pediatrics', 'MD-34567', NOW(), NOW());
 
 -- ============================================================================
 -- 3. CREATE PATIENTS (id directly references users.id - no separate user_id)

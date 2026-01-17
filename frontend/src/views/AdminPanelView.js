@@ -1219,7 +1219,7 @@ const AdminPanelView = ({
       });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      const filename = `medflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+      const filename = `aureoncare-backup-${new Date().toISOString().split('T')[0]}.json`;
       link.href = url;
       link.download = filename;
       link.click();

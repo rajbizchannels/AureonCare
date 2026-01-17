@@ -211,7 +211,7 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Insert default organization settings
 INSERT INTO organization_settings (organization_name, current_plan_id, plan_start_date)
-SELECT 'MedFlow Practice', id, CURRENT_DATE
+SELECT 'AureonCare Practice', id, CURRENT_DATE
 FROM subscription_plans WHERE name = 'free'
 ON CONFLICT DO NOTHING;
 

@@ -4,12 +4,12 @@ REM Load Comprehensive Medication Data (Windows)
 REM =====================================================
 
 echo ========================================
-echo MedFlow Medication Data Loader
+echo AureonCare Medication Data Loader
 echo ========================================
 echo.
 
 REM Database configuration (set these if different)
-if "%DB_NAME%"=="" set DB_NAME=medflow_db
+if "%DB_NAME%"=="" set DB_NAME=aureoncare_db
 if "%DB_USER%"=="" set DB_USER=postgres
 if "%DB_HOST%"=="" set DB_HOST=localhost
 if "%DB_PORT%"=="" set DB_PORT=5432

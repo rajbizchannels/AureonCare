@@ -1,4 +1,4 @@
--- MedFlow Database Schema
+-- AureonCare Database Schema
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -305,7 +305,7 @@ VALUES (
   'admin',
   'Central Medical Group',
   'SC',
-  'sarah.chen@medflow.com',
+  'sarah.chen@aureoncare.com',
   '(555) 123-4567',
   'MD-123456',
   'Internal Medicine',
@@ -321,7 +321,7 @@ VALUES (
   'Sarah',
   'Chen',
   'Family Medicine',
-  'dr.chen@medflow.com',
+  'dr.chen@aureoncare.com',
   '+1-555-0100',
   'MD-123456'
 )
@@ -1991,7 +1991,7 @@ BEGIN
         WHERE table_name = 'telehealth_sessions' AND column_name = 'provider_type'
     ) THEN
         ALTER TABLE public.telehealth_sessions
-        ADD COLUMN provider_type character varying(50) DEFAULT 'medflow';
+        ADD COLUMN provider_type character varying(50) DEFAULT 'aureoncare';
     END IF;
 END $$;
 

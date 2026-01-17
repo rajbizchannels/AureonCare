@@ -1,6 +1,6 @@
-# MedFlow Executive Demo - Video Production Guide
+# AureonCare Executive Demo - Video Production Guide
 
-**Purpose:** This guide provides step-by-step instructions for creating a professional 13.5-minute demo video for MedFlow.
+**Purpose:** This guide provides step-by-step instructions for creating a professional 13.5-minute demo video for AureonCare.
 
 **Target Duration:** 13 minutes 30 seconds
 **Format:** MP4 (1920x1080, 30fps)
@@ -25,15 +25,15 @@
 
 ### Step 1: Prepare Your Environment
 
-**MedFlow Setup:**
+**AureonCare Setup:**
 - [ ] Backend running on `localhost:3000`
 - [ ] Frontend running on `localhost:3001`
 - [ ] Demo database loaded with Sarah Williams data
-- [ ] Logged in as Dr. Anderson (dr.anderson@medflow.com)
+- [ ] Logged in as Dr. Anderson (dr.anderson@aureoncare.com)
 - [ ] Browser in full-screen mode (F11)
 - [ ] Browser zoom at 100%
 - [ ] Hide browser bookmarks bar
-- [ ] Close unnecessary tabs (only MedFlow open)
+- [ ] Close unnecessary tabs (only AureonCare open)
 
 **Computer Preparation:**
 - [ ] Close all non-essential applications
@@ -163,10 +163,10 @@
 **Step 2: Create Scene for Screen Recording**
 
 1. Open OBS Studio
-2. Click "+" under "Scenes" → Name: "MedFlow Demo"
+2. Click "+" under "Scenes" → Name: "AureonCare Demo"
 3. Click "+" under "Sources" → Select "Display Capture" (for full screen)
    - OR "Window Capture" (to capture only browser window)
-4. Name: "MedFlow Screen"
+4. Name: "AureonCare Screen"
 5. Select your display or browser window
 6. Click OK
 
@@ -237,7 +237,7 @@ If you want a "talking head" overlay:
 
 1. **Prepare:**
    - Read the script section 2-3 times
-   - Set up MedFlow to the starting screen
+   - Set up AureonCare to the starting screen
    - Close unnecessary tabs/windows
    - Take a deep breath
 
@@ -298,7 +298,7 @@ If you want a "talking head" overlay:
 **Step 1: Import Media**
 
 1. Launch DaVinci Resolve
-2. Create New Project: "MedFlow Executive Demo"
+2. Create New Project: "AureonCare Executive Demo"
 3. Go to **Media Pool** (top-left)
 4. Create bins (folders):
    - Raw Recordings
@@ -312,7 +312,7 @@ If you want a "talking head" overlay:
 
 1. Set timeline settings:
    - **Right-click in Media Pool** → **Create New Timeline**
-   - Name: "MedFlow Demo Final"
+   - Name: "AureonCare Demo Final"
    - Resolution: **1920x1080**
    - Frame rate: **30fps**
 2. Drag clips to timeline in order
@@ -335,7 +335,7 @@ Between segments, add smooth transitions:
 2. Drag to timeline above video track
 3. Edit text in **Inspector** panel:
    ```
-   MedFlow Healthcare Platform
+   AureonCare Healthcare Platform
 
    One Platform. One Patient Record. End-to-End Care.
    ```
@@ -422,11 +422,11 @@ Between segments, add smooth transitions:
    ```
    Thank You
 
-   Learn More: www.medflow.com
-   Contact: sales@medflow.com
+   Learn More: www.aureoncare.com
+   Contact: sales@aureoncare.com
    Phone: [Your Phone]
 
-   [MedFlow Logo]
+   [AureonCare Logo]
    ```
 2. Add fade to black at the very end
 
@@ -469,7 +469,7 @@ Between segments, add smooth transitions:
 - Channels: **Stereo**
 
 **File Naming:**
-- Filename: `MedFlow_Executive_Demo_v1.mp4`
+- Filename: `AureonCare_Executive_Demo_v1.mp4`
 - Location: `/demo_recordings/final/`
 
 4. Click **Add to Render Queue**
@@ -531,13 +531,13 @@ Between segments, add smooth transitions:
 
 ## Alternative: Slide-Based Video (No Screen Recording)
 
-If screen recording MedFlow is not feasible, create a slide-based video:
+If screen recording AureonCare is not feasible, create a slide-based video:
 
 ### Approach
 
 1. **Create Slides** (PowerPoint/Keynote):
    - Use the `PRESENTATION_SLIDES_OUTLINE.md` to build slides
-   - Add screenshots from MedFlow (taken manually)
+   - Add screenshots from AureonCare (taken manually)
    - Include architecture diagrams and metrics
 
 2. **Record Slide Presentation:**
@@ -587,10 +587,10 @@ If screen recording MedFlow is not feasible, create a slide-based video:
 ### Optimization for Each Platform
 
 **YouTube:**
-- Title: "MedFlow Healthcare Platform - Executive Demo"
+- Title: "AureonCare Healthcare Platform - Executive Demo"
 - Description: Include timestamps for each section
 - Tags: healthcare, EHR, telehealth, RCM, FHIR, medical software
-- Thumbnail: Custom thumbnail with MedFlow logo and "Executive Demo" text
+- Thumbnail: Custom thumbnail with AureonCare logo and "Executive Demo" text
 
 **Vimeo:**
 - Enable password protection if confidential

@@ -15,8 +15,8 @@ To fix the error `relation "payments" does not exist`, you need to run the payme
    ```
    DB_HOST=localhost
    DB_PORT=5432
-   DB_NAME=medflow
-   DB_USER=medflow_user
+   DB_NAME=aureoncare
+   DB_USER=aureoncare_user
    DB_PASSWORD=your_password_here
    ```
 
@@ -28,10 +28,10 @@ To fix the error `relation "payments" does not exist`, you need to run the payme
 4. You should see output like:
    ```
    ========================================
-   MedFlow Database Migrations
+   AureonCare Database Migrations
    ========================================
-   📊 Database: medflow
-   👤 User: medflow_user
+   📊 Database: aureoncare
+   👤 User: aureoncare_user
    🖥️  Host: localhost:5432
 
    ✅ Database connection successful
@@ -53,7 +53,7 @@ To fix the error `relation "payments" does not exist`, you need to run the payme
 
 2. Run the migration using psql:
    ```bash
-   psql -d medflow -U medflow_user -f migrations/004_create_payments_table.sql
+   psql -d aureoncare -U aureoncare_user -f migrations/004_create_payments_table.sql
    ```
 
 3. Enter your database password when prompted.
@@ -120,7 +120,7 @@ After running the migration, you can verify it worked by:
 ### Error: "database does not exist"
 - Create the database first:
   ```sql
-  CREATE DATABASE medflow;
+  CREATE DATABASE aureoncare;
   ```
 - Or check that DB_NAME in `.env` matches your actual database name
 

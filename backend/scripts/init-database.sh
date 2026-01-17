@@ -1,11 +1,11 @@
 #!/bin/bash
-# Database Initialization Script for MedFlow
+# Database Initialization Script for AureonCare
 # This script sets up a fresh database with the new schema
 
 set -e  # Exit on error
 
 echo "=========================================="
-echo "MedFlow Database Initialization"
+echo "AureonCare Database Initialization"
 echo "=========================================="
 echo ""
 
@@ -14,7 +14,7 @@ if [ -z "$DATABASE_URL" ]; then
     echo "❌ ERROR: DATABASE_URL environment variable is not set"
     echo ""
     echo "Please set it in your .env file or export it:"
-    echo "  export DATABASE_URL='postgresql://user:password@localhost:5432/medflow'"
+    echo "  export DATABASE_URL='postgresql://user:password@localhost:5432/aureoncare'"
     exit 1
 fi
 
@@ -95,7 +95,7 @@ echo "✅ Database initialization complete!"
 echo "=========================================="
 echo ""
 echo "Test credentials:"
-echo "  Admin: admin@medflow.com / password"
+echo "  Admin: admin@aureoncare.com / password"
 echo "  Patient Portal:"
 echo "    - john.doe@example.com"
 echo "    - jane.smith@example.com"

@@ -1,4 +1,4 @@
-# MedFlow Executive Demo - Scene-by-Scene Storyboard
+# AureonCare Executive Demo - Scene-by-Scene Storyboard
 
 **Duration:** 13 minutes 30 seconds
 **Format:** 1920x1080, 30fps
@@ -32,9 +32,9 @@
 ┌────────────────────────────────────────┐
 │                                        │
 │                                        │
-│        [MedFlow Logo]                  │
+│        [AureonCare Logo]                  │
 │                                        │
-│     MedFlow Healthcare Platform        │
+│     AureonCare Healthcare Platform        │
 │                                        │
 │   One Platform. One Patient Record.    │
 │         End-to-End Care.               │
@@ -48,10 +48,10 @@
 **Background:** Clean gradient (healthcare blue to white)
 
 **Audio/Voiceover:**
-> "Welcome to MedFlow—the unified healthcare platform that supports the entire patient journey. In the next 13 minutes, you'll see how we transform healthcare delivery through one platform, one patient record, and end-to-end care coordination."
+> "Welcome to AureonCare—the unified healthcare platform that supports the entire patient journey. In the next 13 minutes, you'll see how we transform healthcare delivery through one platform, one patient record, and end-to-end care coordination."
 
 **Graphics:**
-- MedFlow logo (centered, large)
+- AureonCare logo (centered, large)
 - Title text fades in
 - Subtitle fades in
 - "Executive Demonstration" fades in
@@ -87,9 +87,9 @@
 ```
 
 **Audio/Voiceover:**
-> "MedFlow is a comprehensive healthcare suite with six integrated modules: EHR for clinical documentation, Telehealth for virtual care, Scheduling for appointments, Lab Orders for diagnostics, Revenue Cycle Management for billing, and an Integration Engine for seamless data exchange.
+> "AureonCare is a comprehensive healthcare suite with six integrated modules: EHR for clinical documentation, Telehealth for virtual care, Scheduling for appointments, Lab Orders for diagnostics, Revenue Cycle Management for billing, and an Integration Engine for seamless data exchange.
 >
-> Each module shares a single patient record—stored in FHIR-compliant format. This means no data duplication, no synchronization delays, and no integration headaches. Whether you're a small clinic or a large health system, MedFlow scales with you."
+> Each module shares a single patient record—stored in FHIR-compliant format. This means no data duplication, no synchronization delays, and no integration headaches. Whether you're a small clinic or a large health system, AureonCare scales with you."
 
 **Graphics:**
 - Architecture diagram animates in (modules appear one by one)
@@ -108,7 +108,7 @@
 
 **Timing:** 1:20 - 2:10 (50 seconds)
 
-**Visual:** MedFlow frontend - Practice Management screen
+**Visual:** AureonCare frontend - Practice Management screen
 
 **Action Sequence:**
 1. Cursor moves to search bar
@@ -130,7 +130,7 @@
 **Screen Display:**
 ```
 ┌────────────────────────────────────────┐
-│  MedFlow - Practice Management         │
+│  AureonCare - Practice Management         │
 ├────────────────────────────────────────┤
 │  Search: [Williams____]  [Search]      │
 │                                        │
@@ -152,7 +152,7 @@
 
 **Timing:** 2:10 - 2:50 (40 seconds)
 
-**Visual:** MedFlow frontend - Appointment booking screen
+**Visual:** AureonCare frontend - Appointment booking screen
 
 **Action Sequence:**
 1. Click "Schedule Appointment" button
@@ -201,7 +201,7 @@
 
 **Timing:** 2:50 - 4:00 (70 seconds)
 
-**Visual:** MedFlow frontend - EHR patient chart view
+**Visual:** AureonCare frontend - EHR patient chart view
 
 **Action Sequence:**
 1. Navigate to EHR module
@@ -212,7 +212,7 @@
 6. Scroll through patient timeline
 
 **Audio/Voiceover:**
-> "Now we're in the clinical heart of MedFlow—the Electronic Health Record.
+> "Now we're in the clinical heart of AureonCare—the Electronic Health Record.
 >
 > Dr. Anderson opens Sarah's patient chart. Here's the power of a unified system. He can see her complete medical history: diagnosed with Type 2 Diabetes one year ago, Hypertension for two years.
 >
@@ -256,7 +256,7 @@
 
 **Timing:** 4:00 - 4:50 (50 seconds)
 
-**Visual:** MedFlow frontend - New encounter form with SOAP notes
+**Visual:** AureonCare frontend - New encounter form with SOAP notes
 
 **Action Sequence:**
 1. Click "New Encounter" button
@@ -308,7 +308,7 @@
 
 **Timing:** 4:50 - 6:00 (70 seconds)
 
-**Visual:** MedFlow frontend - Telehealth module
+**Visual:** AureonCare frontend - Telehealth module
 
 **Action Sequence:**
 1. Navigate to Telehealth module
@@ -324,7 +324,7 @@
 **Audio/Voiceover:**
 > "Telehealth is no longer optional—it's essential. But most systems treat it as a bolt-on, forcing clinicians to juggle multiple windows.
 >
-> In MedFlow, telehealth is fully embedded. I click 'Start Session,' choose Zoom as the provider, and within seconds, a meeting is created.
+> In AureonCare, telehealth is fully embedded. I click 'Start Session,' choose Zoom as the provider, and within seconds, a meeting is created.
 >
 > Sarah receives a join link via SMS. Dr. Anderson gets a provider link. They're face-to-face virtually—no separate scheduling, no copy-pasting URLs.
 >
@@ -367,7 +367,7 @@
 
 **Timing:** 6:00 - 6:40 (40 seconds)
 
-**Visual:** MedFlow frontend - Prescription entry form
+**Visual:** AureonCare frontend - Prescription entry form
 
 **Action Sequence:**
 1. Within encounter, click "Add Prescription"
@@ -391,7 +391,7 @@
 - Lower third: "ePrescribing via Surescripts"
 - Call-out: "✓ Sent to CVS Pharmacy"
 - Call-out: "Reaches 95% of US Pharmacies"
-- Animation: Prescription icon traveling from MedFlow → Surescripts → Pharmacy
+- Animation: Prescription icon traveling from AureonCare → Surescripts → Pharmacy
 
 **Screen Display:**
 ```
@@ -419,7 +419,7 @@
 
 **Timing:** 6:40 - 7:30 (50 seconds)
 
-**Visual:** MedFlow frontend - Lab order form and tracking
+**Visual:** AureonCare frontend - Lab order form and tracking
 
 **Action Sequence:**
 1. Click "Order Labs"
@@ -441,7 +441,7 @@
 >
 > He selects the test, chooses Labcorp, links it to her diabetes diagnosis for proper coding, and submits the order.
 >
-> MedFlow transmits this electronically to Labcorp using FHIR ServiceRequest standards. The order gets a unique tracking number—LAB-123456.
+> AureonCare transmits this electronically to Labcorp using FHIR ServiceRequest standards. The order gets a unique tracking number—LAB-123456.
 >
 > I can monitor it in real-time: Order created, sent to Labcorp, acknowledged, specimen pending. When results arrive, they'll flow back automatically into Sarah's chart with abnormal values flagged in red. No faxing. No lost results."
 
@@ -481,7 +481,7 @@
 
 **Timing:** 7:30 - 9:00 (90 seconds)
 
-**Visual:** MedFlow frontend - RCM dashboard and claim details
+**Visual:** AureonCare frontend - RCM dashboard and claim details
 
 **Action Sequence:**
 1. Navigate to RCM module
@@ -566,7 +566,7 @@
 
 **Timing:** 9:00 - 10:00 (60 seconds)
 
-**Visual:** MedFlow frontend - Integration hub and FHIR resources
+**Visual:** AureonCare frontend - Integration hub and FHIR resources
 
 **Action Sequence:**
 1. Navigate to Integrations module
@@ -591,19 +591,19 @@
 **Audio/Voiceover:**
 > "Healthcare doesn't exist in a vacuum. Your systems need to communicate with each other and with external partners.
 >
-> This is MedFlow's Integration Hub. We're already integrated with Labcorp for lab orders, Surescripts for ePrescribing to 95% of US pharmacies, Optum for claim submission to hundreds of payers, and Zoom for telehealth.
+> This is AureonCare's Integration Hub. We're already integrated with Labcorp for lab orders, Surescripts for ePrescribing to 95% of US pharmacies, Optum for claim submission to hundreds of payers, and Zoom for telehealth.
 >
 > Everything runs on FHIR R4—the global standard for healthcare data exchange. Every patient record, prescription, lab order is stored in FHIR-compliant format.
 >
-> What does this mean? MedFlow can exchange data with virtually any modern healthcare system—EHRs, labs, pharmacies, health information exchanges. For larger health systems, MedFlow connects to HIEs using standard FHIR APIs.
+> What does this mean? AureonCare can exchange data with virtually any modern healthcare system—EHRs, labs, pharmacies, health information exchanges. For larger health systems, AureonCare connects to HIEs using standard FHIR APIs.
 >
-> The key insight: MedFlow fits into your existing ecosystem rather than replacing everything."
+> The key insight: AureonCare fits into your existing ecosystem rather than replacing everything."
 
 **Graphics:**
 - Lower third: "Interoperability by Design"
 - Call-out: "FHIR R4 Compliant"
 - Vendor logos appearing: Labcorp, Surescripts, Optum, Zoom
-- Animation: Data flow diagram (MedFlow ↔ External Systems)
+- Animation: Data flow diagram (AureonCare ↔ External Systems)
 
 **Screen Display:**
 ```
@@ -635,7 +635,7 @@
 
 **Timing:** 10:00 - 11:20 (80 seconds)
 
-**Visual:** MedFlow frontend - Reports & Analytics dashboards
+**Visual:** AureonCare frontend - Reports & Analytics dashboards
 
 **Action Sequence:**
 1. Navigate to Reports & Analytics module
@@ -662,7 +662,7 @@
 5. Click "Export" → "Export to Excel"
 
 **Audio/Voiceover:**
-> "Data without insights is just noise. MedFlow turns operational data into actionable intelligence.
+> "Data without insights is just noise. AureonCare turns operational data into actionable intelligence.
 >
 > This is the Reports & Analytics module. For clinical teams, I can see patient population metrics and quality measures—87% of diabetic patients have had recent HbA1c testing. This supports value-based care programs.
 >
@@ -727,11 +727,11 @@
 **Audio/Voiceover:**
 > "Security and compliance aren't afterthoughts—they're built into every layer.
 >
-> MedFlow uses role-based access control. Every user has a specific role—Admin, Doctor, Nurse, Receptionist, Patient—with granular permissions. A receptionist can schedule appointments but cannot access clinical documentation.
+> AureonCare uses role-based access control. Every user has a specific role—Admin, Doctor, Nurse, Receptionist, Patient—with granular permissions. A receptionist can schedule appointments but cannot access clinical documentation.
 >
 > All data is encrypted at rest and in transit. Every action is logged—who accessed what patient record, when, and from where. This supports HIPAA compliance and security investigations.
 >
-> MedFlow is HIPAA and GDPR ready with Business Associate Agreements available. You can deploy in the cloud or on-premises, and the platform scales from 5-person clinics to 500-provider health systems."
+> AureonCare is HIPAA and GDPR ready with Business Associate Agreements available. You can deploy in the cloud or on-premises, and the platform scales from 5-person clinics to 500-provider health systems."
 
 **Graphics:**
 - Lower third: "Enterprise-Grade Security"
@@ -774,12 +774,12 @@
    - Column 2: End-to-End Workflows
    - Column 3: Better Outcomes
 2. ROI metrics appear
-3. MedFlow logo reappears
+3. AureonCare logo reappears
 
 **Audio/Voiceover:**
 > "Let's recap what you've seen.
 >
-> One patient, one record. MedFlow unifies your entire practice on a single platform. No more switching between systems. No more duplicate data entry.
+> One patient, one record. AureonCare unifies your entire practice on a single platform. No more switching between systems. No more duplicate data entry.
 >
 > End-to-end workflows. From scheduling to clinical documentation, telehealth, lab orders, prescriptions, billing, and reporting—everything flows seamlessly.
 >
@@ -801,7 +801,7 @@
 **Visual:**
 ```
 ┌────────────────────────────────────────┐
-│  Why MedFlow?                          │
+│  Why AureonCare?                          │
 │                                        │
 │  ONE PATIENT,      END-TO-END     BETTER        │
 │  ONE RECORD        WORKFLOWS      OUTCOMES       │
@@ -832,22 +832,22 @@
 **Visual:** End screen with contact information
 
 **Audio/Voiceover:**
-> "Thank you for watching this demonstration. We're excited about the potential of MedFlow to transform your organization.
+> "Thank you for watching this demonstration. We're excited about the potential of AureonCare to transform your organization.
 >
 > Ready to see more? Contact us for a personalized demo or to discuss a proof of concept for your practice.
 >
 > Visit our website, email our sales team, or give us a call. We look forward to partnering with you on your digital health journey."
 
 **Graphics:**
-- MedFlow logo (centered, large)
+- AureonCare logo (centered, large)
 - Contact information fades in:
   ```
   Learn More
-  www.medflow.com
+  www.aureoncare.com
 
   Contact Sales
-  sales@medflow.com
-  1-800-MEDFLOW
+  sales@aureoncare.com
+  1-800-AUREONCARE
 
   Schedule a Demo
   [QR Code]
@@ -857,17 +857,17 @@
 ```
 ┌────────────────────────────────────────┐
 │                                        │
-│        [MedFlow Logo]                  │
+│        [AureonCare Logo]                  │
 │                                        │
 │    One Platform. One Patient Record.   │
 │         End-to-End Care.               │
 │                                        │
 │        Learn More                      │
-│     www.medflow.com                    │
+│     www.aureoncare.com                    │
 │                                        │
 │      Contact Sales                     │
-│    sales@medflow.com                   │
-│    1-800-MEDFLOW                       │
+│    sales@aureoncare.com                   │
+│    1-800-AUREONCARE                       │
 │                                        │
 │     [QR Code for Demo Booking]         │
 │                                        │

@@ -40,7 +40,7 @@ node scripts/run-preapprovals-migration.js
 After running the migration, verify the tables were created:
 
 ```sql
--- Connect to your medflow database using psql or pgAdmin
+-- Connect to your aureoncare database using psql or pgAdmin
 \dt
 
 -- Check preapprovals table structure
@@ -62,12 +62,12 @@ You should see:
 
 This is normal - it means the tables are already created. The migration script will skip existing tables.
 
-### Error: "database 'medflow' does not exist"
+### Error: "database 'aureoncare' does not exist"
 
 Create the database first:
 
 ```sql
-CREATE DATABASE medflow;
+CREATE DATABASE aureoncare;
 ```
 
 Then run the migration again.
@@ -79,14 +79,14 @@ Check your `backend/.env` file and ensure:
 - `DB_PORT` is correct (usually `5432`)
 - `DB_USER` is correct (usually `postgres`)
 - `DB_PASSWORD` matches your PostgreSQL password
-- `DB_NAME` is set to `medflow`
+- `DB_NAME` is set to `aureoncare`
 
 Example `.env` configuration:
 
 ```
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=medflow
+DB_NAME=aureoncare
 DB_USER=postgres
 DB_PASSWORD=your_password_here
 ```

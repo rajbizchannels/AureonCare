@@ -1,4 +1,4 @@
-# MedFlow Database Migration Guide
+# AureonCare Database Migration Guide
 
 ## Overview
 This guide will help you apply the necessary database migrations to:
@@ -17,7 +17,7 @@ This guide will help you apply the necessary database migrations to:
 ### Step 1: Backup Your Database
 ```bash
 # Windows (PowerShell/CMD)
-pg_dump -h localhost -U medflow_user -d medflow > backup_$(date +%Y%m%d).sql
+pg_dump -h localhost -U aureoncare_user -d aureoncare > backup_$(date +%Y%m%d).sql
 
 # Or use pgAdmin to create a backup
 ```
@@ -32,14 +32,14 @@ pg_dump -h localhost -U medflow_user -d medflow > backup_$(date +%Y%m%d).sql
 cd backend
 
 # Run UUID-compatible migrations in order
-psql -h localhost -U medflow_user -d medflow -f migrations/005_create_prescriptions_diagnosis_tables_uuid.sql
-psql -h localhost -U medflow_user -d medflow -f migrations/006_remove_name_add_medical_attributes_uuid.sql
-psql -h localhost -U medflow_user -d medflow -f migrations/007_link_users_patients_uuid.sql
+psql -h localhost -U aureoncare_user -d aureoncare -f migrations/005_create_prescriptions_diagnosis_tables_uuid.sql
+psql -h localhost -U aureoncare_user -d aureoncare -f migrations/006_remove_name_add_medical_attributes_uuid.sql
+psql -h localhost -U aureoncare_user -d aureoncare -f migrations/007_link_users_patients_uuid.sql
 ```
 
 #### Option B: Using pgAdmin (RECOMMENDED)
 1. Open pgAdmin
-2. Connect to your medflow database
+2. Connect to your aureoncare database
 3. Open Query Tool (Tools → Query Tool or F4)
 4. **Run these UUID migration files in this exact order**:
    - `005_create_prescriptions_diagnosis_tables_uuid.sql`
@@ -99,7 +99,7 @@ Expected results:
 ```bash
 # Stop the backend server (Ctrl+C if running)
 # Start it again
-cd MedFlow
+cd AureonCare
 npm start
 
 # Or if using separate backend start
@@ -119,11 +119,11 @@ Make sure you're running migrations in the correct order (002 → 005 → 006 �
 Use pgAdmin (Option B) or install PostgreSQL command-line tools.
 
 ### Error: "permission denied"
-Make sure your database user (medflow_user) has sufficient privileges:
+Make sure your database user (aureoncare_user) has sufficient privileges:
 ```sql
-GRANT ALL PRIVILEGES ON DATABASE medflow TO medflow_user;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO medflow_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO medflow_user;
+GRANT ALL PRIVILEGES ON DATABASE aureoncare TO aureoncare_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO aureoncare_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO aureoncare_user;
 ```
 
 ## What Changed
@@ -162,7 +162,7 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO medflow_user;
 If you need to rollback:
 ```bash
 # Restore from backup
-psql -h localhost -U medflow_user -d medflow < backup_YYYYMMDD.sql
+psql -h localhost -U aureoncare_user -d aureoncare < backup_YYYYMMDD.sql
 ```
 
 ## Support

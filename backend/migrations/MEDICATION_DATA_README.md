@@ -1,7 +1,7 @@
 # Medication Sample Data for ePrescribe
 
 ## Overview
-This directory contains comprehensive medication data for testing and development of the ePrescribe functionality in MedFlow.
+This directory contains comprehensive medication data for testing and development of the ePrescribe functionality in AureonCare.
 
 ## Files
 
@@ -12,12 +12,12 @@ Comprehensive medication database with **45+ medications** across major drug cla
 
 ### Option 1: Run the SQL file directly (Recommended for comprehensive data)
 ```bash
-psql -U your_username -d medflow_db -f backend/migrations/015_medications_sample_data.sql
+psql -U your_username -d aureoncare_db -f backend/migrations/015_medications_sample_data.sql
 ```
 
 ### Option 2: Using psql interactive mode
 ```bash
-psql -U your_username -d medflow_db
+psql -U your_username -d aureoncare_db
 \i backend/migrations/015_medications_sample_data.sql
 ```
 

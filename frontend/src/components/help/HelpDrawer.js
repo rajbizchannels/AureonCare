@@ -404,7 +404,7 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
             <span className="font-medium">Ask AI Assistant</span>
           </button>
           <p className={`text-center text-xs mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-            Press ESC to close • MedFlow v1.1
+            Press ESC to close • AureonCare v1.1
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-# MedFlow Platform
+# AureonCare Platform
 ## Technical Architecture & Infrastructure Summary for CTO
 
 **Prepared for:** Chief Technology Officer (CTO) & IT Leadership
@@ -9,7 +9,7 @@
 
 ## Executive Technical Overview
 
-MedFlow is a cloud-native, enterprise-grade healthcare platform built on modern technology stack with a focus on scalability, security, and interoperability. The platform employs a service-oriented architecture with RESTful APIs, supports FHIR R4 standards for healthcare interoperability, and implements comprehensive security controls meeting HIPAA compliance requirements.
+AureonCare is a cloud-native, enterprise-grade healthcare platform built on modern technology stack with a focus on scalability, security, and interoperability. The platform employs a service-oriented architecture with RESTful APIs, supports FHIR R4 standards for healthcare interoperability, and implements comprehensive security controls meeting HIPAA compliance requirements.
 
 **Technical Highlights:**
 - **Modern Stack:** Node.js/Express.js backend, React frontend, PostgreSQL database
@@ -778,9 +778,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Build Docker image
-        run: docker build -t medflow:${{ github.sha }}
+        run: docker build -t aureoncare:${{ github.sha }}
       - name: Push to registry
-        run: docker push medflow:${{ github.sha }}
+        run: docker push aureoncare:${{ github.sha }}
 
   deploy:
     needs: build
@@ -1444,20 +1444,20 @@ For successful deployment in your environment:
 ## Contact Information
 
 **Technical Inquiries:**
-Email: cto@medflow.com
-Architecture Questions: architecture@medflow.com
+Email: cto@aureoncare.com
+Architecture Questions: architecture@aureoncare.com
 
 **Security:**
-Security Team: security@medflow.com
-Vulnerability Reports: security-reports@medflow.com
+Security Team: security@aureoncare.com
+Vulnerability Reports: security-reports@aureoncare.com
 
 **DevOps:**
-Infrastructure: devops@medflow.com
-API Support: api-support@medflow.com
+Infrastructure: devops@aureoncare.com
+API Support: api-support@aureoncare.com
 
 ---
 
-*This technical summary is based on the MedFlow platform architecture as of December 2025. Technical specifications are subject to change with platform updates.*
+*This technical summary is based on the AureonCare platform architecture as of December 2025. Technical specifications are subject to change with platform updates.*
 
 **Document Version:** 1.0
 **Last Updated:** December 19, 2025

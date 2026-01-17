@@ -351,7 +351,7 @@ INSERT INTO fhir_error_actions (
 Run the migration to set up tracking tables:
 ```bash
 cd backend
-psql -U medflow_user -d medflow_db -f migrations/035_add_fhir_tracking.sql
+psql -U aureoncare_user -d aureoncare_db -f migrations/035_add_fhir_tracking.sql
 ```
 
 ## Monitoring & Maintenance

@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# MedFlow Database Migrations Runner
+# AureonCare Database Migrations Runner
 # This script applies all pending migrations to the database
 
 set -e  # Exit on error
 
-DB_NAME="medflow"
-DB_USER="medflow_user"
+DB_NAME="aureoncare"
+DB_USER="aureoncare_user"
 MIGRATIONS_DIR="./migrations"
 
 echo "========================================"
-echo "MedFlow Database Migrations"
+echo "AureonCare Database Migrations"
 echo "========================================"
 echo ""
 

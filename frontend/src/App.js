@@ -632,15 +632,14 @@ function App() {
               }}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center">
-                <Stethoscope className={`w-6 h-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
-              </div>
-              <div>
-                <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>MedFlow</h1>
-                {user?.role === 'admin' && (
-                  <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{planTier} Plan</p>
-                )}
-              </div>
+              <img
+                src="/assets/aureoncare-logo.svg"
+                alt="AureonCare Logo"
+                className="h-10 w-auto object-contain"
+              />
+              {user?.role === 'admin' && (
+                <p className={`text-xs capitalize ml-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{planTier} Plan</p>
+              )}
             </button>
 
             {/* Action Buttons */}

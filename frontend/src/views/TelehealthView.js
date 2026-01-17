@@ -261,7 +261,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                 {activeProvider.provider_type === 'zoom' && 'Zoom'}
                 {activeProvider.provider_type === 'google_meet' && 'Google Meet'}
                 {activeProvider.provider_type === 'webex' && 'Webex'}
-                {activeProvider.provider_type === 'medflow' && 'MedFlow (Default)'}
+                {activeProvider.provider_type === 'aureoncare' && 'AureonCare (Default)'}
               </span>
             </div>
           </div>

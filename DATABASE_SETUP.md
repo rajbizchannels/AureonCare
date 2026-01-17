@@ -6,13 +6,13 @@ Your database is currently empty. Run the initialization script to set up all ta
 
 ### For Windows:
 ```cmd
-cd D:\MedFlow
+cd D:\AureonCare
 backend\scripts\init-database.bat
 ```
 
 ### For Linux/Mac:
 ```bash
-cd /home/user/MedFlow
+cd /home/user/AureonCare
 ./backend/scripts/init-database.sh
 ```
 
@@ -50,14 +50,14 @@ sudo systemctl start postgresql
 
 ### 2. Database Created
 
-Create the MedFlow database if it doesn't exist:
+Create the AureonCare database if it doesn't exist:
 
 ```bash
 # Connect to PostgreSQL
 psql -U postgres
 
 # Create database
-CREATE DATABASE medflow;
+CREATE DATABASE aureoncare;
 
 # Exit
 \q
@@ -69,7 +69,7 @@ Create a `.env` file in the backend directory:
 
 **backend/.env:**
 ```env
-DATABASE_URL=postgresql://postgres:your_password@localhost:5432/medflow
+DATABASE_URL=postgresql://postgres:your_password@localhost:5432/aureoncare
 PORT=3001
 NODE_ENV=development
 JWT_SECRET=your-secret-key-here
@@ -78,7 +78,7 @@ JWT_SECRET=your-secret-key-here
 Replace:
 - `postgres` with your PostgreSQL username
 - `your_password` with your PostgreSQL password
-- `medflow` with your database name (if different)
+- `aureoncare` with your database name (if different)
 
 ## Test the Setup
 
@@ -110,7 +110,7 @@ curl http://localhost:3001/api/appointments
 After initialization, you can log in with:
 
 ### Admin Portal:
-- Email: `admin@medflow.com`
+- Email: `admin@aureoncare.com`
 - Password: (check seed-test-data.sql for default password)
 
 ### Patient Portal:
@@ -167,7 +167,7 @@ See `SCHEMA_REFACTORING_GUIDE.md` for complete details.
 ### Error: "database does not exist"
 - **Solution:** Create the database first:
   ```bash
-  psql -U postgres -c "CREATE DATABASE medflow;"
+  psql -U postgres -c "CREATE DATABASE aureoncare;"
   ```
 
 ### Error: "could not connect to server"

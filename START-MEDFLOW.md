@@ -1,4 +1,4 @@
-# 🚀 Start MedFlow Application
+# 🚀 Start AureonCare Application
 
 ## The Issue
 
@@ -44,7 +44,7 @@ pg_ctl -D /usr/local/var/postgres start
 
 #### Verify PostgreSQL is running:
 ```bash
-psql -U medflow_app -d medflow -c "SELECT NOW();"
+psql -U aureoncare_app -d aureoncare -c "SELECT NOW();"
 ```
 
 You should see the current timestamp.
@@ -54,8 +54,8 @@ You should see the current timestamp.
 ### Step 2: Run Database Migration (if not already done)
 
 ```bash
-cd /home/user/MedFlow
-psql -U medflow_app -d medflow -f backend/migrations/040_create_audit_logs_table.sql
+cd /home/user/AureonCare
+psql -U aureoncare_app -d aureoncare -f backend/migrations/040_create_audit_logs_table.sql
 ```
 
 **Expected output:**
@@ -78,7 +78,7 @@ That's fine! It means the migration was already run.
 Open a new terminal:
 
 ```bash
-cd /home/user/MedFlow/backend
+cd /home/user/AureonCare/backend
 npm install  # Only needed first time or after pulling new code
 node server.js
 ```
@@ -98,7 +98,7 @@ Server running on port 3000
 Open ANOTHER new terminal:
 
 ```bash
-cd /home/user/MedFlow/frontend
+cd /home/user/AureonCare/frontend
 npm install  # Only needed first time
 npm start
 ```

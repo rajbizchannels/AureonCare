@@ -1,6 +1,6 @@
 # Audit Logging Implementation Guide
 
-This guide provides comprehensive instructions for adding audit logging to all forms, modals, and views in MedFlow.
+This guide provides comprehensive instructions for adding audit logging to all forms, modals, and views in AureonCare.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -11,7 +11,7 @@ This guide provides comprehensive instructions for adding audit logging to all f
 
 ## Overview
 
-The audit logging system tracks all user interactions with forms, modals, and views across the MedFlow application. It provides:
+The audit logging system tracks all user interactions with forms, modals, and views across the AureonCare application. It provides:
 
 - **Comprehensive Tracking**: View, create, update, delete actions
 - **Detailed Context**: User info, timestamps, IP addresses, duration

@@ -88,9 +88,9 @@ Updated `/api/medical-codes` endpoints to query from database:
 - Database connection configured in environment variables or defaults:
   - `DB_HOST` (default: localhost)
   - `DB_PORT` (default: 5432)
-  - `DB_NAME` (default: medflow)
+  - `DB_NAME` (default: aureoncare)
   - `DB_USER` (default: postgres)
-  - `DB_PASSWORD` (default: MedFlow2024!)
+  - `DB_PASSWORD` (default: AureonCare2024!)
 
 ### Steps
 
@@ -104,7 +104,7 @@ Updated `/api/medical-codes` endpoints to query from database:
 
 2. **Run migrations:**
    ```bash
-   cd /home/user/MedFlow/backend
+   cd /home/user/AureonCare/backend
    node run-migrations.js
    ```
 
@@ -114,7 +114,7 @@ Updated `/api/medical-codes` endpoints to query from database:
 
 3. **Verify the data:**
    ```bash
-   psql -U postgres -d medflow -c "SELECT code_type, COUNT(*) FROM medical_codes GROUP BY code_type;"
+   psql -U postgres -d aureoncare -c "SELECT code_type, COUNT(*) FROM medical_codes GROUP BY code_type;"
    ```
 
    Expected output:

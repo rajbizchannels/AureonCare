@@ -1,6 +1,6 @@
 # Database Reset and Seed Guide
 
-This guide explains how to reset the MedFlow database and populate it with fresh, compatible test data.
+This guide explains how to reset the AureonCare database and populate it with fresh, compatible test data.
 
 ## Files
 
@@ -32,8 +32,8 @@ This guide explains how to reset the MedFlow database and populate it with fresh
      ```
      DB_HOST=localhost
      DB_PORT=5432
-     DB_NAME=medflow
-     DB_USER=medflow_user
+     DB_NAME=aureoncare
+     DB_USER=aureoncare_user
      DB_PASSWORD=your_password_here
      ```
 
@@ -106,7 +106,7 @@ This shows all tables and columns in your database.
 If you have admin access and want to use TRUNCATE:
 
 ```bash
-psql -h localhost -U postgres -d medflow -f backend/scripts/grant-permissions.sql
+psql -h localhost -U postgres -d aureoncare -f backend/scripts/grant-permissions.sql
 ```
 
 ## What Gets Reset
@@ -141,11 +141,11 @@ All staff use password: `password123`
 
 | Name | Email | Role | Specialty |
 |------|-------|------|-----------|
-| Sarah Chen | sarah.chen@medflow.com | admin | Family Medicine |
-| James Wilson | james.wilson@medflow.com | doctor | Internal Medicine |
-| Emily Rodriguez | emily.rodriguez@medflow.com | doctor | Pediatrics |
-| Michael Brown | michael.brown@medflow.com | nurse | Registered Nurse |
-| Lisa Anderson | lisa.anderson@medflow.com | reception | - |
+| Sarah Chen | sarah.chen@aureoncare.com | admin | Family Medicine |
+| James Wilson | james.wilson@aureoncare.com | doctor | Internal Medicine |
+| Emily Rodriguez | emily.rodriguez@aureoncare.com | doctor | Pediatrics |
+| Michael Brown | michael.brown@aureoncare.com | nurse | Registered Nurse |
+| Lisa Anderson | lisa.anderson@aureoncare.com | reception | - |
 
 ### Patients (with Portal Access)
 All patients use password: `password123`
@@ -177,8 +177,8 @@ You can login to the patient portal with any of these accounts:
 - **Email:** `robert.johnson@email.com` | **Password:** `password123`
 
 ### Admin/Staff Testing
-- **Email:** `sarah.chen@medflow.com` | **Password:** `password123`
-- **Email:** `james.wilson@medflow.com` | **Password:** `password123`
+- **Email:** `sarah.chen@aureoncare.com` | **Password:** `password123`
+- **Email:** `james.wilson@aureoncare.com` | **Password:** `password123`
 
 ## Verification
 
@@ -223,7 +223,7 @@ node scripts/run-reset-simple.js
 
 Or grant permissions (requires database admin access):
 ```bash
-psql -h localhost -U postgres -d medflow -f scripts/grant-permissions.sql
+psql -h localhost -U postgres -d aureoncare -f scripts/grant-permissions.sql
 ```
 
 ---
@@ -231,7 +231,7 @@ psql -h localhost -U postgres -d medflow -f scripts/grant-permissions.sql
 ### Error: Cannot connect to database
 - Make sure PostgreSQL is running: `sudo service postgresql status` (Linux) or check Services (Windows)
 - Check your `.env` file has correct credentials
-- Verify database exists: `psql -l | grep medflow`
+- Verify database exists: `psql -l | grep aureoncare`
 
 ---
 
@@ -288,7 +288,7 @@ After resetting the database:
    - Verify it appears in the appointments list
 
 3. **Test staff login:**
-   - Login with: `sarah.chen@medflow.com` / `password123`
+   - Login with: `sarah.chen@aureoncare.com` / `password123`
    - Verify all modules work correctly
 
 ## Support

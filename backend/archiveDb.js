@@ -17,9 +17,9 @@ const { Pool } = require('pg');
 const archivePool = new Pool({
   host: process.env.ARCHIVE_DB_HOST || process.env.DB_HOST || 'localhost',
   port: process.env.ARCHIVE_DB_PORT || process.env.DB_PORT || 5432,
-  database: process.env.ARCHIVE_DB_NAME || (process.env.DB_NAME || 'medflow') + '_archive',
+  database: process.env.ARCHIVE_DB_NAME || (process.env.DB_NAME || 'aureoncare') + '_archive',
   user: process.env.ARCHIVE_DB_USER || process.env.DB_USER || 'postgres',
-  password: process.env.ARCHIVE_DB_PASSWORD || process.env.DB_PASSWORD || 'MedFlow2024!',
+  password: process.env.ARCHIVE_DB_PASSWORD || process.env.DB_PASSWORD || 'AureonCare2024!',
   max: 10, // Smaller pool size for archive database
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,

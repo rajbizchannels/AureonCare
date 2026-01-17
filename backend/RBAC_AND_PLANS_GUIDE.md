@@ -2,7 +2,7 @@
 
 ## Overview
 
-MedFlow now includes a comprehensive role-based access control system with subscription plan management and multi-language support. This guide covers all new features and how to use them.
+AureonCare now includes a comprehensive role-based access control system with subscription plan management and multi-language support. This guide covers all new features and how to use them.
 
 ## Features
 
@@ -356,7 +356,7 @@ Response:
 ```json
 {
   "id": 1,
-  "organization_name": "MedFlow Practice",
+  "organization_name": "AureonCare Practice",
   "current_plan_id": 2,
   "plan_name": "starter",
   "plan_display_name": "Starter Plan",
@@ -603,7 +603,7 @@ if (!await hasFeature('crm')) {
 
 ```bash
 cd backend
-psql -h localhost -U medflow_user -d medflow -f migrations/014_create_rbac_and_plans.sql
+psql -h localhost -U aureoncare_user -d aureoncare -f migrations/014_create_rbac_and_plans.sql
 ```
 
 ### Expected Output

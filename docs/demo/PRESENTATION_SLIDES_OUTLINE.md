@@ -1,4 +1,4 @@
-# MedFlow Executive Demo - Presentation Slides Outline
+# AureonCare Executive Demo - Presentation Slides Outline
 
 **Duration:** 13.5 minutes
 **Format:** PowerPoint / Keynote / Google Slides
@@ -31,7 +31,7 @@
 
 ### Content
 **Title (Large, Bold):**
-MedFlow Healthcare Platform
+AureonCare Healthcare Platform
 
 **Subtitle:**
 One Platform. One Patient Record. End-to-End Care.
@@ -46,7 +46,7 @@ Executive Demonstration for Management, Clinicians, Operations & IT
 
 ### Visual
 - Clean, professional background
-- MedFlow logo (top left or center)
+- AureonCare logo (top left or center)
 - Medical imagery (subtle, not distracting): stethoscope, tablet with health data, modern clinic
 - Professional color palette
 
@@ -66,7 +66,7 @@ Comprehensive Healthcare Suite
 **Visual: Architecture Diagram**
 ```
 ┌────────────────────────────────────────────────────────┐
-│               MedFlow Platform Architecture             │
+│               AureonCare Platform Architecture             │
 │                                                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
 │  │  EHR Core    │  │  Telehealth  │  │  Scheduling  │ │
@@ -121,7 +121,7 @@ Centralized, Role-Based, Multi-Location Support
 
 ### Visual
 **Screenshot or Mockup:**
-- MedFlow scheduling interface
+- AureonCare scheduling interface
 - Calendar view with appointments
 - Patient registration form
 - Appointment booking flow
@@ -141,7 +141,7 @@ Centralized, Role-Based, Multi-Location Support
 - 90% patient satisfaction with online booking
 
 ### Notes
-- Include actual screenshot from MedFlow app
+- Include actual screenshot from AureonCare app
 - Highlight speed and ease of use
 - Show both staff view and patient portal view
 
@@ -244,9 +244,9 @@ Electronic Ordering. Automatic Results. Zero Phone Calls.
 ### Visual
 **Workflow Diagram:**
 ```
-Clinician Orders Lab → MedFlow Sends FHIR Request to Labcorp →
+Clinician Orders Lab → AureonCare Sends FHIR Request to Labcorp →
 Labcorp Receives Order → Patient Visits Lab → Specimen Collected →
-Results Sent to MedFlow → Results Appear in Patient Chart →
+Results Sent to AureonCare → Results Appear in Patient Chart →
 Abnormal Values Flagged
 ```
 
@@ -335,7 +335,7 @@ HL7 / FHIR. Fits Your Ecosystem. No Rip-and-Replace.
 **Integration Hub Diagram:**
 ```
                     ┌─────────────┐
-                    │   MedFlow   │
+                    │   AureonCare   │
                     │ FHIR R4 API │
                     └──────┬──────┘
                            │
@@ -562,7 +562,7 @@ Reduce Burden. Improve Efficiency. Enhance Care.
 
 ### Content
 **Title:**
-Why MedFlow?
+Why AureonCare?
 
 ### Visual (3-Column Summary)
 
@@ -608,9 +608,9 @@ Why MedFlow?
    Enterprise-wide deployment with training and support
 
 **Contact:**
-- 📧 Email: sales@medflow.com
+- 📧 Email: sales@aureoncare.com
 - 📞 Phone: [Your Phone]
-- 🌐 Website: www.medflow.com
+- 🌐 Website: www.aureoncare.com
 
 ### Closing Statement (Large Text)
 **"One Platform. One Patient Record. End-to-End Care."**
@@ -633,7 +633,7 @@ Questions?
 We're here to help you transform healthcare delivery.
 
 ### Visual
-- MedFlow logo
+- AureonCare logo
 - Contact information repeated
 - QR code linking to:
   - Product demo request form
@@ -662,7 +662,7 @@ We're here to help you transform healthcare delivery.
 ## Additional Backup Slides (Optional)
 
 ### Backup Slide 1: Detailed Feature Comparison
-**Table comparing MedFlow vs. competitors**
+**Table comparing AureonCare vs. competitors**
 
 ### Backup Slide 2: Implementation Timeline
 **Gantt chart showing typical rollout**

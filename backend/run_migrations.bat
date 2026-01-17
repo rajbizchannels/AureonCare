@@ -3,7 +3,7 @@ REM Run Database Migrations on Windows
 REM This script applies all SQL migration files in the migrations directory
 
 echo ============================================
-echo Running MedFlow Database Migrations
+echo Running AureonCare Database Migrations
 echo ============================================
 echo.
 
@@ -26,7 +26,7 @@ if exist .env (
 REM Set default values if not provided
 if "%DB_USER%"=="" set DB_USER=postgres
 if "%DB_HOST%"=="" set DB_HOST=localhost
-if "%DB_NAME%"=="" set DB_NAME=medflow
+if "%DB_NAME%"=="" set DB_NAME=aureoncare
 if "%DB_PORT%"=="" set DB_PORT=5432
 
 echo.

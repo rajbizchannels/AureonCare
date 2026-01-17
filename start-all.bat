@@ -1,6 +1,6 @@
 @echo off
 echo ================================
-echo Starting MedFlow Complete System
+echo Starting AureonCare Complete System
 echo ================================
 echo.
 
@@ -25,17 +25,17 @@ net start Memurai 2>nul
 
 echo.
 echo Starting Backend Server...
-start "MedFlow Backend" cmd /k "cd D:\MedFlow\backend && node server.js"
+start "AureonCare Backend" cmd /k "cd D:\AureonCare\backend && node server.js"
 
 echo Waiting 5 seconds for backend to start...
 timeout /t 5 /nobreak >nul
 
 echo Starting Frontend...
-start "MedFlow Frontend" cmd /k "cd D:\MedFlow\frontend && npm start"
+start "AureonCare Frontend" cmd /k "cd D:\AureonCare\frontend && npm start"
 
 echo.
 echo ================================
-echo MedFlow is starting...
+echo AureonCare is starting...
 echo Backend: http://localhost:3000
 echo Frontend: http://localhost:3001
 echo ================================

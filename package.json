@@ -1,7 +1,7 @@
 {
-  "name": "medflow-backend",
+  "name": "aureoncare-backend",
   "version": "1.0.0",
-  "description": "MedFlow Practice Management System - Backend",
+  "description": "AureonCare Practice Management System - Backend",
   "main": "server.js",
   "scripts": {
     "start": "node backend/server.js",

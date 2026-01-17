@@ -1,6 +1,6 @@
-# MedFlow Executive Demo - Video Editing Timeline
+# AureonCare Executive Demo - Video Editing Timeline
 
-**Purpose:** Complete guide for assembling the MedFlow demo video in DaVinci Resolve (or similar editor)
+**Purpose:** Complete guide for assembling the AureonCare demo video in DaVinci Resolve (or similar editor)
 
 **Final Duration:** 13 minutes 30 seconds
 **Timeline Resolution:** 1920x1080, 30fps
@@ -24,7 +24,7 @@ This timeline guide shows you how to assemble all your recorded elements into th
 
 1. Launch DaVinci Resolve
 2. Click **New Project**
-3. Name: `MedFlow_Executive_Demo_v1`
+3. Name: `AureonCare_Executive_Demo_v1`
 4. Click **Create**
 
 ### Step 2: Set Timeline Settings
@@ -60,7 +60,7 @@ This timeline guide shows you how to assemble all your recorded elements into th
 ### Step 4: Create Timeline
 
 1. **Right-click in Media Pool** → **Create New Timeline**
-2. **Name:** `MedFlow_Demo_Final`
+2. **Name:** `AureonCare_Demo_Final`
 3. **Settings:**
    - Use Project Settings
    - Resolution: 1920x1080
@@ -130,9 +130,9 @@ A1: Voiceover (primary audio)
    - **Duration:** 20 seconds (0:00:00 to 0:00:20)
    - **Content:**
      ```
-     [MedFlow Logo]
+     [AureonCare Logo]
 
-     MedFlow Healthcare Platform
+     AureonCare Healthcare Platform
 
      One Platform. One Patient Record. End-to-End Care.
 
@@ -345,7 +345,7 @@ A1: Voiceover (primary audio)
 
 **GRAPHICS (V2 - Animation):**
 - **Optional:** Add animation showing prescription flow:
-  - MedFlow → Surescripts → Pharmacy
+  - AureonCare → Surescripts → Pharmacy
   - Use simple arrow graphics
   - Timing: 0:06:32 to 0:06:36 (4 seconds)
 
@@ -436,7 +436,7 @@ A1: Voiceover (primary audio)
   - Animation: Fade in one by one
 
 **GRAPHICS (V2 - Data Flow Animation):**
-- **Diagram:** MedFlow ↔ External Systems
+- **Diagram:** AureonCare ↔ External Systems
   - Show bidirectional arrows
   - Timing: 0:09:35 to 0:09:45 (10 seconds)
 
@@ -511,7 +511,7 @@ A1: Voiceover (primary audio)
 - **Duration:** 60 seconds (0:12:00 to 0:13:00)
 - **Content:**
   ```
-  Why MedFlow?
+  Why AureonCare?
 
   ONE PATIENT,        END-TO-END         BETTER
   ONE RECORD          WORKFLOWS          OUTCOMES
@@ -535,8 +535,8 @@ A1: Voiceover (primary audio)
   - Metric 5 appears at 0:12:50
 - **Animation:** Slide in from left or fade in
 
-**GRAPHICS (V3 - MedFlow Logo):**
-- **Add:** MedFlow logo reappears
+**GRAPHICS (V3 - AureonCare Logo):**
+- **Add:** AureonCare logo reappears
 - **Timing:** 0:12:55 (fades in)
 - **Position:** Center or top center
 
@@ -552,16 +552,16 @@ A1: Voiceover (primary audio)
 - **Duration:** 30 seconds (0:13:00 to 0:13:30)
 - **Content:**
   ```
-  [MedFlow Logo]
+  [AureonCare Logo]
 
   One Platform. One Patient Record. End-to-End Care.
 
   Learn More
-  www.medflow.com
+  www.aureoncare.com
 
   Contact Sales
-  sales@medflow.com
-  1-800-MEDFLOW
+  sales@aureoncare.com
+  1-800-AUREONCARE
 
   [QR Code for Demo Booking]
   ```
@@ -723,7 +723,7 @@ For each screen recording clip:
 
 ### File Naming
 
-- **Filename:** `MedFlow_Executive_Demo_v1_FINAL.mp4`
+- **Filename:** `AureonCare_Executive_Demo_v1_FINAL.mp4`
 - **Location:** `/demo_recordings/final/`
 
 ### Render
@@ -829,7 +829,7 @@ Before final export, check:
 After final export:
 
 1. **Save project:**
-   - **File** → **Save Project As** → `MedFlow_Demo_v1_FINAL.drp`
+   - **File** → **Save Project As** → `AureonCare_Demo_v1_FINAL.drp`
 
 2. **Archive media:**
    - Create folder: `/demo_archive/`
@@ -843,7 +843,7 @@ After final export:
 
 3. **Create README.txt:**
    ```
-   MedFlow Executive Demo Video Archive
+   AureonCare Executive Demo Video Archive
    Date: [Date]
    Version: 1.0 FINAL
 
@@ -853,7 +853,7 @@ After final export:
    - /graphics/ - Title cards, logos, lower thirds
    - /music/ - Background music tracks
    - /final/ - Exported final video
-   - MedFlow_Demo_v1_FINAL.drp - DaVinci Resolve project
+   - AureonCare_Demo_v1_FINAL.drp - DaVinci Resolve project
    ```
 
 4. **Backup to cloud:**
@@ -905,11 +905,11 @@ After final export:
 ### Upload to YouTube
 
 1. **Go to:** https://www.youtube.com/upload
-2. **Upload:** `MedFlow_Executive_Demo_v1_FINAL.mp4`
-3. **Title:** "MedFlow Healthcare Platform - Executive Demo"
+2. **Upload:** `AureonCare_Executive_Demo_v1_FINAL.mp4`
+3. **Title:** "AureonCare Healthcare Platform - Executive Demo"
 4. **Description:**
    ```
-   Complete demonstration of MedFlow Healthcare Platform for executive management, clinicians, operations, and IT teams.
+   Complete demonstration of AureonCare Healthcare Platform for executive management, clinicians, operations, and IT teams.
 
    Timestamps:
    0:00 - Introduction
@@ -925,22 +925,22 @@ After final export:
    11:20 - Security & Compliance
    12:00 - Summary
 
-   Learn more: www.medflow.com
-   Contact: sales@medflow.com
+   Learn more: www.aureoncare.com
+   Contact: sales@aureoncare.com
    ```
 5. **Visibility:** Unlisted (for controlled sharing)
-6. **Thumbnail:** Upload custom thumbnail with MedFlow logo
+6. **Thumbnail:** Upload custom thumbnail with AureonCare logo
 7. **Tags:** healthcare, EHR, telehealth, RCM, FHIR, medical software
 
 ### Share Link
 
 - **YouTube:** https://youtu.be/[VIDEO_ID]
 - **Vimeo:** https://vimeo.com/[VIDEO_ID]
-- **Self-hosted:** Embed on www.medflow.com/demo
+- **Self-hosted:** Embed on www.aureoncare.com/demo
 
 ---
 
-**Congratulations! Your MedFlow executive demo video is complete! 🎉**
+**Congratulations! Your AureonCare executive demo video is complete! 🎉**
 
 ---
 

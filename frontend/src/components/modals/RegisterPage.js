@@ -91,12 +91,14 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
           </button>
 
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <UserPlus className="w-8 h-8 text-white" />
-            </div>
+            <img
+              src="/assets/aureoncare-logo.svg"
+              alt="AureonCare Logo"
+              className="h-14 w-auto object-contain"
+            />
             <div>
-              <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Create Account</h1>
-              <p className={`mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Register for MedFlow</p>
+              <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Create Account</h1>
+              <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Register for AureonCare</p>
             </div>
           </div>
         </div>

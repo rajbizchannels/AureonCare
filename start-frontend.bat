@@ -1,7 +1,7 @@
 @echo off
-title MedFlow Frontend
-cd D:\MedFlow\frontend
-echo Starting MedFlow Frontend...
+title AureonCare Frontend
+cd D:\AureonCare\frontend
+echo Starting AureonCare Frontend...
 echo.
 npm start
 pause

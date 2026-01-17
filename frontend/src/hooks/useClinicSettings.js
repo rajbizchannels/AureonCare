@@ -8,11 +8,11 @@ import { validateClinicSettings } from '../utils/validators';
 import api from '../api/apiService';
 
 const DEFAULT_CLINIC_SETTINGS = {
-  name: 'MedFlow Medical Center',
+  name: 'AureonCare Medical Center',
   address: '123 Healthcare Ave, Medical City, MC 12345',
   phone: '(555) 123-4567',
-  email: 'info@medflowclinic.com',
-  website: 'www.medflowclinic.com',
+  email: 'info@aureoncareclinic.com',
+  website: 'www.aureoncareclinic.com',
   taxId: '',
   npi: '',
 };

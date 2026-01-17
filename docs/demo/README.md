@@ -1,8 +1,8 @@
-# MedFlow Executive Demo Package
+# AureonCare Executive Demo Package
 
-**Welcome to the MedFlow Executive Demo Package!**
+**Welcome to the AureonCare Executive Demo Package!**
 
-This comprehensive demo package contains everything you need to deliver a compelling 13.5-minute presentation showcasing the MedFlow Healthcare Management Platform to executive management, clinicians, operations teams, and IT stakeholders.
+This comprehensive demo package contains everything you need to deliver a compelling 13.5-minute presentation showcasing the AureonCare Healthcare Management Platform to executive management, clinicians, operations teams, and IT stakeholders.
 
 ---
 
@@ -52,7 +52,7 @@ A comprehensive outline for creating professional presentation slides in PowerPo
 ### 3. **DEMO_SETUP_GUIDE.md**
 **Technical Setup & Preparation**
 
-A step-by-step guide for setting up your demo environment with MedFlow running locally or in a demo instance.
+A step-by-step guide for setting up your demo environment with AureonCare running locally or in a demo instance.
 
 **Includes:**
 - Pre-requisites and system requirements
@@ -163,10 +163,10 @@ Complete voiceover script with precise timing, pronunciation guide, and recordin
 ### 8. **SCREEN_RECORDING_GUIDE.md**
 **Step-by-Step Screen Capture Instructions**
 
-Detailed instructions for recording every screen action in the MedFlow demo.
+Detailed instructions for recording every screen action in the AureonCare demo.
 
 **Includes:**
-- MedFlow environment setup
+- AureonCare environment setup
 - Scene-by-scene recording actions (click-by-click)
 - Mouse movement and typing best practices
 - Recording workflow and timing
@@ -174,7 +174,7 @@ Detailed instructions for recording every screen action in the MedFlow demo.
 - Post-recording checklist
 
 **Use this for:**
-- Recording MedFlow screen actions
+- Recording AureonCare screen actions
 - Ensuring consistent screen captures
 - Avoiding common recording mistakes
 - Professional-looking demos
@@ -220,7 +220,7 @@ Comprehensive timeline for assembling the final video in DaVinci Resolve or simi
 
 **Step 3: Set Up Your Environment**
 - Follow `DEMO_SETUP_GUIDE.md` step-by-step
-- Install MedFlow locally or access demo instance
+- Install AureonCare locally or access demo instance
 - Load demo data (Sarah Williams and supporting patients)
 - Test all features before the presentation
 
@@ -254,7 +254,7 @@ Comprehensive timeline for assembling the final video in DaVinci Resolve or simi
 
 ## 🎭 Demo Flow at a Glance
 
-**The Story:** Follow Sarah Williams, a 39-year-old patient with Type 2 Diabetes, through her complete care journey in MedFlow.
+**The Story:** Follow Sarah Williams, a 39-year-old patient with Type 2 Diabetes, through her complete care journey in AureonCare.
 
 1. **Scheduling:** Receptionist schedules Sarah's telehealth appointment in 30 seconds
 2. **EHR:** Dr. Anderson reviews Sarah's complete medical history in unified chart
@@ -344,9 +344,9 @@ Comprehensive timeline for assembling the final video in DaVinci Resolve or simi
 
 | Role | Email | Purpose |
 |------|-------|---------|
-| Doctor | dr.anderson@medflow.com | Primary presenter account |
-| Admin | admin@medflow.com | Backup / admin functions |
-| Receptionist | frontdesk@medflow.com | Scheduling demo |
+| Doctor | dr.anderson@aureoncare.com | Primary presenter account |
+| Admin | admin@aureoncare.com | Backup / admin functions |
+| Receptionist | frontdesk@aureoncare.com | Scheduling demo |
 | Patient | sarah.williams@email.com | Patient portal demo |
 
 ---
@@ -403,7 +403,7 @@ Comprehensive timeline for assembling the final video in DaVinci Resolve or simi
 ✅ **Audience asks specific questions** about features or implementation
 ✅ **Audience understands the value proposition** (one platform, one record)
 ✅ **Audience requests next steps** (POC, pilot, pricing discussion)
-✅ **Audience believes MedFlow solves their problems**
+✅ **Audience believes AureonCare solves their problems**
 
 **Positive signals:**
 - "How long would implementation take for us?"
@@ -436,13 +436,13 @@ Comprehensive timeline for assembling the final video in DaVinci Resolve or simi
 ## 📚 Additional Resources
 
 ### Documentation
-- [MedFlow User Manual](../user-manual/)
+- [AureonCare User Manual](../user-manual/)
 - [API Documentation](../api/)
 - [FHIR Implementation Guide](../FHIR_TRACKING.md)
 
 ### Support
-- **GitHub Issues:** [MedFlow Issues](https://github.com/rajbizchannels/MedFlow/issues)
-- **Email:** support@medflow.com
+- **GitHub Issues:** [AureonCare Issues](https://github.com/rajbizchannels/AureonCare/issues)
+- **Email:** support@aureoncare.com
 
 ### Demo Templates
 - Postman Collection: [Coming Soon]
@@ -457,7 +457,7 @@ We welcome feedback on this demo package!
 
 **How to provide feedback:**
 1. Open a GitHub issue with tag `demo-package`
-2. Email: demo-feedback@medflow.com
+2. Email: demo-feedback@aureoncare.com
 3. Submit a pull request with improvements
 
 **Common feedback areas:**
@@ -471,10 +471,10 @@ We welcome feedback on this demo package!
 
 ## 📄 License & Usage
 
-This demo package is provided as part of the MedFlow project.
+This demo package is provided as part of the AureonCare project.
 
 **Usage:**
-- ✅ Use for MedFlow product demos
+- ✅ Use for AureonCare product demos
 - ✅ Customize for your audience
 - ✅ Share with team members
 - ❌ Do not use for competing products
@@ -496,28 +496,28 @@ This demo package is provided as part of the MedFlow project.
 
 ## 🎉 Good Luck!
 
-You've got everything you need to deliver a compelling, professional demo that showcases the full power of MedFlow.
+You've got everything you need to deliver a compelling, professional demo that showcases the full power of AureonCare.
 
 **Remember:**
 - **One Platform. One Patient Record. End-to-End Care.**
 
-**Now go show them what MedFlow can do! 🚀**
+**Now go show them what AureonCare can do! 🚀**
 
 ---
 
 ## 📞 Need Help?
 
 **For demo support:**
-- Slack: #medflow-demo-support
-- Email: demo-team@medflow.com
+- Slack: #aureoncare-demo-support
+- Email: demo-team@aureoncare.com
 - Phone: [Demo Support Hotline]
 
 **For technical issues:**
-- GitHub Issues: [MedFlow Issues](https://github.com/rajbizchannels/MedFlow/issues)
-- Email: support@medflow.com
+- GitHub Issues: [AureonCare Issues](https://github.com/rajbizchannels/AureonCare/issues)
+- Email: support@aureoncare.com
 
 ---
 
 **Last Updated:** 2025-01-01
 **Version:** 1.0
-**Maintainer:** MedFlow Demo Team
+**Maintainer:** AureonCare Demo Team

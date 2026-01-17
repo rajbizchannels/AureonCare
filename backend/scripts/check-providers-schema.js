@@ -4,9 +4,9 @@ require('dotenv').config();
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'medflow_user',
-  password: process.env.DB_PASSWORD || 'MedFlow2024SecurePass!',
+  database: process.env.DB_NAME || 'aureoncare',
+  user: process.env.DB_USER || 'aureoncare_user',
+  password: process.env.DB_PASSWORD || 'AureonCare2024SecurePass!',
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
 });

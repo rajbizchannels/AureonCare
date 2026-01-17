@@ -1,7 +1,7 @@
 @echo off
-title MedFlow Backend Server
-cd D:\MedFlow\backend
-echo Starting MedFlow Backend...
+title AureonCare Backend Server
+cd D:\AureonCare\backend
+echo Starting AureonCare Backend...
 echo.
 node server.js
 pause

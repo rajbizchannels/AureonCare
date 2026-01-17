@@ -19,7 +19,7 @@
             "password",
             "oauth"
           ],
-          "content": "How to Access MedFlow:\n\n**Staff Portal Login:**\n1. Navigate to your MedFlow URL\n2. Enter your Email Address\n3. Enter your Password\n4. Click Sign In\n\n**Patient Portal Login:**\n1. Navigate to the Patient Portal URL\n2. Enter your registered Email Address\n3. Enter your Password\n4. Click Sign In\n\n**Social Login (OAuth):**\nClick one of the social login buttons:\n• Sign in with Google\n• Sign in with Microsoft\n• Sign in with Facebook\n\nThen authorize MedFlow to access your account.\n\n**Forgot Password:**\n1. Click 'Forgot Password' on login screen\n2. Enter your email address\n3. Check email for reset link (valid 1 hour)\n4. Click link and create new password\n5. Confirm new password\n6. Log in with new credentials\n\n**First-Time Login:**\nYou may be prompted to:\n• Change your temporary password\n• Set up your user profile\n• Upload profile picture (optional)\n• Set language preference\n• Review assigned roles\n\n**Security Best Practices:**\n• Never share your password\n• Log out when leaving workstation\n• Use unique password for MedFlow\n• Report suspicious activity\n• Keep contact information current",
+          "content": "How to Access AureonCare:\n\n**Staff Portal Login:**\n1. Navigate to your AureonCare URL\n2. Enter your Email Address\n3. Enter your Password\n4. Click Sign In\n\n**Patient Portal Login:**\n1. Navigate to the Patient Portal URL\n2. Enter your registered Email Address\n3. Enter your Password\n4. Click Sign In\n\n**Social Login (OAuth):**\nClick one of the social login buttons:\n• Sign in with Google\n• Sign in with Microsoft\n• Sign in with Facebook\n\nThen authorize AureonCare to access your account.\n\n**Forgot Password:**\n1. Click 'Forgot Password' on login screen\n2. Enter your email address\n3. Check email for reset link (valid 1 hour)\n4. Click link and create new password\n5. Confirm new password\n6. Log in with new credentials\n\n**First-Time Login:**\nYou may be prompted to:\n• Change your temporary password\n• Set up your user profile\n• Upload profile picture (optional)\n• Set language preference\n• Review assigned roles\n\n**Security Best Practices:**\n• Never share your password\n• Log out when leaving workstation\n• Use unique password for AureonCare\n• Report suspicious activity\n• Keep contact information current",
           "roles": [
             "all"
           ]
@@ -36,7 +36,7 @@
             "stats",
             "quick actions"
           ],
-          "content": "Understanding your MedFlow dashboard and key metrics",
+          "content": "Understanding your AureonCare dashboard and key metrics",
           "roles": [
             "all"
           ]
@@ -52,7 +52,7 @@
             "sidebar",
             "modules"
           ],
-          "summary": "Navigate through MedFlow modules and features\n\nUse the top menu bar and sidebar to access different modules. Breadcrumbs show your current location.",
+          "summary": "Navigate through AureonCare modules and features\n\nUse the top menu bar and sidebar to access different modules. Breadcrumbs show your current location.",
           "content": "**Main Navigation:**\n\nTop Menu Bar - Access to main modules\nLeft Sidebar - Quick navigation to key features\nNotifications Icon - View system notifications\nUser Profile Icon - Access settings and logout\nTheme Toggle - Switch between light and dark mode\nLanguage Selector - Change interface language\n\n**Accessing Modules:**\n1. Click on module name in top menu (Patients, Appointments, etc.)\n2. Or use left sidebar for quick access\n3. Use search bar to find specific records\n\n**Breadcrumb Navigation:**\n• Shows your current location in the system\n• Click any breadcrumb to navigate back\n\n**Common Actions:**\n• View - Click on a record to see details\n• Edit - Click Edit button or pencil icon\n• Delete - Click Delete button or trash icon\n• Search - Use search box at top of lists\n• Filter - Use filter dropdowns to narrow results\n\n**Keyboard Shortcuts:**\n• ESC - Close modals and dialogs\n• Ctrl+K - Open search\n• ? - Open help documentation\n\n**Quick Tips:**\n• Use breadcrumbs to navigate back quickly\n• Search supports partial matches\n• Filters persist until cleared\n• Recent items appear at top of lists",
           "roles": [
             "all"
@@ -526,7 +526,7 @@
   ],
   "contextualHelp": {
     "login-form": {
-      "title": "Login to MedFlow",
+      "title": "Login to AureonCare",
       "content": "Enter your email and password. Use OAuth for quick social login.",
       "articleId": "login"
     },
@@ -581,7 +581,7 @@
       {
         "step": 1,
         "target": "dashboard",
-        "title": "Welcome to MedFlow!",
+        "title": "Welcome to AureonCare!",
         "content": "This is your central dashboard. View key metrics and quick actions here.",
         "placement": "center"
       },
