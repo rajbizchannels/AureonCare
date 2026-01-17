@@ -34,7 +34,8 @@ const DiagnosisForm = ({
     severity: 'Moderate',
     status: 'Active',
     diagnosedDate: new Date().toISOString().split('T')[0],
-    notes: ''
+    notes: '',
+    soapNotes: ''
   });
   const [laboratories, setLaboratories] = useState([]);
   const [loadingLaboratories, setLoadingLaboratories] = useState(true);
@@ -103,7 +104,8 @@ const DiagnosisForm = ({
           severity: editDiagnosis.severity || 'Moderate',
           status: editDiagnosis.status || 'Active',
           diagnosedDate: editDiagnosis.diagnosedDate || new Date().toISOString().split('T')[0],
-          notes: editDiagnosis.notes || ''
+          notes: editDiagnosis.notes || '',
+          soapNotes: editDiagnosis.soapNotes || ''
         };
 
         // Parse and load ICD codes from comma-separated diagnosisCode string
@@ -333,6 +335,7 @@ const DiagnosisForm = ({
       status: formData.status,
       diagnosedDate: formData.diagnosedDate,
       notes: formData.notes || null,
+      soapNotes: formData.soapNotes || null,
       // Store additional metadata in notes for full details
       metadata: {
         icdCodes: formData.icdCodes,
@@ -1155,6 +1158,27 @@ const DiagnosisForm = ({
                   placeholder="Additional clinical notes, treatment plan, or observations..."
                   rows={4}
                   className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+                  }`}
+                />
+              </div>
+
+              {/* SOAP Notes */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    SOAP Notes
+                  </div>
+                </label>
+                <textarea
+                  value={formData.soapNotes}
+                  onChange={(e) => setFormData({ ...formData, soapNotes: e.target.value })}
+                  placeholder="Subjective: Patient's symptoms and complaints&#10;Objective: Measurable findings and observations&#10;Assessment: Clinical diagnosis and evaluation&#10;Plan: Treatment plan and next steps"
+                  rows={6}
+                  className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors font-mono text-sm ${
                     theme === 'dark'
                       ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
