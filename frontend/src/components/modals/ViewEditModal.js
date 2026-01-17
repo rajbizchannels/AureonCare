@@ -846,12 +846,12 @@ const ViewEditModal = ({
                 <div className="col-span-2">
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.streetAddress || 'Street Address'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_street || editData.address || t.notApplicable || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.address_street || ''}
-                      onChange={(e) => setEditData({...editData, address_street: e.target.value})}
+                      value={editData.address || ''}
+                      onChange={(e) => setEditData({...editData, address: e.target.value})}
                       placeholder={t.streetAddressPlaceholder || "123 Main Street"}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
@@ -860,12 +860,12 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.city || 'City'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_city || t.notApplicable || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.city || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.address_city || ''}
-                      onChange={(e) => setEditData({...editData, address_city: e.target.value})}
+                      value={editData.city || ''}
+                      onChange={(e) => setEditData({...editData, city: e.target.value})}
                       placeholder={t.city || "City"}
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     />
@@ -874,12 +874,12 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.state || 'State'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_state || t.notApplicable || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.state || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.address_state || ''}
-                      onChange={(e) => setEditData({...editData, address_state: e.target.value})}
+                      value={editData.state || ''}
+                      onChange={(e) => setEditData({...editData, state: e.target.value})}
                       placeholder={t.state || "State"}
                       maxLength="2"
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
@@ -889,12 +889,12 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.zipCode || 'ZIP Code'}</label>
                   {isView ? (
-                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.address_zip || t.notApplicable || 'N/A'}</p>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.zip || t.notApplicable || 'N/A'}</p>
                   ) : (
                     <input
                       type="text"
-                      value={editData.address_zip || ''}
-                      onChange={(e) => setEditData({...editData, address_zip: e.target.value})}
+                      value={editData.zip || ''}
+                      onChange={(e) => setEditData({...editData, zip: e.target.value})}
                       placeholder="12345"
                       maxLength="10"
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
