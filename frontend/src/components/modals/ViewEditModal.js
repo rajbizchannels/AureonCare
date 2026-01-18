@@ -588,6 +588,10 @@ const ViewEditModal = ({
               type === 'userProfile' ? (t.userProfile || 'User Profile') :
               type === 'user' ? (t.user || 'User') :
               type === 'task' ? (t.task || 'Task') :
+              type === 'claim' ? (t.claim || 'Claim') :
+              type === 'payment' ? 'Payment' :
+              type === 'denial' ? 'Denial' :
+              type === 'preapproval' ? 'Pre-approval' :
               (t.claim || 'Claim')
             }
           </h2>
@@ -958,37 +962,79 @@ const ViewEditModal = ({
                   {t.insuranceInformation || 'Insurance Information'}
                 </h3>
 
-                {loadingInsurancePayers ? (
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {t.loadingInsurancePayers || 'Loading insurance payers...'}
-                  </p>
-                ) : (
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      {t.insurancePayer || 'Insurance Payer'}
+                      {t.insuranceProvider || 'Insurance Provider'}
                     </label>
                     {isView ? (
                       <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {editData.insurance_payer_id
-                          ? insurancePayers.find(p => p.id === editData.insurance_payer_id)?.name || t.notApplicable || 'N/A'
-                          : t.notApplicable || 'N/A'}
+                        {editData.insurance || t.notApplicable || 'N/A'}
                       </p>
                     ) : (
-                      <select
-                        value={editData.insurance_payer_id || ''}
-                        onChange={(e) => setEditData({...editData, insurance_payer_id: e.target.value})}
+                      <input
+                        type="text"
+                        value={editData.insurance || ''}
+                        onChange={(e) => setEditData({...editData, insurance: e.target.value})}
+                        placeholder="Insurance company name"
                         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                      >
-                        <option value="">{t.selectInsurancePayer || 'Select Insurance Payer'}</option>
-                        {insurancePayers.map((payer) => (
-                          <option key={payer.id} value={payer.id}>
-                            {payer.name} ({payer.payer_id})
-                          </option>
-                        ))}
-                      </select>
+                      />
                     )}
                   </div>
-                )}
+
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.insuranceMemberId || 'Insurance Member ID'}
+                    </label>
+                    {isView ? (
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {editData.insurance_id || t.notApplicable || 'N/A'}
+                      </p>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editData.insurance_id || ''}
+                        onChange={(e) => setEditData({...editData, insurance_id: e.target.value})}
+                        placeholder="Member/Policy ID"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                      />
+                    )}
+                  </div>
+
+                  {loadingInsurancePayers ? (
+                    <div className="col-span-2">
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.loadingInsurancePayers || 'Loading insurance payers...'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="col-span-2">
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {t.insurancePayer || 'Insurance Payer'}
+                      </label>
+                      {isView ? (
+                        <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {editData.insurance_payer_id
+                            ? insurancePayers.find(p => p.id === editData.insurance_payer_id)?.name || t.notApplicable || 'N/A'
+                            : t.notApplicable || 'N/A'}
+                        </p>
+                      ) : (
+                        <select
+                          value={editData.insurance_payer_id || ''}
+                          onChange={(e) => setEditData({...editData, insurance_payer_id: e.target.value})}
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                        >
+                          <option value="">{t.selectInsurancePayer || 'Select Insurance Payer'}</option>
+                          {insurancePayers.map((payer) => (
+                            <option key={payer.id} value={payer.id}>
+                              {payer.name} ({payer.payer_id})
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Preferred Pharmacy Section */}
@@ -1645,6 +1691,248 @@ const ViewEditModal = ({
                   </div>
                 )}
               </div>
+            </div>
+          ) : type === 'payment' ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Payment Number</label>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.payment_number || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    editData.payment_status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                    editData.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                    editData.payment_status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                    'bg-gray-500/20 text-gray-400'
+                  }`}>
+                    {editData.payment_status || 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Patient</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.patient_name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Claim Number</label>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.claim_number || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Amount</label>
+                  <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                    ${editData.amount ? parseFloat(editData.amount).toFixed(2) : '0.00'}
+                  </p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Payment Date</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {editData.payment_date ? new Date(editData.payment_date).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Payment Method</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.payment_method || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Transaction ID</label>
+                  <p className={`font-mono text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.transaction_id || 'N/A'}</p>
+                </div>
+                {editData.card_last_four && (
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Card</label>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {editData.card_brand || 'Card'} ending in {editData.card_last_four}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {editData.description && (
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Description</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.description}</p>
+                </div>
+              )}
+              {editData.notes && (
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Notes</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.notes}</p>
+                </div>
+              )}
+            </div>
+          ) : type === 'denial' ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Denial Number</label>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.denial_number || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    editData.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                    editData.status === 'open' ? 'bg-red-500/20 text-red-400' :
+                    editData.status === 'appealed' ? 'bg-blue-500/20 text-blue-400' :
+                    'bg-gray-500/20 text-gray-400'
+                  }`}>
+                    {editData.status || 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Patient</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.patient_name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Claim Number</label>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.claim_number || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Denial Amount</label>
+                  <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                    ${editData.denial_amount ? parseFloat(editData.denial_amount).toFixed(2) : '0.00'}
+                  </p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Denial Date</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {editData.denial_date ? new Date(editData.denial_date).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Denial Reason Code</label>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.denial_reason_code || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Priority</label>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    editData.priority === 'urgent' ? 'bg-red-500/20 text-red-400' :
+                    editData.priority === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                    editData.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                    'bg-blue-500/20 text-blue-400'
+                  }`}>
+                    {editData.priority || 'N/A'}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Denial Reason Description</label>
+                <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.denial_reason_description || 'N/A'}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Appeal Status</label>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    editData.appeal_status === 'appeal_approved' ? 'bg-green-500/20 text-green-400' :
+                    editData.appeal_status === 'appeal_pending' ? 'bg-blue-500/20 text-blue-400' :
+                    editData.appeal_status === 'not_appealed' ? 'bg-gray-500/20 text-gray-400' :
+                    'bg-red-500/20 text-red-400'
+                  }`}>
+                    {editData.appeal_status || 'N/A'}
+                  </span>
+                </div>
+                {editData.appeal_deadline && (
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Appeal Deadline</label>
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {new Date(editData.appeal_deadline).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {editData.notes && (
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Notes</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.notes}</p>
+                </div>
+              )}
+            </div>
+          ) : type === 'preapproval' ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Pre-approval Number</label>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.preapproval_number || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Authorization Number</label>
+                  <p className={`font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.authorization_number || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Patient</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.patient_name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    editData.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                    editData.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                    editData.status === 'denied' ? 'bg-red-500/20 text-red-400' :
+                    'bg-gray-500/20 text-gray-400'
+                  }`}>
+                    {editData.status || 'N/A'}
+                  </span>
+                </div>
+                <div className="col-span-2">
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Requested Service</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.requested_service || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Service Start Date</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {editData.service_start_date ? new Date(editData.service_start_date).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Service End Date</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {editData.service_end_date ? new Date(editData.service_end_date).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Estimated Cost</label>
+                  <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                    ${editData.estimated_cost ? parseFloat(editData.estimated_cost).toFixed(2) : '0.00'}
+                  </p>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Insurance Payer</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.insurance_payer_name || 'N/A'}</p>
+                </div>
+              </div>
+              {editData.diagnosis_codes && (
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Diagnosis Codes</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {(Array.isArray(editData.diagnosis_codes) ? editData.diagnosis_codes :
+                      typeof editData.diagnosis_codes === 'string' ? JSON.parse(editData.diagnosis_codes) : []
+                    ).map((code, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-mono">
+                        {code}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {editData.procedure_codes && (
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Procedure Codes</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {(Array.isArray(editData.procedure_codes) ? editData.procedure_codes :
+                      typeof editData.procedure_codes === 'string' ? JSON.parse(editData.procedure_codes) : []
+                    ).map((code, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm font-mono">
+                        {code}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {editData.clinical_notes && (
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Clinical Notes</label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.clinical_notes}</p>
+                </div>
+              )}
             </div>
           ) : null } 
 
