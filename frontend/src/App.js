@@ -1108,20 +1108,21 @@ function App() {
                   setCurrentModule('ehr');
                   addNotification('info', `Navigated to EHR module.`);
                 }
-              } else if (['claim', 'payment', 'denial', 'preapproval'].includes(result.result_type)) {
-                // For RCM items, navigate to the module (it uses local state)
+              } else if (result.result_type === 'claim') {
+                // For claims, open in ViewEditModal
                 setCurrentModule(targetModule);
-                const tabNames = {
-                  'claim': 'Claims',
-                  'payment': 'Payments',
-                  'denial': 'Denials',
-                  'preapproval': 'Pre-approvals'
-                };
-                addNotification('info', `Navigated to RCM module. Find your ${result.result_type} in the ${tabNames[result.result_type]} tab.`);
+                handleSetEditingItem({ type: 'claim', data: result });
+                setCurrentView('view');
+              } else if (['payment', 'denial', 'preapproval'].includes(result.result_type)) {
+                // For other RCM items, open in ViewEditModal
+                setCurrentModule(targetModule);
+                handleSetEditingItem({ type: result.result_type, data: result });
+                setCurrentView('view');
               } else if (result.result_type === 'task') {
-                // Tasks are shown in dashboard
+                // For tasks, open in ViewEditModal
                 setCurrentModule(targetModule);
-                addNotification('info', 'Navigated to Dashboard. Find the task in your task list.');
+                handleSetEditingItem({ type: 'task', data: result });
+                setCurrentView('view');
               } else if (result.result_type === 'offering') {
                 // Clinical Services
                 setCurrentModule(targetModule);
