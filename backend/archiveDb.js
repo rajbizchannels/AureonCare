@@ -50,54 +50,96 @@ archivePool.query('SELECT NOW()', (err, res) => {
 async function ensureTableStructure(mainPool, tableName) {
   const client = await archivePool.connect();
   try {
-    // Check if table exists in archive database
-    const checkQuery = `
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = $1
-      );
-    `;
-    const checkResult = await client.query(checkQuery, [tableName]);
+    // Check if table exists in main database first
+    const mainClient = await mainPool.connect();
+    try {
+      const mainCheckQuery = `
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables
+          WHERE table_schema = 'public'
+          AND table_name = $1
+        );
+      `;
+      const mainCheckResult = await mainClient.query(mainCheckQuery, [tableName]);
 
-    if (!checkResult.rows[0].exists) {
-      // Get CREATE TABLE statement from main database
-      const mainClient = await mainPool.connect();
-      try {
-        // Get table definition
-        const createTableQuery = `
+      if (!mainCheckResult.rows[0].exists) {
+        console.log(`⚠️  Table ${tableName} does not exist in main database - skipping`);
+        return false;
+      }
+
+      // Check if table exists in archive database
+      const checkQuery = `
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables
+          WHERE table_schema = 'public'
+          AND table_name = $1
+        );
+      `;
+      const checkResult = await client.query(checkQuery, [tableName]);
+
+      if (!checkResult.rows[0].exists) {
+        // Get detailed column information including defaults and data types
+        const columnsQuery = `
           SELECT
-            'CREATE TABLE ' || quote_ident(table_name) || ' (' ||
-            string_agg(
-              quote_ident(column_name) || ' ' ||
-              data_type ||
-              CASE
-                WHEN character_maximum_length IS NOT NULL
-                THEN '(' || character_maximum_length || ')'
-                ELSE ''
-              END ||
-              CASE
-                WHEN is_nullable = 'NO' THEN ' NOT NULL'
-                ELSE ''
-              END,
-              ', '
-            ) || ');' as create_statement
+            column_name,
+            CASE
+              WHEN data_type = 'ARRAY' THEN udt_name || '[]'
+              WHEN data_type = 'character varying' THEN 'VARCHAR(' || COALESCE(character_maximum_length::text, '255') || ')'
+              WHEN data_type = 'character' THEN 'CHAR(' || character_maximum_length || ')'
+              WHEN data_type = 'numeric' THEN 'NUMERIC' ||
+                CASE WHEN numeric_precision IS NOT NULL
+                THEN '(' || numeric_precision || ',' || numeric_scale || ')'
+                ELSE '' END
+              WHEN data_type = 'USER-DEFINED' THEN udt_name
+              ELSE UPPER(data_type)
+            END as full_type,
+            is_nullable,
+            column_default
           FROM information_schema.columns
-          WHERE table_name = $1
-          GROUP BY table_name;
+          WHERE table_schema = 'public'
+            AND table_name = $1
+          ORDER BY ordinal_position;
         `;
 
-        const result = await mainClient.query(createTableQuery, [tableName]);
+        const columnsResult = await mainClient.query(columnsQuery, [tableName]);
 
-        if (result.rows.length > 0) {
-          // Create table in archive database
-          await client.query(result.rows[0].create_statement);
-          console.log(`Created table ${tableName} in archive database`);
+        if (columnsResult.rows.length > 0) {
+          // Build CREATE TABLE statement
+          const columnDefs = columnsResult.rows.map(col => {
+            let def = `${col.column_name} ${col.full_type}`;
+
+            if (col.is_nullable === 'NO') {
+              def += ' NOT NULL';
+            }
+
+            if (col.column_default) {
+              def += ` DEFAULT ${col.column_default}`;
+            }
+
+            return def;
+          }).join(',\n  ');
+
+          const createStatement = `CREATE TABLE ${tableName} (\n  ${columnDefs}\n);`;
+
+          console.log(`[Archive DB] Creating table ${tableName} in archive database...`);
+          await client.query(createStatement);
+          console.log(`[Archive DB] ✓ Created table ${tableName}`);
+          return true;
+        } else {
+          console.log(`⚠️  No columns found for table ${tableName}`);
+          return false;
         }
-      } finally {
-        mainClient.release();
+      } else {
+        // Table exists, verify column compatibility
+        console.log(`[Archive DB] Table ${tableName} already exists in archive database`);
+        return true;
       }
+    } finally {
+      mainClient.release();
     }
+  } catch (error) {
+    console.error(`[Archive DB] Error ensuring table structure for ${tableName}:`, error.message);
+    return false;
   } finally {
     client.release();
   }

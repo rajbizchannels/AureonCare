@@ -110,7 +110,12 @@ async function executeArchiveRule(rule) {
 
           // ALWAYS ensure table structure exists in archive database first
           const { ensureTableStructure } = require('../archiveDb');
-          await ensureTableStructure(pool, tableName);
+          const tableReady = await ensureTableStructure(pool, tableName);
+
+          if (!tableReady) {
+            console.log(`[Archive Scheduler] ⊘ Skipping ${tableName} - table not available`);
+            continue;
+          }
 
           // Get data from main database
           const selectQuery = `SELECT * FROM ${tableName} ${whereClause}`;
