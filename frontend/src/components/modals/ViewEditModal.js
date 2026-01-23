@@ -579,7 +579,7 @@ const ViewEditModal = ({
         confirmText={t.saveChanges || 'Save Changes'}
         cancelText={t.cancel || 'Cancel'}
       />
-      <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+      <div className={`h-full flex flex-col border-4 rounded-lg shadow-2xl ${theme === 'dark' ? 'bg-slate-900 border-blue-500/50 shadow-blue-500/20' : 'bg-gray-50 border-blue-500 shadow-blue-500/30'}`}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-white'}`}>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {isView ? (t.view || 'View') : (t.edit || 'Edit')} {
@@ -600,7 +600,7 @@ const ViewEditModal = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className={`flex-1 overflow-y-auto p-6 m-4 rounded-lg border-2 ${theme === 'dark' ? 'border-slate-700 bg-slate-800/30' : 'border-gray-300 bg-white'}`}>
           {type === 'appointment' ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
