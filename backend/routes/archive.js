@@ -150,7 +150,12 @@ router.post('/create', async (req, res) => {
           console.log(`[Archive] Processing table: ${tableName}`);
 
           // Ensure table structure exists in archive database
-          await ensureTableStructure(pool, tableName);
+          const tableReady = await ensureTableStructure(pool, tableName);
+
+          if (!tableReady) {
+            console.log(`[Archive] ⊘ Skipping ${tableName} - table not available`);
+            continue;
+          }
 
           // Copy data from main database to archive database
           const mainClient = await pool.connect();
