@@ -121,6 +121,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
               src="/assets/aureoncare-logo.png"
               alt="AureonCare Logo"
               className="h-16 w-auto object-contain"
+              style={{ aspectRatio: '1/1' }}
             />
           </div>
           <p className={`mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Sign in to your account</p>

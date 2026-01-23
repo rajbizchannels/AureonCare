@@ -151,6 +151,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
               src="/assets/aureoncare-logo.png"
               alt="AureonCare Logo"
               className="h-16 w-auto object-contain"
+              style={{ aspectRatio: '1/1' }}
             />
           </div>
           <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Patient Portal</h1>

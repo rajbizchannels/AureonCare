@@ -634,9 +634,10 @@ function App() {
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <img
-                src="/assets/aureoncare-logo.png"
+                src="/assets/aureoncare-logo-wide.png"
                 alt="AureonCare Logo"
                 className="h-10 w-auto object-contain"
+                style={{ aspectRatio: '3/1' }}
               />
             </button>
 
