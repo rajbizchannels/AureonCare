@@ -36,7 +36,8 @@ const DashboardView = ({
   api,
   completeTask,
   updateUserPreferences,
-  addNotification
+  addNotification,
+  planTier
 }) => {
   const [clinicName, setClinicName] = useState('Medical Practice');
   const [showQuickActions, setShowQuickActions] = useState(false);
@@ -109,7 +110,7 @@ const DashboardView = ({
             {t.welcome}, {user?.firstName || user?.first_name || 'User'}
           </h1>
           <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            {user?.practice || clinicName}
+            {user?.practice || clinicName} {planTier && `| ${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan`}
           </p>
         </div>
         <div className="flex gap-3">

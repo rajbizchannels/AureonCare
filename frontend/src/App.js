@@ -295,6 +295,7 @@ function App() {
             completeTask={completeTask}
             updateUserPreferences={updateUserPreferences}
             addNotification={addNotification}
+            planTier={planTier}
           />
         );
       case 'practiceManagement':
@@ -637,9 +638,6 @@ function App() {
                 alt="AureonCare Logo"
                 className="h-10 w-auto object-contain"
               />
-              {user?.role === 'admin' && (
-                <p className={`text-xs capitalize ml-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{planTier} Plan</p>
-              )}
             </button>
 
             {/* Action Buttons */}
