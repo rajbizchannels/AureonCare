@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AureonCare Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📚 AureonCare Documentation Center</h1>
+                    <p>Complete guide to using the AureonCare healthcare platform</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.1</span>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 Search documentation..." onkeyup="filterCards()">
+        </div>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem;">Getting Started</h2>
+            <div class="card-grid">
+                <a href="getting-started/login.html">
+                    <div class="card">
+                        <div class="card-icon">🔐</div>
+                        <h3>Login & Authentication</h3>
+                        <p>Learn how to access AureonCare and manage your account</p>
+                    </div>
+                </a>
+                <a href="getting-started/dashboard.html">
+                    <div class="card">
+                        <div class="card-icon">📊</div>
+                        <h3>Dashboard Overview</h3>
+                        <p>Understand your dashboard and quick actions</p>
+                    </div>
+                </a>
+                <a href="getting-started/navigation.html">
+                    <div class="card">
+                        <div class="card-icon">🧭</div>
+                        <h3>Navigation Guide</h3>
+                        <p>Navigate through AureonCare modules efficiently</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem; margin-top: 3rem;">Core Features</h2>
+            <div class="card-grid">
+                <a href="features/appointments.html">
+                    <div class="card">
+                        <div class="card-icon">📅</div>
+                        <h3>Appointment Scheduling</h3>
+                        <p>Create and manage appointments with calendar views</p>
+                    </div>
+                </a>
+                <a href="features/waitlist.html">
+                    <div class="card">
+                        <div class="card-icon">⏳</div>
+                        <h3>Waitlist Management</h3>
+                        <p>Manage patient waitlist with priority tracking</p>
+                    </div>
+                </a>
+                <a href="features/patient-management.html">
+                    <div class="card">
+                        <div class="card-icon">👥</div>
+                        <h3>Patient Management</h3>
+                        <p>Register and manage patient records</p>
+                    </div>
+                </a>
+                <a href="features/eprescribe.html">
+                    <div class="card">
+                        <div class="card-icon">💊</div>
+                        <h3>ePrescribe</h3>
+                        <p>Create and manage electronic prescriptions</p>
+                    </div>
+                </a>
+                <a href="features/lab-orders.html">
+                    <div class="card">
+                        <div class="card-icon">🔬</div>
+                        <h3>Lab Orders</h3>
+                        <p>Order lab tests with CPT code selection</p>
+                    </div>
+                </a>
+                <a href="features/diagnosis.html">
+                    <div class="card">
+                        <div class="card-icon">🩺</div>
+                        <h3>Diagnosis & ICD Codes</h3>
+                        <p>Record diagnoses and link to treatments</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem; margin-top: 3rem;">Clinical Modules</h2>
+            <div class="card-grid">
+                <a href="guides/clinical-notes.html">
+                    <div class="card">
+                        <div class="card-icon">📝</div>
+                        <h3>Clinical Notes</h3>
+                        <p>Document patient encounters and SOAP notes</p>
+                    </div>
+                </a>
+                <a href="guides/vitals.html">
+                    <div class="card">
+                        <div class="card-icon">❤️</div>
+                        <h3>Vital Signs</h3>
+                        <p>Record and track patient vital signs</p>
+                    </div>
+                </a>
+                <a href="guides/telehealth.html">
+                    <div class="card">
+                        <div class="card-icon">📹</div>
+                        <h3>Telehealth</h3>
+                        <p>Conduct virtual appointments with video</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem; margin-top: 3rem;">Revenue Cycle</h2>
+            <div class="card-grid">
+                <a href="guides/claims.html">
+                    <div class="card">
+                        <div class="card-icon">💰</div>
+                        <h3>Claims Management</h3>
+                        <p>Submit and track insurance claims</p>
+                    </div>
+                </a>
+                <a href="guides/payments.html">
+                    <div class="card">
+                        <div class="card-icon">💳</div>
+                        <h3>Payments & Billing</h3>
+                        <p>Process payments and generate invoices</p>
+                    </div>
+                </a>
+                <a href="guides/reports.html">
+                    <div class="card">
+                        <div class="card-icon">📈</div>
+                        <h3>Financial Reports</h3>
+                        <p>View revenue and billing analytics</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="color: #002060; margin-bottom: 1.5rem; margin-top: 3rem;">Administration</h2>
+            <div class="card-grid">
+                <a href="guides/user-management.html">
+                    <div class="card">
+                        <div class="card-icon">👨‍💼</div>
+                        <h3>User Management</h3>
+                        <p>Manage staff accounts and permissions</p>
+                    </div>
+                </a>
+                <a href="guides/practice-settings.html">
+                    <div class="card">
+                        <div class="card-icon">⚙️</div>
+                        <h3>Practice Settings</h3>
+                        <p>Configure practice information and preferences</p>
+                    </div>
+                </a>
+                <a href="troubleshooting/common-issues.html">
+                    <div class="card">
+                        <div class="card-icon">🔧</div>
+                        <h3>Troubleshooting</h3>
+                        <p>Solutions to common problems</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <div class="doc-footer">
+            <p><strong>AureonCare v1.1</strong> | Last Updated: December 2025</p>
+            <p>For technical support, contact your system administrator</p>
+        </div>
+    </div>
+
+    <script>
+        function filterCards() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const cards = document.querySelectorAll('.card');
+
+            cards.forEach(card => {
+                const title = card.querySelector('h3').textContent.toLowerCase();
+                const description = card.querySelector('p').textContent.toLowerCase();
+
+                if (title.includes(filter) || description.includes(filter)) {
+                    card.parentElement.style.display = '';
+                } else {
+                    card.parentElement.style.display = 'none';
+                }
+            });
+        }
+
+        // Handle hash-based navigation to display articles
+        async function loadArticleByHash() {
+            const hash = window.location.hash.slice(1); // Remove # from hash
+            if (!hash) return; // No hash, show normal index page
+
+            try {
+                // Load documentation index
+                const response = await fetch('/docs/documentation-index.json');
+                const data = await response.json();
+
+                // Find article by ID
+                let article = null;
+                for (const section of data.sections) {
+                    const found = section.articles.find(a => a.id === hash);
+                    if (found) {
+                        article = { ...found, section: section.title };
+                        break;
+                    }
+                }
+
+                if (!article) {
+                    console.warn('Article not found:', hash);
+                    return;
+                }
+
+                // Parse markdown-style formatting
+                const parseMarkdown = (text) => {
+                    if (!text) return '';
+                    let parsed = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    parsed = parsed.replace(/\n/g, '<br />');
+                    return parsed;
+                };
+
+                // Hide index content and show article
+                const container = document.querySelector('.doc-container');
+                container.innerHTML = `
+                    <div class="article-container">
+                        <a href="/docs/index.html" class="back-link">
+                            ← Back to Documentation Index
+                        </a>
+                        <div class="article-card">
+                            <span class="article-badge">
+                                ${article.section}
+                            </span>
+                            <h1 class="article-title">
+                                ${article.title}
+                            </h1>
+                            <div class="article-content">
+                                ${parseMarkdown(article.content || article.summary || 'No content available.')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading article:', error);
+            }
+        }
+
+        // Load article on page load if hash exists
+        window.addEventListener('DOMContentLoaded', loadArticleByHash);
+
+        // Handle hash changes (back/forward navigation)
+        window.addEventListener('hashchange', loadArticleByHash);
+    </script>
+</body>
+</html>

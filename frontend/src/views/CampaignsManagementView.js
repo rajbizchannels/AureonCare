@@ -1,0 +1,245 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, ArrowLeft, Mail, Send, Calendar, Inbox, Search } from 'lucide-react';
+import NewCampaignForm from '../components/forms/NewCampaignForm';
+import { useAudit } from '../hooks/useAudit';
+
+const CampaignsManagementView = ({
+  theme,
+  api,
+  setShowForm,
+  setEditingCampaign,
+  setCurrentModule,
+  addNotification,
+  t = {}
+}) => {
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowFormLocal] = useState(false);
+  const [editingCampaign, setEditingCampaignLocal] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const { logViewAccess } = useAudit();
+
+  useEffect(() => {
+    logViewAccess('CampaignsManagementView', {
+      module: 'CRM',
+    });
+  }, []);
+
+  useEffect(() => {
+    loadCampaigns();
+  }, []);
+
+  const loadCampaigns = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getCampaigns();
+      setCampaigns(data || []);
+    } catch (error) {
+      console.error('Error loading campaigns:', error);
+      addNotification('alert', 'Failed to load campaigns');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this campaign?')) {
+      return;
+    }
+
+    try {
+      await api.deleteCampaign(id);
+      setCampaigns(prev => prev.filter(c => c.id !== id));
+      addNotification('success', 'Campaign deleted successfully');
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      addNotification('alert', 'Failed to delete campaign');
+    }
+  };
+
+  const handleEdit = (campaign) => {
+    setEditingCampaignLocal(campaign);
+    setShowFormLocal(true);
+  };
+
+  const filteredCampaigns = campaigns.filter(campaign => {
+    if (!searchQuery) return true;
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      campaign.name?.toLowerCase().includes(searchLower) ||
+      campaign.subject?.toLowerCase().includes(searchLower) ||
+      campaign.targetAudience?.toLowerCase().includes(searchLower) ||
+      campaign.status?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCurrentModule && setCurrentModule('crm')}
+            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+            title={t.backToCRM || 'Back to CRM'}
+          >
+            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+          </button>
+          <Mail className="w-6 h-6 text-red-400" />
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            {t.emailCampaigns || 'Email Campaigns'}
+          </h2>
+        </div>
+        <button
+          onClick={() => {
+            setEditingCampaignLocal(null);
+            setShowFormLocal(true);
+          }}
+          className={`flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+        >
+          <Plus className="w-4 h-4" />
+          {t.createCampaign || 'Create Campaign'}
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className={`flex items-center gap-3 p-4 rounded-lg ${
+        theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'
+      }`}>
+        <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search campaigns by name, subject, audience, or status..."
+          className={`flex-1 bg-transparent border-none outline-none ${
+            theme === 'dark' ? 'text-white placeholder-slate-400' : 'text-gray-900 placeholder-gray-500'
+          }`}
+        />
+      </div>
+
+      {/* Campaign Form - Between search and list */}
+      {showForm && (
+        <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewCampaignForm
+            theme={theme}
+            api={api}
+            campaign={editingCampaign}
+            onClose={() => {
+              setShowFormLocal(false);
+              setEditingCampaignLocal(null);
+            }}
+            onSuccess={() => {
+              setShowFormLocal(false);
+              setEditingCampaignLocal(null);
+              loadCampaigns();
+              addNotification('success', t.campaignCreated || 'Campaign created successfully');
+            }}
+            addNotification={addNotification}
+            t={t}
+          />
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${theme === 'dark' ? 'border-red-400' : 'border-red-600'}`}></div>
+        </div>
+      ) : filteredCampaigns.length === 0 ? (
+        <div className={`bg-gradient-to-br rounded-xl border p-12 ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-200'}`}>
+              <Inbox className={`w-12 h-12 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+            </div>
+            <h3 className={`text-xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {t.noCampaignsTitle || 'No Email Campaigns Yet'}
+            </h3>
+            <p className={`mb-6 max-w-md ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+              {t.noCampaignsMessage || 'Get started by creating your first email campaign to engage with your patients and grow your practice.'}
+            </p>
+            <button
+              onClick={() => {
+                setEditingCampaignLocal(null);
+                setShowFormLocal(true);
+              }}
+              className="flex items-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 rounded-lg transition-colors text-white font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              {t.createFirstCampaign || 'Create Your First Campaign'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+                <tr>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.campaign || 'Campaign'}
+                  </th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.subject || 'Subject'}
+                  </th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.targetAudience || 'Audience'}
+                  </th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.status || 'Status'}
+                  </th>
+                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.actions || 'Actions'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCampaigns.map((campaign, idx) => (
+                  <tr key={campaign.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      <div className="font-medium">{campaign.name}</div>
+                    </td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {campaign.subject}
+                    </td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {campaign.targetAudience || 'All'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        campaign.status === 'sent' ? 'bg-green-500/20 text-green-400' :
+                        campaign.status === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {campaign.status || 'draft'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(campaign)}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                          title={t.edit || 'Edit'}
+                        >
+                          <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(campaign.id)}
+                          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                          title={t.delete || 'Delete'}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CampaignsManagementView;

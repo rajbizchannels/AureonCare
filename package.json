@@ -1,0 +1,46 @@
+{
+  "name": "aureoncare-backend",
+  "version": "1.0.0",
+  "description": "AureonCare Practice Management System - Backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:preauth": "node backend/scripts/run-preapprovals-migration.js",
+    "seed": "node scripts/seed.js",
+    "reset-db": "node backend/scripts/reset-and-seed.js"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^4.25.1",
+    "@azure/msal-node": "^3.8.0",
+    "@azure/msal-react": "^3.0.20",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@react-oauth/google": "^0.12.2",
+    "axios": "^1.13.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "google-auth-library": "^10.5.0",
+    "googleapis": "^166.0.0",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^7.0.9",
+    "pg": "^8.11.3",
+    "qrcode": "^1.5.3",
+    "react": "^19.2.0",
+    "react-google-oauth": "^1.0.0",
+    "redis": "^4.6.10",
+    "socket.io": "^4.6.2",
+    "speakeasy": "^2.0.0",
+    "winston": "^3.11.0",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

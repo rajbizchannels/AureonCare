@@ -1,0 +1,57 @@
+-- ============================================
+-- Fix appointment_waitlist table with UUID support
+-- Run this to fix the foreign key type mismatch error
+-- ============================================
+
+-- Drop existing table if it exists
+DROP TABLE IF EXISTS appointment_waitlist CASCADE;
+
+-- Create the table with UUID for all ID fields
+CREATE TABLE appointment_waitlist (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider_id UUID REFERENCES providers(id) ON DELETE SET NULL,
+  preferred_date DATE NOT NULL,
+  preferred_time_start TIME,
+  preferred_time_end TIME,
+  appointment_type VARCHAR(100),
+  reason TEXT,
+  priority INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'notified', 'scheduled', 'cancelled', 'expired')),
+  notified_at TIMESTAMP,
+  expires_at TIMESTAMP,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for faster queries
+CREATE INDEX idx_waitlist_patient ON appointment_waitlist(patient_id);
+CREATE INDEX idx_waitlist_provider ON appointment_waitlist(provider_id);
+CREATE INDEX idx_waitlist_date ON appointment_waitlist(preferred_date);
+CREATE INDEX idx_waitlist_status ON appointment_waitlist(status);
+CREATE INDEX idx_waitlist_priority ON appointment_waitlist(priority DESC);
+
+-- Create composite index for finding matching waitlist entries
+CREATE INDEX idx_waitlist_active_lookup
+  ON appointment_waitlist(provider_id, preferred_date, status)
+  WHERE status = 'active';
+
+-- Add comments
+COMMENT ON TABLE appointment_waitlist IS 'Patient waitlist for appointment slots that are fully booked';
+COMMENT ON COLUMN appointment_waitlist.priority IS 'Higher priority = contacted first (0 = normal, 1+ = higher priority)';
+COMMENT ON COLUMN appointment_waitlist.status IS 'active: waiting, notified: slot available notification sent, scheduled: appointment booked, cancelled: patient cancelled, expired: notification expired';
+COMMENT ON COLUMN appointment_waitlist.expires_at IS 'Notification expiry time - if not booked by this time, offer to next person';
+
+-- Verify the table structure
+SELECT
+    column_name,
+    data_type,
+    is_nullable,
+    column_default
+FROM information_schema.columns
+WHERE table_name = 'appointment_waitlist'
+ORDER BY ordinal_position;
+
+-- Success message
+SELECT 'appointment_waitlist table created successfully with UUID support!' as status;
