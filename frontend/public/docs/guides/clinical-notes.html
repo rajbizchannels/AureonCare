@@ -3,58 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clinical Notes - AureonCare Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        // Redirect to documentation with hash navigation
-        window.location.replace('/docs/index.html#medical-records');
-    </script>
+    <title>Clinical Notes Guide - AureonCare Documentation</title>
+    <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Loading Clinical Notes Documentation</h1>
-        <p>If you are not redirected automatically, <a href="/docs/index.html#medical-records">click here</a>.</p>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📋 Clinical Notes Guide</h1>
+                    <p>Complete guide to clinical documentation</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.2</span>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+
+        <div class="article-card">
+            <h1 class="article-title">Clinical Notes & Medical Documentation</h1>
+
+            <p><strong>Clinical notes</strong> are the foundation of patient care documentation. AureonCare provides comprehensive tools for creating, managing, and maintaining accurate clinical records using SOAP notes, templates, and voice dictation.</p>
+
+            <h2>📊 Accessing Patient Charts</h2>
+            <ol>
+                <li>Use <strong>Ctrl+K</strong> for universal search</li>
+                <li>Type patient name or MRN</li>
+                <li>Click patient from results</li>
+                <li>Patient chart opens with Summary tab</li>
+            </ol>
+
+            <h2>Chart Sections</h2>
+
+            <h3>Summary Tab</h3>
+            <ul>
+                <li><strong>Vital Signs:</strong> Latest BP, HR, temp, SpO2, weight, BMI</li>
+                <li><strong>Active Problems:</strong> Current diagnoses</li>
+                <li><strong>Medications:</strong> Active prescriptions</li>
+                <li><strong>Allergies:</strong> Drug/food allergies with reactions</li>
+                <li><strong>Recent Visits:</strong> Last 5 encounters</li>
+                <li><strong>Upcoming Appointments</strong></li>
+                <li><strong>Active Lab Orders</strong></li>
+                <li><strong>Care Team</strong></li>
+            </ul>
+
+            <h3>Progress Notes Tab</h3>
+            <p>All clinical documentation including:</p>
+            <ul>
+                <li>Office visit notes</li>
+                <li>Telehealth encounters</li>
+                <li>Phone consultations</li>
+                <li>Procedure notes</li>
+                <li>Hospital consultations</li>
+            </ul>
+
+            <h2>📝 Creating Clinical Notes</h2>
+
+            <h3>Starting a New Note</h3>
+            <ol>
+                <li>Open patient chart</li>
+                <li>Click <strong>Progress Notes</strong> tab</li>
+                <li>Click <strong>+ New Note</strong></li>
+                <li>Select note type</li>
+            </ol>
+
+            <h3>Note Types</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Use Case</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Office Visit</td><td>Standard in-person consultation</td></tr>
+                    <tr><td>Annual Physical</td><td>Preventive wellness exam</td></tr>
+                    <tr><td>Follow-up Visit</td><td>Chronic condition management</td></tr>
+                    <tr><td>Urgent Care</td><td>Same-day acute problem</td></tr>
+                    <tr><td>Telehealth</td><td>Video/phone consultation</td></tr>
+                    <tr><td>Phone Encounter</td><td>Brief phone consultation</td></tr>
+                    <tr><td>Procedure Note</td><td>Minor procedure documentation</td></tr>
+                </tbody>
+            </table>
+
+            <h2>SOAP Note Structure</h2>
+
+            <h3>S - Subjective</h3>
+            <p><strong>Patient-reported symptoms</strong></p>
+            <ul>
+                <li><strong>Chief Complaint:</strong> Why patient came ("chest pain x 2 days")</li>
+                <li><strong>HPI:</strong> Onset, location, duration, character, severity (1-10)</li>
+                <li><strong>Review of Systems:</strong> 14-system checklist</li>
+                <li><strong>PMH/PSH/FH/SH:</strong> Relevant history</li>
+            </ul>
+
+            <h3>O - Objective</h3>
+            <p><strong>Measurable findings</strong></p>
+            <ul>
+                <li><strong>Vital Signs:</strong> BP 120/80, HR 72, Temp 98.6°F, RR 16, SpO2 98%</li>
+                <li><strong>Physical Exam:</strong> By body system (General, HEENT, CV, Resp, Abd, etc.)</li>
+                <li><strong>Test Results:</strong> Labs, imaging, point-of-care testing</li>
+            </ul>
+
+            <h3>A - Assessment</h3>
+            <p><strong>Clinical impression</strong></p>
+            <ul>
+                <li>List diagnoses with ICD-10 codes</li>
+                <li>Status: New, Stable, Worsening, Resolved</li>
+                <li>Mark primary diagnosis for visit</li>
+            </ul>
+
+            <h3>P - Plan</h3>
+            <p><strong>Treatment and follow-up</strong></p>
+            <ul>
+                <li><strong>Medications:</strong> New Rx, changes, discontinuations</li>
+                <li><strong>Orders:</strong> Labs, imaging, procedures</li>
+                <li><strong>Referrals:</strong> Specialist consultations</li>
+                <li><strong>Education:</strong> Patient counseling provided</li>
+                <li><strong>Follow-up:</strong> When to return (RTC 2 weeks)</li>
+                <li><strong>Precautions:</strong> When to seek urgent care</li>
+            </ul>
+
+            <h2>🛠️ Documentation Tools</h2>
+
+            <h3>Templates</h3>
+            <ol>
+                <li>Click <strong>Templates</strong> button</li>
+                <li>Browse by specialty or type</li>
+                <li>Select template</li>
+                <li>Sections auto-populate</li>
+                <li>Customize for patient</li>
+            </ol>
+
+            <h3>Macros/SmartPhrases</h3>
+            <p>Type shortcuts that expand to full text:</p>
+            <ul>
+                <li><code>.ros</code> → Full Review of Systems</li>
+                <li><code>.pe</code> → Physical Exam template</li>
+                <li><code>.dm</code> → Diabetes management plan</li>
+                <li><code>.htn</code> → Hypertension management</li>
+            </ul>
+
+            <h3>Voice Dictation</h3>
+            <ol>
+                <li>Click microphone icon</li>
+                <li>Speak clearly</li>
+                <li>Real-time transcription</li>
+                <li>Medical terms recognized</li>
+                <li>Review and edit</li>
+            </ol>
+
+            <h3>Copy Forward</h3>
+            <p>Bring forward from previous visit:</p>
+            <ul>
+                <li>Past Medical History</li>
+                <li>Current Medications</li>
+                <li>Allergies</li>
+                <li>Social History</li>
+            </ul>
+
+            <h2>📋 Completing Notes</h2>
+
+            <h3>Review Checklist</h3>
+            <ul>
+                <li>✓ All sections complete</li>
+                <li>✓ Diagnoses coded correctly</li>
+                <li>✓ All orders placed</li>
+                <li>✓ Follow-up plan documented</li>
+                <li>✓ Time documented (for billing)</li>
+            </ul>
+
+            <h3>Sign and Lock</h3>
+            <ol>
+                <li>Click <strong>Sign Note</strong></li>
+                <li>Apply e-signature</li>
+                <li>Note becomes legal record</li>
+                <li>Cannot edit (only addendum)</li>
+            </ol>
+
+            <p><strong>⚠️ Important:</strong> Sign notes same day as visit. Unsigned notes affect billing and compliance.</p>
+
+            <h3>Addendums</h3>
+            <p>For signed notes needing changes:</p>
+            <ol>
+                <li>Open signed note</li>
+                <li>Click <strong>Add Addendum</strong></li>
+                <li>Enter additional information</li>
+                <li>Cannot modify original text</li>
+                <li>Addendum timestamped separately</li>
+            </ol>
+
+            <h2>✅ Best Practices</h2>
+            <ul>
+                <li>✓ Sign notes same day</li>
+                <li>✓ Use specific, objective language</li>
+                <li>✓ Document patient education</li>
+                <li>✓ Link diagnoses to orders</li>
+                <li>✓ Include time spent</li>
+                <li>✓ Update problem list</li>
+                <li>✓ Document med reconciliation</li>
+            </ul>
+
+            <h2>❌ Avoid</h2>
+            <ul>
+                <li>✗ Copy-paste without review</li>
+                <li>✗ Non-standard abbreviations</li>
+                <li>✗ Leaving notes unsigned</li>
+                <li>✗ Modifying signed notes</li>
+                <li>✗ Vague documentation</li>
+            </ul>
+
+            <h2>Common Questions</h2>
+
+            <p><strong>Q: Can I edit a signed note?</strong><br>
+            A: No. Use addendum feature instead.</p>
+
+            <p><strong>Q: How long to sign notes?</strong><br>
+            A: Within 24-48 hours of encounter.</p>
+
+            <p><strong>Q: What if I make a mistake?</strong><br>
+            A: If unsigned, edit. If signed, add addendum.</p>
+        </div>
     </div>
+
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.2 | <a href="../index.html" style="color: white; text-decoration: underline;">Documentation Home</a></p>
+    </footer>
 </body>
 </html>

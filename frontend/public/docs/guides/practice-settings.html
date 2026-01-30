@@ -1,60 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Practice Settings - AureonCare Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        // Redirect to documentation with hash navigation
-        window.location.replace('/docs/index.html');
-    </script>
-</head>
+<html><head><title>Practice Settings - AureonCare</title><link rel="stylesheet" href="../styles.css"></head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Loading Practice Settings Documentation</h1>
-        <p>If you are not redirected automatically, <a href="/docs/index.html">click here</a>.</p>
-    </div>
-</body>
-</html>
+<header class="doc-header"><div class="doc-header-content"><div class="doc-header-left"><a href="/" class="home-button"><svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>Back to AureonCare</a><div class="doc-header-title"><h1>⚙️ Practice Settings</h1><p>Configure your practice</p></div></div><span class="version-badge">v1.2</span></div></header>
+<div class="doc-container"><a href="../index.html" class="back-link">← Back</a>
+<div class="article-card"><h1>Practice Settings</h1>
+<p>Configure clinic information, hours, and operational settings.</p>
+<h2>Organization Information</h2>
+<ol><li>Go to <strong>Admin Panel</strong> > <strong>Organization Settings</strong></li><li>Update clinic details</li></ol>
+<p><strong>Fields:</strong></p>
+<ul><li>Organization Name</li><li>Address (street, city, state, ZIP)</li><li>Phone Number</li><li>Email</li><li>Website</li><li>Tax ID (EIN)</li><li>NPI Number (for billing)</li><li>Logo (upload image)</li></ul>
+<h2>Working Hours</h2>
+<p>Set hours for each day of week:</p>
+<table><tr><th>Day</th><th>Open</th><th>Close</th></tr><tr><td>Monday</td><td>8:00 AM</td><td>5:00 PM</td></tr><tr><td>Tuesday</td><td>8:00 AM</td><td>5:00 PM</td></tr><tr><td>...</td><td>...</td><td>...</td></tr></table>
+<p><strong>Options:</strong></p>
+<ul><li>Mark as closed (weekends)</li><li>Set break times</li><li>Add multiple shifts</li></ul>
+<h2>Appointment Settings</h2>
+<ul><li><strong>Default Duration:</strong> 15, 30, 45, or 60 minutes</li><li><strong>Booking Window:</strong> How far in advance (e.g., 90 days)</li><li><strong>Same-Day Booking:</strong> Allow/disallow</li><li><strong>Cancellation Policy:</strong> Hours notice required</li><li><strong>No-Show Policy:</strong> Fee amount</li></ul>
+<h3>Reminder Settings</h3>
+<ul><li>Email reminders (24 hours before)</li><li>SMS reminders (2 hours before)</li><li>Patient portal notifications</li></ul>
+<h2>Billing Settings</h2>
+<ul><li><strong>Payment Methods:</strong> Cash, check, card, ACH</li><li><strong>Payment Gateway:</strong> Stripe, Square integration</li><li><strong>Invoice Template:</strong> Upload custom template</li><li><strong>Late Fees:</strong> Percentage or fixed amount</li><li><strong>Payment Terms:</strong> Net 30, Net 15, etc.</li></ul>
+<h2>Communication Settings</h2>
+<h3>Email Configuration</h3>
+<ul><li>SMTP server settings</li><li>From email address</li><li>Email templates</li></ul>
+<h3>SMS Provider</h3>
+<ul><li>Select provider (Twilio, etc.)</li><li>Configure API credentials</li><li>From phone number</li></ul>
+<h3>Patient Portal</h3>
+<ul><li>Enable/disable portal</li><li>Self-registration settings</li><li>Portal features toggles</li></ul>
+<h2>Security Settings</h2>
+<ul><li><strong>Session Timeout:</strong> Minutes of inactivity</li><li><strong>Password Policy:</strong> Complexity requirements</li><li><strong>Two-Factor Auth:</strong> Enable/disable</li><li><strong>IP Restrictions:</strong> Whitelist IPs</li><li><strong>Audit Logging:</strong> Track all access</li></ul>
+<h2>Integration Settings</h2>
+<ul><li><strong>Lab Integration:</strong> HL7 connection</li><li><strong>Pharmacy (NCPDP):</strong> ePrescribe setup</li><li><strong>Payer Connectivity:</strong> Clearinghouse</li><li><strong>FHIR API:</strong> Enable interoperability</li></ul>
+<h2>Backup Settings</h2>
+<p><strong>🆕 Updated in v1.2:</strong> Cloud backup with OAuth!</p>
+<ul><li><strong>Automatic Backups:</strong> Daily at 2 AM</li><li><strong>Google Drive:</strong> OAuth integration</li><li><strong>OneDrive:</strong> OAuth integration</li><li><strong>Local Backup:</strong> On-premises storage</li><li><strong>Retention:</strong> 30 daily, 12 weekly, 12 monthly</li></ul>
+<h2>Best Practices</h2>
+<ul><li>✓ Review settings quarterly</li><li>✓ Test backup restoration</li><li>✓ Keep contact info current</li><li>✓ Update hours for holidays</li><li>✓ Document settings changes</li></ul>
+</div></div>
+<footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;"><p>AureonCare v1.2</p></footer>
+</body></html>

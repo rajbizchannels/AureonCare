@@ -1,60 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Common Issues - AureonCare Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        // Redirect to documentation with hash navigation
-        window.location.replace('/docs/index.html');
-    </script>
-</head>
+<html><head><title>Common Issues - AureonCare</title><link rel="stylesheet" href="../styles.css"></head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Loading Troubleshooting Documentation</h1>
-        <p>If you are not redirected automatically, <a href="/docs/index.html">click here</a>.</p>
-    </div>
-</body>
-</html>
+<header class="doc-header"><div class="doc-header-content"><div class="doc-header-left"><a href="/" class="home-button"><svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>Back to AureonCare</a><div class="doc-header-title"><h1>🔧 Troubleshooting</h1><p>Common issues and solutions</p></div></div><span class="version-badge">v1.2</span></div></header>
+<div class="doc-container"><a href="../index.html" class="back-link">← Back</a>
+<div class="article-card"><h1>Common Issues & Solutions</h1>
+<h2>Login Issues</h2>
+<h3>Can't log in / Invalid credentials</h3>
+<p><strong>Solutions:</strong></p>
+<ol><li>Verify email address is correct</li><li>Check Caps Lock is off</li><li>Click "Forgot Password" to reset</li><li>Clear browser cache and cookies</li><li>Try different browser</li><li>Contact admin if account is blocked</li></ol>
+<h3>Password reset email not received</h3>
+<ol><li>Check spam/junk folder</li><li>Verify email address on file</li><li>Wait 10 minutes and retry</li><li>Contact administrator</li></ol>
+<h2>Performance Issues</h2>
+<h3>System is slow</h3>
+<ol><li>Check internet speed (minimum 5 Mbps)</li><li>Close unnecessary browser tabs</li><li>Clear browser cache</li><li>Restart browser</li><li>Check if system maintenance is scheduled</li></ol>
+<h3>Page won't load</h3>
+<ol><li>Refresh page (F5 or Ctrl+R)</li><li>Clear cache and hard refresh (Ctrl+Shift+R)</li><li>Check internet connection</li><li>Try incognito/private mode</li><li>Try different browser</li></ol>
+<h2>Appointment Issues</h2>
+<h3>Can't create appointment</h3>
+<ol><li>Verify patient exists in system</li><li>Check provider availability</li><li>Ensure no scheduling conflicts</li><li>Check permissions (user role)</li></ol>
+<h3>Appointment not showing on calendar</h3>
+<ol><li>Refresh calendar view</li><li>Check date/time zone settings</li><li>Verify appointment was saved</li><li>Check calendar filters</li></ol>
+<h2>Prescription Issues</h2>
+<h3>ePrescribe not working</h3>
+<ol><li>Verify provider has DEA number</li><li>Check pharmacy is in directory</li><li>Ensure patient has current address</li><li>Check internet connection</li><li>Contact pharmacy to verify receipt</li></ol>
+<h3>Drug interaction alert won't clear</h3>
+<ol><li>Review interaction carefully</li><li>Document reason for override</li><li>Get supervising physician approval</li><li>Consider alternative medication</li></ol>
+<h2>Claims & Billing Issues</h2>
+<h3>Claim won't submit</h3>
+<ol><li>Verify all required fields complete</li><li>Check diagnosis codes are valid ICD-10</li><li>Verify CPT codes are current</li><li>Ensure patient insurance is active</li><li>Review validation errors</li></ol>
+<h3>Payment not posting</h3>
+<ol><li>Verify claim exists in system</li><li>Check payment amount matches</li><li>Ensure no duplicate payments</li><li>Review posting errors</li></ol>
+<h2>Telehealth Issues</h2>
+<h3>Video won't connect</h3>
+<ol><li>Check camera/microphone permissions</li><li>Allow access in browser settings</li><li>Test with browser's built-in test</li><li>Close other video applications</li><li>Restart browser</li></ol>
+<h3>Poor video/audio quality</h3>
+<ol><li>Check internet speed (need 5+ Mbps)</li><li>Move closer to WiFi router</li><li>Close other applications</li><li>Turn off video, use audio only</li></ol>
+<h2>Data Entry Issues</h2>
+<h3>Changes not saving</h3>
+<ol><li>Check for validation errors (red text)</li><li>Ensure all required fields completed</li><li>Check internet connection</li><li>Try saving again</li><li>Copy data and refresh page</li></ol>
+<h3>Can't find patient/record</h3>
+<ol><li>Check spelling of name</li><li>Try partial name search</li><li>Search by MRN or DOB</li><li>Check if record was archived</li><li>Verify you have permission to view</li></ol>
+<h2>Browser Compatibility</h2>
+<p><strong>Recommended browsers:</strong></p>
+<ul><li>Chrome 90+ (recommended)</li><li>Firefox 88+</li><li>Safari 14+</li><li>Edge 90+</li></ul>
+<p><strong>Not supported:</strong></p>
+<ul><li>Internet Explorer (any version)</li><li>Browsers older than 2 years</li></ul>
+<h2>Getting Help</h2>
+<p><strong>If issue persists:</strong></p>
+<ol><li>Press <strong>?</strong> key for in-app help</li><li>Check documentation at <strong>/docs</strong></li><li>Contact support:<ul><li>Email: support@aureoncare.com</li><li>Phone: 1-800-XXX-XXXX</li><li>Live chat (business hours)</li></ul></li><li>Submit ticket via Admin Panel</li></ol>
+<p><strong>When contacting support, provide:</strong></p>
+<ul><li>Your name and organization</li><li>Detailed description of issue</li><li>Steps to reproduce</li><li>Browser and version</li><li>Screenshots if applicable</li><li>Error messages (exact text)</li></ul>
+</div></div>
+<footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;"><p>AureonCare v1.2</p></footer>
+</body></html>
