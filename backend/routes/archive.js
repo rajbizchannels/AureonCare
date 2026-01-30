@@ -170,6 +170,11 @@ router.post('/create', async (req, res) => {
 
             console.log(`[Archive] Found ${rows.length} rows in ${tableName}`);
 
+            // Check if data already exists in archive database
+            const existingCountResult = await archiveClient.query(`SELECT COUNT(*) FROM ${tableName}`);
+            const existingCount = parseInt(existingCountResult.rows[0].count);
+            console.log(`[Archive] Archive database already has ${existingCount} rows in ${tableName}`);
+
             // Always add table to archived list, even if empty
             archivedTables.push(tableName);
 
@@ -324,6 +329,7 @@ router.get('/list', async (req, res) => {
           archived_modules,
           archived_tables,
           record_counts,
+          metadata,
           archive_date,
           status,
           archived_by
@@ -342,6 +348,7 @@ router.get('/list', async (req, res) => {
           archived_modules,
           archived_tables,
           record_counts,
+          metadata,
           archive_date,
           status,
           archived_by

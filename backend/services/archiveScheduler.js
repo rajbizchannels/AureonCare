@@ -149,6 +149,18 @@ async function executeArchiveRule(rule) {
           const result = await pool.query(selectQuery, whereParams);
           const rows = result.rows;
 
+          console.log(`[Archive Scheduler] Found ${rows.length} rows to archive from ${tableName}`);
+
+          // Check if data already exists in archive database
+          const archiveCheckClient = await archivePool.connect();
+          try {
+            const existingCountResult = await archiveCheckClient.query(`SELECT COUNT(*) FROM ${tableName}`);
+            const existingCount = parseInt(existingCountResult.rows[0].count);
+            console.log(`[Archive Scheduler] Archive database already has ${existingCount} rows in ${tableName}`);
+          } finally {
+            archiveCheckClient.release();
+          }
+
           // Always add table to archived list, even if empty
           archivedTables.push(tableName);
 
