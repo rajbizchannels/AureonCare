@@ -103,11 +103,6 @@ async function executeArchiveRule(rule) {
           let whereClause = '';
           let whereParams = [];
 
-          if (rule.retention_days) {
-            // Archive data older than retention_days
-            whereClause = `WHERE created_at < NOW() - INTERVAL '${rule.retention_days} days'`;
-          }
-
           // ALWAYS ensure table structure exists in archive database first
           const { ensureTableStructure } = require('../archiveDb');
           const tableReady = await ensureTableStructure(pool, tableName);
@@ -115,6 +110,38 @@ async function executeArchiveRule(rule) {
           if (!tableReady) {
             console.log(`[Archive Scheduler] ⊘ Skipping ${tableName} - table not available`);
             continue;
+          }
+
+          // Detect timestamp column for retention filtering
+          if (rule.retention_days) {
+            // Check which timestamp column this table has
+            const timestampCheckQuery = `
+              SELECT column_name
+              FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = $1
+                AND column_name IN ('created_at', 'added_date', 'date_created', 'timestamp', 'created', 'date_added')
+              ORDER BY
+                CASE column_name
+                  WHEN 'created_at' THEN 1
+                  WHEN 'added_date' THEN 2
+                  WHEN 'date_created' THEN 3
+                  WHEN 'timestamp' THEN 4
+                  WHEN 'created' THEN 5
+                  WHEN 'date_added' THEN 6
+                END
+              LIMIT 1;
+            `;
+
+            const timestampResult = await pool.query(timestampCheckQuery, [tableName]);
+
+            if (timestampResult.rows.length > 0) {
+              const timestampColumn = timestampResult.rows[0].column_name;
+              whereClause = `WHERE ${timestampColumn} < NOW() - INTERVAL '${rule.retention_days} days'`;
+              console.log(`[Archive Scheduler] Using ${timestampColumn} for retention filtering on ${tableName}`);
+            } else {
+              console.log(`[Archive Scheduler] ⚠️  No timestamp column found for ${tableName} - archiving all data`);
+            }
           }
 
           // Get data from main database
