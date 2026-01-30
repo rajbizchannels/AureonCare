@@ -104,6 +104,8 @@ async function ensureTableStructure(mainPool, tableName) {
       const checkResult = await client.query(checkQuery, [tableName]);
 
       if (!checkResult.rows[0].exists) {
+        console.log(`[Archive DB] Creating table ${tableName} in archive database...`);
+
         // Get detailed column information including defaults and data types
         const columnsQuery = `
           SELECT
@@ -129,32 +131,96 @@ async function ensureTableStructure(mainPool, tableName) {
 
         const columnsResult = await mainClient.query(columnsQuery, [tableName]);
 
-        if (columnsResult.rows.length > 0) {
-          // Build CREATE TABLE statement
-          const columnDefs = columnsResult.rows.map(col => {
-            let def = `${col.column_name} ${col.full_type}`;
-
-            if (col.is_nullable === 'NO') {
-              def += ' NOT NULL';
-            }
-
-            if (col.column_default) {
-              def += ` DEFAULT ${col.column_default}`;
-            }
-
-            return def;
-          }).join(',\n  ');
-
-          const createStatement = `CREATE TABLE ${tableName} (\n  ${columnDefs}\n);`;
-
-          console.log(`[Archive DB] Creating table ${tableName} in archive database...`);
-          await client.query(createStatement);
-          console.log(`[Archive DB] ✓ Created table ${tableName}`);
-          return true;
-        } else {
+        if (columnsResult.rows.length === 0) {
           console.log(`⚠️  No columns found for table ${tableName}`);
           return false;
         }
+
+        // Build CREATE TABLE statement with columns
+        const columnDefs = columnsResult.rows.map(col => {
+          let def = `${col.column_name} ${col.full_type}`;
+
+          if (col.is_nullable === 'NO') {
+            def += ' NOT NULL';
+          }
+
+          if (col.column_default) {
+            def += ` DEFAULT ${col.column_default}`;
+          }
+
+          return def;
+        }).join(',\n  ');
+
+        // Get primary key constraint
+        const pkQuery = `
+          SELECT string_agg(a.attname, ', ' ORDER BY array_position(conkey, a.attnum)) as pk_columns
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+          WHERE t.relname = $1
+            AND c.contype = 'p'
+          GROUP BY c.conname;
+        `;
+
+        const pkResult = await mainClient.query(pkQuery, [tableName]);
+        let pkConstraint = '';
+        if (pkResult.rows.length > 0) {
+          pkConstraint = `,\n  PRIMARY KEY (${pkResult.rows[0].pk_columns})`;
+        }
+
+        // Get unique constraints (excluding primary key)
+        const uniqueQuery = `
+          SELECT c.conname, string_agg(a.attname, ', ' ORDER BY array_position(conkey, a.attnum)) as unique_columns
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+          WHERE t.relname = $1
+            AND c.contype = 'u'
+          GROUP BY c.conname;
+        `;
+
+        const uniqueResult = await mainClient.query(uniqueQuery, [tableName]);
+        let uniqueConstraints = '';
+        if (uniqueResult.rows.length > 0) {
+          uniqueConstraints = uniqueResult.rows.map(row =>
+            `,\n  UNIQUE (${row.unique_columns})`
+          ).join('');
+        }
+
+        // Create table with all constraints
+        const createStatement = `CREATE TABLE ${tableName} (\n  ${columnDefs}${pkConstraint}${uniqueConstraints}\n);`;
+
+        await client.query(createStatement);
+        console.log(`[Archive DB] ✓ Created table ${tableName} with constraints`);
+
+        // Create indexes (excluding primary key and unique constraint indexes)
+        const indexQuery = `
+          SELECT
+            i.relname as index_name,
+            string_agg(a.attname, ', ' ORDER BY array_position(ix.indkey, a.attnum)) as columns,
+            ix.indisunique
+          FROM pg_index ix
+          JOIN pg_class t ON t.oid = ix.indrelid
+          JOIN pg_class i ON i.oid = ix.indexrelid
+          JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
+          WHERE t.relname = $1
+            AND NOT ix.indisprimary
+            AND NOT ix.indisunique
+          GROUP BY i.relname, ix.indisunique;
+        `;
+
+        const indexResult = await mainClient.query(indexQuery, [tableName]);
+        for (const row of indexResult.rows) {
+          try {
+            const createIndexStmt = `CREATE INDEX ${row.index_name} ON ${tableName} (${row.columns});`;
+            await client.query(createIndexStmt);
+            console.log(`[Archive DB] ✓ Created index ${row.index_name}`);
+          } catch (idxErr) {
+            console.warn(`[Archive DB] Could not create index ${row.index_name}:`, idxErr.message);
+          }
+        }
+
+        return true;
       } else {
         // Table exists, verify column compatibility
         console.log(`[Archive DB] Table ${tableName} already exists in archive database`);
@@ -165,6 +231,7 @@ async function ensureTableStructure(mainPool, tableName) {
     }
   } catch (error) {
     console.error(`[Archive DB] Error ensuring table structure for ${tableName}:`, error.message);
+    console.error(`[Archive DB] Stack:`, error.stack);
     return false;
   } finally {
     client.release();
