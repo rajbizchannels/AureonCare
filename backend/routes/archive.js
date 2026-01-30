@@ -184,6 +184,25 @@ router.post('/create', async (req, res) => {
               const tableSize = rowSize * rows.length;
               totalSizeBytes += tableSize;
 
+              // Get primary key columns for ON CONFLICT clause
+              const pkQuery = `
+                SELECT string_agg(a.attname, ', ' ORDER BY array_position(conkey, a.attnum)) as pk_columns
+                FROM pg_constraint c
+                JOIN pg_class t ON t.oid = c.conrelid
+                JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+                WHERE t.relname = $1
+                  AND c.contype = 'p'
+                GROUP BY c.conname;
+              `;
+              const pkResult = await archiveClient.query(pkQuery, [tableName]);
+              const pkColumns = pkResult.rows[0]?.pk_columns;
+
+              if (!pkColumns) {
+                console.warn(`[Archive] ⚠️  Table ${tableName} has no primary key - duplicates may occur`);
+              } else {
+                console.log(`[Archive] Using primary key (${pkColumns}) for deduplication`);
+              }
+
               console.log(`[Archive] Inserting ${rows.length} rows into archive database...`);
 
               // Insert data into archive database
@@ -204,10 +223,15 @@ router.post('/create', async (req, res) => {
                   const values = Object.values(row);
                   const placeholders = values.map((_, idx) => `$${idx + 1}`).join(', ');
 
+                  // Build ON CONFLICT clause with explicit target if primary key exists
+                  const onConflictClause = pkColumns
+                    ? `ON CONFLICT (${pkColumns}) DO NOTHING`
+                    : `ON CONFLICT DO NOTHING`;
+
                   const insertQuery = `
                     INSERT INTO ${tableName} (${columns.join(', ')})
                     VALUES (${placeholders})
-                    ON CONFLICT DO NOTHING
+                    ${onConflictClause}
                     RETURNING *
                   `;
 
