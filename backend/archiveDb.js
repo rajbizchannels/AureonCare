@@ -301,10 +301,35 @@ async function getTableRecordCount(tableName) {
   return parseInt(result.rows[0].count);
 }
 
+/**
+ * Get primary key columns for a table
+ * @param {string} tableName - Name of table
+ * @returns {string|null} Comma-separated list of primary key columns or null
+ */
+async function getPrimaryKeyColumns(tableName) {
+  try {
+    const query = `
+      SELECT string_agg(a.attname, ', ' ORDER BY array_position(conkey, a.attnum)) as pk_columns
+      FROM pg_constraint c
+      JOIN pg_class t ON t.oid = c.conrelid
+      JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+      WHERE t.relname = $1
+        AND c.contype = 'p'
+      GROUP BY c.conname;
+    `;
+    const result = await archivePool.query(query, [tableName]);
+    return result.rows[0]?.pk_columns || null;
+  } catch (error) {
+    console.error(`[Archive DB] Error getting primary key for ${tableName}:`, error.message);
+    return null;
+  }
+}
+
 module.exports = {
   archivePool,
   ensureTableStructure,
   ensureExtensions,
   getArchiveTables,
-  getTableRecordCount
+  getTableRecordCount,
+  getPrimaryKeyColumns
 };
