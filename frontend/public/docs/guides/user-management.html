@@ -1,60 +1,44 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - AureonCare Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        // Redirect to documentation with hash navigation
-        window.location.replace('/docs/index.html');
-    </script>
-</head>
+<html><head><title>User Management - AureonCare</title><link rel="stylesheet" href="../styles.css"></head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Loading User Management Documentation</h1>
-        <p>If you are not redirected automatically, <a href="/docs/index.html">click here</a>.</p>
-    </div>
-</body>
-</html>
+<header class="doc-header"><div class="doc-header-content"><div class="doc-header-left"><a href="/" class="home-button"><svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>Back to AureonCare</a><div class="doc-header-title"><h1>👥 User Management</h1><p>Managing system users and access</p></div></div><span class="version-badge">v1.2</span></div></header>
+<div class="doc-container"><a href="../index.html" class="back-link">← Back</a>
+<div class="article-card"><h1>User Management</h1>
+<p><strong>🆕 Updated in v1.2:</strong> Enhanced with language preferences and inline forms!</p>
+<h2>Adding New Users</h2>
+<ol><li>Go to <strong>Admin Panel</strong> > <strong>Users</strong></li><li>Click <strong>+ Add New User</strong></li><li>Full-screen inline form appears</li><li>Fill in user details</li></ol>
+<h3>User Information</h3>
+<p><strong>Personal:</strong></p>
+<ul><li>First Name, Last Name</li><li>Email (login username)</li><li>Phone Number</li><li>Address, Date of Birth</li></ul>
+<p><strong>Professional:</strong></p>
+<ul><li>License Number</li><li>NPI Number (for billing)</li><li>DEA Number (for prescribing)</li><li>Specialty, Credentials</li></ul>
+<p><strong>🆕 Language Preference:</strong></p>
+<ul><li>Select from 8 languages</li><li>Interface auto-switches on login</li><li>Supported: English, Spanish, French, German, Arabic, Hindi, Mandarin, Portuguese</li></ul>
+<h3>Assign Roles</h3>
+<p>Select one or more roles:</p>
+<ul><li><strong>Administrator:</strong> Full system access</li><li><strong>Doctor:</strong> Clinical provider</li><li><strong>Nurse:</strong> Clinical support staff</li><li><strong>Receptionist:</strong> Front desk, scheduling</li><li><strong>Billing Manager:</strong> Revenue cycle</li><li><strong>CRM Manager:</strong> Marketing, outreach</li></ul>
+<h3>User Status</h3>
+<ul><li><strong>Active:</strong> Can log in</li><li><strong>Pending:</strong> Account created, not activated</li><li><strong>Blocked:</strong> Cannot log in</li></ul>
+<h2>Editing Users</h2>
+<ol><li>Find user in list</li><li>Click user row or <strong>Edit</strong> button</li><li>Full-screen inline form opens</li><li>Make changes</li><li>Click <strong>Save Changes</strong></li></ol>
+<h2>Managing Roles</h2>
+<ol><li>Open user record</li><li>Go to <strong>Roles</strong> section</li><li>Check/uncheck roles</li><li>Click <strong>Update Roles</strong></li></ol>
+<p>⚠️ <strong>Users must have at least one role.</strong></p>
+<h2>Deactivating Users</h2>
+<ol><li>Open user record</li><li>Change status to <strong>Blocked</strong></li><li>User cannot log in</li><li>Historical data preserved</li></ol>
+<h2>Password Management</h2>
+<p><strong>Resetting passwords:</strong></p>
+<ol><li>Edit user</li><li>Click <strong>Reset Password</strong></li><li>User receives email with reset link</li></ol>
+<p><strong>Password requirements:</strong></p>
+<ul><li>Minimum 8 characters</li><li>1 uppercase, 1 lowercase</li><li>1 number, 1 special character</li></ul>
+<h2>User Permissions</h2>
+<p><strong>🆕 Expanded in v1.2:</strong> Granular permissions for all 14 modules</p>
+<p>Each role can have permissions for:</p>
+<ul><li>View, Create, Edit, Delete</li></ul>
+<p>Across modules:</p>
+<ul><li>Patients, Appointments, Providers</li><li>EHR, Prescriptions, Diagnoses</li><li>Lab Orders, Telehealth, RCM</li><li>Pharmacy, Offerings, CRM</li><li>Administration, Reports</li></ul>
+<h2>Best Practices</h2>
+<ul><li>✓ Use principle of least privilege</li><li>✓ Review user access quarterly</li><li>✓ Deactivate terminated employees immediately</li><li>✓ Use strong password policy</li><li>✓ Monitor failed login attempts</li><li>✓ Document access changes</li></ul>
+</div></div>
+<footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;"><p>AureonCare v1.2</p></footer>
+</body></html>

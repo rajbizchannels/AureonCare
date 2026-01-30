@@ -1,60 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Processing - AureonCare Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        // Redirect to documentation with hash navigation
-        window.location.replace('/docs/index.html#payments');
-    </script>
-</head>
+<html><head><title>Payment Processing - AureonCare</title><link rel="stylesheet" href="../styles.css"></head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Loading Payment Processing Documentation</h1>
-        <p>If you are not redirected automatically, <a href="/docs/index.html#payments">click here</a>.</p>
-    </div>
-</body>
-</html>
+<header class="doc-header"><div class="doc-header-content"><div class="doc-header-left"><a href="/" class="home-button"><svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>Back to AureonCare</a><div class="doc-header-title"><h1>💳 Payment Processing</h1><p>Patient payment collection and management</p></div></div><span class="version-badge">v1.2</span></div></header>
+<div class="doc-container"><a href="../index.html" class="back-link">← Back</a>
+<div class="article-card"><h1>Payment Processing</h1>
+<p>Process and track patient payments for services rendered.</p>
+<h2>Recording Payments</h2>
+<ol><li>Go to <strong>RCM</strong> > <strong>Payments</strong></li><li>Click <strong>+ New Payment</strong></li><li>Select patient</li><li>Enter payment details</li></ol>
+<h3>Payment Methods</h3>
+<ul><li><strong>Cash:</strong> Record cash amount</li><li><strong>Check:</strong> Enter check number</li><li><strong>Credit/Debit Card:</strong> Process via integrated payment gateway</li><li><strong>ACH/Bank Transfer:</strong> Electronic bank payment</li><li><strong>Patient Portal:</strong> Online payment by patient</li></ul>
+<h3>Payment Types</h3>
+<table><tr><th>Type</th><th>Description</th></tr><tr><td>Copay</td><td>Fixed amount patient pays at visit</td></tr><tr><td>Coinsurance</td><td>Percentage of bill patient owes</td></tr><tr><td>Deductible</td><td>Amount before insurance pays</td></tr><tr><td>Self-Pay</td><td>Full payment by uninsured patient</td></tr></table>
+<h2>Payment Form</h2>
+<p><strong>Required fields:</strong></p>
+<ul><li>Patient</li><li>Amount</li><li>Payment method</li><li>Date received</li><li>Received by (staff member)</li></ul>
+<p><strong>Optional:</strong></p>
+<ul><li>Check number</li><li>Transaction ID</li><li>Notes</li></ul>
+<h2>Posting Payments</h2>
+<ol><li>Navigate to claim/invoice</li><li>Click <strong>Post Payment</strong></li><li>Enter amount paid</li><li>System applies to patient balance</li><li>Remaining balance calculated</li></ol>
+<h2>Refunds</h2>
+<ol><li>Find payment record</li><li>Click <strong>Issue Refund</strong></li><li>Enter refund amount</li><li>Select refund method</li><li>Add reason</li><li>Process refund</li></ol>
+<h2>Payment Reports</h2>
+<ul><li><strong>Daily Deposits:</strong> Total payments by date</li><li><strong>By Method:</strong> Cash, card, check totals</li><li><strong>Outstanding Balances:</strong> Patients with balances due</li><li><strong>Payment Trends:</strong> Monthly collection trends</li></ul>
+<h2>Best Practices</h2>
+<ul><li>✓ Collect copays at check-in</li><li>✓ Verify insurance before visit</li><li>✓ Offer payment plans for large balances</li><li>✓ Send statements within 7 days</li><li>✓ Reconcile daily deposits</li><li>✓ Document all payments immediately</li></ul>
+</div></div>
+<footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;"><p>AureonCare v1.2</p></footer>
+</body></html>

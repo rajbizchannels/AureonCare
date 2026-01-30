@@ -3,58 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telehealth - AureonCare Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        // Redirect to documentation with hash navigation
-        window.location.replace('/docs/index.html#telehealth');
-    </script>
+    <title>Telehealth Guide - AureonCare Documentation</title>
+    <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Loading Telehealth Documentation</h1>
-        <p>If you are not redirected automatically, <a href="/docs/index.html#telehealth">click here</a>.</p>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>🎥 Telehealth Guide</h1>
+                    <p>Virtual care and video consultations</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.2</span>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+
+        <div class="article-card">
+            <h1 class="article-title">Telehealth Video Consultations</h1>
+
+            <p><strong>Telehealth</strong> enables virtual patient visits through secure video conferencing, expanding access to care and improving convenience.</p>
+
+            <h2>📅 Scheduling Telehealth Appointments</h2>
+            <ol>
+                <li>Go to <strong>Practice Management</strong> module</li>
+                <li>Click <strong>+ New Appointment</strong></li>
+                <li>Select patient</li>
+                <li>Choose provider</li>
+                <li>Set appointment type: <strong>Telehealth</strong></li>
+                <li>Select date and time</li>
+                <li>Add reason for visit</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <p>✉️ Patient receives email/SMS with video link 30 minutes before appointment.</p>
+
+            <h2>🎥 Starting a Telehealth Session (Provider)</h2>
+            <ol>
+                <li>Go to <strong>Appointments</strong> on dashboard</li>
+                <li>Find telehealth appointment</li>
+                <li>Click <strong>Start Video Call</strong> button</li>
+                <li>Allow camera and microphone access</li>
+                <li>Wait for patient to join</li>
+            </ol>
+
+            <h3>Before Session Checklist</h3>
+            <ul>
+                <li>✓ Test camera and microphone</li>
+                <li>✓ Ensure good lighting</li>
+                <li>✓ Check internet connection (minimum 5 Mbps)</li>
+                <li>✓ Find quiet, private location</li>
+                <li>✓ Have patient chart open</li>
+            </ul>
+
+            <h2>👤 Patient Joining Session</h2>
+            <p><strong>Patients can join via:</strong></p>
+            <ul>
+                <li><strong>Email link:</strong> Click link in appointment reminder</li>
+                <li><strong>Patient Portal:</strong> Log in > Appointments > Join Video</li>
+                <li><strong>SMS link:</strong> Tap link on mobile device</li>
+            </ul>
+
+            <p><strong>Patient preparation:</strong></p>
+            <ul>
+                <li>Test device camera/mic</li>
+                <li>Join 5 minutes early</li>
+                <li>Have pharmacy info ready</li>
+                <li>List current medications</li>
+            </ul>
+
+            <h2>🛠️ During the Video Consultation</h2>
+
+            <h3>Video Controls</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Button</th>
+                        <th>Function</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>🎤 Mute</td><td>Toggle microphone on/off</td></tr>
+                    <tr><td>📹 Video</td><td>Toggle camera on/off</td></tr>
+                    <tr><td>💬 Chat</td><td>Send text messages</td></tr>
+                    <tr><td>📺 Screen Share</td><td>Share screen for education</td></tr>
+                    <tr><td>📝 Notes</td><td>Open clinical note</td></tr>
+                    <tr><td>📞 End Call</td><td>Disconnect session</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Clinical Documentation Tools</h3>
+            <ul>
+                <li><strong>Split Screen:</strong> View patient video + EHR simultaneously</li>
+                <li><strong>Quick Note:</strong> Document while on video</li>
+                <li><strong>ePrescribe:</strong> Send prescriptions during call</li>
+                <li><strong>Lab Orders:</strong> Order tests immediately</li>
+                <li><strong>Upload Photos:</strong> Patient can share images</li>
+            </ul>
+
+            <h3>Patient Interaction</h3>
+            <ul>
+                <li>Maintain eye contact (look at camera)</li>
+                <li>Speak clearly and at normal pace</li>
+                <li>Ask patient to show relevant areas (rash, wound, etc.)</li>
+                <li>Use visual aids via screen share</li>
+                <li>Confirm patient understanding</li>
+            </ul>
+
+            <h2>📋 Post-Session Documentation</h2>
+
+            <h3>Clinical Note Requirements</h3>
+            <ul>
+                <li><strong>Note Type:</strong> Telehealth</li>
+                <li><strong>Document:</strong>
+                    <ul>
+                        <li>Location (patient state/location)</li>
+                        <li>Consent obtained for telehealth</li>
+                        <li>Video quality assessment</li>
+                        <li>Limitations (if unable to examine)</li>
+                    </ul>
+                </li>
+                <li><strong>Include:</strong> "Patient seen via secure video consultation"</li>
+            </ul>
+
+            <h3>Example Documentation</h3>
+            <p><em>"Patient seen via secure HIPAA-compliant video telehealth from patient's home in California. Verbal consent obtained. Video and audio quality good. Full history obtained. Visual examination performed as appropriate for virtual visit."</em></p>
+
+            <h2>💳 Billing for Telehealth</h2>
+
+            <h3>CPT Codes</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>99202-99205</td><td>New patient telehealth (15-60 min)</td></tr>
+                    <tr><td>99212-99215</td><td>Established patient telehealth (10-40 min)</td></tr>
+                    <tr><td>Modifier 95</td><td>Required for telehealth billing</td></tr>
+                </tbody>
+            </table>
+
+            <p><strong>Requirements:</strong></p>
+            <ul>
+                <li>Document total time spent</li>
+                <li>Include telehealth-specific language</li>
+                <li>Add Modifier 95 to claim</li>
+                <li>Note patient location (state)</li>
+            </ul>
+
+            <h2>🔒 Privacy & Security</h2>
+            <ul>
+                <li><strong>HIPAA-Compliant:</strong> End-to-end encryption</li>
+                <li><strong>BAA in Place:</strong> Business Associate Agreement with video vendor</li>
+                <li><strong>No Recording:</strong> Unless patient consents (document in chart)</li>
+                <li><strong>Private Location:</strong> Ensure no unauthorized listeners</li>
+                <li><strong>Screen Sharing:</strong> Only share relevant, de-identified info</li>
+            </ul>
+
+            <h2>🔧 Troubleshooting</h2>
+
+            <h3>Common Issues</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Solution</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>No video</td><td>Check camera permissions in browser settings</td></tr>
+                    <tr><td>No audio</td><td>Check microphone permissions, test speakers</td></tr>
+                    <tr><td>Poor quality</td><td>Close other programs, check internet speed</td></tr>
+                    <tr><td>Can't connect</td><td>Refresh page, try different browser</td></tr>
+                    <tr><td>Dropped call</td><td>Reconnect using same link</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Browser Requirements</h3>
+            <ul>
+                <li><strong>Recommended:</strong> Chrome, Firefox, Safari (latest versions)</li>
+                <li><strong>Mobile:</strong> iOS 12+, Android 8+</li>
+                <li><strong>Bandwidth:</strong> Minimum 5 Mbps up/down</li>
+            </ul>
+
+            <h2>✅ Best Practices</h2>
+            <ul>
+                <li>✓ Test equipment before first appointment</li>
+                <li>✓ Start session 5 minutes early</li>
+                <li>✓ Have backup phone number for patient</li>
+                <li>✓ Document technical issues in note</li>
+                <li>✓ Set expectations with patient beforehand</li>
+                <li>✓ Follow up with in-person visit if needed</li>
+                <li>✓ Send visit summary to patient after</li>
+            </ul>
+
+            <h2>🚫 When NOT to Use Telehealth</h2>
+            <ul>
+                <li>Emergency situations (chest pain, stroke symptoms)</li>
+                <li>Requires physical examination</li>
+                <li>Complex procedures</li>
+                <li>Patient preference for in-person</li>
+                <li>Poor internet connectivity</li>
+            </ul>
+        </div>
     </div>
+
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.2 | <a href="../index.html" style="color: white; text-decoration: underline;">Documentation Home</a></p>
+    </footer>
 </body>
 </html>
