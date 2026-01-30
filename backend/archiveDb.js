@@ -32,15 +32,38 @@ archivePool.on('error', (err) => {
   // Don't exit process for archive DB errors - main DB should continue working
 });
 
-// Test connection and log status
-archivePool.query('SELECT NOW()', (err, res) => {
+// Test connection, ensure extensions, and log status
+archivePool.query('SELECT NOW()', async (err, res) => {
   if (err) {
     console.error('⚠️  Archive database connection failed:', err.message);
     console.error('   Archive functionality will be limited.');
   } else {
     console.log('✓ Archive database connected:', archivePool.options.database);
+
+    // Ensure required extensions are installed
+    try {
+      await archivePool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+      await archivePool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
+      console.log('✓ Archive database extensions enabled');
+    } catch (extErr) {
+      console.error('⚠️  Could not enable extensions:', extErr.message);
+    }
   }
 });
+
+/**
+ * Ensure required PostgreSQL extensions are enabled in archive database
+ */
+async function ensureExtensions() {
+  try {
+    await archivePool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+    await archivePool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
+    return true;
+  } catch (error) {
+    console.error('⚠️  Could not enable extensions:', error.message);
+    return false;
+  }
+}
 
 /**
  * Copy table structure from main database to archive database
@@ -50,6 +73,9 @@ archivePool.query('SELECT NOW()', (err, res) => {
 async function ensureTableStructure(mainPool, tableName) {
   const client = await archivePool.connect();
   try {
+    // Ensure required extensions are enabled
+    await ensureExtensions();
+
     // Check if table exists in main database first
     const mainClient = await mainPool.connect();
     try {
@@ -173,6 +199,7 @@ async function getTableRecordCount(tableName) {
 module.exports = {
   archivePool,
   ensureTableStructure,
+  ensureExtensions,
   getArchiveTables,
   getTableRecordCount
 };
