@@ -1,6 +1,6 @@
 # AureonCare User Manual
 
-**Version 1.1 - Updated December 2025**
+**Version 1.2 - Updated January 2026**
 **Modern Healthcare Practice Management System**
 
 ---
@@ -84,9 +84,86 @@ This manual is designed for:
 - 💡 **Tip** - Helpful suggestions and best practices
 - ✅ **Note** - Additional information
 
-### 1.5 What's New in Version 1.1 (December 2025)
+### 1.5 What's New in Version 1.2 (January 2026)
 
-**Recent Enhancements:**
+**Major New Features:**
+
+🆕 **Universal Search**
+- Powerful global search across all modules (Patients, Providers, Appointments, etc.)
+- Click search results to instantly navigate to detailed views
+- Search by name, MRN, phone, email, diagnosis, medication, and more
+- Results show relevant context and entity type
+- Real-time search as you type
+- Available from any page via search icon in header
+
+🆕 **Comprehensive Data Archiving System**
+- Automated data archiving to separate archive database
+- Configurable archiving rules by data age and module
+- Support for 14 modules: Patients, Appointments, Medical Records, Prescriptions, and more
+- Manual and scheduled archiving options
+- Browse and search archived data
+- Restore archived records when needed
+- Compliance with data retention policies
+- Archive size tracking and management
+
+🆕 **Complete Audit Logging**
+- Track all user actions across the system
+- Comprehensive audit trail for compliance (HIPAA, SOX, etc.)
+- Log captures: user, action, entity type, timestamp, IP address, changes made
+- View audit logs in Administration > Audit Logs tab
+- Filter by date range, user, action type, entity type
+- Export audit logs for compliance reporting
+- Automatic retention and archiving of audit logs
+
+🆕 **SOAP Notes in Diagnosis Management**
+- Added SOAP Notes field to diagnosis form
+- Document Subjective, Objective, Assessment, Plan
+- Structured clinical documentation
+- Better quality of care tracking
+- Supports medical necessity documentation
+
+🆕 **Enhanced Patient Registration**
+- Allergies field added to patient form
+- Past Medical History (PMH) field
+- Family History field
+- Comprehensive patient medical background capture
+- Better clinical decision support
+
+🆕 **Expanded Roles & Permissions**
+- Now supports all 14 modules in permission system
+- Granular access control: View, Create, Edit, Delete
+- Modules: Patients, Appointments, Providers, EHR, Prescriptions, Diagnoses, Lab Orders, Telehealth, RCM, Pharmacy, Offerings, CRM, Administration, Reports
+- Custom role creation with specific permissions
+- Enhanced security and access control
+
+🆕 **Cloud Backup Integration**
+- OAuth integration for Google Drive backup
+- OAuth integration for OneDrive backup
+- Secure cloud storage for automated backups
+- Easy reconfiguration and provider switching
+- Backup status monitoring
+
+🆕 **Inline Form Experience**
+- User management now uses full-screen inline forms (no modals)
+- Role management with inline forms
+- Better UX for complex data entry
+- Improved accessibility and mobile experience
+
+🆕 **Language Selection in User Profile**
+- Users can select preferred language in their profile
+- Automatic language switching on login
+- Supported languages: English, Spanish, French, German, Arabic, Hindi, Mandarin, Portuguese
+- Enhanced localization support
+
+🆕 **Themed Modals and Confirmations**
+- Replace browser confirm/alert popups with themed modals
+- Consistent design across all confirmation dialogs
+- Better visual feedback for user actions
+- Improved accessibility
+
+### 1.6 What's New in Version 1.1 (December 2025)
+
+**Previous Enhancements:**
 
 🆕 **Waitlist Management Integration**
 - Waitlist now fully integrated into Practice Management module
@@ -223,6 +300,110 @@ AureonCare supports social login options:
 - **Delete** - Click the Delete button or trash icon
 - **Search** - Use the search box at the top of lists
 - **Filter** - Use filter dropdowns to narrow results
+
+### 2.6 Universal Search
+
+**🆕 NEW IN V1.2:** Powerful global search across all modules!
+
+**What is Universal Search?**
+
+Universal Search allows you to search across all modules and records in AureonCare from a single search bar. Instead of navigating to each module separately, you can find patients, providers, appointments, prescriptions, diagnoses, and more from anywhere in the system.
+
+**Accessing Universal Search:**
+
+1. Click the **Search icon** (magnifying glass) in the top header
+2. Or use keyboard shortcut **Ctrl+K** (Windows) or **Cmd+K** (Mac)
+3. Search bar appears with focus ready for input
+
+**What You Can Search:**
+
+Universal Search covers **all major entities**:
+- **Patients** - Search by name, MRN, phone number, email, date of birth
+- **Providers** - Search by name, specialty, license number
+- **Appointments** - Search by patient name, provider name, date, status
+- **Prescriptions** - Search by medication name, patient name
+- **Diagnoses** - Search by ICD code, diagnosis name, patient name
+- **Lab Orders** - Search by test name, patient name, CPT code
+- **Medical Records** - Search by patient name, record type
+- **Pharmacies** - Search by pharmacy name, address
+- **Lab Facilities** - Search by facility name, CLIA number
+- **Insurance Payers** - Search by payer name
+- **Healthcare Offerings** - Search by offering name, description
+- **CRM Campaigns** - Search by campaign name, status
+
+**How to Use Universal Search:**
+
+1. Click the search icon or press Ctrl+K
+2. Start typing your search query (minimum 2 characters)
+3. Results appear in real-time as you type
+4. Results are grouped by entity type (Patients, Providers, etc.)
+5. Each result shows:
+   - **Entity name** (e.g., patient name, provider name)
+   - **Entity type** (e.g., "Patient", "Prescription")
+   - **Relevant details** (e.g., MRN, phone, DOB for patients)
+6. Click on any search result to navigate directly to that record
+
+**Clickable Results:**
+
+When you click a search result, AureonCare automatically:
+- Opens the appropriate module
+- Loads the specific record
+- Shows the detailed view or edit form
+- For patients: Opens the patient chart with correct tab
+- For prescriptions/diagnoses/lab orders: Opens patient chart on the relevant tab
+- For appointments: Opens the appointment in edit mode
+
+**Example Search Scenarios:**
+
+**Find a Patient:**
+- Type: "John Smith" or "12345" (MRN) or "555-1234" (phone)
+- Results show all matching patients
+- Click patient to open their chart
+
+**Find a Prescription:**
+- Type: "Lisinopril" or "Smith Lisinopril"
+- Results show all prescriptions containing that medication
+- Click to open patient chart on Prescriptions tab
+
+**Find an Appointment:**
+- Type: "Dr. Johnson 2026-01-30"
+- Results show appointments for that provider on that date
+- Click to view/edit appointment
+
+**Search Tips:**
+
+💡 **Partial Matching:**
+- Search supports partial matches
+- "Smi" will find "Smith", "Smithson", etc.
+
+💡 **Multiple Words:**
+- Searches across all searchable fields
+- "John 555" will find patients with "John" in name AND "555" in phone
+
+💡 **Case Insensitive:**
+- Search is not case-sensitive
+- "john smith" = "John Smith" = "JOHN SMITH"
+
+💡 **Special Characters:**
+- Phone numbers can be entered with or without formatting
+- "5551234" = "555-1234" = "(555) 123-4"
+
+💡 **Recent Searches:**
+- System remembers your recent searches
+- Quickly re-run previous searches
+
+**Search Performance:**
+
+- Real-time results as you type
+- Results typically appear in < 500ms
+- Maximum 50 results shown per entity type
+- Ordered by relevance and recency
+
+**Access Control:**
+
+- You can only search and view records you have permission to access
+- Search results respect role-based permissions
+- Hidden/archived records not shown in search results
 
 ---
 
@@ -555,10 +736,23 @@ Provides one-click access to common tasks based on your role:
 - Height
 - Weight
 - Blood Type
-- Known Allergies
-- Past Medical History
+- **Allergies** - 🆕 ENHANCED IN V1.2
+  - Comprehensive allergies field
+  - Document medication allergies, food allergies, environmental allergies
+  - Include reaction type and severity
+  - Critical for medication safety and clinical decision support
+- **Past Medical History (PMH)** - 🆕 ENHANCED IN V1.2
+  - Document previous medical conditions
+  - Surgical history
+  - Hospitalizations
+  - Chronic conditions
+  - Important for comprehensive patient background
 - Current Medications
-- Family History
+- **Family History** - 🆕 ENHANCED IN V1.2
+  - Document hereditary conditions
+  - Family medical conditions (cancer, diabetes, heart disease, etc.)
+  - Genetic risk factors
+  - Helps identify at-risk patients for preventive care
 
 **Insurance Information:**
 - Insurance Carrier
@@ -1407,7 +1601,6 @@ When creating a prescription, the system automatically checks for:
   - Select from suggestions
   - Or enter ICD code directly
 - **Diagnosis Name** - Auto-filled from ICD code or enter custom
-- **Description** - Detailed description (optional)
 - **Severity** - Select severity level:
   - Mild
   - Moderate
@@ -1418,7 +1611,11 @@ When creating a prescription, the system automatically checks for:
   - Resolved - Condition resolved
   - Chronic - Long-term condition
 - **Diagnosed Date** - Date of diagnosis (required)
-- **Clinical Notes** - Additional clinical information
+- **SOAP Notes** - 🆕 NEW IN V1.2: Structured clinical documentation
+  - **S (Subjective)** - Patient's description of symptoms, complaints
+  - **O (Objective)** - Observable findings, vital signs, test results
+  - **A (Assessment)** - Your clinical assessment and diagnosis
+  - **P (Plan)** - Treatment plan, medications, follow-up
 
 **Association:**
 - **Link to Appointment** - Associate with current appointment
@@ -1426,6 +1623,27 @@ When creating a prescription, the system automatically checks for:
 - **Link to Prescription** - Optionally link related prescriptions to this diagnosis
 
 4. Click **Save Diagnosis**
+
+💡 **Tip:** SOAP Notes provide structured clinical documentation that improves care quality, supports medical necessity, and enhances compliance with clinical documentation requirements.
+
+**Example SOAP Note:**
+```
+S: Patient reports persistent cough for 2 weeks, worse at night.
+   Denies fever, chest pain. Non-smoker.
+
+O: Temp 98.6°F, BP 120/80, RR 16, O2 sat 98%
+   Lung auscultation: mild wheezing bilateral
+   No respiratory distress
+
+A: Acute bronchitis (ICD-10: J20.9)
+   Likely viral etiology
+
+P: 1. Albuterol inhaler 2 puffs q4-6h PRN
+   2. Increase fluid intake
+   3. OTC cough suppressant at bedtime
+   4. Follow-up in 1 week if not improving
+   5. Return sooner if develops fever, SOB, or chest pain
+```
 
 **Linking Prescriptions to Diagnoses:**
 
@@ -2912,42 +3130,97 @@ Tasks are action items assigned to users that require completion. Examples:
 
 ### 19.1 User Management
 
+🆕 **UPDATED IN V1.2:** Improved inline form experience and language selection!
+
 **Accessing User Management:**
 
-1. Navigate to **Admin Panel** > **Users**
-2. View all system users
+1. Navigate to **Admin Panel** > **Users** tab
+2. View all system users in table format
 
 **Adding New Users:**
 
-1. Click **Add New User**
-2. Fill in user information:
+1. Click **Add New User** button
+2. Full-screen inline form appears (no modal popups)
+3. Fill in user information:
+
+**Personal Information:**
    - First Name (required)
    - Last Name (required)
-   - Email (required) - Used for login
+   - Email (required) - Used for login and notifications
    - Phone Number
+   - Address
+   - Date of Birth
+
+**Professional Information:**
    - License Number (for clinical staff)
-   - Specialty (for providers)
-   - Temporary Password
-3. Assign roles (select one or more):
-   - Admin
-   - Doctor
-   - Nurse
-   - Receptionist
-   - Billing Manager
-   - CRM Manager
-   - Staff
-4. Set user status:
-   - Active
-   - Pending
-   - Blocked
-5. Click **Create User**
-6. User receives welcome email with login instructions
+   - Specialty (for providers/doctors)
+   - NPI Number (for billing providers)
+   - DEA Number (for prescribing providers)
+   - Credentials (e.g., MD, DO, NP, PA)
+
+**Language Preference** - 🆕 NEW IN V1.2:
+   - Select preferred language from dropdown:
+     - English
+     - Spanish (Español)
+     - French (Français)
+     - German (Deutsch)
+     - Arabic (العربية)
+     - Hindi (हिन्दी)
+     - Mandarin (中文)
+     - Portuguese (Português)
+   - **Automatic Language Switching:** When user logs in, interface automatically switches to their preferred language
+   - User can change language anytime in their profile settings
+
+**Account Settings:**
+   - Temporary Password (user will be prompted to change on first login)
+   - Password must meet security requirements:
+     - Minimum 8 characters
+     - At least one uppercase letter
+     - At least one lowercase letter
+     - At least one number
+     - At least one special character
+
+**Role Assignment:**
+3. Assign one or more roles:
+   - Administrator - Full system access
+   - Doctor - Clinical care provider
+   - Nurse - Clinical support staff
+   - Receptionist - Front desk and scheduling
+   - Billing Manager - Revenue cycle management
+   - CRM Manager - Patient engagement and marketing
+   - Staff - General staff member
+   - Or assign custom roles
+
+**User Status:**
+4. Set initial status:
+   - **Active** - User can log in immediately
+   - **Pending** - Account created but not yet activated
+   - **Blocked** - Account suspended (cannot log in)
+
+5. Click **Create User** button
+6. User receives welcome email with:
+   - Login credentials
+   - Link to set password (if temporary password used)
+   - Patient portal link
+   - Getting started guide
+
+**Inline Form Benefits:**
+- Full-screen form for better data entry experience
+- No modal popups to manage
+- Easier to navigate between fields
+- Better mobile and tablet experience
+- Form validation in real-time
+- Auto-save drafts (prevents data loss)
 
 **Editing Users:**
 1. Find user in list
-2. Click **Edit**
-3. Update information
-4. Click **Save Changes**
+2. Click on user row or **Edit** button
+3. Full-screen inline form appears with current user data
+4. Update any information
+5. Changes are validated in real-time
+6. Click **Save Changes**
+7. Success message appears
+8. User receives email notification of profile changes (if email changed)
 
 **Managing User Roles:**
 1. Open user record
@@ -2986,55 +3259,137 @@ Tasks are action items assigned to users that require completion. Examples:
 
 **Creating Custom Roles:**
 
-1. Click **Create New Role**
-2. Enter role name
-3. Enter description
-4. Select permissions:
+🆕 **UPDATED IN V1.2:** Now supports granular permissions across all 14 modules!
 
-**Available Permissions:**
-- **Patients**
+1. Click **Create New Role**
+2. Enter role name (e.g., "Clinical Coordinator", "Lab Technician")
+3. Enter description
+4. Select permissions for each module:
+
+**Available Permissions (All 14 Modules):**
+
+**1. Patients Module**
   - View Patients
   - Create Patients
   - Edit Patients
   - Delete Patients
-- **Appointments**
+
+**2. Appointments Module**
   - View Appointments
   - Create Appointments
   - Edit Appointments
   - Delete Appointments
-  - Manage Schedules
-- **Billing**
-  - View Billing
-  - Create Claims
-  - Edit Claims
-  - Delete Claims
-  - Process Payments
-  - Export Financial Data
-- **CRM**
-  - View CRM
-  - Create CRM Records
-  - Edit CRM Records
-  - Delete CRM Records
-  - Manage Campaigns
-- **EHR**
+
+**3. Providers Module**
+  - View Providers
+  - Create Providers
+  - Edit Providers
+  - Delete Providers
+
+**4. EHR (Electronic Health Records) Module**
   - View Medical Records
   - Create Medical Records
   - Edit Medical Records
   - Delete Medical Records
-- **Reports**
-  - View Reports
-  - Export Reports
-- **Admin**
-  - Manage Users
-  - Manage Roles
-  - Manage Settings
-  - View Audit Logs
-- **Telehealth**
+
+**5. Prescriptions Module**
+  - View Prescriptions
+  - Create Prescriptions
+  - Edit Prescriptions
+  - Delete Prescriptions
+
+**6. Diagnoses Module**
+  - View Diagnoses
+  - Create Diagnoses
+  - Edit Diagnoses
+  - Delete Diagnoses
+
+**7. Lab Orders Module**
+  - View Lab Orders
+  - Create Lab Orders
+  - Edit Lab Orders
+  - Delete Lab Orders
+
+**8. Telehealth Module**
   - View Sessions
   - Create Sessions
-  - Manage Sessions
+  - Edit Sessions
+  - Delete Sessions
 
-4. Click **Create Role**
+**9. RCM (Revenue Cycle Management) Module**
+  - View Claims
+  - Create Claims
+  - Edit Claims
+  - Delete Claims
+
+**10. Pharmacy Module**
+  - View Pharmacies
+  - Create Pharmacies
+  - Edit Pharmacies
+  - Delete Pharmacies
+
+**11. Offerings (Healthcare Offerings) Module**
+  - View Offerings
+  - Create Offerings
+  - Edit Offerings
+  - Delete Offerings
+
+**12. CRM (Customer Relationship Management) Module**
+  - View Campaigns
+  - Create Campaigns
+  - Edit Campaigns
+  - Delete Campaigns
+
+**13. Administration Module**
+  - View Users
+  - Create Users
+  - Edit Users
+  - Delete Users
+
+**14. Reports Module**
+  - View Reports
+  - Create Reports
+  - Edit Reports
+  - Delete Reports
+
+**Permission Levels:**
+
+Each module supports 4 standard permission levels:
+- **View** - Read-only access to view records
+- **Create** - Ability to create new records
+- **Edit** - Ability to modify existing records
+- **Delete** - Ability to remove records
+
+5. Check/uncheck permissions for each module as needed
+6. Click **Create Role**
+
+**Example Custom Roles:**
+
+**Lab Coordinator:**
+- Lab Orders: View, Create, Edit
+- Patients: View
+- Providers: View
+- Reports: View
+
+**Medical Assistant:**
+- Patients: View, Create, Edit
+- Appointments: View, Create, Edit
+- EHR: View, Create
+- Prescriptions: View
+- Lab Orders: View, Create
+
+**Billing Specialist:**
+- RCM: View, Create, Edit
+- Patients: View
+- Appointments: View
+- Reports: View, Create
+
+**Care Coordinator:**
+- Patients: View, Edit
+- Appointments: View, Create, Edit
+- Telehealth: View, Create
+- Offerings: View
+- CRM: View, Create, Edit
 
 **Editing Roles:**
 1. Click on role
@@ -3132,25 +3487,596 @@ Each plan includes:
    - Active users
    - Recent errors
 
-**Audit Logs:**
+**Performance Metrics:**
+- Monitor system performance
+- Track response times
+- Identify bottlenecks
+- Optimize system resources
+
+**Alerts & Notifications:**
+- Configure system alerts
+- Set thresholds for warnings
+- Email notifications for critical issues
+- SMS alerts for emergencies
+
+💡 **Tip:** For detailed audit logging, see [Section 19.7 Audit Logging](#197-audit-logging)
+
+💡 **Tip:** For data archiving and retention, see [Section 19.6 Data Archiving](#196-data-archiving)
+
+### 19.6 Data Archiving
+
+**🆕 NEW IN V1.2:** Comprehensive data archiving system for compliance and performance!
+
+**What is Data Archiving?**
+
+Data archiving moves older, infrequently accessed data to a separate archive database while keeping it searchable and restorable. This helps:
+- Improve system performance
+- Comply with data retention policies
+- Reduce primary database size
+- Maintain historical records
+- Meet regulatory requirements (HIPAA, SOX, etc.)
+
+**Accessing Data Archiving:**
+
+1. Go to **Admin Panel** > **Data Archiving**
+2. View archiving dashboard with:
+   - Total archived data size
+   - Number of archived records by module
+   - Last archive run date/time
+   - Archive storage usage
+   - Active archiving rules
+
+**Supported Modules for Archiving:**
+
+The system can archive data from **14 modules**:
+- **Patients** - Inactive patient records
+- **Appointments** - Past appointments
+- **Providers** - Inactive providers
+- **Medical Records** - Older clinical notes
+- **Prescriptions** - Discontinued medications
+- **Diagnoses** - Resolved diagnoses
+- **Lab Orders** - Completed lab orders
+- **Telehealth** - Past video sessions
+- **RCM (Claims & Billing)** - Paid/closed claims
+- **Pharmacy** - Inactive pharmacies
+- **Lab Facilities** - Inactive labs
+- **Offerings** - Archived service offerings
+- **CRM** - Completed campaigns
+- **Audit Logs** - Historical audit records
+
+**Creating Archiving Rules:**
+
+1. Click **Create Archive Rule**
+2. Fill in rule details:
+   - **Rule Name** - Descriptive name (e.g., "Archive old appointments")
+   - **Module** - Select module to archive from dropdown
+   - **Age Threshold** - How old data must be (e.g., 2 years)
+   - **Time Unit** - Days, Months, or Years
+   - **Enabled** - Toggle to activate/deactivate rule
+   - **Schedule** - How often to run (Daily, Weekly, Monthly, Manual)
+3. Click **Create Rule**
+
+**Example Archiving Rules:**
+
+| Rule Name | Module | Age Threshold | Schedule |
+|-----------|---------|---------------|----------|
+| Archive Old Appointments | Appointments | 2 years | Monthly |
+| Archive Resolved Diagnoses | Diagnoses | 5 years | Quarterly |
+| Archive Paid Claims | RCM | 7 years | Monthly |
+| Archive Old Audit Logs | Audit Logs | 1 year | Weekly |
+| Archive Inactive Patients | Patients | 3 years | Monthly |
+
+**Manual Archiving:**
+
+**Option 1: Run Specific Rule**
+1. Go to **Data Archiving** tab
+2. Find the rule you want to run
+3. Click **Run Now** button
+4. System processes archiving immediately
+5. View progress and results
+
+**Option 2: Create One-Time Archive**
+1. Click **Create Archive** button
+2. Select modules to archive
+3. Set date range for data to archive
+4. Choose deduplication option (recommended)
+5. Click **Start Archive**
+6. Monitor progress in real-time
+
+**Automatic Scheduled Archiving:**
+
+1. Edit archiving rule
+2. Set schedule:
+   - **Daily** - Runs every night at 2:00 AM
+   - **Weekly** - Runs every Sunday at 2:00 AM
+   - **Monthly** - Runs on 1st of month at 2:00 AM
+3. Enable the rule
+4. System automatically archives matching data
+5. Email notification sent to admins after completion
+
+**Deduplication:**
+
+- Prevents archiving duplicate records
+- Checks archive database before moving data
+- Saves storage space
+- Ensures data integrity
+- Recommended to always enable
+
+**Browsing Archived Data:**
+
+1. Go to **Data Archiving** > **Browse Archives**
+2. Select module (Patients, Appointments, etc.)
+3. Search archived records:
+   - By name, ID, date range
+   - Filter by status, type, etc.
+4. View archived record details
+5. Option to restore if needed
+
+**Restoring Archived Data:**
+
+1. Find archived record in Browse Archives
+2. Click **Restore** button
+3. Confirm restoration
+4. System moves data back to primary database
+5. Record becomes active and fully accessible
+6. Original timestamps and data preserved
+
+**Archive Database:**
+
+- Separate PostgreSQL database for archived data
+- Same schema as primary database
+- Cross-database queries supported
+- Independent backup and maintenance
+- Secure access with same authentication
+
+**Storage Management:**
+
+**View Storage Usage:**
+1. Data Archiving dashboard shows:
+   - Archive database size
+   - Size per module
+   - Growth rate
+   - Estimated time to threshold
+
+**Storage Optimization:**
+- Set retention policies for archives
+- Permanently delete very old archives (with caution!)
+- Export archives to external storage
+- Compress archived data
+
+**Compliance & Retention:**
+
+**Regulatory Requirements:**
+- **HIPAA** - Minimum 6 years retention for medical records
+- **SOX** - 7 years for financial records
+- **IRS** - 7 years for billing/payment records
+- **State Laws** - Varies by state (often 7-10 years)
+
+**Best Practices:**
+- Archive completed appointments after 2 years
+- Archive resolved diagnoses after 5 years
+- Archive paid claims after 7 years
+- Archive audit logs after 1 year (keep in archive for 7 years total)
+- Never archive active or in-progress records
+- Test restoration process quarterly
+- Document retention policies
+- Review and update rules annually
+
+**Audit Trail:**
+
+Every archive operation is logged:
+- Who initiated archive
+- What data was archived
+- When archiving occurred
+- How many records archived
+- Any errors or warnings
+- Restoration events
+
+**Permissions:**
+
+Only users with **Admin** role can:
+- Create/edit archiving rules
+- Run manual archives
+- Browse archived data
+- Restore archived records
+- View archiving logs
+
+**Performance Impact:**
+
+- Archiving runs during off-hours (2:00 AM)
+- Minimal impact on system performance
+- Progress shown in real-time
+- Can pause/resume if needed
+- Typical speed: 10,000 records per minute
+
+⚠️ **Warning:** Always test archiving on a small dataset first before archiving large volumes of data.
+
+⚠️ **Warning:** Ensure backups are current before running large archive operations.
+
+### 19.7 Audit Logging
+
+**🆕 NEW IN V1.2:** Comprehensive audit logging for all user actions and system events!
+
+**What is Audit Logging?**
+
+Audit logging captures every action performed in the system, creating a complete audit trail for:
+- Compliance (HIPAA, SOX, GDPR, etc.)
+- Security monitoring
+- Troubleshooting
+- User accountability
+- Legal/regulatory requirements
+- Quality assurance
+
+**Accessing Audit Logs:**
 
 1. Go to **Admin Panel** > **Audit Logs**
-2. View all system activity:
-   - User login/logout
-   - Data changes
-   - Permission changes
-   - Failed login attempts
-3. Filter by:
-   - User
-   - Action type
-   - Date range
-   - Module
+2. View comprehensive audit log dashboard
 
-**Data Backup:**
-- Automatic daily backups
-- Manual backup option
-- Backup restoration
-- Backup verification
+**What Gets Logged:**
+
+**User Actions:**
+- Login/logout events
+- Failed login attempts
+- Password changes
+- User creation/updates/deletion
+- Role assignments
+
+**Data Operations:**
+- Patient record create/view/edit/delete
+- Appointment scheduling/modifications/cancellations
+- Medical record access and changes
+- Prescription create/edit/delete
+- Diagnosis documentation
+- Lab order creation and results viewing
+- Claims submission and updates
+- Any data modification
+
+**Administrative Actions:**
+- Permission changes
+- System settings modifications
+- User role assignments
+- Backup/restore operations
+- Archive operations
+- System configuration changes
+
+**Security Events:**
+- Failed authentication attempts
+- Account lockouts
+- Permission denied attempts
+- Suspicious activity
+- IP address changes
+- Session timeouts
+
+**Each Audit Log Entry Contains:**
+
+- **Timestamp** - Exact date and time (with timezone)
+- **User** - Who performed the action (name, email, ID)
+- **Action Type** - What was done (Create, Read, Update, Delete, Login, etc.)
+- **Entity Type** - What was affected (Patient, Appointment, User, etc.)
+- **Entity ID** - Specific record ID
+- **IP Address** - Where action originated
+- **User Agent** - Browser/device information
+- **Changes** - Before/after values for updates (JSON format)
+- **Status** - Success or Failure
+- **Error Message** - If action failed
+
+**Viewing Audit Logs:**
+
+**Main Log Table:**
+1. Navigate to **Admin Panel** > **Audit Logs**
+2. View chronological list of all actions
+3. Most recent actions appear first
+4. Paginated view (50 records per page)
+
+**Log Details:**
+- Click on any log entry to see full details
+- View complete change history
+- See before/after values for updates
+- View related logs (all actions on same entity)
+
+**Filtering Audit Logs:**
+
+Filter logs by multiple criteria:
+
+**By Date Range:**
+- Today
+- Last 7 days
+- Last 30 days
+- Last 90 days
+- Custom date range
+
+**By User:**
+- Select from dropdown of all users
+- See all actions by specific user
+- Track individual user activity
+
+**By Action Type:**
+- Create
+- Read/View
+- Update/Edit
+- Delete
+- Login
+- Logout
+- Failed Login
+- Permission Change
+- Export
+
+**By Entity Type:**
+- Patients
+- Appointments
+- Providers
+- Medical Records
+- Prescriptions
+- Diagnoses
+- Lab Orders
+- Claims
+- Users
+- Roles
+- Settings
+
+**By Status:**
+- Success
+- Failed
+- Error
+
+**Combined Filters:**
+Example: "Show all failed login attempts by any user in last 7 days"
+- Date Range: Last 7 days
+- Action Type: Failed Login
+- Status: Failed
+
+**Searching Audit Logs:**
+
+Use search box to find specific logs:
+- Search by user name or email
+- Search by entity ID
+- Search by IP address
+- Search in change details
+- Full-text search across all fields
+
+**Exporting Audit Logs:**
+
+**For Compliance Reporting:**
+
+1. Filter logs as needed
+2. Click **Export** button
+3. Choose format:
+   - **CSV** - For Excel/spreadsheet analysis
+   - **PDF** - For printing/documentation
+   - **JSON** - For programmatic access
+4. Download file
+5. File includes all filtered logs with full details
+
+**Use Cases:**
+
+**Compliance Audit:**
+- Export all patient record access for HIPAA audit
+- Show who viewed specific patient records
+- Document all prescription modifications
+
+**Security Investigation:**
+- Track failed login attempts
+- Identify suspicious access patterns
+- Investigate unauthorized access attempts
+
+**Troubleshooting:**
+- See what changed before an error occurred
+- Track down who made specific changes
+- Understand sequence of events
+
+**User Activity Monitoring:**
+- Review actions by specific user
+- Verify training effectiveness
+- Identify unusual patterns
+
+**Audit Log Examples:**
+
+**Example 1 - Patient Record Update:**
+```
+Timestamp: 2026-01-30 10:15:23 EST
+User: Dr. Sarah Johnson (sarah.johnson@clinic.com)
+Action: Update
+Entity Type: Patient
+Entity ID: PAT-12345
+IP Address: 192.168.1.100
+Status: Success
+Changes:
+  - Phone: "555-1234" → "555-5678"
+  - Address: "123 Old St" → "456 New Ave"
+```
+
+**Example 2 - Failed Login:**
+```
+Timestamp: 2026-01-30 08:30:15 EST
+User: john.doe@clinic.com
+Action: Failed Login
+IP Address: 203.0.113.42
+Status: Failed
+Error: Invalid password
+```
+
+**Example 3 - Prescription Created:**
+```
+Timestamp: 2026-01-30 14:22:10 EST
+User: Dr. Michael Chen (michael.chen@clinic.com)
+Action: Create
+Entity Type: Prescription
+Entity ID: RX-98765
+Patient: Jane Smith (MRN: 12345)
+Details:
+  - Medication: Lisinopril 10mg
+  - Quantity: 30 tablets
+  - Refills: 3
+Status: Success
+```
+
+**Audit Log Retention:**
+
+- **Active Database:** Logs kept for 1 year
+- **Archive Database:** Logs archived after 1 year (kept for 7 years total)
+- **Total Retention:** 7 years (recommended for HIPAA compliance)
+- **Automatic Archiving:** Runs monthly via archiving rules
+
+**Permissions:**
+
+**View Audit Logs:**
+- Admin role (full access)
+- Audit role (read-only access)
+
+**Export Audit Logs:**
+- Admin role only
+- Audit role only
+
+**Regular users cannot:**
+- View audit logs
+- Export audit logs
+- Delete audit logs
+- Modify audit logs
+
+⚠️ **Important:** Audit logs are immutable - they cannot be edited or deleted, ensuring integrity of the audit trail.
+
+**Performance:**
+
+- Logging has minimal performance impact (< 5ms per action)
+- Asynchronous logging (doesn't slow down user actions)
+- Indexed for fast searching and filtering
+- Optimized database queries
+- Automatic cleanup of very old logs (>7 years)
+
+**Best Practices:**
+
+✅ Review audit logs regularly (weekly minimum)
+✅ Set up alerts for suspicious activity
+✅ Export and backup audit logs monthly
+✅ Include audit logs in compliance documentation
+✅ Train staff on audit trail importance
+✅ Investigate all failed login attempts
+✅ Document audit review process
+✅ Use audit logs for user training
+✅ Keep exported logs securely
+✅ Follow retention policies strictly
+
+**Troubleshooting Audit Logging:**
+
+**If audit logs aren't appearing:**
+1. Check that audit_logs table exists (migration may be needed)
+2. Verify database permissions
+3. Check system monitoring for errors
+4. Contact support if issue persists
+
+**If exports are failing:**
+1. Check file permissions
+2. Verify sufficient disk space
+3. Try smaller date range
+4. Check browser download settings
+
+### 19.8 Backup & Restore
+
+**🆕 UPDATED IN V1.2:** Now with OAuth integration for Google Drive and OneDrive!
+
+**Automatic Backups:**
+
+- Daily automatic backups at 2:00 AM
+- Incremental backups (only changes since last backup)
+- Full backup weekly (Sunday 2:00 AM)
+- Retention: 30 daily backups, 12 weekly backups, 12 monthly backups
+
+**Backup Destinations:**
+
+**Local Storage:**
+- Stored on backup server
+- Encrypted at rest
+- Redundant storage (RAID)
+
+**Cloud Storage with OAuth:**
+
+**Google Drive Integration:**
+1. Go to **Admin Panel** > **Backup & Restore**
+2. Click **Configure Google Drive**
+3. Click **Connect to Google Drive**
+4. Sign in with Google account (OAuth)
+5. Authorize AureonCare to access Google Drive
+6. Select backup folder
+7. Configure backup schedule
+8. Click **Save Configuration**
+
+**OneDrive Integration:**
+1. Go to **Admin Panel** > **Backup & Restore**
+2. Click **Configure OneDrive**
+3. Click **Connect to OneDrive**
+4. Sign in with Microsoft account (OAuth)
+5. Authorize AureonCare to access OneDrive
+6. Select backup folder
+7. Configure backup schedule
+8. Click **Save Configuration**
+
+**Reconfiguring Cloud Providers:**
+1. Go to **Backup & Restore** tab
+2. Find configured provider (Google Drive or OneDrive)
+3. Click **Reconfigure** button
+4. Re-authenticate with OAuth
+5. Update settings as needed
+6. Click **Save**
+
+**Manual Backup:**
+
+1. Go to **Admin Panel** > **Backup & Restore**
+2. Click **Create Backup Now**
+3. Select backup type:
+   - **Full Backup** - Complete database
+   - **Partial Backup** - Selected modules only
+4. Choose destination (Local, Google Drive, OneDrive)
+5. Click **Start Backup**
+6. Monitor progress
+7. Receive confirmation when complete
+
+**Backup Monitoring:**
+
+**Backup Status:**
+- Last backup date/time
+- Backup size
+- Success/failure status
+- Next scheduled backup
+
+**Backup Verification:**
+- Automatic integrity checks
+- Verification after each backup
+- Alert if backup fails verification
+
+**Restoring from Backup:**
+
+⚠️ **Warning:** Restore operations will overwrite current data. Always create a backup before restoring!
+
+**Full Restore:**
+1. Go to **Backup & Restore**
+2. View list of available backups
+3. Select backup to restore
+4. Click **Restore**
+5. Confirm action (requires admin password)
+6. System performs restore (may take several minutes)
+7. Users are logged out during restore
+8. System restarts automatically
+9. Verify data after restore
+
+**Partial Restore:**
+1. Select backup
+2. Choose **Partial Restore**
+3. Select specific modules to restore
+4. Confirm action
+5. Monitor progress
+
+**Backup Best Practices:**
+
+✅ Verify backups weekly
+✅ Test restore process monthly
+✅ Keep backups in multiple locations
+✅ Use cloud storage for offsite backup
+✅ Monitor backup logs for failures
+✅ Document restore procedures
+✅ Maintain backup retention policy
+✅ Encrypt all backups
+✅ Restrict backup access to admins only
+✅ Include audit logs in backups
 
 ---
 
