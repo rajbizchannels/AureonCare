@@ -111,7 +111,11 @@ async function ensureTableStructure(mainPool, tableName) {
           SELECT
             column_name,
             CASE
-              WHEN data_type = 'ARRAY' THEN udt_name || '[]'
+              WHEN data_type = 'ARRAY' THEN
+                CASE
+                  WHEN udt_name LIKE '\\_%' THEN UPPER(SUBSTRING(udt_name FROM 2)) || '[]'
+                  ELSE udt_name || '[]'
+                END
               WHEN data_type = 'character varying' THEN 'VARCHAR(' || COALESCE(character_maximum_length::text, '255') || ')'
               WHEN data_type = 'character' THEN 'CHAR(' || character_maximum_length || ')'
               WHEN data_type = 'numeric' THEN 'NUMERIC' ||
@@ -122,7 +126,8 @@ async function ensureTableStructure(mainPool, tableName) {
               ELSE UPPER(data_type)
             END as full_type,
             is_nullable,
-            column_default
+            column_default,
+            data_type
           FROM information_schema.columns
           WHERE table_schema = 'public'
             AND table_name = $1
@@ -138,14 +143,35 @@ async function ensureTableStructure(mainPool, tableName) {
 
         // Build CREATE TABLE statement with columns
         const columnDefs = columnsResult.rows.map(col => {
-          let def = `${col.column_name} ${col.full_type}`;
+          // Check if this is a SERIAL column (INTEGER with nextval default)
+          const isSerial = col.data_type === 'integer' &&
+                          col.column_default &&
+                          col.column_default.includes('nextval');
+
+          const isBigSerial = col.data_type === 'bigint' &&
+                             col.column_default &&
+                             col.column_default.includes('nextval');
+
+          // Use SERIAL type for auto-increment columns
+          let type = col.full_type;
+          let defaultValue = col.column_default;
+
+          if (isSerial) {
+            type = 'SERIAL';
+            defaultValue = null; // SERIAL includes auto-increment, no need for DEFAULT
+          } else if (isBigSerial) {
+            type = 'BIGSERIAL';
+            defaultValue = null;
+          }
+
+          let def = `${col.column_name} ${type}`;
 
           if (col.is_nullable === 'NO') {
             def += ' NOT NULL';
           }
 
-          if (col.column_default) {
-            def += ` DEFAULT ${col.column_default}`;
+          if (defaultValue) {
+            def += ` DEFAULT ${defaultValue}`;
           }
 
           return def;
