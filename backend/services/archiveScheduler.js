@@ -45,46 +45,49 @@ async function executeArchiveRule(rule) {
     let totalRecords = 0;
     let totalSizeBytes = 0;
 
-    // Get module definitions (simplified - in production, import from archive.js)
+    // Get module definitions aligned with production schema
     const ARCHIVE_MODULES = {
       'patient_management': {
-        tables: ['patients', 'patient_allergies', 'patient_portal_sessions', 'patient_pharmacies', 'patient_preferred_pharmacies']
+        tables: ['patients', 'patient_allergies', 'patient_portal_sessions', 'patient_pharmacies', 'patient_consent_forms', 'patient_offering_enrollments']
       },
       'appointments': {
-        tables: ['appointments', 'appointment_reminders', 'appointment_waitlist']
+        tables: ['appointments', 'appointment_reminders', 'appointment_waitlist', 'appointment_types', 'appointment_type_config', 'recurring_appointments', 'doctor_availability', 'doctor_time_off']
       },
       'medical_records': {
-        tables: ['medical_records', 'diagnosis', 'prescriptions', 'prescription_history']
+        tables: ['medical_records', 'diagnosis', 'diagnoses', 'prescriptions', 'prescription_history']
       },
       'claims_billing': {
-        tables: ['claims', 'payments', 'payment_postings', 'denials', 'preapprovals']
+        tables: ['claims', 'claim_submissions', 'payments', 'payment_postings', 'denials', 'preapprovals']
       },
       'healthcare_offerings': {
-        tables: ['healthcare_offerings', 'offering_packages', 'offering_pricing', 'offering_promotions', 'offering_reviews', 'package_offerings']
+        tables: ['healthcare_offerings', 'offering_packages', 'offering_pricing', 'offering_promotions', 'offering_reviews', 'package_offerings', 'offering_insurance_mappings']
       },
       'lab_pharmacy': {
-        tables: ['pharmacies', 'laboratories', 'medications', 'drug_interactions', 'medication_alternatives']
+        tables: ['pharmacies', 'laboratories', 'medications', 'drug_interactions', 'medication_alternatives', 'lab_orders', 'erx_message_queue']
       },
       'fhir_resources': {
-        tables: ['fhir_resources']
+        tables: ['fhir_resources', 'fhir_tracking', 'fhir_tracking_events', 'fhir_error_actions']
       },
       'notifications': {
-        tables: ['notifications']
+        tables: ['notifications', 'notification_preferences']
       },
       'tasks': {
         tables: ['tasks']
       },
       'telehealth': {
-        tables: ['telehealth_sessions']
+        tables: ['telehealth_sessions', 'telehealth_provider_settings']
       },
       'audit_logs': {
         tables: ['audit_logs']
       },
-      'lab_orders': {
-        tables: ['lab_orders']
-      },
       'intake_forms': {
-        tables: ['patient_intake_forms']
+        tables: ['patient_intake_forms', 'patient_intake_flows']
+      },
+      'providers': {
+        tables: ['providers', 'provider_booking_config', 'backup_provider_settings']
+      },
+      'campaigns': {
+        tables: ['campaigns', 'booking_analytics']
       }
     };
 
