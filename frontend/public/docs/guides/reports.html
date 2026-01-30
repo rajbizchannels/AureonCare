@@ -1,60 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports & Analytics - AureonCare Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        // Redirect to documentation with hash navigation
-        window.location.replace('/docs/index.html');
-    </script>
-</head>
+<html><head><title>Reports & Analytics - AureonCare</title><link rel="stylesheet" href="../styles.css"></head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Loading Reports & Analytics Documentation</h1>
-        <p>If you are not redirected automatically, <a href="/docs/index.html">click here</a>.</p>
-    </div>
-</body>
-</html>
+<header class="doc-header"><div class="doc-header-content"><div class="doc-header-left"><a href="/" class="home-button"><svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>Back to AureonCare</a><div class="doc-header-title"><h1>📊 Reports & Analytics</h1><p>Data insights and reporting</p></div></div><span class="version-badge">v1.2</span></div></header>
+<div class="doc-container"><a href="../index.html" class="back-link">← Back</a>
+<div class="article-card"><h1>Reports & Analytics</h1>
+<p>Generate insights from your practice data with comprehensive reporting tools.</p>
+<h2>Accessing Reports</h2>
+<ol><li>Go to <strong>Reports</strong> module</li><li>Browse by category</li><li>Select report type</li><li>Set parameters (dates, filters)</li><li>Click <strong>Generate Report</strong></li></ol>
+<h2>Available Reports</h2>
+<h3>Clinical Reports</h3>
+<ul><li><strong>Patient Demographics:</strong> Age, gender, insurance distribution</li><li><strong>Diagnosis Trends:</strong> Most common conditions</li><li><strong>Medication Usage:</strong> Top prescribed drugs</li><li><strong>Lab Results Summary:</strong> Abnormal values tracking</li><li><strong>Quality Measures:</strong> HEDIS, PQRS metrics</li></ul>
+<h3>Operational Reports</h3>
+<ul><li><strong>Appointment Statistics:</strong> Volume, no-shows, cancellations</li><li><strong>Provider Productivity:</strong> Patients seen per day</li><li><strong>Wait Times:</strong> Average time to appointment</li><li><strong>Patient Satisfaction:</strong> Survey results</li></ul>
+<h3>Financial Reports</h3>
+<ul><li><strong>Revenue Summary:</strong> Monthly/annual revenue</li><li><strong>Claims Aging:</strong> Outstanding claims by age</li><li><strong>Payment Analysis:</strong> By payer, method</li><li><strong>Denial Rate:</strong> Percentage denied by payer</li><li><strong>Days in A/R:</strong> Average collection time</li><li><strong>CPT Code Analysis:</strong> Revenue by service</li></ul>
+<h2>Report Parameters</h2>
+<p><strong>Common filters:</strong></p>
+<ul><li>Date Range (from/to)</li><li>Provider(s)</li><li>Location(s)</li><li>Patient Status</li><li>Insurance Payer</li></ul>
+<h2>Exporting Reports</h2>
+<ol><li>Generate report</li><li>Click <strong>Export</strong> button</li><li>Choose format:<ul><li><strong>PDF:</strong> Formatted for printing</li><li><strong>Excel (XLSX):</strong> For further analysis</li><li><strong>CSV:</strong> Raw data import</li></ul></li><li>Download file</li></ol>
+<h2>Scheduled Reports</h2>
+<ol><li>Configure report parameters</li><li>Click <strong>Schedule</strong></li><li>Set frequency (daily, weekly, monthly)</li><li>Add email recipients</li><li>Reports auto-sent on schedule</li></ol>
+<h2>Dashboard Analytics</h2>
+<ul><li><strong>KPIs:</strong> Key performance indicators</li><li><strong>Trends:</strong> Line graphs over time</li><li><strong>Comparisons:</strong> Period-over-period</li><li><strong>Visualizations:</strong> Charts and graphs</li></ul>
+<h2>Best Practices</h2>
+<ul><li>✓ Review key reports weekly</li><li>✓ Set benchmark goals</li><li>✓ Track trends over time</li><li>✓ Share reports with team</li><li>✓ Use data for decision-making</li></ul>
+</div></div>
+<footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;"><p>AureonCare v1.2</p></footer>
+</body></html>
