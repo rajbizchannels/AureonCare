@@ -453,6 +453,8 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
                   <div className="mt-6">
                     <a
                       href={selectedArticle.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                         theme === 'dark'
                           ? 'bg-blue-600 hover:bg-blue-700 text-white'
