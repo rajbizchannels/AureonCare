@@ -162,6 +162,18 @@ async function ensureTableStructure(mainPool, tableName) {
           } else if (isBigSerial) {
             type = 'BIGSERIAL';
             defaultValue = null;
+          } else if (defaultValue) {
+            // Filter out custom function calls that don't exist in archive DB
+            // Keep: uuid_generate_v4(), gen_random_uuid(), CURRENT_TIMESTAMP, literals
+            // Remove: generate_denial_number(), generate_posting_number(), etc.
+            const hasCustomFunction = defaultValue.match(/generate_\w+\(\)|set_\w+\(\)/i) &&
+                                     !defaultValue.includes('uuid_generate') &&
+                                     !defaultValue.includes('gen_random_uuid');
+
+            if (hasCustomFunction) {
+              console.log(`[Archive DB] Skipping custom function DEFAULT for ${col.column_name}: ${defaultValue}`);
+              defaultValue = null;
+            }
           }
 
           let def = `${col.column_name} ${type}`;
