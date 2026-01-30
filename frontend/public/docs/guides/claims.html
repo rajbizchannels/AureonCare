@@ -1,60 +1,148 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claims Management - AureonCare Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        // Redirect to documentation with hash navigation
-        window.location.replace('/docs/index.html#claims');
-    </script>
+    <title>Claims Management - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Loading Claims Management Documentation</h1>
-        <p>If you are not redirected automatically, <a href="/docs/index.html#claims">click here</a>.</p>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>💰 Claims Management</h1>
+                    <p>Insurance claims and revenue cycle</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.2</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Insurance Claims Management</h1>
+            <p><strong>Claims management</strong> is the process of submitting and tracking insurance claims for reimbursement of healthcare services.</p>
+
+            <h2>Creating Claims</h2>
+            <ol>
+                <li>Go to <strong>Revenue Cycle Management</strong> module</li>
+                <li>Click <strong>Claims</strong> tab</li>
+                <li>Click <strong>+ New Claim</strong></li>
+                <li>Fill in claim details</li>
+            </ol>
+
+            <h3>Auto-Generated Claims</h3>
+            <p>Claims automatically generate from:</p>
+            <ul>
+                <li>Completed appointments</li>
+                <li>Signed encounter notes</li>
+                <li>Procedures performed</li>
+            </ul>
+
+            <h3>Claim Details</h3>
+            <table>
+                <tr><th>Field</th><th>Description</th></tr>
+                <tr><td>Patient</td><td>Search by name or MRN</td></tr>
+                <tr><td>Service Date</td><td>Date services rendered</td></tr>
+                <tr><td>Provider</td><td>Rendering provider</td></tr>
+                <tr><td>Diagnosis (ICD-10)</td><td>Up to 12 diagnosis codes</td></tr>
+                <tr><td>Procedures (CPT)</td><td>Services performed with charges</td></tr>
+                <tr><td>Insurance</td><td>Primary/Secondary payer</td></tr>
+            </table>
+
+            <h2>Common CPT Codes</h2>
+            <table>
+                <tr><th>Code</th><th>Description</th></tr>
+                <tr><td>99213</td><td>Office visit, established, 15 min</td></tr>
+                <tr><td>99214</td><td>Office visit, established, 25 min</td></tr>
+                <tr><td>99203</td><td>Office visit, new, 30 min</td></tr>
+                <tr><td>99204</td><td>Office visit, new, 45 min</td></tr>
+            </table>
+
+            <h2>Eligibility Verification</h2>
+            <ol>
+                <li>Click <strong>Verify Coverage</strong> button</li>
+                <li>System contacts payer real-time</li>
+                <li>Returns: Coverage status, deductible, copay, coinsurance</li>
+            </ol>
+
+            <h2>Submitting Claims</h2>
+            <h3>Electronic (EDI 837)</h3>
+            <ol>
+                <li>Review claim for accuracy</li>
+                <li>Click <strong>Submit Electronically</strong></li>
+                <li>Sent via clearinghouse</li>
+                <li>Receive acknowledgment (997/999)</li>
+            </ol>
+
+            <h3>Paper (CMS-1500)</h3>
+            <ol>
+                <li>Click <strong>Print CMS-1500</strong></li>
+                <li>Review for accuracy</li>
+                <li>Mail to payer</li>
+            </ol>
+
+            <h2>Claim Status</h2>
+            <ul>
+                <li><strong>Draft:</strong> Created, not submitted</li>
+                <li><strong>Ready:</strong> Validated, awaiting submission</li>
+                <li><strong>Submitted:</strong> Sent to payer</li>
+                <li><strong>Acknowledged:</strong> Payer received</li>
+                <li><strong>In Process:</strong> Payer processing</li>
+                <li><strong>Accepted:</strong> Approved for payment</li>
+                <li><strong>Paid:</strong> Payment received</li>
+                <li><strong>Denied:</strong> Rejected by payer</li>
+            </ul>
+
+            <h2>Handling Denials</h2>
+            <p><strong>Common denial reasons:</strong></p>
+            <ul>
+                <li>Coverage terminated</li>
+                <li>Services not covered</li>
+                <li>Missing/invalid diagnosis</li>
+                <li>Medical necessity not met</li>
+                <li>Timely filing exceeded</li>
+            </ul>
+
+            <p><strong>Steps to appeal:</strong></p>
+            <ol>
+                <li>Click denied claim</li>
+                <li>Review denial code</li>
+                <li>Click <strong>Appeal Denial</strong></li>
+                <li>Upload supporting documents</li>
+                <li>Write appeal letter</li>
+                <li>Submit appeal</li>
+            </ol>
+
+            <h2>Payment Posting</h2>
+            <p>When payment received:</p>
+            <ol>
+                <li>System receives ERA (Electronic Remittance)</li>
+                <li>Post payment amounts</li>
+                <li>Apply adjustments/write-offs</li>
+                <li>Update patient balance</li>
+                <li>Generate patient statement if balance due</li>
+            </ol>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>✓ Verify insurance before visit</li>
+                <li>✓ Submit claims within 24-48 hours</li>
+                <li>✓ Link diagnoses to procedures</li>
+                <li>✓ Monitor aging reports weekly</li>
+                <li>✓ Follow up on claims >30 days</li>
+                <li>✓ Appeal valid denials promptly</li>
+                <li>✓ Document payer communications</li>
+            </ul>
+        </div>
     </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.2 | <a href="../index.html" style="color: white;">Documentation</a></p>
+    </footer>
 </body>
 </html>

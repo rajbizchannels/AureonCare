@@ -3,58 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vital Signs - AureonCare Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        // Redirect to documentation with hash navigation
-        window.location.replace('/docs/index.html#medical-records');
-    </script>
+    <title>Vital Signs Guide - AureonCare Documentation</title>
+    <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Loading Vital Signs Documentation</h1>
-        <p>If you are not redirected automatically, <a href="/docs/index.html#medical-records">click here</a>.</p>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>🩺 Vital Signs Guide</h1>
+                    <p>Recording and tracking patient vitals</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.2</span>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+
+        <div class="article-card">
+            <h1 class="article-title">Vital Signs Management</h1>
+
+            <p><strong>Vital signs</strong> are essential measurements that indicate the body's basic functions. AureonCare automatically tracks, trends, and alerts on abnormal values.</p>
+
+            <h2>📊 Vital Signs Recorded</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vital</th>
+                        <th>Unit</th>
+                        <th>Normal Range (Adult)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Blood Pressure</td><td>mmHg</td><td>90/60 - 120/80</td></tr>
+                    <tr><td>Heart Rate</td><td>bpm</td><td>60 - 100</td></tr>
+                    <tr><td>Temperature</td><td>°F / °C</td><td>97.8-99.1°F / 36.5-37.3°C</td></tr>
+                    <tr><td>Respiratory Rate</td><td>breaths/min</td><td>12 - 20</td></tr>
+                    <tr><td>Oxygen Saturation</td><td>%</td><td>95 - 100</td></tr>
+                    <tr><td>Weight</td><td>lbs / kg</td><td>Varies</td></tr>
+                    <tr><td>Height</td><td>in / cm</td><td>Varies</td></tr>
+                    <tr><td>BMI</td><td>kg/m²</td><td>18.5 - 24.9</td></tr>
+                </tbody>
+            </table>
+
+            <h2>📝 Recording Vital Signs</h2>
+
+            <h3>Method 1: From Patient Chart</h3>
+            <ol>
+                <li>Open patient chart</li>
+                <li>Click <strong>Summary</strong> tab</li>
+                <li>Find <strong>Vital Signs</strong> section</li>
+                <li>Click <strong>+ Add Vitals</strong></li>
+                <li>Enter measurements</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <h3>Method 2: During Clinical Note</h3>
+            <ol>
+                <li>Create new progress note</li>
+                <li>In <strong>Objective</strong> section</li>
+                <li>Click <strong>Add Vitals</strong></li>
+                <li>Enter values</li>
+                <li>Auto-added to note and chart</li>
+            </ol>
+
+            <h2>📋 Vital Signs Form</h2>
+
+            <h3>Blood Pressure</h3>
+            <ul>
+                <li><strong>Systolic/Diastolic:</strong> e.g., 120/80</li>
+                <li><strong>Position:</strong> Sitting, Standing, Supine</li>
+                <li><strong>Arm:</strong> Left or Right</li>
+            </ul>
+
+            <h3>Temperature</h3>
+            <ul>
+                <li><strong>Value:</strong> 98.6°F or 37°C</li>
+                <li><strong>Route:</strong> Oral, Axillary, Tympanic, Temporal, Rectal</li>
+            </ul>
+
+            <h3>Oxygen Saturation</h3>
+            <ul>
+                <li><strong>SpO2:</strong> 98%</li>
+                <li><strong>Oxygen Source:</strong> Room Air, 2L NC, 4L NC, etc.</li>
+            </ul>
+
+            <h3>Weight & Height</h3>
+            <ul>
+                <li><strong>Weight:</strong> lbs or kg</li>
+                <li><strong>Height:</strong> feet/inches or cm</li>
+                <li><strong>BMI:</strong> Auto-calculated from height & weight</li>
+            </ul>
+
+            <h2>🎨 Color-Coded Alerts</h2>
+            <ul>
+                <li><strong style="color: red;">🔴 Red:</strong> Critical - requires immediate attention</li>
+                <li><strong style="color: orange;">🟠 Orange:</strong> Abnormal - outside normal range</li>
+                <li><strong style="color: green;">🟢 Green:</strong> Normal - within range</li>
+            </ul>
+
+            <h3>Critical Value Examples</h3>
+            <ul>
+                <li>Systolic BP > 180 or < 90</li>
+                <li>HR > 120 or < 50</li>
+                <li>Temp > 103°F or < 95°F</li>
+                <li>SpO2 < 90%</li>
+                <li>RR > 30 or < 10</li>
+            </ul>
+
+            <h2>📈 Trending & Graphs</h2>
+            <ol>
+                <li>Go to patient chart > <strong>Summary</strong> tab</li>
+                <li>Click <strong>View Trends</strong></li>
+                <li>Select vital sign to trend</li>
+                <li>Choose date range</li>
+                <li>View line graph of values over time</li>
+            </ol>
+
+            <p><strong>Use cases:</strong></p>
+            <ul>
+                <li>Monitor BP control in hypertension</li>
+                <li>Track weight changes</li>
+                <li>Assess fever patterns</li>
+                <li>Evaluate medication effectiveness</li>
+            </ul>
+
+            <h2>🔔 Vital Sign Alerts</h2>
+            <p>System automatically alerts when:</p>
+            <ul>
+                <li>Value is critical (red)</li>
+                <li>Significant change from baseline</li>
+                <li>Abnormal trend detected</li>
+            </ul>
+
+            <p><strong>Alert Actions:</strong></p>
+            <ul>
+                <li>Provider notified immediately</li>
+                <li>Pop-up warning when entering note</li>
+                <li>Highlighted in patient summary</li>
+                <li>Added to task list for follow-up</li>
+            </ul>
+
+            <h2>✅ Best Practices</h2>
+            <ul>
+                <li>✓ Record vitals at every visit</li>
+                <li>✓ Use consistent measurement technique</li>
+                <li>✓ Document position for BP</li>
+                <li>✓ Repeat abnormal values to confirm</li>
+                <li>✓ Note patient activity before vitals (just walked, anxious, etc.)</li>
+                <li>✓ Update weight at least annually</li>
+                <li>✓ Check orthostatic vitals if indicated</li>
+            </ul>
+
+            <h2>Common Questions</h2>
+
+            <p><strong>Q: Can I edit vital signs after saving?</strong><br>
+            A: Yes, if entered in error. Click edit icon, make changes, note reason for edit.</p>
+
+            <p><strong>Q: How often should I record vitals?</strong><br>
+            A: At minimum, every visit. More frequently for acute illness or unstable patients.</p>
+
+            <p><strong>Q: What if vital signs won't save?</strong><br>
+            A: Ensure all required fields complete. Check values are in acceptable range.</p>
+        </div>
     </div>
+
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.2 | <a href="../index.html" style="color: white; text-decoration: underline;">Documentation Home</a></p>
+    </footer>
 </body>
 </html>
