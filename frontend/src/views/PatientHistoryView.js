@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
-import MedicationMultiSelect from '../components/forms/MedicationMultiSelect';
 import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
 import NewLabOrderForm from '../components/forms/NewLabOrderForm';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
@@ -14,7 +13,6 @@ import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm
 import PatientHealthMetricsForm from '../components/forms/PatientHealthMetricsForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
-import ViewEditModal from '../components/modals/ViewEditModal';
 import { useAudit } from '../hooks/useAudit';
 
 // Helper function to convert string to Title Case
@@ -258,22 +256,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowHealthMetricsForm(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
-                >
-                  <Heart className="w-4 h-4" />
-                  Edit Health Metrics
-                </button>
-                <button
-                  onClick={() => setEditingPatient(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
-                >
-                  <Edit className="w-4 h-4" />
-                  Edit Patient
-                </button>
-              </div>
+              <button
+                onClick={() => setShowHealthMetricsForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+              >
+                <Edit className="w-4 h-4" />
+                Edit Patient Chart
+              </button>
             </div>
 
             {/* Personal Information */}
@@ -1382,44 +1371,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                 fetchPatientHistory();
               }}
               addNotification={addNotification}
-            />
-          </div>
-        )}
-
-        {/* Edit Patient Form - shown when editing patient from Overview tab */}
-        {editingPatient && (
-          <div className={`mb-6 p-6 rounded-xl border-2 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-600' : 'bg-white border-gray-400'}`}>
-            <ViewEditModal
-              theme={theme}
-              editingItem={{ type: 'patient', data: patientData }}
-              currentView='edit'
-              onClose={() => setEditingPatient(false)}
-              onSave={async (updatedData) => {
-                try {
-                  await api.updatePatient(patientData.id, updatedData);
-                  addNotification('success', 'Patient updated successfully');
-                  setEditingPatient(false);
-                  fetchPatientHistory();
-                } catch (error) {
-                  console.error('Error updating patient:', error);
-                  addNotification('error', 'Failed to update patient');
-                }
-              }}
-              patients={patients}
-              users={providers}
-              api={api}
-              addNotification={addNotification}
-              setPatients={(updater) => {
-                // Update local patient data if needed
-                if (typeof updater === 'function') {
-                  const updated = updater(patients);
-                  setPatients(updated);
-                } else {
-                  setPatients(updater);
-                }
-              }}
-              user={user}
-              t={{}}
             />
           </div>
         )}
