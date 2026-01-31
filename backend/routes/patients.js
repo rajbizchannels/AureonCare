@@ -133,13 +133,19 @@ router.put('/:id', async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
     address, city, state, zip, insurance, insurance_id, insurance_payer_id, status,
-    height, weight, blood_type, allergies, past_history, family_history, current_medications, language, country
+    height, weight, blood_type, allergies, past_history, family_history, current_medications,
+    social_history, previous_medications, language, country
   } = req.body;
 
   try {
     const pool = req.app.locals.pool;
     // Use date_of_birth (database column name), fall back to dob for compatibility
     const birthDate = date_of_birth || dob;
+
+    // Handle previous_medications - convert to JSON string if it's an array
+    const previousMedsJson = previous_medications
+      ? (typeof previous_medications === 'string' ? previous_medications : JSON.stringify(previous_medications))
+      : null;
 
     const result = await pool.query(
       `UPDATE patients
@@ -165,14 +171,17 @@ router.put('/:id', async (req, res) => {
            past_history = COALESCE($20, past_history),
            family_history = COALESCE($21, family_history),
            current_medications = COALESCE($22, current_medications),
-           country = COALESCE($23, country),
+           social_history = COALESCE($23, social_history),
+           previous_medications = COALESCE($24::jsonb, previous_medications),
+           country = COALESCE($25, country),
            updated_at = NOW()
-       WHERE id::text = $24::text
+       WHERE id::text = $26::text
        RETURNING *`,
       [first_name, last_name, mrn, birthDate, gender, phone, email,
        address, city, state, zip, insurance, insurance_id, insurance_payer_id,
        status, height, weight, blood_type, allergies,
-       past_history, family_history, current_medications, country, req.params.id]
+       past_history, family_history, current_medications, social_history, previousMedsJson,
+       country, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });
