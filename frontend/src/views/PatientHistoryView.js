@@ -228,150 +228,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     }
   };
 
-  const renderOverview = () => (
-    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-      <div className="max-w-4xl mx-auto space-y-6">
-      {/* Patient Header Card */}
-      <div className="p-8 rounded-xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
-              {patientData.first_name?.charAt(0)}{patientData.last_name?.charAt(0)}
-            </div>
-            <div>
-              <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patientData.first_name} {patientData.last_name}
-              </h3>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                MRN: {patientData.mrn || 'N/A'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setEditingPatient(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
-          >
-            <Edit className="w-4 h-4" />
-            Edit Patient
-          </button>
-        </div>
-
-        {/* Personal Information */}
-        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Personal Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.first_name || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.last_name || 'Not provided'}
-            </p>
-          </div>
-        </div>
-
-        {/* Contact Information */}
-        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Contact Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.email || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.phone || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.address || 'Not provided'}
-            </p>
-          </div>
-          {patientData.country && (
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patientData.country || 'Not provided'}
-              </p>
-            </div>
-          )}
-          {patientData.language && (
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patientData.language || 'Not provided'}
-              </p>
-            </div>
-          )}
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.date_of_birth ? formatDate(patientData.date_of_birth) : patientData.dob ? formatDate(patientData.dob) : 'Not provided'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Medical Information Card */}
-      <div className="p-6 rounded-xl">
-        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Medical Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.height || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.weight || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.blood_type || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.allergies || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.past_history || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Family History</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.family_history || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.current_medications || 'Not provided'}
-            </p>
-          </div>
-        </div>
-      </div>
-      </div>
-    </div>
-  );
-
-  const renderChart = () => {
+  const renderPatientChart = () => {
     // Parse previous_medications if it's a string
     let previousMeds = patientData.previous_medications || [];
     if (typeof previousMeds === 'string') {
@@ -385,28 +242,113 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     return (
       <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header with Edit Button */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center">
-                <Heart className="w-6 h-6 text-white" />
+          {/* Patient Header Card */}
+          <div className="p-6 rounded-xl">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                  {patientData.first_name?.charAt(0)}{patientData.last_name?.charAt(0)}
+                </div>
+                <div>
+                  <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {patientData.first_name} {patientData.last_name}
+                  </h3>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    MRN: {patientData.mrn || 'N/A'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowHealthMetricsForm(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+                >
+                  <Heart className="w-4 h-4" />
+                  Edit Health Metrics
+                </button>
+                <button
+                  onClick={() => setEditingPatient(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Patient
+                </button>
+              </div>
+            </div>
+
+            {/* Personal Information */}
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <User className="w-5 h-5 text-blue-500" />
+              Personal Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.first_name || 'Not provided'}
+                </p>
               </div>
               <div>
-                <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Patient Health Chart
-                </h3>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  Health metrics and medical history
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.last_name || 'Not provided'}
+                </p>
+              </div>
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.date_of_birth ? formatDate(patientData.date_of_birth) : patientData.dob ? formatDate(patientData.dob) : 'Not provided'}
+                </p>
+              </div>
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gender</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.gender || 'Not provided'}
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setShowHealthMetricsForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
-            >
-              <Edit className="w-4 h-4" />
-              Edit Health Metrics
-            </button>
+
+            {/* Contact Information */}
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Phone className="w-5 h-5 text-green-500" />
+              Contact Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.email || 'Not provided'}
+                </p>
+              </div>
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.phone || 'Not provided'}
+                </p>
+              </div>
+              <div className="col-span-2">
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.address || 'Not provided'}
+                </p>
+              </div>
+              {patientData.country && (
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {patientData.country || 'Not provided'}
+                  </p>
+                </div>
+              )}
+              {patientData.language && (
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {patientData.language || 'Not provided'}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Physical Measurements Card */}
@@ -509,10 +451,10 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
             <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               <Activity className="w-5 h-5 text-teal-500" />
-              Additional Medical Information
+              Medical History
             </h4>
-            <div className="space-y-4">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
                 <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   Allergies
                 </p>
@@ -520,7 +462,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                   {patientData.allergies || 'None recorded'}
                 </p>
               </div>
-              <div>
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
                 <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   Current Medications
                 </p>
@@ -528,7 +470,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                   {patientData.current_medications || 'None recorded'}
                 </p>
               </div>
-              <div>
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
                 <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   Past Medical History
                 </p>
@@ -536,7 +478,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                   {patientData.past_history || 'None recorded'}
                 </p>
               </div>
-              <div>
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
                 <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   Family History
                 </p>
@@ -1342,8 +1284,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex gap-1">
             {[
-              { id: 'overview', label: 'Overview', icon: User, count: null },
-              { id: 'chart', label: 'Patient Chart', icon: Heart, count: null },
+              { id: 'overview', label: 'Patient Chart', icon: Heart, count: null },
               { id: 'diagnoses', label: 'Diagnoses', icon: Activity, count: diagnoses.length },
               { id: 'prescriptions', label: 'Prescriptions', icon: Pill, count: prescriptions.length },
               { id: 'labOrders', label: 'Lab Orders', icon: Microscope, count: labOrders.length },
@@ -1428,8 +1369,8 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           </div>
         )}
 
-        {/* Health Metrics Form - shown when editing health metrics from Chart tab */}
-        {activeTab === 'chart' && showHealthMetricsForm && (
+        {/* Health Metrics Form - shown when editing health metrics from Patient Chart tab */}
+        {activeTab === 'overview' && showHealthMetricsForm && (
           <div className={`mb-6 p-6 rounded-xl border-2 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-600' : 'bg-white border-gray-400'}`}>
             <PatientHealthMetricsForm
               theme={theme}
@@ -1563,8 +1504,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         )}
 
         {/* Content Area - Based on Active Tab */}
-        {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'chart' && renderChart()}
+        {activeTab === 'overview' && renderPatientChart()}
         {activeTab === 'diagnoses' && renderDiagnoses()}
         {activeTab === 'prescriptions' && renderPrescriptions()}
         {activeTab === 'labOrders' && renderLabOrders()}
