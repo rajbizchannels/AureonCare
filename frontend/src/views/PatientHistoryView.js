@@ -385,7 +385,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
             </h4>
             <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
               <p className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'} whitespace-pre-wrap`}>
-                {patientData.social_history || 'No social history recorded. Click "Edit Health Metrics" to add information about smoking status, alcohol use, occupation, and other lifestyle factors.'}
+                {patientData.social_history || 'No social history recorded. Add information about smoking status, alcohol use, occupation, and other lifestyle factors by Editing Physical info in Patient Chart .'}
               </p>
             </div>
           </div>
@@ -400,7 +400,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
               <div className={`p-4 rounded-lg text-center ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
                 <Pill className={`w-8 h-8 mx-auto mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
                 <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  No previous medications recorded. Click "Edit Health Metrics" to add past medications.
+                  No previous medications recorded. Add past medications by editing Medical History in Patient Chart.
                 </p>
               </div>
             ) : (
