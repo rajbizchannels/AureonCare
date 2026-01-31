@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Ruler, Scale, Droplet, Users, Pill } from 'lucide-react';
-import MedicationMultiSelect from './MedicationMultiSelect';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { X, Save, Ruler, Scale, Droplet, Users, Pill, User, Phone, Mail, MapPin, Calendar, Search } from 'lucide-react';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -13,13 +12,40 @@ const PatientHealthMetricsForm = ({
   addNotification
 }) => {
   const [formData, setFormData] = useState({
+    // Personal Information
+    first_name: patient?.first_name || '',
+    last_name: patient?.last_name || '',
+    date_of_birth: patient?.date_of_birth || patient?.dob || '',
+    gender: patient?.gender || '',
+    // Contact Information
+    email: patient?.email || '',
+    phone: patient?.phone || '',
+    address: patient?.address || '',
+    city: patient?.city || '',
+    state: patient?.state || '',
+    zip: patient?.zip || '',
+    country: patient?.country || '',
+    // Health Metrics
     height: patient?.height || '',
     weight: patient?.weight || '',
     blood_type: patient?.blood_type || '',
     social_history: patient?.social_history || '',
+    // Medical History
+    allergies: patient?.allergies || '',
+    past_history: patient?.past_history || '',
+    family_history: patient?.family_history || '',
+    current_medications: patient?.current_medications || '',
+    // Previous Medications (structured)
     previous_medications: []
   });
   const [saving, setSaving] = useState(false);
+  const [activeSection, setActiveSection] = useState('personal');
+
+  // Medication search state (same pattern as ePrescribe)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (patient) {
@@ -33,11 +59,32 @@ const PatientHealthMetricsForm = ({
         }
       }
 
+      // Format date for input
+      let dob = patient.date_of_birth || patient.dob || '';
+      if (dob && dob.includes('T')) {
+        dob = dob.split('T')[0];
+      }
+
       setFormData({
+        first_name: patient.first_name || '',
+        last_name: patient.last_name || '',
+        date_of_birth: dob,
+        gender: patient.gender || '',
+        email: patient.email || '',
+        phone: patient.phone || '',
+        address: patient.address || '',
+        city: patient.city || '',
+        state: patient.state || '',
+        zip: patient.zip || '',
+        country: patient.country || '',
         height: patient.height || '',
         weight: patient.weight || '',
         blood_type: patient.blood_type || '',
         social_history: patient.social_history || '',
+        allergies: patient.allergies || '',
+        past_history: patient.past_history || '',
+        family_history: patient.family_history || '',
+        current_medications: patient.current_medications || '',
         previous_medications: Array.isArray(prevMeds) ? prevMeds : []
       });
     }
@@ -50,24 +97,95 @@ const PatientHealthMetricsForm = ({
     }));
   };
 
+  // Medication search - same pattern as ePrescribe
+  const handleSearchMedications = useCallback(async (query) => {
+    if (!query || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      const data = await api.searchMedications(query, null, null, 20);
+      if (data && Array.isArray(data)) {
+        // Filter out already selected medications
+        const selectedNdcCodes = new Set(formData.previous_medications.map(m => m.ndc_code || m.ndcCode));
+        const filtered = data.filter(med => !selectedNdcCodes.has(med.ndc_code || med.ndcCode));
+        setSearchResults(filtered);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Error searching medications:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [api, formData.previous_medications]);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (searchQuery.length >= 2) {
+      searchTimeoutRef.current = setTimeout(() => {
+        handleSearchMedications(searchQuery);
+      }, 300);
+    } else {
+      setSearchResults([]);
+    }
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, handleSearchMedications]);
+
+  const handleSelectMedication = (medication) => {
+    const newMed = {
+      ndc_code: medication.ndcCode || medication.ndc_code,
+      drug_name: medication.drugName || medication.drug_name || medication.genericName,
+      strength: medication.strength || '',
+      dosage_form: medication.dosageForm || medication.dosage_form || '',
+      generic_name: medication.genericName || medication.generic_name || '',
+      drug_class: medication.drugClass || medication.drug_class || ''
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      previous_medications: [...prev.previous_medications, newMed]
+    }));
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const handleRemoveMedication = (ndcCode) => {
+    setFormData(prev => ({
+      ...prev,
+      previous_medications: prev.previous_medications.filter(
+        m => (m.ndc_code || m.ndcCode) !== ndcCode
+      )
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
 
     try {
       await api.updatePatient(patient.id, {
-        height: formData.height,
-        weight: formData.weight,
-        blood_type: formData.blood_type,
-        social_history: formData.social_history,
+        ...formData,
         previous_medications: formData.previous_medications
       });
 
-      addNotification('success', 'Health metrics updated successfully');
+      addNotification('success', 'Patient information updated successfully');
       onSuccess();
     } catch (error) {
-      console.error('Error updating health metrics:', error);
-      addNotification('error', 'Failed to update health metrics');
+      console.error('Error updating patient:', error);
+      addNotification('error', 'Failed to update patient information');
     } finally {
       setSaving(false);
     }
@@ -83,11 +201,19 @@ const PatientHealthMetricsForm = ({
     theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
   }`;
 
+  const sectionButtonClass = (section) => `px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+    activeSection === section
+      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+      : theme === 'dark'
+        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+  }`;
+
   return (
     <div className={`rounded-xl ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'}`}>
       <div className="flex items-center justify-between mb-6">
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Edit Patient Health Metrics
+          Edit Patient Chart
         </h3>
         <button
           type="button"
@@ -100,106 +226,391 @@ const PatientHealthMetricsForm = ({
         </button>
       </div>
 
+      {/* Section Tabs */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button type="button" onClick={() => setActiveSection('personal')} className={sectionButtonClass('personal')}>
+          <User className="w-4 h-4 inline mr-1" /> Personal Info
+        </button>
+        <button type="button" onClick={() => setActiveSection('contact')} className={sectionButtonClass('contact')}>
+          <Phone className="w-4 h-4 inline mr-1" /> Contact
+        </button>
+        <button type="button" onClick={() => setActiveSection('physical')} className={sectionButtonClass('physical')}>
+          <Ruler className="w-4 h-4 inline mr-1" /> Physical
+        </button>
+        <button type="button" onClick={() => setActiveSection('medical')} className={sectionButtonClass('medical')}>
+          <Pill className="w-4 h-4 inline mr-1" /> Medical History
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Physical Measurements */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Height */}
-          <div>
-            <label className={labelClass}>
-              <div className="flex items-center gap-2">
-                <Ruler className="w-4 h-4" />
-                Height
+        {/* Personal Information Section */}
+        {activeSection === 'personal' && (
+          <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <User className="w-5 h-5 text-blue-500" />
+              Personal Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>First Name *</label>
+                <input
+                  type="text"
+                  value={formData.first_name}
+                  onChange={(e) => handleChange('first_name', e.target.value)}
+                  required
+                  className={inputClass}
+                />
               </div>
-            </label>
-            <input
-              type="text"
-              value={formData.height}
-              onChange={(e) => handleChange('height', e.target.value)}
-              placeholder="e.g., 5'10&quot; or 178 cm"
-              className={inputClass}
-            />
-          </div>
-
-          {/* Weight */}
-          <div>
-            <label className={labelClass}>
-              <div className="flex items-center gap-2">
-                <Scale className="w-4 h-4" />
-                Weight
+              <div>
+                <label className={labelClass}>Last Name *</label>
+                <input
+                  type="text"
+                  value={formData.last_name}
+                  onChange={(e) => handleChange('last_name', e.target.value)}
+                  required
+                  className={inputClass}
+                />
               </div>
-            </label>
-            <input
-              type="text"
-              value={formData.weight}
-              onChange={(e) => handleChange('weight', e.target.value)}
-              placeholder="e.g., 165 lbs or 75 kg"
-              className={inputClass}
-            />
-          </div>
-
-          {/* Blood Type */}
-          <div>
-            <label className={labelClass}>
-              <div className="flex items-center gap-2">
-                <Droplet className="w-4 h-4" />
-                Blood Group
+              <div>
+                <label className={labelClass}>
+                  <Calendar className="w-4 h-4 inline mr-1" />
+                  Date of Birth
+                </label>
+                <input
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={(e) => handleChange('date_of_birth', e.target.value)}
+                  className={inputClass}
+                />
               </div>
-            </label>
-            <select
-              value={formData.blood_type}
-              onChange={(e) => handleChange('blood_type', e.target.value)}
-              className={inputClass}
-            >
-              <option value="">Select blood group</option>
-              {BLOOD_TYPES.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Social History */}
-        <div>
-          <label className={labelClass}>
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Social History
+              <div>
+                <label className={labelClass}>Gender</label>
+                <select
+                  value={formData.gender}
+                  onChange={(e) => handleChange('gender', e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+              </div>
             </div>
-          </label>
-          <textarea
-            value={formData.social_history}
-            onChange={(e) => handleChange('social_history', e.target.value)}
-            placeholder="Smoking status, alcohol use, occupation, living situation, etc."
-            rows={4}
-            className={inputClass}
-          />
-          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-            Include relevant lifestyle factors such as tobacco/alcohol use, occupation, exercise habits, and living arrangements.
-          </p>
-        </div>
+          </div>
+        )}
 
-        {/* Previous Medications */}
-        <div>
-          <label className={labelClass}>
-            <div className="flex items-center gap-2">
-              <Pill className="w-4 h-4" />
-              Previous Medications
+        {/* Contact Information Section */}
+        {activeSection === 'contact' && (
+          <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Phone className="w-5 h-5 text-green-500" />
+              Contact Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>
+                  <Mail className="w-4 h-4 inline mr-1" />
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>
+                  <Phone className="w-4 h-4 inline mr-1" />
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => handleChange('phone', e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelClass}>
+                  <MapPin className="w-4 h-4 inline mr-1" />
+                  Address
+                </label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => handleChange('address', e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>City</label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => handleChange('city', e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>State</label>
+                <input
+                  type="text"
+                  value={formData.state}
+                  onChange={(e) => handleChange('state', e.target.value)}
+                  maxLength={2}
+                  placeholder="e.g., CA"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>ZIP Code</label>
+                <input
+                  type="text"
+                  value={formData.zip}
+                  onChange={(e) => handleChange('zip', e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Country</label>
+                <input
+                  type="text"
+                  value={formData.country}
+                  onChange={(e) => handleChange('country', e.target.value)}
+                  maxLength={2}
+                  placeholder="e.g., US"
+                  className={inputClass}
+                />
+              </div>
             </div>
-          </label>
-          <MedicationMultiSelect
-            theme={theme}
-            api={api}
-            value={formData.previous_medications}
-            onChange={(meds) => handleChange('previous_medications', meds)}
-            placeholder="Search for previous medications..."
-          />
-          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-            Search and add medications the patient has taken in the past.
-          </p>
-        </div>
+          </div>
+        )}
+
+        {/* Physical Measurements Section */}
+        {activeSection === 'physical' && (
+          <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Ruler className="w-5 h-5 text-blue-500" />
+              Physical Measurements
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className={labelClass}>
+                  <Ruler className="w-4 h-4 inline mr-1" />
+                  Height
+                </label>
+                <input
+                  type="text"
+                  value={formData.height}
+                  onChange={(e) => handleChange('height', e.target.value)}
+                  placeholder="e.g., 5'10&quot; or 178 cm"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>
+                  <Scale className="w-4 h-4 inline mr-1" />
+                  Weight
+                </label>
+                <input
+                  type="text"
+                  value={formData.weight}
+                  onChange={(e) => handleChange('weight', e.target.value)}
+                  placeholder="e.g., 165 lbs or 75 kg"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>
+                  <Droplet className="w-4 h-4 inline mr-1" />
+                  Blood Group
+                </label>
+                <select
+                  value={formData.blood_type}
+                  onChange={(e) => handleChange('blood_type', e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Select blood group</option>
+                  {BLOOD_TYPES.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Social History */}
+            <div className="mt-6">
+              <label className={labelClass}>
+                <Users className="w-4 h-4 inline mr-1" />
+                Social History
+              </label>
+              <textarea
+                value={formData.social_history}
+                onChange={(e) => handleChange('social_history', e.target.value)}
+                placeholder="Smoking status, alcohol use, occupation, living situation, etc."
+                rows={3}
+                className={inputClass}
+              />
+              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                Include relevant lifestyle factors such as tobacco/alcohol use, occupation, exercise habits, and living arrangements.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Medical History Section */}
+        {activeSection === 'medical' && (
+          <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Pill className="w-5 h-5 text-orange-500" />
+              Medical History
+            </h4>
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass}>Allergies</label>
+                <textarea
+                  value={formData.allergies}
+                  onChange={(e) => handleChange('allergies', e.target.value)}
+                  placeholder="List known allergies..."
+                  rows={2}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Past Medical History</label>
+                <textarea
+                  value={formData.past_history}
+                  onChange={(e) => handleChange('past_history', e.target.value)}
+                  placeholder="Previous conditions, surgeries, hospitalizations..."
+                  rows={2}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Family History</label>
+                <textarea
+                  value={formData.family_history}
+                  onChange={(e) => handleChange('family_history', e.target.value)}
+                  placeholder="Family medical history..."
+                  rows={2}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Current Medications</label>
+                <textarea
+                  value={formData.current_medications}
+                  onChange={(e) => handleChange('current_medications', e.target.value)}
+                  placeholder="List current medications..."
+                  rows={2}
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Previous Medications with Search (same as ePrescribe) */}
+              <div>
+                <label className={labelClass}>
+                  <Pill className="w-4 h-4 inline mr-1" />
+                  Previous Medications
+                </label>
+
+                {/* Search Input */}
+                <div className="relative mb-3">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search medications to add..."
+                    className={`${inputClass} pr-10`}
+                  />
+                  {searchLoading ? (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-500"></div>
+                    </div>
+                  ) : (
+                    <Search className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                  )}
+                </div>
+
+                {/* Search Results Dropdown */}
+                {searchResults.length > 0 && (
+                  <div className={`mb-3 max-h-48 overflow-y-auto rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-300'}`}>
+                    {searchResults.map((med) => (
+                      <div
+                        key={med.ndcCode || med.ndc_code || med.id}
+                        onClick={() => handleSelectMedication(med)}
+                        className={`p-3 cursor-pointer transition-colors flex items-center gap-3 ${
+                          theme === 'dark'
+                            ? 'hover:bg-slate-700 border-b border-slate-700 last:border-b-0'
+                            : 'hover:bg-gray-100 border-b border-gray-200 last:border-b-0'
+                        }`}
+                      >
+                        <Pill className={`w-4 h-4 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {med.genericName || med.brandName || med.drugName}
+                          </p>
+                          <p className={`text-sm truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {med.strength} {med.dosageForm}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Selected Medications */}
+                {formData.previous_medications.length > 0 ? (
+                  <div className="space-y-2">
+                    {formData.previous_medications.map((med, index) => (
+                      <div
+                        key={med.ndc_code || med.ndcCode || index}
+                        className={`p-3 rounded-lg flex items-center justify-between ${
+                          theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-orange-900/30' : 'bg-orange-100'}`}>
+                            <Pill className={`w-4 h-4 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`} />
+                          </div>
+                          <div>
+                            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {med.drug_name}
+                            </p>
+                            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              {med.strength && <span>{med.strength}</span>}
+                              {med.strength && med.dosage_form && <span> - </span>}
+                              {med.dosage_form && <span>{med.dosage_form}</span>}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMedication(med.ndc_code || med.ndcCode)}
+                          className={`p-1 rounded-lg transition-colors ${
+                            theme === 'dark' ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-100 text-red-600'
+                          }`}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    No previous medications added. Use the search above to add medications.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-600">
+        <div className={`flex items-center justify-end gap-3 pt-4 border-t ${theme === 'dark' ? 'border-slate-600' : 'border-gray-300'}`}>
           <button
             type="button"
             onClick={onClose}
