@@ -41,11 +41,20 @@ const PatientHealthMetricsForm = ({
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('personal');
 
-  // Medication search state (same pattern as ePrescribe)
+  // Previous medications search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeoutRef = useRef(null);
+
+  // Current medications state
+  const [activePrescriptions, setActivePrescriptions] = useState([]);
+  const [additionalCurrentMeds, setAdditionalCurrentMeds] = useState([]);
+  const [currentMedSearchQuery, setCurrentMedSearchQuery] = useState('');
+  const [currentMedSearchResults, setCurrentMedSearchResults] = useState([]);
+  const [currentMedSearchLoading, setCurrentMedSearchLoading] = useState(false);
+  const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
+  const currentMedSearchTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (patient) {
@@ -58,6 +67,17 @@ const PatientHealthMetricsForm = ({
           prevMeds = [];
         }
       }
+
+      // Parse additional_current_medications if stored
+      let additionalMeds = patient.additional_current_medications || [];
+      if (typeof additionalMeds === 'string') {
+        try {
+          additionalMeds = JSON.parse(additionalMeds);
+        } catch (e) {
+          additionalMeds = [];
+        }
+      }
+      setAdditionalCurrentMeds(Array.isArray(additionalMeds) ? additionalMeds : []);
 
       // Format date for input
       let dob = patient.date_of_birth || patient.dob || '';
@@ -87,8 +107,39 @@ const PatientHealthMetricsForm = ({
         current_medications: patient.current_medications || '',
         previous_medications: Array.isArray(prevMeds) ? prevMeds : []
       });
+
+      // Load active prescriptions
+      loadActivePrescriptions();
     }
   }, [patient]);
+
+  // Load active prescriptions for the patient
+  const loadActivePrescriptions = async () => {
+    if (!patient?.id) return;
+
+    setLoadingPrescriptions(true);
+    try {
+      const prescriptions = await api.getPatientActivePrescriptions(patient.id);
+      if (prescriptions && Array.isArray(prescriptions)) {
+        // Map prescriptions to medication format
+        const meds = prescriptions.map(rx => ({
+          id: rx.id,
+          ndc_code: rx.ndc_code || rx.ndcCode,
+          drug_name: rx.medicationName || rx.medication || rx.drug_name || 'Unknown',
+          strength: rx.dosage || rx.strength || '',
+          dosage_form: rx.dosage_form || '',
+          frequency: rx.frequency || '',
+          isPrescription: true // Flag to identify as prescription
+        }));
+        setActivePrescriptions(meds);
+      }
+    } catch (error) {
+      console.error('Error loading prescriptions:', error);
+      setActivePrescriptions([]);
+    } finally {
+      setLoadingPrescriptions(false);
+    }
+  };
 
   const handleChange = (field, value) => {
     setFormData(prev => ({
@@ -171,14 +222,94 @@ const PatientHealthMetricsForm = ({
     }));
   };
 
+  // Current medication search - same pattern
+  const handleSearchCurrentMedications = useCallback(async (query) => {
+    if (!query || query.length < 2) {
+      setCurrentMedSearchResults([]);
+      return;
+    }
+
+    setCurrentMedSearchLoading(true);
+    try {
+      const data = await api.searchMedications(query, null, null, 20);
+      if (data && Array.isArray(data)) {
+        // Filter out already selected medications (from prescriptions and additional)
+        const prescriptionNdcCodes = new Set(activePrescriptions.map(m => m.ndc_code || m.ndcCode));
+        const additionalNdcCodes = new Set(additionalCurrentMeds.map(m => m.ndc_code || m.ndcCode));
+        const filtered = data.filter(med => {
+          const ndcCode = med.ndc_code || med.ndcCode;
+          return !prescriptionNdcCodes.has(ndcCode) && !additionalNdcCodes.has(ndcCode);
+        });
+        setCurrentMedSearchResults(filtered);
+      } else {
+        setCurrentMedSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Error searching medications:', error);
+      setCurrentMedSearchResults([]);
+    } finally {
+      setCurrentMedSearchLoading(false);
+    }
+  }, [api, activePrescriptions, additionalCurrentMeds]);
+
+  // Debounced search for current medications
+  useEffect(() => {
+    if (currentMedSearchTimeoutRef.current) {
+      clearTimeout(currentMedSearchTimeoutRef.current);
+    }
+
+    if (currentMedSearchQuery.length >= 2) {
+      currentMedSearchTimeoutRef.current = setTimeout(() => {
+        handleSearchCurrentMedications(currentMedSearchQuery);
+      }, 300);
+    } else {
+      setCurrentMedSearchResults([]);
+    }
+
+    return () => {
+      if (currentMedSearchTimeoutRef.current) {
+        clearTimeout(currentMedSearchTimeoutRef.current);
+      }
+    };
+  }, [currentMedSearchQuery, handleSearchCurrentMedications]);
+
+  const handleSelectCurrentMedication = (medication) => {
+    const newMed = {
+      ndc_code: medication.ndcCode || medication.ndc_code,
+      drug_name: medication.drugName || medication.drug_name || medication.genericName,
+      strength: medication.strength || '',
+      dosage_form: medication.dosageForm || medication.dosage_form || '',
+      generic_name: medication.genericName || medication.generic_name || '',
+      drug_class: medication.drugClass || medication.drug_class || ''
+    };
+
+    setAdditionalCurrentMeds(prev => [...prev, newMed]);
+    setCurrentMedSearchQuery('');
+    setCurrentMedSearchResults([]);
+  };
+
+  const handleRemoveCurrentMedication = (ndcCode) => {
+    setAdditionalCurrentMeds(prev => prev.filter(
+      m => (m.ndc_code || m.ndcCode) !== ndcCode
+    ));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
 
     try {
+      // Build current_medications text from prescriptions and additional meds
+      const allCurrentMeds = [
+        ...activePrescriptions.map(m => `${m.drug_name}${m.strength ? ` ${m.strength}` : ''}${m.frequency ? ` (${m.frequency})` : ''}`),
+        ...additionalCurrentMeds.map(m => `${m.drug_name}${m.strength ? ` ${m.strength}` : ''}`)
+      ];
+
       await api.updatePatient(patient.id, {
         ...formData,
-        previous_medications: formData.previous_medications
+        current_medications: allCurrentMeds.join(', '),
+        previous_medications: formData.previous_medications,
+        additional_current_medications: additionalCurrentMeds
       });
 
       addNotification('success', 'Patient information updated successfully');
@@ -499,15 +630,150 @@ const PatientHealthMetricsForm = ({
                   className={inputClass}
                 />
               </div>
+              {/* Current Medications with Prescriptions and Search */}
               <div>
-                <label className={labelClass}>Current Medications</label>
-                <textarea
-                  value={formData.current_medications}
-                  onChange={(e) => handleChange('current_medications', e.target.value)}
-                  placeholder="List current medications..."
-                  rows={2}
-                  className={inputClass}
-                />
+                <label className={labelClass}>
+                  <Pill className="w-4 h-4 inline mr-1" />
+                  Current Medications
+                </label>
+
+                {/* Multi-select box with prescription chips and search */}
+                <div className={`relative rounded-lg border transition-colors focus-within:ring-2 focus-within:ring-green-500/20 ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-600 focus-within:border-green-500'
+                    : 'bg-white border-gray-300 focus-within:border-green-500'
+                }`}>
+                  {/* Chips and input container */}
+                  <div className="flex flex-wrap gap-2 p-2 min-h-[42px]">
+                    {/* Loading indicator */}
+                    {loadingPrescriptions && (
+                      <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-500"></div>
+                        Loading prescriptions...
+                      </div>
+                    )}
+
+                    {/* Active prescription chips (read-only, green) */}
+                    {activePrescriptions.map((med, index) => (
+                      <div
+                        key={`rx-${med.id || med.ndc_code || index}`}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm ${
+                          theme === 'dark'
+                            ? 'bg-green-900/40 text-green-300 border border-green-700'
+                            : 'bg-green-100 text-green-800 border border-green-300'
+                        }`}
+                        title="From active prescription"
+                      >
+                        <Pill className="w-3 h-3" />
+                        <span className="max-w-[150px] truncate font-medium">
+                          {med.drug_name}
+                        </span>
+                        {med.strength && (
+                          <span className={`text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                            {med.strength}
+                          </span>
+                        )}
+                        <span className={`text-xs px-1 rounded ${theme === 'dark' ? 'bg-green-800/50 text-green-400' : 'bg-green-200 text-green-700'}`}>
+                          Rx
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* Additional current medication chips (editable, blue) */}
+                    {additionalCurrentMeds.map((med, index) => (
+                      <div
+                        key={`add-${med.ndc_code || med.ndcCode || index}`}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm ${
+                          theme === 'dark'
+                            ? 'bg-blue-900/40 text-blue-300 border border-blue-700'
+                            : 'bg-blue-100 text-blue-800 border border-blue-300'
+                        }`}
+                      >
+                        <Pill className="w-3 h-3" />
+                        <span className="max-w-[150px] truncate font-medium">
+                          {med.drug_name}
+                        </span>
+                        {med.strength && (
+                          <span className={`text-xs ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                            {med.strength}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCurrentMedication(med.ndc_code || med.ndcCode)}
+                          className={`ml-1 p-0.5 rounded-full transition-colors ${
+                            theme === 'dark'
+                              ? 'hover:bg-blue-700 text-blue-400 hover:text-blue-200'
+                              : 'hover:bg-blue-200 text-blue-600 hover:text-blue-800'
+                          }`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Inline search input */}
+                    <div className="flex-1 min-w-[150px] relative">
+                      <input
+                        type="text"
+                        value={currentMedSearchQuery}
+                        onChange={(e) => setCurrentMedSearchQuery(e.target.value)}
+                        placeholder={activePrescriptions.length === 0 && additionalCurrentMeds.length === 0 ? "Search medications..." : "Add more..."}
+                        className={`w-full px-2 py-1 bg-transparent border-none outline-none text-sm ${
+                          theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'
+                        }`}
+                      />
+                      {currentMedSearchLoading && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Search icon */}
+                  {!currentMedSearchLoading && !loadingPrescriptions && activePrescriptions.length === 0 && additionalCurrentMeds.length === 0 && !currentMedSearchQuery && (
+                    <Search className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                  )}
+                </div>
+
+                {/* Search Results Dropdown */}
+                {currentMedSearchResults.length > 0 && (
+                  <div className={`mt-1 max-h-48 overflow-y-auto rounded-lg border shadow-lg z-10 ${theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-300'}`}>
+                    {currentMedSearchResults.map((med) => (
+                      <div
+                        key={med.ndcCode || med.ndc_code || med.id}
+                        onClick={() => handleSelectCurrentMedication(med)}
+                        className={`p-3 cursor-pointer transition-colors flex items-center gap-3 ${
+                          theme === 'dark'
+                            ? 'hover:bg-slate-700 border-b border-slate-700 last:border-b-0'
+                            : 'hover:bg-gray-100 border-b border-gray-200 last:border-b-0'
+                        }`}
+                      >
+                        <Pill className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {med.genericName || med.brandName || med.drugName}
+                          </p>
+                          <p className={`text-sm truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {med.strength} {med.dosageForm}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs mr-2 ${theme === 'dark' ? 'bg-green-900/40 text-green-400' : 'bg-green-100 text-green-700'}`}>
+                    Rx
+                  </span>
+                  = From prescriptions (auto-loaded).
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs mx-2 ${theme === 'dark' ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                    Blue
+                  </span>
+                  = Additional medications you can add/remove.
+                </p>
               </div>
 
               {/* Previous Medications with Search (same as ePrescribe) */}
