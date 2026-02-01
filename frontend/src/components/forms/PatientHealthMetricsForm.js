@@ -589,6 +589,152 @@ const PatientHealthMetricsForm = ({
                 Include relevant lifestyle factors such as tobacco/alcohol use, occupation, exercise habits, and living arrangements.
               </p>
             </div>
+
+            {/* Current Medications with Prescriptions and Search */}
+            <div className="mt-6">
+              <label className={labelClass}>
+                <Pill className="w-4 h-4 inline mr-1" />
+                Current Medications
+              </label>
+
+              {/* Multi-select box with prescription chips and search */}
+              <div className={`relative rounded-lg border transition-colors focus-within:ring-2 focus-within:ring-green-500/20 ${
+                theme === 'dark'
+                  ? 'bg-slate-800 border-slate-600 focus-within:border-green-500'
+                  : 'bg-white border-gray-300 focus-within:border-green-500'
+              }`}>
+                {/* Chips and input container */}
+                <div className="flex flex-wrap gap-2 p-2 min-h-[42px]">
+                  {/* Loading indicator */}
+                  {loadingPrescriptions && (
+                    <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-500"></div>
+                      Loading prescriptions...
+                    </div>
+                  )}
+
+                  {/* Active prescription chips (read-only, green) */}
+                  {activePrescriptions.map((med, index) => (
+                    <div
+                      key={`rx-${med.id || med.ndc_code || index}`}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm ${
+                        theme === 'dark'
+                          ? 'bg-green-900/40 text-green-300 border border-green-700'
+                          : 'bg-green-100 text-green-800 border border-green-300'
+                      }`}
+                      title="From active prescription"
+                    >
+                      <Pill className="w-3 h-3" />
+                      <span className="max-w-[150px] truncate font-medium">
+                        {med.drug_name}
+                      </span>
+                      {med.strength && (
+                        <span className={`text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                          {med.strength}
+                        </span>
+                      )}
+                      <span className={`text-xs px-1 rounded ${theme === 'dark' ? 'bg-green-800/50 text-green-400' : 'bg-green-200 text-green-700'}`}>
+                        Rx
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Additional current medication chips (editable, blue) */}
+                  {additionalCurrentMeds.map((med, index) => (
+                    <div
+                      key={`add-${med.ndc_code || med.ndcCode || index}`}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm ${
+                        theme === 'dark'
+                          ? 'bg-blue-900/40 text-blue-300 border border-blue-700'
+                          : 'bg-blue-100 text-blue-800 border border-blue-300'
+                      }`}
+                    >
+                      <Pill className="w-3 h-3" />
+                      <span className="max-w-[150px] truncate font-medium">
+                        {med.drug_name}
+                      </span>
+                      {med.strength && (
+                        <span className={`text-xs ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                          {med.strength}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCurrentMedication(med.ndc_code || med.ndcCode)}
+                        className={`ml-1 p-0.5 rounded-full transition-colors ${
+                          theme === 'dark'
+                            ? 'hover:bg-blue-700 text-blue-400 hover:text-blue-200'
+                            : 'hover:bg-blue-200 text-blue-600 hover:text-blue-800'
+                        }`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Inline search input */}
+                  <div className="flex-1 min-w-[150px] relative">
+                    <input
+                      type="text"
+                      value={currentMedSearchQuery}
+                      onChange={(e) => setCurrentMedSearchQuery(e.target.value)}
+                      placeholder={activePrescriptions.length === 0 && additionalCurrentMeds.length === 0 ? "Search medications..." : "Add more..."}
+                      className={`w-full px-2 py-1 bg-transparent border-none outline-none text-sm ${
+                        theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                    {currentMedSearchLoading && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Search icon */}
+                {!currentMedSearchLoading && !loadingPrescriptions && activePrescriptions.length === 0 && additionalCurrentMeds.length === 0 && !currentMedSearchQuery && (
+                  <Search className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                )}
+              </div>
+
+              {/* Search Results Dropdown */}
+              {currentMedSearchResults.length > 0 && (
+                <div className={`mt-1 max-h-48 overflow-y-auto rounded-lg border shadow-lg z-10 ${theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-300'}`}>
+                  {currentMedSearchResults.map((med) => (
+                    <div
+                      key={med.ndcCode || med.ndc_code || med.id}
+                      onClick={() => handleSelectCurrentMedication(med)}
+                      className={`p-3 cursor-pointer transition-colors flex items-center gap-3 ${
+                        theme === 'dark'
+                          ? 'hover:bg-slate-700 border-b border-slate-700 last:border-b-0'
+                          : 'hover:bg-gray-100 border-b border-gray-200 last:border-b-0'
+                      }`}
+                    >
+                      <Pill className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {med.genericName || med.brandName || med.drugName}
+                        </p>
+                        <p className={`text-sm truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          {med.strength} {med.dosageForm}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs mr-2 ${theme === 'dark' ? 'bg-green-900/40 text-green-400' : 'bg-green-100 text-green-700'}`}>
+                  Rx
+                </span>
+                = From prescriptions (auto-loaded).
+                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs mx-2 ${theme === 'dark' ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                  Blue
+                </span>
+                = Additional medications you can add/remove.
+              </p>
+            </div>
           </div>
         )}
 
@@ -630,153 +776,8 @@ const PatientHealthMetricsForm = ({
                   className={inputClass}
                 />
               </div>
-              {/* Current Medications with Prescriptions and Search */}
-              <div>
-                <label className={labelClass}>
-                  <Pill className="w-4 h-4 inline mr-1" />
-                  Current Medications
-                </label>
 
-                {/* Multi-select box with prescription chips and search */}
-                <div className={`relative rounded-lg border transition-colors focus-within:ring-2 focus-within:ring-green-500/20 ${
-                  theme === 'dark'
-                    ? 'bg-slate-800 border-slate-600 focus-within:border-green-500'
-                    : 'bg-white border-gray-300 focus-within:border-green-500'
-                }`}>
-                  {/* Chips and input container */}
-                  <div className="flex flex-wrap gap-2 p-2 min-h-[42px]">
-                    {/* Loading indicator */}
-                    {loadingPrescriptions && (
-                      <div className={`inline-flex items-center gap-2 px-2 py-1 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-500"></div>
-                        Loading prescriptions...
-                      </div>
-                    )}
-
-                    {/* Active prescription chips (read-only, green) */}
-                    {activePrescriptions.map((med, index) => (
-                      <div
-                        key={`rx-${med.id || med.ndc_code || index}`}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm ${
-                          theme === 'dark'
-                            ? 'bg-green-900/40 text-green-300 border border-green-700'
-                            : 'bg-green-100 text-green-800 border border-green-300'
-                        }`}
-                        title="From active prescription"
-                      >
-                        <Pill className="w-3 h-3" />
-                        <span className="max-w-[150px] truncate font-medium">
-                          {med.drug_name}
-                        </span>
-                        {med.strength && (
-                          <span className={`text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                            {med.strength}
-                          </span>
-                        )}
-                        <span className={`text-xs px-1 rounded ${theme === 'dark' ? 'bg-green-800/50 text-green-400' : 'bg-green-200 text-green-700'}`}>
-                          Rx
-                        </span>
-                      </div>
-                    ))}
-
-                    {/* Additional current medication chips (editable, blue) */}
-                    {additionalCurrentMeds.map((med, index) => (
-                      <div
-                        key={`add-${med.ndc_code || med.ndcCode || index}`}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm ${
-                          theme === 'dark'
-                            ? 'bg-blue-900/40 text-blue-300 border border-blue-700'
-                            : 'bg-blue-100 text-blue-800 border border-blue-300'
-                        }`}
-                      >
-                        <Pill className="w-3 h-3" />
-                        <span className="max-w-[150px] truncate font-medium">
-                          {med.drug_name}
-                        </span>
-                        {med.strength && (
-                          <span className={`text-xs ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
-                            {med.strength}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCurrentMedication(med.ndc_code || med.ndcCode)}
-                          className={`ml-1 p-0.5 rounded-full transition-colors ${
-                            theme === 'dark'
-                              ? 'hover:bg-blue-700 text-blue-400 hover:text-blue-200'
-                              : 'hover:bg-blue-200 text-blue-600 hover:text-blue-800'
-                          }`}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-
-                    {/* Inline search input */}
-                    <div className="flex-1 min-w-[150px] relative">
-                      <input
-                        type="text"
-                        value={currentMedSearchQuery}
-                        onChange={(e) => setCurrentMedSearchQuery(e.target.value)}
-                        placeholder={activePrescriptions.length === 0 && additionalCurrentMeds.length === 0 ? "Search medications..." : "Add more..."}
-                        className={`w-full px-2 py-1 bg-transparent border-none outline-none text-sm ${
-                          theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'
-                        }`}
-                      />
-                      {currentMedSearchLoading && (
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Search icon */}
-                  {!currentMedSearchLoading && !loadingPrescriptions && activePrescriptions.length === 0 && additionalCurrentMeds.length === 0 && !currentMedSearchQuery && (
-                    <Search className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
-                  )}
-                </div>
-
-                {/* Search Results Dropdown */}
-                {currentMedSearchResults.length > 0 && (
-                  <div className={`mt-1 max-h-48 overflow-y-auto rounded-lg border shadow-lg z-10 ${theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-300'}`}>
-                    {currentMedSearchResults.map((med) => (
-                      <div
-                        key={med.ndcCode || med.ndc_code || med.id}
-                        onClick={() => handleSelectCurrentMedication(med)}
-                        className={`p-3 cursor-pointer transition-colors flex items-center gap-3 ${
-                          theme === 'dark'
-                            ? 'hover:bg-slate-700 border-b border-slate-700 last:border-b-0'
-                            : 'hover:bg-gray-100 border-b border-gray-200 last:border-b-0'
-                        }`}
-                      >
-                        <Pill className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className={`font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {med.genericName || med.brandName || med.drugName}
-                          </p>
-                          <p className={`text-sm truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            {med.strength} {med.dosageForm}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs mr-2 ${theme === 'dark' ? 'bg-green-900/40 text-green-400' : 'bg-green-100 text-green-700'}`}>
-                    Rx
-                  </span>
-                  = From prescriptions (auto-loaded).
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs mx-2 ${theme === 'dark' ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
-                    Blue
-                  </span>
-                  = Additional medications you can add/remove.
-                </p>
-              </div>
-
-              {/* Previous Medications with Search (same as ePrescribe) */}
+              {/* Previous Medications with Search */}
               <div>
                 <label className={labelClass}>
                   <Pill className="w-4 h-4 inline mr-1" />
