@@ -141,6 +141,7 @@ app.use('/api/backup', require('./routes/backup'));
 app.use('/api/archive', require('./routes/archive'));
 app.use('/api/archive-rules', require('./routes/archiveRules'));
 app.use('/api/audit', require('./routes/audit'));
+app.use('/api/billing', require('./routes/billing'));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
