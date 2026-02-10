@@ -428,6 +428,8 @@ function App() {
             addNotification={addNotification}
             api={api}
             setCurrentModule={setCurrentModule}
+            tasks={tasks}
+            setTasks={setTasks}
           />
         );
       case 'reports':

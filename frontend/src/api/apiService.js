@@ -2098,6 +2098,185 @@ const api = {
     return response.json();
   },
 
+  // Billing Module - Quotes
+  getBillingQuotes: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.status) params.append('status', filters.status);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch quotes');
+    return response.json();
+  },
+  getBillingQuote: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch quote');
+    return response.json();
+  },
+  createBillingQuote: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create quote');
+    return response.json();
+  },
+  updateBillingQuote: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update quote');
+    return response.json();
+  },
+  deleteBillingQuote: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete quote');
+    return response.json();
+  },
+  convertQuoteToInvoice: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes/${id}/convert`, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to convert quote to invoice');
+    return response.json();
+  },
+
+  // Billing Module - Invoices
+  getBillingInvoices: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.status) params.append('status', filters.status);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch invoices');
+    return response.json();
+  },
+  getBillingInvoice: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch invoice');
+    return response.json();
+  },
+  createBillingInvoice: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create invoice');
+    return response.json();
+  },
+  updateBillingInvoice: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update invoice');
+    return response.json();
+  },
+  deleteBillingInvoice: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete invoice');
+    return response.json();
+  },
+
+  // Billing Module - Coupons
+  getBillingCoupons: async (isActive) => {
+    const params = new URLSearchParams();
+    if (isActive !== undefined) params.append('is_active', isActive);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch coupons');
+    return response.json();
+  },
+  getBillingCoupon: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch coupon');
+    return response.json();
+  },
+  validateBillingCoupon: async (code, amount) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons/validate`, {
+      method: 'POST',
+      body: JSON.stringify({ code, amount })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Invalid coupon' }));
+      throw new Error(errorData.error || 'Invalid coupon');
+    }
+    return response.json();
+  },
+  createBillingCoupon: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create coupon' }));
+      throw new Error(errorData.error || 'Failed to create coupon');
+    }
+    return response.json();
+  },
+  updateBillingCoupon: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update coupon');
+    return response.json();
+  },
+  deleteBillingCoupon: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete coupon');
+    return response.json();
+  },
+
+  // Billing Module - Payments
+  getBillingPayments: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.invoice_id) params.append('invoice_id', filters.invoice_id);
+    if (filters.status) params.append('status', filters.status);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/payments${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch billing payments');
+    return response.json();
+  },
+  createBillingPayment: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/payments`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create billing payment');
+    return response.json();
+  },
+  updateBillingPayment: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/payments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update billing payment');
+    return response.json();
+  },
+  deleteBillingPayment: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/payments/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete billing payment');
+    return response.json();
+  },
+
+  // Billing Module - Summary
+  getBillingSummary: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/summary`);
+    if (!response.ok) throw new Error('Failed to fetch billing summary');
+    return response.json();
+  },
+
   // Add baseURL property for components that need it
   baseURL: API_BASE_URL
 };
