@@ -31,9 +31,9 @@ const ARCHIVE_MODULES = {
     primaryKey: 'id'
   },
   'claims_billing': {
-    name: 'Claims & Billing',
-    description: 'Insurance claims, claim submissions, payments, payment postings, denials, and pre-approvals',
-    tables: ['claims', 'claim_submissions', 'payments', 'payment_postings', 'denials', 'preapprovals'],
+    name: 'Claims & Billing (RCM)',
+    description: 'Insurance claims, claim submissions, payments, denials, pre-approvals, quotes, invoices, coupons, and billing payments',
+    tables: ['claims', 'claim_submissions', 'payments', 'payment_postings', 'denials', 'preapprovals', 'billing_quotes', 'billing_quote_items', 'billing_invoices', 'billing_invoice_items', 'billing_coupons', 'billing_payments'],
     primaryKey: 'id'
   },
   'healthcare_offerings': {
