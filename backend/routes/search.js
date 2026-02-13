@@ -395,6 +395,121 @@ router.get('/', async (req, res) => {
       )
     );
 
+    // Search Billing Quotes
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            q.id,
+            q.quote_number,
+            q.patient_id,
+            q.status,
+            q.total_amount,
+            q.issue_date,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            'billing_quote' as result_type,
+            'billing' as module
+          FROM billing_quotes q
+          LEFT JOIN patients p ON q.patient_id::text = p.id::text
+          WHERE
+            LOWER(COALESCE(q.quote_number, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(q.status, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(q.notes, '')) LIKE LOWER($1)
+          ORDER BY q.created_at DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Billing Quotes'
+      )
+    );
+
+    // Search Billing Invoices
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            i.id,
+            i.invoice_number,
+            i.patient_id,
+            i.status,
+            i.total_amount,
+            i.balance_due,
+            i.due_date,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            'billing_invoice' as result_type,
+            'billing' as module
+          FROM billing_invoices i
+          LEFT JOIN patients p ON i.patient_id::text = p.id::text
+          WHERE
+            LOWER(COALESCE(i.invoice_number, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(i.status, '')) LIKE LOWER($1)
+          ORDER BY i.created_at DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Billing Invoices'
+      )
+    );
+
+    // Search Billing Coupons
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            c.id,
+            c.code,
+            c.name,
+            c.description,
+            c.discount_type,
+            c.discount_value,
+            c.is_active,
+            'billing_coupon' as result_type,
+            'billing' as module
+          FROM billing_coupons c
+          WHERE
+            LOWER(COALESCE(c.code, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(c.name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(c.description, '')) LIKE LOWER($1)
+          ORDER BY c.created_at DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Billing Coupons'
+      )
+    );
+
+    // Search Billing Payments
+    searchPromises.push(
+      safeSearch(
+        () => pool.query(`
+          SELECT
+            bp.id,
+            bp.payment_number,
+            bp.amount,
+            bp.payment_method,
+            bp.status,
+            bp.payment_date,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            bi.invoice_number,
+            'billing_payment' as result_type,
+            'billing' as module
+          FROM billing_payments bp
+          LEFT JOIN patients p ON bp.patient_id::text = p.id::text
+          LEFT JOIN billing_invoices bi ON bp.invoice_id::text = bi.id::text
+          WHERE
+            LOWER(COALESCE(bp.payment_number, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(bp.payment_method, '')) LIKE LOWER($1)
+            OR LOWER(COALESCE(bp.reference_number, '')) LIKE LOWER($1)
+          ORDER BY bp.created_at DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'Billing Payments'
+      )
+    );
+
     // Execute all searches in parallel
     const results = await Promise.all(searchPromises);
 
@@ -448,6 +563,14 @@ function getDisplayName(result) {
       return `Authorization #${result.authorization_number || 'N/A'}`;
     case 'denial':
       return `Denial - ${result.denial_reason_description || result.denial_reason_code || 'N/A'}`;
+    case 'billing_quote':
+      return `Quote #${result.quote_number || 'N/A'}`;
+    case 'billing_invoice':
+      return `Invoice #${result.invoice_number || 'N/A'}`;
+    case 'billing_coupon':
+      return result.name || result.code || 'Coupon';
+    case 'billing_payment':
+      return `Payment #${result.payment_number || 'N/A'}`;
     default:
       return 'Unknown';
   }
@@ -485,6 +608,14 @@ function getDisplaySubtitle(result) {
       return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - ${result.status || 'N/A'}`;
     case 'denial':
       return `Code: ${result.denial_reason_code || 'N/A'} - ${result.status || 'N/A'}`;
+    case 'billing_quote':
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - $${result.total_amount || '0'} - ${result.status || 'N/A'}`;
+    case 'billing_invoice':
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - Due: $${result.balance_due || '0'} - ${result.status || 'N/A'}`;
+    case 'billing_coupon':
+      return `${result.discount_type === 'percentage' ? result.discount_value + '%' : '$' + result.discount_value} off - ${result.is_active ? 'Active' : 'Inactive'}`;
+    case 'billing_payment':
+      return `Patient: ${result.patient_first_name || ''} ${result.patient_last_name || ''} - $${result.amount || '0'} - ${result.payment_method || 'N/A'}`;
     default:
       return '';
   }
