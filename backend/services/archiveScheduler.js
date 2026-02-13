@@ -57,7 +57,7 @@ async function executeArchiveRule(rule) {
         tables: ['medical_records', 'diagnosis', 'diagnoses', 'prescriptions', 'prescription_history']
       },
       'claims_billing': {
-        tables: ['claims', 'claim_submissions', 'payments', 'payment_postings', 'denials', 'preapprovals']
+        tables: ['claims', 'claim_submissions', 'payments', 'payment_postings', 'denials', 'preapprovals', 'billing_quotes', 'billing_quote_items', 'billing_invoices', 'billing_invoice_items', 'billing_coupons', 'billing_payments']
       },
       'healthcare_offerings': {
         tables: ['healthcare_offerings', 'offering_packages', 'offering_pricing', 'offering_promotions', 'offering_reviews', 'package_offerings', 'offering_insurance_mappings']
