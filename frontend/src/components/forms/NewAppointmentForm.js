@@ -87,9 +87,11 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
   useEffect(() => {
     if (users && users.length > 0 && !formData.providerId) {
       const doctorRoles = ['physician', 'doctor'];
-      const firstDoctor = users.find(u =>
-        doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role)
-      );
+      const firstDoctor = users.find(u => {
+        const hasRole = u.role || u.activeRole || u.active_role;
+        if (!hasRole) return true; // No role info = from providers table, all are doctors
+        return doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role);
+      });
       if (firstDoctor) {
         setFormData(prev => ({ ...prev, providerId: firstDoctor.id }));
       }
@@ -199,10 +201,14 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
   };
 
   // Filter providers from users - only show doctors/physicians
+  // If entries lack a role field (e.g. data from providers table), include them all
+  // since the providers table only contains doctors by definition
   const doctorRoles = ['physician', 'doctor'];
-  const providers = users?.filter(u =>
-    doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role)
-  ) || [];
+  const providers = users?.filter(u => {
+    const hasRole = u.role || u.activeRole || u.active_role;
+    if (!hasRole) return true; // No role info = from providers table, include all
+    return doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role);
+  }) || [];
 
   return (
     <>
