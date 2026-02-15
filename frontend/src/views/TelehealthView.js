@@ -14,6 +14,8 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
   const [showNewSessionForm, setShowNewSessionForm] = useState(false);
   const [activeProvider, setActiveProvider] = useState(null);
   const [checkingProvider, setCheckingProvider] = useState(true);
+  const [localAppointments, setLocalAppointments] = useState([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
 
   // Confirmation modal states
   const [showCreateConfirmation, setShowCreateConfirmation] = useState(false);
@@ -61,9 +63,35 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     }
   };
 
+  // Fetch fresh appointments from the API when the new session form opens
+  useEffect(() => {
+    if (showNewSessionForm) {
+      fetchAppointments();
+    }
+  }, [showNewSessionForm]);
+
+  const fetchAppointments = async () => {
+    try {
+      setLoadingAppointments(true);
+      const data = await api.getAppointments();
+      setLocalAppointments(data || []);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      // Fall back to prop data if API call fails
+      setLocalAppointments(appointments || []);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
+
+  const findAppointment = (appointmentId) => {
+    return localAppointments.find(a => a.id === appointmentId)
+      || (appointments || []).find(a => a.id === appointmentId);
+  };
+
   const handleCreateSession = async (appointmentId, patientId, providerId) => {
     // Show confirmation before creating session
-    const appointment = appointments.find(a => a.id === appointmentId);
+    const appointment = findAppointment(appointmentId);
     if (!appointment) return;
 
     setPendingCreateData({ appointmentId, patientId, providerId });
@@ -75,7 +103,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
     try {
       const { appointmentId, patientId, providerId } = pendingCreateData;
-      const appointment = appointments.find(a => a.id === appointmentId);
+      const appointment = findAppointment(appointmentId);
       if (!appointment) return;
 
       const sessionData = {
@@ -139,7 +167,9 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
   const getAvailableAppointments = () => {
     const existingAppointmentIds = sessions.map(s => s.appointment_id);
-    return (appointments || [])
+    // Use freshly fetched localAppointments when the form is open, otherwise fall back to prop
+    const source = localAppointments.length > 0 ? localAppointments : (appointments || []);
+    return source
       .filter(a =>
         !existingAppointmentIds.includes(a.id) &&
         a.status !== 'cancelled' &&
@@ -298,7 +328,11 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                 {t.selectAppointmentForSession || 'Select an upcoming appointment to create a telehealth session:'}
               </p>
               <div className="space-y-3">
-                {availableAppointments.length === 0 ? (
+                {loadingAppointments ? (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+                  </div>
+                ) : availableAppointments.length === 0 ? (
                   <p className={`text-sm text-center py-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
                     {t.noAppointmentsAvailable || 'No upcoming appointments available for telehealth sessions.'}
                   </p>
