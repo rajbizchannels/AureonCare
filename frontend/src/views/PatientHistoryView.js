@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   User, Calendar, Activity, FileText, Pill, ArrowLeft,
   Edit, Trash2, Plus, Clock, MapPin, Phone, Mail, Microscope, Printer,
-  Heart, Ruler, Scale, Droplet, Users
+  Heart, Ruler, Scale, Droplet, Users, Video, Loader2
 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
@@ -71,6 +71,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   // Lab order filter state
   const [labOrderStatusFilter, setLabOrderStatusFilter] = useState('all');
+
+  // Telehealth state
+  const [telehealthLoading, setTelehealthLoading] = useState(false);
 
   const { logViewAccess } = useAudit();
 
@@ -223,6 +226,57 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     } catch (error) {
       console.error('Error saving prescription:', error);
       addNotification('error', 'Failed to save prescription');
+    }
+  };
+
+  const handleStartTelehealth = async (appointmentId = null) => {
+    setTelehealthLoading(true);
+    try {
+      // Check if a telehealth provider is configured
+      const settings = await api.getTelehealthSettings();
+      const enabledProvider = settings?.find(p => p.is_enabled);
+
+      if (!enabledProvider) {
+        addNotification('error', 'No telehealth provider configured. Please configure Zoom, Google Meet, or Webex in the Admin Panel.');
+        return;
+      }
+
+      // Find the nearest upcoming appointment for this patient if none specified
+      let selectedAppointmentId = appointmentId;
+      if (!selectedAppointmentId && appointments.length > 0) {
+        const upcoming = appointments
+          .filter(a => a.status !== 'cancelled' && a.status !== 'canceled' && a.status !== 'completed')
+          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+        if (upcoming.length > 0) {
+          selectedAppointmentId = upcoming[0].id;
+        }
+      }
+
+      // Create a telehealth session
+      const sessionData = {
+        appointmentId: selectedAppointmentId || null,
+        patientId: patient.id,
+        providerId: user?.id,
+        startTime: new Date().toISOString(),
+        duration: 30,
+        recordingEnabled: false
+      };
+
+      const newSession = await api.createTelehealthSession(sessionData);
+
+      // Open the meeting URL
+      const meetingUrl = newSession.meeting_url || newSession.meetingDetails?.meetingUrl;
+      if (meetingUrl) {
+        window.open(meetingUrl, '_blank');
+        addNotification('success', `Telehealth session started with ${patientData.first_name} ${patientData.last_name}`);
+      } else {
+        addNotification('error', 'Session created but no meeting URL was returned.');
+      }
+    } catch (error) {
+      console.error('Error starting telehealth session:', error);
+      addNotification('error', 'Failed to start telehealth session: ' + (error.message || 'Unknown error'));
+    } finally {
+      setTelehealthLoading(false);
     }
   };
 
@@ -1215,15 +1269,31 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                     </p>
                   )}
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  appt.status === 'Completed'
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : appt.status === 'Cancelled'
-                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                }`}>
-                  {appt.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  {appt.status !== 'Completed' && appt.status !== 'Cancelled' && appt.status !== 'cancelled' && appt.status !== 'canceled' && (
+                    <button
+                      onClick={() => handleStartTelehealth(appt.id)}
+                      disabled={telehealthLoading}
+                      className={`p-2 rounded-lg transition-colors ${
+                        theme === 'dark'
+                          ? 'hover:bg-cyan-500/20 text-cyan-400'
+                          : 'hover:bg-cyan-100 text-cyan-600'
+                      } disabled:opacity-50`}
+                      title="Start Telehealth for this appointment"
+                    >
+                      <Video className="w-4 h-4" />
+                    </button>
+                  )}
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    appt.status === 'Completed'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : appt.status === 'Cancelled'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    {appt.status}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -1245,25 +1315,40 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       {/* Header with Back Button */}
       <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'dark'
-                  ? 'hover:bg-slate-700 text-slate-300'
-                  : 'hover:bg-gray-100 text-gray-600'
-              }`}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patientData.first_name} {patientData.last_name}
-              </h1>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Patient History
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={onBack}
+                className={`p-2 rounded-lg transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-slate-700 text-slate-300'
+                    : 'hover:bg-gray-100 text-gray-600'
+                }`}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.first_name} {patientData.last_name}
+                </h1>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Patient History
+                </p>
+              </div>
             </div>
+            <button
+              onClick={() => handleStartTelehealth()}
+              disabled={telehealthLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+              title="Start Telehealth Session"
+            >
+              {telehealthLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Video className="w-4 h-4" />
+              )}
+              {telehealthLoading ? 'Starting...' : 'Start Telehealth Session'}
+            </button>
           </div>
         </div>
       </div>
