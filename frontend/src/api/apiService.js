@@ -1487,7 +1487,10 @@ const api = {
   // Telehealth Settings
   getTelehealthSettings: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings`);
-    if (!response.ok) throw new Error('Failed to fetch telehealth settings');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to fetch telehealth settings');
+    }
     return response.json();
   },
   getTelehealthSetting: async (providerType) => {
