@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus, Heart, Star, Clock } from 'lucide-react';
-import { formatDate, formatTime } from '../utils/formatters';
+import { formatDate, formatTime, toLocalDateString } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -597,7 +597,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
     // Parse the start_time to get date and time
     const startTime = new Date(appointment.start_time);
-    const date = startTime.toISOString().split('T')[0];
+    const date = toLocalDateString(startTime);
     const time = startTime.toTimeString().slice(0, 5);
 
     setEditingAppointment(appointment);

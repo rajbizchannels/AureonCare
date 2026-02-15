@@ -67,3 +67,23 @@ export const formatDateTime = (dateTimeString) => {
     return 'Invalid DateTime';
   }
 };
+
+/**
+ * Format a Date object as a local "YYYY-MM-DD HH:MM:SS" string.
+ * Use this instead of toISOString() when storing appointment times,
+ * since toISOString() converts to UTC which shifts the time.
+ */
+export const toLocalDateTimeString = (date) => {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+/**
+ * Format a Date object as a local "YYYY-MM-DD" string.
+ * Use this instead of toISOString().split('T')[0] to avoid
+ * UTC date shift near midnight.
+ */
+export const toLocalDateString = (date) => {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};

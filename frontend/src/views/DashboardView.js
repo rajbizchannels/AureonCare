@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check, FileText, Activity, ChevronDown, Zap } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
-import { formatTime, formatDate, formatCurrency } from '../utils/formatters';
+import { formatTime, formatDate, formatCurrency, toLocalDateString } from '../utils/formatters';
 import { hasPermission } from '../utils/rolePermissions';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import NewPatientForm from '../components/forms/NewPatientForm';
@@ -200,28 +200,24 @@ const DashboardView = ({
           <StatCard
             title={t.todaysAppointments}
             value={(() => {
-              const today = new Date();
-              const todayStr = today.toISOString().split('T')[0];
+              const todayStr = toLocalDateString(new Date());
               return appointments.filter(a => {
                 if (a.date && a.date.startsWith(todayStr)) return true;
                 if (a.start_time) {
                   const startDate = new Date(a.start_time.replace(' ', 'T'));
-                  const startDateStr = startDate.toISOString().split('T')[0];
-                  return startDateStr === todayStr;
+                  return toLocalDateString(startDate) === todayStr;
                 }
                 return false;
               }).length.toString();
             })()}
             icon={Calendar}
             trend={(() => {
-              const today = new Date();
-              const todayStr = today.toISOString().split('T')[0];
+              const todayStr = toLocalDateString(new Date());
               const todayCount = appointments.filter(a => {
                 if (a.date && a.date.startsWith(todayStr)) return true;
                 if (a.start_time) {
                   const startDate = new Date(a.start_time.replace(' ', 'T'));
-                  const startDateStr = startDate.toISOString().split('T')[0];
-                  return startDateStr === todayStr;
+                  return toLocalDateString(startDate) === todayStr;
                 }
                 return false;
               }).length;

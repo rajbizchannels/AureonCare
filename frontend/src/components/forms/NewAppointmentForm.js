@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import { toLocalDateTimeString } from '../../utils/formatters';
 
 const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -82,15 +83,15 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     fetchAppointmentTypes();
   }, [api]);
 
-  // Set default provider to first available doctor/provider when users are loaded
+  // Set default provider to first available doctor when users are loaded
   useEffect(() => {
     if (users && users.length > 0 && !formData.providerId) {
-      const clinicalRoles = ['physician', 'doctor', 'provider'];
-      const firstProvider = users.find(u =>
-        clinicalRoles.includes(u.role) || clinicalRoles.includes(u.activeRole) || clinicalRoles.includes(u.active_role)
+      const doctorRoles = ['physician', 'doctor'];
+      const firstDoctor = users.find(u =>
+        doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role)
       );
-      if (firstProvider) {
-        setFormData(prev => ({ ...prev, providerId: firstProvider.id }));
+      if (firstDoctor) {
+        setFormData(prev => ({ ...prev, providerId: firstDoctor.id }));
       }
     }
   }, [users, formData.providerId]);
@@ -147,11 +148,11 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
       // Combine date and time into start_time timestamp
       const startTime = `${formData.date}T${formData.time}:00`;
 
-      // Calculate end_time by adding duration
+      // Calculate end_time by adding duration (use local time, not UTC)
       const startDate = new Date(startTime);
       const endDate = new Date(startDate.getTime() + formData.duration * 60000);
-      const endTime = endDate.toISOString().slice(0, 19).replace('T', ' ');
-      const formattedStartTime = startDate.toISOString().slice(0, 19).replace('T', ' ');
+      const endTime = toLocalDateTimeString(endDate);
+      const formattedStartTime = toLocalDateTimeString(startDate);
 
       appointmentData.start_time = formattedStartTime;
       appointmentData.end_time = endTime;
@@ -197,10 +198,10 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     }
   };
 
-  // Filter providers from users - only show doctors/physicians/providers (not admin-only users)
-  const providerRoles = ['physician', 'doctor', 'provider'];
+  // Filter providers from users - only show doctors/physicians
+  const doctorRoles = ['physician', 'doctor'];
   const providers = users?.filter(u =>
-    providerRoles.includes(u.role) || providerRoles.includes(u.activeRole) || providerRoles.includes(u.active_role)
+    doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role)
   ) || [];
 
   return (
