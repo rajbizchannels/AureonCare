@@ -13,6 +13,22 @@ const oauthStates = new Map();
 /**
  * OAuth Configuration for each provider
  */
+/**
+ * Build the base URL for OAuth redirect URIs.
+ * Uses APP_BASE_URL env var if set, otherwise falls back to request-derived URL.
+ * APP_BASE_URL should be set in production (e.g., https://app.aureoncare.com)
+ * and must match the redirect URL registered in each provider's app settings.
+ */
+function getBaseUrl(req) {
+  if (process.env.APP_BASE_URL) {
+    return process.env.APP_BASE_URL.replace(/\/+$/, '');
+  }
+  // Support X-Forwarded headers behind reverse proxies
+  const protocol = req.get('x-forwarded-proto') || req.protocol;
+  const host = req.get('x-forwarded-host') || req.get('host');
+  return `${protocol}://${host}`;
+}
+
 const OAUTH_CONFIGS = {
   zoom: {
     authUrl: 'https://zoom.us/oauth/authorize',
@@ -131,7 +147,7 @@ router.get('/:providerType/initiate', async (req, res) => {
 
     // Generate state for CSRF protection
     const state = crypto.randomBytes(32).toString('hex');
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/integrations/oauth/${providerType}/callback`;
+    const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
 
     // Store state temporarily (expires in 10 minutes)
     oauthStates.set(state, {
@@ -219,7 +235,7 @@ router.get('/:providerType/callback', async (req, res) => {
     }
 
     const { client_id, client_secret } = result.rows[0];
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/integrations/oauth/${providerType}/callback`;
+    const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
 
     // Exchange code for tokens
     const tokenResponse = await fetch(config.tokenUrl, {
