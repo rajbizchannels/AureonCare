@@ -43,10 +43,12 @@ router.get('/', authenticate, async (req, res) => {
           ORDER BY p.last_name, p.first_name ASC
         `);
       } else {
+        // New schema: providers.id = users.id, JOIN on id directly
         result = await pool.query(`
-          SELECT *
-          FROM providers
-          ORDER BY last_name, first_name ASC
+          SELECT p.*, u.status, u.role
+          FROM providers p
+          LEFT JOIN users u ON p.id = u.id
+          ORDER BY p.last_name, p.first_name ASC
         `);
       }
     } else if (userRole === 'doctor') {
@@ -60,18 +62,14 @@ router.get('/', authenticate, async (req, res) => {
           ORDER BY p.last_name, p.first_name ASC
         `, [userId]);
       } else {
-        // Fallback: filter by email if user_id column doesn't exist
-        const userResult = await pool.query('SELECT email FROM users WHERE id::text = $1::text', [userId]);
-        if (userResult.rows.length > 0) {
-          result = await pool.query(`
-            SELECT *
-            FROM providers
-            WHERE email = $1
-            ORDER BY last_name, first_name ASC
-          `, [userResult.rows[0].email]);
-        } else {
-          result = { rows: [] };
-        }
+        // New schema: providers.id = users.id, filter by provider id directly
+        result = await pool.query(`
+          SELECT p.*, u.status, u.role
+          FROM providers p
+          LEFT JOIN users u ON p.id = u.id
+          WHERE p.id::text = $1::text
+          ORDER BY p.last_name, p.first_name ASC
+        `, [userId]);
       }
     } else {
       // Other roles cannot access provider management
