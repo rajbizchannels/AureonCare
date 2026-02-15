@@ -231,7 +231,25 @@ router.post('/', async (req, res) => {
       [patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
        duration_minutes, reason, notes, status || 'scheduled']
     );
-    res.status(201).json(result.rows[0]);
+
+    const newAppointment = result.rows[0];
+
+    // Re-query with JOINs to include patient and doctor names (matches GET response format)
+    const fullResult = await pool.query(
+      `SELECT a.*,
+              CONCAT(p.first_name, ' ', p.last_name) as patient,
+              CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+              pr.first_name as provider_first_name,
+              pr.last_name as provider_last_name,
+              pr.specialization as provider_specialization
+       FROM appointments a
+       LEFT JOIN patients p ON a.patient_id::text = p.id::text
+       LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+       WHERE a.id = $1`,
+      [newAppointment.id]
+    );
+
+    res.status(201).json(fullResult.rows[0] || newAppointment);
   } catch (error) {
     console.error('Error creating appointment:', error);
 
@@ -308,7 +326,22 @@ router.put('/:id', async (req, res) => {
        duration_minutes, reason, notes, status, req.params.id]
     );
 
-    const updatedAppointment = result.rows[0];
+    // Re-query with JOINs to include patient and doctor names (matches GET response format)
+    const fullResult = await pool.query(
+      `SELECT a.*,
+              CONCAT(p.first_name, ' ', p.last_name) as patient,
+              CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+              pr.first_name as provider_first_name,
+              pr.last_name as provider_last_name,
+              pr.specialization as provider_specialization
+       FROM appointments a
+       LEFT JOIN patients p ON a.patient_id::text = p.id::text
+       LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+       WHERE a.id = $1`,
+      [result.rows[0]?.id]
+    );
+
+    const updatedAppointment = fullResult.rows[0] || result.rows[0];
 
     // Send WhatsApp notification if appointment was rescheduled or cancelled
     try {
