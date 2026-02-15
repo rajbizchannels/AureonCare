@@ -29,11 +29,39 @@ class ZoomService {
   }
 
   /**
-   * Generate OAuth token (for OAuth flow)
+   * Get a valid OAuth access token.
+   * Checks for stored tokens from the OAuth authorization code flow first,
+   * refreshes if expired, then falls back to Server-to-Server account_credentials.
    */
   async generateOAuthToken() {
     if (!this.config.client_id || !this.config.client_secret) {
       throw new Error('Zoom Client ID and Secret are required for OAuth');
+    }
+
+    const settings = this.config.settings || {};
+
+    // Use stored access token from OAuth authorization code flow if available and not expired
+    if (settings.access_token) {
+      const isExpired = settings.expires_at && Date.now() >= settings.expires_at;
+
+      if (!isExpired) {
+        return settings.access_token;
+      }
+
+      // Token expired — try to refresh it
+      if (settings.refresh_token) {
+        try {
+          const refreshedToken = await this.refreshOAuthToken(settings.refresh_token);
+          return refreshedToken;
+        } catch (refreshError) {
+          console.error('Failed to refresh Zoom OAuth token, falling back to account_credentials:', refreshError.message);
+        }
+      }
+    }
+
+    // Fall back to Server-to-Server OAuth (account_credentials grant)
+    if (!settings.account_id) {
+      throw new Error('Zoom OAuth token expired and no account_id configured for Server-to-Server fallback. Please re-authorize Zoom in the Admin Panel.');
     }
 
     try {
@@ -44,7 +72,7 @@ class ZoomService {
         {
           params: {
             grant_type: 'account_credentials',
-            account_id: this.config.settings?.account_id
+            account_id: settings.account_id
           },
           headers: {
             'Authorization': `Basic ${credentials}`,
@@ -56,8 +84,31 @@ class ZoomService {
       return response.data.access_token;
     } catch (error) {
       console.error('Error generating Zoom OAuth token:', error.response?.data || error.message);
-      throw new Error('Failed to generate Zoom OAuth token');
+      throw new Error('Failed to generate Zoom OAuth token: ' + (error.response?.data?.reason || error.message));
     }
+  }
+
+  /**
+   * Refresh an expired OAuth access token using a refresh token
+   */
+  async refreshOAuthToken(refreshToken) {
+    const credentials = Buffer.from(`${this.config.client_id}:${this.config.client_secret}`).toString('base64');
+    const response = await axios.post(
+      'https://zoom.us/oauth/token',
+      null,
+      {
+        params: {
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken
+        },
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+
+    return response.data.access_token;
   }
 
   /**

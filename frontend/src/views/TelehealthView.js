@@ -137,6 +137,19 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     .slice(0, 5);
   };
 
+  const getAvailableAppointments = () => {
+    const existingAppointmentIds = sessions.map(s => s.appointment_id);
+    return (appointments || [])
+      .filter(a =>
+        !existingAppointmentIds.includes(a.id) &&
+        a.status !== 'cancelled' &&
+        a.status !== 'canceled' &&
+        a.status !== 'completed' &&
+        new Date(a.start_time) > new Date()
+      )
+      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+  };
+
   const getPatientName = (patientId) => {
     const patient = patients.find(p => p.id === patientId);
     return patient ? `${patient.first_name} ${patient.last_name}` : (t.unknownPatient || 'Unknown Patient');
@@ -144,6 +157,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
   const upcomingSessions = getUpcomingSessions();
   const recentSessions = getRecentSessions();
+  const availableAppointments = getAvailableAppointments();
 
   if (loading) {
     return (
@@ -266,6 +280,63 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
             </div>
           </div>
 
+          {/* New Session Form */}
+          {showNewSessionForm && (
+            <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {t.createNewSession || 'Create New Session'}
+                </h3>
+                <button
+                  onClick={() => setShowNewSessionForm(false)}
+                  className={`text-sm px-3 py-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-200 text-gray-600'}`}
+                >
+                  {t.cancel || 'Cancel'}
+                </button>
+              </div>
+              <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                {t.selectAppointmentForSession || 'Select an upcoming appointment to create a telehealth session:'}
+              </p>
+              <div className="space-y-3">
+                {availableAppointments.length === 0 ? (
+                  <p className={`text-sm text-center py-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    {t.noAppointmentsAvailable || 'No upcoming appointments available for telehealth sessions.'}
+                  </p>
+                ) : (
+                  availableAppointments.map((appointment) => (
+                    <div
+                      key={appointment.id}
+                      className={`flex items-center justify-between p-4 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/30 hover:bg-slate-800/50' : 'bg-gray-100/30 hover:bg-gray-200/50'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
+                          <Calendar className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {getPatientName(appointment.patient_id)}
+                          </p>
+                          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {formatDate(appointment.start_time)} at {formatTime(appointment.start_time)}
+                            {appointment.duration_minutes && ` · ${appointment.duration_minutes} ${t.min || 'min'}`}
+                            {appointment.appointment_type && ` · ${appointment.appointment_type}`}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleCreateSession(appointment.id, appointment.patient_id, appointment.provider_id)}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg text-white text-sm font-medium transition-colors"
+                      >
+                        <Video className="w-4 h-4" />
+                        {t.createSession || 'Create Session'}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
@@ -386,7 +457,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       )}
 
           {/* Empty State */}
-          {sessions.length === 0 && (
+          {sessions.length === 0 && !showNewSessionForm && (
             <div className={`bg-gradient-to-br rounded-xl p-12 border text-center ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                 <Video className="w-10 h-10 text-white" />
