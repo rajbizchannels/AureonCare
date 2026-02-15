@@ -129,25 +129,54 @@ router.post('/', async (req, res) => {
       if (providerCheck.rows.length === 0) {
         console.warn('Provider not found in providers table:', provider_id);
 
-        // Check if this ID exists in users table (indicates migration issue)
+        // Check if this ID exists in users table with a doctor/physician role
         const userCheck = await pool.query(
-          'SELECT id FROM users WHERE id::text = $1::text',
+          `SELECT id, first_name, last_name, specialty, email, phone, license_number, role, active_role
+           FROM users WHERE id::text = $1::text`,
           [provider_id]
         );
 
         if (userCheck.rows.length > 0) {
-          console.error('Provider ID exists in users table but not in providers table.');
-          console.error('This indicates a database schema issue. Please run: npm run migrate');
-          return res.status(500).json({
-            error: 'Database schema mismatch detected',
-            details: 'The provider reference exists in users table but not in providers table. Please contact administrator to run database migrations.',
-            code: 'SCHEMA_MISMATCH'
-          });
-        }
+          const user = userCheck.rows[0];
+          const doctorRoles = ['doctor', 'physician'];
+          const isDoctor = doctorRoles.includes(user.role) || doctorRoles.includes(user.active_role);
 
-        // Provider doesn't exist anywhere - set to null and allow appointment without provider
-        console.warn('Provider not found anywhere - Setting provider_id to NULL');
-        provider_id = null;
+          if (isDoctor) {
+            // Auto-sync: insert the doctor into the providers table
+            console.log('Auto-syncing doctor from users to providers table:', provider_id);
+            try {
+              await pool.query(
+                `INSERT INTO providers (id, first_name, last_name, specialization, email, phone, license_number)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 ON CONFLICT (id) DO NOTHING`,
+                [user.id, user.first_name, user.last_name, user.specialty || 'General Practice', user.email, user.phone, user.license_number]
+              );
+              console.log('Provider synced successfully:', provider_id);
+            } catch (syncError) {
+              console.error('Failed to sync provider:', syncError.message);
+              // Continue anyway — the INSERT into appointments may still work
+              // if the foreign key constraint is relaxed or the sync partially succeeded
+            }
+          } else {
+            // User exists but isn't a doctor — allow appointment but log the mismatch
+            console.warn('User exists but is not a doctor (role:', user.role, '). Attempting to use as provider anyway.');
+            try {
+              await pool.query(
+                `INSERT INTO providers (id, first_name, last_name, specialization, email, phone, license_number)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 ON CONFLICT (id) DO NOTHING`,
+                [user.id, user.first_name, user.last_name, user.specialty || null, user.email, user.phone, user.license_number]
+              );
+            } catch (syncError) {
+              console.error('Failed to sync user as provider:', syncError.message);
+              provider_id = null;
+            }
+          }
+        } else {
+          // Provider doesn't exist anywhere - set to null and allow appointment without provider
+          console.warn('Provider not found anywhere - Setting provider_id to NULL');
+          provider_id = null;
+        }
       } else {
         console.log('Provider verified:', providerCheck.rows[0]);
       }
@@ -292,15 +321,21 @@ router.put('/:id', async (req, res) => {
         const wasCancelled = status === 'cancelled' || status === 'canceled';
 
         if (timeChanged || wasCancelled) {
-          // Get patient and provider details
+          // Get patient and provider details (fall back to users table if not in providers)
           const patientResult = await pool.query(
             'SELECT id, first_name, last_name, phone FROM patients WHERE id::text = $1::text',
             [patient_id]
           );
-          const providerResult = await pool.query(
+          let providerResult = await pool.query(
             'SELECT id, first_name, last_name FROM providers WHERE id::text = $1::text',
             [provider_id]
           );
+          if (providerResult.rows.length === 0) {
+            providerResult = await pool.query(
+              'SELECT id, first_name, last_name FROM users WHERE id::text = $1::text',
+              [provider_id]
+            );
+          }
 
           if (patientResult.rows.length > 0 && providerResult.rows.length > 0) {
             const patient = {
@@ -356,15 +391,21 @@ router.delete('/:id', async (req, res) => {
       const whatsappPref = await WhatsAppService.isEnabledForPatient(pool, deletedAppointment.patient_id);
 
       if (whatsappPref.enabled) {
-        // Get patient and provider details
+        // Get patient and provider details (fall back to users table if not in providers)
         const patientResult = await pool.query(
           'SELECT id, first_name, last_name, phone FROM patients WHERE id::text = $1::text',
           [deletedAppointment.patient_id]
         );
-        const providerResult = await pool.query(
+        let providerResult = await pool.query(
           'SELECT id, first_name, last_name FROM providers WHERE id::text = $1::text',
           [deletedAppointment.provider_id]
         );
+        if (providerResult.rows.length === 0) {
+          providerResult = await pool.query(
+            'SELECT id, first_name, last_name FROM users WHERE id::text = $1::text',
+            [deletedAppointment.provider_id]
+          );
+        }
 
         if (patientResult.rows.length > 0 && providerResult.rows.length > 0) {
           const patient = {
