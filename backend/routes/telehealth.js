@@ -156,7 +156,10 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating telehealth session:', error);
-    res.status(500).json({ error: 'Failed to create telehealth session: ' + error.message });
+    // Use 422 for configuration errors, 500 for server errors
+    const isConfigError = error.message?.includes('not configured') || error.message?.includes('credentials');
+    const statusCode = isConfigError ? 422 : 500;
+    res.status(statusCode).json({ error: error.message });
   }
 });
 

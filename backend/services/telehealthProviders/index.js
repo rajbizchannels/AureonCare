@@ -97,26 +97,69 @@ class TelehealthProviderManager {
   }
 
   /**
+   * Validate that a provider has the required credentials configured
+   */
+  validateProviderCredentials(providerType, config) {
+    switch (providerType) {
+      case 'zoom': {
+        const hasJwt = config.api_key && config.api_secret;
+        const hasOAuth = config.client_id && config.client_secret;
+        if (!hasJwt && !hasOAuth) {
+          throw new Error(
+            'Zoom is enabled but API credentials are not configured. ' +
+            'Please add your Zoom API Key & Secret (or Client ID & Secret) in Admin Panel > Telehealth Settings.'
+          );
+        }
+        break;
+      }
+      case 'google_meet':
+        if (!config.client_id || !config.client_secret) {
+          throw new Error(
+            'Google Meet is enabled but API credentials are not configured. ' +
+            'Please add your Google Client ID & Secret in Admin Panel > Telehealth Settings.'
+          );
+        }
+        break;
+      case 'webex':
+        if (!config.api_key) {
+          throw new Error(
+            'Webex is enabled but the Access Token is not configured. ' +
+            'Please add your Webex Access Token in Admin Panel > Telehealth Settings.'
+          );
+        }
+        break;
+    }
+  }
+
+  /**
    * Create a meeting using the specified or default provider
    */
   async createMeeting(sessionData, providerType = null) {
-    try {
-      // If no provider specified, use the active one
-      if (!providerType) {
-        const activeProvider = await this.getActiveProvider();
-        if (!activeProvider.is_enabled) {
-          // Fall back to default AureonCare meeting
-          return this.createDefaultMeeting(sessionData);
-        }
-        providerType = activeProvider.provider_type;
+    // If no provider specified, use the active one
+    if (!providerType) {
+      const activeProvider = await this.getActiveProvider();
+      if (!activeProvider.is_enabled) {
+        // No provider enabled - return clear error
+        throw new Error(
+          'No telehealth provider is enabled. ' +
+          'Please enable and configure Zoom, Google Meet, or Webex in Admin Panel > Telehealth Settings.'
+        );
       }
+      providerType = activeProvider.provider_type;
+    }
 
+    // Validate credentials before attempting to create the meeting
+    const config = await this.getProviderConfig(providerType);
+    if (config) {
+      this.validateProviderCredentials(providerType, config);
+    }
+
+    try {
       const provider = await this.getProvider(providerType);
       return await provider.createMeeting(sessionData);
     } catch (error) {
       console.error('Error creating telehealth meeting:', error);
-      // Fall back to default if provider fails
-      return this.createDefaultMeeting(sessionData);
+      throw error;
     }
   }
 
