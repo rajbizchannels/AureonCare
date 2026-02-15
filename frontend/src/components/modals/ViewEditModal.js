@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Pill } from 'lucide-react';
-import { formatDate, formatTime, formatCurrency } from '../../utils/formatters';
+import { formatDate, formatTime, formatCurrency, toLocalDateTimeString, toLocalDateString } from '../../utils/formatters';
 import EPrescribeModal from './ePrescribeModal';
 import { useApp } from '../../context/AppContext';
 import ConfirmationModal from './ConfirmationModal';
@@ -241,8 +241,8 @@ const ViewEditModal = ({
           const startDate = new Date(startTimeStr);
 
           if (!isNaN(startDate.getTime())) {
-            // Format date as YYYY-MM-DD
-            data.date = startDate.toISOString().split('T')[0];
+            // Format date as YYYY-MM-DD (use local date, not UTC)
+            data.date = toLocalDateString(startDate);
 
             // Format time as HH:MM in local timezone
             const hours = String(startDate.getHours()).padStart(2, '0');
@@ -419,8 +419,8 @@ const ViewEditModal = ({
           const startDate = new Date(startTime);
           const endDate = new Date(startDate.getTime() + (editData.duration || 30) * 60000);
 
-          appointmentData.start_time = startDate.toISOString().slice(0, 19).replace('T', ' ');
-          appointmentData.end_time = endDate.toISOString().slice(0, 19).replace('T', ' ');
+          appointmentData.start_time = toLocalDateTimeString(startDate);
+          appointmentData.end_time = toLocalDateTimeString(endDate);
           appointmentData.duration_minutes = editData.duration || 30;
           appointmentData.appointment_type = editData.type;
           appointmentData.patient_id = editData.patientId || editData.patient_id;
