@@ -82,11 +82,16 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     fetchAppointmentTypes();
   }, [api]);
 
-  // Set default provider to first available provider when users are loaded
+  // Set default provider to first available doctor/provider when users are loaded
   useEffect(() => {
     if (users && users.length > 0 && !formData.providerId) {
-      const firstProvider = users.find(u => u.role === 'physician' || u.role === 'doctor' || u.role === 'provider') || users[0];
-      setFormData(prev => ({ ...prev, providerId: firstProvider.id }));
+      const clinicalRoles = ['physician', 'doctor', 'provider'];
+      const firstProvider = users.find(u =>
+        clinicalRoles.includes(u.role) || clinicalRoles.includes(u.activeRole) || clinicalRoles.includes(u.active_role)
+      );
+      if (firstProvider) {
+        setFormData(prev => ({ ...prev, providerId: firstProvider.id }));
+      }
     }
   }, [users, formData.providerId]);
 
@@ -192,9 +197,10 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     }
   };
 
-  // Filter providers from users
+  // Filter providers from users - only show doctors/physicians/providers (not admin-only users)
+  const providerRoles = ['physician', 'doctor', 'provider'];
   const providers = users?.filter(u =>
-    u.role === 'physician' || u.role === 'doctor' || u.role === 'provider' || u.role === 'admin'
+    providerRoles.includes(u.role) || providerRoles.includes(u.activeRole) || providerRoles.includes(u.active_role)
   ) || [];
 
   return (
