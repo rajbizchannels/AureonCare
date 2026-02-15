@@ -231,12 +231,18 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   const handleStartTelehealth = async (appointmentId = null) => {
     setTelehealthLoading(true);
+
+    // Open a blank window synchronously to avoid popup blocker
+    // (browsers block window.open after async calls)
+    const meetingWindow = window.open('about:blank', '_blank');
+
     try {
       // Check if a telehealth provider is configured
       const settings = await api.getTelehealthSettings();
       const enabledProvider = settings?.find(p => p.is_enabled);
 
       if (!enabledProvider) {
+        if (meetingWindow) meetingWindow.close();
         addNotification('error', 'No telehealth provider configured. Please configure Zoom, Google Meet, or Webex in the Admin Panel.');
         return;
       }
@@ -245,7 +251,10 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       let selectedAppointmentId = appointmentId;
       if (!selectedAppointmentId && appointments.length > 0) {
         const upcoming = appointments
-          .filter(a => a.status !== 'cancelled' && a.status !== 'canceled' && a.status !== 'completed')
+          .filter(a => {
+            const s = (a.status || '').toLowerCase();
+            return s !== 'cancelled' && s !== 'canceled' && s !== 'completed';
+          })
           .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
         if (upcoming.length > 0) {
           selectedAppointmentId = upcoming[0].id;
@@ -264,16 +273,24 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
       const newSession = await api.createTelehealthSession(sessionData);
 
-      // Open the meeting URL
+      // Navigate the pre-opened window to the meeting URL
       const meetingUrl = newSession.meeting_url || newSession.meetingDetails?.meetingUrl;
-      if (meetingUrl) {
-        window.open(meetingUrl, '_blank');
+      if (meetingUrl && meetingWindow) {
+        meetingWindow.location.href = meetingUrl;
         addNotification('success', `Telehealth session started with ${patientData.first_name} ${patientData.last_name}`);
       } else {
-        addNotification('error', 'Session created but no meeting URL was returned.');
+        if (meetingWindow) meetingWindow.close();
+        if (meetingUrl) {
+          // Fallback: try opening directly if the pre-opened window was blocked
+          window.open(meetingUrl, '_blank');
+          addNotification('success', `Telehealth session started with ${patientData.first_name} ${patientData.last_name}`);
+        } else {
+          addNotification('error', 'Session created but no meeting URL was returned.');
+        }
       }
     } catch (error) {
       console.error('Error starting telehealth session:', error);
+      if (meetingWindow) meetingWindow.close();
       addNotification('error', 'Failed to start telehealth session: ' + (error.message || 'Unknown error'));
     } finally {
       setTelehealthLoading(false);
@@ -1270,7 +1287,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {appt.status !== 'Completed' && appt.status !== 'Cancelled' && appt.status !== 'cancelled' && appt.status !== 'canceled' && (
+                  {!['completed', 'cancelled', 'canceled'].includes((appt.status || '').toLowerCase()) && (
                     <button
                       onClick={() => handleStartTelehealth(appt.id)}
                       disabled={telehealthLoading}
@@ -1285,9 +1302,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                     </button>
                   )}
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    appt.status === 'Completed'
+                    (appt.status || '').toLowerCase() === 'completed'
                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : appt.status === 'Cancelled'
+                      : ['cancelled', 'canceled'].includes((appt.status || '').toLowerCase())
                       ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                       : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                   }`}>

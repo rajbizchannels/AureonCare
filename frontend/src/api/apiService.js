@@ -607,7 +607,10 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error('Failed to create telehealth session');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to create telehealth session');
+    }
     return response.json();
   },
   updateTelehealthSession: async (id, data) => {
