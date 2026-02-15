@@ -834,9 +834,12 @@ router.get('/slots/:providerId', async (req, res) => {
                 });
 
                 if (!hasConflict && !hasTimeOff) {
+                    // Format as local time strings to match system time
+                    const pad = (n) => String(n).padStart(2, '0');
+                    const fmtLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
                     slots.push({
-                        startTime: slotStart.toISOString(),
-                        endTime: slotEnd.toISOString(),
+                        startTime: fmtLocal(slotStart),
+                        endTime: fmtLocal(slotEnd),
                         available: true
                     });
                 }
