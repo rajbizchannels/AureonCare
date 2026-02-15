@@ -104,11 +104,11 @@ const AdminPanelView = ({
   setUsers,
   setShowForm,
   setEditingItem,
-  setCurrentView,
+  setCurrentView = () => {},
   api,
   addNotification,
-  setCurrentModule,
-  t,
+  setCurrentModule = () => {},
+  t = {},
 }) => {
   // ==================== CONTEXT ====================
   const { setPlanTier, updateUserPreferences, planTier, user } = useApp();
@@ -3490,12 +3490,6 @@ AdminPanelView.propTypes = {
   addNotification: PropTypes.func.isRequired,
   setCurrentModule: PropTypes.func,
   t: PropTypes.object,
-};
-
-AdminPanelView.defaultProps = {
-  t: {},
-  setCurrentView: () => {},
-  setCurrentModule: () => {},
 };
 
 export default React.memo(AdminPanelView);
