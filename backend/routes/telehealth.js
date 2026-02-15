@@ -102,6 +102,13 @@ router.post('/', async (req, res) => {
     const patient = patientResult.rows[0];
     const provider = providerResult.rows[0];
 
+    if (!patient) {
+      return res.status(404).json({ error: 'Patient not found with id: ' + patientId });
+    }
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found with id: ' + providerId });
+    }
+
     // Use TelehealthProviderManager to create meeting
     const manager = new TelehealthProviderManager(pool);
     const sessionData = {
