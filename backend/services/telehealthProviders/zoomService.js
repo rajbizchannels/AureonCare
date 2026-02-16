@@ -3,17 +3,27 @@ const jwt = require('jsonwebtoken');
 
 /**
  * Zoom Telehealth Integration Service
- * Handles creating and managing Zoom meetings for telehealth sessions
+ * Handles creating and managing Zoom meetings for telehealth sessions.
+ *
+ * Authentication priority:
+ *   1. Stored OAuth access token (from authorization code flow)
+ *   2. Refresh the token if expired
+ *   3. Server-to-Server OAuth (account_credentials grant)
+ *   4. Legacy JWT (api_key / api_secret) — deprecated by Zoom but kept for
+ *      backwards compatibility with existing deployments
  */
 
 class ZoomService {
   constructor(config) {
     this.config = config;
     this.baseUrl = 'https://api.zoom.us/v2';
+    // Cache the token in memory to reduce token requests
+    this._cachedToken = null;
+    this._tokenExpiresAt = 0;
   }
 
   /**
-   * Generate Zoom JWT token for API authentication
+   * Generate Zoom JWT token for API authentication (legacy)
    */
   generateToken() {
     if (!this.config.api_key || !this.config.api_secret) {
@@ -38,6 +48,11 @@ class ZoomService {
       throw new Error('Zoom Client ID and Secret are required for OAuth');
     }
 
+    // Return in-memory cached token if still valid (with 60s buffer)
+    if (this._cachedToken && Date.now() < this._tokenExpiresAt - 60000) {
+      return this._cachedToken;
+    }
+
     const settings = this.config.settings || {};
 
     // Use stored access token from OAuth authorization code flow if available and not expired
@@ -45,6 +60,8 @@ class ZoomService {
       const isExpired = settings.expires_at && Date.now() >= settings.expires_at;
 
       if (!isExpired) {
+        this._cachedToken = settings.access_token;
+        this._tokenExpiresAt = settings.expires_at || Date.now() + 3600000;
         return settings.access_token;
       }
 
@@ -52,6 +69,8 @@ class ZoomService {
       if (settings.refresh_token) {
         try {
           const refreshedToken = await this.refreshOAuthToken(settings.refresh_token);
+          this._cachedToken = refreshedToken;
+          this._tokenExpiresAt = Date.now() + 3500000; // ~58 min
           return refreshedToken;
         } catch (refreshError) {
           console.error('Failed to refresh Zoom OAuth token, falling back to account_credentials:', refreshError.message);
@@ -81,6 +100,8 @@ class ZoomService {
         }
       );
 
+      this._cachedToken = response.data.access_token;
+      this._tokenExpiresAt = Date.now() + (response.data.expires_in || 3600) * 1000;
       return response.data.access_token;
     } catch (error) {
       console.error('Error generating Zoom OAuth token:', error.response?.data || error.message);
@@ -112,21 +133,39 @@ class ZoomService {
   }
 
   /**
+   * Resolve a valid Bearer token using the best available auth method
+   */
+  async getToken() {
+    const settings = this.config.settings || {};
+    const hasOAuth = this.config.client_id && this.config.client_secret;
+    const hasJwt = this.config.api_key && this.config.api_secret;
+
+    // Prefer OAuth (covers both authorization-code & server-to-server flows)
+    if (hasOAuth && (settings.use_oauth !== false)) {
+      return this.generateOAuthToken();
+    }
+
+    if (hasJwt) {
+      return this.generateToken();
+    }
+
+    throw new Error('No valid Zoom credentials configured. Please configure OAuth or API credentials in the Admin Panel.');
+  }
+
+  /**
    * Create a Zoom meeting
    */
   async createMeeting(sessionData) {
     try {
-      const token = this.config.settings?.use_oauth
-        ? await this.generateOAuthToken()
-        : this.generateToken();
+      const token = await this.getToken();
 
       const userId = this.config.settings?.user_id || 'me';
       const meetingData = {
         topic: sessionData.topic || `Telehealth Session - ${sessionData.patientName}`,
-        type: 2, // Scheduled meeting
-        start_time: sessionData.startTime,
+        type: sessionData.instant ? 1 : 2, // 1 = instant, 2 = scheduled
+        start_time: sessionData.instant ? undefined : sessionData.startTime,
         duration: sessionData.duration || 30,
-        timezone: 'UTC',
+        timezone: sessionData.timezone || 'UTC',
         agenda: sessionData.agenda || 'Telehealth consultation',
         settings: {
           host_video: true,
@@ -158,7 +197,7 @@ class ZoomService {
         success: true,
         meetingId: response.data.id.toString(),
         meetingUrl: response.data.join_url,
-        startUrl: response.data.start_url, // For host
+        startUrl: response.data.start_url, // For host to launch directly
         password: response.data.password,
         roomId: response.data.id.toString(),
         provider: 'zoom',
@@ -171,13 +210,18 @@ class ZoomService {
   }
 
   /**
+   * Create an instant Zoom meeting (one-click launch)
+   */
+  async createInstantMeeting(sessionData) {
+    return this.createMeeting({ ...sessionData, instant: true });
+  }
+
+  /**
    * Get meeting details
    */
   async getMeeting(meetingId) {
     try {
-      const token = this.config.settings?.use_oauth
-        ? await this.generateOAuthToken()
-        : this.generateToken();
+      const token = await this.getToken();
 
       const response = await axios.get(
         `${this.baseUrl}/meetings/${meetingId}`,
@@ -203,11 +247,9 @@ class ZoomService {
    */
   async updateMeeting(meetingId, updates) {
     try {
-      const token = this.config.settings?.use_oauth
-        ? await this.generateOAuthToken()
-        : this.generateToken();
+      const token = await this.getToken();
 
-      const response = await axios.patch(
+      await axios.patch(
         `${this.baseUrl}/meetings/${meetingId}`,
         updates,
         {
@@ -233,9 +275,7 @@ class ZoomService {
    */
   async deleteMeeting(meetingId) {
     try {
-      const token = this.config.settings?.use_oauth
-        ? await this.generateOAuthToken()
-        : this.generateToken();
+      const token = await this.getToken();
 
       await axios.delete(
         `${this.baseUrl}/meetings/${meetingId}`,
@@ -261,9 +301,7 @@ class ZoomService {
    */
   async getMeetingRecordings(meetingId) {
     try {
-      const token = this.config.settings?.use_oauth
-        ? await this.generateOAuthToken()
-        : this.generateToken();
+      const token = await this.getToken();
 
       const response = await axios.get(
         `${this.baseUrl}/meetings/${meetingId}/recordings`,
@@ -284,6 +322,41 @@ class ZoomService {
         success: false,
         recordings: []
       };
+    }
+  }
+
+  /**
+   * Verify Zoom connection by fetching the current user profile.
+   * Used for one-click "Test Connection" in the Admin Panel.
+   */
+  async testConnection() {
+    try {
+      const token = await this.getToken();
+
+      const response = await axios.get(
+        `${this.baseUrl}/users/me`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      return {
+        success: true,
+        message: `Connected as ${response.data.first_name} ${response.data.last_name} (${response.data.email})`,
+        user: {
+          id: response.data.id,
+          email: response.data.email,
+          first_name: response.data.first_name,
+          last_name: response.data.last_name,
+          type: response.data.type, // 1=Basic, 2=Licensed, 3=On-Prem
+          account_id: response.data.account_id
+        }
+      };
+    } catch (error) {
+      console.error('Error testing Zoom connection:', error.response?.data || error.message);
+      throw new Error('Zoom connection test failed: ' + (error.response?.data?.message || error.message));
     }
   }
 }

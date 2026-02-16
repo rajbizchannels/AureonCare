@@ -152,6 +152,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({
       ...result.rows[0],
+      start_url: meetingResult.startUrl || null,
       meetingDetails: meetingResult
     });
   } catch (error) {

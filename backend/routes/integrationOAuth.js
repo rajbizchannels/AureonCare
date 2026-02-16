@@ -33,7 +33,7 @@ const OAUTH_CONFIGS = {
   zoom: {
     authUrl: 'https://zoom.us/oauth/authorize',
     tokenUrl: 'https://zoom.us/oauth/token',
-    scope: 'meeting:write meeting:read user:read',
+    scope: 'meeting:write meeting:read user:read recording:read',
   },
   google_meet: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
