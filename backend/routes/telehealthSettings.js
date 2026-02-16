@@ -198,7 +198,7 @@ router.get('/active/provider', async (req, res) => {
   }
 });
 
-// Test provider connection
+// Test provider connection (validates credentials against provider API)
 router.post('/:providerType/test', async (req, res) => {
   try {
     const { providerType } = req.params;
@@ -206,10 +206,20 @@ router.post('/:providerType/test', async (req, res) => {
     const pool = req.app.locals.pool;
 
     const manager = new TelehealthProviderManager(pool);
-
-    // Try to initialize the provider
     const provider = await manager.getProvider(providerType);
 
+    // Use provider-specific test if available (e.g., ZoomService.testConnection)
+    if (typeof provider.testConnection === 'function') {
+      const result = await provider.testConnection();
+      return res.json({
+        success: true,
+        message: result.message || `${providerType} connection test successful`,
+        provider: providerType,
+        details: result.user || null
+      });
+    }
+
+    // Fallback: just confirm the provider can be initialized
     res.json({
       success: true,
       message: `${providerType} connection test successful`,
@@ -221,6 +231,38 @@ router.post('/:providerType/test', async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// Create an instant Zoom meeting (one-click launch)
+router.post('/:providerType/instant-meeting', async (req, res) => {
+  try {
+    const { providerType } = req.params;
+    const { topic, duration, patientName, recordingEnabled } = req.body;
+    const TelehealthProviderManager = require('../services/telehealthProviders');
+    const pool = req.app.locals.pool;
+
+    const manager = new TelehealthProviderManager(pool);
+    const provider = await manager.getProvider(providerType);
+
+    if (typeof provider.createInstantMeeting !== 'function') {
+      return res.status(400).json({
+        error: `${providerType} does not support instant meetings`
+      });
+    }
+
+    const result = await provider.createInstantMeeting({
+      topic: topic || 'AureonCare Telehealth Session',
+      duration: duration || 30,
+      patientName: patientName || 'Patient',
+      recordingEnabled: recordingEnabled || false
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error creating instant meeting:', error);
+    const isConfigError = error.message?.includes('not configured') || error.message?.includes('credentials');
+    res.status(isConfigError ? 422 : 500).json({ error: error.message });
   }
 });
 
