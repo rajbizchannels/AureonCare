@@ -186,26 +186,58 @@ router.post('/', async (req, res) => {
       provider_id = null;
     }
 
-    // Check for scheduling conflicts with the same doctor
-    if (provider_id && start_time) {
-      const conflictCheck = await pool.query(
-        `SELECT a.id,
-                CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
-                CONCAT(p.first_name, ' ', p.last_name) as patient
-         FROM appointments a
-         LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
-         LEFT JOIN patients p ON a.patient_id::text = p.id::text
-         WHERE a.provider_id::text = $1::text
-           AND a.start_time = $2
-           AND a.status NOT IN ('cancelled', 'completed')`,
-        [provider_id, start_time]
-      );
+    // Check for scheduling conflicts (overlapping time ranges)
+    if (start_time && end_time) {
+      // Check provider conflict
+      if (provider_id) {
+        const providerConflict = await pool.query(
+          `SELECT a.id,
+                  CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+                  CONCAT(p.first_name, ' ', p.last_name) as patient,
+                  a.start_time, a.end_time
+           FROM appointments a
+           LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+           LEFT JOIN patients p ON a.patient_id::text = p.id::text
+           WHERE a.provider_id::text = $1::text
+             AND a.status NOT IN ('cancelled', 'canceled', 'completed')
+             AND a.start_time < $3
+             AND a.end_time > $2`,
+          [provider_id, start_time, end_time]
+        );
 
-      if (conflictCheck.rows.length > 0) {
-        const conflict = conflictCheck.rows[0];
-        return res.status(409).json({
-          error: `Doctor ${conflict.doctor} already has an appointment with ${conflict.patient} at this time`
-        });
+        if (providerConflict.rows.length > 0) {
+          const conflict = providerConflict.rows[0];
+          return res.status(409).json({
+            error: `Provider ${conflict.doctor || 'selected'} is busy at the selected time (already has an appointment with ${conflict.patient || 'another patient'}).`,
+            conflictType: 'provider'
+          });
+        }
+      }
+
+      // Check patient conflict
+      if (patient_id) {
+        const patientConflict = await pool.query(
+          `SELECT a.id,
+                  CONCAT(p.first_name, ' ', p.last_name) as patient,
+                  CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+                  a.start_time, a.end_time
+           FROM appointments a
+           LEFT JOIN patients p ON a.patient_id::text = p.id::text
+           LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+           WHERE a.patient_id::text = $1::text
+             AND a.status NOT IN ('cancelled', 'canceled', 'completed')
+             AND a.start_time < $3
+             AND a.end_time > $2`,
+          [patient_id, start_time, end_time]
+        );
+
+        if (patientConflict.rows.length > 0) {
+          const conflict = patientConflict.rows[0];
+          return res.status(409).json({
+            error: `Patient ${conflict.patient || 'selected'} already has an appointment booked at the selected time${conflict.doctor ? ` (with ${conflict.doctor})` : ''}.`,
+            conflictType: 'patient'
+          });
+        }
       }
     }
 
@@ -293,26 +325,59 @@ router.put('/:id', async (req, res) => {
 
     const oldAppointment = oldAppointmentResult.rows[0];
 
-    // Check for scheduling conflicts with the same doctor (excluding current appointment)
-    const conflictCheck = await pool.query(
-      `SELECT a.id,
-              CONCAT(u.first_name, ' ', u.last_name) as doctor,
-              CONCAT(p.first_name, ' ', p.last_name) as patient
-       FROM appointments a
-       LEFT JOIN users u ON a.provider_id::text = u.id::text
-       LEFT JOIN patients p ON a.patient_id::text = p.id::text
-       WHERE a.provider_id::text = $1::text
-         AND a.start_time = $2
-         AND a.id::text != $3::text
-         AND a.status NOT IN ('cancelled', 'completed')`,
-      [provider_id, start_time, req.params.id]
-    );
+    // Check for scheduling conflicts (overlapping time ranges, excluding current appointment)
+    if (start_time && end_time) {
+      // Check provider conflict
+      if (provider_id) {
+        const providerConflict = await pool.query(
+          `SELECT a.id,
+                  CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+                  CONCAT(p.first_name, ' ', p.last_name) as patient
+           FROM appointments a
+           LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+           LEFT JOIN patients p ON a.patient_id::text = p.id::text
+           WHERE a.provider_id::text = $1::text
+             AND a.id::text != $4::text
+             AND a.status NOT IN ('cancelled', 'canceled', 'completed')
+             AND a.start_time < $3
+             AND a.end_time > $2`,
+          [provider_id, start_time, end_time, req.params.id]
+        );
 
-    if (conflictCheck.rows.length > 0) {
-      const conflict = conflictCheck.rows[0];
-      return res.status(409).json({
-        error: `Doctor ${conflict.doctor} already has an appointment with ${conflict.patient} at this time`
-      });
+        if (providerConflict.rows.length > 0) {
+          const conflict = providerConflict.rows[0];
+          return res.status(409).json({
+            error: `Provider ${conflict.doctor || 'selected'} is busy at the selected time (already has an appointment with ${conflict.patient || 'another patient'}).`,
+            conflictType: 'provider'
+          });
+        }
+      }
+
+      // Check patient conflict
+      if (patient_id) {
+        const patientConflict = await pool.query(
+          `SELECT a.id,
+                  CONCAT(p.first_name, ' ', p.last_name) as patient,
+                  CONCAT(pr.first_name, ' ', pr.last_name) as doctor
+           FROM appointments a
+           LEFT JOIN patients p ON a.patient_id::text = p.id::text
+           LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+           WHERE a.patient_id::text = $1::text
+             AND a.id::text != $4::text
+             AND a.status NOT IN ('cancelled', 'canceled', 'completed')
+             AND a.start_time < $3
+             AND a.end_time > $2`,
+          [patient_id, start_time, end_time, req.params.id]
+        );
+
+        if (patientConflict.rows.length > 0) {
+          const conflict = patientConflict.rows[0];
+          return res.status(409).json({
+            error: `Patient ${conflict.patient || 'selected'} already has an appointment booked at the selected time${conflict.doctor ? ` (with ${conflict.doctor})` : ''}.`,
+            conflictType: 'patient'
+          });
+        }
+      }
     }
 
     const result = await pool.query(
