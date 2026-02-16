@@ -1532,6 +1532,19 @@ const api = {
     return response.json();
   },
 
+  // Zoom — create an instant meeting (one-click launch)
+  createInstantZoomMeeting: async ({ topic, duration, patientName, recordingEnabled } = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/zoom/instant-meeting`, {
+      method: 'POST',
+      body: JSON.stringify({ topic, duration, patientName, recordingEnabled })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to create instant Zoom meeting');
+    }
+    return response.json();
+  },
+
   // Vendor Integration Settings (Surescripts, Labcorp, Optum)
   getVendorIntegrationSettings: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings`);

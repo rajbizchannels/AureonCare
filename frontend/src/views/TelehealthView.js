@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft, Settings } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft, Settings, Zap } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
@@ -16,6 +16,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
   const [checkingProvider, setCheckingProvider] = useState(true);
   const [localAppointments, setLocalAppointments] = useState([]);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [launchingZoom, setLaunchingZoom] = useState(false);
 
   // Confirmation modal states
   const [showCreateConfirmation, setShowCreateConfirmation] = useState(false);
@@ -116,8 +117,17 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       };
 
       const newSession = await api.createTelehealthSession(sessionData);
+
+      // If Zoom is active and we got a start_url, offer to launch immediately
+      if (isZoomActive && (newSession.start_url || newSession.meetingDetails?.startUrl)) {
+        const startUrl = newSession.start_url || newSession.meetingDetails?.startUrl;
+        window.open(startUrl, '_blank', 'noopener,noreferrer');
+        addNotification('success', 'Zoom session created and launched in a new tab');
+      } else {
+        addNotification('appointment', t.telehealthSessionCreated || 'Telehealth session created successfully');
+      }
+
       setSessions([newSession, ...sessions]);
-      addNotification('appointment', t.telehealthSessionCreated || 'Telehealth session created successfully');
       setShowNewSessionForm(false);
     } catch (error) {
       console.error('Error creating session:', error);
@@ -137,7 +147,9 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     try {
       const session = sessions.find(s => s.id === pendingJoinSessionId);
       if (session && session.meeting_url) {
-        window.open(session.meeting_url, '_blank');
+        // For Zoom sessions, use start_url if available (host link), otherwise join_url
+        const launchUrl = session.start_url || session.meeting_url;
+        window.open(launchUrl, '_blank', 'noopener,noreferrer');
         await api.updateTelehealthSession(pendingJoinSessionId, {
           sessionStatus: 'in-progress',
           startTime: new Date().toISOString()
@@ -149,6 +161,33 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       addNotification('alert', t.failedToJoinSession || 'Failed to join session');
     }
   };
+
+  /**
+   * Launch a quick instant Zoom meeting (one-click from the telehealth module)
+   */
+  const handleLaunchInstantZoom = useCallback(async () => {
+    try {
+      setLaunchingZoom(true);
+      addNotification('info', 'Creating instant Zoom meeting...');
+      const result = await api.createInstantZoomMeeting({
+        topic: 'AureonCare Telehealth Session',
+        duration: 30,
+        recordingEnabled: false
+      });
+      if (result.startUrl) {
+        window.open(result.startUrl, '_blank', 'noopener,noreferrer');
+        addNotification('success', 'Zoom meeting launched in a new tab');
+      } else if (result.meetingUrl) {
+        window.open(result.meetingUrl, '_blank', 'noopener,noreferrer');
+        addNotification('success', 'Zoom meeting launched in a new tab');
+      }
+    } catch (error) {
+      console.error('Failed to create instant Zoom meeting:', error);
+      addNotification('alert', error.message || 'Failed to create instant Zoom meeting');
+    } finally {
+      setLaunchingZoom(false);
+    }
+  }, [api, addNotification]);
 
   const getUpcomingSessions = () => {
     return sessions.filter(s =>
@@ -185,6 +224,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     return patient ? `${patient.first_name} ${patient.last_name}` : (t.unknownPatient || 'Unknown Patient');
   };
 
+  const isZoomActive = activeProvider?.provider_type === 'zoom';
   const upcomingSessions = getUpcomingSessions();
   const recentSessions = getRecentSessions();
   const availableAppointments = getAvailableAppointments();
@@ -209,9 +249,12 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         }}
         onConfirm={handleActualCreateSession}
         title="Create Telehealth Session"
-        message="Are you sure you want to create this telehealth session? This will generate a meeting link for the appointment."
+        message={isZoomActive
+          ? "This will create a Zoom meeting and launch it in a new tab. The patient will receive a join link."
+          : "Are you sure you want to create this telehealth session? This will generate a meeting link for the appointment."
+        }
         type="confirm"
-        confirmText="Create Session"
+        confirmText={isZoomActive ? "Create & Launch Zoom" : "Create Session"}
         cancelText="Cancel"
       />
 
@@ -245,15 +288,28 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
             {t.videoConsultations || 'Video Consultations'}
           </h2>
         </div>
-        {/* Only show New Session button if provider is configured */}
+        {/* Action buttons when provider is configured */}
         {!checkingProvider && activeProvider && (
-          <button
-            onClick={() => setShowNewSessionForm(!showNewSessionForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg text-white font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            {t.newSession || 'New Session'}
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Instant Zoom meeting button (only when Zoom is the active provider) */}
+            {isZoomActive && (
+              <button
+                onClick={handleLaunchInstantZoom}
+                disabled={launchingZoom}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white font-medium transition-all shadow-sm disabled:opacity-60"
+              >
+                <Zap className="w-4 h-4" />
+                {launchingZoom ? 'Launching...' : 'Instant Zoom'}
+              </button>
+            )}
+            <button
+              onClick={() => setShowNewSessionForm(!showNewSessionForm)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg text-white font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              {t.newSession || 'New Session'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -294,19 +350,28 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         <>
           {/* Active Provider Info */}
           <div className={`rounded-lg border p-4 ${theme === 'dark' ? 'bg-green-500/10 border-green-500/30' : 'bg-green-50 border-green-200'}`}>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
-                  Active Provider:
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
+                    Active Provider:
+                  </span>
+                </div>
+                <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {activeProvider.provider_type === 'zoom' && 'Zoom'}
+                  {activeProvider.provider_type === 'google_meet' && 'Google Meet'}
+                  {activeProvider.provider_type === 'webex' && 'Webex'}
+                  {activeProvider.provider_type === 'aureoncare' && 'AureonCare (Default)'}
                 </span>
               </div>
-              <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {activeProvider.provider_type === 'zoom' && 'Zoom'}
-                {activeProvider.provider_type === 'google_meet' && 'Google Meet'}
-                {activeProvider.provider_type === 'webex' && 'Webex'}
-                {activeProvider.provider_type === 'aureoncare' && 'AureonCare (Default)'}
-              </span>
+              {isZoomActive && (
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+                }`}>
+                  One-click Zoom enabled
+                </span>
+              )}
             </div>
           </div>
 
@@ -324,6 +389,16 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                   {t.cancel || 'Cancel'}
                 </button>
               </div>
+              {isZoomActive && (
+                <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
+                  theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'
+                }`}>
+                  <Video className="w-4 h-4 text-blue-500" />
+                  <p className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
+                    Zoom is active. Sessions will be created as Zoom meetings and launch automatically.
+                  </p>
+                </div>
+              )}
               <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                 {t.selectAppointmentForSession || 'Select an upcoming appointment to create a telehealth session:'}
               </p>
@@ -359,10 +434,14 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                       </div>
                       <button
                         onClick={() => handleCreateSession(appointment.id, appointment.patient_id, appointment.provider_id)}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg text-white text-sm font-medium transition-colors"
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors ${
+                          isZoomActive
+                            ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                            : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600'
+                        }`}
                       >
                         <Video className="w-4 h-4" />
-                        {t.createSession || 'Create Session'}
+                        {isZoomActive ? 'Create & Launch Zoom' : (t.createSession || 'Create Session')}
                       </button>
                     </div>
                   ))
@@ -411,7 +490,11 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                 className={`flex items-center justify-between p-4 rounded-lg transition-colors ${theme === 'dark' ? 'bg-slate-800/30 hover:bg-slate-800/50' : 'bg-gray-100/30 hover:bg-gray-200/50'}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    session.provider_type === 'zoom'
+                      ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                      : 'bg-gradient-to-br from-green-500 to-emerald-500'
+                  }`}>
                     <Video className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -421,6 +504,11 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                       {formatDate(session.start_time)} at {formatTime(session.start_time)}
                       {session.duration_minutes && ` · ${session.duration_minutes} ${t.min || 'min'}`}
+                      {session.provider_type && (
+                        <span className={`ml-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                          via {session.provider_type === 'zoom' ? 'Zoom' : session.provider_type === 'google_meet' ? 'Google Meet' : session.provider_type}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -434,10 +522,14 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                   </span>
                   <button
                     onClick={() => handleJoinSession(session.id)}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white text-sm font-medium transition-colors"
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors ${
+                      session.provider_type === 'zoom'
+                        ? 'bg-blue-500 hover:bg-blue-600'
+                        : 'bg-green-500 hover:bg-green-600'
+                    }`}
                   >
                     <Play className="w-4 h-4" />
-                    {t.join || 'Join'}
+                    {session.provider_type === 'zoom' ? 'Launch Zoom' : (t.join || 'Join')}
                   </button>
                 </div>
               </div>
@@ -493,21 +585,42 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
           {/* Empty State */}
           {sessions.length === 0 && !showNewSessionForm && (
             <div className={`bg-gradient-to-br rounded-xl p-12 border text-center ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+              <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${
+                isZoomActive
+                  ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                  : 'bg-gradient-to-br from-green-500 to-emerald-500'
+              }`}>
                 <Video className="w-10 h-10 text-white" />
               </div>
               <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {t.noTelehealthSessionsYet || 'No Telehealth Sessions Yet'}
               </h3>
               <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                {t.createFirstTelehealthSession || 'Create your first telehealth session to start video consultations with patients'}
+                {isZoomActive
+                  ? 'Create your first Zoom telehealth session or launch an instant meeting'
+                  : (t.createFirstTelehealthSession || 'Create your first telehealth session to start video consultations with patients')
+                }
               </p>
-              <button
-                onClick={() => setShowNewSessionForm(true)}
-                className="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-colors text-white"
-              >
-                {t.createFirstSession || 'Create First Session'}
-              </button>
+              <div className="flex items-center justify-center gap-3">
+                {isZoomActive && (
+                  <button
+                    onClick={handleLaunchInstantZoom}
+                    disabled={launchingZoom}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-medium transition-all text-white shadow-sm disabled:opacity-60"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      {launchingZoom ? 'Launching...' : 'Instant Zoom Meeting'}
+                    </div>
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowNewSessionForm(true)}
+                  className="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-colors text-white"
+                >
+                  {t.createFirstSession || 'Create First Session'}
+                </button>
+              </div>
             </div>
           )}
         </>
