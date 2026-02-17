@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, Key, User } from 'lucide-react';
+import { X, Key, User, Eye, EyeOff, Zap } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 
 /**
  * CredentialModal - Themed modal for collecting OAuth credentials
  * Replaces browser prompts with a professional UI
  * Supports both create and edit modes
+ * Displays saved credentials in edit mode with show/hide toggle
+ * Offers OneClick Integration for telehealth OAuth providers
  */
+
+const ONECLICK_PROVIDERS = ['zoom', 'google_meet', 'webex'];
+
 const CredentialModal = ({
   isOpen,
   onClose,
@@ -15,15 +20,20 @@ const CredentialModal = ({
   providerName,
   theme,
   credentialType = 'oauth',
-  existingCredentials = null // For edit mode
+  existingCredentials = null, // For edit mode
+  onOneClickIntegration = null, // Callback for OneClick OAuth flow
 }) => {
   const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [errors, setErrors] = useState({});
+  const [showSecret, setShowSecret] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const isEditMode = Boolean(existingCredentials);
+  const isOneClickSupported = credentialType === 'oauth' &&
+    ONECLICK_PROVIDERS.includes(providerName?.toLowerCase());
 
   // Log modal open
   useEffect(() => {
@@ -52,6 +62,14 @@ const CredentialModal = ({
       }
     }
   }, [existingCredentials, credentialType]);
+
+  // Reset visibility state when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShowSecret(false);
+      setShowApiKey(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -94,6 +112,8 @@ const CredentialModal = ({
     setClientSecret('');
     setApiKey('');
     setErrors({});
+    setShowSecret(false);
+    setShowApiKey(false);
   };
 
   const handleClose = () => {
@@ -108,6 +128,8 @@ const CredentialModal = ({
     setClientSecret('');
     setApiKey('');
     setErrors({});
+    setShowSecret(false);
+    setShowApiKey(false);
     onClose();
   };
 
@@ -118,18 +140,24 @@ const CredentialModal = ({
         clientIdLabel: 'Client ID',
         clientSecretLabel: 'Client Secret',
         instructions: 'Get these credentials from the Zoom App Marketplace: marketplace.zoom.us',
+        oneClickLabel: 'Connect with Zoom',
+        oneClickDescription: 'Authorize directly through Zoom OAuth to connect your account in one click.',
       },
       google_meet: {
         title: 'Google Meet OAuth Credentials',
         clientIdLabel: 'Client ID',
         clientSecretLabel: 'Client Secret',
         instructions: 'Create credentials at Google Cloud Console: console.cloud.google.com/apis/credentials',
+        oneClickLabel: 'Connect with Google',
+        oneClickDescription: 'Authorize directly through Google OAuth to connect your account in one click.',
       },
       webex: {
         title: 'Cisco Webex OAuth Credentials',
         clientIdLabel: 'Client ID',
         clientSecretLabel: 'Client Secret',
         instructions: 'Register your app at: developer.webex.com',
+        oneClickLabel: 'Connect with Webex',
+        oneClickDescription: 'Authorize directly through Webex OAuth to connect your account in one click.',
       },
       google_drive: {
         title: 'Google Drive OAuth Credentials',
@@ -215,6 +243,80 @@ const CredentialModal = ({
             </p>
           </div>
 
+          {/* Saved Credentials Display (edit mode) */}
+          {isEditMode && credentialType === 'oauth' && existingCredentials?.client_id && (
+            <div className={`p-4 rounded-lg ${
+              theme === 'dark' ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200'
+            }`}>
+              <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
+                Current Saved Credentials
+              </p>
+              <div className="space-y-1">
+                <p className={`text-xs ${theme === 'dark' ? 'text-green-400/80' : 'text-green-600'}`}>
+                  Client ID: <span className="font-mono">{existingCredentials.client_id}</span>
+                </p>
+                <p className={`text-xs ${theme === 'dark' ? 'text-green-400/80' : 'text-green-600'}`}>
+                  Client Secret: <span className="font-mono">
+                    {showSecret
+                      ? existingCredentials.client_secret
+                      : '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSecret(!showSecret)}
+                    className={`ml-2 inline-flex items-center ${
+                      theme === 'dark' ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-800'
+                    }`}
+                    aria-label={showSecret ? 'Hide secret' : 'Show secret'}
+                  >
+                    {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* OneClick Integration Option (telehealth OAuth providers) */}
+          {isOneClickSupported && onOneClickIntegration && (
+            <div className={`p-4 rounded-lg ${
+              theme === 'dark' ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50 border border-purple-200'
+            }`}>
+              <div className="flex items-start gap-3">
+                <Zap className={`w-5 h-5 mt-0.5 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} />
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-purple-300' : 'text-purple-800'}`}>
+                    OneClick Integration
+                  </p>
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-purple-400/80' : 'text-purple-600'}`}>
+                    {config.oneClickDescription}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOneClickIntegration(providerName?.toLowerCase());
+                      handleClose();
+                    }}
+                    className="mt-3 w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Zap className="w-4 h-4" />
+                    {config.oneClickLabel || 'Connect Now'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Separator when OneClick is available */}
+          {isOneClickSupported && onOneClickIntegration && (
+            <div className="flex items-center gap-3">
+              <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`} />
+              <span className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                OR ENTER MANUALLY
+              </span>
+              <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`} />
+            </div>
+          )}
+
           {credentialType === 'oauth' ? (
             <>
               {/* Client ID */}
@@ -260,19 +362,29 @@ const CredentialModal = ({
                     theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
                   }`} />
                   <input
-                    type="password"
+                    type={showSecret ? 'text' : 'password'}
                     value={clientSecret}
                     onChange={(e) => {
                       setClientSecret(e.target.value);
                       setErrors({ ...errors, clientSecret: null });
                     }}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       theme === 'dark'
                         ? 'bg-slate-800 border-slate-700 text-white'
                         : 'bg-white border-gray-300 text-gray-900'
                     } ${errors.clientSecret ? 'border-red-500' : ''}`}
                     placeholder="Enter client secret"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecret(!showSecret)}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 ${
+                      theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                    aria-label={showSecret ? 'Hide secret' : 'Show secret'}
+                  >
+                    {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
                 {errors.clientSecret && (
                   <p className="mt-1 text-sm text-red-500">{errors.clientSecret}</p>
@@ -293,19 +405,29 @@ const CredentialModal = ({
                     theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
                   }`} />
                   <input
-                    type="password"
+                    type={showApiKey ? 'text' : 'password'}
                     value={apiKey}
                     onChange={(e) => {
                       setApiKey(e.target.value);
                       setErrors({ ...errors, apiKey: null });
                     }}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       theme === 'dark'
                         ? 'bg-slate-800 border-slate-700 text-white'
                         : 'bg-white border-gray-300 text-gray-900'
                     } ${errors.apiKey ? 'border-red-500' : ''}`}
                     placeholder="Enter API key"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 ${
+                      theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                    aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
+                  >
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
                 {errors.apiKey && (
                   <p className="mt-1 text-sm text-red-500">{errors.apiKey}</p>
@@ -375,6 +497,7 @@ CredentialModal.propTypes = {
   theme: PropTypes.string.isRequired,
   credentialType: PropTypes.oneOf(['oauth', 'api_key']),
   existingCredentials: PropTypes.object,
+  onOneClickIntegration: PropTypes.func,
 };
 
 export default CredentialModal;
