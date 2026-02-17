@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft, Settings, Zap } from 'lucide-react';
+import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft, Settings, Zap, X, AlertCircle } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
@@ -23,6 +23,9 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
   const [showJoinConfirmation, setShowJoinConfirmation] = useState(false);
   const [pendingCreateData, setPendingCreateData] = useState(null);
   const [pendingJoinSessionId, setPendingJoinSessionId] = useState(null);
+
+  // Error popup state
+  const [zoomError, setZoomError] = useState(null);
 
   const { logViewAccess } = useAudit();
 
@@ -131,7 +134,15 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       setShowNewSessionForm(false);
     } catch (error) {
       console.error('Error creating session:', error);
-      addNotification('alert', t.failedToCreateTelehealthSession || 'Failed to create telehealth session');
+      const msg = error.message || '';
+      const isCredentialError = msg.includes('credentials') || msg.includes('not configured') || msg.includes('OAuth') || msg.includes('Client ID');
+      setZoomError({
+        title: 'Telehealth Session Error',
+        message: isCredentialError
+          ? 'Zoom credentials are not configured or have expired. Please configure your Zoom OAuth credentials in the Admin Panel.'
+          : (msg || 'Failed to create telehealth session. Please try again.'),
+        isCredentialError
+      });
     }
   };
 
@@ -183,7 +194,15 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       }
     } catch (error) {
       console.error('Failed to create instant Zoom meeting:', error);
-      addNotification('alert', error.message || 'Failed to create instant Zoom meeting');
+      const msg = error.message || '';
+      const isCredentialError = msg.includes('credentials') || msg.includes('not configured') || msg.includes('OAuth') || msg.includes('Client ID');
+      setZoomError({
+        title: 'Zoom Meeting Error',
+        message: isCredentialError
+          ? 'Zoom credentials are not configured or have expired. Please configure your Zoom OAuth credentials in the Admin Panel.'
+          : (msg || 'Failed to create instant Zoom meeting. Please try again.'),
+        isCredentialError
+      });
     } finally {
       setLaunchingZoom(false);
     }
@@ -273,6 +292,83 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         confirmText="Join Session"
         cancelText="Cancel"
       />
+
+      {/* Zoom Error Popup */}
+      {zoomError && (
+        <div
+          className={`fixed inset-0 backdrop-blur-sm z-[70] flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`}
+          onClick={() => setZoomError(null)}
+        >
+          <div
+            className={`rounded-xl border max-w-md w-full ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+              <div className="flex items-center justify-between">
+                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {zoomError.title}
+                </h2>
+                <button
+                  onClick={() => setZoomError(null)}
+                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                >
+                  <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
+                  zoomError.isCredentialError
+                    ? (theme === 'dark' ? 'bg-yellow-500/20' : 'bg-yellow-100')
+                    : (theme === 'dark' ? 'bg-red-500/20' : 'bg-red-100')
+                }`}>
+                  {zoomError.isCredentialError
+                    ? <Settings className={`w-7 h-7 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                    : <AlertCircle className={`w-7 h-7 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
+                  }
+                </div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {zoomError.message}
+                </p>
+                {zoomError.isCredentialError && (
+                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    Go to Admin Panel &gt; API &amp; Integrations &gt; Zoom to enter your Client ID and Client Secret.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className={`p-6 border-t flex gap-3 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+              <button
+                onClick={() => setZoomError(null)}
+                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+                }`}
+              >
+                Dismiss
+              </button>
+              {zoomError.isCredentialError && (
+                <button
+                  onClick={() => {
+                    setZoomError(null);
+                    setCurrentModule && setCurrentModule('admin');
+                  }}
+                  className="flex-1 px-6 py-3 rounded-lg font-medium text-white transition-colors bg-yellow-500 hover:bg-yellow-600"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Settings className="w-4 h-4" />
+                    Go to Settings
+                  </div>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
       <div className="flex items-center justify-between">
