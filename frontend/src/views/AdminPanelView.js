@@ -1019,11 +1019,23 @@ const AdminPanelView = ({
         if (!response.ok) {
           // If provider not configured, show credential modal
           if (data.error === 'Provider not configured') {
+            // Try to fetch any previously saved credentials to pre-populate the form
+            let savedCredentials = null;
+            try {
+              const credResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
+              if (credResponse.ok) {
+                const credData = await credResponse.json();
+                if (credData.client_id || credData.client_secret) {
+                  savedCredentials = credData;
+                }
+              }
+            } catch (_) { /* ignore — will show empty form */ }
+
             setCredentialModalConfig({
               providerName: displayName,
               providerType: providerType,
               credentialType: 'oauth',
-              existingCredentials: null,
+              existingCredentials: savedCredentials,
               onSuccess: async () => {
                 // Retry OAuth initiation after credentials are saved
                 try {
@@ -2388,30 +2400,6 @@ const AdminPanelView = ({
   }, [api, addNotification]);
 
   /**
-   * Handle one-click instant Zoom meeting launch from Admin Panel
-   */
-  const handleLaunchInstantZoom = useCallback(async () => {
-    try {
-      await addNotification('info', 'Creating instant Zoom meeting...');
-      const result = await api.createInstantZoomMeeting({
-        topic: 'AureonCare Quick Telehealth Session',
-        duration: 30
-      });
-      if (result.startUrl) {
-        window.open(result.startUrl, '_blank', 'noopener,noreferrer');
-        await addNotification('success', 'Zoom meeting launched. Opening in new tab...');
-      } else if (result.meetingUrl) {
-        window.open(result.meetingUrl, '_blank', 'noopener,noreferrer');
-        await addNotification('success', 'Zoom meeting launched. Opening in new tab...');
-      }
-      return result;
-    } catch (error) {
-      console.error('Failed to create instant Zoom meeting:', error);
-      await addNotification('alert', error.message || 'Failed to create instant Zoom meeting');
-    }
-  }, [api, addNotification]);
-
-  /**
    * Render Telehealth Integrations Tab
    * Uses IntegrationCard component for consistent UI and reduced duplication
    */
@@ -2439,45 +2427,22 @@ const AdminPanelView = ({
       </h2>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* Zoom Integration — Enhanced One-Click */}
-        <div className={`border rounded-lg overflow-hidden ${
-          theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'
-        }`}>
-          <IntegrationCard
-            name={TELEHEALTH_PROVIDERS.ZOOM}
-            displayName="Zoom"
-            description="HIPAA-compliant video conferencing for telehealth appointments. One-click connect via OAuth."
-            icon={Video}
-            iconColor="text-blue-500"
-            isEnabled={telehealthStatus.zoom.is_enabled}
-            isConfigured={telehealthStatus.zoom.is_configured}
-            theme={theme}
-            onToggle={handleToggleTelehealthProvider}
-            onConfigure={handleConfigureTelehealthProvider}
-            onTest={handleTestZoomConnection}
-            testLabel="Test Connection"
-            t={t}
-          />
-          {/* One-Click Actions for configured & enabled Zoom */}
-          {telehealthStatus.zoom.is_configured && telehealthStatus.zoom.is_enabled && (
-            <div className={`px-4 pb-4 pt-0 border-t ${
-              theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
-            }`}>
-              <div className="flex items-center gap-3 mt-3">
-                <button
-                  onClick={handleLaunchInstantZoom}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white text-sm font-medium transition-all shadow-sm"
-                >
-                  <Video className="w-4 h-4" />
-                  Launch Instant Meeting
-                </button>
-                <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Start a Zoom meeting immediately from the Admin Panel
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Zoom Integration */}
+        <IntegrationCard
+          name={TELEHEALTH_PROVIDERS.ZOOM}
+          displayName="Zoom"
+          description="HIPAA-compliant video conferencing for telehealth appointments. One-click connect via OAuth."
+          icon={Video}
+          iconColor="text-blue-500"
+          isEnabled={telehealthStatus.zoom.is_enabled}
+          isConfigured={telehealthStatus.zoom.is_configured}
+          theme={theme}
+          onToggle={handleToggleTelehealthProvider}
+          onConfigure={handleConfigureTelehealthProvider}
+          onTest={handleTestZoomConnection}
+          testLabel="Test Connection"
+          t={t}
+        />
 
         {/* Google Meet Integration */}
         <IntegrationCard
