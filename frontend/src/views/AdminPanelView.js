@@ -849,6 +849,68 @@ const AdminPanelView = ({
   }, [credentialModalConfig, addNotification]);
 
   /**
+   * Handle OneClick Integration - initiates OAuth flow directly for a provider
+   * that already has credentials saved, bypassing the manual form.
+   */
+  const handleOneClickIntegration = useCallback(
+    async (providerType) => {
+      try {
+        const providerNames = {
+          zoom: 'Zoom',
+          google_meet: 'Google Meet',
+          webex: 'Cisco Webex',
+        };
+        const displayName = providerNames[providerType] || providerType;
+
+        await addNotification('info', `Starting ${displayName} OneClick Integration...`);
+
+        const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to initiate OAuth flow');
+        }
+
+        if (data.authUrl) {
+          const width = 600;
+          const height = 700;
+          const left = window.screen.width / 2 - width / 2;
+          const top = window.screen.height / 2 - height / 2;
+
+          const popup = window.open(
+            data.authUrl,
+            'OAuth Authorization',
+            `width=${width},height=${height},left=${left},top=${top}`
+          );
+
+          const pollTimer = setInterval(async () => {
+            if (popup && popup.closed) {
+              clearInterval(pollTimer);
+              try {
+                const settings = await api.getTelehealthSettings();
+                if (settings) {
+                  setTelehealthStatus((prev) => ({
+                    ...prev,
+                    ...settings,
+                  }));
+                }
+                await addNotification('success', `${displayName} connected successfully via OneClick Integration.`);
+              } catch (error) {
+                console.error('Error refreshing telehealth status:', error);
+                await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
+              }
+            }
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Error in OneClick Integration:', error);
+        await addNotification('alert', error.message || 'OneClick Integration failed. Please try manual configuration.');
+      }
+    },
+    [api, addNotification]
+  );
+
+  /**
    * Fetch backup provider configuration status
    */
   const fetchBackupConfigStatus = useCallback(async () => {
@@ -3411,6 +3473,7 @@ const AdminPanelView = ({
         providerName={credentialModalConfig.providerName}
         credentialType={credentialModalConfig.credentialType}
         existingCredentials={credentialModalConfig.existingCredentials}
+        onOneClickIntegration={handleOneClickIntegration}
         theme={theme}
       />
 
