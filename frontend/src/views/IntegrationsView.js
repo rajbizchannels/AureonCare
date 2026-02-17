@@ -457,74 +457,120 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
                 </>
               ) : (
                 <>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      API Key
-                    </label>
-                    <input
-                      type="text"
-                      value={formData[key].api_key || ''}
-                      onChange={(e) => handleFieldChange(key, 'api_key', e.target.value)}
-                      className={`w-full px-3 py-2 rounded text-sm ${
-                        theme === 'dark'
-                          ? 'bg-slate-900 text-white border-slate-700'
-                          : 'bg-white text-gray-900 border-gray-300'
-                      } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                      placeholder="Enter API key"
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      API Secret
-                    </label>
-                    <input
-                      type="password"
-                      value={formData[key].api_secret || ''}
-                      onChange={(e) => handleFieldChange(key, 'api_secret', e.target.value)}
-                      className={`w-full px-3 py-2 rounded text-sm ${
-                        theme === 'dark'
-                          ? 'bg-slate-900 text-white border-slate-700'
-                          : 'bg-white text-gray-900 border-gray-300'
-                      } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                      placeholder="Enter API secret"
-                    />
-                  </div>
-                  {type !== 'webex' && (
-                    <>
-                      <div>
-                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          Client ID
-                        </label>
-                        <input
-                          type="text"
-                          value={formData[key].client_id || ''}
-                          onChange={(e) => handleFieldChange(key, 'client_id', e.target.value)}
-                          className={`w-full px-3 py-2 rounded text-sm ${
-                            theme === 'dark'
-                              ? 'bg-slate-900 text-white border-slate-700'
-                              : 'bg-white text-gray-900 border-gray-300'
-                          } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                          placeholder="Enter client ID"
-                        />
-                      </div>
-                      <div>
-                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          Client Secret
-                        </label>
-                        <input
-                          type="password"
-                          value={formData[key].client_secret || ''}
-                          onChange={(e) => handleFieldChange(key, 'client_secret', e.target.value)}
-                          className={`w-full px-3 py-2 rounded text-sm ${
-                            theme === 'dark'
-                              ? 'bg-slate-900 text-white border-slate-700'
-                              : 'bg-white text-gray-900 border-gray-300'
-                          } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                          placeholder="Enter client secret"
-                        />
-                      </div>
-                    </>
-                  )}
+                  {/* Telehealth providers: show only fields that have values,
+                      plus always show Client ID/Secret for OAuth-based providers (Zoom, Google Meet) */}
+                  {(() => {
+                    const data = formData[key] || {};
+                    const hasApiKey = data.api_key && data.api_key.trim() !== '';
+                    const hasApiSecret = data.api_secret && data.api_secret.trim() !== '';
+                    const hasClientId = data.client_id && data.client_id.trim() !== '';
+                    const hasClientSecret = data.client_secret && data.client_secret.trim() !== '';
+                    const hasWebhookSecret = data.webhook_secret && data.webhook_secret.trim() !== '';
+                    // For OAuth providers (Zoom, Google Meet), always show Client ID/Secret
+                    const isOAuthProvider = type !== 'webex';
+                    // Show legacy fields only if they have values
+                    const showApiKey = hasApiKey;
+                    const showApiSecret = hasApiSecret;
+                    // Show OAuth fields if provider supports OAuth or if values exist
+                    const showClientId = isOAuthProvider || hasClientId;
+                    const showClientSecret = isOAuthProvider || hasClientSecret;
+                    const showWebhookSecret = hasWebhookSecret;
+
+                    return (
+                      <>
+                        {showApiKey && (
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              API Key <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>(Legacy)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={data.api_key || ''}
+                              onChange={(e) => handleFieldChange(key, 'api_key', e.target.value)}
+                              className={`w-full px-3 py-2 rounded text-sm ${
+                                theme === 'dark'
+                                  ? 'bg-slate-900 text-white border-slate-700'
+                                  : 'bg-white text-gray-900 border-gray-300'
+                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                              placeholder="Enter API key"
+                            />
+                          </div>
+                        )}
+                        {showApiSecret && (
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              API Secret <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>(Legacy)</span>
+                            </label>
+                            <input
+                              type="password"
+                              value={data.api_secret || ''}
+                              onChange={(e) => handleFieldChange(key, 'api_secret', e.target.value)}
+                              className={`w-full px-3 py-2 rounded text-sm ${
+                                theme === 'dark'
+                                  ? 'bg-slate-900 text-white border-slate-700'
+                                  : 'bg-white text-gray-900 border-gray-300'
+                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                              placeholder="Enter API secret"
+                            />
+                          </div>
+                        )}
+                        {showClientId && (
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              Client ID
+                            </label>
+                            <input
+                              type="text"
+                              value={data.client_id || ''}
+                              onChange={(e) => handleFieldChange(key, 'client_id', e.target.value)}
+                              className={`w-full px-3 py-2 rounded text-sm ${
+                                theme === 'dark'
+                                  ? 'bg-slate-900 text-white border-slate-700'
+                                  : 'bg-white text-gray-900 border-gray-300'
+                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                              placeholder="Enter client ID"
+                            />
+                          </div>
+                        )}
+                        {showClientSecret && (
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              Client Secret
+                            </label>
+                            <input
+                              type="password"
+                              value={data.client_secret || ''}
+                              onChange={(e) => handleFieldChange(key, 'client_secret', e.target.value)}
+                              className={`w-full px-3 py-2 rounded text-sm ${
+                                theme === 'dark'
+                                  ? 'bg-slate-900 text-white border-slate-700'
+                                  : 'bg-white text-gray-900 border-gray-300'
+                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                              placeholder="Enter client secret"
+                            />
+                          </div>
+                        )}
+                        {showWebhookSecret && (
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              Webhook Secret
+                            </label>
+                            <input
+                              type="password"
+                              value={data.webhook_secret || ''}
+                              onChange={(e) => handleFieldChange(key, 'webhook_secret', e.target.value)}
+                              className={`w-full px-3 py-2 rounded text-sm ${
+                                theme === 'dark'
+                                  ? 'bg-slate-900 text-white border-slate-700'
+                                  : 'bg-white text-gray-900 border-gray-300'
+                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                              placeholder="Enter webhook secret"
+                            />
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               )}
 

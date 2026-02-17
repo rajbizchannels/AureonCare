@@ -70,7 +70,7 @@ class TelehealthProviderManager {
 
     switch (providerType) {
       case 'zoom':
-        this.providers.zoom = new ZoomService(config);
+        this.providers.zoom = new ZoomService(config, this.pool);
         return this.providers.zoom;
 
       case 'google_meet':

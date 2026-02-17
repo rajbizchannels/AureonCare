@@ -7,17 +7,28 @@ const jwt = require('jsonwebtoken');
  *
  * Authentication priority:
  *   1. Stored OAuth access token (from authorization code flow)
- *   2. Refresh the token if expired
- *   3. Server-to-Server OAuth (account_credentials grant)
+ *   2. Refresh the token if expired (and persist the new token to DB)
+ *   3. Server-to-Server OAuth (account_credentials grant) — persisted to DB
  *   4. Legacy JWT (api_key / api_secret) — deprecated by Zoom but kept for
  *      backwards compatibility with existing deployments
+ *
+ * Token persistence:
+ *   Tokens are written back to the `settings` JSONB column of
+ *   `telehealth_provider_settings` so they survive server restarts and
+ *   can be reused across requests without re-authorizing.
  */
 
 class ZoomService {
-  constructor(config) {
+  /**
+   * @param {object} config  Row from telehealth_provider_settings
+   * @param {object} [pool]  PostgreSQL pool for persisting tokens (optional
+   *                          for backwards compat, but required for token storage)
+   */
+  constructor(config, pool) {
     this.config = config;
+    this.pool = pool || null;
     this.baseUrl = 'https://api.zoom.us/v2';
-    // Cache the token in memory to reduce token requests
+    // In-memory cache to avoid hitting the DB / Zoom token endpoint on every call
     this._cachedToken = null;
     this._tokenExpiresAt = 0;
   }
@@ -39,9 +50,48 @@ class ZoomService {
   }
 
   /**
+   * Persist updated token data into the `settings` JSONB column.
+   * Merges the new token fields into the existing settings so other
+   * fields (account_id, use_oauth, user_id, etc.) are preserved.
+   */
+  async persistTokens(tokenData) {
+    if (!this.pool) {
+      return; // No pool — can't persist (graceful degradation)
+    }
+
+    try {
+      const providerType = this.config.provider_type || 'zoom';
+
+      // Merge new token data into existing settings
+      const existingSettings = (typeof this.config.settings === 'object' && this.config.settings)
+        ? this.config.settings
+        : {};
+
+      const mergedSettings = {
+        ...existingSettings,
+        ...tokenData
+      };
+
+      await this.pool.query(
+        `UPDATE telehealth_provider_settings
+         SET settings = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE provider_type = $2`,
+        [JSON.stringify(mergedSettings), providerType]
+      );
+
+      // Keep the in-memory config in sync
+      this.config.settings = mergedSettings;
+    } catch (error) {
+      // Log but don't throw — token persistence failure shouldn't block the API call
+      console.error('Failed to persist Zoom tokens to database:', error.message);
+    }
+  }
+
+  /**
    * Get a valid OAuth access token.
    * Checks for stored tokens from the OAuth authorization code flow first,
    * refreshes if expired, then falls back to Server-to-Server account_credentials.
+   * All new/refreshed tokens are persisted to the database.
    */
   async generateOAuthToken() {
     if (!this.config.client_id || !this.config.client_secret) {
@@ -55,7 +105,7 @@ class ZoomService {
 
     const settings = this.config.settings || {};
 
-    // Use stored access token from OAuth authorization code flow if available and not expired
+    // 1. Use stored access token from OAuth authorization code flow if available and not expired
     if (settings.access_token) {
       const isExpired = settings.expires_at && Date.now() >= settings.expires_at;
 
@@ -65,20 +115,33 @@ class ZoomService {
         return settings.access_token;
       }
 
-      // Token expired — try to refresh it
+      // 2. Token expired — try to refresh it
       if (settings.refresh_token) {
         try {
-          const refreshedToken = await this.refreshOAuthToken(settings.refresh_token);
-          this._cachedToken = refreshedToken;
-          this._tokenExpiresAt = Date.now() + 3500000; // ~58 min
-          return refreshedToken;
+          const refreshResult = await this.refreshOAuthToken(settings.refresh_token);
+
+          const expiresAt = Date.now() + (refreshResult.expires_in || 3600) * 1000;
+
+          // Persist refreshed tokens to DB
+          await this.persistTokens({
+            access_token: refreshResult.access_token,
+            refresh_token: refreshResult.refresh_token || settings.refresh_token,
+            expires_at: expiresAt,
+            scope: refreshResult.scope || settings.scope,
+            token_type: refreshResult.token_type || 'bearer',
+            last_refreshed_at: Date.now()
+          });
+
+          this._cachedToken = refreshResult.access_token;
+          this._tokenExpiresAt = expiresAt;
+          return refreshResult.access_token;
         } catch (refreshError) {
           console.error('Failed to refresh Zoom OAuth token, falling back to account_credentials:', refreshError.message);
         }
       }
     }
 
-    // Fall back to Server-to-Server OAuth (account_credentials grant)
+    // 3. Fall back to Server-to-Server OAuth (account_credentials grant)
     if (!settings.account_id) {
       throw new Error('Zoom OAuth token expired and no account_id configured for Server-to-Server fallback. Please re-authorize Zoom in the Admin Panel.');
     }
@@ -100,8 +163,20 @@ class ZoomService {
         }
       );
 
+      const expiresAt = Date.now() + (response.data.expires_in || 3600) * 1000;
+
+      // Persist S2S token to DB so subsequent requests (and server restarts) reuse it
+      await this.persistTokens({
+        access_token: response.data.access_token,
+        expires_at: expiresAt,
+        scope: response.data.scope || settings.scope,
+        token_type: response.data.token_type || 'bearer',
+        grant_type: 'account_credentials',
+        last_refreshed_at: Date.now()
+      });
+
       this._cachedToken = response.data.access_token;
-      this._tokenExpiresAt = Date.now() + (response.data.expires_in || 3600) * 1000;
+      this._tokenExpiresAt = expiresAt;
       return response.data.access_token;
     } catch (error) {
       console.error('Error generating Zoom OAuth token:', error.response?.data || error.message);
@@ -110,7 +185,8 @@ class ZoomService {
   }
 
   /**
-   * Refresh an expired OAuth access token using a refresh token
+   * Refresh an expired OAuth access token using a refresh token.
+   * Returns the full token response (access_token, refresh_token, expires_in, etc.)
    */
   async refreshOAuthToken(refreshToken) {
     const credentials = Buffer.from(`${this.config.client_id}:${this.config.client_secret}`).toString('base64');
@@ -129,7 +205,8 @@ class ZoomService {
       }
     );
 
-    return response.data.access_token;
+    // Return the full response so the caller can persist all fields
+    return response.data;
   }
 
   /**
