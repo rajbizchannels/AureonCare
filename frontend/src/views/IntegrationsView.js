@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Save, Video, Zap } from 'lucide-react';
+import { ArrowLeft, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Save } from 'lucide-react';
 import api from '../api/apiService';
 import { useAudit } from '../hooks/useAudit';
 
@@ -678,55 +678,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
           <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {t?.telehealthProviders || 'Telehealth Providers'}
           </h3>
-
-          {/* One-Click Zoom Launch (when Zoom is enabled) */}
-          {(() => {
-            const zoomProvider = telehealthProviders.find(p => p.provider_type === 'zoom');
-            if (zoomProvider && zoomProvider.is_enabled && isIntegrationConfigured(zoomProvider)) {
-              return (
-                <div className={`mb-4 p-4 rounded-lg border ${
-                  theme === 'dark' ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-50 border-blue-200'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Video className="w-5 h-5 text-blue-500" />
-                      <div>
-                        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
-                          Zoom Integration Active
-                        </p>
-                        <p className={`text-xs ${theme === 'dark' ? 'text-blue-400/60' : 'text-blue-600'}`}>
-                          Launch instant meetings directly from here
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        try {
-                          const result = await api.createInstantZoomMeeting({
-                            topic: 'AureonCare Quick Session',
-                            duration: 30
-                          });
-                          if (result.startUrl) {
-                            window.open(result.startUrl, '_blank', 'noopener,noreferrer');
-                          } else if (result.meetingUrl) {
-                            window.open(result.meetingUrl, '_blank', 'noopener,noreferrer');
-                          }
-                        } catch (err) {
-                          console.error('Failed to launch instant Zoom:', err);
-                          alert(err.message || 'Failed to create instant Zoom meeting');
-                        }
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white text-sm font-medium transition-all shadow-sm"
-                    >
-                      <Zap className="w-4 h-4" />
-                      Launch Instant Meeting
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          })()}
 
           <div className="space-y-3">
             {['zoom', 'google-meet', 'webex'].map(providerType => {
