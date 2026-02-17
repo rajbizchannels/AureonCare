@@ -243,77 +243,31 @@ const CredentialModal = ({
             </p>
           </div>
 
-          {/* Saved Credentials Display (edit mode) */}
-          {isEditMode && credentialType === 'oauth' && existingCredentials?.client_id && (
+          {/* One-Click Integration callout for OAuth providers */}
+          {credentialType === 'oauth' && (
             <div className={`p-4 rounded-lg ${
               theme === 'dark' ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200'
             }`}>
-              <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
-                Current Saved Credentials
-              </p>
-              <div className="space-y-1">
-                <p className={`text-xs ${theme === 'dark' ? 'text-green-400/80' : 'text-green-600'}`}>
-                  Client ID: <span className="font-mono">{existingCredentials.client_id}</span>
-                </p>
-                <p className={`text-xs ${theme === 'dark' ? 'text-green-400/80' : 'text-green-600'}`}>
-                  Client Secret: <span className="font-mono">
-                    {showSecret
-                      ? existingCredentials.client_secret
-                      : '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowSecret(!showSecret)}
-                    className={`ml-2 inline-flex items-center ${
-                      theme === 'dark' ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-800'
-                    }`}
-                    aria-label={showSecret ? 'Hide secret' : 'Show secret'}
-                  >
-                    {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* OneClick Integration Option (telehealth OAuth providers) */}
-          {isOneClickSupported && onOneClickIntegration && (
-            <div className={`p-4 rounded-lg ${
-              theme === 'dark' ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50 border border-purple-200'
-            }`}>
               <div className="flex items-start gap-3">
-                <Zap className={`w-5 h-5 mt-0.5 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} />
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-purple-300' : 'text-purple-800'}`}>
-                    OneClick Integration
+                <Zap className={`w-5 h-5 mt-0.5 flex-shrink-0 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
+                <div>
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
+                    One-Click Integration
                   </p>
-                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-purple-400/80' : 'text-purple-600'}`}>
-                    {config.oneClickDescription}
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-green-400/70' : 'text-green-600'}`}>
+                    {isEditMode
+                      ? 'Update your credentials below and click "Update & Connect" to re-authorize via OAuth.'
+                      : 'Enter your credentials below and click "Save & Connect" to authorize via OAuth in one step.'
+                    }
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onOneClickIntegration(providerName?.toLowerCase());
-                      handleClose();
-                    }}
-                    className="mt-3 w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Zap className="w-4 h-4" />
-                    {config.oneClickLabel || 'Connect Now'}
-                  </button>
+                  {isEditMode && existingCredentials?.client_id && (
+                    <div className={`flex items-center gap-1.5 mt-2 ${theme === 'dark' ? 'text-green-400/60' : 'text-green-600/80'}`}>
+                      <Check className="w-3.5 h-3.5" />
+                      <span className="text-xs">Credentials saved</span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Separator when OneClick is available */}
-          {isOneClickSupported && onOneClickIntegration && (
-            <div className="flex items-center gap-3">
-              <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`} />
-              <span className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                OR ENTER MANUALLY
-              </span>
-              <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`} />
             </div>
           )}
 
@@ -478,9 +432,17 @@ const CredentialModal = ({
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+              className={`flex-1 px-4 py-2 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                credentialType === 'oauth'
+                  ? 'bg-green-500 hover:bg-green-600'
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
             >
-              {isEditMode ? 'Update & Continue' : 'Save & Continue'}
+              {credentialType === 'oauth' && <Zap className="w-4 h-4" />}
+              {credentialType === 'oauth'
+                ? (isEditMode ? 'Update & Connect' : 'Save & Connect')
+                : (isEditMode ? 'Update & Continue' : 'Save & Continue')
+              }
             </button>
           </div>
         </form>
