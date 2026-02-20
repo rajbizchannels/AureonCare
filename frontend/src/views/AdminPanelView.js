@@ -239,6 +239,7 @@ const AdminPanelView = ({
     providerType: '',
     credentialType: 'oauth',
     onSuccess: null,
+    onConnect: null,
     existingCredentials: null,
   });
 
@@ -942,15 +943,25 @@ const AdminPanelView = ({
           throw new Error(data.error || 'Failed to fetch credentials');
         }
 
-        // Determine onSuccess callback based on credential type
-        const onSuccess = credentialType === 'oauth' ? async () => {
-          // Trigger OAuth flow after saving credentials
+        // Helper: initiate OAuth popup and poll for completion
+        const initiateOAuthPopup = async () => {
           const oauthResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
           const oauthData = await oauthResponse.json();
 
-          if (oauthResponse.ok && oauthData.authUrl) {
-            // Open OAuth popup
-            const popup = window.open(oauthData.authUrl, 'OAuth Authorization', 'width=600,height=700');
+          if (!oauthResponse.ok) {
+            throw new Error(oauthData.error || 'Failed to initiate OAuth flow');
+          }
+
+          if (oauthData.authUrl) {
+            const width = 600;
+            const height = 700;
+            const left = window.screen.width / 2 - width / 2;
+            const top = window.screen.height / 2 - height / 2;
+            const popup = window.open(
+              oauthData.authUrl,
+              'OAuth Authorization',
+              `width=${width},height=${height},left=${left},top=${top}`
+            );
 
             // Poll for popup closure
             const pollTimer = setInterval(async () => {
@@ -963,10 +974,20 @@ const AdminPanelView = ({
                 } else if (['google_drive', 'onedrive'].includes(providerType)) {
                   await fetchBackupConfigStatus();
                 }
+                setShowCredentialModal(false);
                 await addNotification('success', `${providerName} configured successfully.`);
               }
             }, 1000);
           }
+        };
+
+        // onSuccess: called after saving updated credentials → triggers OAuth
+        const onSuccess = credentialType === 'oauth' ? initiateOAuthPopup : null;
+
+        // onConnect: one-click connect (credentials already saved, go straight to OAuth)
+        const onConnect = credentialType === 'oauth' ? async () => {
+          await addNotification('info', `Connecting to ${providerName}...`);
+          await initiateOAuthPopup();
         } : null;
 
         // Show credential modal with existing data
@@ -976,6 +997,7 @@ const AdminPanelView = ({
           credentialType,
           existingCredentials: data,
           onSuccess,
+          onConnect,
         });
         setShowCredentialModal(true);
       } catch (error) {
@@ -1031,59 +1053,66 @@ const AdminPanelView = ({
               }
             } catch (_) { /* ignore — will show empty form */ }
 
+            // Helper: initiate OAuth and poll for popup close
+            const initiateOAuth = async () => {
+              const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+              const retryData = await retryResponse.json();
+
+              if (!retryResponse.ok) {
+                throw new Error(retryData.error || 'Failed to initiate OAuth flow');
+              }
+
+              const width = 600;
+              const height = 700;
+              const left = window.screen.width / 2 - width / 2;
+              const top = window.screen.height / 2 - height / 2;
+
+              const popup = window.open(
+                retryData.authUrl,
+                'OAuth Authorization',
+                `width=${width},height=${height},left=${left},top=${top}`
+              );
+
+              const pollTimer = setInterval(async () => {
+                if (popup && popup.closed) {
+                  clearInterval(pollTimer);
+                  try {
+                    const settings = await api.getTelehealthSettings();
+                    if (settings) {
+                      setTelehealthStatus((prev) => ({
+                        ...prev,
+                        ...settings,
+                      }));
+                    }
+                    setShowCredentialModal(false);
+                    await addNotification('success', `${displayName} configured successfully.`);
+                  } catch (error) {
+                    console.error('Error refreshing telehealth status:', error);
+                    await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
+                  }
+                }
+              }, 1000);
+            };
+
             setCredentialModalConfig({
               providerName: displayName,
               providerType: providerType,
               credentialType: 'oauth',
               existingCredentials: savedCredentials,
               onSuccess: async () => {
-                // Retry OAuth initiation after credentials are saved
                 try {
                   await addNotification('info', 'Initiating OAuth flow...');
-
-                  const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
-                  const retryData = await retryResponse.json();
-
-                  if (!retryResponse.ok) {
-                    throw new Error(retryData.error || 'Failed to initiate OAuth flow');
-                  }
-
-                  // Open OAuth flow
-                  const width = 600;
-                  const height = 700;
-                  const left = window.screen.width / 2 - width / 2;
-                  const top = window.screen.height / 2 - height / 2;
-
-                  const popup = window.open(
-                    retryData.authUrl,
-                    'OAuth Authorization',
-                    `width=${width},height=${height},left=${left},top=${top}`
-                  );
-
-                  // Poll for popup closure
-                  const pollTimer = setInterval(async () => {
-                    if (popup && popup.closed) {
-                      clearInterval(pollTimer);
-                      try {
-                        const settings = await api.getTelehealthSettings();
-                        if (settings) {
-                          setTelehealthStatus((prev) => ({
-                            ...prev,
-                            ...settings,
-                          }));
-                        }
-                        await addNotification('success', `${displayName} configured successfully.`);
-                      } catch (error) {
-                        console.error('Error refreshing telehealth status:', error);
-                        await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
-                      }
-                    }
-                  }, 1000);
+                  await initiateOAuth();
                 } catch (error) {
                   console.error('Error in OAuth flow:', error);
                   await addNotification('alert', error.message || 'Failed to complete OAuth flow');
                 }
-              }
+              },
+              // If credentials are already saved, offer one-click connect
+              onConnect: savedCredentials ? async () => {
+                await addNotification('info', `Connecting to ${displayName}...`);
+                await initiateOAuth();
+              } : null,
             });
             setShowCredentialModal(true);
             return;
@@ -3494,10 +3523,12 @@ const AdminPanelView = ({
             providerType: '',
             credentialType: 'oauth',
             onSuccess: null,
+            onConnect: null,
             existingCredentials: null,
           });
         }}
         onSubmit={handleCredentialSubmit}
+        onConnect={credentialModalConfig.onConnect}
         providerName={credentialModalConfig.providerName}
         credentialType={credentialModalConfig.credentialType}
         existingCredentials={credentialModalConfig.existingCredentials}
