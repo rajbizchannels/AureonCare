@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, Key, User, Zap, Check } from 'lucide-react';
+import { X, Key, User, Zap, CheckCircle } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 
 /**
@@ -234,7 +234,7 @@ const CredentialModal = ({
                   </p>
                   {isEditMode && existingCredentials?.client_id && (
                     <div className={`flex items-center gap-1.5 mt-2 ${theme === 'dark' ? 'text-green-400/60' : 'text-green-600/80'}`}>
-                      <Check className="w-3.5 h-3.5" />
+                      <CheckCircle className="w-3.5 h-3.5" />
                       <span className="text-xs">Credentials saved</span>
                     </div>
                   )}
