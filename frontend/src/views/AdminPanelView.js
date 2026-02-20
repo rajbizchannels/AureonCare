@@ -3429,7 +3429,7 @@ const AdminPanelView = ({
       </div>
 
       {/* Global Styles for Scrollbar */}
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         /* Custom scrollbar for tabs */
         .flex.space-x-8.overflow-x-auto::-webkit-scrollbar {
           height: 6px;
@@ -3454,7 +3454,7 @@ const AdminPanelView = ({
           scrollbar-width: thin;
           scrollbar-color: ${theme === 'dark' ? '#475569 #1e293b' : '#cbd5e1 #f1f5f9'};
         }
-      `}</style>
+      ` }} />
 
       {/* Confirmation Modals */}
       <ConfirmationModal
