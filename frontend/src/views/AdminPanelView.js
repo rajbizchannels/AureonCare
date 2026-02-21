@@ -87,8 +87,11 @@ import {
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
 
 /**
- * ZoomSetupGuide - Collapsible step-by-step instructions for configuring
- * the Zoom OAuth App in the Zoom Marketplace.
+ * ZoomSetupGuide — admin-only collapsible guide for configuring
+ * the Zoom OAuth App server-side (environment variables).
+ *
+ * The end user never sees or enters Client ID/Secret. This guide
+ * is for the system administrator who deploys the application.
  */
 const ZoomSetupGuide = ({ theme }) => {
   const [expanded, setExpanded] = React.useState(false);
@@ -109,16 +112,28 @@ const ZoomSetupGuide = ({ theme }) => {
     });
   };
 
+  const stepBubble = (n) => (
+    <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+      theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+    }`}>{n}</span>
+  );
+
+  const code = (txt) => (
+    <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>{txt}</code>
+  );
+
   return (
     <div className={`border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
         className={`w-full px-6 py-3 flex items-center justify-between text-sm font-medium transition-colors ${
-          theme === 'dark' ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          theme === 'dark'
+            ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
         }`}
       >
-        <span>Zoom App Setup Guide</span>
+        <span>Admin: Zoom App Setup Guide</span>
         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
 
@@ -127,21 +142,19 @@ const ZoomSetupGuide = ({ theme }) => {
           {/* Redirect URL */}
           {redirectUrl && (
             <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'}`}>
-              <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
-                Your Redirect URL (copy this for Step 4):
+              <p className={`text-xs font-semibold mb-1.5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
+                Redirect URL (for Step 4):
               </p>
               <div className="flex items-center gap-2">
                 <code className={`flex-1 text-xs px-2 py-1 rounded font-mono break-all ${
                   theme === 'dark' ? 'bg-slate-800 text-blue-300' : 'bg-white text-blue-800'
-                }`}>
-                  {redirectUrl}
-                </code>
+                }`}>{redirectUrl}</code>
                 <button
                   onClick={() => handleCopy(redirectUrl)}
                   className={`p-1.5 rounded transition-colors flex-shrink-0 ${
-                    copied
-                      ? 'text-green-500'
-                      : theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
+                    copied ? 'text-green-500'
+                    : theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
                   }`}
                   title="Copy to clipboard"
                 >
@@ -151,12 +164,9 @@ const ZoomSetupGuide = ({ theme }) => {
             </div>
           )}
 
-          {/* Steps */}
           <div className="space-y-3">
             <div className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
-              }`}>1</span>
+              {stepBubble(1)}
               <div>
                 <p className="font-medium">Create a Zoom OAuth App</p>
                 <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
@@ -165,73 +175,57 @@ const ZoomSetupGuide = ({ theme }) => {
                     className="text-blue-500 hover:underline inline-flex items-center gap-1">
                     marketplace.zoom.us <ExternalLink className="w-3 h-3" />
                   </a>{' '}
-                  and sign in. Click <strong>Develop</strong> &rarr; <strong>Build App</strong>.
+                  → sign in → <strong>Develop</strong> → <strong>Build App</strong> → choose <strong>General App</strong>.
                 </p>
               </div>
             </div>
 
             <div className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
-              }`}>2</span>
-              <div>
-                <p className="font-medium">Choose "General App"</p>
-                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Select <strong>General App</strong> (not Server-to-Server). Give it a name like "AureonCare Telehealth".
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
-              }`}>3</span>
-              <div>
-                <p className="font-medium">Copy Client ID & Client Secret</p>
-                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  From the <strong>App Credentials</strong> section, copy the Client ID and Client Secret. You will paste these when you click "Sign in with Zoom" above.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
-              }`}>4</span>
+              {stepBubble(2)}
               <div>
                 <p className="font-medium">Set the Redirect URL</p>
                 <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  In the <strong>OAuth Information</strong> section, paste the Redirect URL shown above into the
-                  <strong> Redirect URL for OAuth</strong> field. Also add it to the <strong>Allow List</strong>.
+                  Under <strong>OAuth Information</strong>, paste the Redirect URL above into the
+                  <strong> Redirect URL for OAuth</strong> field and the <strong>Allow List</strong>.
                 </p>
               </div>
             </div>
 
             <div className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
-              }`}>5</span>
+              {stepBubble(3)}
               <div>
-                <p className="font-medium">Add Required Scopes</p>
+                <p className="font-medium">Add Scopes</p>
                 <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Under <strong>Scopes</strong>, add: <code className={`px-1 py-0.5 rounded text-xs ${
-                    theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'
-                  }`}>meeting:write</code>{' '}
-                  <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>meeting:read</code>{' '}
-                  <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>user:read</code>{' '}
-                  <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>recording:read</code>
+                  Under <strong>Scopes</strong>, add:{' '}
+                  {code('meeting:write')} {code('meeting:read')} {code('user:read')} {code('recording:read')}
                 </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              {stepBubble(4)}
+              <div>
+                <p className="font-medium">Set environment variables on your server</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Zoom and add them to your server's environment:
+                </p>
+                <div className={`mt-2 p-2 rounded text-xs font-mono ${
+                  theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-800'
+                }`}>
+                  ZOOM_CLIENT_ID=your_client_id<br />
+                  ZOOM_CLIENT_SECRET=your_client_secret
+                </div>
               </div>
             </div>
 
             <div className="flex gap-3">
               <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                 theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
-              }`}>6</span>
+              }`}>5</span>
               <div>
-                <p className="font-medium">Click "Sign in with Zoom" above</p>
+                <p className="font-medium">Restart the server & click "Sign in with Zoom"</p>
                 <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  After saving your Zoom app, come back here and click the button above. Enter your Client ID & Secret when prompted, then authorize in the Zoom popup. That's it!
+                  After setting the environment variables, restart the backend. Users can then click "Sign in with Zoom" to authorize via their Zoom account.
                 </p>
               </div>
             </div>
@@ -391,7 +385,7 @@ const AdminPanelView = ({
   const [userFormErrors, setUserFormErrors] = useState({});
   const [isUserFormSubmitting, setIsUserFormSubmitting] = useState(false);
 
-  // Credential modal state
+  // Credential modal state (for non-Zoom providers)
   const [showCredentialModal, setShowCredentialModal] = useState(false);
   const [credentialModalConfig, setCredentialModalConfig] = useState({
     providerName: '',
@@ -401,6 +395,9 @@ const AdminPanelView = ({
     onConnect: null,
     existingCredentials: null,
   });
+
+  // Zoom: true when env vars not configured (admin needs to set ZOOM_CLIENT_ID/SECRET)
+  const [zoomEnvMissing, setZoomEnvMissing] = useState(false);
 
   // ==================== MEMOIZED VALUES ====================
 
@@ -1309,8 +1306,11 @@ const AdminPanelView = ({
   }, [addNotification]);
 
   /**
-   * Configure telehealth provider
-   * Simplified flow: try OAuth directly → if no credentials, show setup modal
+   * Configure telehealth provider.
+   * For Zoom: opens OAuth popup directly (HubSpot-style one-click SSO).
+   *   App credentials (Client ID/Secret) come from server env vars — not the user.
+   *   If env vars are missing, shows an admin-facing "not configured" message.
+   * For other providers: falls back to CredentialModal.
    */
   const handleConfigureTelehealthProvider = useCallback(
     async (providerType) => {
@@ -1318,20 +1318,29 @@ const AdminPanelView = ({
         const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex' };
         const displayName = providerNames[providerType] || providerType;
 
-        await addNotification('info', `Connecting to ${displayName}...`);
-
-        // Try to initiate OAuth directly (works if client_id/secret in DB or env vars)
+        // Try to initiate OAuth directly
         try {
           await openOAuthPopup(providerType, displayName);
+          setZoomEnvMissing(false);
           return;
         } catch (oauthError) {
-          // If "Provider not configured", show credential modal
           if (!oauthError.message?.includes('not configured')) {
             throw oauthError;
           }
         }
 
-        // No credentials found — show the credential setup modal
+        // App credentials not configured
+        if (providerType === 'zoom') {
+          // Zoom: server env vars are required — show admin message
+          setZoomEnvMissing(true);
+          await addNotification(
+            'warning',
+            'Zoom integration is not set up yet. A system administrator needs to configure the ZOOM_CLIENT_ID and ZOOM_CLIENT_SECRET environment variables on the server.'
+          );
+          return;
+        }
+
+        // Other OAuth providers: use CredentialModal
         let savedCredentials = null;
         try {
           const credResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
@@ -1351,12 +1360,10 @@ const AdminPanelView = ({
               await addNotification('info', 'Credentials saved. Connecting...');
               await openOAuthPopup(providerType, displayName);
             } catch (error) {
-              console.error('Error in OAuth flow:', error);
               await addNotification('alert', error.message || 'Failed to complete OAuth flow');
             }
           },
           onConnect: savedCredentials ? async () => {
-            await addNotification('info', `Connecting to ${displayName}...`);
             await openOAuthPopup(providerType, displayName);
           } : null,
         });
@@ -2761,7 +2768,21 @@ const AdminPanelView = ({
             )}
           </div>
 
-          {/* Zoom App Setup Guide (collapsible) */}
+          {/* Admin notice: env vars not configured */}
+          {zoomEnvMissing && !telehealthStatus.zoom.has_tokens && (
+            <div className={`mx-4 mb-2 p-3 rounded-lg flex items-start gap-2 ${
+              theme === 'dark' ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-amber-50 border border-amber-300'
+            }`}>
+              <Settings className={`w-4 h-4 mt-0.5 flex-shrink-0 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
+              <p className={`text-xs ${theme === 'dark' ? 'text-amber-300' : 'text-amber-800'}`}>
+                <strong>Admin action required:</strong> Set <code className={`px-1 rounded ${theme === 'dark' ? 'bg-slate-700' : 'bg-amber-100'}`}>ZOOM_CLIENT_ID</code> and{' '}
+                <code className={`px-1 rounded ${theme === 'dark' ? 'bg-slate-700' : 'bg-amber-100'}`}>ZOOM_CLIENT_SECRET</code> environment variables on the server, then restart.
+                See the setup guide below for details.
+              </p>
+            </div>
+          )}
+
+          {/* Admin-only setup guide (how to configure server env vars) */}
           {!telehealthStatus.zoom.has_tokens && (
             <ZoomSetupGuide theme={theme} />
           )}
