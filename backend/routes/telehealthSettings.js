@@ -7,13 +7,20 @@ const router = express.Router();
  */
 
 // Get all telehealth provider settings
+// Returns status + connection info (never raw tokens)
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(`
-      SELECT * FROM telehealth_provider_settings
+      SELECT id, provider_type, is_enabled, client_id, api_key,
+             zoom_user_email, zoom_user_id, account_id,
+             token_expires_at, token_scope,
+             CASE WHEN access_token IS NOT NULL THEN true ELSE false END AS has_tokens,
+             CASE WHEN token_expires_at IS NOT NULL AND token_expires_at < $1 THEN true ELSE false END AS is_expired,
+             created_at, updated_at
+      FROM telehealth_provider_settings
       ORDER BY provider_type
-    `);
+    `, [Date.now()]);
 
     res.json(result.rows);
   } catch (error) {
