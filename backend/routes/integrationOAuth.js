@@ -4,29 +4,47 @@ const crypto = require('crypto');
 
 /**
  * Integration OAuth Flow Management
- * Handles OAuth flows for Zoom, Google Meet, Webex, and cloud storage providers
+ * Handles OAuth flows for Zoom, Google Meet, Webex, and cloud storage providers.
+ *
+ * Zoom credentials resolution order:
+ *   1. Database (client_id / client_secret columns)
+ *   2. Environment variables: ZOOM_CLIENT_ID / ZOOM_CLIENT_SECRET
+ *
+ * All tokens are stored in dedicated columns (access_token, refresh_token,
+ * token_expires_at, etc.) instead of the JSONB settings blob.
  */
 
 // Store OAuth states temporarily (in production, use Redis or database)
 const oauthStates = new Map();
 
 /**
- * OAuth Configuration for each provider
- */
-/**
  * Build the base URL for OAuth redirect URIs.
  * Uses APP_BASE_URL env var if set, otherwise falls back to request-derived URL.
- * APP_BASE_URL should be set in production (e.g., https://app.aureoncare.com)
- * and must match the redirect URL registered in each provider's app settings.
  */
 function getBaseUrl(req) {
   if (process.env.APP_BASE_URL) {
     return process.env.APP_BASE_URL.replace(/\/+$/, '');
   }
-  // Support X-Forwarded headers behind reverse proxies
   const protocol = req.get('x-forwarded-proto') || req.protocol;
   const host = req.get('x-forwarded-host') || req.get('host');
   return `${protocol}://${host}`;
+}
+
+/**
+ * Resolve client_id and client_secret for a telehealth provider.
+ * Falls back to env vars (ZOOM_CLIENT_ID, etc.) when DB has no credentials.
+ */
+function resolveClientCredentials(providerType, dbRow) {
+  let client_id = dbRow?.client_id || null;
+  let client_secret = dbRow?.client_secret || null;
+
+  if (!client_id || !client_secret) {
+    const prefix = providerType.toUpperCase();
+    client_id = client_id || process.env[`${prefix}_CLIENT_ID`] || null;
+    client_secret = client_secret || process.env[`${prefix}_CLIENT_SECRET`] || null;
+  }
+
+  return { client_id, client_secret };
 }
 
 const OAUTH_CONFIGS = {
@@ -55,24 +73,29 @@ const OAUTH_CONFIGS = {
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
     scope: 'Files.ReadWrite offline_access',
   },
-  surescripts: {
-    // Surescripts uses API key authentication, not OAuth
-    authType: 'api_key',
-  },
-  labcorp: {
-    // Labcorp uses API key authentication
-    authType: 'api_key',
-  },
-  optum: {
-    // Optum uses API key authentication
-    authType: 'api_key',
-  },
+  surescripts: { authType: 'api_key' },
+  labcorp: { authType: 'api_key' },
+  optum: { authType: 'api_key' },
 };
 
 /**
- * Initiate OAuth flow for a provider
- * GET /api/integrations/oauth/:providerType/initiate
+ * Helper: determine which DB table and field to use for a provider type
  */
+function getTableInfo(providerType) {
+  if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
+    return { table: 'telehealth_provider_settings', field: 'provider_type' };
+  }
+  if (['google_drive', 'onedrive'].includes(providerType)) {
+    return { table: 'backup_provider_settings', field: 'provider_type' };
+  }
+  if (['surescripts', 'labcorp', 'optum'].includes(providerType)) {
+    return { table: 'vendor_integration_settings', field: 'vendor_type' };
+  }
+  return null;
+}
+
+// ─── Initiate OAuth flow ────────────────────────────────────────────────────
+
 router.get('/:providerType/initiate', async (req, res) => {
   try {
     const { providerType } = req.params;
@@ -81,75 +104,92 @@ router.get('/:providerType/initiate', async (req, res) => {
     if (!config) {
       return res.status(400).json({ error: 'Unknown provider type' });
     }
-
     if (config.authType === 'api_key') {
       return res.status(400).json({
         error: 'This provider uses API key authentication, not OAuth',
-        hint: 'Please configure using the API key configuration modal'
       });
     }
 
-    // Get provider settings from database to get client_id
     const pool = req.app.locals.pool;
-    let settingsTable, providerField;
+    const info = getTableInfo(providerType);
+    if (!info) return res.status(400).json({ error: 'Invalid provider type' });
 
-    if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
-      settingsTable = 'telehealth_provider_settings';
-      providerField = 'provider_type';
-
-      // Ensure table exists
+    // Ensure table exists
+    if (info.table === 'telehealth_provider_settings') {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
           id SERIAL PRIMARY KEY,
           provider_type VARCHAR(50) UNIQUE NOT NULL,
           is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255),
-          client_secret VARCHAR(255),
+          client_id TEXT, client_secret TEXT,
+          access_token TEXT, refresh_token TEXT,
+          token_type VARCHAR(50) DEFAULT 'Bearer',
+          token_scope TEXT, token_expires_at BIGINT,
+          account_id VARCHAR(255), zoom_user_id VARCHAR(255), zoom_user_email VARCHAR(255),
+          api_key TEXT, api_secret TEXT, webhook_secret TEXT,
           settings JSONB DEFAULT '{}'::jsonb,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-    } else if (['google_drive', 'onedrive'].includes(providerType)) {
-      settingsTable = 'backup_provider_settings';
-      providerField = 'provider_type';
-
-      // Ensure table exists
+    } else if (info.table === 'backup_provider_settings') {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS backup_provider_settings (
           id SERIAL PRIMARY KEY,
           provider_type VARCHAR(50) UNIQUE NOT NULL,
           is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255),
-          client_secret VARCHAR(255),
+          client_id VARCHAR(255), client_secret VARCHAR(255),
           settings JSONB DEFAULT '{}'::jsonb,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-    } else {
-      return res.status(400).json({ error: 'Invalid provider type' });
     }
 
+    // Fetch DB row (may be empty)
     const result = await pool.query(
-      `SELECT client_id, client_secret FROM ${settingsTable} WHERE ${providerField} = $1`,
+      `SELECT client_id, client_secret FROM ${info.table} WHERE ${info.field} = $1`,
       [providerType]
     );
+    const dbRow = result.rows[0] || null;
 
-    if (result.rows.length === 0 || !result.rows[0].client_id) {
+    // Resolve credentials (DB → env vars)
+    const { client_id, client_secret } = resolveClientCredentials(providerType, dbRow);
+
+    if (!client_id || !client_secret) {
       return res.status(400).json({
         error: 'Provider not configured',
-        hint: 'Please configure the provider with client ID and secret first'
+        hint: 'Please set Client ID and Client Secret (or set environment variables).',
       });
     }
 
-    const { client_id } = result.rows[0];
+    // If credentials came from env vars and there's no DB row yet, create one
+    if (!dbRow) {
+      await pool.query(
+        `INSERT INTO ${info.table} (${info.field}, client_id, client_secret, is_enabled)
+         VALUES ($1, $2, $3, false)
+         ON CONFLICT (${info.field}) DO UPDATE SET
+           client_id = EXCLUDED.client_id,
+           client_secret = EXCLUDED.client_secret,
+           updated_at = CURRENT_TIMESTAMP`,
+        [providerType, client_id, client_secret]
+      );
+    } else if (!dbRow.client_id || !dbRow.client_secret) {
+      // DB row exists but missing creds — persist from env vars
+      await pool.query(
+        `UPDATE ${info.table}
+         SET client_id = COALESCE(client_id, $1),
+             client_secret = COALESCE(client_secret, $2),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE ${info.field} = $3`,
+        [client_id, client_secret, providerType]
+      );
+    }
 
-    // Generate state for CSRF protection
+    // Generate CSRF state
     const state = crypto.randomBytes(32).toString('hex');
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
 
-    // Store state temporarily (expires in 10 minutes)
     oauthStates.set(state, {
       providerType,
       timestamp: Date.now(),
@@ -158,9 +198,7 @@ router.get('/:providerType/initiate', async (req, res) => {
 
     // Clean up expired states
     for (const [key, value] of oauthStates.entries()) {
-      if (value.expiresAt < Date.now()) {
-        oauthStates.delete(key);
-      }
+      if (value.expiresAt < Date.now()) oauthStates.delete(key);
     }
 
     // Build authorization URL
@@ -171,25 +209,20 @@ router.get('/:providerType/initiate', async (req, res) => {
     authUrl.searchParams.append('scope', config.scope);
     authUrl.searchParams.append('state', state);
 
-    if (providerType === 'google_meet' || providerType === 'google_drive') {
+    if (['google_meet', 'google_drive'].includes(providerType)) {
       authUrl.searchParams.append('access_type', 'offline');
       authUrl.searchParams.append('prompt', 'consent');
     }
 
-    res.json({
-      authUrl: authUrl.toString(),
-      state,
-    });
+    res.json({ authUrl: authUrl.toString(), state });
   } catch (error) {
     console.error('Error initiating OAuth flow:', error);
     res.status(500).json({ error: 'Failed to initiate OAuth flow' });
   }
 });
 
-/**
- * OAuth callback handler
- * GET /api/integrations/oauth/:providerType/callback
- */
+// ─── OAuth callback handler ─────────────────────────────────────────────────
+
 router.get('/:providerType/callback', async (req, res) => {
   try {
     const { providerType } = req.params;
@@ -198,7 +231,6 @@ router.get('/:providerType/callback', async (req, res) => {
     if (oauthError) {
       return res.redirect(`/admin?error=${encodeURIComponent(oauthError)}&provider=${providerType}`);
     }
-
     if (!code || !state) {
       return res.redirect(`/admin?error=invalid_callback&provider=${providerType}`);
     }
@@ -208,41 +240,30 @@ router.get('/:providerType/callback', async (req, res) => {
     if (!storedState || storedState.providerType !== providerType) {
       return res.redirect(`/admin?error=invalid_state&provider=${providerType}`);
     }
-
-    // Delete used state
     oauthStates.delete(state);
 
     const config = OAUTH_CONFIGS[providerType];
     const pool = req.app.locals.pool;
+    const info = getTableInfo(providerType);
 
-    // Get provider settings
-    let settingsTable, providerField;
-    if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
-      settingsTable = 'telehealth_provider_settings';
-      providerField = 'provider_type';
-    } else if (['google_drive', 'onedrive'].includes(providerType)) {
-      settingsTable = 'backup_provider_settings';
-      providerField = 'provider_type';
-    }
-
+    // Fetch existing DB row for client credentials
     const result = await pool.query(
-      `SELECT client_id, client_secret FROM ${settingsTable} WHERE ${providerField} = $1`,
+      `SELECT client_id, client_secret FROM ${info.table} WHERE ${info.field} = $1`,
       [providerType]
     );
+    const dbRow = result.rows[0] || null;
+    const { client_id, client_secret } = resolveClientCredentials(providerType, dbRow);
 
-    if (result.rows.length === 0) {
+    if (!client_id || !client_secret) {
       return res.redirect(`/admin?error=provider_not_configured&provider=${providerType}`);
     }
 
-    const { client_id, client_secret } = result.rows[0];
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
 
-    // Exchange code for tokens
+    // Exchange authorization code for tokens
     const tokenResponse = await fetch(config.tokenUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
@@ -259,21 +280,82 @@ router.get('/:providerType/callback', async (req, res) => {
     }
 
     const tokens = await tokenResponse.json();
+    const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;
 
-    // Store tokens in database
-    const settingsData = {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expires_at: tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null,
-      scope: tokens.scope || config.scope,
-    };
+    // For telehealth providers, store tokens in dedicated columns
+    if (info.table === 'telehealth_provider_settings') {
+      // Fetch Zoom user profile to store email + user ID
+      let zoomUserId = null;
+      let zoomUserEmail = null;
+      let accountId = null;
 
-    await pool.query(
-      `UPDATE ${settingsTable}
-       SET settings = $1, updated_at = CURRENT_TIMESTAMP
-       WHERE ${providerField} = $2`,
-      [JSON.stringify(settingsData), providerType]
-    );
+      if (providerType === 'zoom' && tokens.access_token) {
+        try {
+          const userResponse = await fetch('https://api.zoom.us/v2/users/me', {
+            headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+          });
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            zoomUserId = userData.id || null;
+            zoomUserEmail = userData.email || null;
+            accountId = userData.account_id || null;
+          }
+        } catch (e) {
+          console.error('Failed to fetch Zoom user profile:', e.message);
+        }
+      }
+
+      await pool.query(
+        `UPDATE telehealth_provider_settings
+         SET access_token = $1,
+             refresh_token = $2,
+             token_type = $3,
+             token_scope = $4,
+             token_expires_at = $5,
+             account_id = COALESCE($6, account_id),
+             zoom_user_id = COALESCE($7, zoom_user_id),
+             zoom_user_email = COALESCE($8, zoom_user_email),
+             is_enabled = true,
+             settings = jsonb_build_object(
+               'access_token', $1::text,
+               'refresh_token', $2::text,
+               'expires_at', $5::bigint,
+               'scope', $4::text,
+               'token_type', $3::text,
+               'account_id', COALESCE($6, account_id)::text,
+               'user_id', COALESCE($7, zoom_user_id)::text,
+               'email', COALESCE($8, zoom_user_email)::text
+             ),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE provider_type = $9`,
+        [
+          tokens.access_token,
+          tokens.refresh_token || null,
+          tokens.token_type || 'Bearer',
+          tokens.scope || config.scope,
+          expiresAt,
+          accountId,
+          zoomUserId,
+          zoomUserEmail,
+          providerType,
+        ]
+      );
+    } else {
+      // Backup providers — keep using JSONB settings for now
+      const settingsData = {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_at: expiresAt,
+        scope: tokens.scope || config.scope,
+      };
+
+      await pool.query(
+        `UPDATE ${info.table}
+         SET settings = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE ${info.field} = $2`,
+        [JSON.stringify(settingsData), providerType]
+      );
+    }
 
     // Redirect to success page
     res.redirect(`/admin?success=oauth_configured&provider=${providerType}`);
@@ -283,53 +365,69 @@ router.get('/:providerType/callback', async (req, res) => {
   }
 });
 
-/**
- * Get OAuth configuration status
- * GET /api/integrations/oauth/:providerType/status
- */
+// ─── OAuth configuration status ─────────────────────────────────────────────
+
 router.get('/:providerType/status', async (req, res) => {
   try {
     const { providerType } = req.params;
     const pool = req.app.locals.pool;
+    const info = getTableInfo(providerType);
 
-    let settingsTable, providerField;
-    if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
-      settingsTable = 'telehealth_provider_settings';
-      providerField = 'provider_type';
-    } else if (['google_drive', 'onedrive'].includes(providerType)) {
-      settingsTable = 'backup_provider_settings';
-      providerField = 'provider_type';
-    } else if (['surescripts', 'labcorp', 'optum'].includes(providerType)) {
-      return res.json({
-        configured: false,
-        authType: 'api_key',
-        message: 'This provider uses API key authentication'
-      });
-    } else {
-      return res.status(400).json({ error: 'Unknown provider type' });
+    if (!info) return res.status(400).json({ error: 'Unknown provider type' });
+
+    if (['surescripts', 'labcorp', 'optum'].includes(providerType)) {
+      return res.json({ configured: false, authType: 'api_key' });
     }
 
-    const result = await pool.query(
-      `SELECT client_id, settings FROM ${settingsTable} WHERE ${providerField} = $1`,
-      [providerType]
-    );
+    let query;
+    if (info.table === 'telehealth_provider_settings') {
+      query = `SELECT client_id, access_token, refresh_token, token_expires_at,
+                      token_scope, account_id, zoom_user_id, zoom_user_email, is_enabled, settings
+               FROM ${info.table} WHERE ${info.field} = $1`;
+    } else {
+      query = `SELECT client_id, settings FROM ${info.table} WHERE ${info.field} = $1`;
+    }
+
+    const result = await pool.query(query, [providerType]);
 
     if (result.rows.length === 0) {
+      // Check env vars
+      const { client_id } = resolveClientCredentials(providerType, null);
       return res.json({
         configured: false,
-        hasClientId: false,
+        hasClientId: Boolean(client_id),
         hasTokens: false,
+        envConfigured: Boolean(client_id),
       });
     }
 
-    const { client_id, settings } = result.rows[0];
-    const parsedSettings = settings ? (typeof settings === 'string' ? JSON.parse(settings) : settings) : {};
+    const row = result.rows[0];
 
+    if (info.table === 'telehealth_provider_settings') {
+      const hasTokens = Boolean(row.access_token);
+      const isExpired = row.token_expires_at ? Date.now() >= row.token_expires_at : false;
+
+      return res.json({
+        configured: Boolean(row.client_id && row.access_token),
+        hasClientId: Boolean(row.client_id),
+        hasTokens,
+        isExpired,
+        isEnabled: row.is_enabled || false,
+        expiresAt: row.token_expires_at || null,
+        scope: row.token_scope || null,
+        accountId: row.account_id || null,
+        userId: row.zoom_user_id || null,
+        userEmail: row.zoom_user_email || null,
+      });
+    }
+
+    // Backup providers — read from JSONB
+    const settings = row.settings ? (typeof row.settings === 'string' ? JSON.parse(row.settings) : row.settings) : {};
     res.json({
-      configured: Boolean(client_id && parsedSettings.access_token),
-      hasClientId: Boolean(client_id),
-      hasTokens: Boolean(parsedSettings.access_token),
-      expiresAt: parsedSettings.expires_at || null,
+      configured: Boolean(row.client_id && settings.access_token),
+      hasClientId: Boolean(row.client_id),
+      hasTokens: Boolean(settings.access_token),
+      expiresAt: settings.expires_at || null,
     });
   } catch (error) {
     console.error('Error getting OAuth status:', error);
@@ -337,47 +435,47 @@ router.get('/:providerType/status', async (req, res) => {
   }
 });
 
-/**
- * Get provider client credentials (for editing)
- * GET /api/integrations/oauth/:providerType/credentials
- * Returns masked credentials for security
- */
+// ─── Get redirect URL info (for Zoom setup guide) ──────────────────────────
+
+router.get('/:providerType/redirect-url', (req, res) => {
+  const { providerType } = req.params;
+  const baseUrl = getBaseUrl(req);
+  const redirectUri = `${baseUrl}/api/integrations/oauth/${providerType}/callback`;
+  res.json({ redirectUrl: redirectUri, baseUrl });
+});
+
+// ─── Get provider client credentials (for editing) ─────────────────────────
+
 router.get('/:providerType/credentials', async (req, res) => {
   try {
     const { providerType } = req.params;
     const pool = req.app.locals.pool;
-    let settingsTable, providerField;
+    const info = getTableInfo(providerType);
 
-    if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
-      settingsTable = 'telehealth_provider_settings';
-      providerField = 'provider_type';
-    } else if (['google_drive', 'onedrive'].includes(providerType)) {
-      settingsTable = 'backup_provider_settings';
-      providerField = 'provider_type';
-    } else if (['surescripts', 'labcorp', 'optum'].includes(providerType)) {
-      settingsTable = 'vendor_integration_settings';
-      providerField = 'vendor_type';
-    } else {
-      return res.status(400).json({ error: 'Unknown provider type' });
-    }
+    if (!info) return res.status(400).json({ error: 'Unknown provider type' });
 
-    // Fetch credentials
     const result = await pool.query(
-      `SELECT client_id, client_secret FROM ${settingsTable} WHERE ${providerField} = $1`,
+      `SELECT client_id, client_secret FROM ${info.table} WHERE ${info.field} = $1`,
       [providerType]
     );
 
     if (result.rows.length === 0) {
+      // Fall back to env vars
+      const { client_id, client_secret } = resolveClientCredentials(providerType, null);
+      if (client_id) {
+        return res.json({
+          client_id,
+          client_secret: client_secret ? '••••' + client_secret.slice(-4) : '',
+          source: 'environment',
+        });
+      }
       return res.status(404).json({ error: 'Provider not configured' });
     }
 
-    const credentials = result.rows[0];
-
-    // Return credentials (client will display them in the form)
-    // Note: In a real production app, you might want to return masked values
     res.json({
-      client_id: credentials.client_id,
-      client_secret: credentials.client_secret,
+      client_id: result.rows[0].client_id,
+      client_secret: result.rows[0].client_secret,
+      source: 'database',
     });
   } catch (error) {
     console.error('Error fetching credentials:', error);
@@ -385,10 +483,8 @@ router.get('/:providerType/credentials', async (req, res) => {
   }
 });
 
-/**
- * Save provider client credentials (client_id, client_secret)
- * POST /api/integrations/oauth/:providerType/credentials
- */
+// ─── Save provider client credentials ───────────────────────────────────────
+
 router.post('/:providerType/credentials', async (req, res) => {
   try {
     const { providerType } = req.params;
@@ -399,82 +495,70 @@ router.post('/:providerType/credentials', async (req, res) => {
     }
 
     const pool = req.app.locals.pool;
-    let settingsTable, providerField;
+    const info = getTableInfo(providerType);
+    if (!info) return res.status(400).json({ error: 'Unknown provider type' });
 
-    if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
-      settingsTable = 'telehealth_provider_settings';
-      providerField = 'provider_type';
-
-      // Ensure table exists
+    // Ensure table exists
+    if (info.table === 'telehealth_provider_settings') {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
           id SERIAL PRIMARY KEY,
           provider_type VARCHAR(50) UNIQUE NOT NULL,
           is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255),
-          client_secret VARCHAR(255),
+          client_id TEXT, client_secret TEXT,
+          access_token TEXT, refresh_token TEXT,
+          token_type VARCHAR(50) DEFAULT 'Bearer',
+          token_scope TEXT, token_expires_at BIGINT,
+          account_id VARCHAR(255), zoom_user_id VARCHAR(255), zoom_user_email VARCHAR(255),
+          api_key TEXT, api_secret TEXT, webhook_secret TEXT,
           settings JSONB DEFAULT '{}'::jsonb,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-    } else if (['google_drive', 'onedrive'].includes(providerType)) {
-      settingsTable = 'backup_provider_settings';
-      providerField = 'provider_type';
-
-      // Ensure table exists
+    } else if (info.table === 'backup_provider_settings') {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS backup_provider_settings (
           id SERIAL PRIMARY KEY,
           provider_type VARCHAR(50) UNIQUE NOT NULL,
           is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255),
-          client_secret VARCHAR(255),
+          client_id VARCHAR(255), client_secret VARCHAR(255),
           settings JSONB DEFAULT '{}'::jsonb,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-    } else if (['surescripts', 'labcorp', 'optum'].includes(providerType)) {
-      settingsTable = 'vendor_integration_settings';
-      providerField = 'vendor_type';
-
-      // Ensure table exists
+    } else if (info.table === 'vendor_integration_settings') {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS vendor_integration_settings (
           id SERIAL PRIMARY KEY,
           vendor_type VARCHAR(50) UNIQUE NOT NULL,
           is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255),
-          client_secret VARCHAR(255),
+          client_id VARCHAR(255), client_secret VARCHAR(255),
           api_key VARCHAR(255),
           settings JSONB DEFAULT '{}'::jsonb,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-    } else {
-      return res.status(400).json({ error: 'Unknown provider type' });
     }
 
-    // Check if provider exists
+    // Upsert
     const existing = await pool.query(
-      `SELECT id FROM ${settingsTable} WHERE ${providerField} = $1`,
+      `SELECT id FROM ${info.table} WHERE ${info.field} = $1`,
       [providerType]
     );
 
     if (existing.rows.length > 0) {
-      // Update existing
       await pool.query(
-        `UPDATE ${settingsTable}
+        `UPDATE ${info.table}
          SET client_id = $1, client_secret = $2, updated_at = CURRENT_TIMESTAMP
-         WHERE ${providerField} = $3`,
+         WHERE ${info.field} = $3`,
         [client_id, client_secret, providerType]
       );
     } else {
-      // Insert new
       await pool.query(
-        `INSERT INTO ${settingsTable} (${providerField}, client_id, client_secret, is_enabled)
+        `INSERT INTO ${info.table} (${info.field}, client_id, client_secret, is_enabled)
          VALUES ($1, $2, $3, false)`,
         [providerType, client_id, client_secret]
       );
@@ -487,27 +571,18 @@ router.post('/:providerType/credentials', async (req, res) => {
   }
 });
 
-/**
- * Refresh OAuth access token
- * POST /api/integrations/oauth/:providerType/refresh
- */
+// ─── Refresh OAuth access token ─────────────────────────────────────────────
+
 router.post('/:providerType/refresh', async (req, res) => {
   try {
     const { providerType } = req.params;
     const config = OAUTH_CONFIGS[providerType];
     const pool = req.app.locals.pool;
-
-    let settingsTable, providerField;
-    if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
-      settingsTable = 'telehealth_provider_settings';
-      providerField = 'provider_type';
-    } else if (['google_drive', 'onedrive'].includes(providerType)) {
-      settingsTable = 'backup_provider_settings';
-      providerField = 'provider_type';
-    }
+    const info = getTableInfo(providerType);
 
     const result = await pool.query(
-      `SELECT client_id, client_secret, settings FROM ${settingsTable} WHERE ${providerField} = $1`,
+      `SELECT client_id, client_secret, refresh_token, access_token, token_expires_at, settings
+       FROM ${info.table} WHERE ${info.field} = $1`,
       [providerType]
     );
 
@@ -515,22 +590,23 @@ router.post('/:providerType/refresh', async (req, res) => {
       return res.status(404).json({ error: 'Provider not configured' });
     }
 
-    const { client_id, client_secret, settings } = result.rows[0];
-    const parsedSettings = typeof settings === 'string' ? JSON.parse(settings) : settings;
+    const row = result.rows[0];
+    const { client_id, client_secret } = resolveClientCredentials(providerType, row);
 
-    if (!parsedSettings.refresh_token) {
+    // Use dedicated column first, fall back to JSONB
+    const refreshToken = row.refresh_token ||
+      (row.settings && typeof row.settings === 'object' ? row.settings.refresh_token : null);
+
+    if (!refreshToken) {
       return res.status(400).json({ error: 'No refresh token available' });
     }
 
-    // Refresh the token
     const tokenResponse = await fetch(config.tokenUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'refresh_token',
-        refresh_token: parsedSettings.refresh_token,
+        refresh_token: refreshToken,
         client_id,
         client_secret,
       }),
@@ -541,21 +617,47 @@ router.post('/:providerType/refresh', async (req, res) => {
     }
 
     const tokens = await tokenResponse.json();
+    const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;
 
-    // Update tokens in database
-    const newSettings = {
-      ...parsedSettings,
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token || parsedSettings.refresh_token,
-      expires_at: tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null,
-    };
-
-    await pool.query(
-      `UPDATE ${settingsTable}
-       SET settings = $1, updated_at = CURRENT_TIMESTAMP
-       WHERE ${providerField} = $2`,
-      [JSON.stringify(newSettings), providerType]
-    );
+    if (info.table === 'telehealth_provider_settings') {
+      await pool.query(
+        `UPDATE telehealth_provider_settings
+         SET access_token = $1,
+             refresh_token = COALESCE($2, refresh_token),
+             token_expires_at = $3,
+             token_scope = COALESCE($4, token_scope),
+             settings = settings || jsonb_build_object(
+               'access_token', $1::text,
+               'refresh_token', COALESCE($2, refresh_token)::text,
+               'expires_at', $3::bigint,
+               'last_refreshed_at', $5::bigint
+             ),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE provider_type = $6`,
+        [
+          tokens.access_token,
+          tokens.refresh_token || null,
+          expiresAt,
+          tokens.scope || null,
+          Date.now(),
+          providerType,
+        ]
+      );
+    } else {
+      const parsedSettings = typeof row.settings === 'string' ? JSON.parse(row.settings) : (row.settings || {});
+      const newSettings = {
+        ...parsedSettings,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || parsedSettings.refresh_token,
+        expires_at: expiresAt,
+      };
+      await pool.query(
+        `UPDATE ${info.table}
+         SET settings = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE ${info.field} = $2`,
+        [JSON.stringify(newSettings), providerType]
+      );
+    }
 
     res.json({ success: true, message: 'Token refreshed successfully' });
   } catch (error) {
@@ -564,31 +666,41 @@ router.post('/:providerType/refresh', async (req, res) => {
   }
 });
 
-/**
- * Delete OAuth configuration
- * DELETE /api/integrations/oauth/:providerType
- */
+// ─── Disconnect / clear OAuth tokens ────────────────────────────────────────
+
 router.delete('/:providerType', async (req, res) => {
   try {
     const { providerType } = req.params;
     const pool = req.app.locals.pool;
+    const info = getTableInfo(providerType);
+    if (!info) return res.status(400).json({ error: 'Unknown provider type' });
 
-    let settingsTable, providerField;
-    if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
-      settingsTable = 'telehealth_provider_settings';
-      providerField = 'provider_type';
-    } else if (['google_drive', 'onedrive'].includes(providerType)) {
-      settingsTable = 'backup_provider_settings';
-      providerField = 'provider_type';
+    if (info.table === 'telehealth_provider_settings') {
+      // Clear tokens but keep client credentials
+      await pool.query(
+        `UPDATE telehealth_provider_settings
+         SET access_token = NULL,
+             refresh_token = NULL,
+             token_type = 'Bearer',
+             token_scope = NULL,
+             token_expires_at = NULL,
+             account_id = NULL,
+             zoom_user_id = NULL,
+             zoom_user_email = NULL,
+             is_enabled = false,
+             settings = '{}'::jsonb,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE provider_type = $1`,
+        [providerType]
+      );
+    } else {
+      await pool.query(
+        `UPDATE ${info.table}
+         SET settings = '{}'::jsonb, is_enabled = false, updated_at = CURRENT_TIMESTAMP
+         WHERE ${info.field} = $1`,
+        [providerType]
+      );
     }
-
-    // Clear OAuth tokens but keep client credentials
-    await pool.query(
-      `UPDATE ${settingsTable}
-       SET settings = '{}'::jsonb, is_enabled = false, updated_at = CURRENT_TIMESTAMP
-       WHERE ${providerField} = $1`,
-      [providerType]
-    );
 
     res.json({ success: true, message: 'OAuth configuration cleared' });
   } catch (error) {
