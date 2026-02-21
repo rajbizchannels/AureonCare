@@ -121,8 +121,8 @@ const CredentialModal = ({
     setClientSecret('');
     setApiKey('');
     setErrors({});
-    setShowSecret(false);
-    setShowApiKey(false);
+    //setShowSecret(false);
+    //setShowApiKey(false);
   };
 
   const handleClose = () => {
@@ -137,8 +137,8 @@ const CredentialModal = ({
     setClientSecret('');
     setApiKey('');
     setErrors({});
-    setShowSecret(false);
-    setShowApiKey(false);
+    //setShowSecret(false);
+    //setShowApiKey(false);
     onClose();
   };
 
