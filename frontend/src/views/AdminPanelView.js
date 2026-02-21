@@ -868,6 +868,63 @@ const AdminPanelView = ({
   }, []);
 
   /**
+   * Poll backend OAuth status endpoint instead of checking popup.closed
+   * (Cross-Origin-Opener-Policy blocks window.closed on OAuth provider popups)
+   */
+  const pollOAuthStatus = useCallback((providerType, popup, onComplete) => {
+    const POLL_INTERVAL = 2500; // 2.5 seconds
+    const MAX_POLL_TIME = 5 * 60 * 1000; // 5 minute timeout
+    const startTime = Date.now();
+
+    const pollTimer = setInterval(async () => {
+      // Check timeout
+      if (Date.now() - startTime > MAX_POLL_TIME) {
+        clearInterval(pollTimer);
+        console.warn('OAuth status polling timed out after 5 minutes');
+        return;
+      }
+
+      // Try popup.closed as a fast secondary signal (may fail due to COOP)
+      let popupClosed = false;
+      try {
+        popupClosed = popup && popup.closed;
+      } catch (_) {
+        // COOP blocks access — ignore and rely on backend polling
+      }
+
+      try {
+        const statusResponse = await fetch(`/api/integrations/oauth/${providerType}/status`);
+        if (statusResponse.ok) {
+          const status = await statusResponse.json();
+          if (status.hasTokens) {
+            clearInterval(pollTimer);
+            onComplete(true);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error polling OAuth status:', err);
+      }
+
+      // If popup closed but no tokens yet, give a few more seconds then stop
+      if (popupClosed) {
+        // Wait one more cycle to allow backend to finalize token exchange
+        setTimeout(() => {
+          clearInterval(pollTimer);
+          // Final check
+          fetch(`/api/integrations/oauth/${providerType}/status`)
+            .then(r => r.json())
+            .then(status => onComplete(status.hasTokens))
+            .catch(() => onComplete(false));
+        }, 3000);
+      }
+    }, POLL_INTERVAL);
+
+    // Return cleanup function
+    return () => clearInterval(pollTimer);
+  }, []);
+
+  /**
    * Handle reconfigure integration - fetches existing credentials and shows edit modal
    */
   const handleReconfigureIntegration = useCallback(
@@ -901,11 +958,9 @@ const AdminPanelView = ({
               `width=${width},height=${height},left=${left},top=${top}`
             );
 
-            // Poll for popup closure
-            const pollTimer = setInterval(async () => {
-              if (popup && popup.closed) {
-                clearInterval(pollTimer);
-                // Refresh status based on provider type
+            // Poll backend OAuth status (COOP-safe, no popup.closed dependency)
+            pollOAuthStatus(providerType, popup, async (success) => {
+              if (success) {
                 if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
                   const settings = await api.getTelehealthSettings();
                   setTelehealthStatus((prev) => ({ ...prev, ...settings }));
@@ -915,7 +970,7 @@ const AdminPanelView = ({
                 setShowCredentialModal(false);
                 await addNotification('success', `${providerName} configured successfully.`);
               }
-            }, 1000);
+            });
           }
         };
 
@@ -943,7 +998,7 @@ const AdminPanelView = ({
         await addNotification('alert', 'Failed to load existing credentials');
       }
     },
-    [api, addNotification, fetchBackupConfigStatus]
+    [api, addNotification, fetchBackupConfigStatus, pollOAuthStatus]
   );
 
   /**
@@ -1011,9 +1066,9 @@ const AdminPanelView = ({
                 `width=${width},height=${height},left=${left},top=${top}`
               );
 
-              const pollTimer = setInterval(async () => {
-                if (popup && popup.closed) {
-                  clearInterval(pollTimer);
+              // Poll backend OAuth status (COOP-safe)
+              pollOAuthStatus(providerType, popup, async (success) => {
+                if (success) {
                   try {
                     const settings = await api.getTelehealthSettings();
                     if (settings) {
@@ -1029,7 +1084,7 @@ const AdminPanelView = ({
                     await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
                   }
                 }
-              }, 1000);
+              });
             };
 
             setCredentialModalConfig({
@@ -1070,11 +1125,9 @@ const AdminPanelView = ({
           `width=${width},height=${height},left=${left},top=${top}`
         );
 
-        // Poll for popup closure to refresh status
-        const pollTimer = setInterval(async () => {
-          if (popup && popup.closed) {
-            clearInterval(pollTimer);
-            // Refresh telehealth status
+        // Poll backend OAuth status (COOP-safe)
+        pollOAuthStatus(providerType, popup, async (success) => {
+          if (success) {
             try {
               const settings = await api.getTelehealthSettings();
               if (settings) {
@@ -1089,13 +1142,13 @@ const AdminPanelView = ({
               await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
             }
           }
-        }, 1000);
+        });
       } catch (error) {
         console.error('Error starting provider configuration:', error);
         await addNotification('alert', error.message || 'Failed to start configuration flow');
       }
     },
-    [api, addNotification, telehealthStatus, handleReconfigureIntegration]
+    [api, addNotification, telehealthStatus, handleReconfigureIntegration, pollOAuthStatus]
   );
 
   /**
@@ -1390,14 +1443,13 @@ const AdminPanelView = ({
                   `width=${width},height=${height},left=${left},top=${top}`
                 );
 
-                // Poll for popup closure
-                const pollTimer = setInterval(async () => {
-                  if (popup && popup.closed) {
-                    clearInterval(pollTimer);
+                // Poll backend OAuth status (COOP-safe)
+                pollOAuthStatus(providerType, popup, async (success) => {
+                  if (success) {
                     await fetchBackupConfigStatus();
                     await addNotification('success', `${displayName} configured successfully.`);
                   }
-                }, 1000);
+                });
               } catch (error) {
                 console.error('Error in OAuth flow:', error);
                 await addNotification('alert', error.message || 'Failed to complete OAuth flow');
@@ -1422,20 +1474,18 @@ const AdminPanelView = ({
         `width=${width},height=${height},left=${left},top=${top}`
       );
 
-      // Poll for popup closure to refresh status
-      const pollTimer = setInterval(async () => {
-        if (popup && popup.closed) {
-          clearInterval(pollTimer);
-          // Refresh configuration status
+      // Poll backend OAuth status (COOP-safe)
+      pollOAuthStatus(providerType, popup, async (success) => {
+        if (success) {
           await fetchBackupConfigStatus();
           await addNotification('success', 'Configuration updated. Please check the status.');
         }
-      }, 1000);
+      });
     } catch (error) {
       console.error(`Error configuring ${providerType}:`, error);
       await addNotification('alert', error.message || `Failed to configure ${providerType}`);
     }
-  }, [backupConfig, handleReconfigureIntegration, addNotification, fetchBackupConfigStatus]);
+  }, [backupConfig, handleReconfigureIntegration, addNotification, fetchBackupConfigStatus, pollOAuthStatus]);
 
   /**
    * Restore from backup file
