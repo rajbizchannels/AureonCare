@@ -51,6 +51,10 @@ import {
   Languages,
   MapPin,
   Archive,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Copy,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -81,6 +85,162 @@ import {
   safeJSONParse,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
+
+/**
+ * ZoomSetupGuide - Collapsible step-by-step instructions for configuring
+ * the Zoom OAuth App in the Zoom Marketplace.
+ */
+const ZoomSetupGuide = ({ theme }) => {
+  const [expanded, setExpanded] = React.useState(false);
+  const [redirectUrl, setRedirectUrl] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch('/api/integrations/oauth/zoom/redirect-url')
+      .then(r => r.json())
+      .then(data => setRedirectUrl(data.redirectUrl || ''))
+      .catch(() => {});
+  }, []);
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className={`border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className={`w-full px-6 py-3 flex items-center justify-between text-sm font-medium transition-colors ${
+          theme === 'dark' ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+        }`}
+      >
+        <span>Zoom App Setup Guide</span>
+        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+
+      {expanded && (
+        <div className={`px-6 pb-6 space-y-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+          {/* Redirect URL */}
+          {redirectUrl && (
+            <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'}`}>
+              <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
+                Your Redirect URL (copy this for Step 4):
+              </p>
+              <div className="flex items-center gap-2">
+                <code className={`flex-1 text-xs px-2 py-1 rounded font-mono break-all ${
+                  theme === 'dark' ? 'bg-slate-800 text-blue-300' : 'bg-white text-blue-800'
+                }`}>
+                  {redirectUrl}
+                </code>
+                <button
+                  onClick={() => handleCopy(redirectUrl)}
+                  className={`p-1.5 rounded transition-colors flex-shrink-0 ${
+                    copied
+                      ? 'text-green-500'
+                      : theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
+                  }`}
+                  title="Copy to clipboard"
+                >
+                  {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Steps */}
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>1</span>
+              <div>
+                <p className="font-medium">Create a Zoom OAuth App</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Go to{' '}
+                  <a href="https://marketplace.zoom.us/develop/create" target="_blank" rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline inline-flex items-center gap-1">
+                    marketplace.zoom.us <ExternalLink className="w-3 h-3" />
+                  </a>{' '}
+                  and sign in. Click <strong>Develop</strong> &rarr; <strong>Build App</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>2</span>
+              <div>
+                <p className="font-medium">Choose "General App"</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Select <strong>General App</strong> (not Server-to-Server). Give it a name like "AureonCare Telehealth".
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>3</span>
+              <div>
+                <p className="font-medium">Copy Client ID & Client Secret</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  From the <strong>App Credentials</strong> section, copy the Client ID and Client Secret. You will paste these when you click "Sign in with Zoom" above.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>4</span>
+              <div>
+                <p className="font-medium">Set the Redirect URL</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  In the <strong>OAuth Information</strong> section, paste the Redirect URL shown above into the
+                  <strong> Redirect URL for OAuth</strong> field. Also add it to the <strong>Allow List</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>5</span>
+              <div>
+                <p className="font-medium">Add Required Scopes</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Under <strong>Scopes</strong>, add: <code className={`px-1 py-0.5 rounded text-xs ${
+                    theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'
+                  }`}>meeting:write</code>{' '}
+                  <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>meeting:read</code>{' '}
+                  <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>user:read</code>{' '}
+                  <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>recording:read</code>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
+              }`}>6</span>
+              <div>
+                <p className="font-medium">Click "Sign in with Zoom" above</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  After saving your Zoom app, come back here and click the button above. Enter your Client ID & Secret when prompted, then authorize in the Zoom popup. That's it!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Main Admin Panel View Component
