@@ -87,32 +87,16 @@ import {
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
 
 /**
- * ZoomSetupGuide - Collapsible step-by-step instructions for configuring
- * the Zoom OAuth App in the Zoom Marketplace.
- */
-/**
- * ZoomSetupGuide — collapsible step-by-step guide for creating the Zoom OAuth App.
+ * ZoomSetupGuide — admin-only collapsible guide for configuring
+ * the Zoom OAuth App server-side (environment variables).
  *
- * Props:
- *  theme          — 'light' | 'dark'
- *  needsSetup     — true when "Sign in with Zoom" was clicked but no app credentials exist.
- *                   Causes the guide to auto-expand and highlight the credential entry form.
- *  onSetupComplete(clientId, clientSecret) — called when the admin submits credentials;
- *                   the parent saves them then opens the Zoom OAuth popup.
+ * The end user never sees or enters Client ID/Secret. This guide
+ * is for the system administrator who deploys the application.
  */
-const ZoomSetupGuide = ({ theme, needsSetup = false, onSetupComplete }) => {
-  const [expanded, setExpanded] = React.useState(needsSetup);
+const ZoomSetupGuide = ({ theme }) => {
+  const [expanded, setExpanded] = React.useState(false);
   const [redirectUrl, setRedirectUrl] = React.useState('');
   const [copied, setCopied] = React.useState(false);
-  const [clientId, setClientId] = React.useState('');
-  const [clientSecret, setClientSecret] = React.useState('');
-  const [saving, setSaving] = React.useState(false);
-  const [formError, setFormError] = React.useState('');
-
-  // Auto-expand when needsSetup becomes true
-  React.useEffect(() => {
-    if (needsSetup) setExpanded(true);
-  }, [needsSetup]);
 
   React.useEffect(() => {
     fetch('/api/integrations/oauth/zoom/redirect-url')
@@ -128,26 +112,9 @@ const ZoomSetupGuide = ({ theme, needsSetup = false, onSetupComplete }) => {
     });
   };
 
-  const handleSaveAndConnect = async (e) => {
-    e.preventDefault();
-    setFormError('');
-    if (!clientId.trim()) { setFormError('Client ID is required'); return; }
-    if (!clientSecret.trim()) { setFormError('Client Secret is required'); return; }
-    setSaving(true);
-    try {
-      await onSetupComplete(clientId.trim(), clientSecret.trim());
-    } catch (err) {
-      setFormError(err.message || 'Failed to connect');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const stepBubble = (n, highlight) => (
+  const stepBubble = (n) => (
     <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-      highlight
-        ? theme === 'dark' ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white'
-        : theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+      theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
     }`}>{n}</span>
   );
 
@@ -157,7 +124,6 @@ const ZoomSetupGuide = ({ theme, needsSetup = false, onSetupComplete }) => {
 
   return (
     <div className={`border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-      {/* Header toggle */}
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -167,37 +133,17 @@ const ZoomSetupGuide = ({ theme, needsSetup = false, onSetupComplete }) => {
             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
         }`}
       >
-        <span className="flex items-center gap-2">
-          {needsSetup && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-500 text-white">
-              Setup Required
-            </span>
-          )}
-          Zoom App Setup Guide
-        </span>
+        <span>Admin: Zoom App Setup Guide</span>
         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
 
       {expanded && (
         <div className={`px-6 pb-6 space-y-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-
-          {/* Highlight banner when triggered from the button */}
-          {needsSetup && (
-            <div className={`p-3 rounded-lg flex items-start gap-2 ${
-              theme === 'dark' ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-amber-50 border border-amber-300'
-            }`}>
-              <Shield className={`w-4 h-4 mt-0.5 flex-shrink-0 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
-              <p className={`text-xs ${theme === 'dark' ? 'text-amber-300' : 'text-amber-800'}`}>
-                First-time setup: follow steps 1–5 in the Zoom Marketplace, then paste your Client ID &amp; Secret in step 6 below to connect.
-              </p>
-            </div>
-          )}
-
-          {/* Redirect URL callout */}
+          {/* Redirect URL */}
           {redirectUrl && (
             <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'}`}>
               <p className={`text-xs font-semibold mb-1.5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
-                Your Redirect URL — paste this into Zoom (Step 4):
+                Redirect URL (for Step 4):
               </p>
               <div className="flex items-center gap-2">
                 <code className={`flex-1 text-xs px-2 py-1 rounded font-mono break-all ${
@@ -218,7 +164,6 @@ const ZoomSetupGuide = ({ theme, needsSetup = false, onSetupComplete }) => {
             </div>
           )}
 
-          {/* Steps 1–5 */}
           <div className="space-y-3">
             <div className="flex gap-3">
               {stepBubble(1)}
@@ -230,7 +175,7 @@ const ZoomSetupGuide = ({ theme, needsSetup = false, onSetupComplete }) => {
                     className="text-blue-500 hover:underline inline-flex items-center gap-1">
                     marketplace.zoom.us <ExternalLink className="w-3 h-3" />
                   </a>{' '}
-                  → sign in → click <strong>Develop</strong> → <strong>Build App</strong>.
+                  → sign in → <strong>Develop</strong> → <strong>Build App</strong> → choose <strong>General App</strong>.
                 </p>
               </div>
             </div>
@@ -238,9 +183,10 @@ const ZoomSetupGuide = ({ theme, needsSetup = false, onSetupComplete }) => {
             <div className="flex gap-3">
               {stepBubble(2)}
               <div>
-                <p className="font-medium">Choose "General App"</p>
+                <p className="font-medium">Set the Redirect URL</p>
                 <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Select <strong>General App</strong> (not Server-to-Server). Name it "AureonCare Telehealth".
+                  Under <strong>OAuth Information</strong>, paste the Redirect URL above into the
+                  <strong> Redirect URL for OAuth</strong> field and the <strong>Allow List</strong>.
                 </p>
               </div>
             </div>
@@ -248,28 +194,7 @@ const ZoomSetupGuide = ({ theme, needsSetup = false, onSetupComplete }) => {
             <div className="flex gap-3">
               {stepBubble(3)}
               <div>
-                <p className="font-medium">Get your Client ID &amp; Client Secret</p>
-                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  In the <strong>App Credentials</strong> section, copy both values — you'll paste them below.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              {stepBubble(4)}
-              <div>
-                <p className="font-medium">Set the Redirect URL</p>
-                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Under <strong>OAuth Information</strong>, paste the Redirect URL shown above into
-                  the <strong>Redirect URL for OAuth</strong> field and also into the <strong>Allow List</strong>.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              {stepBubble(5)}
-              <div>
-                <p className="font-medium">Add Required Scopes</p>
+                <p className="font-medium">Add Scopes</p>
                 <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                   Under <strong>Scopes</strong>, add:{' '}
                   {code('meeting:write')} {code('meeting:read')} {code('user:read')} {code('recording:read')}
@@ -277,79 +202,31 @@ const ZoomSetupGuide = ({ theme, needsSetup = false, onSetupComplete }) => {
               </div>
             </div>
 
-            {/* Step 6 — inline credential form */}
-            <div className={`flex gap-3 ${needsSetup ? 'mt-1' : ''}`}>
-              {stepBubble(6, needsSetup)}
-              <div className="flex-1">
-                <p className="font-medium">
-                  {needsSetup ? 'Paste your credentials and connect' : 'Paste credentials & Sign in with Zoom'}
+            <div className="flex gap-3">
+              {stepBubble(4)}
+              <div>
+                <p className="font-medium">Set environment variables on your server</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Zoom and add them to your server's environment:
                 </p>
-
-                <form onSubmit={handleSaveAndConnect} className={`mt-3 space-y-3 p-4 rounded-lg border ${
-                  needsSetup
-                    ? theme === 'dark' ? 'bg-slate-800/80 border-blue-500/40' : 'bg-blue-50 border-blue-300'
-                    : theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'
+                <div className={`mt-2 p-2 rounded text-xs font-mono ${
+                  theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-800'
                 }`}>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Client ID <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={clientId}
-                      onChange={e => { setClientId(e.target.value); setFormError(''); }}
-                      placeholder="e.g. aBcDeFgHiJkLmN"
-                      autoComplete="off"
-                      className={`w-full px-3 py-2 text-sm rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono ${
-                        theme === 'dark'
-                          ? 'bg-slate-900 border-slate-600 text-white placeholder-slate-500'
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Client Secret <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={clientSecret}
-                      onChange={e => { setClientSecret(e.target.value); setFormError(''); }}
-                      placeholder="••••••••••••••••"
-                      className={`w-full px-3 py-2 text-sm rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono ${
-                        theme === 'dark'
-                          ? 'bg-slate-900 border-slate-600 text-white placeholder-slate-500'
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
+                  ZOOM_CLIENT_ID=your_client_id<br />
+                  ZOOM_CLIENT_SECRET=your_client_secret
+                </div>
+              </div>
+            </div>
 
-                  {formError && (
-                    <p className="text-xs text-red-500">{formError}</p>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className={`w-full py-2.5 rounded-lg font-medium text-sm text-white transition-all flex items-center justify-center gap-2 ${
-                      saving
-                        ? 'bg-blue-400 cursor-wait'
-                        : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-sm'
-                    }`}
-                  >
-                    {saving ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Connecting to Zoom...
-                      </>
-                    ) : (
-                      <>
-                        <Video className="w-4 h-4" />
-                        Save &amp; Sign in with Zoom
-                      </>
-                    )}
-                  </button>
-                </form>
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
+              }`}>5</span>
+              <div>
+                <p className="font-medium">Restart the server & click "Sign in with Zoom"</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  After setting the environment variables, restart the backend. Users can then click "Sign in with Zoom" to authorize via their Zoom account.
+                </p>
               </div>
             </div>
           </div>
@@ -519,9 +396,8 @@ const AdminPanelView = ({
     existingCredentials: null,
   });
 
-  // Zoom inline setup: true when Zoom app credentials haven't been configured yet
-  // Triggers the ZoomSetupGuide to expand and show the inline credential form
-  const [zoomNeedsSetup, setZoomNeedsSetup] = useState(false);
+  // Zoom: true when env vars not configured (admin needs to set ZOOM_CLIENT_ID/SECRET)
+  const [zoomEnvMissing, setZoomEnvMissing] = useState(false);
 
   // ==================== MEMOIZED VALUES ====================
 
@@ -1369,9 +1245,10 @@ const AdminPanelView = ({
 
   /**
    * Configure telehealth provider.
-   * For Zoom: always try OAuth directly. If app credentials missing,
-   * expand the inline ZoomSetupGuide instead of showing a popup modal.
-   * For other providers: fall back to CredentialModal.
+   * For Zoom: opens OAuth popup directly (HubSpot-style one-click SSO).
+   *   App credentials (Client ID/Secret) come from server env vars — not the user.
+   *   If env vars are missing, shows an admin-facing "not configured" message.
+   * For other providers: falls back to CredentialModal.
    */
   const handleConfigureTelehealthProvider = useCallback(
     async (providerType) => {
@@ -1379,10 +1256,10 @@ const AdminPanelView = ({
         const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex' };
         const displayName = providerNames[providerType] || providerType;
 
-        // Try to initiate OAuth directly (succeeds if client_id/secret in DB or env vars)
+        // Try to initiate OAuth directly
         try {
           await openOAuthPopup(providerType, displayName);
-          setZoomNeedsSetup(false);
+          setZoomEnvMissing(false);
           return;
         } catch (oauthError) {
           if (!oauthError.message?.includes('not configured')) {
@@ -1390,14 +1267,18 @@ const AdminPanelView = ({
           }
         }
 
-        // Credentials not configured yet
+        // App credentials not configured
         if (providerType === 'zoom') {
-          // For Zoom: expand the inline setup guide — no modal popup
-          setZoomNeedsSetup(true);
+          // Zoom: server env vars are required — show admin message
+          setZoomEnvMissing(true);
+          await addNotification(
+            'warning',
+            'Zoom integration is not set up yet. A system administrator needs to configure the ZOOM_CLIENT_ID and ZOOM_CLIENT_SECRET environment variables on the server.'
+          );
           return;
         }
 
-        // For other OAuth providers: use CredentialModal
+        // Other OAuth providers: use CredentialModal
         let savedCredentials = null;
         try {
           const credResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
@@ -2825,27 +2706,23 @@ const AdminPanelView = ({
             )}
           </div>
 
-          {/* Zoom App Setup Guide (collapsible; auto-expands when app credentials missing) */}
+          {/* Admin notice: env vars not configured */}
+          {zoomEnvMissing && !telehealthStatus.zoom.has_tokens && (
+            <div className={`mx-4 mb-2 p-3 rounded-lg flex items-start gap-2 ${
+              theme === 'dark' ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-amber-50 border border-amber-300'
+            }`}>
+              <Settings className={`w-4 h-4 mt-0.5 flex-shrink-0 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
+              <p className={`text-xs ${theme === 'dark' ? 'text-amber-300' : 'text-amber-800'}`}>
+                <strong>Admin action required:</strong> Set <code className={`px-1 rounded ${theme === 'dark' ? 'bg-slate-700' : 'bg-amber-100'}`}>ZOOM_CLIENT_ID</code> and{' '}
+                <code className={`px-1 rounded ${theme === 'dark' ? 'bg-slate-700' : 'bg-amber-100'}`}>ZOOM_CLIENT_SECRET</code> environment variables on the server, then restart.
+                See the setup guide below for details.
+              </p>
+            </div>
+          )}
+
+          {/* Admin-only setup guide (how to configure server env vars) */}
           {!telehealthStatus.zoom.has_tokens && (
-            <ZoomSetupGuide
-              theme={theme}
-              needsSetup={zoomNeedsSetup}
-              onSetupComplete={async (clientId, clientSecret) => {
-                // Save credentials then immediately open Zoom OAuth
-                try {
-                  const saveRes = await fetch('/api/integrations/oauth/zoom/credentials', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret }),
-                  });
-                  if (!saveRes.ok) throw new Error('Failed to save credentials');
-                  setZoomNeedsSetup(false);
-                  await openOAuthPopup('zoom', 'Zoom');
-                } catch (err) {
-                  await addNotification('alert', err.message || 'Failed to connect to Zoom');
-                }
-              }}
-            />
+            <ZoomSetupGuide theme={theme} />
           )}
         </div>
 

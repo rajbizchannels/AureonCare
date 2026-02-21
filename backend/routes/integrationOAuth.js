@@ -159,7 +159,8 @@ router.get('/:providerType/initiate', async (req, res) => {
     if (!client_id || !client_secret) {
       return res.status(400).json({
         error: 'Provider not configured',
-        hint: 'Please set Client ID and Client Secret (or set environment variables).',
+        needsEnvSetup: true,
+        hint: `Set ${providerType.toUpperCase()}_CLIENT_ID and ${providerType.toUpperCase()}_CLIENT_SECRET environment variables on the server.`,
       });
     }
 
