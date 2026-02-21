@@ -158,10 +158,10 @@ const CredentialModal = ({
   const getProviderInstructions = () => {
     const instructions = {
       zoom: {
-        title: 'Zoom Integration',
+        title: 'Connect Zoom Account',
         clientIdLabel: 'Client ID',
         clientSecretLabel: 'Client Secret',
-        instructions: 'Connect your Zoom account to enable one-click telehealth video sessions.',
+        instructions: 'Enter the Client ID and Client Secret from your Zoom OAuth app. You can find these at marketplace.zoom.us under your app\'s "App Credentials" section.',
         connectLabel: 'Connect with Zoom',
         reconnectLabel: 'Reconnect with Zoom',
       },

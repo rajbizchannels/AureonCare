@@ -51,6 +51,10 @@ import {
   Languages,
   MapPin,
   Archive,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Copy,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -81,6 +85,162 @@ import {
   safeJSONParse,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
+
+/**
+ * ZoomSetupGuide - Collapsible step-by-step instructions for configuring
+ * the Zoom OAuth App in the Zoom Marketplace.
+ */
+const ZoomSetupGuide = ({ theme }) => {
+  const [expanded, setExpanded] = React.useState(false);
+  const [redirectUrl, setRedirectUrl] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch('/api/integrations/oauth/zoom/redirect-url')
+      .then(r => r.json())
+      .then(data => setRedirectUrl(data.redirectUrl || ''))
+      .catch(() => {});
+  }, []);
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className={`border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className={`w-full px-6 py-3 flex items-center justify-between text-sm font-medium transition-colors ${
+          theme === 'dark' ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+        }`}
+      >
+        <span>Zoom App Setup Guide</span>
+        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+
+      {expanded && (
+        <div className={`px-6 pb-6 space-y-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+          {/* Redirect URL */}
+          {redirectUrl && (
+            <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'}`}>
+              <p className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
+                Your Redirect URL (copy this for Step 4):
+              </p>
+              <div className="flex items-center gap-2">
+                <code className={`flex-1 text-xs px-2 py-1 rounded font-mono break-all ${
+                  theme === 'dark' ? 'bg-slate-800 text-blue-300' : 'bg-white text-blue-800'
+                }`}>
+                  {redirectUrl}
+                </code>
+                <button
+                  onClick={() => handleCopy(redirectUrl)}
+                  className={`p-1.5 rounded transition-colors flex-shrink-0 ${
+                    copied
+                      ? 'text-green-500'
+                      : theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
+                  }`}
+                  title="Copy to clipboard"
+                >
+                  {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Steps */}
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>1</span>
+              <div>
+                <p className="font-medium">Create a Zoom OAuth App</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Go to{' '}
+                  <a href="https://marketplace.zoom.us/develop/create" target="_blank" rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline inline-flex items-center gap-1">
+                    marketplace.zoom.us <ExternalLink className="w-3 h-3" />
+                  </a>{' '}
+                  and sign in. Click <strong>Develop</strong> &rarr; <strong>Build App</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>2</span>
+              <div>
+                <p className="font-medium">Choose "General App"</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Select <strong>General App</strong> (not Server-to-Server). Give it a name like "AureonCare Telehealth".
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>3</span>
+              <div>
+                <p className="font-medium">Copy Client ID & Client Secret</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  From the <strong>App Credentials</strong> section, copy the Client ID and Client Secret. You will paste these when you click "Sign in with Zoom" above.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>4</span>
+              <div>
+                <p className="font-medium">Set the Redirect URL</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  In the <strong>OAuth Information</strong> section, paste the Redirect URL shown above into the
+                  <strong> Redirect URL for OAuth</strong> field. Also add it to the <strong>Allow List</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+              }`}>5</span>
+              <div>
+                <p className="font-medium">Add Required Scopes</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Under <strong>Scopes</strong>, add: <code className={`px-1 py-0.5 rounded text-xs ${
+                    theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'
+                  }`}>meeting:write</code>{' '}
+                  <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>meeting:read</code>{' '}
+                  <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>user:read</code>{' '}
+                  <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>recording:read</code>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
+              }`}>6</span>
+              <div>
+                <p className="font-medium">Click "Sign in with Zoom" above</p>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  After saving your Zoom app, come back here and click the button above. Enter your Client ID & Secret when prompted, then authorize in the Zoom popup. That's it!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Main Admin Panel View Component
@@ -163,12 +323,11 @@ const AdminPanelView = ({
 
   const [currentPlan, setCurrentPlan] = useState(planTier || PLAN_IDS.PROFESSIONAL);
 
-  // SECURITY FIX: Integration settings now only store status, NOT credentials
-  // Credentials should only be managed on the backend
+  // Integration settings: status + connection info (never raw tokens)
   const [telehealthStatus, setTelehealthStatus] = useState({
-    zoom: { is_enabled: false, is_configured: false },
-    google_meet: { is_enabled: false, is_configured: false },
-    webex: { is_enabled: false, is_configured: false },
+    zoom: { is_enabled: false, is_configured: false, has_tokens: false, zoom_user_email: null, token_expires_at: null },
+    google_meet: { is_enabled: false, is_configured: false, has_tokens: false },
+    webex: { is_enabled: false, is_configured: false, has_tokens: false },
   });
   const [telehealthDbMissing, setTelehealthDbMissing] = useState(false);
 
@@ -341,11 +500,15 @@ const AdminPanelView = ({
         if (settings && settings.length > 0) {
           const statusMap = {};
           settings.forEach((s) => {
-            // Only extract status information, NOT credentials
             statusMap[s.provider_type] = {
               is_enabled: s.is_enabled || false,
-              is_configured: Boolean(s.client_id || s.api_key), // Check if configured
-              sandbox_mode: s.sandbox_mode,
+              is_configured: Boolean(s.client_id || s.api_key),
+              has_tokens: s.has_tokens || false,
+              is_expired: s.is_expired || false,
+              zoom_user_email: s.zoom_user_email || null,
+              zoom_user_id: s.zoom_user_id || null,
+              account_id: s.account_id || null,
+              token_expires_at: s.token_expires_at || null,
             };
           });
 
@@ -1064,153 +1227,146 @@ const AdminPanelView = ({
   );
 
   /**
-   * SECURITY FIX: Open secure configuration flow (redirect to backend OAuth or secure form)
-   * Credentials are NEVER stored in frontend state
-   * Supports both initial configuration and reconfiguration
+   * Helper: open OAuth popup and poll for completion
+   */
+  const openOAuthPopup = useCallback(async (providerType, displayName) => {
+    const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to initiate OAuth flow');
+    }
+
+    const width = 600;
+    const height = 700;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    const popup = window.open(
+      data.authUrl,
+      'OAuth Authorization',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    // Poll backend OAuth status (COOP-safe)
+    pollOAuthStatus(providerType, popup, async (success) => {
+      if (success) {
+        try {
+          const settings = await api.getTelehealthSettings();
+          if (settings && Array.isArray(settings)) {
+            const statusMap = {};
+            settings.forEach((s) => {
+              statusMap[s.provider_type] = {
+                is_enabled: s.is_enabled || false,
+                is_configured: Boolean(s.client_id || s.api_key),
+                has_tokens: s.has_tokens || false,
+                is_expired: s.is_expired || false,
+                zoom_user_email: s.zoom_user_email || null,
+                zoom_user_id: s.zoom_user_id || null,
+                account_id: s.account_id || null,
+                token_expires_at: s.token_expires_at || null,
+              };
+            });
+            setTelehealthStatus((prev) => ({ ...prev, ...statusMap }));
+          }
+          setShowCredentialModal(false);
+          await addNotification('success', `${displayName} connected successfully.`);
+        } catch (error) {
+          console.error('Error refreshing telehealth status:', error);
+          await addNotification('warning', 'Connection may have been saved. Please refresh the page.');
+        }
+      }
+    });
+  }, [api, addNotification, pollOAuthStatus]);
+
+  /**
+   * Disconnect a telehealth provider (clear OAuth tokens, keep app credentials)
+   */
+  const handleDisconnectProvider = useCallback(async (providerType) => {
+    const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex' };
+    const displayName = providerNames[providerType] || providerType;
+
+    try {
+      const response = await fetch(`/api/integrations/oauth/${providerType}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to disconnect');
+
+      setTelehealthStatus((prev) => ({
+        ...prev,
+        [providerType]: {
+          ...prev[providerType],
+          is_enabled: false,
+          has_tokens: false,
+          zoom_user_email: null,
+          zoom_user_id: null,
+          token_expires_at: null,
+        },
+      }));
+      await addNotification('success', `${displayName} disconnected.`);
+    } catch (error) {
+      console.error(`Error disconnecting ${providerType}:`, error);
+      await addNotification('alert', `Failed to disconnect ${displayName}`);
+    }
+  }, [addNotification]);
+
+  /**
+   * Configure telehealth provider
+   * Simplified flow: try OAuth directly → if no credentials, show setup modal
    */
   const handleConfigureTelehealthProvider = useCallback(
     async (providerType) => {
       try {
-        const providerNames = {
-          zoom: 'Zoom',
-          google_meet: 'Google Meet',
-          webex: 'Cisco Webex',
-        };
+        const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex' };
         const displayName = providerNames[providerType] || providerType;
 
-        // Check if provider is already configured for reconfiguration
-        const isConfigured = telehealthStatus[providerType]?.is_configured;
+        await addNotification('info', `Connecting to ${displayName}...`);
 
-        if (isConfigured) {
-          // For reconfiguration, fetch and show existing credentials
-          await handleReconfigureIntegration(providerType, displayName, 'oauth');
+        // Try to initiate OAuth directly (works if client_id/secret in DB or env vars)
+        try {
+          await openOAuthPopup(providerType, displayName);
           return;
-        }
-
-        await addNotification('info', `Initiating ${displayName} configuration...`);
-
-        // Call OAuth initiate endpoint
-        const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          // If provider not configured, show credential modal
-          if (data.error === 'Provider not configured') {
-            // Try to fetch any previously saved credentials to pre-populate the form
-            let savedCredentials = null;
-            try {
-              const credResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
-              if (credResponse.ok) {
-                const credData = await credResponse.json();
-                if (credData.client_id || credData.client_secret) {
-                  savedCredentials = credData;
-                }
-              }
-            } catch (_) { /* ignore — will show empty form */ }
-
-            // Helper: initiate OAuth and poll for popup close
-            const initiateOAuth = async () => {
-              const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
-              const retryData = await retryResponse.json();
-
-              if (!retryResponse.ok) {
-                throw new Error(retryData.error || 'Failed to initiate OAuth flow');
-              }
-
-              const width = 600;
-              const height = 700;
-              const left = window.screen.width / 2 - width / 2;
-              const top = window.screen.height / 2 - height / 2;
-
-              const popup = window.open(
-                retryData.authUrl,
-                'OAuth Authorization',
-                `width=${width},height=${height},left=${left},top=${top}`
-              );
-
-              // Poll backend OAuth status (COOP-safe)
-              pollOAuthStatus(providerType, popup, async (success) => {
-                if (success) {
-                  try {
-                    const settings = await api.getTelehealthSettings();
-                    if (settings) {
-                      setTelehealthStatus((prev) => ({
-                        ...prev,
-                        ...settings,
-                      }));
-                    }
-                    setShowCredentialModal(false);
-                    await addNotification('success', `${displayName} configured successfully.`);
-                  } catch (error) {
-                    console.error('Error refreshing telehealth status:', error);
-                    await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
-                  }
-                }
-              });
-            };
-
-            setCredentialModalConfig({
-              providerName: displayName,
-              providerType: providerType,
-              credentialType: 'oauth',
-              existingCredentials: savedCredentials,
-              onSuccess: async () => {
-                try {
-                  await addNotification('info', 'Initiating OAuth flow...');
-                  await initiateOAuth();
-                } catch (error) {
-                  console.error('Error in OAuth flow:', error);
-                  await addNotification('alert', error.message || 'Failed to complete OAuth flow');
-                }
-              },
-              // If credentials are already saved, offer one-click connect
-              onConnect: savedCredentials ? async () => {
-                await addNotification('info', `Connecting to ${displayName}...`);
-                await initiateOAuth();
-              } : null,
-            });
-            setShowCredentialModal(true);
-            return;
+        } catch (oauthError) {
+          // If "Provider not configured", show credential modal
+          if (!oauthError.message?.includes('not configured')) {
+            throw oauthError;
           }
-          throw new Error(data.error || 'Failed to initiate OAuth flow');
         }
 
-        // Open OAuth flow in popup window
-        const width = 600;
-        const height = 700;
-        const left = window.screen.width / 2 - width / 2;
-        const top = window.screen.height / 2 - height / 2;
+        // No credentials found — show the credential setup modal
+        let savedCredentials = null;
+        try {
+          const credResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
+          if (credResponse.ok) {
+            const credData = await credResponse.json();
+            if (credData.client_id) savedCredentials = credData;
+          }
+        } catch (_) { /* ignore */ }
 
-        const popup = window.open(
-          data.authUrl,
-          'OAuth Authorization',
-          `width=${width},height=${height},left=${left},top=${top}`
-        );
-
-        // Poll backend OAuth status (COOP-safe)
-        pollOAuthStatus(providerType, popup, async (success) => {
-          if (success) {
+        setCredentialModalConfig({
+          providerName: displayName,
+          providerType,
+          credentialType: 'oauth',
+          existingCredentials: savedCredentials,
+          onSuccess: async () => {
             try {
-              const settings = await api.getTelehealthSettings();
-              if (settings) {
-                setTelehealthStatus((prev) => ({
-                  ...prev,
-                  ...settings,
-                }));
-              }
-              await addNotification('success', `${displayName} configuration updated successfully.`);
+              await addNotification('info', 'Credentials saved. Connecting...');
+              await openOAuthPopup(providerType, displayName);
             } catch (error) {
-              console.error('Error refreshing telehealth status:', error);
-              await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
+              console.error('Error in OAuth flow:', error);
+              await addNotification('alert', error.message || 'Failed to complete OAuth flow');
             }
-          }
+          },
+          onConnect: savedCredentials ? async () => {
+            await addNotification('info', `Connecting to ${displayName}...`);
+            await openOAuthPopup(providerType, displayName);
+          } : null,
         });
+        setShowCredentialModal(true);
       } catch (error) {
         console.error('Error starting provider configuration:', error);
         await addNotification('alert', error.message || 'Failed to start configuration flow');
       }
     },
-    [api, addNotification, telehealthStatus, handleReconfigureIntegration, pollOAuthStatus]
+    [addNotification, openOAuthPopup]
   );
 
   /**
@@ -2506,22 +2662,110 @@ const AdminPanelView = ({
       </h2>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* Zoom Integration */}
-        <IntegrationCard
-          name={TELEHEALTH_PROVIDERS.ZOOM}
-          displayName="Zoom"
-          description="HIPAA-compliant video conferencing for telehealth appointments. One-click connect via OAuth."
-          icon={Video}
-          iconColor="text-blue-500"
-          isEnabled={telehealthStatus.zoom.is_enabled}
-          isConfigured={telehealthStatus.zoom.is_configured}
-          theme={theme}
-          onToggle={handleToggleTelehealthProvider}
-          onConfigure={handleConfigureTelehealthProvider}
-          onTest={handleTestZoomConnection}
-          testLabel="Test Connection"
-          t={t}
-        />
+        {/* ───── Zoom Integration (Rich Card) ───── */}
+        <div className={`border rounded-lg overflow-hidden ${
+          theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'
+        }`}>
+          {/* Header */}
+          <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-blue-500/10">
+                  <Video className="w-6 h-6 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Zoom
+                  </h3>
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    HIPAA-compliant video conferencing for telehealth
+                  </p>
+                  {/* Connection status */}
+                  {telehealthStatus.zoom.has_tokens ? (
+                    <div className="flex items-center gap-2 mt-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span className={`text-sm ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
+                        Connected{telehealthStatus.zoom.zoom_user_email ? ` as ${telehealthStatus.zoom.zoom_user_email}` : ''}
+                      </span>
+                    </div>
+                  ) : telehealthStatus.zoom.is_configured ? (
+                    <div className="flex items-center gap-2 mt-2">
+                      <RefreshCw className={`w-4 h-4 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                      <span className={`text-sm ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                        App configured — sign in to connect
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Toggle (only when connected) */}
+              <button
+                type="button"
+                onClick={() => handleToggleTelehealthProvider(TELEHEALTH_PROVIDERS.ZOOM, !telehealthStatus.zoom.is_enabled)}
+                disabled={!telehealthStatus.zoom.has_tokens}
+                role="switch"
+                aria-checked={telehealthStatus.zoom.is_enabled}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  !telehealthStatus.zoom.has_tokens
+                    ? theme === 'dark' ? 'bg-slate-700 cursor-not-allowed' : 'bg-gray-200 cursor-not-allowed'
+                    : telehealthStatus.zoom.is_enabled ? 'bg-green-500 cursor-pointer' : theme === 'dark' ? 'bg-slate-600 cursor-pointer' : 'bg-gray-300 cursor-pointer'
+                }`}
+                title={!telehealthStatus.zoom.has_tokens ? 'Sign in with Zoom first' : ''}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  telehealthStatus.zoom.is_enabled ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="p-4 flex flex-wrap gap-3">
+            {telehealthStatus.zoom.has_tokens ? (
+              <>
+                <button
+                  onClick={handleTestZoomConnection}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  }`}
+                >
+                  Test Connection
+                </button>
+                <button
+                  onClick={() => handleConfigureTelehealthProvider(TELEHEALTH_PROVIDERS.ZOOM)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+                  }`}
+                >
+                  <RefreshCw className="w-4 h-4 inline mr-2" />
+                  Reconnect
+                </button>
+                <button
+                  onClick={() => handleDisconnectProvider(TELEHEALTH_PROVIDERS.ZOOM)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
+                  }`}
+                >
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => handleConfigureTelehealthProvider(TELEHEALTH_PROVIDERS.ZOOM)}
+                className="px-6 py-2.5 rounded-lg font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
+              >
+                <Video className="w-4 h-4 inline mr-2" />
+                Sign in with Zoom
+              </button>
+            )}
+          </div>
+
+          {/* Zoom App Setup Guide (collapsible) */}
+          {!telehealthStatus.zoom.has_tokens && (
+            <ZoomSetupGuide theme={theme} />
+          )}
+        </div>
 
         {/* Google Meet Integration */}
         <IntegrationCard
