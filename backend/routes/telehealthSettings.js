@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
+const crypto = require('crypto');
 
 /**
  * Telehealth Provider Settings API
@@ -270,6 +272,119 @@ router.post('/:providerType/instant-meeting', async (req, res) => {
     console.error('Error creating instant meeting:', error);
     const isConfigError = error.message?.includes('not configured') || error.message?.includes('credentials');
     res.status(isConfigError ? 422 : 500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /zoom/host-token?meetingId=<id>
+ *
+ * Returns the data needed for the embedded Zoom Meeting SDK:
+ *   - zakToken      : ZAK (host auth) fetched from Zoom API
+ *   - sdkToken      : Meeting SDK token fetched from Zoom API (preferred, no extra env vars)
+ *   - signature     : JWT signature generated from ZOOM_SDK_KEY/SECRET (fallback)
+ *   - sdkKey        : SDK key (only when signature path is used)
+ *   - password      : meeting password (fetched from Zoom API when meetingId is provided)
+ */
+router.get('/zoom/host-token', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { meetingId } = req.query;
+
+    // Get stored admin OAuth access token
+    const result = await pool.query(
+      `SELECT access_token, zoom_user_id
+       FROM telehealth_provider_settings
+       WHERE provider_type = 'zoom' AND is_enabled = true LIMIT 1`
+    );
+
+    const row = result.rows[0];
+    if (!row || !row.access_token) {
+      return res.status(422).json({
+        error: 'Zoom is not connected. Please connect Zoom in Admin Settings.'
+      });
+    }
+
+    const { access_token } = row;
+    const authHeader = { Authorization: `Bearer ${access_token}` };
+
+    // Fetch ZAK token (host privileges for the SDK)
+    const zakResponse = await axios.get(
+      'https://api.zoom.us/v2/users/me/token?type=zak',
+      { headers: authHeader }
+    );
+    const zakToken = zakResponse.data.token;
+
+    // Try to get Meeting SDK token from Zoom (requires meeting_token:write scope)
+    // This approach needs no extra credentials — uses the admin's OAuth token
+    let sdkToken = null;
+    if (meetingId) {
+      try {
+        const sdkTokenResponse = await axios.post(
+          `https://api.zoom.us/v2/users/me/meeting_token/generate?type=sdk_token&meeting_number=${meetingId}`,
+          {},
+          { headers: authHeader }
+        );
+        sdkToken = sdkTokenResponse.data.token;
+      } catch (sdkErr) {
+        // Scope not granted — will fall back to SDK Key/Secret signature
+        console.warn('Could not generate Meeting SDK token (add meeting_token:write scope to reconnect Zoom):', sdkErr.response?.data?.message || sdkErr.message);
+      }
+    }
+
+    // Fallback: generate JWT signature from env-configured SDK credentials
+    let signature = null;
+    const sdkKey = process.env.ZOOM_SDK_KEY;
+    const sdkSecret = process.env.ZOOM_SDK_SECRET;
+    if (!sdkToken && sdkKey && sdkSecret && meetingId) {
+      const b64url = (s) =>
+        Buffer.from(s).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      const iat = Math.round(Date.now() / 1000) - 30;
+      const exp = iat + 7200;
+      const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const payload = b64url(
+        JSON.stringify({ sdkKey, mn: String(meetingId), role: 1, iat, exp, tokenExp: exp })
+      );
+      const sigPart = crypto
+        .createHmac('sha256', sdkSecret)
+        .update(`${header}.${payload}`)
+        .digest('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+      signature = `${header}.${payload}.${sigPart}`;
+    }
+
+    // Fetch meeting password from Zoom if a meeting ID is supplied
+    let password = '';
+    if (meetingId) {
+      try {
+        const mtgResponse = await axios.get(
+          `https://api.zoom.us/v2/meetings/${meetingId}`,
+          { headers: authHeader }
+        );
+        password = mtgResponse.data.password || '';
+      } catch (mtgErr) {
+        console.warn('Could not fetch meeting password:', mtgErr.response?.data?.message || mtgErr.message);
+      }
+    }
+
+    res.json({
+      zakToken,
+      sdkToken,
+      signature,
+      sdkKey: sdkToken ? null : (sdkKey || null),
+      password
+    });
+  } catch (error) {
+    console.error('Error fetching Zoom host token:', error.response?.data || error.message);
+    if (error.response?.status === 401) {
+      return res.status(401).json({
+        error: 'Zoom access token expired. Please reconnect Zoom in Admin Settings.'
+      });
+    }
+    res.status(500).json({
+      error: 'Failed to fetch Zoom host token: ' + (error.response?.data?.message || error.message)
+    });
   }
 });
 
