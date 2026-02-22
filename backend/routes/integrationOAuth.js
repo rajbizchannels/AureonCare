@@ -51,7 +51,17 @@ const OAUTH_CONFIGS = {
   zoom: {
     authUrl: 'https://zoom.us/oauth/authorize',
     tokenUrl: 'https://zoom.us/oauth/token',
-    scope: 'meeting:write meeting:read user:read recording:read',
+    // Granular scopes — required by Zoom Marketplace as of 2025/2026.
+    // Classic scopes (meeting:write, user:read) are deprecated; granular are enforced for new apps.
+    // user:read:token is required for Meeting SDK On-Behalf-Of (OBF) flows (enforced Feb 2026).
+    scope: [
+      'meeting:write:meeting',           // Create / update meetings on behalf of user
+      'meeting:read:meeting',            // Read meeting details
+      'meeting:delete:meeting',          // Delete meetings (for cleanup)
+      'user:read:user',                  // Read user profile (/users/me after OAuth)
+      'user:read:token',                 // Meeting SDK OBF token (required Feb 23 2026)
+      'recording:read:list_user_recordings', // List cloud recordings
+    ].join(' '),
   },
   google_meet: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
