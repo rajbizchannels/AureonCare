@@ -27,6 +27,63 @@ function getFrontendUrl() {
 }
 
 /**
+ * Serve a minimal self-closing HTML page in the OAuth popup.
+ * Posts a postMessage to the opener, then closes itself after 1.5 s.
+ * If window.opener is unavailable (COOP), the parent detects success via polling.
+ */
+function sendOAuthResult(res, success, providerType, errorDetail) {
+  const frontendUrl = getFrontendUrl();
+  const msgType = success ? 'oauth_success' : 'oauth_error';
+  const icon = success ? '&#x2713;' : '&#x2717;';
+  const iconColor = success ? '#22c55e' : '#ef4444';
+  const title = success ? 'Connected!' : 'Connection Failed';
+  const subtitle = success
+    ? 'Zoom connected. This window will close automatically.'
+    : (errorDetail || 'Please close this window and try again.');
+
+  const safeProvider = String(providerType).replace(/[^a-z0-9_]/gi, '');
+  const safeDetail = errorDetail ? String(errorDetail).substring(0, 200) : '';
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+         background:#0f172a;color:#e2e8f0;display:flex;
+         align-items:center;justify-content:center;height:100vh}
+    .card{text-align:center;padding:48px 40px}
+    .icon{font-size:56px;color:${iconColor};margin-bottom:20px;line-height:1}
+    h2{font-size:22px;font-weight:600;margin-bottom:10px}
+    p{font-size:14px;color:#94a3b8;max-width:320px;line-height:1.5}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">${icon}</div>
+    <h2>${title}</h2>
+    <p>${subtitle}</p>
+  </div>
+  <script>
+    (function(){
+      try{
+        if(window.opener&&!window.opener.closed){
+          window.opener.postMessage(
+            {type:'${msgType}',provider:'${safeProvider}',error:'${safeDetail}'},
+            '${frontendUrl}'
+          );
+        }
+      }catch(e){}
+      setTimeout(function(){window.close();},1500);
+    })();
+  </script>
+</body>
+</html>`);
+}
+
+/**
  * Build the base URL for OAuth redirect URIs.
  * Uses APP_BASE_URL env var if set, otherwise falls back to request-derived URL.
  */
@@ -250,16 +307,16 @@ router.get('/:providerType/callback', async (req, res) => {
     const { code, state, error: oauthError } = req.query;
 
     if (oauthError) {
-      return res.redirect(`${getFrontendUrl()}/admin?error=${encodeURIComponent(oauthError)}&provider=${providerType}`);
+      return sendOAuthResult(res, false, providerType, oauthError);
     }
     if (!code || !state) {
-      return res.redirect(`${getFrontendUrl()}/admin?error=invalid_callback&provider=${providerType}`);
+      return sendOAuthResult(res, false, providerType, 'Invalid callback — missing code or state.');
     }
 
     // Verify state
     const storedState = oauthStates.get(state);
     if (!storedState || storedState.providerType !== providerType) {
-      return res.redirect(`${getFrontendUrl()}/admin?error=invalid_state&provider=${providerType}`);
+      return sendOAuthResult(res, false, providerType, 'Invalid or expired state. Please try again.');
     }
     oauthStates.delete(state);
 
@@ -276,7 +333,7 @@ router.get('/:providerType/callback', async (req, res) => {
     const { client_id, client_secret } = resolveClientCredentials(providerType, dbRow);
 
     if (!client_id || !client_secret) {
-      return res.redirect(`${getFrontendUrl()}/admin?error=provider_not_configured&provider=${providerType}`);
+      return sendOAuthResult(res, false, providerType, 'Provider not configured — missing Client ID or Secret on the server.');
     }
 
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
@@ -297,7 +354,7 @@ router.get('/:providerType/callback', async (req, res) => {
       tokens = tokenResponse.data;
     } catch (tokenError) {
       console.error('Token exchange error:', tokenError.response?.data || tokenError.message);
-      return res.redirect(`${getFrontendUrl()}/admin?error=token_exchange_failed&provider=${providerType}`);
+      return sendOAuthResult(res, false, providerType, 'Token exchange failed — check your Client Secret and Redirect URL.');
     }
 
     const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;
@@ -377,11 +434,11 @@ router.get('/:providerType/callback', async (req, res) => {
       );
     }
 
-    // Redirect to success page
-    res.redirect(`${getFrontendUrl()}/admin?success=oauth_configured&provider=${providerType}`);
+    // Serve the self-closing success page
+    sendOAuthResult(res, true, providerType);
   } catch (error) {
     console.error('Error handling OAuth callback:', error.message, error.stack);
-    res.redirect(`${getFrontendUrl()}/admin?error=callback_failed&detail=${encodeURIComponent(error.message || 'unknown')}&provider=${req.params.providerType}`);
+    sendOAuthResult(res, false, req.params.providerType, error.message || 'Unexpected error');
   }
 });
 
