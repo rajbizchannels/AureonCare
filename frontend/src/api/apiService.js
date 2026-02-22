@@ -1545,6 +1545,19 @@ const api = {
     return response.json();
   },
 
+  // Zoom — get ZAK + SDK credentials for embedded in-app meeting
+  getZoomHostToken: async (meetingId) => {
+    const qs = meetingId ? `?meetingId=${encodeURIComponent(meetingId)}` : '';
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/telehealth-settings/zoom/host-token${qs}`
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to fetch Zoom host token');
+    }
+    return response.json();
+  },
+
   // Vendor Integration Settings (Surescripts, Labcorp, Optum)
   getVendorIntegrationSettings: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings`);

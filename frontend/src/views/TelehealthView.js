@@ -5,6 +5,7 @@ import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
+import ZoomMeetingEmbed from '../components/ZoomMeetingEmbed';
 
 const TelehealthView = ({ theme, api, appointments, patients, addNotification, setCurrentModule }) => {
   const { language } = useApp();
@@ -26,6 +27,9 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
   // Error popup state
   const [zoomError, setZoomError] = useState(null);
+
+  // Embedded Zoom meeting state (null = not active)
+  const [zoomEmbedConfig, setZoomEmbedConfig] = useState(null);
 
   const { logViewAccess } = useAudit();
 
@@ -121,11 +125,10 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
       const newSession = await api.createTelehealthSession(sessionData);
 
-      // If Zoom is active and we got a start_url, offer to launch immediately
-      if (isZoomActive && (newSession.start_url || newSession.meetingDetails?.startUrl)) {
-        const startUrl = newSession.start_url || newSession.meetingDetails?.startUrl;
-        window.open(startUrl, '_blank', 'noopener,noreferrer');
-        addNotification('success', 'Zoom session created and launched in a new tab');
+      // If Zoom is active, launch the meeting embedded in-app
+      if (isZoomActive && newSession.room_id) {
+        addNotification('success', 'Zoom session created — launching meeting…');
+        setZoomEmbedConfig({ meetingId: newSession.room_id });
       } else {
         addNotification('appointment', t.telehealthSessionCreated || 'Telehealth session created successfully');
       }
@@ -157,15 +160,18 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
     try {
       const session = sessions.find(s => s.id === pendingJoinSessionId);
-      if (session && session.meeting_url) {
-        // For Zoom sessions, use start_url if available (host link), otherwise join_url
-        const launchUrl = session.start_url || session.meeting_url;
-        window.open(launchUrl, '_blank', 'noopener,noreferrer');
+      if (session && (session.room_id || session.meeting_url)) {
         await api.updateTelehealthSession(pendingJoinSessionId, {
           sessionStatus: 'in-progress',
           startTime: new Date().toISOString()
         });
         fetchSessions();
+        // Launch embedded if we have a Zoom meeting ID, otherwise fall back to new tab
+        if (session.room_id && activeProvider?.provider_type === 'zoom') {
+          setZoomEmbedConfig({ meetingId: session.room_id });
+        } else {
+          window.open(session.meeting_url, '_blank', 'noopener,noreferrer');
+        }
       }
     } catch (error) {
       console.error('Error joining session:', error);
@@ -185,10 +191,12 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         duration: 30,
         recordingEnabled: false
       });
-      if (result.startUrl) {
-        window.open(result.startUrl, '_blank', 'noopener,noreferrer');
-        addNotification('success', 'Zoom meeting launched in a new tab');
+      const embedMeetingId = result.meetingId || result.roomId;
+      if (embedMeetingId) {
+        addNotification('success', 'Zoom meeting created — launching in-app…');
+        setZoomEmbedConfig({ meetingId: embedMeetingId });
       } else if (result.meetingUrl) {
+        // Fallback: open in new tab if no meeting ID is available
         window.open(result.meetingUrl, '_blank', 'noopener,noreferrer');
         addNotification('success', 'Zoom meeting launched in a new tab');
       }
@@ -258,6 +266,16 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
   return (
     <>
+      {/* Embedded Zoom meeting overlay — renders when a meeting is active */}
+      {zoomEmbedConfig && (
+        <ZoomMeetingEmbed
+          meetingId={zoomEmbedConfig.meetingId}
+          api={api}
+          displayName="Host"
+          onClose={() => setZoomEmbedConfig(null)}
+        />
+      )}
+
       {/* Confirmation Modal for Creating Session */}
       <ConfirmationModal
         theme={theme}
@@ -269,7 +287,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         onConfirm={handleActualCreateSession}
         title="Create Telehealth Session"
         message={isZoomActive
-          ? "This will create a Zoom meeting and launch it in a new tab. The patient will receive a join link."
+          ? "This will create a Zoom meeting and launch it embedded in this app. The patient will receive a join link."
           : "Are you sure you want to create this telehealth session? This will generate a meeting link for the appointment."
         }
         type="confirm"
