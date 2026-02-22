@@ -5,6 +5,7 @@ import {
   Heart, Ruler, Scale, Droplet, Users, Video, Loader2
 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
+import { isProvider, isPatient } from '../utils/rolePermissions';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
 import NewLabOrderForm from '../components/forms/NewLabOrderForm';
@@ -230,6 +231,12 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   };
 
   const handleStartTelehealth = async (appointmentId = null) => {
+    // Only providers and patients may launch telehealth sessions
+    if (!isProvider(user) && !isPatient(user)) {
+      addNotification('error', 'Only providers and patients can start telehealth sessions.');
+      return;
+    }
+
     setTelehealthLoading(true);
 
     // Open a blank window synchronously to avoid popup blocker
@@ -1287,7 +1294,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {!['completed', 'cancelled', 'canceled'].includes((appt.status || '').toLowerCase()) && (
+                  {!['completed', 'cancelled', 'canceled'].includes((appt.status || '').toLowerCase()) &&
+                    (appt.type || '').toLowerCase() === 'telehealth' &&
+                    (isProvider(user) || isPatient(user)) && (
                     <button
                       onClick={() => handleStartTelehealth(appt.id)}
                       disabled={telehealthLoading}
@@ -1296,7 +1305,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                           ? 'hover:bg-cyan-500/20 text-cyan-400'
                           : 'hover:bg-cyan-100 text-cyan-600'
                       } disabled:opacity-50`}
-                      title="Start Telehealth for this appointment"
+                      title="Start Telehealth Session"
                     >
                       <Video className="w-4 h-4" />
                     </button>
@@ -1353,19 +1362,21 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => handleStartTelehealth()}
-              disabled={telehealthLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
-              title="Start Telehealth Session"
-            >
-              {telehealthLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Video className="w-4 h-4" />
-              )}
-              {telehealthLoading ? 'Starting...' : 'Start Telehealth Session'}
-            </button>
+            {(isProvider(user) || isPatient(user)) && (
+              <button
+                onClick={() => handleStartTelehealth()}
+                disabled={telehealthLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+                title="Start Telehealth Session"
+              >
+                {telehealthLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Video className="w-4 h-4" />
+                )}
+                {telehealthLoading ? 'Starting...' : 'Start Telehealth Session'}
+              </button>
+            )}
           </div>
         </div>
       </div>
