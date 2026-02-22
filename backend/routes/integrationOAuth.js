@@ -51,16 +51,17 @@ const OAUTH_CONFIGS = {
   zoom: {
     authUrl: 'https://zoom.us/oauth/authorize',
     tokenUrl: 'https://zoom.us/oauth/token',
-    // Granular scopes — required by Zoom Marketplace as of 2025/2026.
+    // Admin-level granular scopes — required by Zoom Marketplace as of 2025/2026.
     // Classic scopes (meeting:write, user:read) are deprecated; granular are enforced for new apps.
-    // user:read:token is required for Meeting SDK On-Behalf-Of (OBF) flows (enforced Feb 2026).
+    // Admin-level (:admin suffix) allows the account admin to manage meetings for all users.
+    // This supports the "admin configures once, all providers launch sessions" model.
     scope: [
-      'meeting:write:meeting',           // Create / update meetings on behalf of user
-      'meeting:read:meeting',            // Read meeting details
-      'meeting:delete:meeting',          // Delete meetings (for cleanup)
-      'user:read:user',                  // Read user profile (/users/me after OAuth)
-      'user:read:token',                 // Meeting SDK OBF token (required Feb 23 2026)
-      'recording:read:list_user_recordings', // List cloud recordings
+      'meeting:write:meeting:admin',           // Create / update meetings for any account user
+      'meeting:read:meeting:admin',            // Read meeting details for any account user
+      'meeting:delete:meeting:admin',          // Delete meetings for any account user
+      'user:read:user:admin',                  // Read any user's profile in the account
+      'user:read:token:admin',                 // Meeting SDK OBF token (required Feb 23 2026)
+      'recording:read:list_account_recordings:admin', // List cloud recordings across the account
     ].join(' '),
   },
   google_meet: {
