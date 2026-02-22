@@ -322,6 +322,17 @@ router.get('/:providerType/callback', async (req, res) => {
         }
       }
 
+      const settingsJson = JSON.stringify({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || null,
+        expires_at: expiresAt,
+        scope: tokens.scope || config.scope,
+        token_type: tokens.token_type || 'Bearer',
+        account_id: accountId,
+        user_id: zoomUserId,
+        email: zoomUserEmail,
+      });
+
       await pool.query(
         `UPDATE telehealth_provider_settings
          SET access_token = $1,
@@ -333,16 +344,7 @@ router.get('/:providerType/callback', async (req, res) => {
              zoom_user_id = COALESCE($7, zoom_user_id),
              zoom_user_email = COALESCE($8, zoom_user_email),
              is_enabled = true,
-             settings = jsonb_build_object(
-               'access_token', $1::text,
-               'refresh_token', $2::text,
-               'expires_at', $5::bigint,
-               'scope', $4::text,
-               'token_type', $3::text,
-               'account_id', COALESCE($6, account_id)::text,
-               'user_id', COALESCE($7, zoom_user_id)::text,
-               'email', COALESCE($8, zoom_user_email)::text
-             ),
+             settings = $10::jsonb,
              updated_at = CURRENT_TIMESTAMP
          WHERE provider_type = $9`,
         [
@@ -355,6 +357,7 @@ router.get('/:providerType/callback', async (req, res) => {
           zoomUserId,
           zoomUserEmail,
           providerType,
+          settingsJson,
         ]
       );
     } else {
