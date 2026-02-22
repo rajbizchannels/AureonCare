@@ -32,6 +32,13 @@ function getFrontendUrl() {
  * If window.opener is unavailable (COOP), the parent detects success via polling.
  */
 function sendOAuthResult(res, success, providerType, errorDetail) {
+  // Helmet sets a strict CSP that blocks inline <script> by default.
+  // Override it for this tiny self-closing page so window.close() can run.
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+  );
+
   const frontendUrl = getFrontendUrl();
   const msgType = success ? 'oauth_success' : 'oauth_error';
   const icon = success ? '&#x2713;' : '&#x2717;';
@@ -126,8 +133,9 @@ const OAUTH_CONFIGS = {
       'meeting:read:meeting:admin',            // Read meeting details for any account user
       'meeting:delete:meeting:admin',          // Delete meetings for any account user
       'user:read:user:admin',                  // Read any user's profile in the account
-      'user:read:token:admin',                 // Meeting SDK OBF token (required Feb 23 2026)
+      'user:read:token:admin',                 // Read user ZAK token for embedded SDK hosting
       'recording:read:list_account_recordings:admin', // List cloud recordings across the account
+      'meeting_token:write:meeting_token:app', // Generate Meeting SDK tokens for embedded meetings
     ].join(' '),
   },
   google_meet: {
