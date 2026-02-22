@@ -94,7 +94,13 @@ import { hasPermission, isAdmin } from '../utils/rolePermissions';
  * End users (providers) never see or enter credentials — they just
  * click "New Session" or "Instant Zoom" in the Telehealth module.
  */
-const ZoomSetupGuide = ({ theme }) => {
+/**
+ * ZoomPlatformSetupGuide — developer-only collapsible guide.
+ * Clinic admins never need this: the platform developer registers ONE Zoom app
+ * and sets ZOOM_CLIENT_ID / ZOOM_CLIENT_SECRET server-side.
+ * After that, every clinic admin just clicks "Connect Zoom Account".
+ */
+const ZoomPlatformSetupGuide = ({ theme }) => {
   const [expanded, setExpanded] = React.useState(false);
   const [redirectUrl, setRedirectUrl] = React.useState('');
   const [copied, setCopied] = React.useState(false);
@@ -113,12 +119,6 @@ const ZoomSetupGuide = ({ theme }) => {
     });
   };
 
-  const stepBubble = (n) => (
-    <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-      theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
-    }`}>{n}</span>
-  );
-
   const code = (txt) => (
     <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>{txt}</code>
   );
@@ -130,108 +130,91 @@ const ZoomSetupGuide = ({ theme }) => {
         onClick={() => setExpanded(!expanded)}
         className={`w-full px-6 py-3 flex items-center justify-between text-sm font-medium transition-colors ${
           theme === 'dark'
-            ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'
+            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
         }`}
       >
-        <span>Admin: One-Time Zoom Setup Guide</span>
+        <span className="flex items-center gap-2">
+          <Settings className="w-3.5 h-3.5" />
+          Platform Developer Setup (one-time, server-side)
+        </span>
         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
 
       {expanded && (
         <div className={`px-6 pb-6 space-y-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-          {/* Redirect URL */}
-          {redirectUrl && (
-            <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'}`}>
-              <p className={`text-xs font-semibold mb-1.5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
-                Redirect URL (for Step 4):
+          <p className={`text-xs p-3 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-800'}`}>
+            <strong>Platform developers only.</strong> Do this once when deploying AureonCare.
+            After these steps every clinic admin can connect their Zoom account with a single click — no Marketplace access needed on their part.
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <p className="font-semibold">1 — Create a Zoom General App (once per platform)</p>
+              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                Go to{' '}
+                <a href="https://marketplace.zoom.us/develop/create" target="_blank" rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline inline-flex items-center gap-1">
+                  marketplace.zoom.us <ExternalLink className="w-3 h-3" />
+                </a>{' '}
+                → <strong>Develop → Build App → General App → Admin-managed</strong>.
               </p>
-              <div className="flex items-center gap-2">
-                <code className={`flex-1 text-xs px-2 py-1 rounded font-mono break-all ${
-                  theme === 'dark' ? 'bg-slate-800 text-blue-300' : 'bg-white text-blue-800'
-                }`}>{redirectUrl}</code>
-                <button
-                  onClick={() => handleCopy(redirectUrl)}
-                  className={`p-1.5 rounded transition-colors flex-shrink-0 ${
-                    copied ? 'text-green-500'
-                    : theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-700'
-                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
-                  }`}
-                  title="Copy to clipboard"
-                >
-                  {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <div className="flex gap-3">
-              {stepBubble(1)}
-              <div>
-                <p className="font-medium">Create a Zoom OAuth App</p>
-                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Go to{' '}
-                  <a href="https://marketplace.zoom.us/develop/create" target="_blank" rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline inline-flex items-center gap-1">
-                    marketplace.zoom.us <ExternalLink className="w-3 h-3" />
-                  </a>{' '}
-                  → sign in → <strong>Develop</strong> → <strong>Build App</strong> → choose <strong>General App</strong> → set to <strong>Admin-managed</strong>.
-                </p>
-              </div>
             </div>
 
-            <div className="flex gap-3">
-              {stepBubble(2)}
-              <div>
-                <p className="font-medium">Set the Redirect URL</p>
-                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Under <strong>OAuth Information</strong>, paste the Redirect URL above into the
-                  <strong> Redirect URL for OAuth</strong> field and the <strong>Allow List</strong>.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              {stepBubble(3)}
-              <div>
-                <p className="font-medium">Add Admin-Level Scopes</p>
-                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Under <strong>Scopes</strong>, search for and add these <strong>admin-level</strong> scopes:
-                </p>
-                <div className={`mt-1.5 flex flex-wrap gap-1`}>
-                  {code('meeting:write:meeting:admin')} {code('meeting:read:meeting:admin')} {code('meeting:delete:meeting:admin')} {code('user:read:user:admin')} {code('user:read:token:admin')} {code('recording:read:list_account_recordings:admin')}
+            <div>
+              <p className="font-semibold">2 — Set the Redirect URL</p>
+              {redirectUrl && (
+                <div className="mt-1 flex items-center gap-2">
+                  <code className={`flex-1 text-xs px-2 py-1 rounded font-mono break-all ${
+                    theme === 'dark' ? 'bg-slate-800 text-blue-300' : 'bg-white border border-gray-200 text-blue-800'
+                  }`}>{redirectUrl}</code>
+                  <button onClick={() => handleCopy(redirectUrl)} className={`p-1.5 rounded flex-shrink-0 ${
+                    copied ? 'text-green-500' : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-700'
+                  }`}>
+                    {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
                 </div>
+              )}
+              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                Paste the URL above into <strong>Redirect URL for OAuth</strong> and the <strong>Allow List</strong>.
+              </p>
+            </div>
+
+            <div>
+              <p className="font-semibold">3 — Add admin-level scopes</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {code('meeting:write:meeting:admin')} {code('meeting:read:meeting:admin')}
+                {code('meeting:delete:meeting:admin')} {code('user:read:user:admin')}
+                {code('user:read:token:admin')} {code('recording:read:list_account_recordings:admin')}
               </div>
             </div>
 
-            <div className="flex gap-3">
-              {stepBubble(4)}
-              <div>
-                <p className="font-medium">Set environment variables on your server</p>
-                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Zoom and add them to your server's environment:
-                </p>
-                <div className={`mt-2 p-2 rounded text-xs font-mono ${
-                  theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  ZOOM_CLIENT_ID=your_client_id<br />
-                  ZOOM_CLIENT_SECRET=your_client_secret
-                </div>
+            <div>
+              <p className="font-semibold">4 — Add SDK scopes (for embedded meeting launch)</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {code('meeting_token:read:local_recording')}
+              </div>
+              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                Also create a <strong>Meeting SDK</strong> type app → copy the SDK Key &amp; Secret.
+              </p>
+            </div>
+
+            <div>
+              <p className="font-semibold">5 — Set server environment variables</p>
+              <div className={`mt-1 p-3 rounded text-xs font-mono ${theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-800'}`}>
+                # OAuth app credentials (for Connect flow)<br />
+                ZOOM_CLIENT_ID=your_client_id<br />
+                ZOOM_CLIENT_SECRET=your_client_secret<br />
+                <br />
+                # Meeting SDK credentials (for embedded in-app meetings)<br />
+                ZOOM_SDK_KEY=your_sdk_key<br />
+                ZOOM_SDK_SECRET=your_sdk_secret
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
-              }`}>5</span>
-              <div>
-                <p className="font-medium">Restart the server & click "Connect Zoom Account"</p>
-                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  After setting the environment variables, restart the backend. Then click "Connect Zoom Account" above to authorize. Once connected, all providers can launch Zoom sessions.
-                </p>
-              </div>
-            </div>
+            <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+              Restart the server. Every clinic admin can now click <strong>Connect Zoom Account</strong> — no further setup needed on their side.
+            </p>
           </div>
         </div>
       )}
@@ -2764,24 +2747,21 @@ const AdminPanelView = ({
             </div>
           )}
 
-          {/* Admin notice: env vars not configured */}
+          {/* Zoom not yet enabled on this platform (server env vars not set) */}
           {zoomEnvMissing && !telehealthStatus.zoom.has_tokens && (
             <div className={`mx-4 mb-2 p-3 rounded-lg flex items-start gap-2 ${
               theme === 'dark' ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-amber-50 border border-amber-300'
             }`}>
               <Settings className={`w-4 h-4 mt-0.5 flex-shrink-0 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
               <p className={`text-xs ${theme === 'dark' ? 'text-amber-300' : 'text-amber-800'}`}>
-                <strong>Admin action required:</strong> Set <code className={`px-1 rounded ${theme === 'dark' ? 'bg-slate-700' : 'bg-amber-100'}`}>ZOOM_CLIENT_ID</code> and{' '}
-                <code className={`px-1 rounded ${theme === 'dark' ? 'bg-slate-700' : 'bg-amber-100'}`}>ZOOM_CLIENT_SECRET</code> environment variables on the server, then restart.
-                See the setup guide below for details.
+                Zoom integration is not yet enabled on this platform.
+                Contact your platform administrator or refer to the developer setup guide below.
               </p>
             </div>
           )}
 
-          {/* Admin-only setup guide (how to configure server env vars) */}
-          {!telehealthStatus.zoom.has_tokens && (
-            <ZoomSetupGuide theme={theme} />
-          )}
+          {/* Developer-only setup guide — collapsed by default */}
+          <ZoomPlatformSetupGuide theme={theme} />
         </div>
 
         {/* Google Meet Integration */}
