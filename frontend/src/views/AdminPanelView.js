@@ -90,8 +90,9 @@ import { hasPermission, isAdmin } from '../utils/rolePermissions';
  * ZoomSetupGuide — admin-only collapsible guide for configuring
  * the Zoom OAuth App server-side (environment variables).
  *
- * The end user never sees or enters Client ID/Secret. This guide
- * is for the system administrator who deploys the application.
+ * The admin configures Zoom once and all providers can launch sessions.
+ * End users (providers) never see or enter credentials — they just
+ * click "New Session" or "Instant Zoom" in the Telehealth module.
  */
 const ZoomSetupGuide = ({ theme }) => {
   const [expanded, setExpanded] = React.useState(false);
@@ -133,7 +134,7 @@ const ZoomSetupGuide = ({ theme }) => {
             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
         }`}
       >
-        <span>Admin: Zoom App Setup Guide</span>
+        <span>Admin: One-Time Zoom Setup Guide</span>
         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
 
@@ -175,7 +176,7 @@ const ZoomSetupGuide = ({ theme }) => {
                     className="text-blue-500 hover:underline inline-flex items-center gap-1">
                     marketplace.zoom.us <ExternalLink className="w-3 h-3" />
                   </a>{' '}
-                  → sign in → <strong>Develop</strong> → <strong>Build App</strong> → choose <strong>General App</strong>.
+                  → sign in → <strong>Develop</strong> → <strong>Build App</strong> → choose <strong>General App</strong> → set to <strong>Admin-managed</strong>.
                 </p>
               </div>
             </div>
@@ -194,11 +195,13 @@ const ZoomSetupGuide = ({ theme }) => {
             <div className="flex gap-3">
               {stepBubble(3)}
               <div>
-                <p className="font-medium">Add Scopes</p>
+                <p className="font-medium">Add Admin-Level Scopes</p>
                 <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Under <strong>Scopes</strong>, add:{' '}
-                  {code('meeting:write')} {code('meeting:read')} {code('user:read')} {code('recording:read')}
+                  Under <strong>Scopes</strong>, search for and add these <strong>admin-level</strong> scopes:
                 </p>
+                <div className={`mt-1.5 flex flex-wrap gap-1`}>
+                  {code('meeting:write:meeting:admin')} {code('meeting:read:meeting:admin')} {code('meeting:delete:meeting:admin')} {code('user:read:user:admin')} {code('user:read:token:admin')} {code('recording:read:list_account_recordings:admin')}
+                </div>
               </div>
             </div>
 
@@ -223,9 +226,9 @@ const ZoomSetupGuide = ({ theme }) => {
                 theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
               }`}>5</span>
               <div>
-                <p className="font-medium">Restart the server & click "Sign in with Zoom"</p>
+                <p className="font-medium">Restart the server & click "Connect Zoom Account"</p>
                 <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  After setting the environment variables, restart the backend. Users can then click "Sign in with Zoom" to authorize via their Zoom account.
+                  After setting the environment variables, restart the backend. Then click "Connect Zoom Account" above to authorize. Once connected, all providers can launch Zoom sessions.
                 </p>
               </div>
             </div>
@@ -2623,21 +2626,21 @@ const AdminPanelView = ({
                     Zoom
                   </h3>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    HIPAA-compliant video conferencing for telehealth
+                    HIPAA-compliant video conferencing — one-time admin setup for all providers
                   </p>
                   {/* Connection status */}
                   {telehealthStatus.zoom.has_tokens ? (
                     <div className="flex items-center gap-2 mt-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
                       <span className={`text-sm ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
-                        Connected{telehealthStatus.zoom.zoom_user_email ? ` as ${telehealthStatus.zoom.zoom_user_email}` : ''}
+                        Connected{telehealthStatus.zoom.zoom_user_email ? ` as ${telehealthStatus.zoom.zoom_user_email}` : ''} — all providers can launch sessions
                       </span>
                     </div>
                   ) : telehealthStatus.zoom.is_configured ? (
                     <div className="flex items-center gap-2 mt-2">
                       <RefreshCw className={`w-4 h-4 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
                       <span className={`text-sm ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                        App configured — sign in to connect
+                        App configured — connect your Zoom account to enable for all providers
                       </span>
                     </div>
                   ) : null}
@@ -2656,7 +2659,7 @@ const AdminPanelView = ({
                     ? theme === 'dark' ? 'bg-slate-700 cursor-not-allowed' : 'bg-gray-200 cursor-not-allowed'
                     : telehealthStatus.zoom.is_enabled ? 'bg-green-500 cursor-pointer' : theme === 'dark' ? 'bg-slate-600 cursor-pointer' : 'bg-gray-300 cursor-pointer'
                 }`}
-                title={!telehealthStatus.zoom.has_tokens ? 'Sign in with Zoom first' : ''}
+                title={!telehealthStatus.zoom.has_tokens ? 'Connect Zoom account first' : ''}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                   telehealthStatus.zoom.is_enabled ? 'translate-x-6' : 'translate-x-1'
@@ -2701,7 +2704,7 @@ const AdminPanelView = ({
                 className="px-6 py-2.5 rounded-lg font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
               >
                 <Video className="w-4 h-4 inline mr-2" />
-                Sign in with Zoom
+                Connect Zoom Account
               </button>
             )}
           </div>
