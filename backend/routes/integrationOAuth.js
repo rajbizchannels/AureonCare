@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const axios = require('axios');
 
 /**
  * Integration OAuth Flow Management
@@ -16,6 +17,14 @@ const crypto = require('crypto');
 
 // Store OAuth states temporarily (in production, use Redis or database)
 const oauthStates = new Map();
+
+/**
+ * Build the frontend URL for post-OAuth redirects.
+ * Uses FRONTEND_URL env var so the browser ends up on the React app, not the backend.
+ */
+function getFrontendUrl() {
+  return (process.env.FRONTEND_URL || 'http://localhost:3001').replace(/\/+$/, '');
+}
 
 /**
  * Build the base URL for OAuth redirect URIs.
@@ -241,16 +250,16 @@ router.get('/:providerType/callback', async (req, res) => {
     const { code, state, error: oauthError } = req.query;
 
     if (oauthError) {
-      return res.redirect(`/admin?error=${encodeURIComponent(oauthError)}&provider=${providerType}`);
+      return res.redirect(`${getFrontendUrl()}/admin?error=${encodeURIComponent(oauthError)}&provider=${providerType}`);
     }
     if (!code || !state) {
-      return res.redirect(`/admin?error=invalid_callback&provider=${providerType}`);
+      return res.redirect(`${getFrontendUrl()}/admin?error=invalid_callback&provider=${providerType}`);
     }
 
     // Verify state
     const storedState = oauthStates.get(state);
     if (!storedState || storedState.providerType !== providerType) {
-      return res.redirect(`/admin?error=invalid_state&provider=${providerType}`);
+      return res.redirect(`${getFrontendUrl()}/admin?error=invalid_state&provider=${providerType}`);
     }
     oauthStates.delete(state);
 
@@ -267,31 +276,30 @@ router.get('/:providerType/callback', async (req, res) => {
     const { client_id, client_secret } = resolveClientCredentials(providerType, dbRow);
 
     if (!client_id || !client_secret) {
-      return res.redirect(`/admin?error=provider_not_configured&provider=${providerType}`);
+      return res.redirect(`${getFrontendUrl()}/admin?error=provider_not_configured&provider=${providerType}`);
     }
 
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
 
-    // Exchange authorization code for tokens
-    const tokenResponse = await fetch(config.tokenUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: redirectUri,
-        client_id,
-        client_secret,
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.text();
-      console.error('Token exchange error:', errorData);
-      return res.redirect(`/admin?error=token_exchange_failed&provider=${providerType}`);
+    // Exchange authorization code for tokens (using axios for Node.js compatibility)
+    let tokens;
+    try {
+      const tokenResponse = await axios.post(config.tokenUrl,
+        new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri,
+          client_id,
+          client_secret,
+        }).toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+      tokens = tokenResponse.data;
+    } catch (tokenError) {
+      console.error('Token exchange error:', tokenError.response?.data || tokenError.message);
+      return res.redirect(`${getFrontendUrl()}/admin?error=token_exchange_failed&provider=${providerType}`);
     }
 
-    const tokens = await tokenResponse.json();
     const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;
 
     // For telehealth providers, store tokens in dedicated columns
@@ -303,15 +311,12 @@ router.get('/:providerType/callback', async (req, res) => {
 
       if (providerType === 'zoom' && tokens.access_token) {
         try {
-          const userResponse = await fetch('https://api.zoom.us/v2/users/me', {
+          const userResponse = await axios.get('https://api.zoom.us/v2/users/me', {
             headers: { 'Authorization': `Bearer ${tokens.access_token}` },
           });
-          if (userResponse.ok) {
-            const userData = await userResponse.json();
-            zoomUserId = userData.id || null;
-            zoomUserEmail = userData.email || null;
-            accountId = userData.account_id || null;
-          }
+          zoomUserId = userResponse.data.id || null;
+          zoomUserEmail = userResponse.data.email || null;
+          accountId = userResponse.data.account_id || null;
         } catch (e) {
           console.error('Failed to fetch Zoom user profile:', e.message);
         }
@@ -370,10 +375,10 @@ router.get('/:providerType/callback', async (req, res) => {
     }
 
     // Redirect to success page
-    res.redirect(`/admin?success=oauth_configured&provider=${providerType}`);
+    res.redirect(`${getFrontendUrl()}/admin?success=oauth_configured&provider=${providerType}`);
   } catch (error) {
-    console.error('Error handling OAuth callback:', error);
-    res.redirect(`/admin?error=callback_failed&provider=${req.params.providerType}`);
+    console.error('Error handling OAuth callback:', error.message, error.stack);
+    res.redirect(`${getFrontendUrl()}/admin?error=callback_failed&detail=${encodeURIComponent(error.message || 'unknown')}&provider=${req.params.providerType}`);
   }
 });
 
@@ -613,22 +618,22 @@ router.post('/:providerType/refresh', async (req, res) => {
       return res.status(400).json({ error: 'No refresh token available' });
     }
 
-    const tokenResponse = await fetch(config.tokenUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        client_id,
-        client_secret,
-      }),
-    });
-
-    if (!tokenResponse.ok) {
+    let tokens;
+    try {
+      const tokenResponse = await axios.post(config.tokenUrl,
+        new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id,
+          client_secret,
+        }).toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+      tokens = tokenResponse.data;
+    } catch (refreshError) {
+      console.error('Token refresh error:', refreshError.response?.data || refreshError.message);
       return res.status(400).json({ error: 'Failed to refresh token' });
     }
-
-    const tokens = await tokenResponse.json();
     const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;
 
     if (info.table === 'telehealth_provider_settings') {
