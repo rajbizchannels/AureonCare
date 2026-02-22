@@ -401,6 +401,8 @@ const AdminPanelView = ({
 
   // Zoom: true when env vars not configured (admin needs to set ZOOM_CLIENT_ID/SECRET)
   const [zoomEnvMissing, setZoomEnvMissing] = useState(false);
+  const [testingZoom, setTestingZoom] = useState(false);
+  const [zoomTestResult, setZoomTestResult] = useState(null); // { success: bool, message: string }
 
   // ==================== MEMOIZED VALUES ====================
 
@@ -1186,8 +1188,14 @@ const AdminPanelView = ({
       `width=${width},height=${height},left=${left},top=${top}`
     );
 
-    // Poll backend OAuth status (COOP-safe)
-    pollOAuthStatus(providerType, popup, async (success) => {
+    // Single completion handler — ensures popup is closed and UI is refreshed exactly once
+    let completed = false;
+    const onOAuthComplete = async (success) => {
+      if (completed) return;
+      completed = true;
+      // Close the popup window (harmless if already closed)
+      try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+
       if (success) {
         try {
           const settings = await api.getTelehealthSettings();
@@ -1213,7 +1221,25 @@ const AdminPanelView = ({
           console.error('Error refreshing telehealth status:', error);
           await addNotification('warning', 'Connection may have been saved. Please refresh the page.');
         }
+      } else {
+        await addNotification('alert', `Failed to connect ${displayName}. Please try again.`);
       }
+    };
+
+    // Primary signal: postMessage from the popup's self-closing success/error page
+    const messageHandler = (event) => {
+      if (!event.data || event.data.provider !== providerType) return;
+      if (event.data.type === 'oauth_success' || event.data.type === 'oauth_error') {
+        window.removeEventListener('message', messageHandler);
+        onOAuthComplete(event.data.type === 'oauth_success');
+      }
+    };
+    window.addEventListener('message', messageHandler);
+
+    // Fallback: backend polling (handles COOP environments where window.opener is null)
+    pollOAuthStatus(providerType, popup, (success) => {
+      window.removeEventListener('message', messageHandler);
+      onOAuthComplete(success);
     });
   }, [api, addNotification, pollOAuthStatus]);
 
@@ -2572,13 +2598,21 @@ const AdminPanelView = ({
    */
   const handleTestZoomConnection = useCallback(async () => {
     try {
+      setTestingZoom(true);
+      setZoomTestResult(null);
       const result = await api.testTelehealthProvider('zoom');
-      await addNotification('success', result.message || 'Zoom connection successful');
+      const msg = result.message || 'Zoom connection successful';
+      setZoomTestResult({ success: true, message: msg });
+      await addNotification('success', msg);
       return result;
     } catch (error) {
       console.error('Zoom test connection failed:', error);
-      await addNotification('alert', error.message || 'Zoom connection test failed');
-      return { success: false, message: error.message };
+      const msg = error.message || 'Zoom connection test failed';
+      setZoomTestResult({ success: false, message: msg });
+      await addNotification('alert', msg);
+      return { success: false, message: msg };
+    } finally {
+      setTestingZoom(false);
     }
   }, [api, addNotification]);
 
@@ -2669,19 +2703,28 @@ const AdminPanelView = ({
           </div>
 
           {/* Actions */}
-          <div className="p-4 flex flex-wrap gap-3">
+          <div className="px-4 pt-4 pb-2 flex flex-wrap gap-3">
             {telehealthStatus.zoom.has_tokens ? (
               <>
                 <button
                   onClick={handleTestZoomConnection}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  disabled={testingZoom}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 flex items-center gap-2 ${
                     theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
                   }`}
                 >
-                  Test Connection
+                  {testingZoom ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                      Testing...
+                    </>
+                  ) : 'Test Connection'}
                 </button>
                 <button
-                  onClick={() => handleConfigureTelehealthProvider(TELEHEALTH_PROVIDERS.ZOOM)}
+                  onClick={() => { setZoomTestResult(null); handleConfigureTelehealthProvider(TELEHEALTH_PROVIDERS.ZOOM); }}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
                   }`}
@@ -2690,7 +2733,7 @@ const AdminPanelView = ({
                   Reconnect
                 </button>
                 <button
-                  onClick={() => handleDisconnectProvider(TELEHEALTH_PROVIDERS.ZOOM)}
+                  onClick={() => { setZoomTestResult(null); handleDisconnectProvider(TELEHEALTH_PROVIDERS.ZOOM); }}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
                   }`}
@@ -2708,6 +2751,18 @@ const AdminPanelView = ({
               </button>
             )}
           </div>
+
+          {/* Inline test result banner */}
+          {zoomTestResult && (
+            <div className={`mx-4 mb-3 px-4 py-2.5 rounded-lg flex items-start gap-2 text-sm ${
+              zoomTestResult.success
+                ? theme === 'dark' ? 'bg-green-500/10 border border-green-500/30 text-green-300' : 'bg-green-50 border border-green-200 text-green-800'
+                : theme === 'dark' ? 'bg-red-500/10 border border-red-500/30 text-red-300' : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              <span className="flex-shrink-0 mt-0.5">{zoomTestResult.success ? '✓' : '✗'}</span>
+              <span>{zoomTestResult.message}</span>
+            </div>
+          )}
 
           {/* Admin notice: env vars not configured */}
           {zoomEnvMissing && !telehealthStatus.zoom.has_tokens && (
