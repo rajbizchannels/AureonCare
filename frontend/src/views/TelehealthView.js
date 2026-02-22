@@ -139,7 +139,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       setZoomError({
         title: 'Telehealth Session Error',
         message: isCredentialError
-          ? 'Zoom credentials are not configured or have expired. Please configure your Zoom OAuth credentials in the Admin Panel.'
+          ? 'Zoom is not configured or the connection has expired. Please contact your system administrator.'
           : (msg || 'Failed to create telehealth session. Please try again.'),
         isCredentialError
       });
@@ -199,7 +199,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       setZoomError({
         title: 'Zoom Meeting Error',
         message: isCredentialError
-          ? 'Zoom credentials are not configured or have expired. Please configure your Zoom OAuth credentials in the Admin Panel.'
+          ? 'Zoom is not configured or the connection has expired. Please contact your system administrator.'
           : (msg || 'Failed to create instant Zoom meeting. Please try again.'),
         isCredentialError
       });
@@ -334,7 +334,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                 </p>
                 {zoomError.isCredentialError && (
                   <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Go to Admin Panel &gt; API &amp; Integrations &gt; Zoom to enter your Client ID and Client Secret.
+                    The Zoom account must be connected by an administrator in Admin Panel &gt; Telehealth Integrations.
                   </p>
                 )}
               </div>
@@ -361,7 +361,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
                 >
                   <div className="flex items-center justify-center gap-2">
                     <Settings className="w-4 h-4" />
-                    Go to Settings
+                    Admin Settings
                   </div>
                 </button>
               )}
@@ -418,24 +418,11 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
             </div>
             <div className="flex-1">
               <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'}`}>
-                No Video Conferencing Provider Configured
+                Video Conferencing Not Set Up
               </h3>
               <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-yellow-300/80' : 'text-yellow-700'}`}>
-                To use telehealth features, you need to configure a video conferencing provider (Zoom, Google Meet, or Webex) in the Admin Panel.
+                A video conferencing provider (Zoom, Google Meet, or Webex) has not been configured yet. Please contact your system administrator to set up telehealth.
               </p>
-              <button
-                onClick={() => setCurrentModule && setCurrentModule('admin')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  theme === 'dark'
-                    ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400'
-                    : 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  Configure Provider in Admin Panel
-                </div>
-              </button>
             </div>
           </div>
         </div>
