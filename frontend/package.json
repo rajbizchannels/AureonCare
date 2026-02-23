@@ -9,6 +9,7 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "@zoom/meetingsdk": "^5.1.2",
     "date-fns": "^4.1.0",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
@@ -20,11 +21,16 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@craco/craco": "^7.1.0",
     "@tailwindcss/postcss": "^4.0.0",
     "autoprefixer": "^10.4.17",
+    "node-polyfill-webpack-plugin": "^4.1.0",
     "tailwindcss": "^3.4.1"
   },
   "scripts": {
+    "copy-zoom-lib": "node scripts/copy-zoom-lib.js",
+    "prestart": "npm run copy-zoom-lib",
+    "prebuild": "npm run copy-zoom-lib",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
