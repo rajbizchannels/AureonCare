@@ -278,12 +278,14 @@ router.post('/:providerType/instant-meeting', async (req, res) => {
 /**
  * GET /zoom/host-token?meetingId=<id>
  *
- * Returns the data needed for the embedded Zoom Meeting SDK:
- *   - zakToken      : ZAK (host auth) fetched from Zoom API
- *   - sdkToken      : Meeting SDK token fetched from Zoom API (preferred, no extra env vars)
- *   - signature     : JWT signature generated from ZOOM_SDK_KEY/SECRET (fallback)
- *   - sdkKey        : SDK key (only when signature path is used)
- *   - password      : meeting password (fetched from Zoom API when meetingId is provided)
+ * Returns data needed for the embedded Zoom Meeting SDK (Client View, CDN):
+ *   - zakToken   : ZAK token — grants host privileges in the SDK
+ *   - signature  : HMAC-JWT signed with SDK Key + SDK Secret
+ *   - sdkKey     : SDK Key (= ZOOM_SDK_KEY, or falls back to ZOOM_CLIENT_ID)
+ *   - password   : meeting password (fetched from Zoom API)
+ *
+ * For Zoom General Apps the OAuth Client ID/Secret ARE the SDK Key/Secret —
+ * no separate app or extra env vars are required.
  */
 router.get('/zoom/host-token', async (req, res) => {
   try {
@@ -307,40 +309,33 @@ router.get('/zoom/host-token', async (req, res) => {
     const { access_token } = row;
     const authHeader = { Authorization: `Bearer ${access_token}` };
 
-    // Fetch ZAK token (host privileges for the SDK)
+    // Fetch ZAK token — required for the host role in the Meeting SDK
     const zakResponse = await axios.get(
       'https://api.zoom.us/v2/users/me/token?type=zak',
       { headers: authHeader }
     );
     const zakToken = zakResponse.data.token;
 
-    // Try to get Meeting SDK token from Zoom (requires meeting_token:write scope)
-    // This approach needs no extra credentials — uses the admin's OAuth token
-    let sdkToken = null;
-    if (meetingId) {
-      try {
-        const sdkTokenResponse = await axios.post(
-          `https://api.zoom.us/v2/users/me/meeting_token/generate?type=sdk_token&meeting_number=${meetingId}`,
-          {},
-          { headers: authHeader }
-        );
-        sdkToken = sdkTokenResponse.data.token;
-      } catch (sdkErr) {
-        // Scope not granted — will fall back to SDK Key/Secret signature
-        console.warn('Could not generate Meeting SDK token (add meeting_token:write scope to reconnect Zoom):', sdkErr.response?.data?.message || sdkErr.message);
-      }
+    // Resolve SDK Key / Secret.
+    // For Zoom General Apps the Client ID == SDK Key and Client Secret == SDK Secret.
+    // ZOOM_SDK_KEY / ZOOM_SDK_SECRET can override these (e.g. a dedicated Meeting SDK app).
+    const sdkKey    = process.env.ZOOM_SDK_KEY    || process.env.ZOOM_CLIENT_ID;
+    const sdkSecret = process.env.ZOOM_SDK_SECRET || process.env.ZOOM_CLIENT_SECRET;
+
+    if (!sdkKey || !sdkSecret) {
+      return res.status(422).json({
+        error: 'ZOOM_CLIENT_ID / ZOOM_CLIENT_SECRET are not configured on the server.'
+      });
     }
 
-    // Fallback: generate JWT signature from env-configured SDK credentials
+    // Generate the Meeting SDK JWT signature (role 1 = host)
     let signature = null;
-    const sdkKey = process.env.ZOOM_SDK_KEY;
-    const sdkSecret = process.env.ZOOM_SDK_SECRET;
-    if (!sdkToken && sdkKey && sdkSecret && meetingId) {
+    if (meetingId) {
       const b64url = (s) =>
         Buffer.from(s).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
       const iat = Math.round(Date.now() / 1000) - 30;
-      const exp = iat + 7200;
-      const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const exp = iat + 7200; // valid for 2 hours
+      const header  = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
       const payload = b64url(
         JSON.stringify({ sdkKey, mn: String(meetingId), role: 1, iat, exp, tokenExp: exp })
       );
@@ -354,7 +349,7 @@ router.get('/zoom/host-token', async (req, res) => {
       signature = `${header}.${payload}.${sigPart}`;
     }
 
-    // Fetch meeting password from Zoom if a meeting ID is supplied
+    // Fetch meeting password from Zoom API
     let password = '';
     if (meetingId) {
       try {
@@ -368,13 +363,7 @@ router.get('/zoom/host-token', async (req, res) => {
       }
     }
 
-    res.json({
-      zakToken,
-      sdkToken,
-      signature,
-      sdkKey: sdkToken ? null : (sdkKey || null),
-      password
-    });
+    res.json({ zakToken, signature, sdkKey, password });
   } catch (error) {
     console.error('Error fetching Zoom host token:', error.response?.data || error.message);
     if (error.response?.status === 401) {
