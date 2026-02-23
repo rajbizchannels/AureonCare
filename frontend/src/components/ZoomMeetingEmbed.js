@@ -20,33 +20,34 @@ import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
  *   displayName {string}   Name shown in meeting (default: "Host")
  */
 
-// One SDK client instance per page load — reused across mounts/unmounts.
-let _zoomClient = null;
-function getZoomClient() {
-  if (!_zoomClient) {
-    _zoomClient = ZoomMtgEmbedded.createClient();
-  }
-  return _zoomClient;
-}
+const HEADER_HEIGHT = 44; // px — must match the header div height below
 
 const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => {
-  const containerRef   = useRef(null);
-  const mountedRef     = useRef(true);
-  const joinedRef      = useRef(false);
+  const containerRef = useRef(null);
+  const clientRef    = useRef(null);   // per-instance SDK client (no module singleton)
+  const mountedRef   = useRef(true);
+  const joinedRef    = useRef(false);
 
   const [status,   setStatus]   = useState('loading'); // loading | joining | joined | error
   const [errorMsg, setErrorMsg] = useState(null);
 
   // ------------------------------------------------------------------
-  // Cleanup: leave the meeting and reset the SDK client reference so
-  // a future mount can re-initialize cleanly.
+  // Tear down any active or stale SDK session.
+  // As host, endMeeting() terminates the meeting for all; leaveMeeting()
+  // as fallback in case the SDK isn't fully joined yet.
+  // Always nulls clientRef so the next call to loadAndJoin() gets a
+  // fresh SDK client — this is the fix for errorCode 3000.
   // ------------------------------------------------------------------
-  const cleanup = useCallback(() => {
-    if (joinedRef.current) {
-      try { getZoomClient().leaveMeeting({}); } catch (_) {}
-      joinedRef.current = false;
-      _zoomClient = null; // force re-create on next session
+  const endActiveSession = useCallback(async () => {
+    const client = clientRef.current;
+    if (!client) return;
+    try {
+      await client.endMeeting({});
+    } catch (_) {
+      try { client.leaveMeeting({}); } catch (__) {}
     }
+    clientRef.current = null;
+    joinedRef.current = false;
   }, []);
 
   // ------------------------------------------------------------------
@@ -55,6 +56,12 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
   const loadAndJoin = useCallback(async () => {
     try {
       setStatus('loading');
+
+      // Clear any stale session BEFORE creating a new client.
+      // This prevents errorCode 3000 "Already has other meetings in progress."
+      await endActiveSession();
+
+      if (!mountedRef.current) return;
 
       // Fetch host tokens from backend (ZAK + SDK signature)
       const tokenData = await api.getZoomHostToken(meetingId);
@@ -71,7 +78,9 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
 
       setStatus('joining');
 
-      const client = getZoomClient();
+      // Create a fresh client for this session.
+      const client = ZoomMtgEmbedded.createClient();
+      clientRef.current = client;
 
       // Initialize the SDK — points it at the binary assets we copied to public/
       await client.init({
@@ -82,6 +91,8 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
         // Files are copied to public/zoom-lib by `npm run prestart/prebuild`.
         assetPath: `${window.location.origin}/zoom-lib/av`,
       });
+
+      if (!mountedRef.current) return;
 
       // Join the meeting as host
       await client.join({
@@ -98,43 +109,54 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
     } catch (err) {
       console.error('ZoomMeetingEmbed error:', err);
       if (mountedRef.current) {
-        setErrorMsg(err.message || 'Failed to start Zoom meeting');
+        // SDK errors are plain objects with .reason and .errorCode fields, not Error instances.
+        const msg =
+          typeof err === 'object' && err !== null && err.reason
+            ? `${err.reason} (code: ${err.errorCode})`
+            : (err.message || 'Failed to start Zoom meeting');
+        setErrorMsg(msg);
         setStatus('error');
       }
     }
-  }, [meetingId, api, displayName]);
+  }, [meetingId, api, displayName, endActiveSession]);
 
   useEffect(() => {
     mountedRef.current = true;
     loadAndJoin();
     return () => {
       mountedRef.current = false;
-      cleanup();
+      endActiveSession();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleClose = useCallback(() => {
-    cleanup();
+  const handleClose = useCallback(async () => {
+    await endActiveSession();
     onClose();
-  }, [cleanup, onClose]);
+  }, [endActiveSession, onClose]);
 
   // ------------------------------------------------------------------
   // Render — full-screen overlay layout:
   //   ┌────────────────────────────────────┐
-  //   │  Zoom Meeting   [Leave & Return]   │  ← always-visible header
+  //   │  Zoom Meeting   [Leave & Return]   │  ← fixed-height header (HEADER_HEIGHT px)
   //   ├────────────────────────────────────┤
   //   │                                    │
-  //   │   SDK renders here (containerRef)  │  ← flex-1
+  //   │   SDK renders here (containerRef)  │  ← fills remaining space absolutely
   //   │                                    │
   //   └────────────────────────────────────┘
-  //   Loading / error overlay sits on top (absolute, z-10) while joining
+  //   Loading / error overlay sits on top (absolute, z-10) while joining.
+  //
+  // The SDK container uses absolute positioning with an explicit pixel height so
+  // it is never collapsed to 0 by flexbox (which caused the black window bug).
   // ------------------------------------------------------------------
   return (
-    <div className="fixed inset-0 z-[9998] bg-gray-900 flex flex-col">
+    <div className="fixed inset-0 z-[9998] bg-gray-900">
 
       {/* Header — always visible so the user can leave at any time */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+      <div
+        style={{ height: HEADER_HEIGHT }}
+        className="flex items-center justify-between px-4 bg-gray-800 border-b border-gray-700"
+      >
         <span className="text-white text-sm font-semibold">Zoom Meeting</span>
         <button
           onClick={handleClose}
@@ -145,16 +167,24 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
         </button>
       </div>
 
-      {/* SDK container — the Component View renders the meeting UI here */}
+      {/* SDK container — absolute so it always has a measurable, non-zero size */}
       <div
         ref={containerRef}
-        className="flex-1 w-full overflow-hidden"
-        style={{ minHeight: 0 }}
+        style={{
+          position: 'absolute',
+          top:    HEADER_HEIGHT,
+          left:   0,
+          right:  0,
+          bottom: 0,
+        }}
       />
 
       {/* Loading / error overlay — shown until the meeting is joined */}
       {(status === 'loading' || status === 'joining' || status === 'error') && (
-        <div className="absolute inset-0 top-[44px] bg-gray-900 flex items-center justify-center z-10">
+        <div
+          className="absolute left-0 right-0 bottom-0 bg-gray-900 flex items-center justify-center z-10"
+          style={{ top: HEADER_HEIGHT }}
+        >
           <div className="text-center text-white px-6 max-w-md">
             {(status === 'loading' || status === 'joining') && (
               <>
