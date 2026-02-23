@@ -130,12 +130,10 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
 
       if (!mountedRef.current) return;
 
-      // Neither sdkToken nor signature available
-      if (!tokenData.sdkToken && !tokenData.signature) {
+      if (!tokenData.signature) {
         throw new Error(
-          'Zoom Meeting SDK credentials are not configured. ' +
-          'Please add ZOOM_SDK_KEY and ZOOM_SDK_SECRET to the platform .env file, ' +
-          'then reconnect Zoom in Admin Settings.'
+          'Zoom SDK signature could not be generated. ' +
+          'Ensure ZOOM_CLIENT_ID and ZOOM_CLIENT_SECRET are set on the server.'
         );
       }
 
@@ -172,13 +170,10 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
             },
           };
 
-          // Prefer sdkToken (no extra env vars) over signature (requires SDK Key/Secret)
-          if (tokenData.sdkToken) {
-            joinParams.sdkToken = tokenData.sdkToken;
-          } else {
-            joinParams.signature = tokenData.signature;
-            joinParams.sdkKey = tokenData.sdkKey;
-          }
+          // For Zoom General Apps, Client ID == SDK Key and Client Secret == SDK Secret.
+          // The signature was generated on the backend using those same credentials.
+          joinParams.signature = tokenData.signature;
+          joinParams.sdkKey    = tokenData.sdkKey;
 
           window.ZoomMtg.join(joinParams);
         },

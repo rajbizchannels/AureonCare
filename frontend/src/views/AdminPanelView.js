@@ -181,39 +181,35 @@ const ZoomPlatformSetupGuide = ({ theme }) => {
             </div>
 
             <div>
-              <p className="font-semibold">3 — Add admin-level scopes</p>
+              <p className="font-semibold">3 — Add these scopes in the Scopes tab</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {code('meeting:write:meeting:admin')} {code('meeting:read:meeting:admin')}
                 {code('meeting:delete:meeting:admin')} {code('user:read:user:admin')}
                 {code('user:read:token:admin')} {code('recording:read:list_account_recordings:admin')}
               </div>
-            </div>
-
-            <div>
-              <p className="font-semibold">4 — Add SDK scopes (for embedded meeting launch)</p>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {code('meeting_token:read:local_recording')}
-              </div>
-              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                Also create a <strong>Meeting SDK</strong> type app → copy the SDK Key &amp; Secret.
+              <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                Search each scope name in the Zoom scope picker and add it.
+                The {code(':admin')} suffix lets the app act on behalf of any user in the account —
+                this is what makes the "admin configures once" model work.
               </p>
             </div>
 
             <div>
-              <p className="font-semibold">5 — Set server environment variables</p>
-              <div className={`mt-1 p-3 rounded text-xs font-mono ${theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-800'}`}>
-                # OAuth app credentials (for Connect flow)<br />
-                ZOOM_CLIENT_ID=your_client_id<br />
-                ZOOM_CLIENT_SECRET=your_client_secret<br />
-                <br />
-                # Meeting SDK credentials (for embedded in-app meetings)<br />
-                ZOOM_SDK_KEY=your_sdk_key<br />
-                ZOOM_SDK_SECRET=your_sdk_secret
+              <p className="font-semibold">4 — Copy credentials and set env vars</p>
+              <p className={`text-xs mt-1 mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                From the app's <strong>App Credentials</strong> tab copy the{' '}
+                <strong>Client ID</strong> and <strong>Client Secret</strong>.
+                For a General App these are <em>also</em> the Meeting SDK Key &amp; Secret —
+                no separate SDK app is required.
+              </p>
+              <div className={`p-3 rounded text-xs font-mono whitespace-pre ${theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-800'}`}>
+                {`# backend/.env\nZOOM_CLIENT_ID=paste_client_id_here\nZOOM_CLIENT_SECRET=paste_client_secret_here\n\n# Optional — only if using a dedicated Meeting SDK app\n# ZOOM_SDK_KEY=sdk_key\n# ZOOM_SDK_SECRET=sdk_secret`}
               </div>
             </div>
 
             <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-              Restart the server. Every clinic admin can now click <strong>Connect Zoom Account</strong> — no further setup needed on their side.
+              Restart the server after updating <code>.env</code>.
+              Every clinic admin can then click <strong>Connect Zoom Account</strong> — no further setup needed on their side.
             </p>
           </div>
         </div>
