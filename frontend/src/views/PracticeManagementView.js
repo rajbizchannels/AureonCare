@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ArrowLeft, Search, Filter, X, Clock, User, CheckCircle, Bell } from 'lucide-react';
+import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowLeft, Search, Filter, X, Clock, User, CheckCircle, Bell } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
@@ -41,6 +41,10 @@ const PracticeManagementView = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+
+  // Sort states
+  const [sortField, setSortField] = useState('date');
+  const [sortDirection, setSortDirection] = useState('asc');
 
   // Waitlist state
   const [waitlistEntries, setWaitlistEntries] = useState([]);
@@ -194,6 +198,16 @@ const PracticeManagementView = ({
     setTypeFilter('all');
   };
 
+  // Toggle sort field / direction
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
   // Helper function to parse appointment date/time
   const getAppointmentDateTime = (apt) => {
     if (apt.start_time) {
@@ -232,6 +246,51 @@ const PracticeManagementView = ({
 
   const weekDates = getCurrentWeekDates(selectedWeek);
   const today = new Date();
+
+  // Sorted appointments for list view
+  const sortedAppointments = [...filteredAppointments].sort((a, b) => {
+    let aVal, bVal;
+    switch (sortField) {
+      case 'patient': {
+        const aP = patients.find(p => p.id === a.patient_id);
+        const bP = patients.find(p => p.id === b.patient_id);
+        aVal = (a.patient || aP?.name || `${aP?.first_name || ''} ${aP?.last_name || ''}`).trim().toLowerCase();
+        bVal = (b.patient || bP?.name || `${bP?.first_name || ''} ${bP?.last_name || ''}`).trim().toLowerCase();
+        break;
+      }
+      case 'doctor': {
+        const aU = users?.find(u => u.id === a.provider_id);
+        const bU = users?.find(u => u.id === b.provider_id);
+        aVal = (a.doctor || a.provider_name || `${aU?.first_name || ''} ${aU?.last_name || ''}`).trim().toLowerCase();
+        bVal = (b.doctor || b.provider_name || `${bU?.first_name || ''} ${bU?.last_name || ''}`).trim().toLowerCase();
+        break;
+      }
+      case 'type':
+        aVal = (a.type || a.appointment_type || '').toLowerCase();
+        bVal = (b.type || b.appointment_type || '').toLowerCase();
+        break;
+      case 'status':
+        aVal = (a.status || '').toLowerCase();
+        bVal = (b.status || '').toLowerCase();
+        break;
+      case 'date':
+      default:
+        aVal = getAppointmentDateTime(a).getTime();
+        bVal = getAppointmentDateTime(b).getTime();
+        break;
+    }
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Render sort icon for a given column
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ChevronUp className="w-3 h-3 opacity-30" />;
+    return sortDirection === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-cyan-400" />
+      : <ChevronDown className="w-3 h-3 text-cyan-400" />;
+  };
 
   return (
     <>
@@ -502,16 +561,29 @@ const PracticeManagementView = ({
             <table className="w-full">
               <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
                 <tr>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.patient || 'Patient'}</th>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.doctor || 'Doctor'}</th>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.dateAndTime || 'Date & Time'}</th>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.type || 'Type'}</th>
-                  <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.status || 'Status'}</th>
+                  {[
+                    { key: 'patient', label: t.patient || 'Patient' },
+                    { key: 'doctor',  label: t.doctor   || 'Doctor'  },
+                    { key: 'date',    label: t.dateAndTime || 'Date & Time' },
+                    { key: 'type',    label: t.type     || 'Type'    },
+                    { key: 'status',  label: t.status   || 'Status'  },
+                  ].map(col => (
+                    <th
+                      key={col.key}
+                      onClick={() => handleSort(col.key)}
+                      className={`px-6 py-4 text-left text-sm font-semibold cursor-pointer select-none ${theme === 'dark' ? 'text-slate-300 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
+                    >
+                      <div className="flex items-center gap-1">
+                        {col.label}
+                        <SortIcon field={col.key} />
+                      </div>
+                    </th>
+                  ))}
                   <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.actions || 'Actions'}</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredAppointments.map((apt, idx) => {
+                {sortedAppointments.map((apt, idx) => {
                   const patient = patients.find(p => p.id === apt.patient_id);
                   const patientName = apt.patient || patient?.name || t.unknownPatient || 'Unknown Patient';
                   const aptDateTime = getAppointmentDateTime(apt);
@@ -749,36 +821,79 @@ const PracticeManagementView = ({
                     return (
                       <div
                         key={apt.id}
-                        className={`p-4 rounded-lg border flex items-center justify-between cursor-pointer transition-colors ${
+                        className={`p-4 rounded-lg border flex items-center justify-between gap-4 transition-colors ${
                           theme === 'dark'
                             ? 'bg-slate-800/50 border-slate-700 hover:bg-slate-800'
                             : 'bg-white border-gray-300 hover:bg-gray-50'
                         }`}
-                        onClick={() => {
-                          setEditingItem({ type: 'appointment', data: apt });
-                          setCurrentView('view');
-                        }}
                       >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-4">
-                            <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-600'}`}>
-                              {formatTime(aptDateTime)}
+                        {/* Left: time + patient + type */}
+                        <div
+                          className="flex-1 flex items-center gap-4 cursor-pointer"
+                          onClick={() => {
+                            setEditingItem({ type: 'appointment', data: apt });
+                            setCurrentView('view');
+                          }}
+                        >
+                          <div className={`text-2xl font-bold shrink-0 ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                            {formatTime(aptDateTime)}
+                          </div>
+                          <div>
+                            <div className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {patientName}
                             </div>
-                            <div>
-                              <div className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                {patientName}
-                              </div>
-                              <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                {appointmentType} {t.with || 'with'} {doctorName}
-                              </div>
+                            <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              {appointmentType} {t.with || 'with'} {doctorName}
                             </div>
                           </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          apt.status === 'Confirmed' || apt.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
-                        }`}>
-                          {apt.status}
-                        </span>
+
+                        {/* Right: status badge + action buttons */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            apt.status === 'Confirmed' || apt.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {apt.status}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEditingItem({ type: 'appointment', data: apt });
+                              setCurrentView('view');
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                            title={t.view || 'View'}
+                          >
+                            <Eye className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingItem({ type: 'appointment', data: apt });
+                              setCurrentView('edit');
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                            title={t.edit || 'Edit'}
+                          >
+                            <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(t.confirmDeleteAppointment || 'Are you sure you want to delete this appointment?')) {
+                                try {
+                                  await api.deleteAppointment(apt.id);
+                                  setAppointments(prev => prev.filter(a => a.id !== apt.id));
+                                  await addNotification('alert', t.appointmentDeletedSuccessfully || 'Appointment deleted successfully');
+                                } catch (err) {
+                                  console.error('Error deleting appointment:', err);
+                                  alert(t.failedToDeleteAppointment || 'Failed to delete appointment');
+                                }
+                              }
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                            title={t.delete || 'Delete'}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })
