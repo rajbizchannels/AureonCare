@@ -337,7 +337,7 @@ router.get('/zoom/host-token', async (req, res) => {
       const exp = iat + 7200; // valid for 2 hours
       const header  = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
       const payload = b64url(
-        JSON.stringify({ sdkKey, mn: String(meetingId), role: 1, iat, exp, tokenExp: exp })
+        JSON.stringify({ appKey: sdkKey, mn: String(meetingId), role: 1, iat, exp, tokenExp: exp })
       );
       const sigPart = crypto
         .createHmac('sha256', sdkSecret)
