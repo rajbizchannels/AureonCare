@@ -135,7 +135,6 @@ const OAUTH_CONFIGS = {
       'user:read:user:admin',                  // Read any user's profile in the account
       'user:read:token:admin',                 // Read user ZAK token for embedded SDK hosting
       'recording:read:list_account_recordings:admin', // List cloud recordings across the account
-      'meeting_token:write:meeting_token:app', // Generate Meeting SDK tokens for embedded meetings
     ].join(' '),
   },
   google_meet: {
