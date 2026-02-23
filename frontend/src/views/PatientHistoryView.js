@@ -1295,7 +1295,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                 </div>
                 <div className="flex items-center gap-2">
                   {!['completed', 'cancelled', 'canceled'].includes((appt.status || '').toLowerCase()) &&
-                    (appt.type || '').toLowerCase() === 'telehealth' &&
+                    (appt.type || appt.appointment_type || '').toLowerCase() === 'telehealth' &&
                     (isProvider(user) || isPatient(user)) && (
                     <button
                       onClick={() => handleStartTelehealth(appt.id)}
