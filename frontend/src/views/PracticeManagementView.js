@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowLeft, Search, Filter, X, Clock, User, CheckCircle, Bell } from 'lucide-react';
+import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowLeft, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
+import { isProvider, isPatient } from '../utils/rolePermissions';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import ViewEditModal from '../components/modals/ViewEditModal';
@@ -45,6 +46,9 @@ const PracticeManagementView = ({
   // Sort states
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState('asc');
+
+  // Telehealth state
+  const [telehealthLoading, setTelehealthLoading] = useState(false);
 
   // Waitlist state
   const [waitlistEntries, setWaitlistEntries] = useState([]);
@@ -196,6 +200,56 @@ const PracticeManagementView = ({
     setSearchQuery('');
     setStatusFilter('all');
     setTypeFilter('all');
+  };
+
+  // Launch a telehealth session directly for a given appointment row
+  const handleStartTelehealth = async (apt) => {
+    if (!isProvider(user) && !isPatient(user)) {
+      addNotification('error', 'Only providers and patients can start telehealth sessions.');
+      return;
+    }
+    setTelehealthLoading(apt.id);
+    // Open blank window synchronously to avoid popup blocker
+    const meetingWindow = window.open('about:blank', '_blank');
+    try {
+      const settings = await api.getTelehealthSettings();
+      const enabledProvider = settings?.find(p => p.is_enabled);
+      if (!enabledProvider) {
+        if (meetingWindow) meetingWindow.close();
+        addNotification('error', 'No telehealth provider configured. Please configure one in the Admin Panel.');
+        return;
+      }
+      const sessionData = {
+        appointmentId: apt.id,
+        patientId: apt.patient_id,
+        providerId: apt.provider_id || user?.id,
+        startTime: new Date().toISOString(),
+        duration: apt.duration_minutes || 30,
+        recordingEnabled: false,
+      };
+      const newSession = await api.createTelehealthSession(sessionData);
+      const meetingUrl = newSession.meeting_url || newSession.meetingDetails?.meetingUrl;
+      if (meetingUrl && meetingWindow) {
+        meetingWindow.location.href = meetingUrl;
+        const pt = patients.find(p => p.id === apt.patient_id);
+        const ptName = apt.patient || (pt ? `${pt.first_name} ${pt.last_name}` : 'patient');
+        addNotification('success', `Telehealth session started with ${ptName}`);
+      } else {
+        if (meetingWindow) meetingWindow.close();
+        if (meetingUrl) {
+          window.open(meetingUrl, '_blank');
+          addNotification('success', 'Telehealth session started');
+        } else {
+          addNotification('error', 'Session created but no meeting URL was returned.');
+        }
+      }
+    } catch (error) {
+      console.error('Error starting telehealth session:', error);
+      if (meetingWindow) meetingWindow.close();
+      addNotification('error', 'Failed to start telehealth session: ' + (error.message || 'Unknown error'));
+    } finally {
+      setTelehealthLoading(false);
+    }
   };
 
   // Toggle sort field / direction
@@ -621,6 +675,24 @@ const PracticeManagementView = ({
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
+                          {/* Video button — only for Telehealth appointments, providers/patients only */}
+                          {!['completed', 'cancelled', 'canceled'].includes((apt.status || '').toLowerCase()) &&
+                            (apt.type || apt.appointment_type || '').toLowerCase() === 'telehealth' &&
+                            (isProvider(user) || isPatient(user)) && (
+                            <button
+                              onClick={() => handleStartTelehealth(apt)}
+                              disabled={telehealthLoading === apt.id}
+                              className={`p-2 rounded-lg transition-colors ${
+                                theme === 'dark' ? 'hover:bg-cyan-500/20 text-cyan-400' : 'hover:bg-cyan-100 text-cyan-600'
+                              } disabled:opacity-50`}
+                              title="Start Telehealth Session"
+                            >
+                              {telehealthLoading === apt.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Video className="w-4 h-4" />
+                              }
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               setEditingItem({ type: 'appointment', data: apt });
@@ -855,6 +927,24 @@ const PracticeManagementView = ({
                           }`}>
                             {apt.status}
                           </span>
+                          {/* Video button — only for Telehealth appointments, providers/patients only */}
+                          {!['completed', 'cancelled', 'canceled'].includes((apt.status || '').toLowerCase()) &&
+                            (apt.type || apt.appointment_type || '').toLowerCase() === 'telehealth' &&
+                            (isProvider(user) || isPatient(user)) && (
+                            <button
+                              onClick={() => handleStartTelehealth(apt)}
+                              disabled={telehealthLoading === apt.id}
+                              className={`p-2 rounded-lg transition-colors ${
+                                theme === 'dark' ? 'hover:bg-cyan-500/20 text-cyan-400' : 'hover:bg-cyan-100 text-cyan-600'
+                              } disabled:opacity-50`}
+                              title="Start Telehealth Session"
+                            >
+                              {telehealthLoading === apt.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Video className="w-4 h-4" />
+                              }
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               setEditingItem({ type: 'appointment', data: apt });
