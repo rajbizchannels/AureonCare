@@ -78,9 +78,9 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
         zoomAppRoot: containerRef.current,
         language:    'en-US',
         patchJsMedia: true,
-        // Binary assets (WASM, AV workers) are served from /zoom-lib
-        // They are copied there automatically by `npm run prestart/prebuild`
-        assetPath: `${window.location.origin}/zoom-lib`,
+        // Binary assets (WASM, AV workers) live in the av/ subdirectory.
+        // Files are copied to public/zoom-lib by `npm run prestart/prebuild`.
+        assetPath: `${window.location.origin}/zoom-lib/av`,
       });
 
       // Join the meeting as host
