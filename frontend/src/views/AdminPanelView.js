@@ -1106,28 +1106,21 @@ const AdminPanelView = ({
   }, []);
 
   /**
-   * Poll backend OAuth status endpoint instead of checking popup.closed
-   * (Cross-Origin-Opener-Policy blocks window.closed on OAuth provider popups)
+   * Poll backend OAuth status endpoint to detect when tokens are saved.
+   * Does NOT access the popup window reference (COOP blocks cross-origin access
+   * to popup.closed, causing repeated browser warnings).
+   * Pure backend polling — works regardless of COOP policy.
    */
-  const pollOAuthStatus = useCallback((providerType, popup, onComplete) => {
-    const POLL_INTERVAL = 2500; // 2.5 seconds
+  const pollOAuthStatus = useCallback((providerType, _popup, onComplete) => {
+    const POLL_INTERVAL = 2000; // 2 seconds
     const MAX_POLL_TIME = 5 * 60 * 1000; // 5 minute timeout
     const startTime = Date.now();
 
     const pollTimer = setInterval(async () => {
-      // Check timeout
       if (Date.now() - startTime > MAX_POLL_TIME) {
         clearInterval(pollTimer);
-        console.warn('OAuth status polling timed out after 5 minutes');
+        onComplete(false);
         return;
-      }
-
-      // Try popup.closed as a fast secondary signal (may fail due to COOP)
-      let popupClosed = false;
-      try {
-        popupClosed = popup && popup.closed;
-      } catch (_) {
-        // COOP blocks access — ignore and rely on backend polling
       }
 
       try {
@@ -1137,28 +1130,13 @@ const AdminPanelView = ({
           if (status.hasTokens) {
             clearInterval(pollTimer);
             onComplete(true);
-            return;
           }
         }
       } catch (err) {
-        console.error('Error polling OAuth status:', err);
-      }
-
-      // If popup closed but no tokens yet, give a few more seconds then stop
-      if (popupClosed) {
-        // Wait one more cycle to allow backend to finalize token exchange
-        setTimeout(() => {
-          clearInterval(pollTimer);
-          // Final check
-          fetch(`/api/integrations/oauth/${providerType}/status`)
-            .then(r => r.json())
-            .then(status => onComplete(status.hasTokens))
-            .catch(() => onComplete(false));
-        }, 3000);
+        // Network error — keep polling
       }
     }, POLL_INTERVAL);
 
-    // Return cleanup function
     return () => clearInterval(pollTimer);
   }, []);
 
@@ -1266,8 +1244,8 @@ const AdminPanelView = ({
     const onOAuthComplete = async (success) => {
       if (completed) return;
       completed = true;
-      // Close the popup window (harmless if already closed)
-      try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+      // Try to close the popup (COOP may block access — that's fine, it self-closes)
+      try { popup?.close(); } catch (_) {}
 
       if (success) {
         try {
