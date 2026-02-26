@@ -124,17 +124,17 @@ const OAUTH_CONFIGS = {
   zoom: {
     authUrl: 'https://zoom.us/oauth/authorize',
     tokenUrl: 'https://zoom.us/oauth/token',
-    // Admin-level granular scopes — required by Zoom Marketplace as of 2025/2026.
-    // Classic scopes (meeting:write, user:read) are deprecated; granular are enforced for new apps.
-    // Admin-level (:admin suffix) allows the account admin to manage meetings for all users.
-    // This supports the "admin configures once, all providers launch sessions" model.
+    // User-level granular scopes (no :admin suffix).
+    // User-managed apps work cross-account — any Zoom user can authorize,
+    // even from a different Zoom organization, without Marketplace publication.
+    // Admin-level (:admin) scopes restrict OAuth to the same Zoom org as the app developer.
     scope: [
-      'meeting:write:meeting:admin',           // Create / update meetings for any account user
-      'meeting:read:meeting:admin',            // Read meeting details for any account user
-      'meeting:delete:meeting:admin',          // Delete meetings for any account user
-      'user:read:user:admin',                  // Read any user's profile in the account
-      'user:read:token:admin',                 // Read user ZAK token for embedded SDK hosting
-      'recording:read:list_account_recordings:admin', // List cloud recordings across the account
+      'meeting:write:meeting',              // Create / update own meetings
+      'meeting:read:meeting',               // Read own meeting details
+      'meeting:delete:meeting',             // Delete own meetings
+      'user:read:user',                     // Read own user profile
+      'user:read:zak',                      // Read own ZAK token for embedded SDK hosting
+      'cloud_recording:read:list_recordings', // List own cloud recordings
     ].join(' '),
   },
   google_meet: {
