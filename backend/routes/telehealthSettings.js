@@ -309,12 +309,24 @@ router.get('/zoom/host-token', async (req, res) => {
     const { access_token } = row;
     const authHeader = { Authorization: `Bearer ${access_token}` };
 
-    // Fetch ZAK token — required for the host role in the Meeting SDK
-    const zakResponse = await axios.get(
-      'https://api.zoom.us/v2/users/me/token?type=zak',
-      { headers: authHeader }
-    );
-    const zakToken = zakResponse.data.token;
+    // Fetch ZAK token — required for the host role in the Meeting SDK.
+    // Try the v2 /users/me/zak endpoint first (works with user:read:zak scope),
+    // fall back to the legacy /users/me/token?type=zak path (admin scope).
+    let zakToken = null;
+    try {
+      const zakResponse = await axios.get(
+        'https://api.zoom.us/v2/users/me/zak',
+        { headers: authHeader }
+      );
+      zakToken = zakResponse.data.token;
+    } catch (_zakErr) {
+      // Fallback for older apps that have user:read:token:admin
+      const zakFallback = await axios.get(
+        'https://api.zoom.us/v2/users/me/token?type=zak',
+        { headers: authHeader }
+      );
+      zakToken = zakFallback.data.token;
+    }
 
     // Resolve SDK Key / Secret.
     // For Zoom General Apps the Client ID == SDK Key and Client Secret == SDK Secret.
