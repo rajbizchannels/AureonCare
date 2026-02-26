@@ -45,7 +45,7 @@ function sendOAuthResult(res, success, providerType, errorDetail) {
   const iconColor = success ? '#22c55e' : '#ef4444';
   const title = success ? 'Connected!' : 'Connection Failed';
   const subtitle = success
-    ? 'Zoom connected. This window will close automatically.'
+    ? 'Connected successfully. This window will close automatically.'
     : (errorDetail || 'Please close this window and try again.');
 
   const safeProvider = String(providerType).replace(/[^a-z0-9_]/gi, '');
@@ -368,21 +368,35 @@ router.get('/:providerType/callback', async (req, res) => {
 
     // For telehealth providers, store tokens in dedicated columns
     if (info.table === 'telehealth_provider_settings') {
-      // Fetch Zoom user profile to store email + user ID
-      let zoomUserId = null;
-      let zoomUserEmail = null;
+      // Fetch connected user's profile (email, user id, account id)
+      let connectedUserId = null;
+      let connectedUserEmail = null;
       let accountId = null;
 
-      if (providerType === 'zoom' && tokens.access_token) {
+      if (tokens.access_token) {
         try {
-          const userResponse = await axios.get('https://api.zoom.us/v2/users/me', {
-            headers: { 'Authorization': `Bearer ${tokens.access_token}` },
-          });
-          zoomUserId = userResponse.data.id || null;
-          zoomUserEmail = userResponse.data.email || null;
-          accountId = userResponse.data.account_id || null;
+          if (providerType === 'zoom') {
+            const userResponse = await axios.get('https://api.zoom.us/v2/users/me', {
+              headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+            });
+            connectedUserId = userResponse.data.id || null;
+            connectedUserEmail = userResponse.data.email || null;
+            accountId = userResponse.data.account_id || null;
+          } else if (providerType === 'google_meet') {
+            const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+              headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+            });
+            connectedUserId = userResponse.data.id || null;
+            connectedUserEmail = userResponse.data.email || null;
+          } else if (providerType === 'webex') {
+            const userResponse = await axios.get('https://webexapis.com/v1/people/me', {
+              headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+            });
+            connectedUserId = userResponse.data.id || null;
+            connectedUserEmail = (userResponse.data.emails && userResponse.data.emails[0]) || null;
+          }
         } catch (e) {
-          console.error('Failed to fetch Zoom user profile:', e.message);
+          console.error(`Failed to fetch ${providerType} user profile:`, e.message);
         }
       }
 
@@ -393,8 +407,8 @@ router.get('/:providerType/callback', async (req, res) => {
         scope: tokens.scope || config.scope,
         token_type: tokens.token_type || 'Bearer',
         account_id: accountId,
-        user_id: zoomUserId,
-        email: zoomUserEmail,
+        user_id: connectedUserId,
+        email: connectedUserEmail,
       });
 
       await pool.query(
@@ -418,8 +432,8 @@ router.get('/:providerType/callback', async (req, res) => {
           tokens.scope || config.scope,
           expiresAt,
           accountId,
-          zoomUserId,
-          zoomUserEmail,
+          connectedUserId,
+          connectedUserEmail,
           providerType,
           settingsJson,
         ]
