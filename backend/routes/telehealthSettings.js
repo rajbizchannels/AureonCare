@@ -292,9 +292,9 @@ router.get('/zoom/host-token', async (req, res) => {
     const pool = req.app.locals.pool;
     const { meetingId } = req.query;
 
-    // Get stored admin OAuth access token
+    // Get stored admin OAuth access token + app credentials (client_id / client_secret)
     const result = await pool.query(
-      `SELECT access_token, zoom_user_id
+      `SELECT access_token, zoom_user_id, client_id, client_secret
        FROM telehealth_provider_settings
        WHERE provider_type = 'zoom' AND is_enabled = true LIMIT 1`
     );
@@ -330,9 +330,9 @@ router.get('/zoom/host-token', async (req, res) => {
 
     // Resolve SDK Key / Secret.
     // For Zoom General Apps the Client ID == SDK Key and Client Secret == SDK Secret.
-    // ZOOM_SDK_KEY / ZOOM_SDK_SECRET can override these (e.g. a dedicated Meeting SDK app).
-    const sdkKey    = process.env.ZOOM_SDK_KEY    || process.env.ZOOM_CLIENT_ID;
-    const sdkSecret = process.env.ZOOM_SDK_SECRET || process.env.ZOOM_CLIENT_SECRET;
+    // Priority: env override → database credentials (from Admin Panel).
+    const sdkKey    = process.env.ZOOM_SDK_KEY    || process.env.ZOOM_CLIENT_ID  || row.client_id;
+    const sdkSecret = process.env.ZOOM_SDK_SECRET || process.env.ZOOM_CLIENT_SECRET || row.client_secret;
 
     if (!sdkKey || !sdkSecret) {
       return res.status(422).json({
