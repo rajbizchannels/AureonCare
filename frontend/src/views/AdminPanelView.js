@@ -95,33 +95,54 @@ import { hasPermission, isAdmin } from '../utils/rolePermissions';
  * click "New Session" or "Instant Zoom" in the Telehealth module.
  */
 /**
- * ZoomPlatformSetupGuide — developer-only collapsible guide.
- * Clinic admins never need this: the platform developer registers ONE Zoom app
- * and sets ZOOM_CLIENT_ID / ZOOM_CLIENT_SECRET server-side.
- * After that, every clinic admin just clicks "Connect Zoom Account".
+ * PlatformSetupGuide — developer-only collapsible guide (all telehealth providers).
+ * Clinic admins never need this: the platform developer registers ONE app per
+ * provider (Zoom, Google, Webex) and sets env vars server-side.
+ * After that, every clinic admin just clicks "Connect [Provider] Account".
  */
-const ZoomPlatformSetupGuide = ({ theme }) => {
+const PlatformSetupGuide = ({ theme }) => {
   const [expanded, setExpanded] = React.useState(false);
-  const [redirectUrl, setRedirectUrl] = React.useState('');
-  const [copied, setCopied] = React.useState(false);
+  const [redirectUrls, setRedirectUrls] = React.useState({});
+  const [copiedKey, setCopiedKey] = React.useState('');
 
   React.useEffect(() => {
-    fetch('/api/integrations/oauth/zoom/redirect-url')
-      .then(r => r.json())
-      .then(data => setRedirectUrl(data.redirectUrl || ''))
-      .catch(() => {});
+    ['zoom', 'google_meet', 'webex'].forEach((p) => {
+      fetch(`/api/integrations/oauth/${p}/redirect-url`)
+        .then(r => r.json())
+        .then(data => setRedirectUrls(prev => ({ ...prev, [p]: data.redirectUrl || '' })))
+        .catch(() => {});
+    });
   }, []);
 
-  const handleCopy = (text) => {
+  const handleCopy = (key, text) => {
     navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(''), 2000);
     });
   };
 
   const code = (txt) => (
     <code className={`px-1 py-0.5 rounded text-xs ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>{txt}</code>
   );
+
+  const renderRedirectUrl = (provider, label) => {
+    const url = redirectUrls[provider];
+    if (!url) return null;
+    const key = `redirect-${provider}`;
+    return (
+      <div className="mt-1 flex items-center gap-2">
+        <span className={`text-xs font-medium flex-shrink-0 w-24 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{label}:</span>
+        <code className={`flex-1 text-xs px-2 py-1 rounded font-mono break-all ${
+          theme === 'dark' ? 'bg-slate-800 text-blue-300' : 'bg-white border border-gray-200 text-blue-800'
+        }`}>{url}</code>
+        <button onClick={() => handleCopy(key, url)} className={`p-1.5 rounded flex-shrink-0 ${
+          copiedKey === key ? 'text-green-500' : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-700'
+        }`}>
+          {copiedKey === key ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className={`border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
@@ -145,71 +166,80 @@ const ZoomPlatformSetupGuide = ({ theme }) => {
         <div className={`px-6 pb-6 space-y-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
           <p className={`text-xs p-3 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-800'}`}>
             <strong>Platform developers only.</strong> Do this once when deploying AureonCare.
-            After these steps every clinic admin can connect their Zoom account with a single click — no Marketplace access needed on their part.
+            After these steps every clinic admin can connect their account with a single click — zero configuration required on their part.
           </p>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* ── Zoom ── */}
             <div>
-              <p className="font-semibold">1 — Create a Zoom General App (once per platform)</p>
-              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                Go to{' '}
-                <a href="https://marketplace.zoom.us/develop/create" target="_blank" rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline inline-flex items-center gap-1">
-                  marketplace.zoom.us <ExternalLink className="w-3 h-3" />
-                </a>{' '}
-                → <strong>Develop → Build App → General App → Admin-managed</strong>.
-              </p>
+              <p className="font-semibold mb-1">Zoom</p>
+              <ol className={`list-decimal list-inside space-y-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                <li>Create a <strong>General App (Admin-managed)</strong> at{' '}
+                  <a href="https://marketplace.zoom.us/develop/create" target="_blank" rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline inline-flex items-center gap-1">
+                    marketplace.zoom.us <ExternalLink className="w-3 h-3" />
+                  </a>
+                </li>
+                <li>Set the Redirect URL (copy below) and add to Allow List</li>
+                <li>Add scopes: {code('meeting:write:meeting:admin')} {code('meeting:read:meeting:admin')} {code('meeting:delete:meeting:admin')} {code('user:read:user:admin')} {code('user:read:token:admin')} {code('recording:read:list_account_recordings:admin')}</li>
+                <li>Copy Client ID → {code('ZOOM_CLIENT_ID')}, Client Secret → {code('ZOOM_CLIENT_SECRET')}</li>
+              </ol>
+              {renderRedirectUrl('zoom', 'Redirect URL')}
             </div>
 
+            {/* ── Google Meet ── */}
             <div>
-              <p className="font-semibold">2 — Set the Redirect URL</p>
-              {redirectUrl && (
-                <div className="mt-1 flex items-center gap-2">
-                  <code className={`flex-1 text-xs px-2 py-1 rounded font-mono break-all ${
-                    theme === 'dark' ? 'bg-slate-800 text-blue-300' : 'bg-white border border-gray-200 text-blue-800'
-                  }`}>{redirectUrl}</code>
-                  <button onClick={() => handleCopy(redirectUrl)} className={`p-1.5 rounded flex-shrink-0 ${
-                    copied ? 'text-green-500' : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-700'
-                  }`}>
-                    {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-              )}
-              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                Paste the URL above into <strong>Redirect URL for OAuth</strong> and the <strong>Allow List</strong>.
-              </p>
+              <p className="font-semibold mb-1">Google Meet</p>
+              <ol className={`list-decimal list-inside space-y-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                <li>Create an OAuth 2.0 client in{' '}
+                  <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline inline-flex items-center gap-1">
+                    Google Cloud Console <ExternalLink className="w-3 h-3" />
+                  </a>
+                </li>
+                <li>Enable the <strong>Google Calendar API</strong> and <strong>Google Meet REST API</strong></li>
+                <li>Set the Authorized Redirect URI (copy below)</li>
+                <li>Copy Client ID → {code('GOOGLE_MEET_CLIENT_ID')}, Client Secret → {code('GOOGLE_MEET_CLIENT_SECRET')}</li>
+              </ol>
+              {renderRedirectUrl('google_meet', 'Redirect URI')}
             </div>
 
+            {/* ── Webex ── */}
             <div>
-              <p className="font-semibold">3 — Add these scopes in the Scopes tab</p>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {code('meeting:write:meeting:admin')} {code('meeting:read:meeting:admin')}
-                {code('meeting:delete:meeting:admin')} {code('user:read:user:admin')}
-                {code('user:read:token:admin')} {code('recording:read:list_account_recordings:admin')}
-              </div>
-              <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                Search each scope name in the Zoom scope picker and add it.
-                The {code(':admin')} suffix lets the app act on behalf of any user in the account —
-                this is what makes the "admin configures once" model work.
-              </p>
+              <p className="font-semibold mb-1">Cisco Webex</p>
+              <ol className={`list-decimal list-inside space-y-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                <li>Create an Integration at{' '}
+                  <a href="https://developer.webex.com/my-apps/new/integration" target="_blank" rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline inline-flex items-center gap-1">
+                    developer.webex.com <ExternalLink className="w-3 h-3" />
+                  </a>
+                </li>
+                <li>Set the Redirect URI (copy below)</li>
+                <li>Add scopes: {code('meeting:schedules_write')} {code('meeting:schedules_read')}</li>
+                <li>Copy Client ID → {code('WEBEX_CLIENT_ID')}, Client Secret → {code('WEBEX_CLIENT_SECRET')}</li>
+              </ol>
+              {renderRedirectUrl('webex', 'Redirect URI')}
             </div>
 
+            {/* ── Env vars ── */}
             <div>
-              <p className="font-semibold">4 — Copy credentials and set env vars</p>
-              <p className={`text-xs mt-1 mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                From the app's <strong>App Credentials</strong> tab copy the{' '}
-                <strong>Client ID</strong> and <strong>Client Secret</strong>.
-                For a General App these are <em>also</em> the Meeting SDK Key &amp; Secret —
-                no separate SDK app is required.
-              </p>
+              <p className="font-semibold mb-1">Environment Variables</p>
               <div className={`p-3 rounded text-xs font-mono whitespace-pre ${theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-800'}`}>
-                {`# backend/.env\nZOOM_CLIENT_ID=paste_client_id_here\nZOOM_CLIENT_SECRET=paste_client_secret_here\n\n# Optional — only if using a dedicated Meeting SDK app\n# ZOOM_SDK_KEY=sdk_key\n# ZOOM_SDK_SECRET=sdk_secret`}
+{`# backend/.env
+ZOOM_CLIENT_ID=
+ZOOM_CLIENT_SECRET=
+
+GOOGLE_MEET_CLIENT_ID=
+GOOGLE_MEET_CLIENT_SECRET=
+
+WEBEX_CLIENT_ID=
+WEBEX_CLIENT_SECRET=`}
               </div>
             </div>
 
             <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
               Restart the server after updating <code>.env</code>.
-              Every clinic admin can then click <strong>Connect Zoom Account</strong> — no further setup needed on their side.
+              Clinic admins can then click <strong>Connect Account</strong> for any configured provider — no further setup on their side.
             </p>
           </div>
         </div>
@@ -302,8 +332,8 @@ const AdminPanelView = ({
   // Integration settings: status + connection info (never raw tokens)
   const [telehealthStatus, setTelehealthStatus] = useState({
     zoom: { is_enabled: false, is_configured: false, has_tokens: false, zoom_user_email: null, token_expires_at: null },
-    google_meet: { is_enabled: false, is_configured: false, has_tokens: false },
-    webex: { is_enabled: false, is_configured: false, has_tokens: false },
+    google_meet: { is_enabled: false, is_configured: false, has_tokens: false, zoom_user_email: null },
+    webex: { is_enabled: false, is_configured: false, has_tokens: false, zoom_user_email: null },
   });
   const [telehealthDbMissing, setTelehealthDbMissing] = useState(false);
 
@@ -367,7 +397,7 @@ const AdminPanelView = ({
   const [userFormErrors, setUserFormErrors] = useState({});
   const [isUserFormSubmitting, setIsUserFormSubmitting] = useState(false);
 
-  // Credential modal state (for non-Zoom providers)
+  // Credential modal state (for vendor integrations — API key based)
   const [showCredentialModal, setShowCredentialModal] = useState(false);
   const [credentialModalConfig, setCredentialModalConfig] = useState({
     providerName: '',
@@ -378,10 +408,11 @@ const AdminPanelView = ({
     existingCredentials: null,
   });
 
-  // Zoom: true when env vars not configured (admin needs to set ZOOM_CLIENT_ID/SECRET)
-  const [zoomEnvMissing, setZoomEnvMissing] = useState(false);
-  const [testingZoom, setTestingZoom] = useState(false);
-  const [zoomTestResult, setZoomTestResult] = useState(null); // { success: bool, message: string }
+  // Per-provider: env vars not configured on the platform (zero-config SaaS model)
+  const [providerEnvMissing, setProviderEnvMissing] = useState({});
+  // Per-provider: test connection in-flight flag and result
+  const [testingProvider, setTestingProvider] = useState({});
+  const [providerTestResult, setProviderTestResult] = useState({});
 
   // ==================== MEMOIZED VALUES ====================
 
@@ -1314,11 +1345,11 @@ const AdminPanelView = ({
   }, [addNotification]);
 
   /**
-   * Configure telehealth provider.
-   * For Zoom: opens OAuth popup directly (HubSpot-style one-click SSO).
-   *   App credentials (Client ID/Secret) come from server env vars — not the user.
-   *   If env vars are missing, shows an admin-facing "not configured" message.
-   * For other providers: falls back to CredentialModal.
+   * Configure telehealth provider (SaaS zero-config model).
+   * All OAuth providers (Zoom, Google Meet, Webex) use the same flow:
+   *   1. App credentials (Client ID/Secret) come from platform env vars — never from the clinic admin.
+   *   2. Clinic admin clicks "Connect [Provider] Account" → OAuth popup opens.
+   *   3. If platform env vars are missing, shows a "not enabled on this platform" message.
    */
   const handleConfigureTelehealthProvider = useCallback(
     async (providerType) => {
@@ -1326,10 +1357,10 @@ const AdminPanelView = ({
         const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex' };
         const displayName = providerNames[providerType] || providerType;
 
-        // Try to initiate OAuth directly
+        // Try to initiate OAuth directly (env-var credentials resolved server-side)
         try {
           await openOAuthPopup(providerType, displayName);
-          setZoomEnvMissing(false);
+          setProviderEnvMissing(prev => ({ ...prev, [providerType]: false }));
           return;
         } catch (oauthError) {
           if (!oauthError.message?.includes('not configured')) {
@@ -1337,45 +1368,19 @@ const AdminPanelView = ({
           }
         }
 
-        // App credentials not configured
-        if (providerType === 'zoom') {
-          // Zoom: server env vars are required — show admin message
-          setZoomEnvMissing(true);
-          await addNotification(
-            'warning',
-            'Zoom integration is not set up yet. A system administrator needs to configure the ZOOM_CLIENT_ID and ZOOM_CLIENT_SECRET environment variables on the server.'
-          );
-          return;
-        }
+        // Platform env vars not set — show admin-facing message
+        setProviderEnvMissing(prev => ({ ...prev, [providerType]: true }));
 
-        // Other OAuth providers: use CredentialModal
-        let savedCredentials = null;
-        try {
-          const credResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
-          if (credResponse.ok) {
-            const credData = await credResponse.json();
-            if (credData.client_id) savedCredentials = credData;
-          }
-        } catch (_) { /* ignore */ }
+        const envVarHint = {
+          zoom: 'ZOOM_CLIENT_ID and ZOOM_CLIENT_SECRET',
+          google_meet: 'GOOGLE_MEET_CLIENT_ID and GOOGLE_MEET_CLIENT_SECRET',
+          webex: 'WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET',
+        }[providerType] || `${providerType.toUpperCase()}_CLIENT_ID and ${providerType.toUpperCase()}_CLIENT_SECRET`;
 
-        setCredentialModalConfig({
-          providerName: displayName,
-          providerType,
-          credentialType: 'oauth',
-          existingCredentials: savedCredentials,
-          onSuccess: async () => {
-            try {
-              await addNotification('info', 'Credentials saved. Connecting...');
-              await openOAuthPopup(providerType, displayName);
-            } catch (error) {
-              await addNotification('alert', error.message || 'Failed to complete OAuth flow');
-            }
-          },
-          onConnect: savedCredentials ? async () => {
-            await openOAuthPopup(providerType, displayName);
-          } : null,
-        });
-        setShowCredentialModal(true);
+        await addNotification(
+          'warning',
+          `${displayName} integration is not enabled on this platform. A system administrator needs to set the ${envVarHint} environment variables on the server.`
+        );
       } catch (error) {
         console.error('Error starting provider configuration:', error);
         await addNotification('alert', error.message || 'Failed to start configuration flow');
@@ -2637,30 +2642,215 @@ const AdminPanelView = ({
   /**
    * Handle one-click Zoom test connection from the Admin Panel
    */
-  const handleTestZoomConnection = useCallback(async () => {
+  const handleTestTelehealthConnection = useCallback(async (providerType) => {
+    const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex' };
+    const displayName = providerNames[providerType] || providerType;
     try {
-      setTestingZoom(true);
-      setZoomTestResult(null);
-      const result = await api.testTelehealthProvider('zoom');
-      const msg = result.message || 'Zoom connection successful';
-      setZoomTestResult({ success: true, message: msg });
+      setTestingProvider(prev => ({ ...prev, [providerType]: true }));
+      setProviderTestResult(prev => ({ ...prev, [providerType]: null }));
+      const result = await api.testTelehealthProvider(providerType);
+      const msg = result.message || `${displayName} connection successful`;
+      setProviderTestResult(prev => ({ ...prev, [providerType]: { success: true, message: msg } }));
       await addNotification('success', msg);
       return result;
     } catch (error) {
-      console.error('Zoom test connection failed:', error);
-      const msg = error.message || 'Zoom connection test failed';
-      setZoomTestResult({ success: false, message: msg });
+      console.error(`${displayName} test connection failed:`, error);
+      const msg = error.message || `${displayName} connection test failed`;
+      setProviderTestResult(prev => ({ ...prev, [providerType]: { success: false, message: msg } }));
       await addNotification('alert', msg);
       return { success: false, message: msg };
     } finally {
-      setTestingZoom(false);
+      setTestingProvider(prev => ({ ...prev, [providerType]: false }));
     }
   }, [api, addNotification]);
 
   /**
    * Render Telehealth Integrations Tab
-   * Uses IntegrationCard component for consistent UI and reduced duplication
+   * All telehealth providers use the same rich card: zero-config for clinic admins.
+   * Platform credentials come from env vars — admins only click "Connect [Provider] Account".
    */
+
+  const TELEHEALTH_CARD_CONFIG = [
+    {
+      key: 'zoom',
+      providerType: TELEHEALTH_PROVIDERS.ZOOM,
+      displayName: 'Zoom',
+      description: 'HIPAA-compliant video conferencing with embedded SDK',
+      iconBg: 'bg-blue-500/10',
+      iconColor: 'text-blue-500',
+      gradientFrom: 'from-blue-500',
+      gradientTo: 'to-blue-600',
+      gradientHoverFrom: 'hover:from-blue-600',
+      gradientHoverTo: 'hover:to-blue-700',
+    },
+    {
+      key: 'google_meet',
+      providerType: TELEHEALTH_PROVIDERS.GOOGLE_MEET,
+      displayName: 'Google Meet',
+      description: 'Google video conferencing via Calendar integration',
+      iconBg: 'bg-red-500/10',
+      iconColor: 'text-red-500',
+      gradientFrom: 'from-red-500',
+      gradientTo: 'to-red-600',
+      gradientHoverFrom: 'hover:from-red-600',
+      gradientHoverTo: 'hover:to-red-700',
+    },
+    {
+      key: 'webex',
+      providerType: TELEHEALTH_PROVIDERS.WEBEX,
+      displayName: 'Cisco Webex',
+      description: 'Enterprise video conferencing',
+      iconBg: 'bg-green-500/10',
+      iconColor: 'text-green-500',
+      gradientFrom: 'from-green-500',
+      gradientTo: 'to-green-600',
+      gradientHoverFrom: 'hover:from-green-600',
+      gradientHoverTo: 'hover:to-green-700',
+    },
+  ];
+
+  const renderTelehealthProviderCard = (cfg) => {
+    const status = telehealthStatus[cfg.key] || {};
+    const isTesting = testingProvider[cfg.key];
+    const testResult = providerTestResult[cfg.key];
+    const envMissing = providerEnvMissing[cfg.key];
+    const connectedEmail = status.zoom_user_email;
+
+    return (
+      <div key={cfg.key} className={`border rounded-lg overflow-hidden ${
+        theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'
+      }`}>
+        {/* Header */}
+        <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-lg ${cfg.iconBg}`}>
+                <Video className={`w-6 h-6 ${cfg.iconColor}`} />
+              </div>
+              <div>
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {cfg.displayName}
+                </h3>
+                <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {cfg.description}
+                </p>
+                {status.has_tokens ? (
+                  <div className="flex items-center gap-2 mt-2">
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                    <span className={`text-sm ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
+                      Connected{connectedEmail ? ` as ${connectedEmail}` : ''} — all providers can launch sessions
+                    </span>
+                  </div>
+                ) : status.is_configured ? (
+                  <div className="flex items-center gap-2 mt-2">
+                    <RefreshCw className={`w-4 h-4 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                    <span className={`text-sm ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                      Enabled on platform — connect your {cfg.displayName} account
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Toggle */}
+            <button
+              type="button"
+              onClick={() => handleToggleTelehealthProvider(cfg.providerType, !status.is_enabled)}
+              disabled={!status.has_tokens}
+              role="switch"
+              aria-checked={status.is_enabled}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                !status.has_tokens
+                  ? theme === 'dark' ? 'bg-slate-700 cursor-not-allowed' : 'bg-gray-200 cursor-not-allowed'
+                  : status.is_enabled ? 'bg-green-500 cursor-pointer' : theme === 'dark' ? 'bg-slate-600 cursor-pointer' : 'bg-gray-300 cursor-pointer'
+              }`}
+              title={!status.has_tokens ? `Connect ${cfg.displayName} account first` : ''}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                status.is_enabled ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="px-4 pt-4 pb-2 flex flex-wrap gap-3">
+          {status.has_tokens ? (
+            <>
+              <button
+                onClick={() => handleTestTelehealthConnection(cfg.key)}
+                disabled={isTesting}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 flex items-center gap-2 ${
+                  theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                {isTesting ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    Testing...
+                  </>
+                ) : 'Test Connection'}
+              </button>
+              <button
+                onClick={() => { setProviderTestResult(prev => ({ ...prev, [cfg.key]: null })); handleConfigureTelehealthProvider(cfg.providerType); }}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+                }`}
+              >
+                <RefreshCw className="w-4 h-4 inline mr-2" />
+                Reconnect
+              </button>
+              <button
+                onClick={() => { setProviderTestResult(prev => ({ ...prev, [cfg.key]: null })); handleDisconnectProvider(cfg.providerType); }}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
+                }`}
+              >
+                Disconnect
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => handleConfigureTelehealthProvider(cfg.providerType)}
+              className={`px-6 py-2.5 rounded-lg font-medium text-white bg-gradient-to-r ${cfg.gradientFrom} ${cfg.gradientTo} ${cfg.gradientHoverFrom} ${cfg.gradientHoverTo} transition-all shadow-sm`}
+            >
+              <Video className="w-4 h-4 inline mr-2" />
+              Connect {cfg.displayName} Account
+            </button>
+          )}
+        </div>
+
+        {/* Inline test result banner */}
+        {testResult && (
+          <div className={`mx-4 mb-3 px-4 py-2.5 rounded-lg flex items-start gap-2 text-sm ${
+            testResult.success
+              ? theme === 'dark' ? 'bg-green-500/10 border border-green-500/30 text-green-300' : 'bg-green-50 border border-green-200 text-green-800'
+              : theme === 'dark' ? 'bg-red-500/10 border border-red-500/30 text-red-300' : 'bg-red-50 border border-red-200 text-red-800'
+          }`}>
+            <span className="flex-shrink-0 mt-0.5">{testResult.success ? '✓' : '✗'}</span>
+            <span>{testResult.message}</span>
+          </div>
+        )}
+
+        {/* Not yet enabled on this platform (env vars not set) */}
+        {envMissing && !status.has_tokens && (
+          <div className={`mx-4 mb-2 p-3 rounded-lg flex items-start gap-2 ${
+            theme === 'dark' ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-amber-50 border border-amber-300'
+          }`}>
+            <Settings className={`w-4 h-4 mt-0.5 flex-shrink-0 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
+            <p className={`text-xs ${theme === 'dark' ? 'text-amber-300' : 'text-amber-800'}`}>
+              {cfg.displayName} integration is not yet enabled on this platform.
+              Contact your platform administrator or refer to the developer setup guide below.
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderTelehealthTab = () => (
     <div className="space-y-6">
       {telehealthDbMissing && (
@@ -2680,178 +2870,21 @@ const AdminPanelView = ({
         </div>
       )}
 
-      <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Telehealth Integrations
-      </h2>
+      <div>
+        <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Telehealth Integrations
+        </h2>
+        <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Connect your clinic's video conferencing account. All providers in your practice will use this connection — zero configuration required.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* ───── Zoom Integration (Rich Card) ───── */}
-        <div className={`border rounded-lg overflow-hidden ${
-          theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'
-        }`}>
-          {/* Header */}
-          <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-lg bg-blue-500/10">
-                  <Video className="w-6 h-6 text-blue-500" />
-                </div>
-                <div>
-                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Zoom
-                  </h3>
-                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    HIPAA-compliant video conferencing — one-time admin setup for all providers
-                  </p>
-                  {/* Connection status */}
-                  {telehealthStatus.zoom.has_tokens ? (
-                    <div className="flex items-center gap-2 mt-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className={`text-sm ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
-                        Connected{telehealthStatus.zoom.zoom_user_email ? ` as ${telehealthStatus.zoom.zoom_user_email}` : ''} — all providers can launch sessions
-                      </span>
-                    </div>
-                  ) : telehealthStatus.zoom.is_configured ? (
-                    <div className="flex items-center gap-2 mt-2">
-                      <RefreshCw className={`w-4 h-4 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-                      <span className={`text-sm ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                        App configured — connect your Zoom account to enable for all providers
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Toggle (only when connected) */}
-              <button
-                type="button"
-                onClick={() => handleToggleTelehealthProvider(TELEHEALTH_PROVIDERS.ZOOM, !telehealthStatus.zoom.is_enabled)}
-                disabled={!telehealthStatus.zoom.has_tokens}
-                role="switch"
-                aria-checked={telehealthStatus.zoom.is_enabled}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  !telehealthStatus.zoom.has_tokens
-                    ? theme === 'dark' ? 'bg-slate-700 cursor-not-allowed' : 'bg-gray-200 cursor-not-allowed'
-                    : telehealthStatus.zoom.is_enabled ? 'bg-green-500 cursor-pointer' : theme === 'dark' ? 'bg-slate-600 cursor-pointer' : 'bg-gray-300 cursor-pointer'
-                }`}
-                title={!telehealthStatus.zoom.has_tokens ? 'Connect Zoom account first' : ''}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  telehealthStatus.zoom.is_enabled ? 'translate-x-6' : 'translate-x-1'
-                }`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="px-4 pt-4 pb-2 flex flex-wrap gap-3">
-            {telehealthStatus.zoom.has_tokens ? (
-              <>
-                <button
-                  onClick={handleTestZoomConnection}
-                  disabled={testingZoom}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 flex items-center gap-2 ${
-                    theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
-                  }`}
-                >
-                  {testingZoom ? (
-                    <>
-                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                      </svg>
-                      Testing...
-                    </>
-                  ) : 'Test Connection'}
-                </button>
-                <button
-                  onClick={() => { setZoomTestResult(null); handleConfigureTelehealthProvider(TELEHEALTH_PROVIDERS.ZOOM); }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
-                  }`}
-                >
-                  <RefreshCw className="w-4 h-4 inline mr-2" />
-                  Reconnect
-                </button>
-                <button
-                  onClick={() => { setZoomTestResult(null); handleDisconnectProvider(TELEHEALTH_PROVIDERS.ZOOM); }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
-                  }`}
-                >
-                  Disconnect
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => handleConfigureTelehealthProvider(TELEHEALTH_PROVIDERS.ZOOM)}
-                className="px-6 py-2.5 rounded-lg font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
-              >
-                <Video className="w-4 h-4 inline mr-2" />
-                Connect Zoom Account
-              </button>
-            )}
-          </div>
-
-          {/* Inline test result banner */}
-          {zoomTestResult && (
-            <div className={`mx-4 mb-3 px-4 py-2.5 rounded-lg flex items-start gap-2 text-sm ${
-              zoomTestResult.success
-                ? theme === 'dark' ? 'bg-green-500/10 border border-green-500/30 text-green-300' : 'bg-green-50 border border-green-200 text-green-800'
-                : theme === 'dark' ? 'bg-red-500/10 border border-red-500/30 text-red-300' : 'bg-red-50 border border-red-200 text-red-800'
-            }`}>
-              <span className="flex-shrink-0 mt-0.5">{zoomTestResult.success ? '✓' : '✗'}</span>
-              <span>{zoomTestResult.message}</span>
-            </div>
-          )}
-
-          {/* Zoom not yet enabled on this platform (server env vars not set) */}
-          {zoomEnvMissing && !telehealthStatus.zoom.has_tokens && (
-            <div className={`mx-4 mb-2 p-3 rounded-lg flex items-start gap-2 ${
-              theme === 'dark' ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-amber-50 border border-amber-300'
-            }`}>
-              <Settings className={`w-4 h-4 mt-0.5 flex-shrink-0 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
-              <p className={`text-xs ${theme === 'dark' ? 'text-amber-300' : 'text-amber-800'}`}>
-                Zoom integration is not yet enabled on this platform.
-                Contact your platform administrator or refer to the developer setup guide below.
-              </p>
-            </div>
-          )}
-
-          {/* Developer-only setup guide — collapsed by default */}
-          <ZoomPlatformSetupGuide theme={theme} />
-        </div>
-
-        {/* Google Meet Integration */}
-        <IntegrationCard
-          name={TELEHEALTH_PROVIDERS.GOOGLE_MEET}
-          displayName="Google Meet"
-          description="Google's video conferencing platform"
-          icon={Video}
-          iconColor="text-red-500"
-          isEnabled={telehealthStatus.google_meet.is_enabled}
-          isConfigured={telehealthStatus.google_meet.is_configured}
-          theme={theme}
-          onToggle={handleToggleTelehealthProvider}
-          onConfigure={handleConfigureTelehealthProvider}
-          t={t}
-        />
-
-        {/* Webex Integration */}
-        <IntegrationCard
-          name={TELEHEALTH_PROVIDERS.WEBEX}
-          displayName="Cisco Webex"
-          description="Enterprise video conferencing"
-          icon={Video}
-          iconColor="text-green-500"
-          isEnabled={telehealthStatus.webex.is_enabled}
-          isConfigured={telehealthStatus.webex.is_configured}
-          theme={theme}
-          onToggle={handleToggleTelehealthProvider}
-          onConfigure={handleConfigureTelehealthProvider}
-          t={t}
-        />
+        {TELEHEALTH_CARD_CONFIG.map(renderTelehealthProviderCard)}
       </div>
+
+      {/* Developer-only setup guide — collapsed by default */}
+      <PlatformSetupGuide theme={theme} />
 
       <div className="mt-8">
         <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
