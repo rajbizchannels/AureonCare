@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, Key, User, Zap, CheckCircle, ChevronDown, ChevronUp, ExternalLink, Shield } from 'lucide-react';
+import { X, Key, User, Zap,  Eye, EyeOff, CheckCircle, ChevronDown, ChevronUp, ExternalLink, Shield } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 
 /**
@@ -11,6 +11,9 @@ import { useAudit } from '../../hooks/useAudit';
  * For Zoom (and other providers with saved credentials), shows a
  * "One-Click Connect" experience instead of raw text boxes.
  */
+
+const ONECLICK_PROVIDERS = ['zoom', 'google_meet', 'webex'];
+
 const CredentialModal = ({
   isOpen,
   onClose,
@@ -19,7 +22,8 @@ const CredentialModal = ({
   providerName,
   theme,
   credentialType = 'oauth',
-  existingCredentials = null // For edit mode
+  existingCredentials = null, // For edit mode
+  onOneClickIntegration = null, // Callback for OneClick OAuth flow
 }) => {
   const { logModalOpen, logModalClose, startAction } = useAudit();
   const [clientId, setClientId] = useState('');
@@ -117,6 +121,8 @@ const CredentialModal = ({
     setClientSecret('');
     setApiKey('');
     setErrors({});
+    //setShowSecret(false);
+    //setShowApiKey(false);
   };
 
   const handleClose = () => {
@@ -131,6 +137,8 @@ const CredentialModal = ({
     setClientSecret('');
     setApiKey('');
     setErrors({});
+    //setShowSecret(false);
+    //setShowApiKey(false);
     onClose();
   };
 
@@ -574,6 +582,7 @@ CredentialModal.propTypes = {
   theme: PropTypes.string.isRequired,
   credentialType: PropTypes.oneOf(['oauth', 'api_key']),
   existingCredentials: PropTypes.object,
+  onOneClickIntegration: PropTypes.func,
 };
 
 export default CredentialModal;
