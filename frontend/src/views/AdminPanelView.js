@@ -174,14 +174,15 @@ const PlatformSetupGuide = ({ theme }) => {
             <div>
               <p className="font-semibold mb-1">Zoom</p>
               <ol className={`list-decimal list-inside space-y-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                <li>Create a <strong>General App (Admin-managed)</strong> at{' '}
+                <li>Create a <strong>General App → User-managed</strong> at{' '}
                   <a href="https://marketplace.zoom.us/develop/create" target="_blank" rel="noopener noreferrer"
                     className="text-blue-500 hover:underline inline-flex items-center gap-1">
                     marketplace.zoom.us <ExternalLink className="w-3 h-3" />
-                  </a>
+                  </a>{' '}
+                  (<em>User-managed</em> allows any Zoom account to connect; Admin-managed restricts to same org)
                 </li>
                 <li>Set the Redirect URL (copy below) and add to Allow List</li>
-                <li>Add scopes: {code('meeting:write:meeting:admin')} {code('meeting:read:meeting:admin')} {code('meeting:delete:meeting:admin')} {code('user:read:user:admin')} {code('user:read:token:admin')} {code('recording:read:list_account_recordings:admin')}</li>
+                <li>Add scopes: {code('meeting:write:meeting')} {code('meeting:read:meeting')} {code('meeting:delete:meeting')} {code('user:read:user')} {code('user:read:zak')} {code('cloud_recording:read:list_recordings')}</li>
                 <li>Copy Client ID → {code('ZOOM_CLIENT_ID')}, Client Secret → {code('ZOOM_CLIENT_SECRET')}</li>
               </ol>
               {renderRedirectUrl('zoom', 'Redirect URL')}
