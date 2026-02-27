@@ -2,20 +2,20 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
+if (!supabaseUrl || !supabaseSecretKey) {
   console.warn(
-    '[supabase.js] SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set. ' +
+    '[supabase.js] SUPABASE_URL or SUPABASE_SECRET_KEY not set. ' +
     'Supabase client features (storage, realtime) will be unavailable.'
   );
 }
 
-// Service-role client for server-side use only — bypasses Row Level Security.
-// Never expose SUPABASE_SERVICE_ROLE_KEY to the browser or frontend.
+// Secret-key client for server-side use only — bypasses Row Level Security.
+// Never expose SUPABASE_SECRET_KEY to the browser or frontend.
 const supabase =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey, {
+  supabaseUrl && supabaseSecretKey
+    ? createClient(supabaseUrl, supabaseSecretKey, {
         auth: { persistSession: false },
       })
     : null;
