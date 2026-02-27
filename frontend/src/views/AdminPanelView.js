@@ -97,7 +97,7 @@ import { hasPermission, isAdmin } from '../utils/rolePermissions';
 /**
  * PlatformSetupGuide — developer-only collapsible guide (all telehealth providers).
  * Clinic admins never need this: the platform developer registers ONE app per
- * provider (Zoom, Google, Webex) and sets env vars server-side.
+ * provider (Zoom, Google, Webex, Teams) and sets env vars server-side.
  * After that, every clinic admin just clicks "Connect [Provider] Account".
  */
 const PlatformSetupGuide = ({ theme }) => {
@@ -106,7 +106,7 @@ const PlatformSetupGuide = ({ theme }) => {
   const [copiedKey, setCopiedKey] = React.useState('');
 
   React.useEffect(() => {
-    ['zoom', 'google_meet', 'webex'].forEach((p) => {
+    ['zoom', 'google_meet', 'webex', 'microsoft_teams'].forEach((p) => {
       fetch(`/api/integrations/oauth/${p}/redirect-url`)
         .then(r => r.json())
         .then(data => setRedirectUrls(prev => ({ ...prev, [p]: data.redirectUrl || '' })))
@@ -222,6 +222,24 @@ const PlatformSetupGuide = ({ theme }) => {
               {renderRedirectUrl('webex', 'Redirect URI')}
             </div>
 
+            {/* ── Microsoft Teams ── */}
+            <div>
+              <p className="font-semibold mb-1">Microsoft Teams</p>
+              <ol className={`list-decimal list-inside space-y-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                <li>Register an app at{' '}
+                  <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline inline-flex items-center gap-1">
+                    Azure App Registrations <ExternalLink className="w-3 h-3" />
+                  </a>
+                </li>
+                <li>Under <strong>Authentication</strong>, add a Web redirect URI (copy below)</li>
+                <li>Under <strong>API Permissions</strong>, add: {code('OnlineMeetings.ReadWrite')} {code('User.Read')} {code('offline_access')}</li>
+                <li>Under <strong>Certificates & secrets</strong>, create a Client Secret</li>
+                <li>Copy Application (client) ID → {code('TEAMS_CLIENT_ID')}, Client Secret → {code('TEAMS_CLIENT_SECRET')}</li>
+              </ol>
+              {renderRedirectUrl('microsoft_teams', 'Redirect URI')}
+            </div>
+
             {/* ── Env vars ── */}
             <div>
               <p className="font-semibold mb-1">Environment Variables</p>
@@ -234,7 +252,10 @@ GOOGLE_MEET_CLIENT_ID=
 GOOGLE_MEET_CLIENT_SECRET=
 
 WEBEX_CLIENT_ID=
-WEBEX_CLIENT_SECRET=`}
+WEBEX_CLIENT_SECRET=
+
+TEAMS_CLIENT_ID=
+TEAMS_CLIENT_SECRET=`}
               </div>
             </div>
 
@@ -335,6 +356,7 @@ const AdminPanelView = ({
     zoom: { is_enabled: false, is_configured: false, has_tokens: false, zoom_user_email: null, token_expires_at: null },
     google_meet: { is_enabled: false, is_configured: false, has_tokens: false, zoom_user_email: null },
     webex: { is_enabled: false, is_configured: false, has_tokens: false, zoom_user_email: null },
+    microsoft_teams: { is_enabled: false, is_configured: false, has_tokens: false, zoom_user_email: null },
   });
   const [telehealthDbMissing, setTelehealthDbMissing] = useState(false);
 
@@ -1177,7 +1199,7 @@ const AdminPanelView = ({
             // Poll backend OAuth status (COOP-safe, no popup.closed dependency)
             pollOAuthStatus(providerType, popup, async (success) => {
               if (success) {
-                if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
+                if (['zoom', 'google_meet', 'webex', 'microsoft_teams'].includes(providerType)) {
                   const settings = await api.getTelehealthSettings();
                   setTelehealthStatus((prev) => ({ ...prev, ...settings }));
                 } else if (['google_drive', 'onedrive'].includes(providerType)) {
@@ -1298,7 +1320,7 @@ const AdminPanelView = ({
    * Disconnect a telehealth provider (clear OAuth tokens, keep app credentials)
    */
   const handleDisconnectProvider = useCallback(async (providerType) => {
-    const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex' };
+    const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex', microsoft_teams: 'Microsoft Teams' };
     const displayName = providerNames[providerType] || providerType;
 
     try {
@@ -1333,7 +1355,7 @@ const AdminPanelView = ({
   const handleConfigureTelehealthProvider = useCallback(
     async (providerType) => {
       try {
-        const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex' };
+        const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex', microsoft_teams: 'Microsoft Teams' };
         const displayName = providerNames[providerType] || providerType;
 
         // Try to initiate OAuth directly (env-var credentials resolved server-side)
@@ -1354,6 +1376,7 @@ const AdminPanelView = ({
           zoom: 'ZOOM_CLIENT_ID and ZOOM_CLIENT_SECRET',
           google_meet: 'GOOGLE_MEET_CLIENT_ID and GOOGLE_MEET_CLIENT_SECRET',
           webex: 'WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET',
+          microsoft_teams: 'TEAMS_CLIENT_ID and TEAMS_CLIENT_SECRET',
         }[providerType] || `${providerType.toUpperCase()}_CLIENT_ID and ${providerType.toUpperCase()}_CLIENT_SECRET`;
 
         await addNotification(
@@ -2622,7 +2645,7 @@ const AdminPanelView = ({
    * Handle one-click Zoom test connection from the Admin Panel
    */
   const handleTestTelehealthConnection = useCallback(async (providerType) => {
-    const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex' };
+    const providerNames = { zoom: 'Zoom', google_meet: 'Google Meet', webex: 'Cisco Webex', microsoft_teams: 'Microsoft Teams' };
     const displayName = providerNames[providerType] || providerType;
     try {
       setTestingProvider(prev => ({ ...prev, [providerType]: true }));
@@ -2685,6 +2708,18 @@ const AdminPanelView = ({
       gradientTo: 'to-green-600',
       gradientHoverFrom: 'hover:from-green-600',
       gradientHoverTo: 'hover:to-green-700',
+    },
+    {
+      key: 'microsoft_teams',
+      providerType: 'microsoft_teams',
+      displayName: 'Microsoft Teams',
+      description: 'Microsoft 365 video conferencing & collaboration',
+      iconBg: 'bg-purple-500/10',
+      iconColor: 'text-purple-500',
+      gradientFrom: 'from-purple-500',
+      gradientTo: 'to-purple-600',
+      gradientHoverFrom: 'hover:from-purple-600',
+      gradientHoverTo: 'hover:to-purple-700',
     },
   ];
 

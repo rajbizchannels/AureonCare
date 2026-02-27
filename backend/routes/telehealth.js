@@ -91,7 +91,7 @@ router.post('/', async (req, res) => {
 
     // Get patient and provider details for meeting creation
     const patientResult = await pool.query(
-      'SELECT first_name, last_name FROM patients WHERE id = $1',
+      'SELECT first_name, last_name, telehealth_preference FROM patients WHERE id = $1',
       [patientId]
     );
     const providerResult = await pool.query(
@@ -109,8 +109,15 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Provider not found with id: ' + providerId });
     }
 
-    // Use TelehealthProviderManager to create meeting
+    // Use TelehealthProviderManager to create meeting.
+    // Resolve provider: explicit request → patient preference → clinic default.
     const manager = new TelehealthProviderManager(pool);
+
+    let resolvedProvider = providerType;
+    if (!resolvedProvider) {
+      resolvedProvider = await manager.resolveProviderForPatient(patientId);
+    }
+
     const sessionData = {
       patientName: `${patient.first_name} ${patient.last_name}`,
       providerName: `${provider.first_name} ${provider.last_name}`,
@@ -120,7 +127,7 @@ router.post('/', async (req, res) => {
       recordingEnabled: recordingEnabled
     };
 
-    const meetingResult = await manager.createMeeting(sessionData, providerType);
+    const meetingResult = await manager.createMeeting(sessionData, resolvedProvider);
 
     // Store session in database
     const result = await pool.query(`
