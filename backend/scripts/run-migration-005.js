@@ -5,18 +5,18 @@ const path = require('path');
 
 console.log('Running migration 005: Add medical attributes to patients table\n');
 
-const dbPassword = process.env.DB_PASSWORD || '';
+const dbPassword = process.env.AC_DB_W || '';
 
 if (!dbPassword) {
-  console.error('ERROR: DB_PASSWORD is not set in .env file!');
+  console.error('ERROR: AC_DB_W is not set in .env file!');
   process.exit(1);
 }
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'aureoncare_user',
+  host: process.env.AC_DB_H || 'localhost',
+  port: parseInt(process.env.AC_DB_P || '5432'),
+  database: process.env.AC_DB_N || 'aureoncare',
+  user: process.env.AC_DB_U || 'aureoncare_user',
   password: dbPassword.toString(),
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
