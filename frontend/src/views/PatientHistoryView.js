@@ -237,6 +237,16 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       return;
     }
 
+    // If the appointment already has a pre-generated meeting URL, open it directly
+    if (appointmentId) {
+      const appt = appointments.find(a => a.id === appointmentId);
+      if (appt?.meeting_url) {
+        window.open(appt.meeting_url, '_blank', 'noopener,noreferrer');
+        addNotification('success', 'Joining telehealth session...');
+        return;
+      }
+    }
+
     setTelehealthLoading(true);
 
     // Open a blank window synchronously to avoid popup blocker
@@ -1291,6 +1301,24 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                     <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       {appt.reason}
                     </p>
+                  )}
+                  {/* Meeting URL badge — visible to providers and patients */}
+                  {appt.meeting_url && (isProvider(user) || isPatient(user)) && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <a
+                        href={appt.meeting_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          theme === 'dark'
+                            ? 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30'
+                            : 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200'
+                        }`}
+                      >
+                        <Video className="w-3 h-3" />
+                        Join Meeting
+                      </a>
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2">

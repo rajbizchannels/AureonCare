@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const WhatsAppService = require('../services/whatsappService');
+const TelehealthProviderManager = require('../services/telehealthProviders/index');
 
 // Get all appointments
 router.get('/', async (req, res) => {
@@ -281,7 +282,56 @@ router.post('/', async (req, res) => {
       [newAppointment.id]
     );
 
-    res.status(201).json(fullResult.rows[0] || newAppointment);
+    let finalAppointment = fullResult.rows[0] || newAppointment;
+
+    // Auto-generate a meeting URL for Telehealth appointments
+    if ((appointment_type || '').toLowerCase() === 'telehealth') {
+      try {
+        const providerManager = new TelehealthProviderManager(pool);
+        const activeProvider = await providerManager.getActiveProvider();
+
+        let meetingResult;
+        if (activeProvider && activeProvider.is_enabled) {
+          meetingResult = await providerManager.createMeeting({
+            topic: `Telehealth Appointment`,
+            startTime: start_time,
+            duration: duration_minutes || 30,
+            recordingEnabled: false,
+          });
+        } else {
+          // No provider configured — generate a default AureonCare room link
+          meetingResult = providerManager.createDefaultMeeting({});
+        }
+
+        const meetingUrl = meetingResult.meetingUrl || meetingResult.meeting_url;
+        if (meetingUrl) {
+          await pool.query(
+            'UPDATE appointments SET meeting_url = $1 WHERE id = $2',
+            [meetingUrl, newAppointment.id]
+          );
+          // Re-fetch with updated meeting_url
+          const updatedResult = await pool.query(
+            `SELECT a.*,
+                    CONCAT(p.first_name, ' ', p.last_name) as patient,
+                    CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+                    pr.first_name as provider_first_name,
+                    pr.last_name as provider_last_name,
+                    pr.specialization as provider_specialization
+             FROM appointments a
+             LEFT JOIN patients p ON a.patient_id::text = p.id::text
+             LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+             WHERE a.id = $1`,
+            [newAppointment.id]
+          );
+          finalAppointment = updatedResult.rows[0] || finalAppointment;
+        }
+      } catch (telehealthError) {
+        // Non-fatal: log but do not fail the appointment creation
+        console.warn('Could not generate telehealth meeting URL:', telehealthError.message);
+      }
+    }
+
+    res.status(201).json(finalAppointment);
   } catch (error) {
     console.error('Error creating appointment:', error);
 
