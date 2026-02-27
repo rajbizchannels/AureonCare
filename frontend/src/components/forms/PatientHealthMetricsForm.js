@@ -36,8 +36,11 @@ const PatientHealthMetricsForm = ({
     family_history: patient?.family_history || '',
     current_medications: patient?.current_medications || '',
     // Previous Medications (structured)
-    previous_medications: []
+    previous_medications: [],
+    // Preferences
+    telehealth_preference: patient?.telehealth_preference || ''
   });
+  const [enabledProviders, setEnabledProviders] = useState([]);
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('personal');
 
@@ -55,6 +58,15 @@ const PatientHealthMetricsForm = ({
   const [currentMedSearchLoading, setCurrentMedSearchLoading] = useState(false);
   const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
   const currentMedSearchTimeoutRef = useRef(null);
+
+  // Fetch enabled telehealth providers for preference dropdown
+  useEffect(() => {
+    if (api.getEnabledTelehealthProviders) {
+      api.getEnabledTelehealthProviders()
+        .then(providers => setEnabledProviders(providers || []))
+        .catch(() => {});
+    }
+  }, [api]);
 
   useEffect(() => {
     if (patient) {
@@ -105,7 +117,8 @@ const PatientHealthMetricsForm = ({
         past_history: patient.past_history || '',
         family_history: patient.family_history || '',
         current_medications: patient.current_medications || '',
-        previous_medications: Array.isArray(prevMeds) ? prevMeds : []
+        previous_medications: Array.isArray(prevMeds) ? prevMeds : [],
+        telehealth_preference: patient.telehealth_preference || ''
       });
 
       // Load active prescriptions
@@ -309,7 +322,8 @@ const PatientHealthMetricsForm = ({
         ...formData,
         current_medications: allCurrentMeds.join(', '),
         previous_medications: formData.previous_medications,
-        additional_current_medications: additionalCurrentMeds
+        additional_current_medications: additionalCurrentMeds,
+        telehealth_preference: formData.telehealth_preference || null
       });
 
       addNotification('success', 'Patient information updated successfully');
@@ -370,6 +384,9 @@ const PatientHealthMetricsForm = ({
         </button>
         <button type="button" onClick={() => setActiveSection('medical')} className={sectionButtonClass('medical')}>
           <Pill className="w-4 h-4 inline mr-1" /> Medical History
+        </button>
+        <button type="button" onClick={() => setActiveSection('preferences')} className={sectionButtonClass('preferences')}>
+          <Calendar className="w-4 h-4 inline mr-1" /> Preferences
         </button>
       </div>
 
@@ -880,6 +897,51 @@ const PatientHealthMetricsForm = ({
                 <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
                   Type to search and click to add medications. Click × on chips to remove.
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Preferences Section */}
+        {activeSection === 'preferences' && (
+          <div className="space-y-6">
+            <div>
+              <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <Calendar className="w-5 h-5 text-purple-500" /> Patient Preferences
+              </h4>
+
+              {/* Telehealth Platform Preference */}
+              <div>
+                <label className={labelClass}>Telehealth Platform Preference</label>
+                {enabledProviders.length > 1 ? (
+                  <>
+                    <select
+                      className={inputClass}
+                      value={formData.telehealth_preference}
+                      onChange={(e) => handleChange('telehealth_preference', e.target.value)}
+                    >
+                      <option value="">Clinic Default (no preference)</option>
+                      {enabledProviders.map(p => (
+                        <option key={p.provider_type} value={p.provider_type}>
+                          {{zoom: 'Zoom', google_meet: 'Google Meet', microsoft_teams: 'Microsoft Teams', webex: 'Cisco Webex'}[p.provider_type] || p.provider_type}
+                        </option>
+                      ))}
+                    </select>
+                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                      When multiple telehealth platforms are enabled, the patient's preferred platform will be used for session links.
+                    </p>
+                  </>
+                ) : enabledProviders.length === 1 ? (
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Only one platform is enabled ({
+                      {zoom: 'Zoom', google_meet: 'Google Meet', microsoft_teams: 'Microsoft Teams', webex: 'Cisco Webex'}[enabledProviders[0].provider_type] || enabledProviders[0].provider_type
+                    }). All sessions will use this platform.
+                  </p>
+                ) : (
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    No telehealth platforms are configured. Contact your administrator to set up Zoom, Google Meet, Teams, or Webex.
+                  </p>
+                )}
               </div>
             </div>
           </div>

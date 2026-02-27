@@ -1532,11 +1532,24 @@ const api = {
     return response.json();
   },
 
-  // Zoom — create an instant meeting (one-click launch)
-  createInstantZoomMeeting: async ({ topic, duration, patientName, recordingEnabled } = {}) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/zoom/instant-meeting`, {
+  // Create an instant meeting for a given provider (one-click launch)
+  createInstantMeeting: async (providerType, { topic, duration, patientName, recordingEnabled } = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/${providerType}/instant-meeting`, {
       method: 'POST',
       body: JSON.stringify({ topic, duration, patientName, recordingEnabled })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to create instant meeting');
+    }
+    return response.json();
+  },
+
+  // Legacy alias for backwards compatibility
+  createInstantZoomMeeting: async (opts = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/zoom/instant-meeting`, {
+      method: 'POST',
+      body: JSON.stringify(opts)
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -1555,6 +1568,13 @@ const api = {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || 'Failed to fetch Zoom host token');
     }
+    return response.json();
+  },
+
+  // Enabled telehealth providers (for patient preference dropdown)
+  getEnabledTelehealthProviders: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/enabled/providers`);
+    if (!response.ok) return [];
     return response.json();
   },
 

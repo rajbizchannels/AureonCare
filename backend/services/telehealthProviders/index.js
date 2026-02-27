@@ -41,6 +41,21 @@ class TelehealthProviderManager {
   }
 
   /**
+   * Get all enabled providers
+   */
+  async getEnabledProviders() {
+    try {
+      const result = await this.pool.query(
+        'SELECT * FROM telehealth_provider_settings WHERE is_enabled = true ORDER BY id'
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting enabled providers:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get the active/default provider
    */
   async getActiveProvider() {
@@ -61,6 +76,41 @@ class TelehealthProviderManager {
   }
 
   /**
+   * Resolve provider for a patient: use patient preference if the preferred
+   * provider is enabled, otherwise fall back to the default enabled provider.
+   */
+  async resolveProviderForPatient(patientId) {
+    const enabled = await this.getEnabledProviders();
+    if (enabled.length === 0) {
+      return null;
+    }
+
+    // If only one provider enabled, always use it regardless of preference
+    if (enabled.length === 1) {
+      return enabled[0].provider_type;
+    }
+
+    // Multiple providers enabled — check patient preference
+    if (patientId) {
+      try {
+        const result = await this.pool.query(
+          'SELECT telehealth_preference FROM patients WHERE id = $1',
+          [patientId]
+        );
+        const pref = result.rows[0]?.telehealth_preference;
+        if (pref && enabled.some(p => p.provider_type === pref)) {
+          return pref;
+        }
+      } catch (e) {
+        console.error('Error reading patient telehealth preference:', e.message);
+      }
+    }
+
+    // Fallback: first enabled provider
+    return enabled[0].provider_type;
+  }
+
+  /**
    * Initialize a provider service
    */
   async initializeProvider(providerType) {
@@ -76,7 +126,7 @@ class TelehealthProviderManager {
         return this.providers.zoom;
 
       case 'google_meet':
-        this.providers.google_meet = new GoogleMeetService(config);
+        this.providers.google_meet = new GoogleMeetService(config, this.pool);
         return this.providers.google_meet;
 
       case 'webex':
