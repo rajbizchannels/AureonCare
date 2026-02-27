@@ -1,6 +1,7 @@
 const ZoomService = require('./zoomService');
 const GoogleMeetService = require('./googleMeetService');
 const WebexService = require('./webexService');
+const TeamsService = require('./teamsService');
 
 /**
  * Telehealth Provider Manager
@@ -13,7 +14,8 @@ class TelehealthProviderManager {
     this.providers = {
       zoom: null,
       google_meet: null,
-      webex: null
+      webex: null,
+      microsoft_teams: null
     };
   }
 
@@ -78,8 +80,12 @@ class TelehealthProviderManager {
         return this.providers.google_meet;
 
       case 'webex':
-        this.providers.webex = new WebexService(config);
+        this.providers.webex = new WebexService(config, this.pool);
         return this.providers.webex;
+
+      case 'microsoft_teams':
+        this.providers.microsoft_teams = new TeamsService(config, this.pool);
+        return this.providers.microsoft_teams;
 
       default:
         throw new Error(`Unknown provider type: ${providerType}`);
@@ -121,10 +127,20 @@ class TelehealthProviderManager {
         }
         break;
       case 'webex':
-        if (!config.api_key) {
+        if (!config.client_id || !config.client_secret) {
+          if (!config.api_key) {
+            throw new Error(
+              'Webex is enabled but credentials are not configured. ' +
+              'Please connect Webex in Admin Panel > Telehealth Settings.'
+            );
+          }
+        }
+        break;
+      case 'microsoft_teams':
+        if (!config.client_id || !config.client_secret) {
           throw new Error(
-            'Webex is enabled but the Access Token is not configured. ' +
-            'Please add your Webex Access Token in Admin Panel > Telehealth Settings.'
+            'Microsoft Teams is enabled but credentials are not configured. ' +
+            'Please connect Teams in Admin Panel > Telehealth Settings.'
           );
         }
         break;
@@ -142,7 +158,7 @@ class TelehealthProviderManager {
         // No provider enabled - return clear error
         throw new Error(
           'No telehealth provider is enabled. ' +
-          'Please enable and configure Zoom, Google Meet, or Webex in Admin Panel > Telehealth Settings.'
+          'Please enable and configure Zoom, Google Meet, Teams, or Webex in Admin Panel > Telehealth Settings.'
         );
       }
       providerType = activeProvider.provider_type;

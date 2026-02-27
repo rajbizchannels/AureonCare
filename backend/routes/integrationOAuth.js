@@ -147,6 +147,11 @@ const OAUTH_CONFIGS = {
     tokenUrl: 'https://webexapis.com/v1/access_token',
     scope: 'meeting:schedules_write meeting:schedules_read',
   },
+  microsoft_teams: {
+    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    scope: 'OnlineMeetings.ReadWrite User.Read offline_access',
+  },
   google_drive: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
@@ -166,7 +171,7 @@ const OAUTH_CONFIGS = {
  * Helper: determine which DB table and field to use for a provider type
  */
 function getTableInfo(providerType) {
-  if (['zoom', 'google_meet', 'webex'].includes(providerType)) {
+  if (['zoom', 'google_meet', 'webex', 'microsoft_teams'].includes(providerType)) {
     return { table: 'telehealth_provider_settings', field: 'provider_type' };
   }
   if (['google_drive', 'onedrive'].includes(providerType)) {
@@ -394,6 +399,12 @@ router.get('/:providerType/callback', async (req, res) => {
             });
             connectedUserId = userResponse.data.id || null;
             connectedUserEmail = (userResponse.data.emails && userResponse.data.emails[0]) || null;
+          } else if (providerType === 'microsoft_teams') {
+            const userResponse = await axios.get('https://graph.microsoft.com/v1.0/me', {
+              headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+            });
+            connectedUserId = userResponse.data.id || null;
+            connectedUserEmail = userResponse.data.mail || userResponse.data.userPrincipalName || null;
           }
         } catch (e) {
           console.error(`Failed to fetch ${providerType} user profile:`, e.message);
