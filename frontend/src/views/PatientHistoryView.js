@@ -230,21 +230,31 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     }
   };
 
-  const handleStartTelehealth = async (appointmentId = null) => {
+  const handleStartTelehealth = async (apt = null) => {
     // Only providers and patients may launch telehealth sessions
     if (!isProvider(user) && !isPatient(user)) {
       addNotification('error', 'Only providers and patients can start telehealth sessions.');
       return;
     }
 
+    // If no appointment passed (header button), find the nearest upcoming Telehealth appointment
+    let targetApt = apt;
+    if (!targetApt) {
+      const upcoming = appointments
+        .filter(a => {
+          const s = (a.status || '').toLowerCase();
+          const t = (a.type || a.appointment_type || '').toLowerCase();
+          return t === 'telehealth' && s !== 'cancelled' && s !== 'canceled' && s !== 'completed';
+        })
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+      targetApt = upcoming[0] || null;
+    }
+
     // If the appointment already has a pre-generated meeting URL, open it directly
-    if (appointmentId) {
-      const appt = appointments.find(a => a.id === appointmentId);
-      if (appt?.meeting_url) {
-        window.open(appt.meeting_url, '_blank', 'noopener,noreferrer');
-        addNotification('success', 'Joining telehealth session...');
-        return;
-      }
+    if (targetApt?.meeting_url) {
+      window.open(targetApt.meeting_url, '_blank', 'noopener,noreferrer');
+      addNotification('success', 'Joining telehealth session...');
+      return;
     }
 
     setTelehealthLoading(true);
@@ -264,27 +274,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         return;
       }
 
-      // Find the nearest upcoming appointment for this patient if none specified
-      let selectedAppointmentId = appointmentId;
-      if (!selectedAppointmentId && appointments.length > 0) {
-        const upcoming = appointments
-          .filter(a => {
-            const s = (a.status || '').toLowerCase();
-            return s !== 'cancelled' && s !== 'canceled' && s !== 'completed';
-          })
-          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-        if (upcoming.length > 0) {
-          selectedAppointmentId = upcoming[0].id;
-        }
-      }
-
       // Create a telehealth session
       const sessionData = {
-        appointmentId: selectedAppointmentId || null,
+        appointmentId: targetApt?.id || null,
         patientId: patient.id,
-        providerId: user?.id,
+        providerId: targetApt?.provider_id || user?.id,
         startTime: new Date().toISOString(),
-        duration: 30,
+        duration: targetApt?.duration_minutes || 30,
         recordingEnabled: false
       };
 
@@ -1326,7 +1322,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                     (appt.type || appt.appointment_type || '').toLowerCase() === 'telehealth' &&
                     (isProvider(user) || isPatient(user)) && (
                     <button
-                      onClick={() => handleStartTelehealth(appt.id)}
+                      onClick={() => handleStartTelehealth(appt)}
                       disabled={telehealthLoading}
                       className={`p-2 rounded-lg transition-colors ${
                         theme === 'dark'
