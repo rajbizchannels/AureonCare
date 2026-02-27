@@ -9,20 +9,20 @@ const { Pool } = require('pg');
 
 // Main database connection
 const mainPool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'medflow',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'MedFlow2024!',
+  host: process.env.AC_DB_H || 'localhost',
+  port: process.env.AC_DB_P || 5432,
+  database: process.env.AC_DB_N || 'medflow',
+  user: process.env.AC_DB_U || 'postgres',
+  password: process.env.AC_DB_W || 'MedFlow2024!',
 });
 
 // Archive database connection
 const archivePool = new Pool({
-  host: process.env.ARCHIVE_DB_HOST || process.env.DB_HOST || 'localhost',
-  port: process.env.ARCHIVE_DB_PORT || process.env.DB_PORT || 5432,
-  database: process.env.ARCHIVE_DB_NAME || (process.env.DB_NAME || 'medflow') + '_archive',
-  user: process.env.ARCHIVE_DB_USER || process.env.DB_USER || 'postgres',
-  password: process.env.ARCHIVE_DB_PASSWORD || process.env.DB_PASSWORD || 'MedFlow2024!',
+  host: process.env.AC_ARCH_H || process.env.AC_DB_H || 'localhost',
+  port: process.env.AC_ARCH_P || process.env.AC_DB_P || 5432,
+  database: process.env.AC_ARCH_N || (process.env.AC_DB_N || 'medflow') + '_archive',
+  user: process.env.AC_ARCH_U || process.env.AC_DB_U || 'postgres',
+  password: process.env.AC_ARCH_W || process.env.AC_DB_W || 'MedFlow2024!',
 });
 
 async function diagnoseArchiving() {
@@ -207,7 +207,7 @@ async function diagnoseArchiving() {
     console.log('');
     console.log('- If no data in main DB:');
     console.log('  1. Check that main database has records');
-    console.log('  2. Verify DB_NAME in .env is correct');
+    console.log('  2. Verify AC_DB_N in .env is correct');
     console.log('');
 
   } catch (error) {
