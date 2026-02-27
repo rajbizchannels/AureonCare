@@ -134,7 +134,8 @@ router.put('/:id', async (req, res) => {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
     address, city, state, zip, insurance, insurance_id, insurance_payer_id, status,
     height, weight, blood_type, allergies, past_history, family_history, current_medications,
-    social_history, previous_medications, additional_current_medications, language, country
+    social_history, previous_medications, additional_current_medications, language, country,
+    telehealth_preference
   } = req.body;
 
   try {
@@ -151,6 +152,9 @@ router.put('/:id', async (req, res) => {
     const additionalCurrentMedsJson = additional_current_medications
       ? (typeof additional_current_medications === 'string' ? additional_current_medications : JSON.stringify(additional_current_medications))
       : null;
+
+    // telehealth_preference: allow explicit null to clear, undefined means "don't touch"
+    const telehealthPrefParam = telehealth_preference !== undefined ? (telehealth_preference || null) : undefined;
 
     const result = await pool.query(
       `UPDATE patients
@@ -180,14 +184,18 @@ router.put('/:id', async (req, res) => {
            previous_medications = COALESCE($24::jsonb, previous_medications),
            additional_current_medications = COALESCE($25::jsonb, additional_current_medications),
            country = COALESCE($26, country),
+           telehealth_preference = CASE WHEN $28::boolean THEN $27 ELSE telehealth_preference END,
            updated_at = NOW()
-       WHERE id::text = $27::text
+       WHERE id::text = $29::text
        RETURNING *`,
       [first_name, last_name, mrn, birthDate, gender, phone, email,
        address, city, state, zip, insurance, insurance_id, insurance_payer_id,
        status, height, weight, blood_type, allergies,
        past_history, family_history, current_medications, social_history, previousMedsJson,
-       additionalCurrentMedsJson, country, req.params.id]
+       additionalCurrentMedsJson, country,
+       telehealthPrefParam !== undefined ? telehealthPrefParam : null,
+       telehealthPrefParam !== undefined,
+       req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });

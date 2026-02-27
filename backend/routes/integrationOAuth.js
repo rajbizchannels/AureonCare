@@ -113,8 +113,14 @@ function resolveClientCredentials(providerType, dbRow) {
 
   if (!client_id || !client_secret) {
     const prefix = providerType.toUpperCase();
-    client_id = client_id || process.env[`${prefix}_CLIENT_ID`] || null;
-    client_secret = client_secret || process.env[`${prefix}_CLIENT_SECRET`] || null;
+    // microsoft_teams → try TEAMS_ first, then MICROSOFT_TEAMS_
+    const envPrefixes = providerType === 'microsoft_teams'
+      ? ['TEAMS', prefix]
+      : [prefix];
+    for (const ep of envPrefixes) {
+      client_id = client_id || process.env[`${ep}_CLIENT_ID`] || null;
+      client_secret = client_secret || process.env[`${ep}_CLIENT_SECRET`] || null;
+    }
   }
 
   return { client_id, client_secret };
