@@ -3,19 +3,19 @@ const { Pool } = require('pg');
 
 console.log('Testing database connection...\n');
 console.log('Configuration:');
-console.log('Host:', process.env.DB_HOST || 'localhost');
-console.log('Port:', process.env.DB_PORT || 5432);
-console.log('Database:', process.env.DB_NAME || 'aureoncare');
-console.log('User:', process.env.DB_USER || 'aureoncare_user');
-console.log('Password:', process.env.DB_PASSWORD ? 'SET (length: ' + process.env.DB_PASSWORD.length + ')' : 'NOT SET');
+console.log('Host:', process.env.AC_DB_H || 'localhost');
+console.log('Port:', process.env.AC_DB_P || 5432);
+console.log('Database:', process.env.AC_DB_N || 'aureoncare');
+console.log('User:', process.env.AC_DB_U || 'aureoncare_user');
+console.log('Password:', process.env.AC_DB_W ? 'SET (length: ' + process.env.AC_DB_W.length + ')' : 'NOT SET');
 console.log('');
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'aureoncare_user',
-  password: process.env.DB_PASSWORD,
+  host: process.env.AC_DB_H || 'localhost',
+  port: parseInt(process.env.AC_DB_P || '5432'),
+  database: process.env.AC_DB_N || 'aureoncare',
+  user: process.env.AC_DB_U || 'aureoncare_user',
+  password: process.env.AC_DB_W,
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
 });

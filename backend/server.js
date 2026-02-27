@@ -21,14 +21,14 @@ let redisClient = null;
 /*
 const redisConfig = {
   socket: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379,
+    host: process.env.AC_RD_H || 'localhost',
+    port: process.env.AC_RD_P || 6379,
     reconnectStrategy: () => false
   }
 };
 
-if (process.env.REDIS_PASSWORD) {
-  redisConfig.password = process.env.REDIS_PASSWORD;
+if (process.env.AC_RD_W) {
+  redisConfig.password = process.env.AC_RD_W;
 }
 
 redisClient = redis.createClient(redisConfig);
@@ -46,7 +46,7 @@ app.use(
   })
 );
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+  origin: process.env.AC_FE_URL || 'http://localhost:3001',
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -157,7 +157,7 @@ async function startServer() {
   console.log('========================================');
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Port: ${PORT}`);
-  console.log(`Database: ${process.env.DB_NAME || 'aureoncare'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}`);
+  console.log(`Database: ${process.env.AC_DB_N || 'aureoncare'}@${process.env.AC_DB_H || 'localhost'}:${process.env.AC_DB_P || 5432}`);
   console.log('========================================\n');
 
   try {
@@ -198,7 +198,7 @@ async function startServer() {
       console.log(`🚀 AureonCare Backend Server Running`);
       console.log(`=================================`);
       console.log(`🌐 URL: http://localhost:${PORT}`);
-      console.log(`🗄️  Database: ${process.env.DB_NAME}`);
+      console.log(`🗄️  Database: ${process.env.AC_DB_N}`);
       console.log(`⚡ Redis: ${redisConnected ? 'Connected' : 'Not available'}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`=================================\n`);
@@ -216,7 +216,7 @@ async function startServer() {
       console.error('   - Make sure PostgreSQL is running');
       console.error('   - Check database credentials in .env file');
       console.error('   - Verify database exists and is accessible');
-      console.error(`   - Connection string: ${process.env.DB_USER}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
+      console.error(`   - Connection string: ${process.env.AC_DB_U}@${process.env.AC_DB_H}:${process.env.AC_DB_P}/${process.env.AC_DB_N}`);
     }
 
     console.error('\nFull error stack:');
