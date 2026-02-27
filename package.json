@@ -12,6 +12,7 @@
     "reset-db": "node backend/scripts/reset-and-seed.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
     "@azure/msal-browser": "^4.25.1",
     "@azure/msal-node": "^3.8.0",
     "@azure/msal-react": "^3.0.20",

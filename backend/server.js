@@ -2,25 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const { Pool } = require('pg');
 const redis = require('redis');
+
+// Use centralised Supabase-aware pool from db.js
+const pool = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Database connection
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'postgres',
-  password: 'MedFlow2024!',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-  // Explicitly set search_path to ensure tables are found
-  options: '-c search_path=public',
-});
 
 // Make pool available to routes
 app.locals.pool = pool;
@@ -238,8 +226,6 @@ async function startServer() {
   }
 }
 
-startServer();
-
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
@@ -249,3 +235,12 @@ process.on('SIGTERM', async () => {
   }
   process.exit(0);
 });
+
+// Export app for Vercel serverless deployment.
+// In local development, start the server normally.
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  startServer();
+  module.exports = app;
+}
