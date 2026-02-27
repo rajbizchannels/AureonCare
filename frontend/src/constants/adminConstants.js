@@ -213,6 +213,7 @@ export const TELEHEALTH_PROVIDERS = {
   ZOOM: 'zoom',
   GOOGLE_MEET: 'google_meet',
   WEBEX: 'webex',
+  MICROSOFT_TEAMS: 'microsoft_teams',
 };
 
 // Vendor Integration Types

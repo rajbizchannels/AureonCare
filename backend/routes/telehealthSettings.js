@@ -185,6 +185,23 @@ router.patch('/:providerType/toggle', async (req, res) => {
   }
 });
 
+// Get all enabled providers (used by frontend for patient preference dropdown)
+router.get('/enabled/providers', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(`
+      SELECT provider_type, zoom_user_email
+      FROM telehealth_provider_settings
+      WHERE is_enabled = true
+      ORDER BY provider_type
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching enabled providers:', error);
+    res.status(500).json({ error: 'Failed to fetch enabled providers' });
+  }
+});
+
 // Get active/default provider
 router.get('/active/provider', async (req, res) => {
   try {
