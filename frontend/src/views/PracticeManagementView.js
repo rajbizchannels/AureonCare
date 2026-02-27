@@ -208,6 +208,12 @@ const PracticeManagementView = ({
       addNotification('error', 'Only providers and patients can start telehealth sessions.');
       return;
     }
+    // If the appointment already has a pre-generated meeting URL, open it directly
+    if (apt.meeting_url) {
+      window.open(apt.meeting_url, '_blank', 'noopener,noreferrer');
+      addNotification('success', 'Joining telehealth session...');
+      return;
+    }
     setTelehealthLoading(apt.id);
     // Open blank window synchronously to avoid popup blocker
     const meetingWindow = window.open('about:blank', '_blank');
