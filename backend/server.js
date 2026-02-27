@@ -49,7 +49,14 @@ redisClient.on('connect', () => console.log('✓ Redis Connected'));
 */
 
 // Middleware
-app.use(helmet());
+// Use "credentialless" COEP so cross-origin Zoom SDK resources are not blocked,
+// while still enabling SharedArrayBuffer for the Meeting SDK's WASM AV layer.
+app.use(
+  helmet({
+    crossOriginEmbedderPolicy: { policy: 'credentialless' },
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+  })
+);
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3001',
   credentials: true
