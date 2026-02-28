@@ -4,6 +4,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
 import { useAudit } from '../../hooks/useAudit';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
+import TermsOfServicePage from './TermsOfServicePage';
 
 const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
   const { logViewAccess, logError } = useAudit();
@@ -11,6 +12,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showToS, setShowToS] = useState(false);
 
   const { instance } = useMsal();
 
@@ -294,6 +296,14 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
           <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
             <button
               type="button"
+              onClick={() => setShowToS(true)}
+              className="hover:text-cyan-500 transition-colors underline"
+            >
+              Terms of Service
+            </button>
+            <span className="mx-1">&bull;</span>
+            <button
+              type="button"
               onClick={() => setShowPrivacyPolicy(true)}
               className="hover:text-blue-500 transition-colors underline"
             >
@@ -302,6 +312,13 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
           </p>
         </div>
       </div>
+
+      {showToS && (
+        <TermsOfServicePage
+          theme={theme}
+          onClose={() => setShowToS(false)}
+        />
+      )}
 
       {showPrivacyPolicy && (
         <PrivacyPolicyPage

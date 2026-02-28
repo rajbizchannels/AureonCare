@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, ArrowLeft, UserPlus } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
+import TermsOfServicePage from './TermsOfServicePage';
 
 const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) => {
   const { logViewAccess, logError } = useAudit();
@@ -19,6 +20,8 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
   const [loading, setLoading] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [tosAccepted, setTosAccepted] = useState(false);
+  const [showToS, setShowToS] = useState(false);
 
   // Log page access on mount
   useEffect(() => {
@@ -39,6 +42,11 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
 
     if (formData.password.length < 6) {
       setRegisterError('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (!tosAccepted) {
+      setRegisterError('You must accept the Terms of Service to register.');
       return;
     }
 
@@ -255,6 +263,29 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
             </p>
           </div>
 
+          {/* Terms of Service Consent */}
+          <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-cyan-50 border-cyan-200'}`}>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tosAccepted}
+                onChange={(e) => setTosAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-400 text-cyan-500 flex-shrink-0 cursor-pointer"
+              />
+              <span className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-cyan-300' : 'text-cyan-800'}`}>
+                I have read and agree to the{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowToS(true)}
+                  className="font-semibold underline hover:text-cyan-600 transition-colors"
+                >
+                  Terms of Service
+                </button>
+                , including the HIPAA Business Associate and GDPR Data Processing provisions. <span className="text-red-400">*</span>
+              </span>
+            </label>
+          </div>
+
           {/* Privacy Policy Consent */}
           <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-purple-500/10 border-purple-500/30' : 'bg-purple-50 border-purple-200'}`}>
             <label className="flex items-start gap-3 cursor-pointer">
@@ -293,9 +324,9 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
             </button>
             <button
               type="submit"
-              disabled={loading || !privacyAccepted}
+              disabled={loading || !tosAccepted || !privacyAccepted}
               className={`flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2 ${
-                loading || !privacyAccepted ? 'opacity-60 cursor-not-allowed' : ''
+                loading || !tosAccepted || !privacyAccepted ? 'opacity-60 cursor-not-allowed' : ''
               }`}
             >
               {loading ? (
@@ -313,6 +344,13 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
           </div>
         </form>
       </div>
+
+      {showToS && (
+        <TermsOfServicePage
+          theme={theme}
+          onClose={() => setShowToS(false)}
+        />
+      )}
 
       {showPrivacyPolicy && (
         <PrivacyPolicyPage
