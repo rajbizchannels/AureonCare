@@ -3,12 +3,14 @@ import { Heart, Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
 import { useAudit } from '../../hooks/useAudit';
+import PrivacyPolicyPage from './PrivacyPolicyPage';
 
 const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
   const { logViewAccess, logError } = useAudit();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
   const { instance } = useMsal();
 
@@ -289,8 +291,24 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
             {theme === 'dark' ? <Sun className="w-4 h-4 inline mr-1" /> : <Moon className="w-4 h-4 inline mr-1" />}
             {theme === 'dark' ? 'Light' : 'Dark'} Mode
           </button>
+          <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+            <button
+              type="button"
+              onClick={() => setShowPrivacyPolicy(true)}
+              className="hover:text-blue-500 transition-colors underline"
+            >
+              Privacy Policy &amp; HIPAA Notice
+            </button>
+          </p>
         </div>
       </div>
+
+      {showPrivacyPolicy && (
+        <PrivacyPolicyPage
+          theme={theme}
+          onClose={() => setShowPrivacyPolicy(false)}
+        />
+      )}
     </div>
   );
 };

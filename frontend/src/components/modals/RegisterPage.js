@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, ArrowLeft, UserPlus } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
+import PrivacyPolicyPage from './PrivacyPolicyPage';
 
 const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) => {
   const { logViewAccess, logError } = useAudit();
@@ -16,6 +17,8 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
   });
   const [registerError, setRegisterError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
   // Log page access on mount
   useEffect(() => {
@@ -36,6 +39,11 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
 
     if (formData.password.length < 6) {
       setRegisterError('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (!privacyAccepted) {
+      setRegisterError('You must accept the Privacy Policy and HIPAA Notice of Privacy Practices to register.');
       return;
     }
 
@@ -247,6 +255,29 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
             </p>
           </div>
 
+          {/* Privacy Policy Consent */}
+          <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-purple-500/10 border-purple-500/30' : 'bg-purple-50 border-purple-200'}`}>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={privacyAccepted}
+                onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-400 text-purple-500 flex-shrink-0 cursor-pointer"
+              />
+              <span className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-purple-300' : 'text-purple-800'}`}>
+                I have read and agree to the{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowPrivacyPolicy(true)}
+                  className="font-semibold underline hover:text-purple-600 transition-colors"
+                >
+                  Privacy Policy &amp; HIPAA Notice of Privacy Practices
+                </button>
+                . I understand how AureonCare collects, uses, and protects my personal and health information. <span className="text-red-400">*</span>
+              </span>
+            </label>
+          </div>
+
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -262,9 +293,9 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !privacyAccepted}
               className={`flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2 ${
-                loading ? 'opacity-75 cursor-wait' : ''
+                loading || !privacyAccepted ? 'opacity-60 cursor-not-allowed' : ''
               }`}
             >
               {loading ? (
@@ -282,6 +313,13 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
           </div>
         </form>
       </div>
+
+      {showPrivacyPolicy && (
+        <PrivacyPolicyPage
+          theme={theme}
+          onClose={() => setShowPrivacyPolicy(false)}
+        />
+      )}
     </div>
   );
 };
