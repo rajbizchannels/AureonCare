@@ -159,7 +159,7 @@ const RCMView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification]);
 
   // Filter functions
   const filteredClaims = claims.filter(claim => {
