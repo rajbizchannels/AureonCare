@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Clock, CheckCircle, XCircle, Bell, User, Calendar, ArrowLeft, RefreshCw } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { formatDate } from '../utils/formatters';
@@ -23,9 +23,9 @@ const WaitlistManagementView = ({
     logViewAccess('WaitlistManagementView', {
       module: 'Scheduling',
     });
-  }, []);
+  }, [logViewAccess]);
 
-  const loadWaitlist = async () => {
+  const loadWaitlist = useCallback(async () => {
     setLoading(true);
     try {
       const entries = await api.getAllWaitlist({ status: statusFilter === 'all' ? undefined : statusFilter });
@@ -36,11 +36,11 @@ const WaitlistManagementView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, statusFilter, addNotification]);
 
   useEffect(() => {
     loadWaitlist();
-  }, [statusFilter]);
+  }, [loadWaitlist]);
 
   const handleConfirmAppointment = (entry) => {
     setSelectedEntry(entry);

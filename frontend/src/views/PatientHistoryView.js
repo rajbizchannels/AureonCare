@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   User, Calendar, Activity, FileText, Pill, ArrowLeft,
   Edit, Trash2, Plus, Clock, MapPin, Phone, Mail, Microscope, Printer,
@@ -88,50 +88,27 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       module: 'EHR',
       patient_id: patient?.id,
     });
-  }, []);
+  }, [logViewAccess, patient?.id]);
 
-  useEffect(() => {
-    if (patient?.id) {
-      fetchPatientHistory();
-      fetchProviders();
-      fetchPatients();
-      fetchLaboratories();
-    }
-  }, [patient?.id]);
-
-  // Close all forms when tab changes
-  useEffect(() => {
-    setShowDiagnosisForm(false);
-    setShowPrescriptionForm(false);
-    setShowLabOrderForm(false);
-    setShowAppointmentForm(false);
-    setShowRecordUploadForm(false);
-    setEditingPatient(false);
-    setShowHealthMetricsForm(false);
-    setEditingDiagnosis(null);
-    setEditingPrescription(null);
-    setEditingLabOrder(null);
-  }, [activeTab]);
-
-  const fetchProviders = async () => {
+  const fetchProviders = useCallback(async () => {
     try {
       const data = await api.getProviders();
       setProviders(data);
     } catch (error) {
       console.error('Error fetching providers:', error);
     }
-  };
+  }, [api]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
     try {
       const data = await api.getPatients();
       setPatients(data);
     } catch (error) {
       console.error('Error fetching patients:', error);
     }
-  };
+  }, [api]);
 
-  const fetchLaboratories = async () => {
+  const fetchLaboratories = useCallback(async () => {
     try {
       const labs = await api.getLaboratories(true);
       setLaboratories(labs || []);
@@ -139,9 +116,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       console.error('Error fetching laboratories:', error);
       setLaboratories([]);
     }
-  };
+  }, [api]);
 
-  const fetchPatientHistory = async () => {
+  const fetchPatientHistory = useCallback(async () => {
     setLoading(true);
     try {
       const patientId = patient.id;
@@ -168,7 +145,30 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, patient, addNotification]);
+
+  useEffect(() => {
+    if (patient?.id) {
+      fetchPatientHistory();
+      fetchProviders();
+      fetchPatients();
+      fetchLaboratories();
+    }
+  }, [patient?.id, fetchPatientHistory, fetchProviders, fetchPatients, fetchLaboratories]);
+
+  // Close all forms when tab changes
+  useEffect(() => {
+    setShowDiagnosisForm(false);
+    setShowPrescriptionForm(false);
+    setShowLabOrderForm(false);
+    setShowAppointmentForm(false);
+    setShowRecordUploadForm(false);
+    setEditingPatient(false);
+    setShowHealthMetricsForm(false);
+    setEditingDiagnosis(null);
+    setEditingPrescription(null);
+    setEditingLabOrder(null);
+  }, [activeTab]);
 
   const handleDeleteDiagnosis = async () => {
     if (!deletingDiagnosis) return;
