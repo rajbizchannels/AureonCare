@@ -34,7 +34,7 @@ const NewLaboratoryForm = ({ theme, api, editingLaboratory, onClose, onSuccess, 
         laboratory_id: editingLaboratory?.id,
       },
     });
-  }, []);
+  }, [editingLaboratory, logFormView, startAction]);
 
   // Preload form data when editing
   useEffect(() => {
