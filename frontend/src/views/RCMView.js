@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp, X, Receipt, FileText, Tag, Bell, ArrowRightLeft, Percent } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import NewPaymentForm from '../components/forms/NewPaymentForm';
@@ -92,7 +92,7 @@ const RCMView = ({
     logViewAccess('RCMView', {
       module: 'RCM',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Close all forms when tab changes
   useEffect(() => {
@@ -129,11 +129,7 @@ const RCMView = ({
   }, [billingSubTab]);
 
   // Fetch all RCM data
-  useEffect(() => {
-    fetchRCMData();
-  }, []);
-
-  const fetchRCMData = async () => {
+  const fetchRCMData = useCallback(async () => {
     setLoading(true);
     try {
       const [preapprovalsData, paymentsData, paymentPostingsData, denialsData, payersData, quotesData, invoicesData, couponsData, billingPaymentsData] = await Promise.all([

@@ -114,7 +114,7 @@ const EPrescribeModal = ({
         },
       });
     }
-  }, []); // Run once on mount
+  }, [patient, normalizedProvider, prescription, inline, logModalOpen, startAction]); // Run once on mount
 
   // Handle close with audit logging
   const handleClose = useCallback(() => {
