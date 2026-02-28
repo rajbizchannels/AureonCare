@@ -4,3 +4,4 @@ export { default as ViewEditModal } from './ViewEditModal';
 export { default as UserProfileModal } from './UserProfileModal';
 export { default as SettingsModal } from './SettingsModal';
 export { default as PrivacyPolicyPage } from './PrivacyPolicyPage';
+export { default as TermsOfServicePage } from './TermsOfServicePage';

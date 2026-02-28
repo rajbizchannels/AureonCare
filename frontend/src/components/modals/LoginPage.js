@@ -3,12 +3,14 @@ import { Shield, Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
+import TermsOfServicePage from './TermsOfServicePage';
 
 const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showToS, setShowToS] = useState(false);
 
   const { instance } = useMsal();
 
@@ -254,6 +256,14 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
           <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
             <button
               type="button"
+              onClick={() => setShowToS(true)}
+              className="hover:text-cyan-500 transition-colors underline"
+            >
+              Terms of Service
+            </button>
+            <span className="mx-1">&bull;</span>
+            <button
+              type="button"
               onClick={() => setShowPrivacyPolicy(true)}
               className="hover:text-purple-500 transition-colors underline"
             >
@@ -262,6 +272,13 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
           </p>
         </div>
       </div>
+
+      {showToS && (
+        <TermsOfServicePage
+          theme={theme}
+          onClose={() => setShowToS(false)}
+        />
+      )}
 
       {showPrivacyPolicy && (
         <PrivacyPolicyPage
