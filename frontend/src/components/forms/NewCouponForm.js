@@ -50,7 +50,7 @@ const NewCouponForm = ({ theme, api, onClose, onSuccess, addNotification, t, edi
       }
     };
     loadOfferings();
-  }, [api, addNotification, t]);
+  }, [api, addNotification, t.failedToLoadOfferings]);
 
   // Populate form when editing
   useEffect(() => {
