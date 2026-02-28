@@ -31,7 +31,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
         mode: 'create',
       },
     });
-  }, []);
+  }, [logFormView, startAction]);
 
   // Fetch available roles (including system roles for assignment)
   useEffect(() => {
@@ -55,23 +55,17 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
         if (roles && Array.isArray(roles) && roles.length > 0) {
           setAvailableRoles(roles);
           // Set default role to first available role
-          if (!formData.role) {
-            setFormData(prev => ({ ...prev, role: roles[0].name }));
-          }
+          setFormData(prev => prev.role ? prev : { ...prev, role: roles[0].name });
         } else {
           // Use system roles as fallback
           setAvailableRoles(systemRoles);
-          if (!formData.role) {
-            setFormData(prev => ({ ...prev, role: systemRoles[0].name }));
-          }
+          setFormData(prev => prev.role ? prev : { ...prev, role: systemRoles[0].name });
         }
       } catch (error) {
         console.error('Error fetching roles:', error);
         // Use system roles as fallback on error
         setAvailableRoles(systemRoles);
-        if (!formData.role) {
-          setFormData(prev => ({ ...prev, role: systemRoles[0].name }));
-        }
+        setFormData(prev => prev.role ? prev : { ...prev, role: systemRoles[0].name });
         addNotification('alert', 'Failed to load roles from server, using defaults');
       } finally {
         setLoadingRoles(false);
