@@ -29,7 +29,7 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
         campaign_id: editingCampaign?.id,
       },
     });
-  }, []);
+  }, [editingCampaign, logFormView, startAction]);
 
   useEffect(() => {
     const loadOfferings = async () => {
