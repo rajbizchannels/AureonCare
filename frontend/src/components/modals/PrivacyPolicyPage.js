@@ -4,7 +4,7 @@ import { X, Shield, ChevronDown, ChevronRight, Lock, Eye, FileText, Users, Globe
 const EFFECTIVE_DATE = 'February 28, 2026';
 const LAST_UPDATED = 'February 28, 2026';
 const CONTACT_EMAIL = 'privacy@aureoncare.com';
-const CONTACT_ADDRESS = 'AureonCare, Inc., Privacy Office, 123 Healthcare Blvd, Suite 400, San Francisco, CA 94105';
+const CONTACT_ADDRESS = 'AureonCare, Inc., Privacy Office, 97816 Lohr am Main, BY, Germany';
 const DPO_EMAIL = 'dpo@aureoncare.com';
 const HIPAA_PRIVACY_OFFICER = 'privacy@aureoncare.com';
 
