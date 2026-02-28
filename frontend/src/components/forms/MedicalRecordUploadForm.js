@@ -27,7 +27,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
         availableProviders: providers?.length || 0,
       },
     });
-  }, []);
+  }, [logFormView, patientId, providers?.length, startAction]);
 
   const classifications = [
     'General',
