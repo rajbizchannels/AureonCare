@@ -4,7 +4,7 @@ import { X, FileText, ChevronDown, ChevronRight, Shield, Users, CreditCard, Aler
 const EFFECTIVE_DATE = 'February 28, 2026';
 const LAST_UPDATED = 'February 28, 2026';
 const CONTACT_EMAIL = 'legal@aureoncare.com';
-const CONTACT_ADDRESS = 'AureonCare, Inc., Legal Department, 123 Healthcare Blvd, Suite 400, San Francisco, CA 94105';
+const CONTACT_ADDRESS = 'AureonCare, Inc., Legal Department, 97816 Lohr am Main, BY, Germany';
 const SUPPORT_EMAIL = 'support@aureoncare.com';
 const GOVERNING_STATE = 'California';
 const GOVERNING_COUNTRY = 'United States';
