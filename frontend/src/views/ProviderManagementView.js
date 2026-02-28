@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   User, Calendar, Clock, Settings, Link2, Mail, Phone,
   Plus, Edit2, Trash2, Eye, EyeOff, Copy, Check, AlertCircle, ArrowLeft
@@ -47,19 +47,9 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
     logViewAccess('ProviderManagementView', {
       module: 'Admin',
     });
-  }, []);
+  }, [logViewAccess]);
 
-  useEffect(() => {
-    fetchProviders();
-  }, []);
-
-  useEffect(() => {
-    if (selectedProvider) {
-      fetchProviderDetails(selectedProvider.id);
-    }
-  }, [selectedProvider]);
-
-  const fetchProviders = async () => {
+  const fetchProviders = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/providers', {
@@ -84,7 +74,17 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedProvider]);
+
+  useEffect(() => {
+    fetchProviders();
+  }, [fetchProviders]);
+
+  useEffect(() => {
+    if (selectedProvider) {
+      fetchProviderDetails(selectedProvider.id);
+    }
+  }, [selectedProvider]);
 
   // Check if provider's schedule matches clinic hours (Mon-Fri 9-5)
   const scheduleMatchesClinicHours = () => {

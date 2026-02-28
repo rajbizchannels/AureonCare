@@ -361,7 +361,7 @@ const ViewEditModal = ({
         quantity: calculatedQuantity.toString()
       }));
     }
-  }, [editingPrescription?.frequency, editingPrescription?.duration]);
+  }, [editingPrescription]);
 
   // Handle ESC key to close prescription modal
   useEffect(() => {
