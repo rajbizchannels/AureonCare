@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, User, Mail, Phone, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns';
 
@@ -32,23 +32,7 @@ const PublicBookingPage = ({ providerSlug }) => {
 
     const [bookedAppointment, setBookedAppointment] = useState(null);
 
-    useEffect(() => {
-        fetchProviderInfo();
-    }, [providerSlug]);
-
-    useEffect(() => {
-        if (selectedType && provider) {
-            fetchAvailableDates();
-        }
-    }, [selectedType, currentWeek, provider]);
-
-    useEffect(() => {
-        if (selectedDate && selectedType) {
-            fetchAvailableSlots();
-        }
-    }, [selectedDate, selectedType]);
-
-    const fetchProviderInfo = async () => {
+    const fetchProviderInfo = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -67,9 +51,9 @@ const PublicBookingPage = ({ providerSlug }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [providerSlug]);
 
-    const fetchAvailableDates = async () => {
+    const fetchAvailableDates = useCallback(async () => {
         try {
             const startDate = format(currentWeek, 'yyyy-MM-dd');
             const endDate = format(addWeeks(currentWeek, 2), 'yyyy-MM-dd');
@@ -83,9 +67,9 @@ const PublicBookingPage = ({ providerSlug }) => {
         } catch (err) {
             console.error('Error fetching available dates:', err);
         }
-    };
+    }, [currentWeek, provider, selectedType]);
 
-    const fetchAvailableSlots = async () => {
+    const fetchAvailableSlots = useCallback(async () => {
         setLoading(true);
         try {
             const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -100,7 +84,23 @@ const PublicBookingPage = ({ providerSlug }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedDate, provider, selectedType]);
+
+    useEffect(() => {
+        fetchProviderInfo();
+    }, [fetchProviderInfo]);
+
+    useEffect(() => {
+        if (selectedType && provider) {
+            fetchAvailableDates();
+        }
+    }, [selectedType, currentWeek, provider, fetchAvailableDates]);
+
+    useEffect(() => {
+        if (selectedDate && selectedType) {
+            fetchAvailableSlots();
+        }
+    }, [selectedDate, selectedType, fetchAvailableSlots]);
 
     const handleBookAppointment = async () => {
         setLoading(true);
