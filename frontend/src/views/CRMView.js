@@ -15,7 +15,7 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefre
     logViewAccess('CRMView', {
       module: 'CRM',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Fetch counts whenever we navigate to CRM view or when crmRefreshKey changes
   useEffect(() => {
