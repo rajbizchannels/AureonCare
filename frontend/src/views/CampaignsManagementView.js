@@ -24,11 +24,11 @@ const CampaignsManagementView = ({
     logViewAccess('CampaignsManagementView', {
       module: 'CRM',
     });
-  }, []);
+  }, [logViewAccess]);
 
   useEffect(() => {
     loadCampaigns();
-  }, []);
+  }, [loadCampaigns]);
 
   const loadCampaigns = async () => {
     try {

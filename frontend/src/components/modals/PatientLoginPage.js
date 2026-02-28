@@ -17,7 +17,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
     logViewAccess('PatientLoginPage', {
       module: 'Patient Portal',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Helper function to route patient to patient portal
   const routePatient = () => {

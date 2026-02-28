@@ -38,7 +38,7 @@ const UserProfileModal = ({
         userRole: user?.role,
       },
     });
-  }, []);
+  }, [logModalOpen, startAction, user?.id, user?.role]);
 
   // Handle close with audit logging
   const handleClose = () => {

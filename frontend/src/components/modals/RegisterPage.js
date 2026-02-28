@@ -22,7 +22,7 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
     logViewAccess('RegisterPage', {
       module: 'Auth',
     });
-  }, []);
+  }, [logViewAccess]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
