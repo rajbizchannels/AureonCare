@@ -288,7 +288,7 @@ const EPrescribeModal = ({
         quantity: calculatedQuantity.toString()
       }));
     }
-  }, [currentDetails.frequency, currentDetails.duration, currentDetails.quantity]);
+  }, [currentDetails]);
 
   // Select medication and check safety
   const handleSelectMedication = useCallback((medication) => {

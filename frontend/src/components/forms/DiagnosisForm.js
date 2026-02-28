@@ -68,7 +68,7 @@ const DiagnosisForm = ({
         diagnosis_id: editDiagnosis?.id,
       },
     });
-  }, []); // Only log once on mount
+  }, [editDiagnosis, formData.patientId, logFormView, patient?.id, startAction]); // Only log once on mount
 
   // Load laboratories on mount
   useEffect(() => {

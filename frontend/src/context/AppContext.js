@@ -131,7 +131,7 @@ const AppProvider = ({ children }) => {
   // Fetch all data on component mount
   useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [fetchAllData]);
 
   /**
    * Fetches all data from the backend API

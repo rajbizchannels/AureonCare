@@ -20,7 +20,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
     logViewAccess('IntegrationsView', {
       module: 'Admin',
     });
-  }, []);
+  }, [logViewAccess]);
 
   useEffect(() => {
     fetchIntegrations();

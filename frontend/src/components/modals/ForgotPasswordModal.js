@@ -21,7 +21,7 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
         step: 1,
       },
     });
-  }, []);
+  }, [logModalOpen, startAction]);
 
   // Handle close with audit logging
   const handleClose = () => {

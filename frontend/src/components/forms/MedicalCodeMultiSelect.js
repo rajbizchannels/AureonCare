@@ -125,7 +125,7 @@ const MedicalCodeMultiSelect = ({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [inputValue]);
+  }, [getSearchTerm, inputValue, searchCodes]);
 
   // Reset highlighted index when results change
   useEffect(() => {
