@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileText, ChevronDown, ChevronRight, Shield, Users, CreditCard, AlertTriangle, Lock, Scale, Globe, Settings, Ban, RefreshCw, Mail, Stethoscope } from 'lucide-react';
+import { ArrowLeft, FileText, ChevronDown, ChevronRight, Shield, Users, CreditCard, AlertTriangle, Lock, Scale, Globe, Settings, Ban, RefreshCw, Mail, Stethoscope } from 'lucide-react';
 
 const EFFECTIVE_DATE = 'February 28, 2026';
 const LAST_UPDATED = 'February 28, 2026';
@@ -42,48 +42,36 @@ const Section = ({ title, icon: Icon, children, theme, defaultOpen = false }) =>
 
 const TermsOfServicePage = ({ theme, onClose }) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div
-        className={`relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl border shadow-2xl ${
-          theme === 'dark'
-            ? 'bg-slate-900 border-slate-700'
-            : 'bg-white border-gray-200'
-        }`}
-      >
-        {/* Header */}
-        <div className={`flex items-start justify-between px-6 py-5 border-b flex-shrink-0 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-              <FileText className="w-5 h-5 text-white" />
+    <div className={`fixed inset-0 z-50 flex flex-col ${theme === 'dark' ? 'bg-slate-950' : 'bg-gray-50'}`}>
+      {/* Sticky header */}
+      <div className={`flex-shrink-0 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+          <button
+            onClick={onClose}
+            className={`flex items-center gap-2 text-sm font-medium transition-colors flex-shrink-0 ${theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+              <FileText className="w-4 h-4 text-white" />
             </div>
-            <div>
-              <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <div className="min-w-0">
+              <h1 className={`text-lg font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Terms of Service
-              </h2>
-              <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+              </h1>
+              <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                 Effective: {EFFECTIVE_DATE} &nbsp;&bull;&nbsp; Last updated: {LAST_UPDATED}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className={`p-2 rounded-lg transition-colors flex-shrink-0 ml-4 ${
-              theme === 'dark' ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
+      </div>
 
-        {/* Body — scrollable */}
-        <div className="overflow-y-auto px-6 py-5 flex-1">
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-6 py-6">
 
           {/* Intro banner */}
           <div className={`rounded-xl p-4 mb-5 flex gap-3 ${theme === 'dark' ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-cyan-50 border border-cyan-200'}`}>
@@ -451,17 +439,20 @@ const TermsOfServicePage = ({ theme, onClose }) => {
           </div>
 
         </div>
+      </div>
 
-        {/* Footer */}
-        <div className={`px-6 py-4 border-t flex-shrink-0 flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+      {/* Sticky footer */}
+      <div className={`flex-shrink-0 border-t ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
             AureonCare, Inc. &copy; {new Date().getFullYear()} &mdash; HIPAA &amp; GDPR Compliant
           </p>
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
           >
-            Close
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </button>
         </div>
       </div>
