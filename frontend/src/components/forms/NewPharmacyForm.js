@@ -40,7 +40,7 @@ const NewPharmacyForm = ({ theme, api, editingPharmacy, onClose, onSuccess, addN
         pharmacy_id: editingPharmacy?.id,
       },
     });
-  }, []);
+  }, [editingPharmacy, logFormView, startAction]);
 
   // Preload form data when editing
   useEffect(() => {
