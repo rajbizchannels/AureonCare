@@ -245,6 +245,7 @@ router.post('/social-login', async (req, res) => {
     );
 
     let user;
+    let isNewUser = false;
 
     if (socialAuthResult.rows.length > 0) {
       // Existing social auth - get the user
@@ -311,6 +312,7 @@ router.post('/social-login', async (req, res) => {
         `, [user.id, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
       } else {
+        isNewUser = true;
         // Create new user with pending status (requires admin approval)
         const newUserResult = await pool.query(`
           INSERT INTO users (
@@ -368,7 +370,7 @@ router.post('/social-login', async (req, res) => {
     res.json({
       message: 'Social login successful',
       user: toCamelCase(userData),
-      isNewUser: !existingUserResult || existingUserResult.rows.length === 0
+      isNewUser
     });
 
   } catch (error) {
