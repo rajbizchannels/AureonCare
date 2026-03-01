@@ -45,8 +45,20 @@ app.use(
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   })
 );
+// Support multiple allowed origins via a comma-separated FRONTEND_URL env var,
+// e.g. FRONTEND_URL=https://app.aureoncare.tech,http://localhost:3001
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3001')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.AC_FE_URL || 'http://localhost:3001',
+  origin: (origin, callback) => {
+    // Allow server-to-server or same-origin requests (no Origin header)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
