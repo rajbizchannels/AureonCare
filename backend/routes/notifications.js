@@ -30,6 +30,10 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const { userId, type, message, read } = req.body;
 
+  if (!message) {
+    return res.status(400).json({ error: 'message is required' });
+  }
+
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
