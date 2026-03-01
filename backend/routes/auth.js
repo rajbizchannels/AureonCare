@@ -314,22 +314,26 @@ router.post('/social-login', async (req, res) => {
       } else {
         isNewUser = true;
         // Create new user with pending status (requires admin approval)
+        const sl_firstName = firstName || '';
+        const sl_lastName = lastName || '';
         const newUserResult = await pool.query(`
           INSERT INTO users (
             email,
             first_name,
             last_name,
+            name,
             role,
             status,
             avatar
           )
-          VALUES ($1, $2, $3, 'patient', 'pending', $4)
+          VALUES ($1, $2, $3, $4, 'patient', 'pending', $5)
           RETURNING *
         `, [
           email,
-          firstName || '',
-          lastName || '',
-          `${(firstName?.[0] || '')}${(lastName?.[0] || '')}`.toUpperCase()
+          sl_firstName,
+          sl_lastName,
+          `${sl_firstName} ${sl_lastName}`.trim(),
+          `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase()
         ]);
 
         user = newUserResult.rows[0];
@@ -411,12 +415,15 @@ router.post('/social-register', async (req, res) => {
     }
 
     // Create new pending user
-    const avatarInitials = `${(firstName?.[0] || '')}${(lastName?.[0] || '')}`.toUpperCase();
+    const firstName_ = firstName || '';
+    const lastName_ = lastName || '';
+    const avatarInitials = `${(firstName_[0] || '')}${(lastName_[0] || '')}`.toUpperCase();
+    const fullName = `${firstName_} ${lastName_}`.trim();
     const newUserResult = await pool.query(`
-      INSERT INTO users (email, first_name, last_name, role, status, avatar)
-      VALUES ($1, $2, $3, 'patient', 'pending', $4)
+      INSERT INTO users (email, first_name, last_name, name, role, status, avatar)
+      VALUES ($1, $2, $3, $4, 'patient', 'pending', $5)
       RETURNING id, email, first_name, last_name, role, status
-    `, [email, firstName || '', lastName || '', avatarInitials]);
+    `, [email, firstName_, lastName_, fullName, avatarInitials]);
 
     const newUser = newUserResult.rows[0];
 
