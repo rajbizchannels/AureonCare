@@ -9,16 +9,15 @@ export const microsoftOAuthConfig = {
   auth: {
     clientId: process.env.REACT_APP_MICROSOFT_CLIENT_ID || 'YOUR_MICROSOFT_CLIENT_ID',
     authority: 'https://login.microsoftonline.com/common',
-    redirectUri: process.env.REACT_APP_REDIRECT_URI || window.location.origin
+    redirectUri: process.env.REACT_APP_REDIRECT_URI || window.location.origin,
+    // After a redirect-based login, navigate to the redirectUri root rather
+    // than back to the page that triggered the login request. Keeps the SPA
+    // from landing back on the Register page after OAuth completes.
+    navigateToLoginRequestUrl: false
   },
   cache: {
     cacheLocation: 'sessionStorage',
     storeAuthStateInCookie: false
-  },
-  system: {
-    // Prevents MSAL from polling popup.closed across cross-origin boundaries,
-    // which triggers a COOP warning when the popup is on Microsoft's login page.
-    navigateToLoginRequestUrl: false
   }
 };
 
