@@ -42,7 +42,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
         offering_id: editingOffering?.id || null,
       },
     });
-  }, []);
+  }, [editingOffering, logFormView, startAction]);
 
   useEffect(() => {
     const loadCategories = async () => {

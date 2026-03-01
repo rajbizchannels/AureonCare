@@ -57,11 +57,11 @@ const OfferingManagementView = () => {
     logViewAccess('OfferingManagementView', {
       module: 'Offerings',
     });
-  }, []);
+  }, [logViewAccess]);
 
   useEffect(() => {
     fetchData();
-  }, [activeTab, selectedCategory, showActiveOnly]);
+  }, [activeTab, fetchData, selectedCategory, showActiveOnly]);
 
   const fetchData = async () => {
     setLoading(true);

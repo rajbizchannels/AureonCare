@@ -124,10 +124,10 @@ const PatientHealthMetricsForm = ({
       // Load active prescriptions
       loadActivePrescriptions();
     }
-  }, [patient]);
+  }, [patient, loadActivePrescriptions]);
 
   // Load active prescriptions for the patient
-  const loadActivePrescriptions = async () => {
+  const loadActivePrescriptions = useCallback(async () => {
     if (!patient?.id) return;
 
     setLoadingPrescriptions(true);
@@ -152,7 +152,7 @@ const PatientHealthMetricsForm = ({
     } finally {
       setLoadingPrescriptions(false);
     }
-  };
+  }, [api, patient]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({

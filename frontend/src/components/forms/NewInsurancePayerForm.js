@@ -40,7 +40,7 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
         payer_id: editPayer?.id || null,
       },
     });
-  }, []);
+  }, [editPayer?.id, isEditing, logFormView, startAction]);
 
   // ESC key handler
   useEffect(() => {

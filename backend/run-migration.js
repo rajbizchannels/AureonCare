@@ -4,11 +4,11 @@ const fs = require('fs');
 const path = require('path');
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'aureoncare_user',
-  password: process.env.DB_PASSWORD,
+  host: process.env.AC_DB_H || 'localhost',
+  port: process.env.AC_DB_P || 5432,
+  database: process.env.AC_DB_N || 'aureoncare',
+  user: process.env.AC_DB_U || 'aureoncare_user',
+  password: process.env.AC_DB_W,
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
 });
@@ -39,9 +39,9 @@ async function main() {
   console.log('========================================');
   console.log('AureonCare Database Migrations');
   console.log('========================================\n');
-  console.log(`📊 Database: ${process.env.DB_NAME || 'aureoncare'}`);
-  console.log(`👤 User: ${process.env.DB_USER || 'aureoncare_user'}`);
-  console.log(`🖥️  Host: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}\n`);
+  console.log(`📊 Database: ${process.env.AC_DB_N || 'aureoncare'}`);
+  console.log(`👤 User: ${process.env.AC_DB_U || 'aureoncare_user'}`);
+  console.log(`🖥️  Host: ${process.env.AC_DB_H || 'localhost'}:${process.env.AC_DB_P || 5432}\n`);
 
   try {
     // Test connection

@@ -298,7 +298,7 @@ router.post('/:providerType/instant-meeting', async (req, res) => {
  * Returns data needed for the embedded Zoom Meeting SDK (Client View, CDN):
  *   - zakToken   : ZAK token — grants host privileges in the SDK
  *   - signature  : HMAC-JWT signed with SDK Key + SDK Secret
- *   - sdkKey     : SDK Key (= ZOOM_SDK_KEY, or falls back to ZOOM_CLIENT_ID)
+ *   - sdkKey     : SDK Key (= AC_ZM_SDK_K, or falls back to AC_ZM_CID)
  *   - password   : meeting password (fetched from Zoom API)
  *
  * For Zoom General Apps the OAuth Client ID/Secret ARE the SDK Key/Secret —
@@ -348,12 +348,12 @@ router.get('/zoom/host-token', async (req, res) => {
     // Resolve SDK Key / Secret.
     // For Zoom General Apps the Client ID == SDK Key and Client Secret == SDK Secret.
     // Priority: env override → database credentials (from Admin Panel).
-    const sdkKey    = process.env.ZOOM_SDK_KEY    || process.env.ZOOM_CLIENT_ID  || row.client_id;
-    const sdkSecret = process.env.ZOOM_SDK_SECRET || process.env.ZOOM_CLIENT_SECRET || row.client_secret;
+    const sdkKey    = process.env.AC_ZM_SDK_K    || process.env.AC_ZM_CID  || row.client_id;
+    const sdkSecret = process.env.AC_ZM_SDK_S || process.env.AC_ZM_CSK || row.client_secret;
 
     if (!sdkKey || !sdkSecret) {
       return res.status(422).json({
-        error: 'ZOOM_CLIENT_ID / ZOOM_CLIENT_SECRET are not configured on the server.'
+        error: 'AC_ZM_CID / AC_ZM_CSK are not configured on the server.'
       });
     }
 

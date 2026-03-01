@@ -25,7 +25,7 @@ const ReportsView = ({
     logViewAccess('ReportsView', {
       module: 'Reports',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Calculate date range
   const getFilteredData = (data, dateField = 'created_at') => {
