@@ -43,7 +43,7 @@ const ClinicalServicesView = ({
     logViewAccess('ClinicalServicesView', {
       module: 'EHR',
     });
-  }, []);
+  }, [logViewAccess]);
 
   useEffect(() => {
     if (activeTab === 'pharmacies') {
@@ -53,7 +53,7 @@ const ClinicalServicesView = ({
     } else if (activeTab === 'fhir') {
       loadFhirResources();
     }
-  }, [activeTab, selectedResourceType]);
+  }, [activeTab, loadFhirResources, loadLaboratories, loadPharmacies, selectedResourceType]);
 
   // Close forms when tab changes
   useEffect(() => {

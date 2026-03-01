@@ -13,18 +13,18 @@ async function setupDatabase() {
   console.log('AureonCare Quick Database Setup');
   console.log('===========================================\n');
 
-  // Check DATABASE_URL
-  if (!process.env.DATABASE_URL) {
-    console.error('❌ ERROR: DATABASE_URL not set in .env file');
+  // Check AC_PG_URI
+  if (!process.env.AC_PG_URI) {
+    console.error('❌ ERROR: AC_PG_URI not set in .env file');
     console.error('\nPlease create backend/.env with:');
-    console.error('DATABASE_URL=postgresql://username:password@localhost:5432/aureoncare\n');
+    console.error('AC_PG_URI=postgresql://username:password@localhost:5432/aureoncare\n');
     process.exit(1);
   }
 
-  console.log('✓ DATABASE_URL found:', process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@'));
+  console.log('✓ AC_PG_URI found:', process.env.AC_PG_URI.replace(/:[^:@]+@/, ':****@'));
 
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: process.env.AC_PG_URI,
     // Explicitly set search_path to ensure tables are found
     options: '-c search_path=public',
   });
@@ -116,7 +116,7 @@ async function setupDatabase() {
 
     if (counts[0].rows[0].count === '0') {
       console.log('\n⚠️  No data found. You may want to run seed script.');
-      console.log('   psql $DATABASE_URL -f backend/scripts/seed-test-data.sql');
+      console.log('   psql $AC_PG_URI -f backend/scripts/seed-test-data.sql');
     }
 
     console.log('\n===========================================');

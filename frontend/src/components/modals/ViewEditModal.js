@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Save, Pill, Video, ExternalLink } from 'lucide-react';
 import { formatDate, formatTime, formatCurrency, toLocalDateTimeString, toLocalDateString } from '../../utils/formatters';
 import EPrescribeModal from './ePrescribeModal';
@@ -302,7 +302,7 @@ const ViewEditModal = ({
   }, [editingItem]);
 
   // Handle close with audit logging
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     logModalClose('ViewEditModal', {
       module: 'General',
       metadata: {
@@ -311,7 +311,7 @@ const ViewEditModal = ({
       },
     });
     onClose();
-  };
+  }, [currentView, editingItem?.type, logModalClose, onClose]);
 
   // ESC key handler
   useEffect(() => {
@@ -361,7 +361,7 @@ const ViewEditModal = ({
         quantity: calculatedQuantity.toString()
       }));
     }
-  }, [editingPrescription?.frequency, editingPrescription?.duration]);
+  }, [editingPrescription]);
 
   // Handle ESC key to close prescription modal
   useEffect(() => {
