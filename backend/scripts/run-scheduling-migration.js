@@ -23,11 +23,11 @@ try {
 }
 
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'aureoncare',
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT || 5432,
+  user: process.env.AC_DB_U || 'postgres',
+  host: process.env.AC_DB_H || 'localhost',
+  database: process.env.AC_DB_N || 'aureoncare',
+  password: process.env.AC_DB_W,
+  port: process.env.AC_DB_P || 5432,
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
 });

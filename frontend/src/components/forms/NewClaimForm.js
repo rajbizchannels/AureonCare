@@ -55,7 +55,7 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
         claim_id: editingClaim?.id,
       },
     });
-  }, []);
+  }, [claims?.length, editingClaim, logFormView, patients?.length, startAction]);
 
   // Auto-load insurance payer from patient profile when patient is selected
   useEffect(() => {

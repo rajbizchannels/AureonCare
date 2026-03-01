@@ -96,7 +96,7 @@ router.post('/google-drive', async (req, res) => {
     console.log('Starting Google Drive backup...');
 
     // Check if Google Drive credentials are configured
-    const googleCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS;
+    const googleCredentials = process.env.AC_GG_DRV;
     if (!googleCredentials) {
       return res.status(400).json({
         error: 'Google Drive not configured. Please set up Google Drive credentials in environment variables.'
@@ -169,7 +169,7 @@ router.post('/onedrive', async (req, res) => {
     console.log('Starting OneDrive backup...');
 
     // Check if OneDrive credentials are configured
-    const oneDriveToken = process.env.ONEDRIVE_ACCESS_TOKEN;
+    const oneDriveToken = process.env.AC_OD_TK;
     if (!oneDriveToken) {
       return res.status(400).json({
         error: 'OneDrive not configured. Please set up OneDrive access token in environment variables.'
@@ -310,10 +310,10 @@ router.get('/config', async (req, res) => {
   try {
     const config = {
       googleDrive: {
-        configured: !!process.env.GOOGLE_DRIVE_CREDENTIALS
+        configured: !!process.env.AC_GG_DRV
       },
       oneDrive: {
-        configured: !!process.env.ONEDRIVE_ACCESS_TOKEN
+        configured: !!process.env.AC_OD_TK
       }
     };
 
@@ -351,7 +351,7 @@ router.post('/config/google-drive', async (req, res) => {
     }
 
     // Store in environment variable (runtime only)
-    process.env.GOOGLE_DRIVE_CREDENTIALS = credentials;
+    process.env.AC_GG_DRV = credentials;
 
     res.json({
       success: true,
@@ -381,7 +381,7 @@ router.post('/config/onedrive', async (req, res) => {
     }
 
     // Store in environment variable (runtime only)
-    process.env.ONEDRIVE_ACCESS_TOKEN = accessToken;
+    process.env.AC_OD_TK = accessToken;
 
     res.json({
       success: true,

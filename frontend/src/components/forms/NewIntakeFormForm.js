@@ -34,7 +34,7 @@ const NewIntakeFormForm = ({ theme, api, patients, editingForm, onClose, onSucce
         form_id: editingForm?.id,
       },
     });
-  }, []);
+  }, [editingForm, logFormView, startAction]);
 
   const formTypes = [
     { id: 'general', name: 'General Intake' },

@@ -40,7 +40,7 @@ import ConfirmationModal from '../modals/ConfirmationModal';
  */
 
 // API Base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = process.env.REACT_APP_SVC_URL || 'http://localhost:3000/api';
 
 /**
  * Get authentication headers from localStorage
