@@ -58,7 +58,7 @@ const NewLabOrderForm = ({
         order_id: editLabOrder?.id,
       },
     });
-  }, []);
+  }, [editLabOrder, formData.patientId, formData.providerId, logFormView, patient?.id, startAction, user?.id]);
 
   // Load laboratories on mount
   useEffect(() => {

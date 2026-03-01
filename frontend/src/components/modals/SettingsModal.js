@@ -37,7 +37,7 @@ const SettingsModal = ({
         userRole: user?.role,
       },
     });
-  }, []);
+  }, [logModalOpen, startAction, user?.role]);
 
   // Load WhatsApp notification preference
   useEffect(() => {

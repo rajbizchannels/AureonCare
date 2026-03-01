@@ -42,7 +42,7 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
         if (providerId) {
             fetchAvailability();
         }
-    }, [providerId]);
+    }, [fetchAvailability, providerId]);
 
     const fetchAvailability = async () => {
         setLoading(true);

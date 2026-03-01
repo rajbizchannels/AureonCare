@@ -52,7 +52,7 @@ const DashboardView = ({
     logViewAccess('DashboardView', {
       module: 'Dashboard',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Load clinic name from localStorage
   useEffect(() => {

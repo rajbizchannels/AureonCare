@@ -74,7 +74,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
         availableClaims: claims?.length || 0,
       },
     });
-  }, []);
+  }, [claims?.length, logFormView, patients?.length, startAction]);
 
   // ESC key handler
   useEffect(() => {

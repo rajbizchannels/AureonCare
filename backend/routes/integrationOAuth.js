@@ -9,7 +9,7 @@ const axios = require('axios');
  *
  * Zoom credentials resolution order:
  *   1. Database (client_id / client_secret columns)
- *   2. Environment variables: ZOOM_CLIENT_ID / ZOOM_CLIENT_SECRET
+ *   2. Environment variables: AC_ZM_CID / AC_ZM_CSK
  *
  * All tokens are stored in dedicated columns (access_token, refresh_token,
  * token_expires_at, etc.) instead of the JSONB settings blob.
@@ -20,10 +20,10 @@ const oauthStates = new Map();
 
 /**
  * Build the frontend URL for post-OAuth redirects.
- * Uses FRONTEND_URL env var so the browser ends up on the React app, not the backend.
+ * Uses AC_FE_URL env var so the browser ends up on the React app, not the backend.
  */
 function getFrontendUrl() {
-  return (process.env.FRONTEND_URL || 'http://localhost:3001').replace(/\/+$/, '');
+  return (process.env.AC_FE_URL || 'http://localhost:3001').replace(/\/+$/, '');
 }
 
 /**
@@ -92,20 +92,39 @@ function sendOAuthResult(res, success, providerType, errorDetail) {
 
 /**
  * Build the base URL for OAuth redirect URIs.
- * Uses APP_BASE_URL env var if set, otherwise falls back to request-derived URL.
+ * Uses AC_BE_URL env var if set, otherwise falls back to request-derived URL.
  */
 function getBaseUrl(req) {
-  if (process.env.APP_BASE_URL) {
-    return process.env.APP_BASE_URL.replace(/\/+$/, '');
+  if (process.env.AC_BE_URL) {
+    return process.env.AC_BE_URL.replace(/\/+$/, '');
   }
   const protocol = req.get('x-forwarded-proto') || req.protocol;
   const host = req.get('x-forwarded-host') || req.get('host');
   return `${protocol}://${host}`;
 }
 
+// Maps dynamically-generated legacy key names (e.g. "ZOOM_CLIENT_ID") to their
+// abbreviated equivalents so the runtime lookup always finds the correct var.
+const PROVIDER_ENV_MAP = {
+  ZOOM_CLIENT_ID:              'AC_ZM_CID',
+  ZOOM_CLIENT_SECRET:          'AC_ZM_CSK',
+  TEAMS_CLIENT_ID:             'AC_MS_CID',
+  TEAMS_CLIENT_SECRET:         'AC_MS_CSK',
+  MICROSOFT_TEAMS_CLIENT_ID:   'AC_MS_CID',
+  MICROSOFT_TEAMS_CLIENT_SECRET:'AC_MS_CSK',
+  WEBEX_CLIENT_ID:             'AC_WBX_CID',
+  WEBEX_CLIENT_SECRET:         'AC_WBX_CSK',
+  GOOGLE_MEET_CLIENT_ID:       'AC_GM_CID',
+  GOOGLE_MEET_CLIENT_SECRET:   'AC_GM_CSK',
+};
+
+function resolveProviderEnv(key) {
+  return process.env[PROVIDER_ENV_MAP[key] || key];
+}
+
 /**
  * Resolve client_id and client_secret for a telehealth provider.
- * Falls back to env vars (ZOOM_CLIENT_ID, etc.) when DB has no credentials.
+ * Falls back to env vars (AC_ZM_CID, etc.) when DB has no credentials.
  */
 function resolveClientCredentials(providerType, dbRow) {
   let client_id = dbRow?.client_id || null;
@@ -118,8 +137,8 @@ function resolveClientCredentials(providerType, dbRow) {
       ? ['TEAMS', prefix]
       : [prefix];
     for (const ep of envPrefixes) {
-      client_id = client_id || process.env[`${ep}_CLIENT_ID`] || null;
-      client_secret = client_secret || process.env[`${ep}_CLIENT_SECRET`] || null;
+      client_id = client_id || resolveProviderEnv(`${ep}_CLIENT_ID`) || null;
+      client_secret = client_secret || resolveProviderEnv(`${ep}_CLIENT_SECRET`) || null;
     }
   }
 

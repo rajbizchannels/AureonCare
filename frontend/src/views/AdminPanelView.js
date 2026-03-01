@@ -497,7 +497,7 @@ const AdminPanelView = ({
     logViewAccess('AdminPanelView', {
       module: 'Admin',
     });
-  }, []);
+  }, [logViewAccess]);
 
   /**
    * Sync currentPlan with planTier from context
