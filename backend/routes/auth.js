@@ -318,6 +318,7 @@ router.post('/social-login', async (req, res) => {
         const sl_lastName = lastName || '';
         const newUserResult = await pool.query(`
           INSERT INTO users (
+            id,
             email,
             first_name,
             last_name,
@@ -326,7 +327,7 @@ router.post('/social-login', async (req, res) => {
             status,
             avatar
           )
-          VALUES ($1, $2, $3, $4, 'patient', 'pending', $5)
+          VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', 'pending', $5)
           RETURNING *
         `, [
           email,
@@ -420,8 +421,8 @@ router.post('/social-register', async (req, res) => {
     const avatarInitials = `${(firstName_[0] || '')}${(lastName_[0] || '')}`.toUpperCase();
     const fullName = `${firstName_} ${lastName_}`.trim();
     const newUserResult = await pool.query(`
-      INSERT INTO users (email, first_name, last_name, name, role, status, avatar)
-      VALUES ($1, $2, $3, $4, 'patient', 'pending', $5)
+      INSERT INTO users (id, email, first_name, last_name, name, role, status, avatar)
+      VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', 'pending', $5)
       RETURNING id, email, first_name, last_name, role, status
     `, [email, firstName_, lastName_, fullName, avatarInitials]);
 
