@@ -42,7 +42,7 @@ redisClient.on('connect', () => console.log('✓ Redis Connected'));
 app.use(
   helmet({
     crossOriginEmbedderPolicy: { policy: 'credentialless' },
-    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   })
 );
 app.use(cors({
