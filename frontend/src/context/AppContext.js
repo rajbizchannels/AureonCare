@@ -171,7 +171,7 @@ const AppProvider = ({ children }) => {
               const startTime = new Date(apt.start_time.replace(' ', 'T'));
               if (startTime < now) {
                 // Update the appointment status to completed
-                const updatedApt = await api.updateAppointment(apt.id, { ...apt, status: 'completed' });
+                const updatedApt = await api.updateAppointmentStatus(apt.id, 'completed');
 
                 // Enrich the updated appointment with patient and provider names
                 const patient = patientsData?.find(p => p.id === updatedApt.patient_id);

@@ -83,6 +83,15 @@ const api = {
     if (!response.ok) throw new Error('Failed to update appointment');
     return response.json();
   },
+  updateAppointmentStatus: async (id, status) => {
+    const response = await fetch(`${API_BASE_URL}/appointments/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!response.ok) throw new Error('Failed to update appointment status');
+    return response.json();
+  },
   deleteAppointment: async (id) => {
     const response = await fetch(`${API_BASE_URL}/appointments/${id}`, {
       method: 'DELETE'
