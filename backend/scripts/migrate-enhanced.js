@@ -3,27 +3,27 @@ const { Pool } = require('pg');
 
 // Debug: Check if environment variables are loaded
 console.log('Environment check:');
-console.log('DB_HOST:', process.env.DB_HOST || 'localhost');
-console.log('DB_PORT:', process.env.DB_PORT || 5432);
-console.log('DB_NAME:', process.env.DB_NAME || 'aureoncare');
-console.log('DB_USER:', process.env.DB_USER || 'aureoncare_user');
-console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***SET***' : '***NOT SET***');
+console.log('AC_DB_H:', process.env.AC_DB_H || 'localhost');
+console.log('AC_DB_P:', process.env.AC_DB_P || 5432);
+console.log('AC_DB_N:', process.env.AC_DB_N || 'aureoncare');
+console.log('AC_DB_U:', process.env.AC_DB_U || 'aureoncare_user');
+console.log('AC_DB_W:', process.env.AC_DB_W ? '***SET***' : '***NOT SET***');
 console.log('');
 
 // Ensure password is a string
-const dbPassword = process.env.DB_PASSWORD || '';
+const dbPassword = process.env.AC_DB_W || '';
 
 if (!dbPassword) {
-  console.error('ERROR: DB_PASSWORD is not set in .env file!');
-  console.error('Please set DB_PASSWORD in backend/.env');
+  console.error('ERROR: AC_DB_W is not set in .env file!');
+  console.error('Please set AC_DB_W in backend/.env');
   process.exit(1);
 }
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'aureoncare_user',
+  host: process.env.AC_DB_H || 'localhost',
+  port: parseInt(process.env.AC_DB_P || '5432'),
+  database: process.env.AC_DB_N || 'aureoncare',
+  user: process.env.AC_DB_U || 'aureoncare_user',
   password: dbPassword.toString(),
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',

@@ -84,7 +84,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       module: 'Patient Portal',
       patient_id: user?.id,
     });
-  }, []);
+  }, [logViewAccess, user?.id]);
 
   useEffect(() => {
     if (user) {
@@ -125,7 +125,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     loadWhatsAppPreference();
     // Load featured offerings hide preference
     loadFeaturedOfferingsPreference();
-  }, [user]);
+  }, [fetchAppointmentTypes, fetchInsurancePayers, fetchPatientData, fetchPharmacyData, fetchProviders, fetchWaitlist, loadFeaturedOfferings, loadWhatsAppPreference, user]);
 
   // Load featured offerings hide preference
   const loadFeaturedOfferingsPreference = () => {

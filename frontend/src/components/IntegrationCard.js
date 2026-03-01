@@ -69,7 +69,7 @@ const IntegrationCard = ({
       }`}
     >
       {/* Header */}
-      <div className="p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}">
+      <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {Icon && (
