@@ -80,8 +80,8 @@ router.post('/', async (req, res) => {
 
         const userResult = await client.query(
           `INSERT INTO users
-           (email, password_hash, first_name, last_name, role, phone, status, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, 'patient', $5, 'active', NOW(), NOW())
+           (id, email, password_hash, first_name, last_name, role, phone, status, created_at, updated_at)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', $5, 'active', NOW(), NOW())
            RETURNING id`,
           [email, passwordHash, first_name, last_name, phone]
         );
