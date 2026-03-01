@@ -29,7 +29,7 @@ import ReportsView from './views/ReportsView';
 import CRMView from './views/CRMView';
 import IntegrationsView from './views/IntegrationsView';
 import FHIRView from './views/FHIRView';
-import PatientPortalView from './views/PatientPortalView';
+const PatientPortalView = React.lazy(() => import('./views/PatientPortalView'));
 import AdminPanelView from './views/AdminPanelView';
 import OfferingManagementView from './views/OfferingManagementView';
 import PatientDiagnosisView from './views/PatientDiagnosisView';
@@ -461,12 +461,14 @@ function App() {
         );
       case 'patientPortal':
         return (
-          <PatientPortalView
-            theme={theme}
-            api={api}
-            addNotification={addNotification}
-            user={user}
-          />
+          <React.Suspense fallback={null}>
+            <PatientPortalView
+              theme={theme}
+              api={api}
+              addNotification={addNotification}
+              user={user}
+            />
+          </React.Suspense>
         );
       case 'admin':
         return (
