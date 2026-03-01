@@ -446,7 +446,10 @@ router.post('/social-register', async (req, res) => {
     });
   } catch (error) {
     console.error('Error during social registration:', error);
-    res.status(500).json({ error: 'Registration failed. Please try again.' });
+    res.status(500).json({
+      error: 'Registration failed. Please try again.',
+      detail: error.message
+    });
   }
 });
 
