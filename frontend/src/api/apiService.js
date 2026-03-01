@@ -589,6 +589,16 @@ const api = {
     if (!response.ok) throw new Error('Failed to login with social account');
     return response.json();
   },
+  socialRegister: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
+    const response = await fetch(`${API_BASE_URL}/auth/social-register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Registration failed');
+    return data;
+  },
 
   // Telehealth
   getTelehealthSessions: async () => {

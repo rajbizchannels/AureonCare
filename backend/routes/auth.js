@@ -379,6 +379,70 @@ router.post('/social-login', async (req, res) => {
   }
 });
 
+// Social registration endpoint (Google, Microsoft)
+// Creates a new pending account linked to the social provider.
+// Unlike /social-login, this never rejects with 403 for pending status —
+// returning 201 + a message is the expected success path.
+router.post('/social-register', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { provider, providerId, accessToken, email, firstName, lastName, profileData } = req.body;
+
+    if (!provider || !providerId || !email) {
+      return res.status(400).json({ error: 'Provider, provider ID, and email are required' });
+    }
+
+    // If this social account is already linked, tell the user to sign in instead
+    const existingSocial = await pool.query(
+      'SELECT id FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
+      [provider, providerId]
+    );
+    if (existingSocial.rows.length > 0) {
+      return res.status(409).json({ error: 'An account already exists for this social profile. Please sign in instead.' });
+    }
+
+    // If the email is already registered, tell the user to sign in or link
+    const existingEmail = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+    if (existingEmail.rows.length > 0) {
+      return res.status(409).json({ error: 'This email is already registered. Please sign in or link your social account from your profile settings.' });
+    }
+
+    // Create new pending user
+    const avatarInitials = `${(firstName?.[0] || '')}${(lastName?.[0] || '')}`.toUpperCase();
+    const newUserResult = await pool.query(`
+      INSERT INTO users (email, first_name, last_name, role, status, avatar)
+      VALUES ($1, $2, $3, 'patient', 'pending', $4)
+      RETURNING id, email, first_name, last_name, role, status
+    `, [email, firstName || '', lastName || '', avatarInitials]);
+
+    const newUser = newUserResult.rows[0];
+
+    // Link social auth record
+    await pool.query(`
+      INSERT INTO social_auth (user_id, provider, provider_user_id, access_token, profile_data)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [newUser.id, provider, providerId, accessToken, JSON.stringify(profileData || {})]);
+
+    res.status(201).json({
+      message: 'Registration successful! Your account is pending approval by an administrator.',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        firstName: newUser.first_name,
+        lastName: newUser.last_name,
+        role: newUser.role,
+        status: newUser.status
+      }
+    });
+  } catch (error) {
+    console.error('Error during social registration:', error);
+    res.status(500).json({ error: 'Registration failed. Please try again.' });
+  }
+});
+
 // Link social account to existing user
 router.post('/link-social-account', async (req, res) => {
   try {
