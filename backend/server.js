@@ -47,7 +47,7 @@ app.use(
 );
 // Support multiple allowed origins via a comma-separated FRONTEND_URL env var,
 // e.g. FRONTEND_URL=https://app.aureoncare.tech,http://localhost:3001
-const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3001')
+const allowedOrigins = (process.env.FRONTEND_URL || 'https://app.aureoncare.tech,http://localhost:3001')
   .split(',')
   .map(o => o.trim())
   .filter(Boolean);
