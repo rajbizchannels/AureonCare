@@ -5,9 +5,9 @@ const { google } = require('googleapis');
 // Google Calendar OAuth configuration
 const getOAuth2Client = () => {
   return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/calendar-sync/callback'
+    process.env.AC_GG_CID,
+    process.env.AC_GG_CSK,
+    process.env.AC_GG_URI || 'http://localhost:3001/api/calendar-sync/callback'
   );
 };
 

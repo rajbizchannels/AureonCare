@@ -38,7 +38,7 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
         mode: 'create',
       },
     });
-  }, []);
+  }, [logFormView, startAction]);
 
   // Load insurance payers on mount
   useEffect(() => {

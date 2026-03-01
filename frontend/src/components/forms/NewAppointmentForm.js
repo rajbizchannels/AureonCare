@@ -35,7 +35,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
         preselectedProvider: !!user,
       },
     });
-  }, []);
+  }, [logFormView, patient, startAction, user]);
 
   // Fetch active offerings
   useEffect(() => {

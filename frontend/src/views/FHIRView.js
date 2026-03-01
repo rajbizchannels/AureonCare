@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Database, RefreshCw, Download, Upload, Check, AlertCircle, FileText, User, Activity, ArrowLeft } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 import { useAudit } from '../hooks/useAudit';
@@ -18,13 +18,9 @@ const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule }) =
     logViewAccess('FHIRView', {
       module: 'FHIR',
     });
-  }, []);
+  }, [logViewAccess]);
 
-  useEffect(() => {
-    fetchFhirResources();
-  }, [selectedResourceType, selectedPatient]);
-
-  const fetchFhirResources = async () => {
+  const fetchFhirResources = useCallback(async () => {
     try {
       setLoading(true);
       const resourceType = selectedResourceType === 'all' ? null : selectedResourceType;
@@ -36,7 +32,11 @@ const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule }) =
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, selectedResourceType, selectedPatient, addNotification]);
+
+  useEffect(() => {
+    fetchFhirResources();
+  }, [fetchFhirResources]);
 
   const handleSyncPatient = async (patientId) => {
     try {
