@@ -9,11 +9,16 @@ export const microsoftOAuthConfig = {
   auth: {
     clientId: process.env.REACT_APP_MS_CID || 'YOUR_MICROSOFT_CLIENT_ID',
     authority: 'https://login.microsoftonline.com/common',
-    redirectUri: process.env.REACT_APP_AUTH_URI || 'http://localhost:3001'
+    redirectUri: process.env.REACT_APP_REDIRECT_URI || window.location.origin
   },
   cache: {
     cacheLocation: 'sessionStorage',
     storeAuthStateInCookie: false
+  },
+  system: {
+    // Prevents MSAL from polling popup.closed across cross-origin boundaries,
+    // which triggers a COOP warning when the popup is on Microsoft's login page.
+    navigateToLoginRequestUrl: false
   }
 };
 
