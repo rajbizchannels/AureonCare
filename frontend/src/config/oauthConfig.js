@@ -18,6 +18,12 @@ export const microsoftOAuthConfig = {
   cache: {
     cacheLocation: 'sessionStorage',
     storeAuthStateInCookie: false
+  },
+  system: {
+    // Use async popup monitoring so MSAL does not synchronously poll
+    // window.closed on a cross-origin popup, which browsers with COOP
+    // same-origin-allow-popups report as a console warning.
+    asyncPopups: true
   }
 };
 

@@ -334,15 +334,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   }, [bookingData.providerId, bookingData.date]);
 
-  // Fetch available slots when provider or date changes (editing)
-  useEffect(() => {
-    if (editingAppointment && editAppointmentData.providerId && editAppointmentData.date) {
-      fetchEditAvailableSlots(editAppointmentData.providerId, editAppointmentData.date);
-    } else {
-      setEditAvailableSlots([]);
-    }
-  }, [editAppointmentData.providerId, editAppointmentData.date, editingAppointment]);
-
   const fetchEditAvailableSlots = async (providerId, date) => {
     if (!providerId || !date) {
       setEditAvailableSlots([]);
@@ -366,6 +357,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setLoadingEditSlots(false);
     }
   };
+
+  // Fetch available slots when provider or date changes (editing)
+  useEffect(() => {
+    if (editingAppointment && editAppointmentData.providerId && editAppointmentData.date) {
+      fetchEditAvailableSlots(editAppointmentData.providerId, editAppointmentData.date);
+    } else {
+      setEditAvailableSlots([]);
+    }
+  }, [editAppointmentData.providerId, editAppointmentData.date, editingAppointment]);
 
   const fetchPharmacyData = async () => {
     try {
