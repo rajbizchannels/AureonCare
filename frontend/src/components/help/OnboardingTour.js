@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, ArrowRight, ArrowLeft, Check } from 'lucide-react';
 
 const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
@@ -30,7 +30,7 @@ const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isVisible]);
+  }, [isVisible, handleSkip]);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {
@@ -52,10 +52,10 @@ const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
     if (onComplete) onComplete();
   };
 
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     setIsVisible(false);
     if (onSkip) onSkip();
-  };
+  }, [onSkip]);
 
   if (!isVisible || tourSteps.length === 0) return null;
 

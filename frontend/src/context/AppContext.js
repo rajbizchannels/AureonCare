@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import api from '../api/apiService';
 import { getTranslations } from '../config/translations';
 
@@ -132,7 +132,7 @@ const AppProvider = ({ children }) => {
    * Fetches all data from the backend API
    * @param {boolean} includeUser - Whether to fetch user data (only after authentication)
    */
-  const fetchAllData = async (includeUser = false) => {
+  const fetchAllData = useCallback(async (includeUser = false) => {
     console.log('AppContext: fetchAllData called, includeUser:', includeUser);
     setLoading(true);
     setError(null);
@@ -236,7 +236,12 @@ const AppProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   // Fetch all data on component mount
   useEffect(() => {

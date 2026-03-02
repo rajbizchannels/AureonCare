@@ -84,7 +84,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       module: 'Patient Portal',
       patient_id: user?.id,
     });
-  }, []);
+  }, [logViewAccess, user?.id]);
 
   // Load featured offerings hide preference
   const loadFeaturedOfferingsPreference = () => {

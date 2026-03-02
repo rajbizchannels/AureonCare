@@ -24,7 +24,7 @@ const LaboratoryManagementView = ({
     logViewAccess('LaboratoryManagementView', {
       module: 'EHR',
     });
-  }, []);
+  }, [logViewAccess]);
 
   const loadLaboratories = async () => {
     setLoading(true);
@@ -41,7 +41,7 @@ const LaboratoryManagementView = ({
 
   useEffect(() => {
     loadLaboratories();
-  }, []);
+  }, [loadLaboratories]);
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;

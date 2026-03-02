@@ -27,7 +27,7 @@ const NewConsentFormForm = ({ theme, api, patients, editingConsent, onClose, onS
         consent_type: editingConsent?.consent_type,
       },
     });
-  }, []);
+  }, [editingConsent, logFormView, startAction]);
 
   const consentTypes = [
     { id: 'treatment', name: 'Treatment Consent' },

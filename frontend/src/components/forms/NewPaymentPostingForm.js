@@ -56,7 +56,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
         mode: 'create',
       },
     });
-  }, []);
+  }, [formData.patientId, logFormView, startAction]);
 
   // ESC key handler
   useEffect(() => {

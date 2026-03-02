@@ -1,21 +1,32 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
-// Database connection pool
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'AureonCare2024!',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-  // Explicitly set search_path to ensure tables are found
-  options: '-c search_path=public',
-});
+// Supabase uses PostgreSQL with SSL.
+// Prefer AC_PG_URI (Supabase connection string) over individual vars.
+// For Vercel serverless, use Supabase's Transaction Pooler (port 6543).
+const poolConfig = process.env.AC_PG_URI
+  ? {
+      connectionString: process.env.AC_PG_URI,
+      ssl: { rejectUnauthorized: false },
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    }
+  : {
+      host: process.env.AC_DB_H || 'localhost',
+      port: parseInt(process.env.AC_DB_P) || 5432,
+      database: process.env.AC_DB_N || 'aureoncare',
+      user: process.env.AC_DB_U || 'postgres',
+      password: process.env.AC_DB_W,
+      ssl: process.env.AC_DB_S === 'true' ? { rejectUnauthorized: false } : false,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+      options: '-c search_path=public',
+    };
 
-// Handle pool errors
+const pool = new Pool(poolConfig);
+
 pool.on('error', (err) => {
   console.error('Unexpected error on idle database client', err);
   process.exit(-1);

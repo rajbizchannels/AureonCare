@@ -25,7 +25,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
         mode: 'create',
       },
     });
-  }, []);
+  }, [logFormView, startAction]);
 
   // ESC key handler
   useEffect(() => {
