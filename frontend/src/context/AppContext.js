@@ -243,6 +243,11 @@ const AppProvider = ({ children }) => {
     fetchAllData();
   }, [fetchAllData]);
 
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
   /**
    * Updates user preferences in the backend and local state
    * @param {Object} newPreferences - The new preferences to merge with existing ones
