@@ -63,14 +63,14 @@ const PracticeManagementView = ({
     logViewAccess('PracticeManagementView', {
       module: 'Practice Management',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Load waitlist when switching to waitlist view
   useEffect(() => {
     if (appointmentViewType === 'waitlist') {
       loadWaitlist();
     }
-  }, [appointmentViewType, waitlistStatusFilter]);
+  }, [appointmentViewType, loadWaitlist, waitlistStatusFilter]);
 
   const loadWaitlist = async () => {
     setWaitlistLoading(true);

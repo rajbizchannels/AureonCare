@@ -114,7 +114,7 @@ const EPrescribeModal = ({
         },
       });
     }
-  }, []); // Run once on mount
+  }, [patient, normalizedProvider, prescription, inline, logModalOpen, startAction]); // Run once on mount
 
   // Handle close with audit logging
   const handleClose = useCallback(() => {
@@ -288,7 +288,7 @@ const EPrescribeModal = ({
         quantity: calculatedQuantity.toString()
       }));
     }
-  }, [currentDetails.frequency, currentDetails.duration, currentDetails.quantity]);
+  }, [currentDetails]);
 
   // Select medication and check safety
   const handleSelectMedication = useCallback((medication) => {

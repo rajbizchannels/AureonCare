@@ -27,11 +27,11 @@ const AppointmentTypesManagementView = ({
     logViewAccess('AppointmentTypesManagementView', {
       module: 'Admin',
     });
-  }, []);
+  }, [logViewAccess]);
 
   useEffect(() => {
     loadAppointmentTypes();
-  }, []);
+  }, [loadAppointmentTypes]);
 
   const loadAppointmentTypes = async () => {
     try {

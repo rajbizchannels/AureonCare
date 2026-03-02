@@ -48,14 +48,9 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     logViewAccess('TelehealthView', {
       module: 'Telehealth',
     });
-  }, []);
+  }, [logViewAccess]);
 
-  useEffect(() => {
-    fetchSessions();
-    checkActiveProvider();
-  }, []);
-
-  const checkActiveProvider = async () => {
+  const checkActiveProvider = useCallback(async () => {
     try {
       setCheckingProvider(true);
       const response = await api.getTelehealthSettings();
@@ -69,9 +64,9 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     } finally {
       setCheckingProvider(false);
     }
-  };
+  }, [api]);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.getTelehealthSessions();
@@ -82,16 +77,14 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification, t.failedToLoadTelehealthSessions]);
 
-  // Fetch fresh appointments from the API when the new session form opens
   useEffect(() => {
-    if (showNewSessionForm) {
-      fetchAppointments();
-    }
-  }, [showNewSessionForm]);
+    fetchSessions();
+    checkActiveProvider();
+  }, [fetchSessions, checkActiveProvider]);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       setLoadingAppointments(true);
       const data = await api.getAppointments();
@@ -102,7 +95,14 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     } finally {
       setLoadingAppointments(false);
     }
-  };
+  }, [api, appointments]);
+
+  // Fetch fresh appointments from the API when the new session form opens
+  useEffect(() => {
+    if (showNewSessionForm) {
+      fetchAppointments();
+    }
+  }, [showNewSessionForm, fetchAppointments]);
 
   const findAppointment = (appointmentId) => {
     return localAppointments.find(a => a.id === appointmentId)

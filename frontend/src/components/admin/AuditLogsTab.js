@@ -78,7 +78,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
 
       const response = await api.getAuditLogs(queryFilters);
       setAuditLogs(response.data || []);
-      setPagination(response.pagination || pagination);
+      setPagination(p => response.pagination || p);
     } catch (error) {
       console.error('Error loading audit logs:', error);
 

@@ -4,12 +4,12 @@ const WhatsAppService = require('./whatsappService');
 
 // Create nodemailer transporter
 const transporter = nodemailer.createTransporter({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || 587,
+    host: process.env.AC_SM_H || 'smtp.gmail.com',
+    port: process.env.AC_SM_P || 587,
     secure: false, // true for 465, false for other ports
     auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+        user: process.env.AC_SM_U,
+        pass: process.env.AC_SM_W
     }
 });
 
@@ -69,7 +69,7 @@ async function sendConfirmationEmail(appointment, patient, provider) {
         });
 
         const mailOptions = {
-            from: `"${process.env.CLINIC_NAME || 'AureonCare'}" <${process.env.SMTP_USER}>`,
+            from: `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`,
             to: patient.email,
             subject: `Appointment Confirmation - ${formattedDate}`,
             html: `
@@ -182,11 +182,11 @@ async function sendConfirmationEmail(appointment, patient, provider) {
                             </div>
 
                             <div style="text-align: center; margin-top: 20px;">
-                                ${process.env.FRONTEND_URL ? `
-                                <a href="${process.env.FRONTEND_URL}/appointments/${appointment.id}" class="button">
+                                ${process.env.AC_FE_URL ? `
+                                <a href="${process.env.AC_FE_URL}/appointments/${appointment.id}" class="button">
                                     View Appointment
                                 </a>
-                                <a href="${process.env.FRONTEND_URL}/api/scheduling/cancel/${appointment.id}" class="button button-secondary">
+                                <a href="${process.env.AC_FE_URL}/api/scheduling/cancel/${appointment.id}" class="button button-secondary">
                                     Cancel Appointment
                                 </a>
                                 ` : ''}
@@ -196,11 +196,11 @@ async function sendConfirmationEmail(appointment, patient, provider) {
                                 If you need to cancel or reschedule, please do so at least 24 hours in advance.
                             </p>
 
-                            <p>Thank you for choosing ${process.env.CLINIC_NAME || 'AureonCare'}!</p>
+                            <p>Thank you for choosing ${process.env.AC_CLN || 'AureonCare'}!</p>
                         </div>
                         <div class="footer">
                             <p>This is an automated message. Please do not reply to this email.</p>
-                            <p>&copy; ${new Date().getFullYear()} ${process.env.CLINIC_NAME || 'AureonCare'}. All rights reserved.</p>
+                            <p>&copy; ${new Date().getFullYear()} ${process.env.AC_CLN || 'AureonCare'}. All rights reserved.</p>
                         </div>
                     </div>
                 </body>
@@ -273,7 +273,7 @@ async function sendReminderEmail(appointment, patient, provider) {
         const hoursUntil = Math.floor((appointmentDate - new Date()) / (1000 * 60 * 60));
 
         const mailOptions = {
-            from: `"${process.env.CLINIC_NAME || 'AureonCare'}" <${process.env.SMTP_USER}>`,
+            from: `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`,
             to: patient.email,
             subject: `Appointment Reminder - ${formattedDate}`,
             html: `
@@ -389,8 +389,8 @@ async function sendReminderEmail(appointment, patient, provider) {
                             </div>
 
                             <div style="text-align: center; margin-top: 20px;">
-                                ${process.env.FRONTEND_URL ? `
-                                <a href="${process.env.FRONTEND_URL}/appointments/${appointment.id}" class="button">
+                                ${process.env.AC_FE_URL ? `
+                                <a href="${process.env.AC_FE_URL}/appointments/${appointment.id}" class="button">
                                     View Details
                                 </a>
                                 ` : ''}
@@ -406,7 +406,7 @@ async function sendReminderEmail(appointment, patient, provider) {
                         </div>
                         <div class="footer">
                             <p>This is an automated reminder. Please do not reply to this email.</p>
-                            <p>&copy; ${new Date().getFullYear()} ${process.env.CLINIC_NAME || 'AureonCare'}. All rights reserved.</p>
+                            <p>&copy; ${new Date().getFullYear()} ${process.env.AC_CLN || 'AureonCare'}. All rights reserved.</p>
                         </div>
                     </div>
                 </body>
@@ -475,7 +475,7 @@ async function sendCancellationEmail(appointment, patient, provider) {
         });
 
         const mailOptions = {
-            from: `"${process.env.CLINIC_NAME || 'AureonCare'}" <${process.env.SMTP_USER}>`,
+            from: `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`,
             to: patient.email,
             subject: `Appointment Cancelled - ${formattedDate}`,
             html: `
@@ -578,8 +578,8 @@ async function sendCancellationEmail(appointment, patient, provider) {
                             </div>
 
                             <div style="text-align: center; margin-top: 20px;">
-                                ${process.env.FRONTEND_URL ? `
-                                <a href="${process.env.FRONTEND_URL}/book" class="button">
+                                ${process.env.AC_FE_URL ? `
+                                <a href="${process.env.AC_FE_URL}/book" class="button">
                                     Book a New Appointment
                                 </a>
                                 ` : ''}
@@ -593,7 +593,7 @@ async function sendCancellationEmail(appointment, patient, provider) {
                         </div>
                         <div class="footer">
                             <p>This is an automated message. Please do not reply to this email.</p>
-                            <p>&copy; ${new Date().getFullYear()} ${process.env.CLINIC_NAME || 'AureonCare'}. All rights reserved.</p>
+                            <p>&copy; ${new Date().getFullYear()} ${process.env.AC_CLN || 'AureonCare'}. All rights reserved.</p>
                         </div>
                     </div>
                 </body>

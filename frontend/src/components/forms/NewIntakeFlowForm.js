@@ -41,7 +41,7 @@ const NewIntakeFlowForm = ({ theme, api, patients, editingFlow, onClose, onSucce
         availablePatients: patients?.length || 0,
       },
     });
-  }, []);
+  }, [editingFlow, logFormView, patients?.length, startAction]);
 
   useEffect(() => {
     const handleEsc = (e) => {

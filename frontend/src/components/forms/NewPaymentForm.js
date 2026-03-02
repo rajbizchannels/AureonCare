@@ -43,7 +43,7 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
         payment_id: editingPayment?.id,
       },
     });
-  }, []);
+  }, [editingPayment, logFormView, startAction]);
 
   // ESC key handler
   useEffect(() => {
