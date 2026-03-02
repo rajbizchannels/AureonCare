@@ -86,47 +86,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     });
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      // Initialize profile data from user
-      let parsedUser = { ...user };
-
-      // Always preserve the original address field (even if null/empty)
-      parsedUser.address = user.address || '';
-
-      // Ensure country is preserved
-      parsedUser.country = user.country || '';
-
-      // Convert language code to full name for display
-      const codeToNameMap = {
-        'en': 'English',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'ar': 'Arabic'
-      };
-      if (parsedUser.language && codeToNameMap[parsedUser.language]) {
-        parsedUser.language = codeToNameMap[parsedUser.language];
-      } else if (!parsedUser.language) {
-        parsedUser.language = 'English'; // Default
-      }
-
-      setProfileData(parsedUser);
-      fetchPatientData();
-      fetchProviders();
-      fetchPharmacyData();
-      fetchWaitlist();
-      loadFeaturedOfferings();
-      fetchInsurancePayers();
-    }
-    // Fetch appointment types on component mount (doesn't require user)
-    fetchAppointmentTypes();
-    // Load WhatsApp preference
-    loadWhatsAppPreference();
-    // Load featured offerings hide preference
-    loadFeaturedOfferingsPreference();
-  }, [user]);
-
   // Load featured offerings hide preference
   const loadFeaturedOfferingsPreference = () => {
     try {
@@ -134,17 +93,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setHidesFeaturedOfferings(hidden === 'true');
     } catch (error) {
       console.error('Error loading featured offerings preference:', error);
-    }
-  };
-
-  const handleDismissFeaturedOfferings = () => {
-    try {
-      localStorage.setItem('hideFeaturedOfferings', 'true');
-      setHidesFeaturedOfferings(true);
-      addNotification('success', 'Featured offerings hidden. You can clear browser data to show them again.');
-    } catch (error) {
-      console.error('Error saving featured offerings preference:', error);
-      addNotification('alert', 'Failed to save preference');
     }
   };
 
@@ -172,18 +120,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setLoadingWhatsApp(false);
     }
   };
-
-  // Handle ESC key to close prescription modal
-  useEffect(() => {
-    const handleEscKey = (event) => {
-      if (event.key === 'Escape' && selectedPrescription) {
-        setSelectedPrescription(null);
-      }
-    };
-
-    document.addEventListener('keydown', handleEscKey);
-    return () => document.removeEventListener('keydown', handleEscKey);
-  }, [selectedPrescription]);
 
   const fetchProviders = async () => {
     setLoadingProviders(true);
@@ -263,6 +199,189 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setLoadingPayers(false);
     }
   };
+
+  const fetchPharmacyData = async () => {
+    try {
+      // Fetch all pharmacies for selection
+      const allPharmacies = await api.getPharmacies();
+      setPharmacies(allPharmacies || []);
+
+      // Fetch patient's preferred pharmacies
+      if (user?.id) {
+        const patientPreferred = await api.getPatientPreferredPharmacies(user.id);
+        setPreferredPharmacies(patientPreferred || []);
+
+        // Set the primary preferred pharmacy as selected
+        // Reset to empty if no preferred pharmacy exists
+        const primary = patientPreferred?.find(p => p.isPreferred || p.is_preferred);
+        if (primary) {
+          // The API returns the full pharmacy object with the pharmacy's ID as 'id'
+          setSelectedPharmacyId(primary.id);
+        } else {
+          // No preferred pharmacy found, reset selection
+          setSelectedPharmacyId('');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching pharmacy data:', error);
+      setPharmacies([]);
+      setPreferredPharmacies([]);
+      setSelectedPharmacyId('');
+    }
+  };
+
+  const loadFeaturedOfferings = async () => {
+    try {
+      setLoadingOfferings(true);
+      const offerings = await api.getOfferings({ featured: true, active: true });
+      setFeaturedOfferings(offerings || []);
+    } catch (error) {
+      console.error('Error loading featured offerings:', error);
+    } finally {
+      setLoadingOfferings(false);
+    }
+  };
+
+  const fetchPatientData = async () => {
+    try {
+      // The user object from patient portal login is the patient record itself
+      const patientId = user.id;
+
+      console.log('Fetching patient data for ID:', patientId);
+
+      // Fetch appointments, medical records, diagnoses, prescriptions, and full profile for the patient
+      const [appts, records, diags, presc, profile] = await Promise.all([
+        api.getAppointments().then(all => {
+          console.log('All appointments:', all);
+          console.log('Looking for appointments with patient_id:', patientId);
+
+          // Filter appointments by patient_id
+          const filtered = all.filter(a => {
+            const appointmentPatientId = a.patient_id?.toString();
+            const userPatientId = patientId?.toString();
+            const matches = appointmentPatientId === userPatientId;
+
+            console.log(`Checking appointment ${a.id}: patient_id=${appointmentPatientId} vs user.id=${userPatientId} - ${matches ? 'MATCH ✓' : 'no match'}`);
+
+            return matches;
+          });
+
+          console.log('Filtered appointments for patient:', filtered);
+          console.log(`Total: ${filtered.length} appointments found`);
+          return filtered;
+        }),
+        api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
+        api.getDiagnoses ? api.getDiagnoses(patientId) : Promise.resolve([]),
+        api.getPatientActivePrescriptions(patientId).catch(() => []),
+        api.getPatientProfile(patientId).catch(() => null)
+      ]);
+      setAppointments(appts);
+      setMedicalRecords(records);
+      setDiagnoses(diags);
+      setPrescriptions(presc);
+
+      // Update profileData with the full profile from database
+      if (profile) {
+        let updatedProfile = { ...profile };
+        // Parse address if it's a string
+        if (profile.address && typeof profile.address === 'string') {
+          const addressParts = profile.address.split(',').map(p => p.trim());
+          updatedProfile.address_street = addressParts[0] || '';
+          updatedProfile.address_city = addressParts[1] || '';
+          const stateZip = (addressParts[2] || '').split(' ');
+          updatedProfile.address_state = stateZip[0] || '';
+          updatedProfile.address_zip = stateZip[1] || '';
+        }
+        updatedProfile.address = profile.address || '';
+
+        // Ensure country is preserved
+        updatedProfile.country = profile.country || '';
+
+        // Convert language code to full name for display
+        const codeToNameMap = {
+          'en': 'English',
+          'es': 'Spanish',
+          'fr': 'French',
+          'de': 'German',
+          'ar': 'Arabic'
+        };
+        if (updatedProfile.language && codeToNameMap[updatedProfile.language]) {
+          updatedProfile.language = codeToNameMap[updatedProfile.language];
+        } else if (!updatedProfile.language) {
+          updatedProfile.language = 'English'; // Default
+        }
+
+        setProfileData(updatedProfile);
+      }
+    } catch (error) {
+      console.error('Error fetching patient data:', error);
+      addNotification('alert', t.failedToLoadPatientData);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      // Initialize profile data from user
+      let parsedUser = { ...user };
+
+      // Always preserve the original address field (even if null/empty)
+      parsedUser.address = user.address || '';
+
+      // Ensure country is preserved
+      parsedUser.country = user.country || '';
+
+      // Convert language code to full name for display
+      const codeToNameMap = {
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'ar': 'Arabic'
+      };
+      if (parsedUser.language && codeToNameMap[parsedUser.language]) {
+        parsedUser.language = codeToNameMap[parsedUser.language];
+      } else if (!parsedUser.language) {
+        parsedUser.language = 'English'; // Default
+      }
+
+      setProfileData(parsedUser);
+      fetchPatientData();
+      fetchProviders();
+      fetchPharmacyData();
+      fetchWaitlist();
+      loadFeaturedOfferings();
+      fetchInsurancePayers();
+    }
+    // Fetch appointment types on component mount (doesn't require user)
+    fetchAppointmentTypes();
+    // Load WhatsApp preference
+    loadWhatsAppPreference();
+    // Load featured offerings hide preference
+    loadFeaturedOfferingsPreference();
+  }, [user]);
+
+  const handleDismissFeaturedOfferings = () => {
+    try {
+      localStorage.setItem('hideFeaturedOfferings', 'true');
+      setHidesFeaturedOfferings(true);
+      addNotification('success', 'Featured offerings hidden. You can clear browser data to show them again.');
+    } catch (error) {
+      console.error('Error saving featured offerings preference:', error);
+      addNotification('alert', 'Failed to save preference');
+    }
+  };
+
+  // Handle ESC key to close prescription modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && selectedPrescription) {
+        setSelectedPrescription(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [selectedPrescription]);
 
   const handleJoinWaitlist = async () => {
     if (!bookingData.date || !bookingData.providerId) {
@@ -367,36 +486,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   }, [editAppointmentData.providerId, editAppointmentData.date, editingAppointment]);
 
-  const fetchPharmacyData = async () => {
-    try {
-      // Fetch all pharmacies for selection
-      const allPharmacies = await api.getPharmacies();
-      setPharmacies(allPharmacies || []);
-
-      // Fetch patient's preferred pharmacies
-      if (user?.id) {
-        const patientPreferred = await api.getPatientPreferredPharmacies(user.id);
-        setPreferredPharmacies(patientPreferred || []);
-
-        // Set the primary preferred pharmacy as selected
-        // Reset to empty if no preferred pharmacy exists
-        const primary = patientPreferred?.find(p => p.isPreferred || p.is_preferred);
-        if (primary) {
-          // The API returns the full pharmacy object with the pharmacy's ID as 'id'
-          setSelectedPharmacyId(primary.id);
-        } else {
-          // No preferred pharmacy found, reset selection
-          setSelectedPharmacyId('');
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching pharmacy data:', error);
-      setPharmacies([]);
-      setPreferredPharmacies([]);
-      setSelectedPharmacyId('');
-    }
-  };
-
   const handleAddPreferredPharmacy = async () => {
     if (!selectedPharmacyId || !user?.id) {
       addNotification('alert', t.pleaseSelectPharmacy);
@@ -431,95 +520,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setMedicalRecords(records);
     } catch (error) {
       console.error('Error fetching medical records:', error);
-    }
-  };
-
-  const loadFeaturedOfferings = async () => {
-    try {
-      setLoadingOfferings(true);
-      const offerings = await api.getOfferings({ featured: true, active: true });
-      setFeaturedOfferings(offerings || []);
-    } catch (error) {
-      console.error('Error loading featured offerings:', error);
-    } finally {
-      setLoadingOfferings(false);
-    }
-  };
-
-  const fetchPatientData = async () => {
-    try {
-      // The user object from patient portal login is the patient record itself
-      const patientId = user.id;
-
-      console.log('Fetching patient data for ID:', patientId);
-
-      // Fetch appointments, medical records, diagnoses, prescriptions, and full profile for the patient
-      const [appts, records, diags, presc, profile] = await Promise.all([
-        api.getAppointments().then(all => {
-          console.log('All appointments:', all);
-          console.log('Looking for appointments with patient_id:', patientId);
-
-          // Filter appointments by patient_id
-          const filtered = all.filter(a => {
-            const appointmentPatientId = a.patient_id?.toString();
-            const userPatientId = patientId?.toString();
-            const matches = appointmentPatientId === userPatientId;
-
-            console.log(`Checking appointment ${a.id}: patient_id=${appointmentPatientId} vs user.id=${userPatientId} - ${matches ? 'MATCH ✓' : 'no match'}`);
-
-            return matches;
-          });
-
-          console.log('Filtered appointments for patient:', filtered);
-          console.log(`Total: ${filtered.length} appointments found`);
-          return filtered;
-        }),
-        api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
-        api.getDiagnoses ? api.getDiagnoses(patientId) : Promise.resolve([]),
-        api.getPatientActivePrescriptions(patientId).catch(() => []),
-        api.getPatientProfile(patientId).catch(() => null)
-      ]);
-      setAppointments(appts);
-      setMedicalRecords(records);
-      setDiagnoses(diags);
-      setPrescriptions(presc);
-
-      // Update profileData with the full profile from database
-      if (profile) {
-        let updatedProfile = { ...profile };
-        // Parse address if it's a string
-        if (profile.address && typeof profile.address === 'string') {
-          const addressParts = profile.address.split(',').map(p => p.trim());
-          updatedProfile.address_street = addressParts[0] || '';
-          updatedProfile.address_city = addressParts[1] || '';
-          const stateZip = (addressParts[2] || '').split(' ');
-          updatedProfile.address_state = stateZip[0] || '';
-          updatedProfile.address_zip = stateZip[1] || '';
-        }
-        updatedProfile.address = profile.address || '';
-
-        // Ensure country is preserved
-        updatedProfile.country = profile.country || '';
-
-        // Convert language code to full name for display
-        const codeToNameMap = {
-          'en': 'English',
-          'es': 'Spanish',
-          'fr': 'French',
-          'de': 'German',
-          'ar': 'Arabic'
-        };
-        if (updatedProfile.language && codeToNameMap[updatedProfile.language]) {
-          updatedProfile.language = codeToNameMap[updatedProfile.language];
-        } else if (!updatedProfile.language) {
-          updatedProfile.language = 'English'; // Default
-        }
-
-        setProfileData(updatedProfile);
-      }
-    } catch (error) {
-      console.error('Error fetching patient data:', error);
-      addNotification('alert', t.failedToLoadPatientData);
     }
   };
 

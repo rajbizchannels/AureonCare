@@ -128,11 +128,6 @@ const AppProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Fetch all data on component mount
-  useEffect(() => {
-    fetchAllData();
-  }, []);
-
   /**
    * Fetches all data from the backend API
    * @param {boolean} includeUser - Whether to fetch user data (only after authentication)
@@ -242,6 +237,11 @@ const AppProvider = ({ children }) => {
       setLoading(false);
     }
   };
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, []);
 
   /**
    * Updates user preferences in the backend and local state
