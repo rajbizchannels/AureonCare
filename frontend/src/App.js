@@ -29,7 +29,6 @@ import ReportsView from './views/ReportsView';
 import CRMView from './views/CRMView';
 import IntegrationsView from './views/IntegrationsView';
 import FHIRView from './views/FHIRView';
-const PatientPortalView = React.lazy(() => import('./views/PatientPortalView'));
 import AdminPanelView from './views/AdminPanelView';
 import OfferingManagementView from './views/OfferingManagementView';
 import PatientDiagnosisView from './views/PatientDiagnosisView';
@@ -84,6 +83,10 @@ import PatientsQuickView from './components/quickViews/PatientsQuickView';
 
 // Initialize MSAL instance for Microsoft OAuth
 const msalInstance = new PublicClientApplication(microsoftOAuthConfig);
+
+// Lazy-load PatientPortalView so it lands in a separate Webpack chunk,
+// preventing scope-hoisting TDZ when the main bundle is concatenated.
+const PatientPortalView = React.lazy(() => import('./views/PatientPortalView'));
 
 function App() {
   const {
