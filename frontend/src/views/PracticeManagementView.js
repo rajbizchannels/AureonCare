@@ -65,13 +65,6 @@ const PracticeManagementView = ({
     });
   }, [logViewAccess]);
 
-  // Load waitlist when switching to waitlist view
-  useEffect(() => {
-    if (appointmentViewType === 'waitlist') {
-      loadWaitlist();
-    }
-  }, [appointmentViewType, loadWaitlist, waitlistStatusFilter]);
-
   const loadWaitlist = async () => {
     setWaitlistLoading(true);
     try {
@@ -84,6 +77,13 @@ const PracticeManagementView = ({
       setWaitlistLoading(false);
     }
   };
+
+  // Load waitlist when switching to waitlist view
+  useEffect(() => {
+    if (appointmentViewType === 'waitlist') {
+      loadWaitlist();
+    }
+  }, [appointmentViewType, waitlistStatusFilter]);
 
   const handleConfirmAppointment = (entry) => {
     setSelectedWaitlistEntry(entry);
