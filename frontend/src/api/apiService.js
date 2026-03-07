@@ -2349,7 +2349,207 @@ const api = {
   },
 
   // Add baseURL property for components that need it
-  baseURL: API_BASE_URL
+  baseURL: API_BASE_URL,
+
+  // ─── Reports API ───────────────────────────────────────────────────────────
+
+  // Operational Reports
+  getReportDailyAppointments: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/daily-appointments?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch daily appointments report');
+    return response.json();
+  },
+
+  getReportProviderUtilization: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/provider-utilization?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch provider utilization report');
+    return response.json();
+  },
+
+  getReportPatientVisits: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/patient-visits?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient visits report');
+    return response.json();
+  },
+
+  getReportNoShows: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/no-shows?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch no-show report');
+    return response.json();
+  },
+
+  getReportWaitTimes: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/wait-times?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch wait times report');
+    return response.json();
+  },
+
+  // Financial Reports
+  getReportRevenue: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/revenue?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch revenue report');
+    return response.json();
+  },
+
+  getReportBillingSummary: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/billing-summary?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch billing summary report');
+    return response.json();
+  },
+
+  getReportOutstandingPayments: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/outstanding-payments?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch outstanding payments report');
+    return response.json();
+  },
+
+  getReportPaymentCollection: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/payment-collection?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch payment collection report');
+    return response.json();
+  },
+
+  getReportRefunds: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/refunds?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch refund report');
+    return response.json();
+  },
+
+  // Insurance & Claims Reports
+  getReportClaimStatus: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/claim-status?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch claim status report');
+    return response.json();
+  },
+
+  getReportClaimRejections: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/claim-rejections?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch claim rejections report');
+    return response.json();
+  },
+
+  getReportDenialAnalysis: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/denial-analysis?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch denial analysis report');
+    return response.json();
+  },
+
+  getReportPayerPerformance: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/payer-performance?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch payer performance report');
+    return response.json();
+  },
+
+  // Patient Reports
+  getReportPatientDemographics: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/demographics?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient demographics report');
+    return response.json();
+  },
+
+  getReportPatientVisitHistory: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/visit-history?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient visit history report');
+    return response.json();
+  },
+
+  getReportPatientRetention: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/retention?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient retention report');
+    return response.json();
+  },
+
+  getReportPatientSatisfaction: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/satisfaction?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient satisfaction report');
+    return response.json();
+  },
+
+  // Provider Reports
+  getReportProviderProductivity: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/productivity?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch provider productivity report');
+    return response.json();
+  },
+
+  getReportAppointmentVolumeByProvider: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/appointment-volume?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch appointment volume report');
+    return response.json();
+  },
+
+  getReportRevenueByProvider: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/revenue?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch revenue by provider report');
+    return response.json();
+  },
+
+  getReportTelehealthUsage: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/telehealth-usage?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch telehealth usage report');
+    return response.json();
+  },
+
+  // Compliance Reports
+  getReportAuditLogs: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/audit-logs?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch audit logs report');
+    return response.json();
+  },
+
+  getReportAccessLogs: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/access-logs?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch access logs report');
+    return response.json();
+  },
+
+  getReportHIPAACompliance: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/hipaa?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch HIPAA compliance report');
+    return response.json();
+  },
+
+  getReportDataAccessHistory: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/data-access-history?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch data access history report');
+    return response.json();
+  },
+
+  // Custom Report
+  generateCustomReport: async (config) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/custom`, {
+      method: 'POST',
+      body: JSON.stringify(config)
+    });
+    if (!response.ok) throw new Error('Failed to generate custom report');
+    return response.json();
+  }
 };
 
 export default api;
