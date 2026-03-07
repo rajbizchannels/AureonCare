@@ -445,6 +445,7 @@ function App() {
             payments={payments}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            api={api}
           />
         );
       case 'crm':
