@@ -662,10 +662,10 @@ const GraphBuilderModal = ({ onClose, onSave, theme, reportData, currentChart })
 // ─────────────────────────────────────────────────────────────
 
 const CUSTOM_FIELDS = {
-  appointments: ['id', 'start_time', 'end_time', 'status', 'type', 'reason', 'patient_name', 'provider_name', 'specialization'],
-  claims: ['id', 'claim_number', 'service_date', 'status', 'amount', 'payer', 'denial_reason', 'patient_name', 'provider_name'],
-  payments: ['id', 'payment_date', 'amount', 'payment_method', 'status', 'notes', 'patient_name'],
-  patients: ['id', 'first_name', 'last_name', 'date_of_birth', 'gender', 'phone', 'email', 'insurance_provider', 'state', 'city'],
+  appointments: ['id', 'start_time', 'end_time', 'status', 'appointment_type', 'reason', 'patient_name', 'provider_name', 'specialization'],
+  claims: ['id', 'claim_number', 'service_date', 'status', 'amount', 'payer', 'patient_name'],
+  payments: ['id', 'payment_date', 'amount', 'payment_method', 'payment_status', 'notes', 'patient_name'],
+  patients: ['id', 'first_name', 'last_name', 'date_of_birth', 'gender', 'phone', 'email', 'insurance', 'state', 'city'],
 };
 
 const CustomReportBuilderModal = ({ onClose, onRun, theme }) => {
