@@ -156,6 +156,7 @@ export const modulePermissions = {
   reports: 'reports', // Requires reports.view
   integrations: 'admin', // Requires admin permissions
   clinicalServices: 'ehr', // Requires ehr.view (includes FHIR, pharmacies, laboratories)
+  formManagement: 'ehr', // Requires ehr.view (providers, staff, and admins)
   patientPortal: null, // Patients can access their own portal
   adminPanel: 'admin', // Requires admin.users
   offeringManagement: 'admin' // Requires admin.settings
