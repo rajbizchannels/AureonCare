@@ -1557,28 +1557,32 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
         <div className="flex-1 overflow-y-auto p-6">
           {/* Welcome State */}
           {!selectedReport && !customResult && !customLoading && (
-            <div className="flex flex-col items-center justify-center h-full text-center py-16">
-              <BarChart3 className={`w-16 h-16 mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-300'}`} />
-              <h3 className={`text-xl font-semibold mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Reports & Analytics
-              </h3>
-              <p className={`text-sm mb-6 max-w-md ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                Select a report category and report from the sidebar, or create a custom report with the button above.
-              </p>
-              <div className="grid grid-cols-3 gap-3 max-w-xl">
+            <div className="space-y-5">
+              <div className="flex items-center gap-3">
+                <BarChart3 className={`w-6 h-6 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                <div>
+                  <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Reports & Analytics</h3>
+                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    Select a report from the sidebar, or create a custom report.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
                 {REPORT_CATEGORIES.map(cat => {
                   const Icon = cat.icon;
                   const color = catColor[cat.id];
                   return (
                     <button key={cat.id} onClick={() => { setExpandedCategories(p => ({ ...p, [cat.id]: true })); selectReport(cat, cat.reports[0]); }}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all cursor-pointer ${
-                        theme === 'dark' ? 'border-slate-700 hover:border-slate-500 bg-slate-800/40' : 'border-gray-200 hover:border-gray-300 bg-white'
+                      className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
+                        theme === 'dark' ? 'border-slate-700 hover:border-slate-500 bg-slate-800/40' : 'border-gray-200 hover:border-gray-300 bg-white shadow-sm'
                       }`}>
-                      <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${catBg[color]}`}>
+                      <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${catBg[color]}`}>
                         <Icon className="w-5 h-5" />
                       </span>
-                      <span className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{cat.name}</span>
-                      <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{cat.reports.length} reports</span>
+                      <div>
+                        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{cat.name}</p>
+                        <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{cat.reports.length} reports</p>
+                      </div>
                     </button>
                   );
                 })}
