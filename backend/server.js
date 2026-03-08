@@ -150,6 +150,7 @@ app.use('/api/archive-rules', require('./routes/archiveRules'));
 app.use('/api/audit', require('./routes/audit'));
 app.use('/api/billing', require('./routes/billing'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/form-management', require('./routes/form-management'));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

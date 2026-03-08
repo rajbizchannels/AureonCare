@@ -2549,6 +2549,177 @@ const api = {
     });
     if (!response.ok) throw new Error('Failed to generate custom report');
     return response.json();
+  },
+
+  // ============================================================
+  // FORM MANAGEMENT MODULE
+  // ============================================================
+
+  // Form Categories
+  getFormCategories: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/categories`);
+    if (!response.ok) throw new Error('Failed to fetch form categories');
+    return response.json();
+  },
+  createFormCategory: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/categories`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create form category');
+    return response.json();
+  },
+
+  // Form Templates
+  getFormTemplates: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.category) params.append('category', filters.category);
+    if (filters.template_type) params.append('template_type', filters.template_type);
+    if (filters.specialty) params.append('specialty', filters.specialty);
+    if (filters.is_active !== undefined) params.append('is_active', filters.is_active);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.intake_flow_eligible !== undefined) params.append('intake_flow_eligible', filters.intake_flow_eligible);
+    if (filters.role) params.append('role', filters.role);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch form templates');
+    return response.json();
+  },
+  getFormTemplate: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch form template');
+    return response.json();
+  },
+  createFormTemplate: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to create form template' }));
+      throw new Error(err.error || 'Failed to create form template');
+    }
+    return response.json();
+  },
+  updateFormTemplate: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${id}`, {
+      method: 'PUT', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update form template');
+    return response.json();
+  },
+  deleteFormTemplate: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete form template');
+    return response.json();
+  },
+
+  // Template Versions
+  getFormTemplateVersions: async (templateId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${templateId}/versions`);
+    if (!response.ok) throw new Error('Failed to fetch template versions');
+    return response.json();
+  },
+  restoreFormTemplateVersion: async (templateId, versionId) => {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/form-management/templates/${templateId}/versions/${versionId}/restore`,
+      { method: 'POST' }
+    );
+    if (!response.ok) throw new Error('Failed to restore template version');
+    return response.json();
+  },
+
+  // Form Submissions
+  getFormSubmissions: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.template_id) params.append('template_id', filters.template_id);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.appointment_id) params.append('appointment_id', filters.appointment_id);
+    if (filters.intake_flow_id) params.append('intake_flow_id', filters.intake_flow_id);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch form submissions');
+    return response.json();
+  },
+  getFormSubmission: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch form submission');
+    return response.json();
+  },
+  createFormSubmission: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to create form submission' }));
+      throw new Error(err.error || 'Failed to create form submission');
+    }
+    return response.json();
+  },
+  updateFormSubmission: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${id}`, {
+      method: 'PUT', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update form submission');
+    return response.json();
+  },
+  deleteFormSubmission: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete form submission');
+    return response.json();
+  },
+
+  // eSignature
+  addFormSignature: async (submissionId, signatureData) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${submissionId}/sign`, {
+      method: 'POST', body: JSON.stringify(signatureData)
+    });
+    if (!response.ok) throw new Error('Failed to add signature');
+    return response.json();
+  },
+  getFormSignatures: async (submissionId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${submissionId}/signatures`);
+    if (!response.ok) throw new Error('Failed to fetch signatures');
+    return response.json();
+  },
+
+  // Audit Logs
+  getFormAuditLogs: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.resource_type) params.append('resource_type', filters.resource_type);
+    if (filters.resource_id) params.append('resource_id', filters.resource_id);
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.actor_id) params.append('actor_id', filters.actor_id);
+    if (filters.action) params.append('action', filters.action);
+    if (filters.limit) params.append('limit', filters.limit);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/audit-logs${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch form audit logs');
+    return response.json();
+  },
+
+  // Intake Flow Integration
+  getIntakeFlowFormTemplates: async (flowId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/intake-flows/${flowId}/templates`);
+    if (!response.ok) throw new Error('Failed to fetch flow templates');
+    return response.json();
+  },
+  assignFormTemplatesToFlow: async (flowId, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/intake-flows/${flowId}/templates`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to assign templates to flow');
+    return response.json();
+  },
+
+  // Form Stats
+  getFormManagementStats: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/stats`);
+    if (!response.ok) throw new Error('Failed to fetch form stats');
+    return response.json();
   }
 };
 
