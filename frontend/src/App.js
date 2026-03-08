@@ -40,6 +40,7 @@ import PharmacyManagementView from './views/PharmacyManagementView';
 import LaboratoryManagementView from './views/LaboratoryManagementView';
 import ClinicalServicesView from './views/ClinicalServicesView';
 import WaitlistManagementView from './views/WaitlistManagementView';
+import FormManagementView from './views/FormManagementView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -529,6 +530,18 @@ function App() {
             theme={theme}
             api={api}
             patients={patients}
+            setCurrentModule={setCurrentModule}
+            addNotification={addNotification}
+            t={t}
+          />
+        );
+      case 'formManagement':
+        return (
+          <FormManagementView
+            theme={theme}
+            api={api}
+            patients={patients}
+            user={user}
             setCurrentModule={setCurrentModule}
             addNotification={addNotification}
             t={t}
