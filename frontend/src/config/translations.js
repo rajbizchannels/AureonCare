@@ -45,6 +45,7 @@ export const translations = {
     urgent: 'urgent',
     approved: 'approved',
     thisWeek: 'this week',
+    vsLastMonth: 'vs last month',
 
     // Common Actions
     save: 'Save',
@@ -900,6 +901,7 @@ export const translations = {
     urgent: 'urgente',
     approved: 'aprobado',
     thisWeek: 'esta semana',
+    vsLastMonth: 'vs el mes pasado',
 
     // Common Actions
     save: 'Guardar',
@@ -1754,6 +1756,7 @@ export const translations = {
     urgent: 'urgent',
     approved: 'approuvé',
     thisWeek: 'cette semaine',
+    vsLastMonth: 'vs le mois dernier',
 
     // Common Actions
     save: 'Enregistrer',
@@ -2608,6 +2611,7 @@ export const translations = {
     urgent: 'dringend',
     approved: 'genehmigt',
     thisWeek: 'diese Woche',
+    vsLastMonth: 'vs letzten Monat',
 
     // Common Actions
     save: 'Speichern',
@@ -3462,6 +3466,7 @@ export const translations = {
     urgent: 'عاجل',
     approved: 'معتمد',
     thisWeek: 'هذا الأسبوع',
+    vsLastMonth: 'مقارنة بالشهر الماضي',
 
     // Common Actions
     save: 'حفظ',
