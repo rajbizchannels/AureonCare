@@ -434,6 +434,35 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                Module
+              </label>
+              <select
+                value={filters.module}
+                onChange={(e) => handleFilterChange('module', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg ${
+                  theme === 'dark'
+                    ? 'bg-slate-900 border-slate-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              >
+                <option value="">All Modules</option>
+                <option value="practiceManagement">Practice Management</option>
+                <option value="providerManagement">Provider Management</option>
+                <option value="ehr">EHR</option>
+                <option value="telehealth">Telehealth</option>
+                <option value="rcm">RCM</option>
+                <option value="billing">Billing</option>
+                <option value="clinicalServices">Clinical Services</option>
+                <option value="reports">Reports</option>
+                <option value="crm">CRM</option>
+                <option value="integrations">Integrations</option>
+                <option value="patientPortal">Patient Portal</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                 Start Date
               </label>
               <input
