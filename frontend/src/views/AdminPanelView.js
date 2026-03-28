@@ -1629,103 +1629,66 @@ const AdminPanelView = ({
   }, [fetchBackupConfigStatus]);
 
   /**
-   * Configure cloud backup provider (OAuth)
-   * Supports both initial configuration and reconfiguration
+   * Configure cloud backup provider (OAuth).
+   * If OAuth credentials are already saved (DB or env vars), shows the One-Click
+   * "Sign in with Google / Microsoft" modal — identical UX to the Zoom flow.
+   * If no credentials exist yet, shows the manual credential-entry form first.
    */
   const handleConfigureCloudBackup = useCallback(async (providerType) => {
     try {
       const displayName = providerType === 'google_drive' ? 'Google Drive' : 'OneDrive';
 
-      // Check if provider is already configured for reconfiguration
-      const providerKey = providerType === 'google_drive' ? 'googleDrive' : 'oneDrive';
-      const isConfigured = backupConfig[providerKey]?.configured;
+      // Check whether credentials are already saved (DB or env vars)
+      const credResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
 
-      if (isConfigured) {
-        // For reconfiguration, fetch and show existing credentials
+      if (credResponse.ok) {
+        // Credentials found → show One-Click "Sign in" modal (same flow as Zoom)
         await handleReconfigureIntegration(providerType, displayName, 'oauth');
         return;
       }
 
-      await addNotification('info', `Initiating ${displayName} configuration...`);
+      // No credentials saved yet → show manual credential-entry form first,
+      // then trigger OAuth automatically after the user saves them.
+      const initiateOAuthAfterSave = async () => {
+        try {
+          await addNotification('info', 'Initiating OAuth flow...');
+          const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+          const retryData = await retryResponse.json();
+          if (!retryResponse.ok) throw new Error(retryData.error || 'Failed to initiate OAuth flow');
 
-      // Call OAuth initiate endpoint
-      const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
-      const data = await response.json();
+          const width = 600, height = 700;
+          const left = window.screen.width / 2 - width / 2;
+          const top = window.screen.height / 2 - height / 2;
+          const popup = window.open(retryData.authUrl, 'OAuth Authorization',
+            `width=${width},height=${height},left=${left},top=${top}`);
 
-      if (!response.ok) {
-        // If provider not configured, show credential modal
-        if (data.error === 'Provider not configured') {
-          setCredentialModalConfig({
-            providerName: displayName,
-            providerType: providerType,
-            credentialType: 'oauth',
-            onSuccess: async () => {
-              // Retry OAuth initiation after credentials are saved
-              try {
-                await addNotification('info', 'Initiating OAuth flow...');
-
-                const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
-                const retryData = await retryResponse.json();
-
-                if (!retryResponse.ok) {
-                  throw new Error(retryData.error || 'Failed to initiate OAuth flow');
-                }
-
-                // Open OAuth flow
-                const width = 600;
-                const height = 700;
-                const left = window.screen.width / 2 - width / 2;
-                const top = window.screen.height / 2 - height / 2;
-
-                const popup = window.open(
-                  retryData.authUrl,
-                  'OAuth Authorization',
-                  `width=${width},height=${height},left=${left},top=${top}`
-                );
-
-                // Poll backend OAuth status (COOP-safe)
-                pollOAuthStatus(providerType, popup, async (success) => {
-                  if (success) {
-                    await fetchBackupConfigStatus();
-                    await addNotification('success', `${displayName} configured successfully.`);
-                  }
-                });
-              } catch (error) {
-                console.error('Error in OAuth flow:', error);
-                await addNotification('alert', error.message || 'Failed to complete OAuth flow');
-              }
+          pollOAuthStatus(providerType, popup, async (success) => {
+            if (success) {
+              await fetchBackupConfigStatus();
+              setShowCredentialModal(false);
+              await addNotification('success', `${displayName} configured successfully.`);
             }
           });
-          setShowCredentialModal(true);
-          return;
+        } catch (error) {
+          console.error('Error in OAuth flow:', error);
+          await addNotification('alert', error.message || 'Failed to complete OAuth flow');
         }
-        throw new Error(data.error || 'Failed to initiate OAuth flow');
-      }
+      };
 
-      // Open OAuth flow in popup window
-      const width = 600;
-      const height = 700;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
-
-      const popup = window.open(
-        data.authUrl,
-        'OAuth Authorization',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-
-      // Poll backend OAuth status (COOP-safe)
-      pollOAuthStatus(providerType, popup, async (success) => {
-        if (success) {
-          await fetchBackupConfigStatus();
-          await addNotification('success', 'Configuration updated. Please check the status.');
-        }
+      setCredentialModalConfig({
+        providerName: displayName,
+        providerType,
+        credentialType: 'oauth',
+        existingCredentials: null,
+        onSuccess: initiateOAuthAfterSave,
+        onConnect: null,
       });
+      setShowCredentialModal(true);
     } catch (error) {
       console.error(`Error configuring ${providerType}:`, error);
       await addNotification('alert', error.message || `Failed to configure ${providerType}`);
     }
-  }, [backupConfig, handleReconfigureIntegration, addNotification, fetchBackupConfigStatus, pollOAuthStatus]);
+  }, [handleReconfigureIntegration, addNotification, fetchBackupConfigStatus, pollOAuthStatus, setShowCredentialModal]);
 
   /**
    * Restore from backup file
