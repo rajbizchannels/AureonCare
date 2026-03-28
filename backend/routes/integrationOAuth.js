@@ -116,6 +116,10 @@ const PROVIDER_ENV_MAP = {
   WEBEX_CLIENT_SECRET:         'AC_WBX_CSK',
   GOOGLE_MEET_CLIENT_ID:       'AC_GM_CID',
   GOOGLE_MEET_CLIENT_SECRET:   'AC_GM_CSK',
+  GOOGLE_DRIVE_CLIENT_ID:      'AC_GD_CID',
+  GOOGLE_DRIVE_CLIENT_SECRET:  'AC_GD_CSK',
+  ONEDRIVE_CLIENT_ID:          'AC_OD_CID',
+  ONEDRIVE_CLIENT_SECRET:      'AC_OD_CSK',
 };
 
 function resolveProviderEnv(key) {
@@ -475,19 +479,23 @@ router.get('/:providerType/callback', async (req, res) => {
         ]
       );
     } else {
-      // Backup providers — keep using JSONB settings for now
+      // Backup providers — store tokens in JSONB settings
       const settingsData = {
         access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
+        refresh_token: tokens.refresh_token || null,
         expires_at: expiresAt,
         scope: tokens.scope || config.scope,
       };
 
+      // UPSERT so tokens are saved even if no row exists yet
       await pool.query(
-        `UPDATE ${info.table}
-         SET settings = $1, updated_at = CURRENT_TIMESTAMP
-         WHERE ${info.field} = $2`,
-        [JSON.stringify(settingsData), providerType]
+        `INSERT INTO ${info.table} (${info.field}, is_enabled, settings, updated_at)
+         VALUES ($1, true, $2::jsonb, CURRENT_TIMESTAMP)
+         ON CONFLICT (${info.field}) DO UPDATE
+           SET settings = $2::jsonb,
+               is_enabled = true,
+               updated_at = CURRENT_TIMESTAMP`,
+        [providerType, JSON.stringify(settingsData)]
       );
     }
 
