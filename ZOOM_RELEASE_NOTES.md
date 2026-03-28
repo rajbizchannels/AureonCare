@@ -25,3 +25,4 @@ Test Flow: Log in as Provider → Telehealth → open appointment → click "Sta
 Email: info@aureoncare.tech
 Privacy Policy: https://aureoncare.tech/privacy-policy
 Terms of Service: https://aureoncare.tech/terms-of-service
+Documentation: https://aureoncare.tech/docs/guides/zoom-integration.html
