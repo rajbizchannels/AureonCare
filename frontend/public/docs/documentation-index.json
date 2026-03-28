@@ -290,6 +290,31 @@
       "icon": "🎥",
       "articles": [
         {
+          "id": "zoom-integration",
+          "title": "Zoom Integration Guide",
+          "path": "/docs/guides/zoom-integration.html",
+          "url": "/docs/guides/zoom-integration.html",
+          "keywords": [
+            "zoom",
+            "telehealth",
+            "video",
+            "oauth",
+            "connect",
+            "disconnect",
+            "remove",
+            "integration",
+            "recording",
+            "meeting",
+            "add app",
+            "deauthorize"
+          ],
+          "summary": "Add, use, and remove the Zoom app for telehealth sessions\n\nStep-by-step guide covering OAuth setup, scheduling and starting video sessions, cloud recording, and how to disconnect and delete Zoom data.",
+          "content": "**Adding the Zoom App:**\n\nPrerequisites:\n• Active AureonCare Administrator account\n• Zoom account (Pro, Business, or higher)\n• Pop-ups allowed in your browser\n\nSteps:\n1. Log in and go to Settings > Integrations\n2. Find the Zoom card under Telehealth Providers\n3. Click Connect Zoom\n4. Sign in to Zoom and click Allow\n5. Zoom card shows Connected badge when done\n6. Optionally click Test Connection to verify\n\nPermissions granted: meeting:write, meeting:read, recording:read, user:read\n\n**Usage:**\n\nSchedule a Telehealth Appointment:\n• Go to Practice Management > Appointments\n• Create a new appointment with type Telehealth\n• AureonCare auto-creates a Zoom meeting and sends the patient a join link\n\nStart a Session (Provider):\n• Open the appointment and click Start Video Consultation\n• Allow camera and microphone when prompted\n• The Zoom session opens inside AureonCare\n\nJoin a Session (Patient):\n• Click the link in appointment reminder email/SMS, or log in to Patient Portal\n• No Zoom account required for patients\n\nCloud Recording:\n• Click Record during an active session (requires patient consent)\n• Recording link appears in the appointment record within minutes\n\n**Removing the Zoom App:**\n\nStep 1 – Disconnect from AureonCare:\n1. Go to Settings > Integrations\n2. Click Disconnect on the Zoom card and confirm\n\nStep 2 – Revoke from Zoom (Recommended):\n1. Go to marketplace.zoom.us > Manage > Added Apps\n2. Find AureonCare and click Remove\n\nImplications of removal:\n• No new Zoom meetings can be created\n• Existing join links become invalid\n• Cloud recordings remain on your Zoom account\n• AureonCare deletes stored OAuth tokens immediately\n• Meeting metadata in appointment history is retained for records; contact info@aureoncare.tech for full data deletion",
+          "roles": [
+            "admin"
+          ]
+        },
+        {
           "id": "video-consultations",
           "title": "Video Consultations",
           "path": "/docs/index.html#video-consultations",
