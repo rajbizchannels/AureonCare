@@ -95,11 +95,16 @@ router.post('/google-drive', async (req, res) => {
   try {
     console.log('Starting Google Drive backup...');
 
-    // Check if Google Drive credentials are configured
-    const googleCredentials = process.env.AC_GG_DRV;
-    if (!googleCredentials) {
+    // Load OAuth access token saved by the Google Drive OAuth flow
+    const settingsResult = await pool.query(
+      `SELECT settings FROM backup_provider_settings WHERE provider_type = 'google_drive'`
+    );
+    const settings = settingsResult.rows[0]?.settings || {};
+    const accessToken = typeof settings === 'string' ? JSON.parse(settings).access_token : settings.access_token;
+
+    if (!accessToken) {
       return res.status(400).json({
-        error: 'Google Drive not configured. Please set up Google Drive credentials in environment variables.'
+        error: 'Google Drive not connected. Please sign in with your Google account first.'
       });
     }
 
@@ -117,13 +122,10 @@ router.post('/google-drive', async (req, res) => {
 
     const backupData = await backupResponse.json();
 
-    // Initialize Google Drive API
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(googleCredentials),
-      scopes: ['https://www.googleapis.com/auth/drive.file']
-    });
-
-    const drive = google.drive({ version: 'v3', auth });
+    // Use the stored OAuth access token
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
     // Create file metadata
     const fileMetadata = {
@@ -168,11 +170,16 @@ router.post('/onedrive', async (req, res) => {
   try {
     console.log('Starting OneDrive backup...');
 
-    // Check if OneDrive credentials are configured
-    const oneDriveToken = process.env.AC_OD_TK;
+    // Load OAuth access token saved by the OneDrive OAuth flow
+    const settingsResult = await pool.query(
+      `SELECT settings FROM backup_provider_settings WHERE provider_type = 'onedrive'`
+    );
+    const settings = settingsResult.rows[0]?.settings || {};
+    const oneDriveToken = typeof settings === 'string' ? JSON.parse(settings).access_token : settings.access_token;
+
     if (!oneDriveToken) {
       return res.status(400).json({
-        error: 'OneDrive not configured. Please set up OneDrive access token in environment variables.'
+        error: 'OneDrive not connected. Please sign in with your Microsoft account first.'
       });
     }
 
@@ -190,7 +197,7 @@ router.post('/onedrive', async (req, res) => {
 
     const backupData = await backupResponse.json();
 
-    // Initialize Microsoft Graph client
+    // Initialize Microsoft Graph client using the stored OAuth token
     const client = Client.init({
       authProvider: (done) => {
         done(null, oneDriveToken);
@@ -308,13 +315,28 @@ router.post('/restore', async (req, res) => {
  */
 router.get('/config', async (req, res) => {
   try {
+    // Configured = has a valid OAuth access token saved after sign-in
+    let googleConfigured = false;
+    let oneDriveConfigured = false;
+
+    try {
+      const result = await pool.query(
+        `SELECT provider_type,
+                (settings->>'access_token' IS NOT NULL AND settings->>'access_token' != '') AS has_token
+         FROM backup_provider_settings
+         WHERE provider_type IN ('google_drive', 'onedrive')`
+      );
+      result.rows.forEach(row => {
+        if (row.provider_type === 'google_drive') googleConfigured = row.has_token;
+        if (row.provider_type === 'onedrive')     oneDriveConfigured = row.has_token;
+      });
+    } catch (_) {
+      // Table may not exist yet — treat as not configured
+    }
+
     const config = {
-      googleDrive: {
-        configured: !!process.env.AC_GG_DRV
-      },
-      oneDrive: {
-        configured: !!process.env.AC_OD_TK
-      }
+      googleDrive: { configured: googleConfigured },
+      oneDrive:    { configured: oneDriveConfigured }
     };
 
     res.json(config);
