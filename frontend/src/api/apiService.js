@@ -1226,6 +1226,29 @@ const api = {
     return response.json();
   },
 
+  // Offering Linked Forms
+  getOfferingLinkedForms: async (offeringId) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/forms`);
+    if (!response.ok) throw new Error('Failed to fetch offering forms');
+    return response.json();
+  },
+  linkFormToOffering: async (offeringId, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/forms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to link form to offering');
+    return response.json();
+  },
+  unlinkFormFromOffering: async (offeringId, formTemplateId) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/forms/${formTemplateId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to unlink form from offering');
+    return response.json();
+  },
+
   // Offering Pricing
   getOfferingPricing: async (offeringId) => {
     const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/pricing`);
