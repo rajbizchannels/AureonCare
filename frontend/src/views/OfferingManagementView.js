@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import api from '../api/apiService';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -65,11 +65,7 @@ const OfferingManagementView = () => {
     });
   }, [logViewAccess]);
 
-  useEffect(() => {
-    fetchData();
-  }, [activeTab, fetchData, selectedCategory, showActiveOnly]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       if (activeTab === 'offerings') {
@@ -107,7 +103,11 @@ const OfferingManagementView = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, selectedCategory, showActiveOnly]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const openModal = (type, item = null) => {
     setModalType(type);
