@@ -29,7 +29,8 @@ import {
   BarChart3,
   ShoppingCart,
   Percent,
-  ArrowLeft
+  ArrowLeft,
+  ClipboardList
 } from 'lucide-react';
 
 const OfferingManagementView = () => {
@@ -50,6 +51,11 @@ const OfferingManagementView = () => {
   const [formData, setFormData] = useState({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteInfo, setDeleteInfo] = useState({ id: null, type: null });
+  const [showFormsPanel, setShowFormsPanel] = useState(false);
+  const [selectedOfferingForForms, setSelectedOfferingForForms] = useState(null);
+  const [offeringLinkedForms, setOfferingLinkedForms] = useState([]);
+  const [availableFormTemplates, setAvailableFormTemplates] = useState([]);
+  const [loadingForms, setLoadingForms] = useState(false);
 
   const { logViewAccess } = useAudit();
 
@@ -254,6 +260,49 @@ const OfferingManagementView = () => {
       fetchData();
     } catch (error) {
       console.error('Error toggling status:', error);
+    }
+  };
+
+  const openFormsPanel = async (offering) => {
+    setSelectedOfferingForForms(offering);
+    setShowFormsPanel(true);
+    setLoadingForms(true);
+    try {
+      const [linked, templates] = await Promise.all([
+        api.getOfferingLinkedForms(offering.id).catch(() => []),
+        api.getFormTemplates().catch(() => [])
+      ]);
+      setOfferingLinkedForms(linked);
+      setAvailableFormTemplates(templates);
+    } catch (error) {
+      console.error('Error loading forms:', error);
+    } finally {
+      setLoadingForms(false);
+    }
+  };
+
+  const closeFormsPanel = () => {
+    setShowFormsPanel(false);
+    setSelectedOfferingForForms(null);
+    setOfferingLinkedForms([]);
+    setAvailableFormTemplates([]);
+  };
+
+  const handleToggleFormLink = async (formTemplate) => {
+    const isLinked = offeringLinkedForms.some(f => f.form_template_id === formTemplate.id || f.id === formTemplate.id);
+    try {
+      if (isLinked) {
+        await api.unlinkFormFromOffering(selectedOfferingForForms.id, formTemplate.id);
+        setOfferingLinkedForms(prev => prev.filter(f => f.form_template_id !== formTemplate.id && f.id !== formTemplate.id));
+      } else {
+        const result = await api.linkFormToOffering(selectedOfferingForForms.id, {
+          form_template_id: formTemplate.id,
+          trigger_on: 'order'
+        });
+        setOfferingLinkedForms(prev => [...prev, result]);
+      }
+    } catch (error) {
+      console.error('Error toggling form link:', error);
     }
   };
 
@@ -507,6 +556,18 @@ const OfferingManagementView = () => {
         <>
           {/* Offerings Tab */}
           {activeTab === 'offerings' && (
+            <>
+            {showFormsPanel && selectedOfferingForForms && (
+              <OfferingFormsPanel
+                offering={selectedOfferingForForms}
+                linkedForms={offeringLinkedForms}
+                availableTemplates={availableFormTemplates}
+                loading={loadingForms}
+                onToggle={handleToggleFormLink}
+                onClose={closeFormsPanel}
+                theme={theme}
+              />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredOfferings.map(offering => (
                 <OfferingCard
@@ -516,6 +577,8 @@ const OfferingManagementView = () => {
                   onEdit={() => openModal('offering', offering)}
                   onDelete={() => handleDeleteClick(offering.id, 'offering')}
                   onToggleStatus={() => toggleStatus(offering.id, 'offering', offering.is_active)}
+                  onManageForms={() => openFormsPanel(offering)}
+                  isFormsActive={showFormsPanel && selectedOfferingForForms?.id === offering.id}
                 />
               ))}
               {filteredOfferings.length === 0 && (
@@ -524,6 +587,7 @@ const OfferingManagementView = () => {
                 </div>
               )}
             </div>
+            </>
           )}
 
           {/* Packages Tab */}
@@ -600,10 +664,10 @@ const OfferingManagementView = () => {
 };
 
 // Offering Card Component
-const OfferingCard = ({ offering, theme, onEdit, onDelete, onToggleStatus }) => (
+const OfferingCard = ({ offering, theme, onEdit, onDelete, onToggleStatus, onManageForms, isFormsActive }) => (
   <div className={`rounded-lg border p-6 ${
     theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-  }`}>
+  } ${isFormsActive ? 'ring-2 ring-teal-500' : ''}`}>
     <div className="flex justify-between items-start mb-4">
       <div className="flex-1">
         <h3 className="text-lg font-semibold mb-1">{offering.name}</h3>
@@ -625,6 +689,13 @@ const OfferingCard = ({ offering, theme, onEdit, onDelete, onToggleStatus }) => 
         </div>
       </div>
       <div className="flex gap-2">
+        <button
+          onClick={onManageForms}
+          title="Manage triggered forms"
+          className={`${isFormsActive ? 'text-teal-500' : 'text-gray-400 hover:text-teal-500'}`}
+        >
+          <ClipboardList className="w-5 h-5" />
+        </button>
         <button onClick={onToggleStatus} className="text-gray-400 hover:text-gray-600">
           {offering.is_active ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
         </button>
@@ -1175,5 +1246,88 @@ const CheckboxField = ({ label, checked, onChange, theme }) => (
     </button>
   </div>
 );
+
+// Offering Forms Panel — assign form templates that auto-trigger on order
+const OfferingFormsPanel = ({ offering, linkedForms, availableTemplates, loading, onToggle, onClose, theme }) => {
+  const linkedIds = new Set(linkedForms.map(f => f.form_template_id ?? f.id));
+
+  return (
+    <div className={`mb-6 rounded-xl shadow-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className={`p-5 border-b flex justify-between items-start ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div>
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-teal-500" />
+            Triggered Forms — {offering.name}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Selected forms will automatically be sent to the patient when they order this offering.
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="p-5">
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500" />
+          </div>
+        ) : availableTemplates.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">
+            No form templates found. Create templates in the Form Management module first.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {availableTemplates.map(template => {
+              const linked = linkedIds.has(template.id);
+              return (
+                <button
+                  key={template.id}
+                  onClick={() => onToggle(template)}
+                  className={`flex items-start gap-3 p-4 rounded-lg border text-left transition-colors ${
+                    linked
+                      ? theme === 'dark'
+                        ? 'bg-teal-900/40 border-teal-600 text-teal-300'
+                        : 'bg-teal-50 border-teal-400 text-teal-800'
+                      : theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 hover:border-gray-500'
+                      : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${
+                    linked
+                      ? 'bg-teal-500 border-teal-500'
+                      : theme === 'dark' ? 'border-gray-500' : 'border-gray-300'
+                  }`}>
+                    {linked && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{template.name}</p>
+                    {template.specialty && (
+                      <p className="text-xs text-gray-500 mt-0.5">{template.specialty}</p>
+                    )}
+                    {template.description && (
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">{template.description}</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && linkedForms.length > 0 && (
+          <p className="mt-4 text-xs text-gray-500">
+            {linkedForms.length} form{linkedForms.length !== 1 ? 's' : ''} will be triggered when a patient orders this offering.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default OfferingManagementView;
