@@ -28,6 +28,16 @@
     <div class="doc-container">
         <a href="../index.html" class="back-link">← Back to Documentation</a>
 
+        <!-- Support Banner -->
+        <div class="article-card" style="background:#eff6ff; border-left: 4px solid #3b82f6;">
+            <p>
+                <strong>Need help?</strong> Contact AureonCare Support at
+                <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a> &mdash;
+                or jump to the <a href="#troubleshooting">Troubleshooting</a> and
+                <a href="#faq">FAQ</a> sections on this page.
+            </p>
+        </div>
+
         <!-- Table of Contents -->
         <div class="article-card">
             <h2>On This Page</h2>
@@ -43,6 +53,7 @@
                 </li>
                 <li><a href="#removing-the-app">Removing the Zoom App</a></li>
                 <li><a href="#troubleshooting">Troubleshooting</a></li>
+                <li><a href="#faq">Frequently Asked Questions</a></li>
             </ul>
         </div>
 
@@ -107,19 +118,27 @@
                 <tbody>
                     <tr>
                         <td><code>meeting:write</code></td>
-                        <td>Create and manage Zoom meetings for telehealth appointments</td>
+                        <td>Create Zoom meetings automatically when a telehealth appointment is scheduled, and configure HIPAA-required settings (waiting room on, join-before-host off)</td>
                     </tr>
                     <tr>
                         <td><code>meeting:read</code></td>
-                        <td>Retrieve meeting details and join links to display in-app</td>
+                        <td>Retrieve meeting join URLs and IDs to display in the appointment record and deliver secure join links to patients</td>
+                    </tr>
+                    <tr>
+                        <td><code>meeting:delete</code></td>
+                        <td>Delete the associated Zoom meeting when an appointment is cancelled or rescheduled, preventing orphaned meetings and invalidating stale join links</td>
                     </tr>
                     <tr>
                         <td><code>recording:read</code></td>
-                        <td>Access cloud recordings so providers can review session recordings (only when recording is enabled)</td>
+                        <td>Retrieve cloud recording links after a session ends and attach them to the appointment record for clinical review (only when the provider has enabled recording with documented patient consent)</td>
                     </tr>
                     <tr>
                         <td><code>user:read</code></td>
-                        <td>Confirm the connected Zoom user identity and account status</td>
+                        <td>Verify the identity and account status of the connecting Zoom user at authorization time, and display the linked email in the Integrations settings panel</td>
+                    </tr>
+                    <tr>
+                        <td><code>user:read:zak</code></td>
+                        <td>Obtain the Zoom Access Key to authenticate the provider as meeting host inside the embedded Zoom Meeting SDK, enabling full host privileges (waiting room control, recording) without a separate Zoom browser login</td>
                     </tr>
                 </tbody>
             </table>
@@ -366,6 +385,50 @@
                 <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a> or visit the
                 <a href="../troubleshooting/common-issues.html">full troubleshooting guide</a>.
             </p>
+        </div>
+    </div>
+
+        <!-- ============================================================
+             SECTION 5 — FAQ
+             ============================================================ -->
+        <div class="article-card" id="faq">
+            <h1 class="article-title">Frequently Asked Questions</h1>
+
+            <h3>Installation</h3>
+
+            <p><strong>Do patients need a Zoom account to join a session?</strong><br>
+            No. Patients join via a secure link delivered by email or SMS and are taken directly into the session through their browser. No Zoom account or Zoom app download is required.</p>
+
+            <p><strong>Can individual providers connect their own Zoom accounts?</strong><br>
+            No. The integration is practice-wide. A single Zoom account (Pro or higher) is connected by an Administrator and used to create meetings on behalf of all providers in the practice.</p>
+
+            <p><strong>What happens if I connect a Zoom account that is later downgraded to a free plan?</strong><br>
+            Free Zoom accounts have a 40-minute limit on group meetings. Telehealth sessions may be cut off mid-visit. We recommend maintaining a Pro or higher plan. AureonCare will display a warning in the Integrations panel if a meeting creation fails due to account restrictions.</p>
+
+            <h3>Usage</h3>
+
+            <p><strong>Can I use AureonCare's telehealth feature without Zoom?</strong><br>
+            Yes. AureonCare also supports Google Meet and Webex as telehealth providers. You can configure an alternative provider in <strong>Settings &rarr; Integrations</strong> and select it when scheduling appointments.</p>
+
+            <p><strong>Is the Zoom session embedded inside AureonCare or does it open separately?</strong><br>
+            The session is embedded directly in AureonCare using the Zoom Meeting SDK, so providers never leave the EHR. Patients join through a standalone browser link and do not see the AureonCare interface.</p>
+
+            <p><strong>Will Zoom send any email notifications to my patients?</strong><br>
+            No. Zoom email notifications are disabled for meetings created by AureonCare. All appointment reminders and join links are sent exclusively through AureonCare's own notification system, ensuring communications remain HIPAA-compliant and branded to your practice.</p>
+
+            <p><strong>Where are cloud recordings stored?</strong><br>
+            Recordings are stored in Zoom's cloud under your practice's Zoom account, subject to your Zoom plan's retention settings. AureonCare stores only a reference link to the recording — it does not download, copy, or host the recording file.</p>
+
+            <h3>Removing the App</h3>
+
+            <p><strong>If I remove the app from Zoom Marketplace, will AureonCare still work?</strong><br>
+            Removing the app from Zoom Marketplace revokes all OAuth tokens. AureonCare will no longer be able to create or manage Zoom meetings. You should also disconnect the integration inside AureonCare (<strong>Settings &rarr; Integrations &rarr; Disconnect</strong>) to keep your settings in sync. All other AureonCare features remain fully functional.</p>
+
+            <p><strong>Will my past appointment records be deleted when I disconnect?</strong><br>
+            No. Appointment history, clinical notes, and meeting metadata (meeting ID, join URL, scheduled time) are retained in AureonCare as part of the patient record for clinical and legal purposes. Only OAuth tokens and Zoom account credentials are permanently deleted. To request full erasure of Zoom-related metadata from your records, email <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a>.</p>
+
+            <p><strong>How do I contact support?</strong><br>
+            Email <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a>. Include your practice name and a description of the issue. For urgent matters during business hours, reference "Zoom Integration" in the subject line.</p>
         </div>
     </div>
 
