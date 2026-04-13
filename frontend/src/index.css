@@ -37,3 +37,21 @@ code {
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-in-out;
 }
+
+/* Zoom Meeting SDK — Active Apps Notifier (AAN) visibility
+   Ensures the SDK's built-in AAN icon and panel are never hidden by custom z-index layering.
+   The AAN is a Zoom Marketplace requirement — it must be visible and easy to find. */
+[class*="meeting-info-icon"],
+[class*="active-apps"],
+[class*="aan-"] {
+  z-index: 15 !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure the meeting info bar (which contains the AAN shield icon) is visible
+   in the top-left of the SDK container and not clipped by overflow. */
+[class*="meeting-info-container"],
+[class*="meeting-info-icon-container"] {
+  overflow: visible !important;
+  z-index: 15 !important;
+}
