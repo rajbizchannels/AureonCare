@@ -144,7 +144,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         addNotification('appointment', `${pLabel} session created successfully`);
       }
 
-      setSessions([newSession, ...sessions]);
+      setSessions(prev => [newSession, ...prev]);
       setShowNewSessionForm(false);
     } catch (error) {
       console.error('Error creating session:', error);
@@ -212,6 +212,8 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         window.open(result.meetingUrl, '_blank', 'noopener,noreferrer');
         addNotification('success', `${providerLabel(provType)} meeting launched in a new tab`);
       }
+      // Refresh sessions so the total count and lists stay up-to-date
+      fetchSessions();
     } catch (error) {
       console.error('Failed to create instant meeting:', error);
       const msg = error.message || '';
@@ -235,12 +237,15 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     ).sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
   };
 
-  const getRecentSessions = () => {
+  const getCompletedSessions = () => {
     return sessions.filter(s =>
       s.session_status === 'completed' ||
       (s.end_time && new Date(s.end_time) < new Date())
-    ).sort((a, b) => new Date(b.end_time || b.start_time) - new Date(a.end_time || a.start_time))
-    .slice(0, 5);
+    ).sort((a, b) => new Date(b.end_time || b.start_time) - new Date(a.end_time || a.start_time));
+  };
+
+  const getRecentSessions = () => {
+    return getCompletedSessions().slice(0, 5);
   };
 
   const getAvailableAppointments = () => {
@@ -264,7 +269,8 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
   const isZoomActive = activeProvider?.provider_type === 'zoom';
   const upcomingSessions = getUpcomingSessions();
-  const recentSessions = getRecentSessions();
+  const completedSessions = getCompletedSessions();
+  const recentSessions = completedSessions.slice(0, 5);
   const availableAppointments = getAvailableAppointments();
 
   if (loading) {
@@ -283,7 +289,11 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
           meetingId={zoomEmbedConfig.meetingId}
           api={api}
           displayName="Host"
-          onClose={() => setZoomEmbedConfig(null)}
+          onClose={() => {
+            setZoomEmbedConfig(null);
+            // Refetch sessions after meeting ends so counts and statuses are current
+            fetchSessions();
+          }}
         />
       )}
 
@@ -577,7 +587,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
             <h3 className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.completed || 'Completed'}</h3>
             <Clock className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
           </div>
-          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{recentSessions.length}</p>
+          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{completedSessions.length}</p>
         </div>
       </div>
 
