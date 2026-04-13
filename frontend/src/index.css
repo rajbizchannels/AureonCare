@@ -38,20 +38,35 @@ code {
   animation: fadeIn 0.3s ease-in-out;
 }
 
-/* Zoom Meeting SDK — Active Apps Notifier (AAN) visibility
-   Ensures the SDK's built-in AAN icon and panel are never hidden by custom z-index layering.
-   The AAN is a Zoom Marketplace requirement — it must be visible and easy to find. */
+/* Zoom Meeting SDK — Portal z-index fix
+   The SDK uses MUI internally and renders poppers, tooltips, dialogs, and modals
+   as portals appended to document.body. Our meeting overlay uses a high z-index,
+   so these body-level portals must sit above it to be visible and clickable.
+   This covers: Security panel, "…" More menu, Leave dialog, AAN panel,
+   tooltips on hover, and any other SDK-spawned overlay. */
+body > [class*="MuiPopover"],
+body > [class*="MuiPopper"],
+body > [class*="MuiModal"],
+body > [class*="MuiDialog"],
+body > [class*="MuiTooltip"],
+body > [class*="MuiBackdrop"],
+body > [class*="react-draggable"],
+body > [role="presentation"],
+body > [role="tooltip"],
+body > [role="dialog"] {
+  z-index: 99999 !important;
+}
+
+/* Zoom SDK also renders some elements just inside the zoomAppRoot.
+   Ensure the AAN icon, meeting-info bar, and toolbar poppers are
+   visible and not clipped. */
 [class*="meeting-info-icon"],
 [class*="active-apps"],
 [class*="aan-"] {
-  z-index: 15 !important;
   pointer-events: auto !important;
 }
 
-/* Ensure the meeting info bar (which contains the AAN shield icon) is visible
-   in the top-left of the SDK container and not clipped by overflow. */
 [class*="meeting-info-container"],
 [class*="meeting-info-icon-container"] {
   overflow: visible !important;
-  z-index: 15 !important;
 }
