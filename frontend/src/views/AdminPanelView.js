@@ -1347,7 +1347,7 @@ const AdminPanelView = ({
 
   /**
    * Configure telehealth provider (SaaS zero-config model).
-   * All OAuth providers (Zoom, Google Meet, Webex) use the same flow:
+   * All OAuth providers (Zoom, Google Meet, Webex, Teams) use the same flow:
    *   1. App credentials (Client ID/Secret) come from platform env vars — never from the clinic admin.
    *   2. Clinic admin clicks "Connect [Provider] Account" → OAuth popup opens.
    *   3. If platform env vars are missing, shows a "not enabled on this platform" message.

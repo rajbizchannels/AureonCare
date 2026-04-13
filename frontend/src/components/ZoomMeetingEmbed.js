@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Loader } from 'lucide-react';
+import { X, Loader, Shield } from 'lucide-react';
 import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
 
 /**
@@ -12,6 +12,14 @@ import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
  *  - @zoom/meetingsdk npm package (installed)
  *  - SDK binary assets (WASM, workers) served from /zoom-lib
  *    → copied there by `npm run prestart / prebuild` via scripts/copy-zoom-lib.js
+ *
+ * Active Apps Notifier (AAN):
+ *  The AAN is a Zoom Marketplace requirement that notifies meeting participants
+ *  when an app is accessing meeting content (video, audio, chat, files).
+ *  The SDK renders the AAN icon automatically in the meeting-info area (top-left).
+ *  We configure its popper position via customize.activeApps so the panel is
+ *  visible when clicked. An additional indicator is shown in our custom header
+ *  to make it easy to find per Zoom's review requirements.
  *
  * Props:
  *   meetingId   {string}   Zoom meeting number
@@ -30,6 +38,7 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
 
   const [status,   setStatus]   = useState('loading'); // loading | joining | joined | error
   const [errorMsg, setErrorMsg] = useState(null);
+  const [aanVisible, setAanVisible] = useState(false); // AAN panel toggle
 
   // ------------------------------------------------------------------
   // Tear down any active or stale SDK session.
@@ -83,6 +92,9 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
       clientRef.current = client;
 
       // Initialize the SDK — points it at the binary assets we copied to public/
+      // The customize.activeApps.popper config ensures the Active Apps Notifier
+      // (AAN) panel is positioned visibly in the top-left of the meeting area.
+      // meetingInfo includes all default items so the AAN shield icon is rendered.
       await client.init({
         zoomAppRoot: containerRef.current,
         language:    'en-US',
@@ -90,6 +102,34 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
         // Binary assets (WASM, AV workers) live in the av/ subdirectory.
         // Files are copied to public/zoom-lib by `npm run prestart/prebuild`.
         assetPath: `${window.location.origin}/zoom-lib/av`,
+        customize: {
+          // Show all meeting info items including the AAN shield icon
+          meetingInfo: ['topic', 'host', 'mn', 'pwd', 'telPwd', 'invite', 'participant', 'dc', 'enctype'],
+          // Position the Active Apps Notifier panel visibly in the top-left corner
+          activeApps: {
+            popper: {
+              disableDraggable: false,
+              placement: 'bottom-start',
+              anchorReference: 'anchorPosition',
+              anchorPosition: {
+                top: 0,
+                left: 0,
+              },
+            },
+          },
+          // Position the meeting info panel below the top-left corner
+          meeting: {
+            popper: {
+              disableDraggable: false,
+              placement: 'bottom-start',
+              anchorReference: 'anchorPosition',
+              anchorPosition: {
+                top: 0,
+                left: 0,
+              },
+            },
+          },
+        },
       });
 
       if (!mountedRef.current) return;
@@ -157,7 +197,40 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
         style={{ height: HEADER_HEIGHT }}
         className="flex items-center justify-between px-4 bg-gray-800 border-b border-gray-700"
       >
-        <span className="text-white text-sm font-semibold">Zoom Meeting</span>
+        <div className="flex items-center gap-3">
+          <span className="text-white text-sm font-semibold">Zoom Meeting</span>
+          {/* Active Apps Notifier (AAN) indicator — Zoom Marketplace requirement.
+              Visible green shield icon tells participants an app is accessing meeting content.
+              Clicking it triggers the SDK's built-in AAN panel via the DOM. */}
+          {status === 'joined' && (
+            <button
+              onClick={() => {
+                // The SDK renders its AAN as a clickable element inside the meeting container.
+                // Try to find and programmatically click the SDK's own AAN button to open
+                // the official panel. The SDK renders it with specific data attributes or class names.
+                const root = containerRef.current;
+                if (root) {
+                  // The SDK's AAN icon is in the meeting info bar — look for the shield/apps icon
+                  const aanBtn = root.querySelector('[class*="active-apps"]')
+                    || root.querySelector('[data-type="activeApps"]')
+                    || root.querySelector('.meeting-info-icon__icon-aan')
+                    || root.querySelector('[class*="aan"]');
+                  if (aanBtn) {
+                    aanBtn.click();
+                    return;
+                  }
+                }
+                // Fallback: toggle our own AAN info panel
+                setAanVisible(v => !v);
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded bg-green-600/20 hover:bg-green-600/30 border border-green-500/40 transition-colors"
+              title="Active Apps Notifier — This app is accessing meeting content"
+            >
+              <Shield className="w-3.5 h-3.5 text-green-400" />
+              <span className="text-xs text-green-300 font-medium">App Active</span>
+            </button>
+          )}
+        </div>
         <button
           onClick={handleClose}
           className="flex items-center gap-1.5 text-sm text-gray-300 hover:text-white transition-colors"
@@ -166,6 +239,49 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
           Leave &amp; Return
         </button>
       </div>
+
+      {/* AAN (Active Apps Notifier) panel — Zoom Marketplace requirement.
+          Shows when clicking the "App Active" indicator if the SDK's built-in panel
+          cannot be programmatically triggered. Notifies participants that the app
+          is accessing meeting content (video, audio, chat). */}
+      {aanVisible && status === 'joined' && (
+        <div
+          className="absolute z-20 bg-gray-800 border border-gray-600 rounded-lg shadow-2xl p-4"
+          style={{ top: HEADER_HEIGHT + 8, left: 16, width: 320 }}
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-green-400" />
+              <h3 className="text-white text-sm font-semibold">Active Apps Notifier</h3>
+            </div>
+            <button
+              onClick={() => setAanVisible(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="bg-gray-700/50 rounded-lg p-3 mb-3">
+            <p className="text-xs text-gray-300 font-medium mb-1">AureonCare Telehealth</p>
+            <p className="text-xs text-gray-400">
+              This app is currently accessing meeting content including video and audio
+              to provide telehealth services.
+            </p>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            The host is using an app that can access meeting content.
+            You can learn more about this app on the{' '}
+            <a
+              href="https://marketplace.zoom.us/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              Zoom App Marketplace
+            </a>.
+          </p>
+        </div>
+      )}
 
       {/* SDK container — absolute so it always has a measurable, non-zero size */}
       <div
