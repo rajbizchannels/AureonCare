@@ -424,12 +424,17 @@ router.delete('/:patientId/medical-records/:recordId', async (req, res) => {
 
         if (Array.isArray(attachments)) {
           attachments.forEach(attachment => {
-            if (attachment.filename) {
-              const filePath = path.join(__dirname, '../uploads/medical-records', attachment.filename);
-              if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-                console.log('Deleted file:', filePath);
-              }
+            // Support new dated path format (attachment.path) and legacy filename-only format
+            let filePath;
+            if (attachment.path) {
+              // attachment.path is a URL path like /uploads/medical-records/2026-03-28/filename.ext
+              filePath = path.join(__dirname, '..', attachment.path);
+            } else if (attachment.filename) {
+              filePath = path.join(__dirname, '../uploads/medical-records', attachment.filename);
+            }
+            if (filePath && fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+              console.log('Deleted file:', filePath);
             }
           });
         }
