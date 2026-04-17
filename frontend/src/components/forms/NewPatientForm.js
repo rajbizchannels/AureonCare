@@ -76,6 +76,31 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
     setShowConfirmation(true);
   };
 
+  const DEFAULT_INTAKE_FORMS = [
+    { name: 'New Patient Registration', slug: 'new-patient-registration', version: '1.0' },
+    { name: 'Patient Intake Questionnaire', slug: 'patient-intake-questionnaire', version: '1.0' },
+    { name: 'HIPAA Authorization', slug: 'hipaa-authorization', version: '1.0' },
+    { name: 'Consent for Treatment', slug: 'consent-for-treatment', version: '1.0' }
+  ];
+
+  const triggerDefaultIntakeForms = async (patientId) => {
+    try {
+      for (const form of DEFAULT_INTAKE_FORMS) {
+        await api.createFormSubmission({
+          template_name: form.name,
+          template_version: form.version,
+          patient_id: patientId,
+          form_data: {},
+          status: 'draft',
+          language: 'en',
+          metadata: { trigger: 'patient_registration', template_slug: form.slug }
+        });
+      }
+    } catch (err) {
+      console.error('Non-critical: Could not trigger default intake forms:', err);
+    }
+  };
+
   const handleActualSubmit = async () => {
     // Generate MRN
     const mrn = `MRN${String(patients.length + 1).padStart(6, '0')}`;
@@ -115,6 +140,9 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
           insurance_payer_id: formData.insurancePayerId,
         },
       });
+
+      // Trigger default intake forms (non-blocking)
+      await triggerDefaultIntakeForms(newPatient.id);
 
       // Add computed 'name' field for compatibility
       const patientWithName = {
