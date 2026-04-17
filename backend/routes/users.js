@@ -98,11 +98,61 @@ router.post('/', async (req, res) => {
         license,
         specialty,
         JSON.stringify(preferences || {}),
-        status || 'pending',
+        status || 'active',
         passwordHash
       ]
     );
-    res.status(201).json(toCamelCase(result.rows[0]));
+
+    const newUser = result.rows[0];
+
+    // Auto-create patient record for new patient users
+    if ((newUser.role || 'patient') === 'patient' && newUser.email) {
+      const patientColumnCheck = await pool.query(`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'patients' AND column_name = 'user_id'
+      `);
+      const hasPatientUserIdColumn = patientColumnCheck.rows.length > 0;
+
+      const patientCheck = await pool.query(
+        'SELECT id FROM patients WHERE email = $1',
+        [newUser.email]
+      );
+
+      if (patientCheck.rows.length === 0) {
+        const mrnResult = await pool.query(
+          "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
+        );
+        const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
+        const mrn = `MRN-${nextMrnNumber}`;
+
+        if (hasPatientUserIdColumn) {
+          await pool.query(
+            `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
+            [newUser.first_name, newUser.last_name, mrn, '1990-01-01', newUser.email, newUser.phone, newUser.id]
+          );
+        } else {
+          await pool.query(
+            `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
+             VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
+            [newUser.first_name, newUser.last_name, mrn, '1990-01-01', newUser.email, newUser.phone]
+          );
+        }
+      }
+
+      // Assign patient role in user_roles table
+      const patientRoleResult = await pool.query(
+        "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
+      );
+      if (patientRoleResult.rows.length > 0) {
+        await pool.query(
+          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [newUser.id, patientRoleResult.rows[0].id]
+        );
+      }
+    }
+
+    res.status(201).json(toCamelCase(newUser));
   } catch (error) {
     console.error('Error creating user:', error);
 
