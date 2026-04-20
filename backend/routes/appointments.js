@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const WhatsAppService = require('../services/whatsappService');
 const TelehealthProviderManager = require('../services/telehealthProviders/index');
+const notificationService = require('../services/notificationService');
 
 // Get all appointments
 router.get('/', async (req, res) => {
@@ -332,6 +333,9 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(finalAppointment);
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'appointment.created', { appointment: finalAppointment }).catch(() => {});
   } catch (error) {
     console.error('Error creating appointment:', error);
 
@@ -391,7 +395,14 @@ router.patch('/:id/status', async (req, res) => {
       [result.rows[0].id]
     );
 
-    res.json(fullResult.rows[0] || result.rows[0]);
+    const updated = fullResult.rows[0] || result.rows[0];
+    res.json(updated);
+
+    // Send notification (non-blocking)
+    notificationService.dispatch(pool, 'appointment.status_changed', {
+      appointment: updated,
+      old_status: result.rows[0].status,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error updating appointment status:', error);
     res.status(500).json({ error: 'Failed to update appointment status', details: error.message });
@@ -559,6 +570,12 @@ router.put('/:id', async (req, res) => {
     }
 
     res.json(updatedAppointment);
+
+    // Send notification (non-blocking)
+    const isCancelled = status === 'cancelled' || status === 'canceled';
+    notificationService.dispatch(pool, isCancelled ? 'appointment.cancelled' : 'appointment.updated', {
+      appointment: updatedAppointment,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error updating appointment:', error);
     res.status(500).json({ error: 'Failed to update appointment' });
@@ -627,6 +644,9 @@ router.delete('/:id', async (req, res) => {
     }
 
     res.json({ message: 'Appointment deleted successfully' });
+
+    // Send notification (non-blocking)
+    notificationService.dispatch(pool, 'appointment.cancelled', { appointment: deletedAppointment }).catch(() => {});
   } catch (error) {
     console.error('Error deleting appointment:', error);
     res.status(500).json({ error: 'Failed to delete appointment' });

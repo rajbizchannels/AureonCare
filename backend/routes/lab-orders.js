@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const vendorIntegrationManager = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
+const notificationService = require('../services/notificationService');
 
 /**
  * Lab Orders API
@@ -360,6 +361,13 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(labOrder);
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'lab_order.created', {
+      order: labOrder,
+      patient_id,
+      provider_id,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error creating lab order:', error);
     res.status(500).json({ error: 'Failed to create lab order' });
@@ -453,6 +461,16 @@ router.put('/:id', async (req, res) => {
     }
 
     res.json(updatedLabOrder);
+
+    // Send status change notification (non-blocking)
+    if (status) {
+      notificationService.dispatch(pool, 'lab_order.status_changed', {
+        order: updatedLabOrder,
+        patient_id: updatedLabOrder.patient_id,
+        provider_id: updatedLabOrder.provider_id,
+        old_status: 'previous',
+      }).catch(() => {});
+    }
   } catch (error) {
     console.error('Error updating lab order:', error);
     res.status(500).json({ error: 'Failed to update lab order' });

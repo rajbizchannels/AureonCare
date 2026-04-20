@@ -3,6 +3,7 @@ const router = express.Router();
 const WhatsAppService = require('../services/whatsappService');
 const vendorIntegrationManager = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
+const notificationService = require('../services/notificationService');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -427,6 +428,13 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(toCamelCase(prescription));
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'prescription.created', {
+      prescription: { ...prescription, medication_name: medicationName, dosage, instructions, refills },
+      patient_id: patientId,
+      provider_id: providerId,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error creating prescription:', error);
     res.status(500).json({ error: 'Failed to create prescription' });
