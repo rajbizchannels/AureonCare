@@ -72,6 +72,28 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
       };
 
       const newUser = await api.createUser(userData);
+
+      // Trigger default intake forms for patient self-registrations
+      if (formData.role === 'patient' && newUser?.id) {
+        const DEFAULT_INTAKE_FORMS = [
+          { name: 'New Patient Registration', slug: 'new-patient-registration' },
+          { name: 'Patient Intake Questionnaire', slug: 'patient-intake-questionnaire' },
+          { name: 'HIPAA Authorization', slug: 'hipaa-authorization' },
+          { name: 'Consent for Treatment', slug: 'consent-for-treatment' }
+        ];
+        for (const form of DEFAULT_INTAKE_FORMS) {
+          await api.createFormSubmission({
+            template_name: form.name,
+            template_version: '1.0',
+            patient_id: newUser.id,
+            form_data: {},
+            status: 'draft',
+            language: 'en',
+            metadata: { trigger: 'self_registration', template_slug: form.slug }
+          }).catch(err => console.error('Non-critical: Could not create intake form:', err));
+        }
+      }
+
       setRegistered(true);
 
       if (onRegistered) {
