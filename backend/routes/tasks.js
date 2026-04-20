@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const notificationService = require('../services/notificationService');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -45,7 +46,11 @@ router.post('/', async (req, res) => {
        RETURNING *`,
       [title, priority || 'Medium', dueDate, status || 'Pending', description]
     );
-    res.status(201).json(toCamelCase(result.rows[0]));
+    const task = result.rows[0];
+    res.status(201).json(toCamelCase(task));
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'task.created', { task }).catch(() => {});
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({ error: 'Failed to create task' });
@@ -75,7 +80,13 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    res.json(toCamelCase(result.rows[0]));
+    const updatedTask = result.rows[0];
+    res.json(toCamelCase(updatedTask));
+
+    // Notify on task completion (non-blocking)
+    if (status === 'Completed' || status === 'completed') {
+      notificationService.dispatch(pool, 'task.completed', { task: updatedTask }).catch(() => {});
+    }
   } catch (error) {
     console.error('Error updating task:', error);
     res.status(500).json({ error: 'Failed to update task' });
