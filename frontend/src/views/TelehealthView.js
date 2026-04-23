@@ -130,7 +130,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
         providerId,
         startTime: appointment.start_time,
         duration: appointment.duration_minutes || 30,
-        recordingEnabled: true
+        recordingEnabled: false
       };
 
       const newSession = await api.createTelehealthSession(sessionData);
