@@ -37,7 +37,7 @@ const EHRView = ({
     logViewAccess('EHRView', {
       module: 'EHR',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Filter patients based on search
   const filteredPatients = patients.filter(patient => {

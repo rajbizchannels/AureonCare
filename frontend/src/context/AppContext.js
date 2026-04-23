@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import api from '../api/apiService';
 import { getTranslations } from '../config/translations';
 
@@ -128,16 +128,11 @@ const AppProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Fetch all data on component mount
-  useEffect(() => {
-    fetchAllData();
-  }, []);
-
   /**
    * Fetches all data from the backend API
    * @param {boolean} includeUser - Whether to fetch user data (only after authentication)
    */
-  const fetchAllData = async (includeUser = false) => {
+  const fetchAllData = useCallback(async (includeUser = false) => {
     console.log('AppContext: fetchAllData called, includeUser:', includeUser);
     setLoading(true);
     setError(null);
@@ -161,36 +156,24 @@ const AppProvider = ({ children }) => {
       const results = await Promise.all(dataPromises);
       const [appointmentsData, patientsData, claimsData, paymentsData, notificationsData, tasksData, usersData, userData] = results;
 
-      // Auto-update past scheduled appointments to completed status
+      // Derive display status for past scheduled appointments locally.
+      // Doing N PUT/PATCH calls on every load is costly and error-prone
+      // (FK drift can cause 500s). Status persists via normal appointment
+      // workflows; here we only adjust the in-memory representation.
       const now = new Date();
-      const updatedAppointments = await Promise.all(
-        appointmentsData.map(async (apt) => {
-          // Check if appointment is in the past and status is scheduled
-          if (apt.start_time && (apt.status === 'scheduled' || !apt.status)) {
-            try {
-              const startTime = new Date(apt.start_time.replace(' ', 'T'));
-              if (startTime < now) {
-                // Update the appointment status to completed
-                const updatedApt = await api.updateAppointment(apt.id, { ...apt, status: 'completed' });
-
-                // Enrich the updated appointment with patient and provider names
-                const patient = patientsData?.find(p => p.id === updatedApt.patient_id);
-                const provider = usersData?.find(u => u.id === updatedApt.provider_id);
-
-                return {
-                  ...updatedApt,
-                  patient: patient ? (patient.name || `${patient.first_name} ${patient.last_name}`) : updatedApt.patient,
-                  doctor: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() : updatedApt.doctor,
-                  provider_name: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() : updatedApt.provider_name
-                };
-              }
-            } catch (error) {
-              console.error('Error parsing appointment time:', error);
+      const updatedAppointments = appointmentsData.map((apt) => {
+        if (apt.start_time && (apt.status === 'scheduled' || !apt.status)) {
+          try {
+            const startTime = new Date(apt.start_time.replace(' ', 'T'));
+            if (startTime < now) {
+              return { ...apt, status: 'completed' };
             }
+          } catch (error) {
+            console.error('Error parsing appointment time:', error);
           }
-          return apt;
-        })
-      );
+        }
+        return apt;
+      });
 
       setAppointments(updatedAppointments);
       setPatients(patientsData);
@@ -253,7 +236,17 @@ const AppProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, []);
 
   /**
    * Updates user preferences in the backend and local state

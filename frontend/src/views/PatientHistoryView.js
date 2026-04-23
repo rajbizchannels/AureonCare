@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   User, Calendar, Activity, FileText, Pill, ArrowLeft,
   Edit, Trash2, Plus, Clock, MapPin, Phone, Mail, Microscope, Printer,
   Heart, Ruler, Scale, Droplet, Users, Video, Loader2
 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
+import { isProvider, isPatient } from '../utils/rolePermissions';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
 import NewLabOrderForm from '../components/forms/NewLabOrderForm';
@@ -87,50 +88,27 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       module: 'EHR',
       patient_id: patient?.id,
     });
-  }, []);
+  }, [logViewAccess, patient?.id]);
 
-  useEffect(() => {
-    if (patient?.id) {
-      fetchPatientHistory();
-      fetchProviders();
-      fetchPatients();
-      fetchLaboratories();
-    }
-  }, [patient?.id]);
-
-  // Close all forms when tab changes
-  useEffect(() => {
-    setShowDiagnosisForm(false);
-    setShowPrescriptionForm(false);
-    setShowLabOrderForm(false);
-    setShowAppointmentForm(false);
-    setShowRecordUploadForm(false);
-    setEditingPatient(false);
-    setShowHealthMetricsForm(false);
-    setEditingDiagnosis(null);
-    setEditingPrescription(null);
-    setEditingLabOrder(null);
-  }, [activeTab]);
-
-  const fetchProviders = async () => {
+  const fetchProviders = useCallback(async () => {
     try {
       const data = await api.getProviders();
       setProviders(data);
     } catch (error) {
       console.error('Error fetching providers:', error);
     }
-  };
+  }, [api]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
     try {
       const data = await api.getPatients();
       setPatients(data);
     } catch (error) {
       console.error('Error fetching patients:', error);
     }
-  };
+  }, [api]);
 
-  const fetchLaboratories = async () => {
+  const fetchLaboratories = useCallback(async () => {
     try {
       const labs = await api.getLaboratories(true);
       setLaboratories(labs || []);
@@ -138,9 +116,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       console.error('Error fetching laboratories:', error);
       setLaboratories([]);
     }
-  };
+  }, [api]);
 
-  const fetchPatientHistory = async () => {
+  const fetchPatientHistory = useCallback(async () => {
     setLoading(true);
     try {
       const patientId = patient.id;
@@ -167,7 +145,30 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, patient, addNotification]);
+
+  useEffect(() => {
+    if (patient?.id) {
+      fetchPatientHistory();
+      fetchProviders();
+      fetchPatients();
+      fetchLaboratories();
+    }
+  }, [patient?.id, fetchPatientHistory, fetchProviders, fetchPatients, fetchLaboratories]);
+
+  // Close all forms when tab changes
+  useEffect(() => {
+    setShowDiagnosisForm(false);
+    setShowPrescriptionForm(false);
+    setShowLabOrderForm(false);
+    setShowAppointmentForm(false);
+    setShowRecordUploadForm(false);
+    setEditingPatient(false);
+    setShowHealthMetricsForm(false);
+    setEditingDiagnosis(null);
+    setEditingPrescription(null);
+    setEditingLabOrder(null);
+  }, [activeTab]);
 
   const handleDeleteDiagnosis = async () => {
     if (!deletingDiagnosis) return;
@@ -229,7 +230,33 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     }
   };
 
-  const handleStartTelehealth = async (appointmentId = null) => {
+  const handleStartTelehealth = async (apt = null) => {
+    // Only providers and patients may launch telehealth sessions
+    if (!isProvider(user) && !isPatient(user)) {
+      addNotification('error', 'Only providers and patients can start telehealth sessions.');
+      return;
+    }
+
+    // If no appointment passed (header button), find the nearest upcoming Telehealth appointment
+    let targetApt = apt;
+    if (!targetApt) {
+      const upcoming = appointments
+        .filter(a => {
+          const s = (a.status || '').toLowerCase();
+          const t = (a.type || a.appointment_type || '').toLowerCase();
+          return t === 'telehealth' && s !== 'cancelled' && s !== 'canceled' && s !== 'completed';
+        })
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+      targetApt = upcoming[0] || null;
+    }
+
+    // If the appointment already has a pre-generated meeting URL, open it directly
+    if (targetApt?.meeting_url) {
+      window.open(targetApt.meeting_url, '_blank', 'noopener,noreferrer');
+      addNotification('success', 'Joining telehealth session...');
+      return;
+    }
+
     setTelehealthLoading(true);
 
     // Open a blank window synchronously to avoid popup blocker
@@ -247,27 +274,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         return;
       }
 
-      // Find the nearest upcoming appointment for this patient if none specified
-      let selectedAppointmentId = appointmentId;
-      if (!selectedAppointmentId && appointments.length > 0) {
-        const upcoming = appointments
-          .filter(a => {
-            const s = (a.status || '').toLowerCase();
-            return s !== 'cancelled' && s !== 'canceled' && s !== 'completed';
-          })
-          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-        if (upcoming.length > 0) {
-          selectedAppointmentId = upcoming[0].id;
-        }
-      }
-
       // Create a telehealth session
       const sessionData = {
-        appointmentId: selectedAppointmentId || null,
+        appointmentId: targetApt?.id || null,
         patientId: patient.id,
-        providerId: user?.id,
+        providerId: targetApt?.provider_id || user?.id,
         startTime: new Date().toISOString(),
-        duration: 30,
+        duration: targetApt?.duration_minutes || 30,
         recordingEnabled: false
       };
 
@@ -1285,18 +1298,38 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                       {appt.reason}
                     </p>
                   )}
+                  {/* Meeting URL badge — visible to providers and patients */}
+                  {appt.meeting_url && (isProvider(user) || isPatient(user)) && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <a
+                        href={appt.meeting_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          theme === 'dark'
+                            ? 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30'
+                            : 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200'
+                        }`}
+                      >
+                        <Video className="w-3 h-3" />
+                        Join Meeting
+                      </a>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {!['completed', 'cancelled', 'canceled'].includes((appt.status || '').toLowerCase()) && (
+                  {!['completed', 'cancelled', 'canceled'].includes((appt.status || '').toLowerCase()) &&
+                    (appt.type || appt.appointment_type || '').toLowerCase() === 'telehealth' &&
+                    (isProvider(user) || isPatient(user)) && (
                     <button
-                      onClick={() => handleStartTelehealth(appt.id)}
+                      onClick={() => handleStartTelehealth(appt)}
                       disabled={telehealthLoading}
                       className={`p-2 rounded-lg transition-colors ${
                         theme === 'dark'
                           ? 'hover:bg-cyan-500/20 text-cyan-400'
                           : 'hover:bg-cyan-100 text-cyan-600'
                       } disabled:opacity-50`}
-                      title="Start Telehealth for this appointment"
+                      title="Start Telehealth Session"
                     >
                       <Video className="w-4 h-4" />
                     </button>
@@ -1353,19 +1386,21 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => handleStartTelehealth()}
-              disabled={telehealthLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
-              title="Start Telehealth Session"
-            >
-              {telehealthLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Video className="w-4 h-4" />
-              )}
-              {telehealthLoading ? 'Starting...' : 'Start Telehealth Session'}
-            </button>
+            {(isProvider(user) || isPatient(user)) && (
+              <button
+                onClick={() => handleStartTelehealth()}
+                disabled={telehealthLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+                title="Start Telehealth Session"
+              >
+                {telehealthLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Video className="w-4 h-4" />
+                )}
+                {telehealthLoading ? 'Starting...' : 'Start Telehealth Session'}
+              </button>
+            )}
           </div>
         </div>
       </div>

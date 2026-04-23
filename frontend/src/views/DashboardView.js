@@ -52,7 +52,7 @@ const DashboardView = ({
     logViewAccess('DashboardView', {
       module: 'Dashboard',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Load clinic name from localStorage
   useEffect(() => {
@@ -246,22 +246,43 @@ const DashboardView = ({
           onClick={() => setSelectedItem('tasks')}
         />
 
-        {/* Revenue - Show for all authenticated users */}
+        {/* Revenue This Month - Show for all authenticated users */}
         <StatCard
           title={t.revenue}
           value={(() => {
-            const totalRevenue = claims.reduce((sum, c) => {
+            const now = new Date();
+            const thisMonthRevenue = claims.filter(c => {
+              const dateStr = c.service_date || c.created_at;
+              if (!dateStr) return false;
+              const d = new Date(dateStr);
+              return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+            }).reduce((sum, c) => {
               const amount = typeof c.amount === 'string' ? parseFloat(c.amount) : (c.amount || 0);
               return sum + amount;
             }, 0);
-            return totalRevenue >= 1000 ? `$${(totalRevenue / 1000).toFixed(1)}K` : `$${totalRevenue.toFixed(0)}`;
+            return thisMonthRevenue >= 1000 ? `$${(thisMonthRevenue / 1000).toFixed(1)}K` : `$${thisMonthRevenue.toFixed(0)}`;
           })()}
           icon={DollarSign}
           trend={(() => {
-            const totalRevenue = claims.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
-            const approvedRevenue = claims.filter(c => c.status === 'Approved' || c.status === 'Paid').reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
-            const approvalRate = totalRevenue > 0 ? Math.round((approvedRevenue / totalRevenue) * 100) : 0;
-            return `${approvalRate}% ${t.approved}`;
+            const now = new Date();
+            const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+            const getMonthRevenue = (year, month) =>
+              claims.filter(c => {
+                const dateStr = c.service_date || c.created_at;
+                if (!dateStr) return false;
+                const d = new Date(dateStr);
+                return d.getFullYear() === year && d.getMonth() === month;
+              }).reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+
+            const thisMonthRevenue = getMonthRevenue(now.getFullYear(), now.getMonth());
+            const lastMonthRevenue = getMonthRevenue(prevMonthDate.getFullYear(), prevMonthDate.getMonth());
+
+            if (lastMonthRevenue === 0) {
+              return thisMonthRevenue > 0 ? `+100% ${t.vsLastMonth || 'vs last month'}` : `$0 ${t.vsLastMonth || 'vs last month'}`;
+            }
+            const change = Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100);
+            return change >= 0 ? `+${change}% ${t.vsLastMonth || 'vs last month'}` : `${change}% ${t.vsLastMonth || 'vs last month'}`;
           })()}
           color="from-green-500 to-emerald-500"
           onClick={() => setSelectedItem('revenue')}

@@ -35,12 +35,12 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
       module: 'EHR',
       patient_id: selectedPatient?.id,
     });
-  }, []);
+  }, [logViewAccess, selectedPatient?.id]);
 
   // Load initial data
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const loadData = async () => {
     setIsLoading(true);

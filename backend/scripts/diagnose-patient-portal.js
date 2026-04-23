@@ -7,7 +7,7 @@ require('dotenv').config();
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.AC_PG_URI,
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
 });
@@ -135,7 +135,7 @@ async function diagnose() {
 
     if (missingNamesResult.rows.length > 0) {
       console.log('❌ ACTION REQUIRED: Fix missing patient names');
-      console.log('   Run: psql $DATABASE_URL -f backend/scripts/fix-patient-names.sql');
+      console.log('   Run: psql $AC_PG_URI -f backend/scripts/fix-patient-names.sql');
       console.log('   Or manually update patients with proper names.');
     } else if (totalPatients === 0) {
       console.log('⚠️  ACTION REQUIRED: Seed database with test data');

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Pill } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Save, Pill, Video, ExternalLink } from 'lucide-react';
 import { formatDate, formatTime, formatCurrency, toLocalDateTimeString, toLocalDateString } from '../../utils/formatters';
 import EPrescribeModal from './ePrescribeModal';
 import { useApp } from '../../context/AppContext';
 import ConfirmationModal from './ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import { isProvider, isPatient } from '../../utils/rolePermissions';
 
 const ViewEditModal = ({
   theme,
@@ -301,7 +302,7 @@ const ViewEditModal = ({
   }, [editingItem]);
 
   // Handle close with audit logging
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     logModalClose('ViewEditModal', {
       module: 'General',
       metadata: {
@@ -310,7 +311,7 @@ const ViewEditModal = ({
       },
     });
     onClose();
-  };
+  }, [currentView, editingItem?.type, logModalClose, onClose]);
 
   // ESC key handler
   useEffect(() => {
@@ -360,7 +361,7 @@ const ViewEditModal = ({
         quantity: calculatedQuantity.toString()
       }));
     }
-  }, [editingPrescription?.frequency, editingPrescription?.duration]);
+  }, [editingPrescription]);
 
   // Handle ESC key to close prescription modal
   useEffect(() => {
@@ -741,6 +742,43 @@ const ViewEditModal = ({
                   />
                 )}
               </div>
+
+              {/* Meeting URL — visible to providers and patients for Telehealth appointments */}
+              {editData.meeting_url && (isProvider(user) || isPatient(user)) && (
+                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-cyan-50 border-cyan-200'}`}>
+                  <label className={`block text-sm font-semibold mb-2 ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-700'}`}>
+                    Telehealth Meeting Link
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      href={editData.meeting_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-lg text-sm font-medium transition-all shadow-sm"
+                    >
+                      <Video className="w-4 h-4" />
+                      Join Meeting
+                    </a>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(editData.meeting_url);
+                      }}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                      }`}
+                      title="Copy meeting link"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Copy Link
+                    </button>
+                    <span className={`text-xs break-all ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      {editData.meeting_url}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           ) : type === 'patient' ? (
             <div className="space-y-4">

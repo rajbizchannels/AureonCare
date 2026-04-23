@@ -43,25 +43,7 @@ const ClinicalServicesView = ({
     logViewAccess('ClinicalServicesView', {
       module: 'EHR',
     });
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'pharmacies') {
-      loadPharmacies();
-    } else if (activeTab === 'laboratories') {
-      loadLaboratories();
-    } else if (activeTab === 'fhir') {
-      loadFhirResources();
-    }
-  }, [activeTab, selectedResourceType]);
-
-  // Close forms when tab changes
-  useEffect(() => {
-    setShowPharmacyForm(false);
-    setShowLabForm(false);
-    setEditingPharmacy(null);
-    setEditingLaboratory(null);
-  }, [activeTab]);
+  }, [logViewAccess]);
 
   const loadPharmacies = async () => {
     setLoading(true);
@@ -89,6 +71,38 @@ const ClinicalServicesView = ({
     }
   };
 
+  const loadFhirResources = async () => {
+    setLoading(true);
+    try {
+      const resourceType = selectedResourceType === 'all' ? null : selectedResourceType;
+      const data = await api.getFhirResources(resourceType, null);
+      setFhirResources(data);
+    } catch (error) {
+      console.error('Error loading FHIR resources:', error);
+      addNotification('alert', 'Failed to load FHIR resources');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'pharmacies') {
+      loadPharmacies();
+    } else if (activeTab === 'laboratories') {
+      loadLaboratories();
+    } else if (activeTab === 'fhir') {
+      loadFhirResources();
+    }
+  }, [activeTab, selectedResourceType]);
+
+  // Close forms when tab changes
+  useEffect(() => {
+    setShowPharmacyForm(false);
+    setShowLabForm(false);
+    setEditingPharmacy(null);
+    setEditingLaboratory(null);
+  }, [activeTab]);
+
   const handleDeletePharmacy = async () => {
     if (!deletePharmacyConfirm) return;
 
@@ -114,20 +128,6 @@ const ClinicalServicesView = ({
     } catch (error) {
       console.error('Error deleting laboratory:', error);
       addNotification('alert', 'Failed to delete laboratory');
-    }
-  };
-
-  const loadFhirResources = async () => {
-    setLoading(true);
-    try {
-      const resourceType = selectedResourceType === 'all' ? null : selectedResourceType;
-      const data = await api.getFhirResources(resourceType, null);
-      setFhirResources(data);
-    } catch (error) {
-      console.error('Error loading FHIR resources:', error);
-      addNotification('alert', 'Failed to load FHIR resources');
-    } finally {
-      setLoading(false);
     }
   };
 

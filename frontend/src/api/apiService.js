@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_SVC_URL || 'http://localhost:3001/api';
 
 console.log('API Service: Base URL configured as:', API_BASE_URL);
 
@@ -81,6 +81,15 @@ const api = {
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to update appointment');
+    return response.json();
+  },
+  updateAppointmentStatus: async (id, status) => {
+    const response = await fetch(`${API_BASE_URL}/appointments/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!response.ok) throw new Error('Failed to update appointment status');
     return response.json();
   },
   deleteAppointment: async (id) => {
@@ -588,6 +597,16 @@ const api = {
     });
     if (!response.ok) throw new Error('Failed to login with social account');
     return response.json();
+  },
+  socialRegister: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
+    const response = await fetch(`${API_BASE_URL}/auth/social-register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Registration failed');
+    return data;
   },
 
   // Telehealth
@@ -1204,6 +1223,29 @@ const api = {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete offering');
+    return response.json();
+  },
+
+  // Offering Linked Forms
+  getOfferingLinkedForms: async (offeringId) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/forms`);
+    if (!response.ok) throw new Error('Failed to fetch offering forms');
+    return response.json();
+  },
+  linkFormToOffering: async (offeringId, data) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/forms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to link form to offering');
+    return response.json();
+  },
+  unlinkFormFromOffering: async (offeringId, formTemplateId) => {
+    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/forms/${formTemplateId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to unlink form from offering');
     return response.json();
   },
 
@@ -2330,7 +2372,378 @@ const api = {
   },
 
   // Add baseURL property for components that need it
-  baseURL: API_BASE_URL
+  baseURL: API_BASE_URL,
+
+  // ─── Reports API ───────────────────────────────────────────────────────────
+
+  // Operational Reports
+  getReportDailyAppointments: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/daily-appointments?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch daily appointments report');
+    return response.json();
+  },
+
+  getReportProviderUtilization: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/provider-utilization?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch provider utilization report');
+    return response.json();
+  },
+
+  getReportPatientVisits: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/patient-visits?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient visits report');
+    return response.json();
+  },
+
+  getReportNoShows: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/no-shows?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch no-show report');
+    return response.json();
+  },
+
+  getReportWaitTimes: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/wait-times?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch wait times report');
+    return response.json();
+  },
+
+  // Financial Reports
+  getReportRevenue: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/revenue?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch revenue report');
+    return response.json();
+  },
+
+  getReportBillingSummary: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/billing-summary?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch billing summary report');
+    return response.json();
+  },
+
+  getReportOutstandingPayments: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/outstanding-payments?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch outstanding payments report');
+    return response.json();
+  },
+
+  getReportPaymentCollection: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/payment-collection?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch payment collection report');
+    return response.json();
+  },
+
+  getReportRefunds: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/refunds?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch refund report');
+    return response.json();
+  },
+
+  // Insurance & Claims Reports
+  getReportClaimStatus: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/claim-status?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch claim status report');
+    return response.json();
+  },
+
+  getReportClaimRejections: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/claim-rejections?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch claim rejections report');
+    return response.json();
+  },
+
+  getReportDenialAnalysis: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/denial-analysis?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch denial analysis report');
+    return response.json();
+  },
+
+  getReportPayerPerformance: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/payer-performance?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch payer performance report');
+    return response.json();
+  },
+
+  // Patient Reports
+  getReportPatientDemographics: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/demographics?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient demographics report');
+    return response.json();
+  },
+
+  getReportPatientVisitHistory: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/visit-history?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient visit history report');
+    return response.json();
+  },
+
+  getReportPatientRetention: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/retention?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient retention report');
+    return response.json();
+  },
+
+  getReportPatientSatisfaction: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/satisfaction?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient satisfaction report');
+    return response.json();
+  },
+
+  // Provider Reports
+  getReportProviderProductivity: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/productivity?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch provider productivity report');
+    return response.json();
+  },
+
+  getReportAppointmentVolumeByProvider: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/appointment-volume?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch appointment volume report');
+    return response.json();
+  },
+
+  getReportRevenueByProvider: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/revenue?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch revenue by provider report');
+    return response.json();
+  },
+
+  getReportTelehealthUsage: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/telehealth-usage?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch telehealth usage report');
+    return response.json();
+  },
+
+  // Compliance Reports
+  getReportAuditLogs: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/audit-logs?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch audit logs report');
+    return response.json();
+  },
+
+  getReportAccessLogs: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/access-logs?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch access logs report');
+    return response.json();
+  },
+
+  getReportHIPAACompliance: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/hipaa?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch HIPAA compliance report');
+    return response.json();
+  },
+
+  getReportDataAccessHistory: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/data-access-history?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch data access history report');
+    return response.json();
+  },
+
+  // Custom Report
+  generateCustomReport: async (config) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/custom`, {
+      method: 'POST',
+      body: JSON.stringify(config)
+    });
+    if (!response.ok) throw new Error('Failed to generate custom report');
+    return response.json();
+  },
+
+  // ============================================================
+  // FORM MANAGEMENT MODULE
+  // ============================================================
+
+  // Form Categories
+  getFormCategories: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/categories`);
+    if (!response.ok) throw new Error('Failed to fetch form categories');
+    return response.json();
+  },
+  createFormCategory: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/categories`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create form category');
+    return response.json();
+  },
+
+  // Form Templates
+  getFormTemplates: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.category) params.append('category', filters.category);
+    if (filters.template_type) params.append('template_type', filters.template_type);
+    if (filters.specialty) params.append('specialty', filters.specialty);
+    if (filters.is_active !== undefined) params.append('is_active', filters.is_active);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.intake_flow_eligible !== undefined) params.append('intake_flow_eligible', filters.intake_flow_eligible);
+    if (filters.role) params.append('role', filters.role);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch form templates');
+    return response.json();
+  },
+  getFormTemplate: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch form template');
+    return response.json();
+  },
+  createFormTemplate: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to create form template' }));
+      throw new Error(err.error || 'Failed to create form template');
+    }
+    return response.json();
+  },
+  updateFormTemplate: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${id}`, {
+      method: 'PUT', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update form template');
+    return response.json();
+  },
+  deleteFormTemplate: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete form template');
+    return response.json();
+  },
+
+  // Template Versions
+  getFormTemplateVersions: async (templateId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${templateId}/versions`);
+    if (!response.ok) throw new Error('Failed to fetch template versions');
+    return response.json();
+  },
+  restoreFormTemplateVersion: async (templateId, versionId) => {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/form-management/templates/${templateId}/versions/${versionId}/restore`,
+      { method: 'POST' }
+    );
+    if (!response.ok) throw new Error('Failed to restore template version');
+    return response.json();
+  },
+
+  // Form Submissions
+  getFormSubmissions: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.template_id) params.append('template_id', filters.template_id);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.appointment_id) params.append('appointment_id', filters.appointment_id);
+    if (filters.intake_flow_id) params.append('intake_flow_id', filters.intake_flow_id);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch form submissions');
+    return response.json();
+  },
+  getFormSubmission: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch form submission');
+    return response.json();
+  },
+  createFormSubmission: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to create form submission' }));
+      throw new Error(err.error || 'Failed to create form submission');
+    }
+    return response.json();
+  },
+  updateFormSubmission: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${id}`, {
+      method: 'PUT', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update form submission');
+    return response.json();
+  },
+  deleteFormSubmission: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete form submission');
+    return response.json();
+  },
+
+  // eSignature
+  addFormSignature: async (submissionId, signatureData) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${submissionId}/sign`, {
+      method: 'POST', body: JSON.stringify(signatureData)
+    });
+    if (!response.ok) throw new Error('Failed to add signature');
+    return response.json();
+  },
+  getFormSignatures: async (submissionId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${submissionId}/signatures`);
+    if (!response.ok) throw new Error('Failed to fetch signatures');
+    return response.json();
+  },
+
+  // Audit Logs
+  getFormAuditLogs: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.resource_type) params.append('resource_type', filters.resource_type);
+    if (filters.resource_id) params.append('resource_id', filters.resource_id);
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.actor_id) params.append('actor_id', filters.actor_id);
+    if (filters.action) params.append('action', filters.action);
+    if (filters.limit) params.append('limit', filters.limit);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/audit-logs${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch form audit logs');
+    return response.json();
+  },
+
+  // Intake Flow Integration
+  getIntakeFlowFormTemplates: async (flowId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/intake-flows/${flowId}/templates`);
+    if (!response.ok) throw new Error('Failed to fetch flow templates');
+    return response.json();
+  },
+  assignFormTemplatesToFlow: async (flowId, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/intake-flows/${flowId}/templates`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to assign templates to flow');
+    return response.json();
+  },
+
+  // Form Stats
+  getFormManagementStats: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/stats`);
+    if (!response.ok) throw new Error('Failed to fetch form stats');
+    return response.json();
+  }
 };
 
 export default api;

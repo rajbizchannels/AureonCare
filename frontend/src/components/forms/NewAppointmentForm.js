@@ -35,7 +35,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
         preselectedProvider: !!user,
       },
     });
-  }, []);
+  }, [logFormView, patient, startAction, user]);
 
   // Fetch active offerings
   useEffect(() => {
@@ -65,7 +65,8 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
             { id: 3, name: 'Check-up', durationMinutes: 30 },
             { id: 4, name: 'Physical Exam', durationMinutes: 45 },
             { id: 5, name: 'Vaccination', durationMinutes: 15 },
-            { id: 6, name: 'Lab Results', durationMinutes: 15 }
+            { id: 6, name: 'Lab Results', durationMinutes: 15 },
+            { id: 7, name: 'Telehealth', durationMinutes: 30 }
           ]);
         }
       } catch (error) {
@@ -77,7 +78,8 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
           { id: 3, name: 'Check-up', durationMinutes: 30 },
           { id: 4, name: 'Physical Exam', durationMinutes: 45 },
           { id: 5, name: 'Vaccination', durationMinutes: 15 },
-          { id: 6, name: 'Lab Results', durationMinutes: 15 }
+          { id: 6, name: 'Lab Results', durationMinutes: 15 },
+          { id: 7, name: 'Telehealth', durationMinutes: 30 }
         ]);
       }
     };
