@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Pill, Plus, Edit, Trash2, ArrowLeft, RefreshCw, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewPharmacyForm from '../components/forms/NewPharmacyForm';
@@ -24,9 +24,9 @@ const PharmacyManagementView = ({
     logViewAccess('PharmacyManagementView', {
       module: 'EHR',
     });
-  }, []);
+  }, [logViewAccess]);
 
-  const loadPharmacies = async () => {
+  const loadPharmacies = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.getPharmacies();
@@ -37,11 +37,11 @@ const PharmacyManagementView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification]);
 
   useEffect(() => {
     loadPharmacies();
-  }, []);
+  }, [loadPharmacies]);
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;

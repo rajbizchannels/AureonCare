@@ -29,7 +29,6 @@ import ReportsView from './views/ReportsView';
 import CRMView from './views/CRMView';
 import IntegrationsView from './views/IntegrationsView';
 import FHIRView from './views/FHIRView';
-import PatientPortalView from './views/PatientPortalView';
 import AdminPanelView from './views/AdminPanelView';
 import OfferingManagementView from './views/OfferingManagementView';
 import PatientDiagnosisView from './views/PatientDiagnosisView';
@@ -41,6 +40,7 @@ import PharmacyManagementView from './views/PharmacyManagementView';
 import LaboratoryManagementView from './views/LaboratoryManagementView';
 import ClinicalServicesView from './views/ClinicalServicesView';
 import WaitlistManagementView from './views/WaitlistManagementView';
+import FormManagementView from './views/FormManagementView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -84,6 +84,10 @@ import PatientsQuickView from './components/quickViews/PatientsQuickView';
 
 // Initialize MSAL instance for Microsoft OAuth
 const msalInstance = new PublicClientApplication(microsoftOAuthConfig);
+
+// Lazy-load PatientPortalView so it lands in a separate Webpack chunk,
+// preventing scope-hoisting TDZ when the main bundle is concatenated.
+const PatientPortalView = React.lazy(() => import('./views/PatientPortalView'));
 
 function App() {
   const {
@@ -442,6 +446,7 @@ function App() {
             payments={payments}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            api={api}
           />
         );
       case 'crm':
@@ -461,12 +466,14 @@ function App() {
         );
       case 'patientPortal':
         return (
-          <PatientPortalView
-            theme={theme}
-            api={api}
-            addNotification={addNotification}
-            user={user}
-          />
+          <React.Suspense fallback={null}>
+            <PatientPortalView
+              theme={theme}
+              api={api}
+              addNotification={addNotification}
+              user={user}
+            />
+          </React.Suspense>
         );
       case 'admin':
         return (
@@ -523,6 +530,18 @@ function App() {
             theme={theme}
             api={api}
             patients={patients}
+            setCurrentModule={setCurrentModule}
+            addNotification={addNotification}
+            t={t}
+          />
+        );
+      case 'formManagement':
+        return (
+          <FormManagementView
+            theme={theme}
+            api={api}
+            patients={patients}
+            user={user}
             setCurrentModule={setCurrentModule}
             addNotification={addNotification}
             t={t}

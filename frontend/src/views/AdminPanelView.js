@@ -497,7 +497,7 @@ const AdminPanelView = ({
     logViewAccess('AdminPanelView', {
       module: 'Admin',
     });
-  }, []);
+  }, [logViewAccess]);
 
   /**
    * Sync currentPlan with planTier from context
@@ -1048,6 +1048,68 @@ const AdminPanelView = ({
   }, [credentialModalConfig, addNotification]);
 
   /**
+   * Handle OneClick Integration - initiates OAuth flow directly for a provider
+   * that already has credentials saved, bypassing the manual form.
+   */
+  const handleOneClickIntegration = useCallback(
+    async (providerType) => {
+      try {
+        const providerNames = {
+          zoom: 'Zoom',
+          google_meet: 'Google Meet',
+          webex: 'Cisco Webex',
+        };
+        const displayName = providerNames[providerType] || providerType;
+
+        await addNotification('info', `Starting ${displayName} OneClick Integration...`);
+
+        const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to initiate OAuth flow');
+        }
+
+        if (data.authUrl) {
+          const width = 600;
+          const height = 700;
+          const left = window.screen.width / 2 - width / 2;
+          const top = window.screen.height / 2 - height / 2;
+
+          const popup = window.open(
+            data.authUrl,
+            'OAuth Authorization',
+            `width=${width},height=${height},left=${left},top=${top}`
+          );
+
+          const pollTimer = setInterval(async () => {
+            if (popup && popup.closed) {
+              clearInterval(pollTimer);
+              try {
+                const settings = await api.getTelehealthSettings();
+                if (settings) {
+                  setTelehealthStatus((prev) => ({
+                    ...prev,
+                    ...settings,
+                  }));
+                }
+                await addNotification('success', `${displayName} connected successfully via OneClick Integration.`);
+              } catch (error) {
+                console.error('Error refreshing telehealth status:', error);
+                await addNotification('warning', 'Configuration may have been saved. Please refresh the page.');
+              }
+            }
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Error in OneClick Integration:', error);
+        await addNotification('alert', error.message || 'OneClick Integration failed. Please try manual configuration.');
+      }
+    },
+    [api, addNotification]
+  );
+
+  /**
    * Fetch backup provider configuration status
    */
   const fetchBackupConfigStatus = useCallback(async () => {
@@ -1567,103 +1629,34 @@ const AdminPanelView = ({
   }, [fetchBackupConfigStatus]);
 
   /**
-   * Configure cloud backup provider (OAuth)
-   * Supports both initial configuration and reconfiguration
+   * Sign in to a cloud backup provider (Google Drive / OneDrive).
+   * Credentials are configured at the platform level (env vars), so this goes
+   * directly to the OAuth sign-in popup — no credential modal, no manual entry.
    */
   const handleConfigureCloudBackup = useCallback(async (providerType) => {
+    const displayName = providerType === 'google_drive' ? 'Google Drive' : 'OneDrive';
     try {
-      const displayName = providerType === 'google_drive' ? 'Google Drive' : 'OneDrive';
-
-      // Check if provider is already configured for reconfiguration
-      const providerKey = providerType === 'google_drive' ? 'googleDrive' : 'oneDrive';
-      const isConfigured = backupConfig[providerKey]?.configured;
-
-      if (isConfigured) {
-        // For reconfiguration, fetch and show existing credentials
-        await handleReconfigureIntegration(providerType, displayName, 'oauth');
-        return;
-      }
-
-      await addNotification('info', `Initiating ${displayName} configuration...`);
-
-      // Call OAuth initiate endpoint
       const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `Failed to start ${displayName} sign-in`);
 
-      if (!response.ok) {
-        // If provider not configured, show credential modal
-        if (data.error === 'Provider not configured') {
-          setCredentialModalConfig({
-            providerName: displayName,
-            providerType: providerType,
-            credentialType: 'oauth',
-            onSuccess: async () => {
-              // Retry OAuth initiation after credentials are saved
-              try {
-                await addNotification('info', 'Initiating OAuth flow...');
-
-                const retryResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
-                const retryData = await retryResponse.json();
-
-                if (!retryResponse.ok) {
-                  throw new Error(retryData.error || 'Failed to initiate OAuth flow');
-                }
-
-                // Open OAuth flow
-                const width = 600;
-                const height = 700;
-                const left = window.screen.width / 2 - width / 2;
-                const top = window.screen.height / 2 - height / 2;
-
-                const popup = window.open(
-                  retryData.authUrl,
-                  'OAuth Authorization',
-                  `width=${width},height=${height},left=${left},top=${top}`
-                );
-
-                // Poll backend OAuth status (COOP-safe)
-                pollOAuthStatus(providerType, popup, async (success) => {
-                  if (success) {
-                    await fetchBackupConfigStatus();
-                    await addNotification('success', `${displayName} configured successfully.`);
-                  }
-                });
-              } catch (error) {
-                console.error('Error in OAuth flow:', error);
-                await addNotification('alert', error.message || 'Failed to complete OAuth flow');
-              }
-            }
-          });
-          setShowCredentialModal(true);
-          return;
-        }
-        throw new Error(data.error || 'Failed to initiate OAuth flow');
-      }
-
-      // Open OAuth flow in popup window
-      const width = 600;
-      const height = 700;
+      const width = 600, height = 700;
       const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
+      const top  = window.screen.height / 2 - height / 2;
+      const popup = window.open(data.authUrl, 'OAuth Authorization',
+        `width=${width},height=${height},left=${left},top=${top}`);
 
-      const popup = window.open(
-        data.authUrl,
-        'OAuth Authorization',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-
-      // Poll backend OAuth status (COOP-safe)
       pollOAuthStatus(providerType, popup, async (success) => {
         if (success) {
           await fetchBackupConfigStatus();
-          await addNotification('success', 'Configuration updated. Please check the status.');
+          await addNotification('success', `${displayName} connected successfully.`);
         }
       });
     } catch (error) {
-      console.error(`Error configuring ${providerType}:`, error);
-      await addNotification('alert', error.message || `Failed to configure ${providerType}`);
+      console.error(`Error connecting ${providerType}:`, error);
+      await addNotification('alert', error.message || `Failed to connect ${displayName}`);
     }
-  }, [backupConfig, handleReconfigureIntegration, addNotification, fetchBackupConfigStatus, pollOAuthStatus]);
+  }, [addNotification, fetchBackupConfigStatus, pollOAuthStatus]);
 
   /**
    * Restore from backup file
@@ -3866,6 +3859,7 @@ const AdminPanelView = ({
         providerName={credentialModalConfig.providerName}
         credentialType={credentialModalConfig.credentialType}
         existingCredentials={credentialModalConfig.existingCredentials}
+        onOneClickIntegration={handleOneClickIntegration}
         theme={theme}
       />
 

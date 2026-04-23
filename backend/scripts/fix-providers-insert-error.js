@@ -2,11 +2,11 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'aureoncare_user',
-  password: process.env.DB_PASSWORD,
+  host: process.env.AC_DB_H || 'localhost',
+  port: process.env.AC_DB_P || 5432,
+  database: process.env.AC_DB_N || 'aureoncare',
+  user: process.env.AC_DB_U || 'aureoncare_user',
+  password: process.env.AC_DB_W,
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',
 });

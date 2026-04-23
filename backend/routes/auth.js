@@ -245,6 +245,7 @@ router.post('/social-login', async (req, res) => {
     );
 
     let user;
+    let isNewUser = false;
 
     if (socialAuthResult.rows.length > 0) {
       // Existing social auth - get the user
@@ -311,34 +312,77 @@ router.post('/social-login', async (req, res) => {
         `, [user.id, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
       } else {
-        // Create new user with pending status (requires admin approval)
+        isNewUser = true;
+        // Create new active patient user (auto-approved)
+        const sl_firstName = firstName || '';
+        const sl_lastName = lastName || '';
         const newUserResult = await pool.query(`
           INSERT INTO users (
+            id,
             email,
             first_name,
             last_name,
+            name,
             role,
             status,
             avatar
           )
-          VALUES ($1, $2, $3, 'patient', 'pending', $4)
+          VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', 'active', $5)
           RETURNING *
         `, [
           email,
-          firstName || '',
-          lastName || '',
-          `${(firstName?.[0] || '')}${(lastName?.[0] || '')}`.toUpperCase()
+          sl_firstName,
+          sl_lastName,
+          `${sl_firstName} ${sl_lastName}`.trim(),
+          `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase()
         ]);
 
         user = newUserResult.rows[0];
 
-        // Check if user is blocked or pending
+        // Check if user is blocked
         if (user.status === 'blocked') {
           return res.status(403).json({ error: 'Your account has been blocked. Please contact an administrator.' });
         }
 
-        if (user.status === 'pending') {
-          return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
+        // Auto-create patient record for new user
+        const sl_patientColumnCheck = await pool.query(`
+          SELECT column_name FROM information_schema.columns
+          WHERE table_name = 'patients' AND column_name = 'user_id'
+        `);
+        const sl_hasPatientUserIdColumn = sl_patientColumnCheck.rows.length > 0;
+
+        const sl_patientCheck = await pool.query('SELECT id FROM patients WHERE email = $1', [user.email]);
+        if (sl_patientCheck.rows.length === 0) {
+          const sl_mrnResult = await pool.query(
+            "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
+          );
+          const sl_nextMrnNumber = (sl_mrnResult.rows[0].max_mrn || 1000) + 1;
+          const sl_mrn = `MRN-${sl_nextMrnNumber}`;
+
+          if (sl_hasPatientUserIdColumn) {
+            await pool.query(
+              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
+              [user.first_name, user.last_name, sl_mrn, '1990-01-01', user.email, user.phone, user.id]
+            );
+          } else {
+            await pool.query(
+              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
+               VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
+              [user.first_name, user.last_name, sl_mrn, '1990-01-01', user.email, user.phone]
+            );
+          }
+        }
+
+        // Assign patient role in user_roles table
+        const sl_patientRoleResult = await pool.query(
+          "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
+        );
+        if (sl_patientRoleResult.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [user.id, sl_patientRoleResult.rows[0].id]
+          );
         }
 
         // Create social auth entry
@@ -368,12 +412,123 @@ router.post('/social-login', async (req, res) => {
     res.json({
       message: 'Social login successful',
       user: toCamelCase(userData),
-      isNewUser: !existingUserResult || existingUserResult.rows.length === 0
+      isNewUser
     });
 
   } catch (error) {
     console.error('Error during social login:', error);
     res.status(500).json({ error: 'Social login failed' });
+  }
+});
+
+// Social registration endpoint (Google, Microsoft)
+// Creates a new pending account linked to the social provider.
+// Unlike /social-login, this never rejects with 403 for pending status —
+// returning 201 + a message is the expected success path.
+router.post('/social-register', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { provider, providerId, accessToken, email, firstName, lastName, profileData } = req.body;
+
+    if (!provider || !providerId || !email) {
+      return res.status(400).json({ error: 'Provider, provider ID, and email are required' });
+    }
+
+    // If this social account is already linked, tell the user to sign in instead
+    const existingSocial = await pool.query(
+      'SELECT id FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
+      [provider, providerId]
+    );
+    if (existingSocial.rows.length > 0) {
+      return res.status(409).json({ error: 'An account already exists for this social profile. Please sign in instead.' });
+    }
+
+    // If the email is already registered, tell the user to sign in or link
+    const existingEmail = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+    if (existingEmail.rows.length > 0) {
+      return res.status(409).json({ error: 'This email is already registered. Please sign in or link your social account from your profile settings.' });
+    }
+
+    // Create new active patient user
+    const firstName_ = firstName || '';
+    const lastName_ = lastName || '';
+    const avatarInitials = `${(firstName_[0] || '')}${(lastName_[0] || '')}`.toUpperCase();
+    const fullName = `${firstName_} ${lastName_}`.trim();
+    const newUserResult = await pool.query(`
+      INSERT INTO users (id, email, first_name, last_name, name, role, status, avatar)
+      VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', 'active', $5)
+      RETURNING id, email, first_name, last_name, role, status
+    `, [email, firstName_, lastName_, fullName, avatarInitials]);
+
+    const newUser = newUserResult.rows[0];
+
+    // Auto-create patient record
+    const patientColumnCheck = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'patients' AND column_name = 'user_id'
+    `);
+    const hasPatientUserIdColumn = patientColumnCheck.rows.length > 0;
+
+    const patientCheck = await pool.query('SELECT id FROM patients WHERE email = $1', [newUser.email]);
+    if (patientCheck.rows.length === 0) {
+      const mrnResult = await pool.query(
+        "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
+      );
+      const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
+      const mrn = `MRN-${nextMrnNumber}`;
+
+      if (hasPatientUserIdColumn) {
+        await pool.query(
+          `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
+          [firstName_, lastName_, mrn, '1990-01-01', newUser.email, null, newUser.id]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
+           VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
+          [firstName_, lastName_, mrn, '1990-01-01', newUser.email, null]
+        );
+      }
+    }
+
+    // Assign patient role in user_roles table
+    const patientRoleResult = await pool.query(
+      "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
+    );
+    if (patientRoleResult.rows.length > 0) {
+      await pool.query(
+        `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [newUser.id, patientRoleResult.rows[0].id]
+      );
+    }
+
+    // Link social auth record
+    await pool.query(`
+      INSERT INTO social_auth (user_id, provider, provider_user_id, access_token, profile_data)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [newUser.id, provider, providerId, accessToken, JSON.stringify(profileData || {})]);
+
+    res.status(201).json({
+      message: 'Registration successful! Your account is ready to use.',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        firstName: newUser.first_name,
+        lastName: newUser.last_name,
+        role: newUser.role,
+        status: newUser.status
+      }
+    });
+  } catch (error) {
+    console.error('Error during social registration:', error);
+    res.status(500).json({
+      error: 'Registration failed. Please try again.',
+      detail: error.message
+    });
   }
 });
 

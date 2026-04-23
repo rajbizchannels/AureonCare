@@ -76,6 +76,9 @@ export const useAudit = () => {
       includeDuration = false,
     }) => {
       try {
+        // Skip audit logging for unauthenticated users (pre-auth pages)
+        if (!user) return;
+
         // Check if api is available
         if (!api || !api.createAuditLog) {
           console.warn('Audit logging unavailable: API not accessible');

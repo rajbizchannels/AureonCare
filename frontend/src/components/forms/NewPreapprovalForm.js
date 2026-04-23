@@ -42,7 +42,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
         mode: 'create',
       },
     });
-  }, []);
+  }, [formData.patientId, logFormView, startAction]);
 
   // Load diagnoses when patient is selected
   useEffect(() => {

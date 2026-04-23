@@ -2,25 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const { Pool } = require('pg');
 const redis = require('redis');
+
+// Use centralised Supabase-aware pool from db.js
+const pool = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Database connection
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'postgres',
-  password: 'MedFlow2024!',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-  // Explicitly set search_path to ensure tables are found
-  options: '-c search_path=public',
-});
 
 // Make pool available to routes
 app.locals.pool = pool;
@@ -33,14 +21,14 @@ let redisClient = null;
 /*
 const redisConfig = {
   socket: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379,
+    host: process.env.AC_RD_H || 'localhost',
+    port: process.env.AC_RD_P || 6379,
     reconnectStrategy: () => false
   }
 };
 
-if (process.env.REDIS_PASSWORD) {
-  redisConfig.password = process.env.REDIS_PASSWORD;
+if (process.env.AC_RD_W) {
+  redisConfig.password = process.env.AC_RD_W;
 }
 
 redisClient = redis.createClient(redisConfig);
@@ -54,11 +42,23 @@ redisClient.on('connect', () => console.log('✓ Redis Connected'));
 app.use(
   helmet({
     crossOriginEmbedderPolicy: { policy: 'credentialless' },
-    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   })
 );
+// Support multiple allowed origins via a comma-separated FRONTEND_URL env var,
+// e.g. FRONTEND_URL=https://app.aureoncare.tech,http://localhost:3001
+const allowedOrigins = (process.env.FRONTEND_URL || 'https://app.aureoncare.tech,http://localhost:3001')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+  origin: (origin, callback) => {
+    // Allow server-to-server or same-origin requests (no Origin header)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -149,6 +149,8 @@ app.use('/api/archive', require('./routes/archive'));
 app.use('/api/archive-rules', require('./routes/archiveRules'));
 app.use('/api/audit', require('./routes/audit'));
 app.use('/api/billing', require('./routes/billing'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/form-management', require('./routes/form-management'));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
@@ -169,7 +171,7 @@ async function startServer() {
   console.log('========================================');
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Port: ${PORT}`);
-  console.log(`Database: ${process.env.DB_NAME || 'aureoncare'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}`);
+  console.log(`Database: ${process.env.AC_DB_N || 'aureoncare'}@${process.env.AC_DB_H || 'localhost'}:${process.env.AC_DB_P || 5432}`);
   console.log('========================================\n');
 
   try {
@@ -210,7 +212,7 @@ async function startServer() {
       console.log(`🚀 AureonCare Backend Server Running`);
       console.log(`=================================`);
       console.log(`🌐 URL: http://localhost:${PORT}`);
-      console.log(`🗄️  Database: ${process.env.DB_NAME}`);
+      console.log(`🗄️  Database: ${process.env.AC_DB_N}`);
       console.log(`⚡ Redis: ${redisConnected ? 'Connected' : 'Not available'}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`=================================\n`);
@@ -228,7 +230,7 @@ async function startServer() {
       console.error('   - Make sure PostgreSQL is running');
       console.error('   - Check database credentials in .env file');
       console.error('   - Verify database exists and is accessible');
-      console.error(`   - Connection string: ${process.env.DB_USER}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
+      console.error(`   - Connection string: ${process.env.AC_DB_U}@${process.env.AC_DB_H}:${process.env.AC_DB_P}/${process.env.AC_DB_N}`);
     }
 
     console.error('\nFull error stack:');
@@ -237,8 +239,6 @@ async function startServer() {
     process.exit(1);
   }
 }
-
-startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
@@ -249,3 +249,12 @@ process.on('SIGTERM', async () => {
   }
   process.exit(0);
 });
+
+// Export app for Vercel serverless deployment.
+// In local development, start the server normally.
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  startServer();
+  module.exports = app;
+}

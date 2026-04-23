@@ -25,7 +25,7 @@ const NewAppointmentTypeForm = ({ theme, api, onClose, onSuccess, addNotificatio
         mode: 'create',
       },
     });
-  }, []);
+  }, [logFormView, startAction]);
 
   // ESC key handler
   useEffect(() => {

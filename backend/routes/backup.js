@@ -4,6 +4,7 @@ const pool = require('../db');
 const { requireAdmin } = require('../middleware/auth');
 const { google } = require('googleapis');
 const { Client } = require('@microsoft/microsoft-graph-client');
+const axios = require('axios');
 
 // Middleware to ensure only admins can access backup endpoints
 router.use(requireAdmin);
@@ -95,12 +96,81 @@ router.post('/google-drive', async (req, res) => {
   try {
     console.log('Starting Google Drive backup...');
 
-    // Check if Google Drive credentials are configured
-    const googleCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS;
-    if (!googleCredentials) {
+    // Load OAuth tokens and client credentials saved by the Google Drive OAuth flow
+    const settingsResult = await pool.query(
+      `SELECT client_id, client_secret, settings
+       FROM backup_provider_settings
+       WHERE provider_type = 'google_drive'`
+    );
+    const row = settingsResult.rows[0];
+    const parsedSettings = row
+      ? (typeof row.settings === 'string' ? JSON.parse(row.settings) : (row.settings || {}))
+      : {};
+
+    let accessToken = parsedSettings.access_token;
+    const refreshToken = parsedSettings.refresh_token;
+    const expiresAt = parsedSettings.expires_at;
+
+    if (!accessToken) {
       return res.status(400).json({
-        error: 'Google Drive not configured. Please set up Google Drive credentials in environment variables.'
+        error: 'Google Drive not connected. Please sign in with your Google account first.'
       });
+    }
+
+    // Refresh the access token if it has expired or will expire within 60 seconds
+    if (expiresAt && Date.now() >= expiresAt - 60000) {
+      if (!refreshToken) {
+        return res.status(401).json({
+          error: 'Google Drive session expired. Please reconnect your Google account.'
+        });
+      }
+
+      const clientId = row?.client_id || process.env.REACT_APP_GG_CID;
+      const clientSecret = row?.client_secret || process.env.AC_GD_CSK;
+
+      if (!clientId || !clientSecret) {
+        return res.status(401).json({
+          error: 'Google Drive session expired and client credentials are missing. Please reconnect your Google account.'
+        });
+      }
+
+      let newTokens;
+      try {
+        const tokenResponse = await axios.post(
+          'https://oauth2.googleapis.com/token',
+          new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: clientId,
+            client_secret: clientSecret,
+          }).toString(),
+          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
+        newTokens = tokenResponse.data;
+      } catch (refreshError) {
+        console.error('Google Drive token refresh failed:', refreshError.response?.data || refreshError.message);
+        return res.status(401).json({
+          error: 'Google Drive session expired. Please reconnect your Google account.'
+        });
+      }
+
+      accessToken = newTokens.access_token;
+      const newExpiresAt = newTokens.expires_in ? Date.now() + newTokens.expires_in * 1000 : null;
+
+      // Persist the refreshed tokens
+      const updatedSettings = {
+        ...parsedSettings,
+        access_token: accessToken,
+        refresh_token: newTokens.refresh_token || refreshToken,
+        expires_at: newExpiresAt,
+      };
+      await pool.query(
+        `UPDATE backup_provider_settings
+         SET settings = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE provider_type = 'google_drive'`,
+        [JSON.stringify(updatedSettings)]
+      );
+      console.log('Google Drive access token refreshed successfully.');
     }
 
     // Generate backup data
@@ -117,13 +187,10 @@ router.post('/google-drive', async (req, res) => {
 
     const backupData = await backupResponse.json();
 
-    // Initialize Google Drive API
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(googleCredentials),
-      scopes: ['https://www.googleapis.com/auth/drive.file']
-    });
-
-    const drive = google.drive({ version: 'v3', auth });
+    // Use the (possibly refreshed) OAuth access token
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
     // Create file metadata
     const fileMetadata = {
@@ -168,12 +235,81 @@ router.post('/onedrive', async (req, res) => {
   try {
     console.log('Starting OneDrive backup...');
 
-    // Check if OneDrive credentials are configured
-    const oneDriveToken = process.env.ONEDRIVE_ACCESS_TOKEN;
+    // Load OAuth tokens and client credentials saved by the OneDrive OAuth flow
+    const settingsResult = await pool.query(
+      `SELECT client_id, client_secret, settings
+       FROM backup_provider_settings
+       WHERE provider_type = 'onedrive'`
+    );
+    const row = settingsResult.rows[0];
+    const parsedSettings = row
+      ? (typeof row.settings === 'string' ? JSON.parse(row.settings) : (row.settings || {}))
+      : {};
+
+    let oneDriveToken = parsedSettings.access_token;
+    const refreshToken = parsedSettings.refresh_token;
+    const expiresAt = parsedSettings.expires_at;
+
     if (!oneDriveToken) {
       return res.status(400).json({
-        error: 'OneDrive not configured. Please set up OneDrive access token in environment variables.'
+        error: 'OneDrive not connected. Please sign in with your Microsoft account first.'
       });
+    }
+
+    // Refresh the access token if it has expired or will expire within 60 seconds
+    if (expiresAt && Date.now() >= expiresAt - 60000) {
+      if (!refreshToken) {
+        return res.status(401).json({
+          error: 'OneDrive session expired. Please reconnect your Microsoft account.'
+        });
+      }
+
+      const clientId = row?.client_id || process.env.REACT_APP_MS_CID;
+      const clientSecret = row?.client_secret || process.env.AC_OD_CSK;
+
+      if (!clientId || !clientSecret) {
+        return res.status(401).json({
+          error: 'OneDrive session expired and client credentials are missing. Please reconnect your Microsoft account.'
+        });
+      }
+
+      let newTokens;
+      try {
+        const tokenResponse = await axios.post(
+          'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+          new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: clientId,
+            client_secret: clientSecret,
+          }).toString(),
+          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
+        newTokens = tokenResponse.data;
+      } catch (refreshError) {
+        console.error('OneDrive token refresh failed:', refreshError.response?.data || refreshError.message);
+        return res.status(401).json({
+          error: 'OneDrive session expired. Please reconnect your Microsoft account.'
+        });
+      }
+
+      oneDriveToken = newTokens.access_token;
+      const newExpiresAt = newTokens.expires_in ? Date.now() + newTokens.expires_in * 1000 : null;
+
+      // Persist the refreshed tokens
+      const updatedSettings = {
+        ...parsedSettings,
+        access_token: oneDriveToken,
+        refresh_token: newTokens.refresh_token || refreshToken,
+        expires_at: newExpiresAt,
+      };
+      await pool.query(
+        `UPDATE backup_provider_settings
+         SET settings = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE provider_type = 'onedrive'`,
+        [JSON.stringify(updatedSettings)]
+      );
+      console.log('OneDrive access token refreshed successfully.');
     }
 
     // Generate backup data
@@ -190,7 +326,7 @@ router.post('/onedrive', async (req, res) => {
 
     const backupData = await backupResponse.json();
 
-    // Initialize Microsoft Graph client
+    // Initialize Microsoft Graph client using the stored OAuth token
     const client = Client.init({
       authProvider: (done) => {
         done(null, oneDriveToken);
@@ -308,13 +444,28 @@ router.post('/restore', async (req, res) => {
  */
 router.get('/config', async (req, res) => {
   try {
+    // Configured = has a valid OAuth access token saved after sign-in
+    let googleConfigured = false;
+    let oneDriveConfigured = false;
+
+    try {
+      const result = await pool.query(
+        `SELECT provider_type,
+                (settings->>'access_token' IS NOT NULL AND settings->>'access_token' != '') AS has_token
+         FROM backup_provider_settings
+         WHERE provider_type IN ('google_drive', 'onedrive')`
+      );
+      result.rows.forEach(row => {
+        if (row.provider_type === 'google_drive') googleConfigured = row.has_token;
+        if (row.provider_type === 'onedrive')     oneDriveConfigured = row.has_token;
+      });
+    } catch (_) {
+      // Table may not exist yet — treat as not configured
+    }
+
     const config = {
-      googleDrive: {
-        configured: !!process.env.GOOGLE_DRIVE_CREDENTIALS
-      },
-      oneDrive: {
-        configured: !!process.env.ONEDRIVE_ACCESS_TOKEN
-      }
+      googleDrive: { configured: googleConfigured },
+      oneDrive:    { configured: oneDriveConfigured }
     };
 
     res.json(config);
@@ -351,7 +502,7 @@ router.post('/config/google-drive', async (req, res) => {
     }
 
     // Store in environment variable (runtime only)
-    process.env.GOOGLE_DRIVE_CREDENTIALS = credentials;
+    process.env.AC_GG_DRV = credentials;
 
     res.json({
       success: true,
@@ -381,7 +532,7 @@ router.post('/config/onedrive', async (req, res) => {
     }
 
     // Store in environment variable (runtime only)
-    process.env.ONEDRIVE_ACCESS_TOKEN = accessToken;
+    process.env.AC_OD_TK = accessToken;
 
     res.json({
       success: true,

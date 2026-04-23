@@ -34,7 +34,7 @@ const NewCouponForm = ({ theme, api, onClose, onSuccess, addNotification, t, edi
         coupon_id: editingCoupon?.id || null,
       },
     });
-  }, []);
+  }, [editingCoupon, logFormView, startAction]);
 
   // Load offerings for multi-select
   useEffect(() => {
@@ -50,7 +50,7 @@ const NewCouponForm = ({ theme, api, onClose, onSuccess, addNotification, t, edi
       }
     };
     loadOfferings();
-  }, [api, addNotification]);
+  }, [api, addNotification, t.failedToLoadOfferings]);
 
   // Populate form when editing
   useEffect(() => {
