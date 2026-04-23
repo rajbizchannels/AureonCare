@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoom Integration Guide - AureonCare Documentation</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>Zoom Integration Guide</h1>
+                    <p>Adding, using, and removing the AureonCare Zoom App</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.0</span>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+
+        <!-- Support Banner -->
+        <div class="article-card" style="background:#eff6ff; border-left: 4px solid #3b82f6;">
+            <p>
+                <strong>Need help?</strong> Contact AureonCare Support at
+                <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a> &mdash;
+                or jump to the <a href="#troubleshooting">Troubleshooting</a> and
+                <a href="#faq">FAQ</a> sections on this page.
+            </p>
+        </div>
+
+        <!-- Table of Contents -->
+        <div class="article-card">
+            <h2>On This Page</h2>
+            <ul>
+                <li><a href="#adding-the-app">Adding the Zoom App</a></li>
+                <li><a href="#usage">Usage &amp; Features</a>
+                    <ul>
+                        <li><a href="#schedule-telehealth">Scheduling a Telehealth Appointment</a></li>
+                        <li><a href="#start-session">Starting a Video Session (Provider)</a></li>
+                        <li><a href="#join-session">Joining a Video Session (Patient)</a></li>
+                        <li><a href="#cloud-recording">Cloud Recording</a></li>
+                    </ul>
+                </li>
+                <li><a href="#removing-the-app">Removing the Zoom App</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+                <li><a href="#faq">Frequently Asked Questions</a></li>
+            </ul>
+        </div>
+
+        <!-- ============================================================
+             SECTION 1 — ADDING THE APP
+             ============================================================ -->
+        <div class="article-card" id="adding-the-app">
+            <h1 class="article-title">Adding the Zoom App</h1>
+
+            <p>
+                AureonCare connects to Zoom via OAuth 2.0. A practice administrator must
+                authorize the integration once; all providers in the practice can then launch
+                Zoom telehealth sessions without needing individual Zoom accounts.
+            </p>
+
+            <h2>Prerequisites</h2>
+            <ul>
+                <li>An active AureonCare account with <strong>Administrator</strong> role.</li>
+                <li>A Zoom account (Pro, Business, or higher) for the practice.</li>
+                <li>Pop-ups must be allowed in your browser for the Zoom authorization window.</li>
+            </ul>
+
+            <h2>Step-by-Step Setup</h2>
+            <ol>
+                <li>
+                    Log in to AureonCare and click <strong>Settings</strong> in the left
+                    navigation bar.
+                </li>
+                <li>
+                    Select <strong>Integrations</strong> from the Settings menu.
+                </li>
+                <li>
+                    Locate the <strong>Zoom</strong> card under <em>Telehealth Providers</em>
+                    and click <strong>Connect Zoom</strong>.
+                </li>
+                <li>
+                    You will be redirected to Zoom's authorization page. Sign in with your
+                    practice's Zoom account if prompted.
+                </li>
+                <li>
+                    Review the list of permissions AureonCare is requesting (see below) and
+                    click <strong>Allow</strong>.
+                </li>
+                <li>
+                    You will be returned to AureonCare. The Zoom card will now show a green
+                    <strong>Connected</strong> badge and the linked Zoom user email.
+                </li>
+                <li>
+                    (Optional) Click <strong>Test Connection</strong> to verify the
+                    integration is working before scheduling your first telehealth visit.
+                </li>
+            </ol>
+
+            <h3>Permissions Requested</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Scope</th>
+                        <th>Why AureonCare needs it</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>meeting:write</code></td>
+                        <td>Create Zoom meetings automatically when a telehealth appointment is scheduled, and configure HIPAA-required settings (waiting room on, join-before-host off)</td>
+                    </tr>
+                    <tr>
+                        <td><code>meeting:read</code></td>
+                        <td>Retrieve meeting join URLs and IDs to display in the appointment record and deliver secure join links to patients</td>
+                    </tr>
+                    <tr>
+                        <td><code>meeting:delete</code></td>
+                        <td>Delete the associated Zoom meeting when an appointment is cancelled or rescheduled, preventing orphaned meetings and invalidating stale join links</td>
+                    </tr>
+                    <tr>
+                        <td><code>recording:read</code></td>
+                        <td>Retrieve cloud recording links after a session ends and attach them to the appointment record for clinical review (only when the provider has enabled recording with documented patient consent)</td>
+                    </tr>
+                    <tr>
+                        <td><code>user:read</code></td>
+                        <td>Verify the identity and account status of the connecting Zoom user at authorization time, and display the linked email in the Integrations settings panel</td>
+                    </tr>
+                    <tr>
+                        <td><code>user:read:zak</code></td>
+                        <td>Obtain the Zoom Access Key to authenticate the provider as meeting host inside the embedded Zoom Meeting SDK, enabling full host privileges (waiting room control, recording) without a separate Zoom browser login</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                Having trouble? See <a href="#troubleshooting">Troubleshooting</a> below or
+                visit our <a href="../troubleshooting/common-issues.html">Common Issues guide</a>.
+            </p>
+        </div>
+
+        <!-- ============================================================
+             SECTION 2 — USAGE
+             ============================================================ -->
+        <div class="article-card" id="usage">
+            <h1 class="article-title">Usage &amp; Features</h1>
+
+            <!-- Feature 1 -->
+            <h2 id="schedule-telehealth">Scheduling a Telehealth Appointment</h2>
+            <p>
+                <strong>Use case:</strong> A provider or front-desk staff member schedules a
+                telehealth visit. AureonCare automatically creates a Zoom meeting and sends
+                the patient a secure join link via email and SMS.
+            </p>
+
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>Zoom integration connected (see <a href="#adding-the-app">Adding the App</a>).</li>
+                <li>Patient record exists in AureonCare.</li>
+                <li>Patient has a valid email address or phone number on file.</li>
+            </ul>
+
+            <h3>Steps</h3>
+            <ol>
+                <li>Go to <strong>Practice Management</strong> &rarr; <strong>Appointments</strong>.</li>
+                <li>Click <strong>+ New Appointment</strong>.</li>
+                <li>Select the patient and provider.</li>
+                <li>Set <strong>Appointment Type</strong> to <strong>Telehealth</strong>.</li>
+                <li>Choose the date and time, then click <strong>Save</strong>.</li>
+            </ol>
+            <p>
+                AureonCare creates a Zoom meeting in the background and delivers the join link
+                to the patient 30 minutes before the appointment.
+            </p>
+
+            <!-- Feature 2 -->
+            <h2 id="start-session">Starting a Video Session (Provider)</h2>
+            <p>
+                <strong>Use case:</strong> A provider launches the Zoom meeting embedded
+                directly in AureonCare at appointment time, without leaving the EHR.
+            </p>
+
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>Telehealth appointment scheduled and Zoom meeting created.</li>
+                <li>Device with a working camera and microphone.</li>
+                <li>Minimum 5 Mbps internet connection (up and down).</li>
+                <li>Supported browser: Chrome, Firefox, or Safari (latest version).</li>
+            </ul>
+
+            <h3>Steps</h3>
+            <ol>
+                <li>From the <strong>Dashboard</strong>, locate the upcoming telehealth appointment.</li>
+                <li>Click <strong>Start Video Consultation</strong>.</li>
+                <li>Allow camera and microphone access when prompted by the browser.</li>
+                <li>The Zoom session opens inside AureonCare. Wait for the patient to join.</li>
+                <li>Use the in-session controls to mute/unmute, toggle video, share screen, or chat.</li>
+                <li>Click <strong>End Call</strong> when the consultation is complete.</li>
+            </ol>
+
+            <!-- Feature 3 -->
+            <h2 id="join-session">Joining a Video Session (Patient)</h2>
+            <p>
+                <strong>Use case:</strong> A patient joins their scheduled telehealth visit.
+                Patients do not need a Zoom account or the Zoom desktop app.
+            </p>
+
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>Appointment confirmation email or SMS with the join link.</li>
+                <li>Device with camera and microphone (smartphone, tablet, or computer).</li>
+                <li>Supported browser: Chrome, Firefox, or Safari (iOS 12+ / Android 8+).</li>
+            </ul>
+
+            <h3>Steps</h3>
+            <ol>
+                <li>
+                    Click the <strong>Join Telehealth Visit</strong> link in the appointment
+                    reminder email or SMS, <em>or</em> log in to the Patient Portal and click
+                    <strong>Join Video</strong> next to the appointment.
+                </li>
+                <li>Allow camera and microphone access when prompted.</li>
+                <li>Wait in the virtual waiting room until the provider starts the session.</li>
+            </ol>
+
+            <!-- Feature 4 -->
+            <h2 id="cloud-recording">Cloud Recording</h2>
+            <p>
+                <strong>Use case:</strong> A provider records a session (with patient consent)
+                for clinical review or documentation purposes.
+            </p>
+
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>Cloud recording enabled on the connected Zoom account (Zoom Pro or higher).</li>
+                <li>Explicit verbal or written patient consent documented in the chart before recording begins.</li>
+                <li><code>recording:read</code> scope granted during OAuth authorization.</li>
+            </ul>
+
+            <h3>Steps</h3>
+            <ol>
+                <li>During an active session, click <strong>Record</strong> in the session toolbar.</li>
+                <li>Inform the patient that recording has started (required by law in most jurisdictions).</li>
+                <li>Click <strong>Stop Recording</strong> at the end of the session, or the recording stops automatically when the call ends.</li>
+                <li>The recording link becomes available in the appointment record within a few minutes of the session ending.</li>
+            </ol>
+
+            <p>
+                <strong>Note:</strong> Recordings are stored in Zoom's cloud under your practice's
+                Zoom account and are subject to your Zoom plan's retention policy. AureonCare
+                stores only a reference link, not the recording file itself.
+            </p>
+        </div>
+
+        <!-- ============================================================
+             SECTION 3 — REMOVING THE APP
+             ============================================================ -->
+        <div class="article-card" id="removing-the-app">
+            <h1 class="article-title">Removing the Zoom App</h1>
+
+            <p>
+                You can disconnect the Zoom integration from AureonCare at any time.
+                There are two steps: removing the connection inside AureonCare, and
+                (optionally) revoking AureonCare's access from your Zoom account.
+            </p>
+
+            <h2>Step 1 — Disconnect from AureonCare</h2>
+            <ol>
+                <li>Log in as an Administrator and go to <strong>Settings</strong> &rarr; <strong>Integrations</strong>.</li>
+                <li>Locate the <strong>Zoom</strong> card and click <strong>Disconnect</strong>.</li>
+                <li>Confirm the action in the dialog that appears.</li>
+            </ol>
+
+            <h2>Step 2 — Revoke Access from Your Zoom Account (Recommended)</h2>
+            <ol>
+                <li>Log in at <a href="https://marketplace.zoom.us" target="_blank" rel="noopener noreferrer">marketplace.zoom.us</a>.</li>
+                <li>Go to <strong>Manage</strong> &rarr; <strong>Added Apps</strong>.</li>
+                <li>Find <strong>AureonCare</strong> and click <strong>Remove</strong>.</li>
+                <li>Confirm removal. Zoom will revoke all OAuth tokens granted to AureonCare.</li>
+            </ol>
+
+            <h2>Implications of De-authorization</h2>
+            <ul>
+                <li>
+                    <strong>No new meetings can be created.</strong> Any telehealth appointment
+                    scheduled after disconnection will not have an associated Zoom meeting.
+                    Providers can still conduct appointments using alternative video providers
+                    (Google Meet, Webex) if configured in AureonCare.
+                </li>
+                <li>
+                    <strong>Existing join links stop working.</strong> Previously generated Zoom
+                    meeting links for future appointments will become invalid. Reschedule or
+                    switch those appointments to another telehealth provider.
+                </li>
+                <li>
+                    <strong>Cloud recordings remain in Zoom.</strong> Recordings are stored on
+                    your practice's Zoom account, not on AureonCare servers. They are unaffected
+                    by de-authorization and must be managed via your Zoom account settings.
+                </li>
+            </ul>
+
+            <h2>How AureonCare Removes Your Data</h2>
+            <p>Upon disconnection, AureonCare immediately:</p>
+            <ul>
+                <li>Deletes the stored OAuth access token and refresh token from its database.</li>
+                <li>Removes the linked Zoom account ID and Zoom user email from the integration settings.</li>
+            </ul>
+            <p>
+                AureonCare does <strong>not</strong> store Zoom meeting recordings or participant
+                video/audio data. Meeting metadata (meeting ID, join URL, scheduled time) that was
+                already recorded in appointment records will remain in AureonCare as part of the
+                patient's appointment history for clinical and legal record-keeping purposes.
+                This data can be purged by submitting a data-deletion request to
+                <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a>.
+            </p>
+
+            <h2>Need Help?</h2>
+            <p>
+                Contact AureonCare Support at
+                <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a> or visit our
+                <a href="../troubleshooting/common-issues.html">Common Issues guide</a>.
+            </p>
+        </div>
+
+        <!-- ============================================================
+             SECTION 4 — TROUBLESHOOTING
+             ============================================================ -->
+        <div class="article-card" id="troubleshooting">
+            <h1 class="article-title">Troubleshooting</h1>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Likely Cause</th>
+                        <th>Solution</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Zoom card shows "Not Connected" after authorization</td>
+                        <td>Browser blocked the OAuth pop-up</td>
+                        <td>Allow pop-ups for AureonCare in your browser settings and try again</td>
+                    </tr>
+                    <tr>
+                        <td>"Failed to create meeting" error on appointment save</td>
+                        <td>OAuth token expired or revoked</td>
+                        <td>Go to <strong>Settings &rarr; Integrations</strong>, disconnect, and reconnect Zoom</td>
+                    </tr>
+                    <tr>
+                        <td>Patient cannot join the video session</td>
+                        <td>Browser camera/mic permissions denied</td>
+                        <td>Patient should allow camera and microphone in browser site settings, then refresh the page</td>
+                    </tr>
+                    <tr>
+                        <td>Video session is blank or black screen</td>
+                        <td>Camera in use by another app, or driver issue</td>
+                        <td>Close all other apps using the camera, restart the browser, and rejoin</td>
+                    </tr>
+                    <tr>
+                        <td>Poor audio or video quality</td>
+                        <td>Insufficient bandwidth</td>
+                        <td>Ensure at least 5 Mbps upload and download; close other bandwidth-heavy applications</td>
+                    </tr>
+                    <tr>
+                        <td>Recording not appearing in appointment record</td>
+                        <td>Zoom cloud processing delay</td>
+                        <td>Wait 5–10 minutes after session ends, then refresh the appointment page; if still missing, verify cloud recording is enabled on your Zoom account</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                For issues not listed here, contact support at
+                <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a> or visit the
+                <a href="../troubleshooting/common-issues.html">full troubleshooting guide</a>.
+            </p>
+        </div>
+
+        <!-- ============================================================
+             SECTION 5 — FAQ
+             ============================================================ -->
+        <div class="article-card" id="faq">
+            <h1 class="article-title">Frequently Asked Questions</h1>
+
+            <h3>Installation</h3>
+
+            <p><strong>Do patients need a Zoom account to join a session?</strong><br>
+            No. Patients join via a secure link delivered by email or SMS and are taken directly into the session through their browser. No Zoom account or Zoom app download is required.</p>
+
+            <p><strong>Can individual providers connect their own Zoom accounts?</strong><br>
+            No. The integration is practice-wide. A single Zoom account (Pro or higher) is connected by an Administrator and used to create meetings on behalf of all providers in the practice.</p>
+
+            <p><strong>What happens if I connect a Zoom account that is later downgraded to a free plan?</strong><br>
+            Free Zoom accounts have a 40-minute limit on group meetings. Telehealth sessions may be cut off mid-visit. We recommend maintaining a Pro or higher plan. AureonCare will display a warning in the Integrations panel if a meeting creation fails due to account restrictions.</p>
+
+            <h3>Usage</h3>
+
+            <p><strong>Can I use AureonCare's telehealth feature without Zoom?</strong><br>
+            Yes. AureonCare also supports Google Meet and Webex as telehealth providers. You can configure an alternative provider in <strong>Settings &rarr; Integrations</strong> and select it when scheduling appointments.</p>
+
+            <p><strong>Is the Zoom session embedded inside AureonCare or does it open separately?</strong><br>
+            The session is embedded directly in AureonCare using the Zoom Meeting SDK, so providers never leave the EHR. Patients join through a standalone browser link and do not see the AureonCare interface.</p>
+
+            <p><strong>Will Zoom send any email notifications to my patients?</strong><br>
+            No. Zoom email notifications are disabled for meetings created by AureonCare. All appointment reminders and join links are sent exclusively through AureonCare's own notification system, ensuring communications remain HIPAA-compliant and branded to your practice.</p>
+
+            <p><strong>Where are cloud recordings stored?</strong><br>
+            Recordings are stored in Zoom's cloud under your practice's Zoom account, subject to your Zoom plan's retention settings. AureonCare stores only a reference link to the recording — it does not download, copy, or host the recording file.</p>
+
+            <h3>Removing the App</h3>
+
+            <p><strong>If I remove the app from Zoom Marketplace, will AureonCare still work?</strong><br>
+            Removing the app from Zoom Marketplace revokes all OAuth tokens. AureonCare will no longer be able to create or manage Zoom meetings. You should also disconnect the integration inside AureonCare (<strong>Settings &rarr; Integrations &rarr; Disconnect</strong>) to keep your settings in sync. All other AureonCare features remain fully functional.</p>
+
+            <p><strong>Will my past appointment records be deleted when I disconnect?</strong><br>
+            No. Appointment history, clinical notes, and meeting metadata (meeting ID, join URL, scheduled time) are retained in AureonCare as part of the patient record for clinical and legal purposes. Only OAuth tokens and Zoom account credentials are permanently deleted. To request full erasure of Zoom-related metadata from your records, email <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a>.</p>
+
+            <p><strong>How do I contact support?</strong><br>
+            Email <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a>. Include your practice name and a description of the issue. For urgent matters during business hours, reference "Zoom Integration" in the subject line.</p>
+        </div>
+    </div><!-- end doc-container -->
+
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.2 | <a href="../index.html" style="color: white; text-decoration: underline;">Documentation Home</a></p>
+    </footer>
+</body>
+</html>
