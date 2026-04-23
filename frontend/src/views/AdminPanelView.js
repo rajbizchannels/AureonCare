@@ -182,7 +182,7 @@ const PlatformSetupGuide = ({ theme }) => {
                   (<em>User-managed</em> allows any Zoom account to connect; Admin-managed restricts to same org)
                 </li>
                 <li>Set the Redirect URL (copy below) and add to Allow List</li>
-                <li>Add scopes: {code('meeting:write:meeting')} {code('meeting:read:meeting')} {code('meeting:delete:meeting')} {code('user:read:user')} {code('user:read:zak')} {code('cloud_recording:read:list_recordings')}</li>
+                <li>Add scopes: {code('meeting:write:meeting')} {code('meeting:read:meeting')} {code('user:read:user')} {code('user:read:zak')} {code('cloud_recording:read:list_recordings')}</li>
                 <li>Copy Client ID → {code('ZOOM_CLIENT_ID')}, Client Secret → {code('ZOOM_CLIENT_SECRET')}</li>
               </ol>
               {renderRedirectUrl('zoom', 'Redirect URL')}
