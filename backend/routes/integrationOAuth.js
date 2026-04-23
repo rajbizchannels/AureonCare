@@ -162,7 +162,6 @@ const OAUTH_CONFIGS = {
       'meeting:read:meeting',               // Read own meeting details
       'user:read:user',                     // Read own user profile
       'user:read:zak',                      // Read own ZAK token for embedded SDK hosting
-      'cloud_recording:read:list_recordings', // List own cloud recordings
     ].join(' '),
   },
   google_meet: {
