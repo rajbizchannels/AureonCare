@@ -43,6 +43,13 @@ app.use(
   helmet({
     crossOriginEmbedderPolicy: { policy: 'credentialless' },
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        frameAncestors: ["'self'"],
+      },
+    },
+    frameguard: { action: 'sameorigin' },
   })
 );
 // Support multiple allowed origins via a comma-separated FRONTEND_URL env var,
