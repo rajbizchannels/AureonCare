@@ -436,6 +436,8 @@ const AdminPanelView = ({
     timezone: '',
     license_number: '',
     language: '',
+    whatsappNumber: '',
+    whatsappNotifications: false,
     password: '',
     confirmPassword: '',
   });
@@ -851,6 +853,10 @@ const AdminPanelView = ({
             timezone: formData.timezone,
             license_number: formData.license_number,
             language: formData.language,
+            preferences: {
+              whatsappNumber: formData.whatsappNumber || '',
+              whatsappNotifications: formData.whatsappNumber ? (formData.whatsappNotifications ?? false) : false,
+            },
           };
 
           // Only include password if it was changed
@@ -882,6 +888,10 @@ const AdminPanelView = ({
             license_number: formData.license_number,
             language: formData.language,
             password: formData.password,
+            preferences: {
+              whatsappNumber: formData.whatsappNumber || '',
+              whatsappNotifications: formData.whatsappNumber ? (formData.whatsappNotifications ?? false) : false,
+            },
           };
 
           const newUser = await api.createUser(userData);
@@ -1978,6 +1988,8 @@ const AdminPanelView = ({
         timezone: editingUser.timezone || '',
         license_number: editingUser.license_number || '',
         language: editingUser.language || '',
+        whatsappNumber: editingUser.preferences?.whatsappNumber ?? editingUser.phone ?? '',
+        whatsappNotifications: editingUser.preferences?.whatsappNotifications ?? false,
         password: '',
         confirmPassword: '',
       });
@@ -1996,6 +2008,8 @@ const AdminPanelView = ({
         timezone: '',
         license_number: '',
         language: '',
+        whatsappNumber: '',
+        whatsappNotifications: false,
         password: '',
         confirmPassword: '',
       });
@@ -2233,24 +2247,35 @@ const AdminPanelView = ({
 
             {/* WhatsApp Notifications toggle */}
             <div className="flex items-center justify-between">
-              <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                {t.whatsappNotifications || 'WhatsApp Notifications'}
-              </span>
+              <div>
+                <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.whatsappNotifications || 'WhatsApp Notifications'}
+                </span>
+                {!prefWhatsappNumber && (
+                  <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    Enter a WhatsApp number first
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
+                disabled={!prefWhatsappNumber}
                 onClick={async () => {
+                  if (!prefWhatsappNumber) return;
                   const next = !(user.preferences?.whatsappNotifications ?? false);
                   const ok = await updateUserPreferences({ whatsappNotifications: next });
                   if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
                 }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  (user.preferences?.whatsappNotifications ?? false)
-                    ? 'bg-green-500'
-                    : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  !prefWhatsappNumber
+                    ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                    : (user.preferences?.whatsappNotifications && prefWhatsappNumber)
+                      ? 'bg-green-500 cursor-pointer'
+                      : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
                 }`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  (user.preferences?.whatsappNotifications ?? false) ? 'translate-x-6' : 'translate-x-1'
+                  (user.preferences?.whatsappNotifications && prefWhatsappNumber) ? 'translate-x-6' : 'translate-x-1'
                 }`} />
               </button>
             </div>
@@ -2381,6 +2406,67 @@ const AdminPanelView = ({
                     }`}
                     placeholder="123 Main St"
                   />
+                </div>
+              </div>
+            </div>
+
+            {/* WhatsApp Number and Notifications */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  WhatsApp Number
+                </label>
+                <div className="relative">
+                  <MessageCircle className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <input
+                    type="tel"
+                    value={userFormData.whatsappNumber}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setUserFormData(prev => ({
+                        ...prev,
+                        whatsappNumber: val,
+                        whatsappNotifications: val ? prev.whatsappNotifications : false,
+                      }));
+                    }}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+              </div>
+              <div className="flex items-end pb-1">
+                <div className="flex items-center justify-between w-full">
+                  <div>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      WhatsApp Notifications
+                    </p>
+                    {!userFormData.whatsappNumber && (
+                      <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        Enter a WhatsApp number first
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!userFormData.whatsappNumber}
+                    onClick={() => {
+                      if (!userFormData.whatsappNumber) return;
+                      handleUserFormChange('whatsappNotifications', !userFormData.whatsappNotifications);
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      !userFormData.whatsappNumber
+                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                        : userFormData.whatsappNotifications
+                          ? 'bg-green-500 cursor-pointer'
+                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      userFormData.whatsappNotifications ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
                 </div>
               </div>
             </div>
