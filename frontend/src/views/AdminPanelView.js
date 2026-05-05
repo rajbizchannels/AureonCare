@@ -87,6 +87,9 @@ import {
   validateCancellationDeadline,
   sanitizeString,
   safeJSONParse,
+  isPhoneValid,
+  validateOptionalPhone,
+  validateOptionalEmail,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
 
@@ -413,6 +416,7 @@ const AdminPanelView = ({
   );
   const [prefEditingWhatsapp, setPrefEditingWhatsapp] = useState(false);
   const [prefWhatsappDraft, setPrefWhatsappDraft] = useState('');
+  const [prefWhatsappDraftError, setPrefWhatsappDraftError] = useState('');
 
   // Keep whatsapp in sync when user object changes
   useEffect(() => {
@@ -2032,8 +2036,14 @@ const AdminPanelView = ({
     if (!userFormData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userFormData.email)) {
-      newErrors.email = 'Invalid email format';
+      newErrors.email = 'Enter a valid email address';
     }
+
+    const phoneErr = validateOptionalPhone(userFormData.phone);
+    if (phoneErr) newErrors.phone = phoneErr;
+
+    const whatsappErr = validateOptionalPhone(userFormData.whatsappNumber);
+    if (whatsappErr) newErrors.whatsappNumber = whatsappErr;
 
     if (!isEditMode) {
       if (!userFormData.password) {
@@ -2191,37 +2201,47 @@ const AdminPanelView = ({
               <Phone className={`w-4 h-4 flex-shrink-0 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
               {prefEditingWhatsapp ? (
                 <>
-                  <input
-                    type="tel"
-                    value={prefWhatsappDraft}
-                    onChange={e => setPrefWhatsappDraft(e.target.value)}
-                    placeholder="+1 555 000 0000"
-                    autoFocus
-                    className={`flex-1 text-sm px-2 py-1 rounded border focus:outline-none focus:border-green-500 ${
-                      theme === 'dark'
-                        ? 'bg-slate-600 border-slate-500 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  />
+                  <div className="flex-1 flex flex-col gap-1">
+                    <input
+                      type="tel"
+                      value={prefWhatsappDraft}
+                      onChange={e => { setPrefWhatsappDraft(e.target.value); setPrefWhatsappDraftError(''); }}
+                      placeholder="+1 555 000 0000"
+                      autoFocus
+                      className={`w-full text-sm px-2 py-1 rounded border focus:outline-none ${
+                        prefWhatsappDraftError ? 'border-red-500 focus:border-red-500' : 'focus:border-green-500'
+                      } ${
+                        theme === 'dark'
+                          ? 'bg-slate-600 border-slate-500 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    />
+                    {prefWhatsappDraftError && (
+                      <p className="text-xs text-red-500">{prefWhatsappDraftError}</p>
+                    )}
+                  </div>
                   <button
                     type="button"
                     title="Save"
                     onClick={async () => {
                       const val = prefWhatsappDraft.trim();
+                      const err = validateOptionalPhone(val);
+                      if (err) { setPrefWhatsappDraftError(err); return; }
                       setPrefWhatsappNumber(val);
                       setPrefEditingWhatsapp(false);
+                      setPrefWhatsappDraftError('');
                       const ok = await updateUserPreferences({ whatsappNumber: val });
                       if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
                     }}
-                    className="p-1 rounded text-green-500 hover:bg-green-500/10 transition-colors"
+                    className="p-1 rounded text-green-500 hover:bg-green-500/10 transition-colors flex-shrink-0"
                   >
                     <Check className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     title="Cancel"
-                    onClick={() => setPrefEditingWhatsapp(false)}
-                    className={`p-1 rounded transition-colors ${theme === 'dark' ? 'text-slate-400 hover:bg-slate-600' : 'text-gray-400 hover:bg-gray-200'}`}
+                    onClick={() => { setPrefEditingWhatsapp(false); setPrefWhatsappDraftError(''); }}
+                    className={`p-1 rounded transition-colors flex-shrink-0 ${theme === 'dark' ? 'text-slate-400 hover:bg-slate-600' : 'text-gray-400 hover:bg-gray-200'}`}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -2251,31 +2271,31 @@ const AdminPanelView = ({
                 <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.whatsappNotifications || 'WhatsApp Notifications'}
                 </span>
-                {!prefWhatsappNumber && (
+                {!isPhoneValid(prefWhatsappNumber) && (
                   <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                    Enter a WhatsApp number first
+                    {prefWhatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
                   </p>
                 )}
               </div>
               <button
                 type="button"
-                disabled={!prefWhatsappNumber}
+                disabled={!isPhoneValid(prefWhatsappNumber)}
                 onClick={async () => {
-                  if (!prefWhatsappNumber) return;
+                  if (!isPhoneValid(prefWhatsappNumber)) return;
                   const next = !(user.preferences?.whatsappNotifications ?? false);
                   const ok = await updateUserPreferences({ whatsappNotifications: next });
                   if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
                 }}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  !prefWhatsappNumber
+                  !isPhoneValid(prefWhatsappNumber)
                     ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                    : (user.preferences?.whatsappNotifications && prefWhatsappNumber)
+                    : (user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber))
                       ? 'bg-green-500 cursor-pointer'
                       : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
                 }`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  (user.preferences?.whatsappNotifications && prefWhatsappNumber) ? 'translate-x-6' : 'translate-x-1'
+                  (user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
                 }`} />
               </button>
             </div>
@@ -2385,10 +2405,11 @@ const AdminPanelView = ({
                     onChange={(e) => handleUserFormChange('phone', e.target.value)}
                     className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    } ${userFormErrors.phone ? 'border-red-500' : ''}`}
                     placeholder="+1 (555) 123-4567"
                   />
                 </div>
+                {userFormErrors.phone && <p className="mt-1 text-sm text-red-500">{userFormErrors.phone}</p>}
               </div>
 
               <div>
@@ -2426,15 +2447,17 @@ const AdminPanelView = ({
                       setUserFormData(prev => ({
                         ...prev,
                         whatsappNumber: val,
-                        whatsappNotifications: val ? prev.whatsappNotifications : false,
+                        whatsappNotifications: isPhoneValid(val) ? prev.whatsappNotifications : false,
                       }));
+                      setUserFormErrors(prev => ({ ...prev, whatsappNumber: validateOptionalPhone(e.target.value) || undefined }));
                     }}
                     className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    } ${userFormErrors.whatsappNumber ? 'border-red-500' : ''}`}
                     placeholder="+1 (555) 123-4567"
                   />
                 </div>
+                {userFormErrors.whatsappNumber && <p className="mt-1 text-sm text-red-500">{userFormErrors.whatsappNumber}</p>}
               </div>
               <div className="flex items-end pb-1">
                 <div className="flex items-center justify-between w-full">
@@ -2442,29 +2465,29 @@ const AdminPanelView = ({
                     <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       WhatsApp Notifications
                     </p>
-                    {!userFormData.whatsappNumber && (
+                    {!isPhoneValid(userFormData.whatsappNumber) && (
                       <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                        Enter a WhatsApp number first
+                        {userFormData.whatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
                       </p>
                     )}
                   </div>
                   <button
                     type="button"
-                    disabled={!userFormData.whatsappNumber}
+                    disabled={!isPhoneValid(userFormData.whatsappNumber)}
                     onClick={() => {
-                      if (!userFormData.whatsappNumber) return;
+                      if (!isPhoneValid(userFormData.whatsappNumber)) return;
                       handleUserFormChange('whatsappNotifications', !userFormData.whatsappNotifications);
                     }}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      !userFormData.whatsappNumber
+                      !isPhoneValid(userFormData.whatsappNumber)
                         ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                        : userFormData.whatsappNotifications
+                        : (userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber))
                           ? 'bg-green-500 cursor-pointer'
                           : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
                     }`}
                   >
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      userFormData.whatsappNotifications ? 'translate-x-6' : 'translate-x-1'
+                      (userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
                     }`} />
                   </button>
                 </div>
