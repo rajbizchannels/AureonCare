@@ -2447,7 +2447,7 @@ const AdminPanelView = ({
                       setShowUserForm(true);
                     }}
                     className={`p-2 rounded-lg transition-colors ${
-                      theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
+                      theme === 'dark' ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-100 text-gray-600'
                     }`}
                     title="Edit user"
                   >
