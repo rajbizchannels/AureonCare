@@ -3,6 +3,7 @@ import { X, MessageCircle, Phone, Edit2, Check } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { getTranslations } from '../../config/translations';
 import { useAudit } from '../../hooks/useAudit';
+import { isPhoneValid, validateOptionalPhone } from '../../utils/validators';
 
 const UserProfileModal = ({
   theme,
@@ -34,6 +35,7 @@ const UserProfileModal = ({
   );
   const [editingWhatsapp, setEditingWhatsapp] = useState(false);
   const [whatsappDraft, setWhatsappDraft] = useState('');
+  const [whatsappDraftError, setWhatsappDraftError] = useState('');
 
   // Log modal open on mount
   useEffect(() => {
@@ -245,36 +247,48 @@ const UserProfileModal = ({
                   <Phone className={`w-4 h-4 flex-shrink-0 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
                   {editingWhatsapp ? (
                     <>
-                      <input
-                        type="tel"
-                        value={whatsappDraft}
-                        onChange={e => setWhatsappDraft(e.target.value)}
-                        placeholder="+1 555 000 0000"
-                        className={`flex-1 text-sm px-2 py-1 rounded border focus:outline-none focus:border-green-500 ${
-                          theme === 'dark'
-                            ? 'bg-slate-600 border-slate-500 text-white'
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        autoFocus
-                      />
+                      <div className="flex-1 flex flex-col gap-1">
+                        <input
+                          type="tel"
+                          value={whatsappDraft}
+                          onChange={e => { setWhatsappDraft(e.target.value); setWhatsappDraftError(''); }}
+                          placeholder="+1 555 000 0000"
+                          className={`w-full text-sm px-2 py-1 rounded border focus:outline-none ${
+                            whatsappDraftError
+                              ? 'border-red-500 focus:border-red-500'
+                              : 'focus:border-green-500'
+                          } ${
+                            theme === 'dark'
+                              ? 'bg-slate-600 border-slate-500 text-white'
+                              : 'bg-white border-gray-300 text-gray-900'
+                          }`}
+                          autoFocus
+                        />
+                        {whatsappDraftError && (
+                          <p className="text-xs text-red-500">{whatsappDraftError}</p>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={async () => {
                           const trimmed = whatsappDraft.trim();
+                          const err = validateOptionalPhone(trimmed);
+                          if (err) { setWhatsappDraftError(err); return; }
                           setWhatsappNumber(trimmed);
                           setEditingWhatsapp(false);
+                          setWhatsappDraftError('');
                           const success = await updateUserPreferences({ whatsappNumber: trimmed });
                           if (success) await addNotification('success', t.preferenceSaved || 'Preference saved');
                         }}
-                        className="p-1 rounded text-green-500 hover:bg-green-500/10 transition-colors"
+                        className="p-1 rounded text-green-500 hover:bg-green-500/10 transition-colors flex-shrink-0"
                         title="Save"
                       >
                         <Check className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEditingWhatsapp(false)}
-                        className={`p-1 rounded transition-colors ${theme === 'dark' ? 'text-slate-400 hover:bg-slate-600' : 'text-gray-400 hover:bg-gray-200'}`}
+                        onClick={() => { setEditingWhatsapp(false); setWhatsappDraftError(''); }}
+                        className={`p-1 rounded transition-colors flex-shrink-0 ${theme === 'dark' ? 'text-slate-400 hover:bg-slate-600' : 'text-gray-400 hover:bg-gray-200'}`}
                         title="Cancel"
                       >
                         <X className="w-4 h-4" />
@@ -308,32 +322,32 @@ const UserProfileModal = ({
                     <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       {t.whatsappNotifications || 'WhatsApp Notifications'}
                     </span>
-                    {!whatsappNumber && (
+                    {!isPhoneValid(whatsappNumber) && (
                       <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                        Enter a WhatsApp number first
+                        {whatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
                       </p>
                     )}
                   </div>
                   <button
                     type="button"
-                    disabled={!whatsappNumber}
+                    disabled={!isPhoneValid(whatsappNumber)}
                     onClick={async () => {
-                      if (!whatsappNumber) return;
+                      if (!isPhoneValid(whatsappNumber)) return;
                       const newValue = !(user.preferences?.whatsappNotifications ?? false);
                       const success = await updateUserPreferences({ whatsappNotifications: newValue });
                       if (success) await addNotification('success', t.preferenceSaved || 'Preference saved');
                     }}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      !whatsappNumber
+                      !isPhoneValid(whatsappNumber)
                         ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                        : (user.preferences?.whatsappNotifications && whatsappNumber)
+                        : (user.preferences?.whatsappNotifications && isPhoneValid(whatsappNumber))
                           ? 'bg-green-500 cursor-pointer'
                           : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        (user.preferences?.whatsappNotifications && whatsappNumber) ? 'translate-x-6' : 'translate-x-1'
+                        (user.preferences?.whatsappNotifications && isPhoneValid(whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>
