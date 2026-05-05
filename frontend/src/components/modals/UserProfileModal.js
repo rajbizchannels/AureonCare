@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, MessageCircle, Phone, Edit2, Check } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { getTranslations } from '../../config/translations';
 import { useAudit } from '../../hooks/useAudit';
@@ -27,6 +27,13 @@ const UserProfileModal = ({
     confirmPassword: ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // WhatsApp state — defaults to the user's phone number
+  const [whatsappNumber, setWhatsappNumber] = useState(
+    user?.preferences?.whatsappNumber ?? user?.phone ?? ''
+  );
+  const [editingWhatsapp, setEditingWhatsapp] = useState(false);
+  const [whatsappDraft, setWhatsappDraft] = useState('');
 
   // Log modal open on mount
   useEffect(() => {
@@ -224,6 +231,104 @@ const UserProfileModal = ({
                   />
                 </button>
               </div>
+              {/* WhatsApp Number + Notification Toggle */}
+              <div className={`rounded-lg p-3 space-y-3 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <MessageCircle className="w-4 h-4 text-green-500" />
+                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
+                    WhatsApp
+                  </span>
+                </div>
+
+                {/* WhatsApp number field */}
+                <div className="flex items-center gap-2">
+                  <Phone className={`w-4 h-4 flex-shrink-0 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  {editingWhatsapp ? (
+                    <>
+                      <input
+                        type="tel"
+                        value={whatsappDraft}
+                        onChange={e => setWhatsappDraft(e.target.value)}
+                        placeholder="+1 555 000 0000"
+                        className={`flex-1 text-sm px-2 py-1 rounded border focus:outline-none focus:border-green-500 ${
+                          theme === 'dark'
+                            ? 'bg-slate-600 border-slate-500 text-white'
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const trimmed = whatsappDraft.trim();
+                          setWhatsappNumber(trimmed);
+                          setEditingWhatsapp(false);
+                          const success = await updateUserPreferences({ whatsappNumber: trimmed });
+                          if (success) await addNotification('success', t.preferenceSaved || 'Preference saved');
+                        }}
+                        className="p-1 rounded text-green-500 hover:bg-green-500/10 transition-colors"
+                        title="Save"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingWhatsapp(false)}
+                        className={`p-1 rounded transition-colors ${theme === 'dark' ? 'text-slate-400 hover:bg-slate-600' : 'text-gray-400 hover:bg-gray-200'}`}
+                        title="Cancel"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className={`flex-1 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        {whatsappNumber || (t.notApplicable || 'N/A')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWhatsappDraft(whatsappNumber);
+                          setEditingWhatsapp(true);
+                        }}
+                        className={`p-1 rounded transition-colors ${
+                          theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-600' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title="Edit WhatsApp number"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* WhatsApp notifications toggle */}
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.whatsappNotifications || 'WhatsApp Notifications'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const newValue = !(user.preferences?.whatsappNotifications ?? false);
+                      const success = await updateUserPreferences({ whatsappNotifications: newValue });
+                      if (success) await addNotification('success', t.preferenceSaved || 'Preference saved');
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                      (user.preferences?.whatsappNotifications ?? false)
+                        ? 'bg-green-500'
+                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        (user.preferences?.whatsappNotifications ?? false) ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.darkMode || 'Dark Mode'}</span>
                 <button
