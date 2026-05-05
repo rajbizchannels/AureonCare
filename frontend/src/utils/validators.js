@@ -292,6 +292,45 @@ export const safeJSONParse = (jsonString, defaultValue = null) => {
 };
 
 /**
+ * Returns true if phone is non-empty and contains 7–15 digits (international-safe).
+ * Use this to guard the WhatsApp toggle.
+ */
+export const isPhoneValid = (phone) => {
+  if (!phone || phone.trim() === '') return false;
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+};
+
+/**
+ * Returns an error string if phone is non-empty but invalid; null means OK.
+ * Empty is treated as valid (optional field).
+ */
+export const validateOptionalPhone = (phone) => {
+  if (!phone || phone.trim() === '') return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 7 || digits.length > 15) return 'Enter a valid phone number (7–15 digits)';
+  return null;
+};
+
+/**
+ * Returns true if email is non-empty and matches basic email format.
+ */
+export const isEmailValid = (email) => {
+  if (!email || email.trim() === '') return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+};
+
+/**
+ * Returns an error string if email is non-empty but invalid; null means OK.
+ * Empty is treated as valid (optional field).
+ */
+export const validateOptionalEmail = (email) => {
+  if (!email || email.trim() === '') return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Enter a valid email address';
+  return null;
+};
+
+/**
  * Safely saves to localStorage with quota checking
  * @param {string} key - Storage key
  * @param {*} data - Data to store
