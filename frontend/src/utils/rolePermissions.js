@@ -14,6 +14,7 @@ export const rolePermissions = {
     telehealth: { view: true, create: true, edit: true, delete: true },
     crm: { view: true, create: true, edit: true, delete: true },
     rcm: { view: true, create: true, edit: true, delete: true },
+    accounts: { view: true, create: true, edit: true, delete: true },
     practiceManagement: { view: true, create: true, edit: true, delete: true },
     clinicalServices: { view: true, create: true, edit: true, delete: true },
     reports: { view: true, create: true, edit: true, delete: true },
@@ -99,6 +100,7 @@ export const rolePermissions = {
     telehealth: { view: false, create: false, edit: false, delete: false },
     crm: { view: false, create: false, edit: false, delete: false },
     rcm: { view: true, create: true, edit: true, delete: false },
+    accounts: { view: true, create: true, edit: true, delete: false },
     practiceManagement: { view: true, create: false, edit: false, delete: false },
     clinicalServices: { view: false, create: false, edit: false, delete: false },
     reports: { view: true, create: true, edit: false, delete: false },
@@ -151,7 +153,8 @@ export const modulePermissions = {
   providerManagement: 'patients', // Requires patients.view
   ehr: 'ehr', // Requires ehr.view
   telehealth: 'appointments', // Requires appointments.view
-  rcm: 'billing', // Requires billing.view
+  rcm: 'billing', // Requires billing.view (uses billing key for backwards compat)
+  accounts: 'accounts', // Requires accounts.view
   crm: 'crm', // Requires crm.view
   reports: 'reports', // Requires reports.view
   integrations: 'admin', // Requires admin permissions
