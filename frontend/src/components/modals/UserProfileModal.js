@@ -304,25 +304,36 @@ const UserProfileModal = ({
 
                 {/* WhatsApp notifications toggle */}
                 <div className="flex items-center justify-between">
-                  <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {t.whatsappNotifications || 'WhatsApp Notifications'}
-                  </span>
+                  <div>
+                    <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {t.whatsappNotifications || 'WhatsApp Notifications'}
+                    </span>
+                    {!whatsappNumber && (
+                      <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        Enter a WhatsApp number first
+                      </p>
+                    )}
+                  </div>
                   <button
                     type="button"
+                    disabled={!whatsappNumber}
                     onClick={async () => {
+                      if (!whatsappNumber) return;
                       const newValue = !(user.preferences?.whatsappNotifications ?? false);
                       const success = await updateUserPreferences({ whatsappNotifications: newValue });
                       if (success) await addNotification('success', t.preferenceSaved || 'Preference saved');
                     }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                      (user.preferences?.whatsappNotifications ?? false)
-                        ? 'bg-green-500'
-                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      !whatsappNumber
+                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                        : (user.preferences?.whatsappNotifications && whatsappNumber)
+                          ? 'bg-green-500 cursor-pointer'
+                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        (user.preferences?.whatsappNotifications ?? false) ? 'translate-x-6' : 'translate-x-1'
+                        (user.preferences?.whatsappNotifications && whatsappNumber) ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>
