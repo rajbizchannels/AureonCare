@@ -1,9 +1,9 @@
 import { canAccessModule } from '../utils/rolePermissions';
 
 export const planFeatures = {
-  starter: ['practiceManagement', 'providerManagement', 'rcm', 'patientPortal', 'clinicalServices', 'formManagement'],
-  professional: ['practiceManagement', 'providerManagement', 'ehr', 'telehealth', 'rcm', 'crm', 'patientPortal', 'clinicalServices', 'offerings', 'reports', 'formManagement'],
-  enterprise: ['practiceManagement', 'providerManagement', 'ehr', 'telehealth', 'rcm', 'crm', 'integrations', 'patientPortal', 'clinicalServices', 'offerings', 'reports', 'formManagement']
+  starter: ['practiceManagement', 'providerManagement', 'rcm', 'accounts', 'patientPortal', 'clinicalServices', 'formManagement'],
+  professional: ['practiceManagement', 'providerManagement', 'ehr', 'telehealth', 'rcm', 'accounts', 'crm', 'patientPortal', 'clinicalServices', 'offerings', 'reports', 'formManagement'],
+  enterprise: ['practiceManagement', 'providerManagement', 'ehr', 'telehealth', 'rcm', 'accounts', 'crm', 'integrations', 'patientPortal', 'clinicalServices', 'offerings', 'reports', 'formManagement']
 };
 
 /**
