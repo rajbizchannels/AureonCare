@@ -55,6 +55,10 @@ import {
   ChevronUp,
   ExternalLink,
   Copy,
+  MessageCircle,
+  Edit2,
+  Bell,
+  BookOpen,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -349,6 +353,12 @@ const AdminPanelView = ({
   });
   const [rolePermissions, setRolePermissions] = useState(DEFAULT_ROLE_PERMISSIONS);
 
+  // Accounts module RBAC & backup
+  const [acctPermissions, setAcctPermissions] = useState([]);
+  const [acctPermLoading, setAcctPermLoading] = useState(false);
+  const [acctBackups, setAcctBackups] = useState([]);
+  const [acctBackupLoading, setAcctBackupLoading] = useState(false);
+
   const [currentPlan, setCurrentPlan] = useState(planTier || PLAN_IDS.PROFESSIONAL);
 
   // Integration settings: status + connection info (never raw tokens)
@@ -396,6 +406,18 @@ const AdminPanelView = ({
     message: '',
     onConfirm: null,
   });
+
+  // Preferences panel state (current logged-in user's prefs)
+  const [prefWhatsappNumber, setPrefWhatsappNumber] = useState(
+    user?.preferences?.whatsappNumber ?? user?.phone ?? ''
+  );
+  const [prefEditingWhatsapp, setPrefEditingWhatsapp] = useState(false);
+  const [prefWhatsappDraft, setPrefWhatsappDraft] = useState('');
+
+  // Keep whatsapp in sync when user object changes
+  useEffect(() => {
+    setPrefWhatsappNumber(user?.preferences?.whatsappNumber ?? user?.phone ?? '');
+  }, [user?.preferences?.whatsappNumber, user?.phone]);
 
   // User form inline state
   const [showUserForm, setShowUserForm] = useState(false);
@@ -523,6 +545,28 @@ const AdminPanelView = ({
     };
     loadBackupConfig();
   }, [api, addNotification]);
+
+  /**
+   * Load accounts RBAC permissions when Roles tab is active
+   */
+  useEffect(() => {
+    if (activeTab !== ADMIN_TABS.ROLES) return;
+    setAcctPermLoading(true);
+    api.getAccountPermissions()
+      .then(setAcctPermissions)
+      .catch(err => console.error('Failed to load accounts permissions:', err))
+      .finally(() => setAcctPermLoading(false));
+  }, [activeTab, api]);
+
+  /**
+   * Load accounts backup history when Backup tab is active
+   */
+  useEffect(() => {
+    if (activeTab !== ADMIN_TABS.BACKUP) return;
+    api.getAccountBackups()
+      .then(setAcctBackups)
+      .catch(err => console.error('Failed to load accounts backups:', err));
+  }, [activeTab, api]);
 
   /**
    * Load telehealth integration status (NOT credentials)
@@ -2056,6 +2100,166 @@ const AdminPanelView = ({
    */
   const renderUserManagementTab = () => (
     <div className="space-y-6">
+
+      {/* ── My Preferences Card ─────────────────────────────── */}
+      <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <h3 className={`text-base font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          <Bell className="w-4 h-4 text-blue-500" />
+          My Notification Preferences
+        </h3>
+        <div className="space-y-4">
+
+          {/* Email Notifications */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mail className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+              <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.emailNotifications || 'Email Notifications'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const next = !(user.preferences?.emailNotifications ?? true);
+                const ok = await updateUserPreferences({ emailNotifications: next });
+                if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                (user.preferences?.emailNotifications ?? true)
+                  ? 'bg-blue-500'
+                  : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                (user.preferences?.emailNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {/* SMS Alerts */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Phone className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+              <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.smsAlerts || 'SMS Alerts'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const next = !(user.preferences?.smsAlerts ?? true);
+                const ok = await updateUserPreferences({ smsAlerts: next });
+                if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                (user.preferences?.smsAlerts ?? true)
+                  ? 'bg-blue-500'
+                  : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                (user.preferences?.smsAlerts ?? true) ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {/* WhatsApp */}
+          <div className={`rounded-lg p-3 space-y-3 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-green-500" />
+              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
+                WhatsApp
+              </span>
+            </div>
+
+            {/* WhatsApp number inline edit */}
+            <div className="flex items-center gap-2">
+              <Phone className={`w-4 h-4 flex-shrink-0 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+              {prefEditingWhatsapp ? (
+                <>
+                  <input
+                    type="tel"
+                    value={prefWhatsappDraft}
+                    onChange={e => setPrefWhatsappDraft(e.target.value)}
+                    placeholder="+1 555 000 0000"
+                    autoFocus
+                    className={`flex-1 text-sm px-2 py-1 rounded border focus:outline-none focus:border-green-500 ${
+                      theme === 'dark'
+                        ? 'bg-slate-600 border-slate-500 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    title="Save"
+                    onClick={async () => {
+                      const val = prefWhatsappDraft.trim();
+                      setPrefWhatsappNumber(val);
+                      setPrefEditingWhatsapp(false);
+                      const ok = await updateUserPreferences({ whatsappNumber: val });
+                      if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
+                    }}
+                    className="p-1 rounded text-green-500 hover:bg-green-500/10 transition-colors"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Cancel"
+                    onClick={() => setPrefEditingWhatsapp(false)}
+                    className={`p-1 rounded transition-colors ${theme === 'dark' ? 'text-slate-400 hover:bg-slate-600' : 'text-gray-400 hover:bg-gray-200'}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className={`flex-1 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {prefWhatsappNumber || (t.notApplicable || 'N/A')}
+                  </span>
+                  <button
+                    type="button"
+                    title="Edit WhatsApp number"
+                    onClick={() => { setPrefWhatsappDraft(prefWhatsappNumber); setPrefEditingWhatsapp(true); }}
+                    className={`p-1 rounded transition-colors ${
+                      theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-600' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* WhatsApp Notifications toggle */}
+            <div className="flex items-center justify-between">
+              <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.whatsappNotifications || 'WhatsApp Notifications'}
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  const next = !(user.preferences?.whatsappNotifications ?? false);
+                  const ok = await updateUserPreferences({ whatsappNotifications: next });
+                  if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                  (user.preferences?.whatsappNotifications ?? false)
+                    ? 'bg-green-500'
+                    : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  (user.preferences?.whatsappNotifications ?? false) ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {/* ─────────────────────────────────────────────────────── */}
+
       <div className="flex justify-between items-center">
         <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Users
@@ -3235,6 +3439,89 @@ const AdminPanelView = ({
           </tbody>
         </table>
       </div>
+
+      {/* Accounts Module RBAC */}
+      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accounts Module Permissions</h3>
+            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Fine-grained access control for the Accounts Management module</p>
+          </div>
+          {acctPermLoading && <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />}
+        </div>
+        {acctPermissions.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">
+            <table className="w-full text-xs">
+              <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium">Role</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Resource</th>
+                  {['View','Create','Edit','Delete','Approve','Export'].map(a => (
+                    <th key={a} className="px-3 py-2.5 text-center font-medium">{a}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
+                {['admin','billing_manager','doctor','nurse','receptionist','crm_manager'].map(role =>
+                  ['chart_of_accounts','journal_entries','accounts_receivable','accounts_payable','reconciliation','statements'].map((resource, ri) => {
+                    const perm = acctPermissions.find(p => p.roleName === role && p.resource === resource) || {};
+                    const permMap = { View:'canView', Create:'canCreate', Edit:'canEdit', Delete:'canDelete', Approve:'canApprove', Export:'canExport' };
+                    return (
+                      <tr key={`${role}-${resource}`} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
+                        {ri === 0 && (
+                          <td className={`px-4 py-2 font-medium capitalize ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`} rowSpan={6}>
+                            {role.replace('_',' ')}
+                          </td>
+                        )}
+                        <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{resource.replace(/_/g,' ')}</td>
+                        {['View','Create','Edit','Delete','Approve','Export'].map(action => (
+                          <td key={action} className="px-3 py-2 text-center">
+                            <button
+                              disabled={!canManageRoles || role === 'admin'}
+                              onClick={async () => {
+                                if (!canManageRoles || role === 'admin') return;
+                                const key = permMap[action];
+                                const newVal = !perm[key];
+                                try {
+                                  const updated = await api.updateAccountPermission({
+                                    roleName: role, resource,
+                                    canView: perm.canView || false, canCreate: perm.canCreate || false,
+                                    canEdit: perm.canEdit || false, canDelete: perm.canDelete || false,
+                                    canApprove: perm.canApprove || false, canExport: perm.canExport || false,
+                                    [key]: newVal
+                                  });
+                                  setAcctPermissions(prev => {
+                                    const idx = prev.findIndex(p => p.roleName === role && p.resource === resource);
+                                    if (idx >= 0) return prev.map((p, i) => i === idx ? updated : p);
+                                    return [...prev, updated];
+                                  });
+                                } catch (err) {
+                                  addNotification('error', 'Failed to update permission');
+                                }
+                              }}
+                              className={`w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors ${
+                                perm[permMap[action]]
+                                  ? 'bg-emerald-500 text-white'
+                                  : theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
+                              } ${(!canManageRoles || role === 'admin') ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
+                            >
+                              {perm[permMap[action]] ? <Check className="w-3 h-3" /> : null}
+                            </button>
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className={`text-center py-8 text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+            {acctPermLoading ? 'Loading accounts permissions…' : 'No accounts permissions found — visit Accounts Management to initialize.'}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -3706,6 +3993,86 @@ const AdminPanelView = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Accounts Module Backup */}
+      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex items-center gap-2 mb-4">
+          <BookOpen className={`w-5 h-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+          <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accounts Module Backup</h3>
+        </div>
+        <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Download selective backups of your accounts data (chart of accounts, journal entries, AR/AP, statements).
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+          {[
+            { type: 'full',       label: 'Full Accounts Backup', desc: 'All accounts data' },
+            { type: 'accounts',   label: 'Chart of Accounts',    desc: 'GL account definitions' },
+            { type: 'journal',    label: 'Journal Entries',      desc: 'All journal entries + lines' },
+            { type: 'ar',         label: 'Accounts Receivable',  desc: 'All AR records' },
+            { type: 'ap',         label: 'Accounts Payable',     desc: 'All AP records' },
+            { type: 'statements', label: 'Statements',           desc: 'All billing statements' },
+          ].map(b => (
+            <button key={b.type}
+              onClick={async () => {
+                setAcctBackupLoading(true);
+                try {
+                  addNotification('info', `Starting ${b.label} backup…`);
+                  const result = await api.createAccountBackup({ backupType: b.type });
+                  setAcctBackups(prev => [result, ...prev]);
+                  const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = result.fileName; a.click();
+                  URL.revokeObjectURL(url);
+                  addNotification('success', `Backup complete: ${result.recordCount} records`);
+                } catch (err) {
+                  addNotification('error', err.message || 'Accounts backup failed');
+                } finally { setAcctBackupLoading(false); }
+              }}
+              disabled={acctBackupLoading}
+              className={`flex flex-col items-start p-4 rounded-xl border-2 border-dashed transition-all text-left gap-1 ${
+                theme === 'dark'
+                  ? 'border-slate-600 hover:border-emerald-500 hover:bg-emerald-900/20 text-slate-300'
+                  : 'border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 text-gray-700'
+              } ${acctBackupLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Download className={`w-5 h-5 mb-1 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-500'}`} />
+              <span className="font-medium text-sm">{b.label}</span>
+              <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{b.desc}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Accounts backup history */}
+        {acctBackups.length > 0 && (
+          <div>
+            <h4 className={`text-sm font-medium mb-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Recent Accounts Backups</h4>
+            <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <table className="w-full text-xs">
+                <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
+                  <tr>
+                    {['Type','Status','Records','Size','Date'].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-left font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
+                  {acctBackups.slice(0, 10).map(b => (
+                    <tr key={b.id} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
+                      <td className={`px-4 py-2 capitalize ${theme === 'dark' ? 'text-slate-300' : ''}`}>{b.backupType}</td>
+                      <td className="px-4 py-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${b.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{b.status}</span>
+                      </td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.recordCount?.toLocaleString() || '—'}</td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.fileSizeBytes ? `${(b.fileSizeBytes/1024).toFixed(1)} KB` : '—'}</td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
