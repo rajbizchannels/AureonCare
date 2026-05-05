@@ -668,29 +668,33 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
     setLoading(true);
     try {
       switch (tab) {
-        case 'overview':
+        case 'overview': {
           const [dash, accts] = await Promise.all([api.getAccountsDashboard(), api.getAccounts()]);
           setDashboard(dash);
           setAccounts(accts);
           break;
+        }
         case 'accounts':
           setAccounts(await api.getAccounts());
           break;
-        case 'journal':
-          setJournalEntries(await api.getJournalEntries());
-          setAccounts(prev => prev.length ? prev : await api.getAccounts());
+        case 'journal': {
+          const [jes, journalAccts] = await Promise.all([api.getJournalEntries(), api.getAccounts()]);
+          setJournalEntries(jes);
+          setAccounts(journalAccts);
           break;
+        }
         case 'ar':
           setReceivables(await api.getAccountReceivables());
           break;
         case 'ap':
           setPayables(await api.getAccountPayables());
           break;
-        case 'reconcile':
+        case 'reconcile': {
           const [recs, accs] = await Promise.all([api.getReconciliations(), api.getAccounts()]);
           setReconciliations(recs);
           setAccounts(accs);
           break;
+        }
         case 'statements':
           setStatements(await api.getAccountStatements());
           break;
@@ -700,9 +704,11 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
         case 'backup':
           setBackups(await api.getAccountBackups());
           break;
-        case 'reports':
-          setAccounts(prev => prev.length ? prev : await api.getAccounts());
+        case 'reports': {
+          const reportAccts = await api.getAccounts();
+          setAccounts(reportAccts);
           break;
+        }
         default: break;
       }
     } catch (err) {
