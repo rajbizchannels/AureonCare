@@ -41,6 +41,7 @@ import LaboratoryManagementView from './views/LaboratoryManagementView';
 import ClinicalServicesView from './views/ClinicalServicesView';
 import WaitlistManagementView from './views/WaitlistManagementView';
 import FormManagementView from './views/FormManagementView';
+import AccountsView from './views/AccountsView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -434,6 +435,16 @@ function App() {
             setCurrentModule={setCurrentModule}
             tasks={tasks}
             setTasks={setTasks}
+          />
+        );
+      case 'accounts':
+        return (
+          <AccountsView
+            theme={theme}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
           />
         );
       case 'reports':
