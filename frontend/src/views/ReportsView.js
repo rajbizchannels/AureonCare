@@ -5,7 +5,8 @@ import {
   RefreshCw, Eye, Settings2, PlusCircle, Layers, Shield,
   Activity, Clock, AlertTriangle, CheckCircle, XCircle,
   PieChart, LineChart, BarChart2, Grid, Search, ChevronUp,
-  Edit3, Trash2, Save, Play
+  Edit3, Trash2, Save, Play,
+  BookOpen, Scale, Building2, TrendingDown
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatDateTime } from '../utils/formatters';
 import jsPDF from 'jspdf';
@@ -431,6 +432,22 @@ const REPORT_CATEGORIES = [
       { id: 'access-logs', name: 'Access Logs', apiMethod: 'getReportAccessLogs', icon: Eye, defaultChart: 'hbar', description: 'User access activity log' },
       { id: 'hipaa', name: 'HIPAA Compliance Report', apiMethod: 'getReportHIPAACompliance', icon: Shield, defaultChart: 'donut', description: 'PHI access tracking and user roles' },
       { id: 'data-access-history', name: 'Data Access History', apiMethod: 'getReportDataAccessHistory', icon: Clock, defaultChart: 'bar', description: 'Detailed data access records' },
+    ]
+  },
+  {
+    id: 'accounts',
+    name: 'Accounts',
+    icon: BookOpen,
+    color: 'emerald',
+    bgDark: 'bg-emerald-500/10',
+    borderActive: 'border-emerald-500',
+    textActive: 'text-emerald-400',
+    isAccountsModule: true,
+    reports: [
+      { id: 'acct-trial-balance',    name: 'Trial Balance',     apiMethod: 'getTrialBalance',      icon: Scale,        defaultChart: 'bar',  description: 'Debit/credit balances for all GL accounts' },
+      { id: 'acct-income-statement', name: 'Income Statement',  apiMethod: 'getIncomeStatement',   icon: TrendingUp,   defaultChart: 'bar',  description: 'Revenue vs expenses for the period' },
+      { id: 'acct-balance-sheet',    name: 'Balance Sheet',     apiMethod: 'getBalanceSheet',      icon: Building2,    defaultChart: 'donut',description: 'Assets, liabilities, and equity snapshot' },
+      { id: 'acct-ar-aging',         name: 'AR Aging Report',   apiMethod: 'getARAgingReport',     icon: TrendingDown, defaultChart: 'bar',  description: 'Accounts receivable by aging bucket' },
     ]
   }
 ];
@@ -1006,6 +1023,27 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
     if (rd === 'access-logs') return makeChartData(summary, 'user_name', 'access_count');
     if (rd === 'hipaa') return (phiAccess || []).map(r => ({ label: r.resource_type, value: parseInt(r.total_access) }));
     if (rd === 'data-access-history') return makeChartData(summary.slice(0, 10), 'resource_type', 'count');
+    // Accounts module reports
+    if (rd === 'acct-trial-balance') {
+      const rows = data.rows || [];
+      return rows.map(r => ({ label: r.accountName || r.account_name || '', value: parseFloat(r.debitBalance || r.debit_balance || 0) || parseFloat(r.creditBalance || r.credit_balance || 0) }));
+    }
+    if (rd === 'acct-income-statement') {
+      const rows = data.rows || [];
+      return rows.map(r => ({ label: r.accountName || r.account_name || '', value: Math.abs(parseFloat(r.periodAmount || r.period_amount || 0)) }));
+    }
+    if (rd === 'acct-balance-sheet') {
+      const totals = [
+        { label: 'Assets',      value: Math.abs(parseFloat(data.totalAssets      || data.total_assets      || 0)) },
+        { label: 'Liabilities', value: Math.abs(parseFloat(data.totalLiabilities || data.total_liabilities || 0)) },
+        { label: 'Equity',      value: Math.abs(parseFloat(data.totalEquity      || data.total_equity      || 0)) },
+      ];
+      return totals.filter(t => t.value > 0);
+    }
+    if (rd === 'acct-ar-aging') {
+      const buckets = data.buckets || {};
+      return Object.entries(buckets).map(([key, val]) => ({ label: key.replace(/_/g, ' '), value: parseFloat(val) || 0 }));
+    }
     return makeChartData(summary.slice(0, 10), Object.keys(summary[0] || {})[0] || 'label', Object.keys(summary[0] || {})[1] || 'value');
   };
 
@@ -1093,6 +1131,48 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
         { label: 'Avg Approval Rate', value: summary.length > 0 ? `${Math.round(summary.reduce((s, r) => s + (parseFloat(r.approval_rate) || 0), 0) / summary.length)}%` : '0%', icon: TrendingUp, color: 'purple' },
       ];
     }
+    // Accounts module reports
+    if (rd === 'acct-trial-balance') {
+      const totalDebit  = parseFloat(data.totalDebit  || data.total_debit  || 0);
+      const totalCredit = parseFloat(data.totalCredit || data.total_credit || 0);
+      return [
+        { label: 'Total Debit',  value: fmt(totalDebit),  icon: TrendingUp,  color: 'green'  },
+        { label: 'Total Credit', value: fmt(totalCredit), icon: TrendingDown, color: 'red'   },
+        { label: 'Accounts',     value: (data.rows || []).length, icon: BookOpen, color: 'blue' },
+        { label: 'Balanced',     value: data.isBalanced || data.is_balanced ? '✓ Yes' : '✗ No', icon: CheckCircle, color: data.isBalanced ? 'green' : 'red' },
+      ];
+    }
+    if (rd === 'acct-income-statement') {
+      const revenue    = parseFloat(data.revenue    || 0);
+      const expenses   = parseFloat(data.expenses   || 0);
+      const netIncome  = parseFloat(data.netIncome  || data.net_income  || 0);
+      const netRevenue = parseFloat(data.netRevenue || data.net_revenue || 0);
+      return [
+        { label: 'Total Revenue',  value: fmt(revenue),   icon: TrendingUp,  color: 'green'  },
+        { label: 'Net Revenue',    value: fmt(netRevenue), icon: DollarSign,  color: 'blue'   },
+        { label: 'Total Expenses', value: fmt(expenses),  icon: TrendingDown, color: 'red'   },
+        { label: 'Net Income',     value: fmt(netIncome), icon: Activity,     color: netIncome >= 0 ? 'green' : 'red' },
+      ];
+    }
+    if (rd === 'acct-balance-sheet') {
+      return [
+        { label: 'Total Assets',      value: fmt(parseFloat(data.totalAssets      || data.total_assets      || 0)), icon: Building2,   color: 'blue'  },
+        { label: 'Total Liabilities', value: fmt(parseFloat(data.totalLiabilities || data.total_liabilities || 0)), icon: AlertTriangle, color: 'red'  },
+        { label: 'Total Equity',      value: fmt(parseFloat(data.totalEquity      || data.total_equity      || 0)), icon: DollarSign,  color: 'green' },
+        { label: 'Balanced',          value: data.isBalanced || data.is_balanced ? '✓ Yes' : '✗ No', icon: CheckCircle, color: data.isBalanced ? 'green' : 'red' },
+      ];
+    }
+    if (rd === 'acct-ar-aging') {
+      const buckets = data.buckets || {};
+      const totalAR = parseFloat(data.totalAR || data.total_ar || 0);
+      const overdue = Object.entries(buckets).filter(([k]) => k !== 'current').reduce((s, [, v]) => s + parseFloat(v), 0);
+      return [
+        { label: 'Total AR',      value: fmt(totalAR),            icon: TrendingUp,   color: 'blue'   },
+        { label: 'Current',       value: fmt(parseFloat(buckets.current || 0)), icon: CheckCircle, color: 'green' },
+        { label: 'Overdue',       value: fmt(overdue),            icon: AlertTriangle, color: 'red'   },
+        { label: 'AR Records',    value: (data.rows || []).length, icon: FileText,     color: 'purple' },
+      ];
+    }
     // Fallback KPIs
     return [
       { label: 'Total Records', value: (summary.length + details.length), icon: FileText, color: 'blue' },
@@ -1100,7 +1180,8 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
   };
 
   const kpis = getKPIs();
-  const tableData = details.length > 0 ? details : summary;
+  const isAccountsReport = report.id?.startsWith('acct-');
+  const tableData = isAccountsReport ? (data.rows || []) : (details.length > 0 ? details : summary);
 
   return (
     <div className="space-y-6">
@@ -1412,13 +1493,14 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
   };
 
   // Category color maps
-  const catColor = { operational: 'blue', financial: 'green', insurance: 'purple', patient: 'teal', provider: 'orange', compliance: 'red' };
+  const catColor = { operational: 'blue', financial: 'green', insurance: 'purple', patient: 'teal', provider: 'orange', compliance: 'red', accounts: 'emerald' };
   const catBg = { blue: theme === 'dark' ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600',
                   green: theme === 'dark' ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-600',
                   purple: theme === 'dark' ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-600',
                   teal: theme === 'dark' ? 'bg-teal-500/10 text-teal-400' : 'bg-teal-50 text-teal-600',
                   orange: theme === 'dark' ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-600',
-                  red: theme === 'dark' ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600' };
+                  red: theme === 'dark' ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600',
+                  emerald: theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600' };
 
   return (
     <div className="flex h-full gap-0">
