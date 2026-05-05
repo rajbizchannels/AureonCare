@@ -294,6 +294,8 @@ const ViewEditModal = ({
           data.darkMode = data.preferences.darkMode !== undefined
             ? data.preferences.darkMode
             : true;
+          data.whatsappNumber = data.preferences.whatsappNumber ?? data.phone ?? '';
+          data.whatsappNotifications = data.preferences.whatsappNotifications ?? false;
         }
       }
 
@@ -488,10 +490,13 @@ const ViewEditModal = ({
         const avatar = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
 
         // Package preferences into nested object
+        const whatsappNum = editData.whatsappNumber || '';
         const preferences = {
           emailNotifications: editData.emailNotifications !== undefined ? editData.emailNotifications : true,
           smsAlerts: editData.smsAlerts !== undefined ? editData.smsAlerts : true,
-          darkMode: editData.darkMode !== undefined ? editData.darkMode : true
+          darkMode: editData.darkMode !== undefined ? editData.darkMode : true,
+          whatsappNumber: whatsappNum,
+          whatsappNotifications: whatsappNum ? (editData.whatsappNotifications ?? false) : false,
         };
 
         const userData = {
@@ -526,11 +531,17 @@ const ViewEditModal = ({
         // Generate avatar from initials
         const avatar = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
 
+        const userWhatsappNum = editData.whatsappNumber || '';
         const userData = {
           ...editData,
           firstName,
           lastName,
-          avatar: avatar || editData.avatar
+          avatar: avatar || editData.avatar,
+          preferences: {
+            ...(editData.preferences || {}),
+            whatsappNumber: userWhatsappNum,
+            whatsappNotifications: userWhatsappNum ? (editData.whatsappNotifications ?? false) : false,
+          },
         };
         const updated = await api.updateUser(editData.id, userData);
         setUsers(prev => prev.map(u =>
@@ -1374,6 +1385,60 @@ const ViewEditModal = ({
                       />
                     </button>
                   </div>
+                  {/* WhatsApp Number */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.whatsappNumber || 'WhatsApp Number'}
+                    </label>
+                    {isView ? (
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.whatsappNumber || (t.notApplicable || 'N/A')}</p>
+                    ) : (
+                      <input
+                        type="tel"
+                        value={editData.whatsappNumber || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditData({
+                            ...editData,
+                            whatsappNumber: val,
+                            whatsappNotifications: val ? editData.whatsappNotifications : false,
+                          });
+                        }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                    )}
+                  </div>
+                  {/* WhatsApp Notifications toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.whatsappNotifications || 'WhatsApp Notifications'}</span>
+                      {!editData.whatsappNumber && !isView && (
+                        <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>Enter a WhatsApp number first</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isView || !editData.whatsappNumber}
+                      onClick={() => {
+                        if (!editData.whatsappNumber) return;
+                        setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        isView || !editData.whatsappNumber
+                          ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                          : (editData.whatsappNotifications && editData.whatsappNumber)
+                            ? 'bg-green-500 cursor-pointer'
+                            : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          (editData.whatsappNotifications && editData.whatsappNumber) ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1512,6 +1577,57 @@ const ViewEditModal = ({
                       <option value="Arabic">Arabic</option>
                     </select>
                   )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.whatsappNumber || 'WhatsApp Number'}</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.whatsappNumber || (t.notApplicable || 'N/A')}</p>
+                  ) : (
+                    <input
+                      type="tel"
+                      value={editData.whatsappNumber || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditData({
+                          ...editData,
+                          whatsappNumber: val,
+                          whatsappNotifications: val ? editData.whatsappNotifications : false,
+                        });
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
+                      placeholder="+1 (555) 123-4567"
+                    />
+                  )}
+                </div>
+              </div>
+              {/* WhatsApp Notifications toggle for type=user */}
+              <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.whatsappNotifications || 'WhatsApp Notifications'}</span>
+                    {!editData.whatsappNumber && !isView && (
+                      <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>Enter a WhatsApp number first</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isView || !editData.whatsappNumber}
+                    onClick={() => {
+                      if (!editData.whatsappNumber) return;
+                      setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      isView || !editData.whatsappNumber
+                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                        : (editData.whatsappNotifications && editData.whatsappNumber)
+                          ? 'bg-green-500 cursor-pointer'
+                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (editData.whatsappNotifications && editData.whatsappNumber) ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
                 </div>
               </div>
             </div>
