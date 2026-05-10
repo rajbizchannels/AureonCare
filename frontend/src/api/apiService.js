@@ -2948,6 +2948,172 @@ const api = {
     const response = await authenticatedFetch(`${API_BASE_URL}/accounts/archive`, { method: 'POST', body: JSON.stringify(data) });
     if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Archive failed'); }
     return response.json();
+  },
+
+  // ─── INVENTORY ────────────────────────────────────────────────────────────
+  getInventoryItems: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items${qs ? `?${qs}` : ''}`);
+    if (!r.ok) throw new Error('Failed to fetch inventory items');
+    return r.json();
+  },
+  getInventoryItem: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items/${id}`);
+    if (!r.ok) throw new Error('Failed to fetch inventory item');
+    return r.json();
+  },
+  createInventoryItem: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create item'); }
+    return r.json();
+  },
+  updateInventoryItem: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update item'); }
+    return r.json();
+  },
+  deleteInventoryItem: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete item'); }
+    return r.json();
+  },
+
+  getInventoryCategories: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories`);
+    if (!r.ok) throw new Error('Failed to fetch categories');
+    return r.json();
+  },
+  createInventoryCategory: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create category'); }
+    return r.json();
+  },
+  updateInventoryCategory: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update category'); }
+    return r.json();
+  },
+  deleteInventoryCategory: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete category'); }
+    return r.json();
+  },
+
+  getInventorySuppliers: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers`);
+    if (!r.ok) throw new Error('Failed to fetch suppliers');
+    return r.json();
+  },
+  createInventorySupplier: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create supplier'); }
+    return r.json();
+  },
+  updateInventorySupplier: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update supplier'); }
+    return r.json();
+  },
+  deleteInventorySupplier: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete supplier'); }
+    return r.json();
+  },
+
+  getInventoryMovements: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/movements${qs ? `?${qs}` : ''}`);
+    if (!r.ok) throw new Error('Failed to fetch movements');
+    return r.json();
+  },
+  createInventoryMovement: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/movements`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to record movement'); }
+    return r.json();
+  },
+
+  getInventoryOrders: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders${qs ? `?${qs}` : ''}`);
+    if (!r.ok) throw new Error('Failed to fetch purchase orders');
+    return r.json();
+  },
+  getInventoryOrder: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}`);
+    if (!r.ok) throw new Error('Failed to fetch purchase order');
+    return r.json();
+  },
+  createInventoryOrder: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create order'); }
+    return r.json();
+  },
+  updateInventoryOrder: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update order'); }
+    return r.json();
+  },
+  receiveInventoryOrder: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}/receive`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to receive order'); }
+    return r.json();
+  },
+  deleteInventoryOrder: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete order'); }
+    return r.json();
+  },
+
+  getInventorySummary: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/summary`);
+    if (!r.ok) throw new Error('Failed to fetch inventory summary');
+    return r.json();
+  },
+  getInventoryStockLevels: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/stock-levels`);
+    if (!r.ok) throw new Error('Failed to fetch stock levels');
+    return r.json();
+  },
+  getInventoryLowStock: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/low-stock`);
+    if (!r.ok) throw new Error('Failed to fetch low stock report');
+    return r.json();
+  },
+  getInventoryMovementHistory: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/movement-history`);
+    if (!r.ok) throw new Error('Failed to fetch movement history');
+    return r.json();
+  },
+  getInventoryValuation: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/valuation`);
+    if (!r.ok) throw new Error('Failed to fetch valuation');
+    return r.json();
+  },
+  getInventoryExpiryAlerts: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/expiry-alerts`);
+    if (!r.ok) throw new Error('Failed to fetch expiry alerts');
+    return r.json();
+  },
+
+  getInventoryPermissions: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/rbac/permissions`);
+    if (!r.ok) throw new Error('Failed to fetch inventory permissions');
+    return r.json();
+  },
+  updateInventoryPermission: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/rbac/permissions`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update permission'); }
+    return r.json();
+  },
+  getInventoryBackups: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`);
+    if (!r.ok) throw new Error('Failed to fetch inventory backups');
+    return r.json();
+  },
+  createInventoryBackup: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Backup failed'); }
+    return r.json();
   }
 };
 

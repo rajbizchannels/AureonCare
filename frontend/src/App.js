@@ -42,6 +42,7 @@ import ClinicalServicesView from './views/ClinicalServicesView';
 import WaitlistManagementView from './views/WaitlistManagementView';
 import FormManagementView from './views/FormManagementView';
 import AccountsView from './views/AccountsView';
+import InventoryView from './views/InventoryView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -440,6 +441,16 @@ function App() {
       case 'accounts':
         return (
           <AccountsView
+            theme={theme}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+          />
+        );
+      case 'inventory':
+        return (
+          <InventoryView
             theme={theme}
             api={api}
             user={user}
