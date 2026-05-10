@@ -6,7 +6,8 @@ import {
   Activity, Clock, AlertTriangle, CheckCircle, XCircle,
   PieChart, LineChart, BarChart2, Grid, Search, ChevronUp,
   Edit3, Trash2, Save, Play,
-  BookOpen, Scale, Building2, TrendingDown
+  BookOpen, Scale, Building2, TrendingDown,
+  Package, Truck, ShoppingCart, Boxes, Tag
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatDateTime } from '../utils/formatters';
 import jsPDF from 'jspdf';
@@ -448,6 +449,23 @@ const REPORT_CATEGORIES = [
       { id: 'acct-income-statement', name: 'Income Statement',  apiMethod: 'getIncomeStatement',   icon: TrendingUp,   defaultChart: 'bar',  description: 'Revenue vs expenses for the period' },
       { id: 'acct-balance-sheet',    name: 'Balance Sheet',     apiMethod: 'getBalanceSheet',      icon: Building2,    defaultChart: 'donut',description: 'Assets, liabilities, and equity snapshot' },
       { id: 'acct-ar-aging',         name: 'AR Aging Report',   apiMethod: 'getARAgingReport',     icon: TrendingDown, defaultChart: 'bar',  description: 'Accounts receivable by aging bucket' },
+    ]
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory',
+    icon: Package,
+    color: 'amber',
+    bgDark: 'bg-amber-500/10',
+    borderActive: 'border-amber-500',
+    textActive: 'text-amber-400',
+    isInventoryModule: true,
+    reports: [
+      { id: 'inv-stock-levels',      name: 'Stock Levels',       apiMethod: 'getInventoryStockLevels',    icon: Boxes,        defaultChart: 'bar',  description: 'Current quantity on hand for all items' },
+      { id: 'inv-low-stock',         name: 'Low Stock Alert',    apiMethod: 'getInventoryLowStock',       icon: AlertTriangle, defaultChart: 'bar', description: 'Items at or below reorder level' },
+      { id: 'inv-valuation',         name: 'Inventory Valuation',apiMethod: 'getInventoryValuation',      icon: DollarSign,   defaultChart: 'donut',description: 'Total inventory value by category' },
+      { id: 'inv-movement-history',  name: 'Movement History',   apiMethod: 'getInventoryMovementHistory',icon: TrendingUp,   defaultChart: 'bar',  description: 'Stock movements grouped by type' },
+      { id: 'inv-expiry-alerts',     name: 'Expiry Alerts',      apiMethod: 'getInventoryExpiryAlerts',   icon: Clock,        defaultChart: 'bar',  description: 'Items expiring within 90 days' },
     ]
   }
 ];
@@ -1173,6 +1191,61 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
         { label: 'AR Records',    value: (data.rows || []).length, icon: FileText,     color: 'purple' },
       ];
     }
+    // Inventory KPIs
+    if (rd === 'inv-stock-levels') {
+      const rows = data.rows || [];
+      const totalItems = rows.length;
+      const totalValue = rows.reduce((s, r) => s + (parseFloat(r.total_value) || 0), 0);
+      const lowStock = rows.filter(r => parseFloat(r.quantity_on_hand) <= parseFloat(r.reorder_level)).length;
+      return [
+        { label: 'Total Items',    value: totalItems,       icon: Package,       color: 'blue'   },
+        { label: 'Total Value',    value: fmt(totalValue),  icon: DollarSign,    color: 'green'  },
+        { label: 'Low Stock',      value: lowStock,         icon: AlertTriangle, color: 'red'    },
+        { label: 'In Stock',       value: totalItems - lowStock, icon: CheckCircle, color: 'teal' },
+      ];
+    }
+    if (rd === 'inv-low-stock') {
+      const rows = data.rows || [];
+      const critical = rows.filter(r => parseFloat(r.quantity_on_hand) === 0).length;
+      return [
+        { label: 'Low Stock Items', value: rows.length,  icon: AlertTriangle, color: 'red'    },
+        { label: 'Out of Stock',    value: critical,     icon: XCircle,       color: 'red'    },
+        { label: 'Need Reorder',    value: rows.length - critical, icon: ShoppingCart, color: 'orange' },
+        { label: 'Categories',      value: new Set(rows.map(r => r.category_name)).size, icon: Tag, color: 'blue' },
+      ];
+    }
+    if (rd === 'inv-valuation') {
+      const rows = data.rows || [];
+      const total = rows.reduce((s, r) => s + (parseFloat(r.total_value) || 0), 0);
+      return [
+        { label: 'Total Value',    value: fmt(total),    icon: DollarSign, color: 'green' },
+        { label: 'Categories',     value: rows.length,   icon: Tag,        color: 'blue'  },
+        { label: 'Avg per Cat',    value: fmt(rows.length ? total / rows.length : 0), icon: BarChart2, color: 'purple' },
+        { label: 'Items Tracked',  value: rows.reduce((s, r) => s + (parseInt(r.item_count) || 0), 0), icon: Package, color: 'teal' },
+      ];
+    }
+    if (rd === 'inv-movement-history') {
+      const rows = data.rows || [];
+      const totalIn = rows.filter(r => r.movement_type === 'receipt').reduce((s, r) => s + (parseFloat(r.total_quantity) || 0), 0);
+      const totalOut = rows.filter(r => r.movement_type === 'issue').reduce((s, r) => s + Math.abs(parseFloat(r.total_quantity) || 0), 0);
+      return [
+        { label: 'Total Movements', value: rows.reduce((s, r) => s + (parseInt(r.count) || 0), 0), icon: TrendingUp, color: 'blue' },
+        { label: 'Total Received',  value: totalIn.toFixed(2), icon: Package,     color: 'green'  },
+        { label: 'Total Issued',    value: totalOut.toFixed(2), icon: Truck,      color: 'orange' },
+        { label: 'Move Types',      value: rows.length,         icon: FileText,   color: 'purple' },
+      ];
+    }
+    if (rd === 'inv-expiry-alerts') {
+      const rows = data.rows || [];
+      const expired = rows.filter(r => new Date(r.expiry_date) < new Date()).length;
+      const within30 = rows.filter(r => { const d = new Date(r.expiry_date); const now = new Date(); return d >= now && d <= new Date(now.getTime() + 30*86400000); }).length;
+      return [
+        { label: 'Expiring Soon', value: rows.length,  icon: AlertTriangle, color: 'red'    },
+        { label: 'Already Expired', value: expired,    icon: XCircle,       color: 'red'    },
+        { label: 'Within 30 Days',  value: within30,   icon: Clock,         color: 'orange' },
+        { label: '31–90 Days',      value: rows.length - expired - within30, icon: CheckCircle, color: 'teal' },
+      ];
+    }
     // Fallback KPIs
     return [
       { label: 'Total Records', value: (summary.length + details.length), icon: FileText, color: 'blue' },
@@ -1181,7 +1254,8 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
 
   const kpis = getKPIs();
   const isAccountsReport = report.id?.startsWith('acct-');
-  const tableData = isAccountsReport ? (data.rows || []) : (details.length > 0 ? details : summary);
+  const isInventoryReport = report.id?.startsWith('inv-');
+  const tableData = (isAccountsReport || isInventoryReport) ? (data.rows || []) : (details.length > 0 ? details : summary);
 
   return (
     <div className="space-y-6">
@@ -1493,14 +1567,15 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
   };
 
   // Category color maps
-  const catColor = { operational: 'blue', financial: 'green', insurance: 'purple', patient: 'teal', provider: 'orange', compliance: 'red', accounts: 'emerald' };
+  const catColor = { operational: 'blue', financial: 'green', insurance: 'purple', patient: 'teal', provider: 'orange', compliance: 'red', accounts: 'emerald', inventory: 'amber' };
   const catBg = { blue: theme === 'dark' ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600',
                   green: theme === 'dark' ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-600',
                   purple: theme === 'dark' ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-600',
                   teal: theme === 'dark' ? 'bg-teal-500/10 text-teal-400' : 'bg-teal-50 text-teal-600',
                   orange: theme === 'dark' ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-600',
                   red: theme === 'dark' ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600',
-                  emerald: theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600' };
+                  emerald: theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600',
+                  amber: theme === 'dark' ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600' };
 
   return (
     <div className="flex h-full gap-0">

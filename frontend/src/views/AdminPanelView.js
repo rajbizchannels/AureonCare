@@ -59,6 +59,7 @@ import {
   Edit2,
   Bell,
   BookOpen,
+  Package,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -361,6 +362,10 @@ const AdminPanelView = ({
   const [acctPermLoading, setAcctPermLoading] = useState(false);
   const [acctBackups, setAcctBackups] = useState([]);
   const [acctBackupLoading, setAcctBackupLoading] = useState(false);
+  const [invPermissions, setInvPermissions] = useState([]);
+  const [invPermLoading, setInvPermLoading] = useState(false);
+  const [invBackups, setInvBackups] = useState([]);
+  const [invBackupLoading, setInvBackupLoading] = useState(false);
 
   const [currentPlan, setCurrentPlan] = useState(planTier || PLAN_IDS.PROFESSIONAL);
 
@@ -572,6 +577,22 @@ const AdminPanelView = ({
     api.getAccountBackups()
       .then(setAcctBackups)
       .catch(err => console.error('Failed to load accounts backups:', err));
+  }, [activeTab, api]);
+
+  useEffect(() => {
+    if (activeTab !== ADMIN_TABS.ROLES) return;
+    setInvPermLoading(true);
+    api.getInventoryPermissions()
+      .then(setInvPermissions)
+      .catch(err => console.error('Failed to load inventory permissions:', err))
+      .finally(() => setInvPermLoading(false));
+  }, [activeTab, api]);
+
+  useEffect(() => {
+    if (activeTab !== ADMIN_TABS.BACKUP) return;
+    api.getInventoryBackups()
+      .then(data => setInvBackups(Array.isArray(data) ? data : (data?.backupHistory || [])))
+      .catch(err => console.error('Failed to load inventory backups:', err));
   }, [activeTab, api]);
 
   /**
@@ -3631,6 +3652,89 @@ const AdminPanelView = ({
           </div>
         )}
       </div>
+
+      {/* Inventory Module RBAC */}
+      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Inventory Module Permissions</h3>
+            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Fine-grained access control for the Inventory Management module</p>
+          </div>
+          {invPermLoading && <RefreshCw className="w-4 h-4 animate-spin text-orange-500" />}
+        </div>
+        {invPermissions.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">
+            <table className="w-full text-xs">
+              <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium">Role</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Resource</th>
+                  {['View','Create','Edit','Delete','Approve','Export'].map(a => (
+                    <th key={a} className="px-3 py-2.5 text-center font-medium">{a}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
+                {['admin','billing_manager','doctor','nurse','receptionist','crm_manager'].map(role =>
+                  ['items','categories','suppliers','stock_movements','purchase_orders'].map((resource, ri) => {
+                    const perm = invPermissions.find(p => p.roleName === role && p.resource === resource) || {};
+                    const permMap = { View:'canView', Create:'canCreate', Edit:'canEdit', Delete:'canDelete', Approve:'canApprove', Export:'canExport' };
+                    return (
+                      <tr key={`inv-${role}-${resource}`} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
+                        {ri === 0 && (
+                          <td className={`px-4 py-2 font-medium capitalize ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`} rowSpan={5}>
+                            {role.replace('_',' ')}
+                          </td>
+                        )}
+                        <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{resource.replace(/_/g,' ')}</td>
+                        {['View','Create','Edit','Delete','Approve','Export'].map(action => (
+                          <td key={action} className="px-3 py-2 text-center">
+                            <button
+                              disabled={!canManageRoles || role === 'admin'}
+                              onClick={async () => {
+                                if (!canManageRoles || role === 'admin') return;
+                                const key = permMap[action];
+                                const newVal = !perm[key];
+                                try {
+                                  const updated = await api.updateInventoryPermission({
+                                    roleName: role, resource,
+                                    canView: perm.canView || false, canCreate: perm.canCreate || false,
+                                    canEdit: perm.canEdit || false, canDelete: perm.canDelete || false,
+                                    canApprove: perm.canApprove || false, canExport: perm.canExport || false,
+                                    [key]: newVal
+                                  });
+                                  setInvPermissions(prev => {
+                                    const idx = prev.findIndex(p => p.roleName === role && p.resource === resource);
+                                    if (idx >= 0) return prev.map((p, i) => i === idx ? updated : p);
+                                    return [...prev, updated];
+                                  });
+                                } catch (err) {
+                                  addNotification('error', 'Failed to update inventory permission');
+                                }
+                              }}
+                              className={`w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors ${
+                                perm[permMap[action]]
+                                  ? 'bg-orange-500 text-white'
+                                  : theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
+                              } ${(!canManageRoles || role === 'admin') ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
+                            >
+                              {perm[permMap[action]] ? <Check className="w-3 h-3" /> : null}
+                            </button>
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className={`text-center py-8 text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+            {invPermLoading ? 'Loading inventory permissions…' : 'No inventory permissions found — visit Inventory Management to initialize.'}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -4173,6 +4277,85 @@ const AdminPanelView = ({
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${b.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{b.status}</span>
                       </td>
                       <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.recordCount?.toLocaleString() || '—'}</td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.fileSizeBytes ? `${(b.fileSizeBytes/1024).toFixed(1)} KB` : '—'}</td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Inventory Module Backup */}
+      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex items-center gap-2 mb-4">
+          <Package className={`w-5 h-5 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`} />
+          <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Inventory Module Backup</h3>
+        </div>
+        <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Download backups of your inventory data (items, categories, suppliers, stock movements, purchase orders).
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+          {[
+            { type: 'full',       label: 'Full Inventory Backup', desc: 'All inventory data' },
+            { type: 'items',      label: 'Items',                 desc: 'Item catalog & stock levels' },
+            { type: 'movements',  label: 'Stock Movements',       desc: 'All receipt/issue records' },
+            { type: 'orders',     label: 'Purchase Orders',       desc: 'PO history & lines' },
+            { type: 'suppliers',  label: 'Suppliers',             desc: 'Supplier directory' },
+            { type: 'categories', label: 'Categories',            desc: 'Category hierarchy' },
+          ].map(b => (
+            <button key={b.type}
+              onClick={async () => {
+                setInvBackupLoading(true);
+                try {
+                  addNotification('info', `Starting ${b.label} backup…`);
+                  const result = await api.createInventoryBackup({ backupType: b.type });
+                  setInvBackups(prev => [result, ...prev]);
+                  const blob = new Blob([JSON.stringify(result.data || result, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = result.fileName || `inventory_backup_${b.type}.json`; a.click();
+                  URL.revokeObjectURL(url);
+                  addNotification('success', `Backup complete: ${result.totalRecords || '?'} records`);
+                } catch (err) {
+                  addNotification('error', err.message || 'Inventory backup failed');
+                } finally { setInvBackupLoading(false); }
+              }}
+              disabled={invBackupLoading}
+              className={`flex flex-col items-start p-4 rounded-xl border-2 border-dashed transition-all text-left gap-1 ${
+                theme === 'dark'
+                  ? 'border-slate-600 hover:border-orange-500 hover:bg-orange-900/20 text-slate-300'
+                  : 'border-gray-200 hover:border-orange-400 hover:bg-orange-50 text-gray-700'
+              } ${invBackupLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Download className={`w-5 h-5 mb-1 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-500'}`} />
+              <span className="font-medium text-sm">{b.label}</span>
+              <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{b.desc}</span>
+            </button>
+          ))}
+        </div>
+
+        {invBackups.length > 0 && (
+          <div>
+            <h4 className={`text-sm font-medium mb-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Recent Inventory Backups</h4>
+            <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <table className="w-full text-xs">
+                <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
+                  <tr>
+                    {['Type','Status','Records','Size','Date'].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-left font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
+                  {invBackups.slice(0, 10).map((b, i) => (
+                    <tr key={b.id || i} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
+                      <td className={`px-4 py-2 capitalize ${theme === 'dark' ? 'text-slate-300' : ''}`}>{b.backupType || b.backup_type || '—'}</td>
+                      <td className="px-4 py-2">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">completed</span>
+                      </td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.totalRecords?.toLocaleString() || '—'}</td>
                       <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.fileSizeBytes ? `${(b.fileSizeBytes/1024).toFixed(1)} KB` : '—'}</td>
                       <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}</td>
                     </tr>
