@@ -24,7 +24,8 @@ const ViewEditModal = ({
   setUsers,
   setUser,
   user,
-  t
+  t,
+  currency = 'USD',
 }) => {
   const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const [editData, setEditData] = useState(editingItem?.data || {});
@@ -1707,7 +1708,7 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Amount</label>
                   {isView ? (
-                    <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(editData.amount)}</p>
+                    <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(editData.amount, currency)}</p>
                   ) : (
                     <input
                       type="number"
