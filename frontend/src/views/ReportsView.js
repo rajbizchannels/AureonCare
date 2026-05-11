@@ -901,7 +901,7 @@ const DataTable = ({ data = [], columns = [], theme, onRowClick, title }) => {
     if (col === 'status') return <StatusBadge status={val} />;
     if (col.includes('amount') || col.includes('revenue') || col.includes('billed') || col.includes('collected') || col.includes('paid')) {
       const num = parseFloat(val);
-      return !isNaN(num) ? formatCurrency(num) : val;
+      return !isNaN(num) ? formatCurrency(num, currency) : val;
     }
     if (col.includes('date') || col.includes('time') || col.includes('_at')) {
       return formatDate(val);
@@ -1070,7 +1070,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
   // Compute KPIs per report
   const getKPIs = () => {
     const rd = report.id;
-    const fmt = formatCurrency;
+    const fmt = (amount) => formatCurrency(amount, currency);
     if (rd === 'daily-appointments') {
       const total = summary.reduce((s, r) => s + (r.total || 0), 0);
       const completed = summary.reduce((s, r) => s + (r.completed || 0), 0);
@@ -1293,7 +1293,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
             theme={theme}
             onDataClick={onDataPointClick}
             valueFormatter={report.id.includes('revenue') || report.id.includes('payment') || report.id.includes('billing') || report.id.includes('outstanding')
-              ? (v) => formatCurrency(v) : undefined}
+              ? (v) => formatCurrency(v, currency) : undefined}
             color={chartConfig?.color}
           />
         </Card>
@@ -1424,7 +1424,7 @@ const CustomReportResultView = ({ result, config, theme, onBack }) => {
 // MAIN REPORTS VIEW COMPONENT
 // ─────────────────────────────────────────────────────────────
 
-const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api }) => {
+const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api, currency = 'USD' }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [reportData, setReportData] = useState(null);

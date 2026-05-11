@@ -305,6 +305,7 @@ const AdminPanelView = ({
   addNotification,
   setCurrentModule = () => {},
   t = {},
+  onCurrencyChange,
 }) => {
   // ==================== CONTEXT ====================
   const { setPlanTier, updateUserPreferences, planTier, user } = useApp();
@@ -763,9 +764,15 @@ const AdminPanelView = ({
    * Save clinic settings handler - uses the hook
    */
   const handleSaveClinicSettingsClick = useCallback(() => {
-    setPendingSaveAction(() => saveClinicSettings);
+    const action = async () => {
+      const result = await saveClinicSettings();
+      if (result?.success && onCurrencyChange && clinicSettings.currency) {
+        onCurrencyChange(clinicSettings.currency);
+      }
+    };
+    setPendingSaveAction(() => action);
     setShowSaveConfirmation(true);
-  }, [saveClinicSettings]);
+  }, [saveClinicSettings, clinicSettings.currency, onCurrencyChange]);
 
   /**
    * Delete user handler with proper confirmation
