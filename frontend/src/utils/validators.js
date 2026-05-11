@@ -292,23 +292,138 @@ export const safeJSONParse = (jsonString, defaultValue = null) => {
 };
 
 /**
- * Returns true if phone is non-empty and contains 7–15 digits (international-safe).
- * Use this to guard the WhatsApp toggle.
+ * Country code → [minTotalDigits, maxTotalDigits] (digits include the country code itself).
+ * Digits are counted after stripping all non-digit characters.
+ * Source: ITU-T E.164 national numbering plans.
+ */
+const CC_LENGTHS = {
+  // 1-digit prefixes
+  '1':   [11, 11], // US, Canada, Caribbean
+  '7':   [11, 11], // Russia, Kazakhstan
+  // 2-digit prefixes
+  '20':  [12, 12], // Egypt
+  '27':  [11, 11], // South Africa
+  '30':  [12, 12], // Greece
+  '31':  [11, 11], // Netherlands
+  '32':  [11, 11], // Belgium
+  '33':  [11, 11], // France
+  '34':  [11, 11], // Spain
+  '36':  [11, 11], // Hungary
+  '39':  [11, 13], // Italy
+  '40':  [11, 12], // Romania
+  '41':  [11, 11], // Switzerland
+  '43':  [10, 13], // Austria
+  '44':  [12, 12], // UK
+  '45':  [10, 10], // Denmark
+  '46':  [11, 11], // Sweden
+  '47':  [10, 10], // Norway
+  '48':  [11, 11], // Poland
+  '49':  [11, 12], // Germany
+  '51':  [11, 11], // Peru
+  '52':  [12, 12], // Mexico
+  '53':  [10, 11], // Cuba
+  '54':  [12, 13], // Argentina
+  '55':  [12, 13], // Brazil
+  '56':  [11, 11], // Chile
+  '57':  [12, 12], // Colombia
+  '58':  [11, 11], // Venezuela
+  '60':  [11, 12], // Malaysia
+  '61':  [11, 11], // Australia
+  '62':  [11, 13], // Indonesia
+  '63':  [12, 12], // Philippines
+  '64':  [10, 11], // New Zealand
+  '65':  [10, 10], // Singapore
+  '66':  [11, 11], // Thailand
+  '81':  [11, 12], // Japan
+  '82':  [11, 12], // South Korea
+  '84':  [11, 11], // Vietnam
+  '86':  [13, 13], // China
+  '90':  [12, 12], // Turkey
+  '91':  [12, 12], // India
+  '92':  [12, 12], // Pakistan
+  '93':  [12, 12], // Afghanistan
+  '94':  [11, 11], // Sri Lanka
+  '95':  [11, 12], // Myanmar
+  '98':  [12, 12], // Iran
+  // 3-digit prefixes
+  '960': [11, 11], // Maldives
+  '961': [11, 11], // Lebanon
+  '962': [12, 12], // Jordan
+  '963': [12, 12], // Syria
+  '964': [13, 13], // Iraq
+  '965': [11, 11], // Kuwait
+  '966': [12, 12], // Saudi Arabia
+  '967': [12, 12], // Yemen
+  '968': [11, 11], // Oman
+  '970': [12, 12], // Palestine
+  '971': [12, 12], // UAE
+  '972': [12, 12], // Israel
+  '973': [11, 11], // Bahrain
+  '974': [11, 11], // Qatar
+  '975': [11, 11], // Bhutan
+  '976': [11, 11], // Mongolia
+  '977': [12, 12], // Nepal
+};
+
+/** Resolve country-code range from leading digits (tries 3-digit, 2-digit, 1-digit). */
+const resolveCC = (digits) => {
+  for (const len of [3, 2, 1]) {
+    const cc = digits.slice(0, len);
+    if (CC_LENGTHS[cc]) return { cc, range: CC_LENGTHS[cc] };
+  }
+  return null;
+};
+
+/**
+ * Returns true if phone is non-empty and passes country-specific digit-count validation.
+ * All special characters are stripped before counting — only digits matter.
+ * If the number starts with '+', the country code is identified and used for validation.
+ * Local numbers without '+' are accepted if they contain 7–12 digits.
  */
 export const isPhoneValid = (phone) => {
   if (!phone || phone.trim() === '') return false;
+  const hasPlus = phone.trimStart().startsWith('+');
   const digits = phone.replace(/\D/g, '');
-  return digits.length >= 7 && digits.length <= 15;
+  if (digits.length === 0) return false;
+
+  if (hasPlus) {
+    const info = resolveCC(digits);
+    if (info) return digits.length >= info.range[0] && digits.length <= info.range[1];
+    // Unrecognised country code — fall back to E.164 bounds (7–15 total digits)
+    return digits.length >= 7 && digits.length <= 15;
+  }
+
+  // Local number (no country code): accept 7–12 digits
+  return digits.length >= 7 && digits.length <= 12;
 };
 
 /**
  * Returns an error string if phone is non-empty but invalid; null means OK.
  * Empty is treated as valid (optional field).
+ * Special characters are stripped — only digits are counted and validated.
  */
 export const validateOptionalPhone = (phone) => {
   if (!phone || phone.trim() === '') return null;
+  const hasPlus = phone.trimStart().startsWith('+');
   const digits = phone.replace(/\D/g, '');
-  if (digits.length < 7 || digits.length > 15) return 'Enter a valid phone number (7–15 digits)';
+
+  if (digits.length === 0) return 'Enter a valid phone number';
+
+  if (hasPlus) {
+    const info = resolveCC(digits);
+    if (info) {
+      const [min, max] = info.range;
+      if (digits.length < min || digits.length > max) {
+        const expected = min === max ? `${min}` : `${min}–${max}`;
+        return `Invalid number for this country (expected ${expected} digits incl. country code)`;
+      }
+      return null;
+    }
+    if (digits.length < 7 || digits.length > 15) return 'Enter a valid international phone number';
+    return null;
+  }
+
+  if (digits.length < 7 || digits.length > 12) return 'Enter a valid phone number (7–12 digits without country code)';
   return null;
 };
 
