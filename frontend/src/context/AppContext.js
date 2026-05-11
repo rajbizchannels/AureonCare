@@ -35,6 +35,7 @@ const AppProvider = ({ children }) => {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [appointmentViewType, setAppointmentViewType] = useState('list'); // 'list' or 'calendar'
   const [calendarViewType, setCalendarViewType] = useState('week'); // 'day' or 'week'
+  const [currency, setCurrency] = useState('USD');
 
   // Data state
   const [appointments, setAppointments] = useState([]);
@@ -248,6 +249,14 @@ const AppProvider = ({ children }) => {
     fetchAllData();
   }, []);
 
+  // Load currency from clinic settings after authentication
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    api.getClinicSettings()
+      .then(s => { if (s?.currency) setCurrency(s.currency); })
+      .catch(() => {});
+  }, [isAuthenticated]);
+
   /**
    * Updates user preferences in the backend and local state
    * @param {Object} newPreferences - The new preferences to merge with existing ones
@@ -376,6 +385,8 @@ const AppProvider = ({ children }) => {
     setAppointmentViewType,
     calendarViewType,
     setCalendarViewType,
+    currency,
+    setCurrency,
 
     // Data state
     appointments,
