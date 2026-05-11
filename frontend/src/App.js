@@ -1007,6 +1007,7 @@ function App() {
           setEditingItem={handleSetEditingItem}
           setCurrentView={setCurrentView}
           t={t}
+          currency={currency}
         />
       )}
 
