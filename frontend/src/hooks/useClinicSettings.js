@@ -15,6 +15,7 @@ const DEFAULT_CLINIC_SETTINGS = {
   website: 'www.aureoncareclinic.com',
   taxId: '',
   npi: '',
+  currency: 'USD',
 };
 
 /**
