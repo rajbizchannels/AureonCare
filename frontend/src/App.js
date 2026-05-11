@@ -444,6 +444,7 @@ function App() {
             setCurrentModule={setCurrentModule}
             tasks={tasks}
             setTasks={setTasks}
+            currency={currency}
           />
         );
       case 'accounts':
@@ -479,6 +480,7 @@ function App() {
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
             api={api}
+            currency={currency}
           />
         );
       case 'crm':
@@ -520,6 +522,7 @@ function App() {
             api={api}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            onCurrencyChange={setCurrency}
           />
         );
       case 'offerings':
