@@ -186,6 +186,13 @@ function App() {
   const [showHelpDrawer, setShowHelpDrawer] = React.useState(false);
   const [currentContext, setCurrentContext] = React.useState('dashboard');
   const [showOnboarding, setShowOnboarding] = React.useState(false);
+  const [currency, setCurrency] = React.useState('USD');
+
+  React.useEffect(() => {
+    api.getClinicSettings()
+      .then(s => { if (s?.currency) setCurrency(s.currency); })
+      .catch(() => {});
+  }, [api]);
 
   // Don't auto-show onboarding - let users trigger it manually from help menu
   // React.useEffect(() => {
@@ -302,6 +309,7 @@ function App() {
             updateUserPreferences={updateUserPreferences}
             addNotification={addNotification}
             planTier={planTier}
+            currency={currency}
           />
         );
       case 'practiceManagement':
@@ -446,6 +454,7 @@ function App() {
             user={user}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            currency={currency}
           />
         );
       case 'inventory':
@@ -456,6 +465,7 @@ function App() {
             user={user}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            currency={currency}
           />
         );
       case 'reports':

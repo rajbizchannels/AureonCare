@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check, FileText, Activity, ChevronDown, Zap } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
-import { formatTime, formatDate, formatCurrency, toLocalDateString } from '../utils/formatters';
+import { formatTime, formatDate, formatCurrency, getCurrencySymbol, toLocalDateString } from '../utils/formatters';
 import { hasPermission } from '../utils/rolePermissions';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import NewPatientForm from '../components/forms/NewPatientForm';
@@ -37,7 +37,8 @@ const DashboardView = ({
   completeTask,
   updateUserPreferences,
   addNotification,
-  planTier
+  planTier,
+  currency = 'USD'
 }) => {
   const [clinicName, setClinicName] = useState('Medical Practice');
   const [showQuickActions, setShowQuickActions] = useState(false);
@@ -250,6 +251,7 @@ const DashboardView = ({
         <StatCard
           title={t.revenue}
           value={(() => {
+            const sym = getCurrencySymbol(currency);
             const now = new Date();
             const thisMonthRevenue = claims.filter(c => {
               const dateStr = c.service_date || c.created_at;
@@ -260,7 +262,7 @@ const DashboardView = ({
               const amount = typeof c.amount === 'string' ? parseFloat(c.amount) : (c.amount || 0);
               return sum + amount;
             }, 0);
-            return thisMonthRevenue >= 1000 ? `$${(thisMonthRevenue / 1000).toFixed(1)}K` : `$${thisMonthRevenue.toFixed(0)}`;
+            return thisMonthRevenue >= 1000 ? `${sym}${(thisMonthRevenue / 1000).toFixed(1)}K` : `${sym}${thisMonthRevenue.toFixed(0)}`;
           })()}
           icon={DollarSign}
           trend={(() => {
@@ -279,7 +281,7 @@ const DashboardView = ({
             const lastMonthRevenue = getMonthRevenue(prevMonthDate.getFullYear(), prevMonthDate.getMonth());
 
             if (lastMonthRevenue === 0) {
-              return thisMonthRevenue > 0 ? `+100% ${t.vsLastMonth || 'vs last month'}` : `$0 ${t.vsLastMonth || 'vs last month'}`;
+              return thisMonthRevenue > 0 ? `+100% ${t.vsLastMonth || 'vs last month'}` : `${getCurrencySymbol(currency)}0 ${t.vsLastMonth || 'vs last month'}`;
             }
             const change = Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100);
             return change >= 0 ? `+${change}% ${t.vsLastMonth || 'vs last month'}` : `${change}% ${t.vsLastMonth || 'vs last month'}`;
