@@ -250,7 +250,7 @@ const AccountForm = ({ accounts, onSave, onClose, initial }) => {
   );
 };
 
-const JournalEntryForm = ({ accounts, onSave, onClose }) => {
+const JournalEntryForm = ({ accounts, onSave, onClose, currency = 'USD' }) => {
   const [form, setForm] = useState({ entryDate: new Date().toISOString().split('T')[0], description: '', entryType: 'manual', referenceType: '', referenceNumber: '', notes: '' });
   const [lines, setLines] = useState([{ accountId: '', entryType: 'debit', amount: '', description: '' }, { accountId: '', entryType: 'credit', amount: '', description: '' }]);
   const [errors, setErrors] = useState({});
@@ -346,11 +346,11 @@ const JournalEntryForm = ({ accounts, onSave, onClose }) => {
           </div>
         ))}
         <div className={`flex gap-6 text-sm px-2 py-1.5 rounded-lg ${isBalanced ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
-          <span>Debit: <strong className="text-green-700">{formatCurrency(totalDebit)}</strong></span>
-          <span>Credit: <strong className="text-red-600">{formatCurrency(totalCredit)}</strong></span>
+          <span>Debit: <strong className="text-green-700">{formatCurrency(totalDebit, currency)}</strong></span>
+          <span>Credit: <strong className="text-red-600">{formatCurrency(totalCredit, currency)}</strong></span>
           {isBalanced
             ? <span className="text-green-600 flex items-center gap-1"><CheckCircle size={13} />Balanced</span>
-            : <span className="text-red-600">Not balanced (diff: {formatCurrency(Math.abs(totalDebit - totalCredit))})</span>}
+            : <span className="text-red-600">Not balanced (diff: {formatCurrency(Math.abs(totalDebit - totalCredit), currency)})</span>}
         </div>
       </div>
 
@@ -521,7 +521,7 @@ const ReconciliationForm = ({ accounts, onSave, onClose }) => {
   );
 };
 
-const StatementForm = ({ onSave, onClose }) => {
+const StatementForm = ({ onSave, onClose, currency = 'USD' }) => {
   const [form, setForm] = useState({ statementType: 'patient', recipientName: '', recipientEmail: '', statementDate: new Date().toISOString().split('T')[0], periodStart: '', periodEnd: '', dueDate: '', previousBalance: 0, charges: 0, payments: 0, adjustments: 0, notes: '' });
   const [saving, setSaving] = useState(false);
   const currentBalance = parseFloat(form.previousBalance) + parseFloat(form.charges) - parseFloat(form.payments) - parseFloat(form.adjustments);
@@ -568,7 +568,7 @@ const StatementForm = ({ onSave, onClose }) => {
       </div>
       <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-sm">
         <span className="font-medium">Current Balance: </span>
-        <span className={currentBalance > 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{formatCurrency(currentBalance)}</span>
+        <span className={currentBalance > 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{formatCurrency(currentBalance, currency)}</span>
       </div>
       <FormField label="Notes"><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
       <div className="flex gap-2 pt-2 justify-end">
@@ -591,7 +591,7 @@ const TABS = [
   { id: 'statements', label: 'Statements',     icon: Receipt },
 ];
 
-export default function AccountsView({ theme, api, user, addNotification, setCurrentModule }) {
+export default function AccountsView({ theme, api, user, addNotification, setCurrentModule, currency = 'USD' }) {
   // Stable ref so addNotification never triggers fetchData recreation
   const notifyRef = useRef(addNotification);
   useEffect(() => { notifyRef.current = addNotification; }, [addNotification]);
@@ -858,9 +858,9 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
   const renderOverview = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Total AR" value={formatCurrency(dashboard?.totalAR || 0)} sub={`${dashboard?.arCount || 0} open records`} icon={TrendingUp} color="bg-blue-100 text-blue-600" />
-        <StatCard label="Total AP" value={formatCurrency(dashboard?.totalAP || 0)} sub={`${dashboard?.apCount || 0} pending`} icon={TrendingDown} color="bg-red-100 text-red-600" />
-        <StatCard label="Cash Balance" value={formatCurrency(dashboard?.cashBalance || 0)} icon={Wallet} color="bg-green-100 text-green-600" />
+        <StatCard label="Total AR" value={formatCurrency(dashboard?.totalAR || 0, currency)} sub={`${dashboard?.arCount || 0} open records`} icon={TrendingUp} color="bg-blue-100 text-blue-600" />
+        <StatCard label="Total AP" value={formatCurrency(dashboard?.totalAP || 0, currency)} sub={`${dashboard?.apCount || 0} pending`} icon={TrendingDown} color="bg-red-100 text-red-600" />
+        <StatCard label="Cash Balance" value={formatCurrency(dashboard?.cashBalance || 0, currency)} icon={Wallet} color="bg-green-100 text-green-600" />
         <StatCard label="Draft Entries" value={dashboard?.draftJournalEntries || 0} sub="pending posting" icon={FileText} color="bg-yellow-100 text-yellow-600" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -893,7 +893,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
               return (
                 <div key={type} className={`flex items-center justify-between py-1.5 border-b last:border-0 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-100'}`}>
                   <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{type}s ({typeAccts.length})</span>
-                  <span className={`text-sm font-semibold ${type === 'expense' || type === 'liability' ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(total)}</span>
+                  <span className={`text-sm font-semibold ${type === 'expense' || type === 'liability' ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(total, currency)}</span>
                 </div>
               );
             })}
@@ -950,7 +950,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{acct.accountSubtype?.replace(/_/g,' ') || '—'}</td>
             <td className="px-4 py-3 text-sm font-medium">
               <span className={parseFloat(acct.currentBalance) < 0 ? 'text-red-600' : theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                {formatCurrency(acct.currentBalance || 0)}
+                {formatCurrency(acct.currentBalance || 0, currency)}
               </span>
             </td>
             <td className="px-4 py-3">
@@ -1000,8 +1000,8 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatDate(je.entryDate)}</td>
             <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{je.entryType?.replace(/_/g,' ')}</td>
             <td className={`px-4 py-3 text-sm max-w-48 truncate ${theme === 'dark' ? 'text-slate-300' : ''}`}>{je.description}</td>
-            <td className="px-4 py-3 text-sm font-medium text-green-600">{formatCurrency(je.totalDebit)}</td>
-            <td className="px-4 py-3 text-sm font-medium text-red-500">{formatCurrency(je.totalCredit)}</td>
+            <td className="px-4 py-3 text-sm font-medium text-green-600">{formatCurrency(je.totalDebit, currency)}</td>
+            <td className="px-4 py-3 text-sm font-medium text-red-500">{formatCurrency(je.totalCredit, currency)}</td>
             <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{je.referenceNumber || '—'}</td>
             <td className="px-4 py-3"><Badge status={je.status} /></td>
             <td className="px-4 py-3">
@@ -1047,7 +1047,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
           return (
             <div key={b.key} className={`rounded-lg border p-3 text-center ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
               <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{b.label}</p>
-              <p className={`font-bold text-sm mt-1 ${theme === 'dark' ? 'text-white' : ''}`}>{formatCurrency(total)}</p>
+              <p className={`font-bold text-sm mt-1 ${theme === 'dark' ? 'text-white' : ''}`}>{formatCurrency(total, currency)}</p>
             </div>
           );
         })}
@@ -1060,9 +1060,9 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className={`px-4 py-3 font-mono text-xs ${theme === 'dark' ? 'text-slate-300' : ''}`}>{ar.arNumber}</td>
             <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{ar.arType}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{ar.patientName || ar.payerName || '—'}</td>
-            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(ar.originalAmount)}</td>
-            <td className="px-4 py-3 text-sm text-green-500">{formatCurrency(ar.paidAmount || 0)}</td>
-            <td className="px-4 py-3 text-sm font-medium text-red-500">{formatCurrency(ar.balanceDue || 0)}</td>
+            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(ar.originalAmount, currency)}</td>
+            <td className="px-4 py-3 text-sm text-green-500">{formatCurrency(ar.paidAmount || 0, currency)}</td>
+            <td className="px-4 py-3 text-sm font-medium text-red-500">{formatCurrency(ar.balanceDue || 0, currency)}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatDate(ar.dueDate)}</td>
             <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{ar.agingBucket?.replace(/_/g,' ') || 'current'}</td>
             <td className="px-4 py-3"><Badge status={ar.status} /></td>
@@ -1100,8 +1100,8 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className={`px-4 py-3 font-mono text-xs ${theme === 'dark' ? 'text-slate-300' : ''}`}>{ap.apNumber}</td>
             <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{ap.apType}</td>
             <td className={`px-4 py-3 text-sm font-medium ${theme === 'dark' ? 'text-white' : ''}`}>{ap.vendorName}</td>
-            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(ap.invoiceAmount)}</td>
-            <td className="px-4 py-3 text-sm font-medium text-red-500">{formatCurrency(ap.balanceDue || 0)}</td>
+            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(ap.invoiceAmount, currency)}</td>
+            <td className="px-4 py-3 text-sm font-medium text-red-500">{formatCurrency(ap.balanceDue || 0, currency)}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatDate(ap.invoiceDate)}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatDate(ap.dueDate)}</td>
             <td className="px-4 py-3"><Badge status={ap.status} /></td>
@@ -1138,11 +1138,11 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{rec.accountName}</td>
             <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{rec.reconciliationType}</td>
             <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-400' : ''}`}>{formatDate(rec.periodStart)} – {formatDate(rec.periodEnd)}</td>
-            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(rec.statementBalance)}</td>
-            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(rec.systemBalance)}</td>
+            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(rec.statementBalance, currency)}</td>
+            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(rec.systemBalance, currency)}</td>
             <td className="px-4 py-3 text-sm font-medium">
               <span className={Math.abs(parseFloat(rec.discrepancyAmount || 0)) < 0.01 ? 'text-green-500' : 'text-red-500'}>
-                {formatCurrency(rec.discrepancyAmount || 0)}
+                {formatCurrency(rec.discrepancyAmount || 0, currency)}
               </span>
             </td>
             <td className="px-4 py-3"><Badge status={rec.status} /></td>
@@ -1174,10 +1174,10 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{s.statementType}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{s.patientName || s.payerName || s.recipientName || '—'}</td>
             <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-400' : ''}`}>{formatDate(s.periodStart)} – {formatDate(s.periodEnd)}</td>
-            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(s.previousBalance)}</td>
-            <td className="px-4 py-3 text-sm text-red-500">{formatCurrency(s.charges)}</td>
-            <td className="px-4 py-3 text-sm text-green-500">{formatCurrency(s.payments)}</td>
-            <td className={`px-4 py-3 text-sm font-bold ${theme === 'dark' ? 'text-white' : ''}`}>{formatCurrency(s.currentBalance)}</td>
+            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(s.previousBalance, currency)}</td>
+            <td className="px-4 py-3 text-sm text-red-500">{formatCurrency(s.charges, currency)}</td>
+            <td className="px-4 py-3 text-sm text-green-500">{formatCurrency(s.payments, currency)}</td>
+            <td className={`px-4 py-3 text-sm font-bold ${theme === 'dark' ? 'text-white' : ''}`}>{formatCurrency(s.currentBalance, currency)}</td>
             <td className="px-4 py-3"><Badge status={s.status} /></td>
             <td className="px-4 py-3">
               <div className="flex gap-1">
@@ -1280,7 +1280,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       )}
       {showJEForm && (
         <Modal title="New Journal Entry" wide onClose={() => setShowJEForm(false)}>
-          <JournalEntryForm accounts={accounts} onSave={handleCreateJE} onClose={() => setShowJEForm(false)} />
+          <JournalEntryForm accounts={accounts} onSave={handleCreateJE} onClose={() => setShowJEForm(false)} currency={currency} />
         </Modal>
       )}
       {showARForm && (
@@ -1300,7 +1300,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       )}
       {showStmForm && (
         <Modal title="New Statement" onClose={() => setShowStmForm(false)}>
-          <StatementForm onSave={handleCreateStatement} onClose={() => setShowStmForm(false)} />
+          <StatementForm onSave={handleCreateStatement} onClose={() => setShowStmForm(false)} currency={currency} />
         </Modal>
       )}
     </div>

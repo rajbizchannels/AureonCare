@@ -358,7 +358,7 @@ const StockMovementForm = ({ items, onSave, onClose }) => {
   );
 };
 
-const PurchaseOrderForm = ({ suppliers, items, onSave, onClose }) => {
+const PurchaseOrderForm = ({ suppliers, items, onSave, onClose, currency = 'USD' }) => {
   const [form, setForm] = useState({
     supplier_id:   '',
     order_date:    new Date().toISOString().split('T')[0],
@@ -464,7 +464,7 @@ const PurchaseOrderForm = ({ suppliers, items, onSave, onClose }) => {
         </div>
         <div className="flex justify-end text-sm px-2 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20">
           <span className="text-orange-800 dark:text-orange-300">
-            Order Total: <strong>{formatCurrency(orderTotal)}</strong>
+            Order Total: <strong>{formatCurrency(orderTotal, currency)}</strong>
           </span>
         </div>
       </div>
@@ -630,7 +630,7 @@ const TABS = [
   { id: 'categories',  label: 'Categories',       icon: Tag },
 ];
 
-export default function InventoryView({ theme, api, user, addNotification, setCurrentModule }) {
+export default function InventoryView({ theme, api, user, addNotification, setCurrentModule, currency = 'USD' }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
 
@@ -959,7 +959,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
         />
         <StatCard
           label="Total Inventory Value"
-          value={formatCurrency(dashboard?.totalValue ?? items.reduce((s, i) => s + (parseFloat(i.current_stock || 0) * parseFloat(i.unit_cost || 0)), 0))}
+          value={formatCurrency(dashboard?.totalValue ?? items.reduce((s, i) => s + (parseFloat(i.current_stock || 0) * parseFloat(i.unit_cost || 0)), 0), currency)}
           sub="at cost"
           icon={DollarSign}
           color="bg-amber-100 text-amber-600"
@@ -1148,7 +1148,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
                 </div>
               </td>
               <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{item.reorder_level ?? '—'}</td>
-              <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(item.unit_cost || 0)}</td>
+              <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(item.unit_cost || 0, currency)}</td>
               <td className="px-4 py-3"><Badge status={item.status || 'active'} /></td>
               <td className="px-4 py-3">
                 <div className="flex gap-1">
@@ -1231,7 +1231,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
               </span>
               {mov.unit_of_measure && <span className={`text-xs ml-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{mov.unit_of_measure}</span>}
             </td>
-            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{mov.unit_cost ? formatCurrency(mov.unit_cost) : '—'}</td>
+            <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{mov.unit_cost ? formatCurrency(mov.unit_cost, currency) : '—'}</td>
             <td className={`px-4 py-3 text-xs font-mono ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{mov.lot_number || '—'}</td>
             <td className={`px-4 py-3 text-xs max-w-40 truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{mov.notes || '—'}</td>
             <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{mov.performed_by_name || '—'}</td>
@@ -1269,6 +1269,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
             items={items}
             onSave={handleCreateOrder}
             onClose={() => setShowOrderForm(false)}
+            currency={currency}
           />
         </div>
       )}
@@ -1318,8 +1319,8 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
                         <td className="px-3 py-2">{line.item_name || items.find(it => it.id === line.item_id)?.name || '—'}</td>
                         <td className="px-3 py-2">{line.quantity_ordered}</td>
                         <td className="px-3 py-2">{line.quantity_received ?? '—'}</td>
-                        <td className="px-3 py-2">{formatCurrency(line.unit_cost || 0)}</td>
-                        <td className="px-3 py-2 font-medium">{formatCurrency((line.quantity_ordered || 0) * (line.unit_cost || 0))}</td>
+                        <td className="px-3 py-2">{formatCurrency(line.unit_cost || 0, currency)}</td>
+                        <td className="px-3 py-2 font-medium">{formatCurrency((line.quantity_ordered || 0) * (line.unit_cost || 0), currency)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1328,7 +1329,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
             )}
             <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-slate-700">
               <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Order Total: <strong>{formatCurrency(viewingOrder.total_amount || 0)}</strong>
+                Order Total: <strong>{formatCurrency(viewingOrder.total_amount || 0, currency)}</strong>
               </span>
               <Btn variant="secondary" onClick={() => setViewingOrder(null)}>Close</Btn>
             </div>
@@ -1348,7 +1349,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatDate(ord.order_date)}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{ord.expected_date ? formatDate(ord.expected_date) : '—'}</td>
             <td className="px-4 py-3"><Badge status={ord.status} /></td>
-            <td className={`px-4 py-3 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(ord.total_amount || 0)}</td>
+            <td className={`px-4 py-3 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(ord.total_amount || 0, currency)}</td>
             <td className="px-4 py-3">
               <div className="flex gap-1">
                 <Btn variant="ghost" size="xs" icon={Eye} onClick={() => setViewingOrder(ord)} />
