@@ -949,6 +949,7 @@ function App() {
               setUser={setUser}
               user={user}
               t={t}
+              currency={currency}
             />
           </div>
         )}
