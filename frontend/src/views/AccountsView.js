@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LayoutDashboard, BookOpen, FileText, TrendingUp, TrendingDown,
   ArrowLeftRight, Receipt,
@@ -592,6 +592,10 @@ const TABS = [
 ];
 
 export default function AccountsView({ theme, api, user, addNotification, setCurrentModule }) {
+  // Stable ref so addNotification never triggers fetchData recreation
+  const notifyRef = useRef(addNotification);
+  useEffect(() => { notifyRef.current = addNotification; }, [addNotification]);
+
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
 
@@ -682,11 +686,11 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       }
     } catch (err) {
       console.error('Error loading accounts data:', err);
-      addNotification('error', 'Failed to load data');
+      notifyRef.current('error', 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [api, addNotification]);
+  }, [api]); // notifyRef is stable — intentionally excluded
 
   useEffect(() => { fetchData(activeTab); }, [activeTab, fetchData]);
 
