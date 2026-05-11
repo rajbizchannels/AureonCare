@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check, FileText, Activity, ChevronDown, Zap, Package, AlertTriangle } from 'lucide-react';
+import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check, FileText, Activity, ChevronDown, Zap } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency, toLocalDateString } from '../utils/formatters';
@@ -44,8 +44,6 @@ const DashboardView = ({
   const [showEPrescribeModal, setShowEPrescribeModal] = useState(false);
   const [prescribePatient, setPrescribePatient] = useState(null);
   const [prescribeDiagnosis, setPrescribeDiagnosis] = useState(null);
-  const [invSummary, setInvSummary] = useState(null);
-  const [invLowStock, setInvLowStock] = useState([]);
 
   // Load clinic name from database dynamically
   const { logViewAccess } = useAudit();
@@ -82,16 +80,6 @@ const DashboardView = ({
     };
 
     fetchClinicInfo();
-  }, [api]);
-
-  useEffect(() => {
-    if (!api.getInventorySummary) return;
-    api.getInventorySummary()
-      .then(setInvSummary)
-      .catch(() => {});
-    api.getInventoryLowStock()
-      .then(data => setInvLowStock(Array.isArray(data) ? data : (data?.rows || [])))
-      .catch(() => {});
   }, [api]);
 
   // Define all available quick actions with permission requirements
@@ -322,19 +310,6 @@ const DashboardView = ({
           />
         )}
 
-        {/* Inventory Summary - show only when data is available */}
-        {invSummary && (
-          <StatCard
-            title="Inventory"
-            value={invSummary.totalActiveItems?.toString() ?? invSummary.activeItems?.toString() ?? '—'}
-            icon={Package}
-            trend={invSummary.lowStockCount > 0
-              ? `${invSummary.lowStockCount} low stock alert${invSummary.lowStockCount !== 1 ? 's' : ''}`
-              : 'All stock levels OK'}
-            color="from-orange-500 to-amber-500"
-            onClick={() => setCurrentModule('inventory')}
-          />
-        )}
       </div>
 
       {/* Forms - Quick actions are now in header dropdown */}
@@ -451,7 +426,7 @@ const DashboardView = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div
           onClick={() => {
             if (setAppointmentViewType && setCalendarViewType) {
@@ -548,64 +523,6 @@ const DashboardView = ({
           </div>
         </div>
 
-        {/* Inventory Panel */}
-        <div
-          onClick={() => setCurrentModule('inventory')}
-          className={`bg-gradient-to-br rounded-xl p-6 border cursor-pointer transition-all ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50 hover:border-orange-500/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50 hover:border-orange-500/50'}`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Package className={`w-5 h-5 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`} />
-              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Inventory Alerts</h3>
-            </div>
-            <ChevronRight className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </div>
-
-          {/* Summary row */}
-          {invSummary && (
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {[
-                { label: 'Active Items', value: invSummary.totalActiveItems ?? invSummary.activeItems ?? '—' },
-                { label: 'Low Stock',    value: invSummary.lowStockCount ?? '—', warn: invSummary.lowStockCount > 0 },
-                { label: 'Expiring',     value: invSummary.expiringSoonCount ?? '—', warn: invSummary.expiringSoonCount > 0 },
-              ].map(({ label, value, warn }) => (
-                <div key={label} className={`rounded-lg p-2 text-center ${
-                  warn
-                    ? theme === 'dark' ? 'bg-orange-500/10' : 'bg-orange-50'
-                    : theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100'
-                }`}>
-                  <p className={`text-lg font-bold ${warn ? 'text-orange-500' : theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{value}</p>
-                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{label}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Low stock list */}
-          <div className="space-y-2">
-            {invLowStock.length === 0 && !invSummary && (
-              <p className={`text-sm text-center py-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>No inventory data</p>
-            )}
-            {invLowStock.length === 0 && invSummary && (
-              <p className={`text-sm text-center py-2 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>All stock levels OK</p>
-            )}
-            {invLowStock.slice(0, 4).map(item => (
-              <div key={item.id || item.itemNumber} className={`flex items-center justify-between p-2.5 rounded-lg ${theme === 'dark' ? 'bg-slate-800/30' : 'bg-gray-100/50'}`}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{item.name}</p>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{item.itemNumber} · {item.categoryName || item.itemType}</p>
-                  </div>
-                </div>
-                <div className="text-right flex-shrink-0 ml-2">
-                  <p className="text-xs font-semibold text-orange-500">{item.quantityOnHand} {item.unitOfMeasure}</p>
-                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>min {item.reorderLevel}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* ePrescribe Modal */}
