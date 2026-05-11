@@ -1318,7 +1318,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
         <Card theme={theme} className="p-5">
           <h4 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Aging Analysis</h4>
           <ReportChart type="bar" data={aging.map(r => ({ label: r.aging_bucket, value: parseFloat(r.total_amount) }))}
-            theme={theme} valueFormatter={v => formatCurrency(v)} />
+            theme={theme} valueFormatter={v => formatCurrency(v, currency)} />
         </Card>
       )}
 

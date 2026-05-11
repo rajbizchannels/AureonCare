@@ -129,6 +129,8 @@ function App() {
     setAppointmentViewType,
     calendarViewType,
     setCalendarViewType,
+    currency,
+    setCurrency,
 
     // Data
     appointments,
@@ -186,13 +188,6 @@ function App() {
   const [showHelpDrawer, setShowHelpDrawer] = React.useState(false);
   const [currentContext, setCurrentContext] = React.useState('dashboard');
   const [showOnboarding, setShowOnboarding] = React.useState(false);
-  const [currency, setCurrency] = React.useState('USD');
-
-  React.useEffect(() => {
-    api.getClinicSettings()
-      .then(s => { if (s?.currency) setCurrency(s.currency); })
-      .catch(() => {});
-  }, [api]);
 
   // Don't auto-show onboarding - let users trigger it manually from help menu
   // React.useEffect(() => {
