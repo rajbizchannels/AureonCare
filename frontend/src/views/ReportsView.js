@@ -864,7 +864,7 @@ const CustomReportBuilderModal = ({ onClose, onRun, theme }) => {
 // DATA TABLE WITH SEARCH, SORT, PAGINATION
 // ─────────────────────────────────────────────────────────────
 
-const DataTable = ({ data = [], columns = [], theme, onRowClick, title }) => {
+const DataTable = ({ data = [], columns = [], theme, onRowClick, title, currency = 'USD' }) => {
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
@@ -996,7 +996,7 @@ const DataTable = ({ data = [], columns = [], theme, onRowClick, title }) => {
 // INDIVIDUAL REPORT CONTENT RENDERERS
 // ─────────────────────────────────────────────────────────────
 
-const ReportContent = ({ category, report, data, loading, error, onRetry, theme, chartConfig, onDataPointClick, onChartConfigChange }) => {
+const ReportContent = ({ category, report, data, loading, error, onRetry, theme, chartConfig, onDataPointClick, onChartConfigChange, currency = 'USD' }) => {
   if (loading) return <Spinner theme={theme} />;
   if (error) return <LoadError onRetry={onRetry} theme={theme} />;
   if (!data) return null;
@@ -1352,7 +1352,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
       {/* Data Table */}
       {tableData.length > 0 && (
         <Card theme={theme} className="p-5">
-          <DataTable data={tableData} theme={theme} onRowClick={onDataPointClick} title="Detailed Records" />
+          <DataTable data={tableData} theme={theme} onRowClick={onDataPointClick} title="Detailed Records" currency={currency} />
         </Card>
       )}
     </div>
@@ -1364,7 +1364,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
 // CUSTOM REPORT RESULT VIEW
 // ─────────────────────────────────────────────────────────────
 
-const CustomReportResultView = ({ result, config, theme, onBack }) => {
+const CustomReportResultView = ({ result, config, theme, onBack, currency = 'USD' }) => {
   const { data = [], fields = [] } = result;
 
   const exportToExcel = () => {
@@ -1414,7 +1414,7 @@ const CustomReportResultView = ({ result, config, theme, onBack }) => {
         </div>
       </div>
       <Card theme={theme} className="p-5">
-        <DataTable data={data} columns={fields} theme={theme} title={`${data.length} Records`} />
+        <DataTable data={data} columns={fields} theme={theme} title={`${data.length} Records`} currency={currency} />
       </Card>
     </div>
   );
@@ -1753,7 +1753,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
           {/* Custom Report Result */}
           {customResult && !selectedReport && (
             <CustomReportResultView result={customResult} config={customConfig} theme={theme}
-              onBack={() => { setCustomResult(null); setCustomConfig(null); }} />
+              onBack={() => { setCustomResult(null); setCustomConfig(null); }} currency={currency} />
           )}
 
           {/* Standard Report */}
@@ -1774,6 +1774,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
                 chartConfig={chartConfig}
                 onDataPointClick={(record) => setDrillRecord(record)}
                 onChartConfigChange={(cfg) => setChartConfig(cfg)}
+                currency={currency}
               />
             </div>
           )}
