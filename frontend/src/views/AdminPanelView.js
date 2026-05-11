@@ -1975,6 +1975,42 @@ const AdminPanelView = ({
           />
           {validationErrors.npi && <p className="text-red-500 text-sm mt-1">{validationErrors.npi}</p>}
         </div>
+
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Currency
+          </label>
+          <select
+            value={clinicSettings.currency || 'USD'}
+            onChange={(e) => updateClinicSetting('currency', e.target.value)}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            {[
+              { code: 'USD', label: 'USD – US Dollar ($)' },
+              { code: 'EUR', label: 'EUR – Euro (€)' },
+              { code: 'GBP', label: 'GBP – British Pound (£)' },
+              { code: 'CAD', label: 'CAD – Canadian Dollar (CA$)' },
+              { code: 'AUD', label: 'AUD – Australian Dollar (A$)' },
+              { code: 'INR', label: 'INR – Indian Rupee (₹)' },
+              { code: 'AED', label: 'AED – UAE Dirham (AED)' },
+              { code: 'SAR', label: 'SAR – Saudi Riyal (SAR)' },
+              { code: 'NGN', label: 'NGN – Nigerian Naira (₦)' },
+              { code: 'ZAR', label: 'ZAR – South African Rand (R)' },
+              { code: 'JPY', label: 'JPY – Japanese Yen (¥)' },
+              { code: 'CNY', label: 'CNY – Chinese Yuan (¥)' },
+              { code: 'BRL', label: 'BRL – Brazilian Real (R$)' },
+              { code: 'MXN', label: 'MXN – Mexican Peso (MX$)' },
+              { code: 'CHF', label: 'CHF – Swiss Franc (CHF)' },
+              { code: 'SGD', label: 'SGD – Singapore Dollar (S$)' },
+              { code: 'NZD', label: 'NZD – New Zealand Dollar (NZ$)' },
+              { code: 'PKR', label: 'PKR – Pakistani Rupee (₨)' },
+              { code: 'BDT', label: 'BDT – Bangladeshi Taka (৳)' },
+              { code: 'KES', label: 'KES – Kenyan Shilling (KSh)' },
+            ].map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="flex justify-end">

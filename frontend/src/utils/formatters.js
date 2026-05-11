@@ -1,10 +1,21 @@
 // Utility Functions for Date and Currency Formatting
 
-export const formatCurrency = (amount) => {
-  if (!amount && amount !== 0) return '$0.00';
-  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (isNaN(numAmount)) return '$0.00';
-  return `$${numAmount.toFixed(2)}`;
+export const formatCurrency = (amount, currency = 'USD') => {
+  const num = (typeof amount === 'string' ? parseFloat(amount) : amount) || 0;
+  if (isNaN(num)) return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(0);
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(num);
+  } catch {
+    return `${num.toFixed(2)}`;
+  }
+};
+
+export const getCurrencySymbol = (currency = 'USD') => {
+  try {
+    return (0).toLocaleString('en-US', { style: 'currency', currency: currency || 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/[\d\s,.]/g, '').trim() || '$';
+  } catch {
+    return '$';
+  }
 };
 
 export const formatDate = (dateString) => {
