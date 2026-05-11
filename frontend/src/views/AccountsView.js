@@ -250,7 +250,7 @@ const AccountForm = ({ accounts, onSave, onClose, initial }) => {
   );
 };
 
-const JournalEntryForm = ({ accounts, onSave, onClose }) => {
+const JournalEntryForm = ({ accounts, onSave, onClose, currency = 'USD' }) => {
   const [form, setForm] = useState({ entryDate: new Date().toISOString().split('T')[0], description: '', entryType: 'manual', referenceType: '', referenceNumber: '', notes: '' });
   const [lines, setLines] = useState([{ accountId: '', entryType: 'debit', amount: '', description: '' }, { accountId: '', entryType: 'credit', amount: '', description: '' }]);
   const [errors, setErrors] = useState({});
@@ -521,7 +521,7 @@ const ReconciliationForm = ({ accounts, onSave, onClose }) => {
   );
 };
 
-const StatementForm = ({ onSave, onClose }) => {
+const StatementForm = ({ onSave, onClose, currency = 'USD' }) => {
   const [form, setForm] = useState({ statementType: 'patient', recipientName: '', recipientEmail: '', statementDate: new Date().toISOString().split('T')[0], periodStart: '', periodEnd: '', dueDate: '', previousBalance: 0, charges: 0, payments: 0, adjustments: 0, notes: '' });
   const [saving, setSaving] = useState(false);
   const currentBalance = parseFloat(form.previousBalance) + parseFloat(form.charges) - parseFloat(form.payments) - parseFloat(form.adjustments);
@@ -1280,7 +1280,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       )}
       {showJEForm && (
         <Modal title="New Journal Entry" wide onClose={() => setShowJEForm(false)}>
-          <JournalEntryForm accounts={accounts} onSave={handleCreateJE} onClose={() => setShowJEForm(false)} />
+          <JournalEntryForm accounts={accounts} onSave={handleCreateJE} onClose={() => setShowJEForm(false)} currency={currency} />
         </Modal>
       )}
       {showARForm && (
@@ -1300,7 +1300,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       )}
       {showStmForm && (
         <Modal title="New Statement" onClose={() => setShowStmForm(false)}>
-          <StatementForm onSave={handleCreateStatement} onClose={() => setShowStmForm(false)} />
+          <StatementForm onSave={handleCreateStatement} onClose={() => setShowStmForm(false)} currency={currency} />
         </Modal>
       )}
     </div>

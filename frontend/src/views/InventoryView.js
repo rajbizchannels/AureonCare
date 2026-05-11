@@ -358,7 +358,7 @@ const StockMovementForm = ({ items, onSave, onClose }) => {
   );
 };
 
-const PurchaseOrderForm = ({ suppliers, items, onSave, onClose }) => {
+const PurchaseOrderForm = ({ suppliers, items, onSave, onClose, currency = 'USD' }) => {
   const [form, setForm] = useState({
     supplier_id:   '',
     order_date:    new Date().toISOString().split('T')[0],
@@ -1269,6 +1269,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
             items={items}
             onSave={handleCreateOrder}
             onClose={() => setShowOrderForm(false)}
+            currency={currency}
           />
         </div>
       )}
