@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory Management - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📦 Inventory Management</h1>
+                    <p>Medical supplies, stock tracking, and purchase orders</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.2</span>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+
+        <div class="card-grid" style="margin-bottom: 2rem;">
+            <a href="#inventory-items">
+                <div class="card">
+                    <div class="card-icon">🏷️</div>
+                    <h3>Inventory Items</h3>
+                    <p>Add and manage medical supplies, medications, and equipment</p>
+                </div>
+            </a>
+            <a href="#stock-movements">
+                <div class="card">
+                    <div class="card-icon">🔄</div>
+                    <h3>Stock Movements</h3>
+                    <p>Record receipts, issues, adjustments, and transfers</p>
+                </div>
+            </a>
+            <a href="#purchase-orders">
+                <div class="card">
+                    <div class="card-icon">🛒</div>
+                    <h3>Purchase Orders</h3>
+                    <p>Create and manage orders to suppliers</p>
+                </div>
+            </a>
+            <a href="#suppliers">
+                <div class="card">
+                    <div class="card-icon">🚚</div>
+                    <h3>Suppliers</h3>
+                    <p>Manage vendor contacts and supplier directory</p>
+                </div>
+            </a>
+            <a href="#categories">
+                <div class="card">
+                    <div class="card-icon">📂</div>
+                    <h3>Categories</h3>
+                    <p>Organise items with custom category codes</p>
+                </div>
+            </a>
+            <a href="#low-stock">
+                <div class="card">
+                    <div class="card-icon">⚠️</div>
+                    <h3>Low Stock Alerts</h3>
+                    <p>Monitor reorder levels and critical stock</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="article-card" id="overview">
+            <h1>Inventory Management Overview</h1>
+            <p><strong>Inventory Management</strong> lets your practice track medical supplies, medications, equipment, and consumables in real time. Monitor stock levels, record movements, manage purchase orders, and get alerted when items fall below reorder thresholds.</p>
+
+            <h2>Getting to Inventory Management</h2>
+            <ol>
+                <li>Log in as an <strong>Admin</strong> or authorised staff user</li>
+                <li>Click <strong>Inventory</strong> in the top navigation</li>
+                <li>The dashboard shows total items, low-stock count, total inventory value, and pending purchase orders</li>
+            </ol>
+
+            <h2>Dashboard at a Glance</h2>
+            <table>
+                <tr><th>Card</th><th>What it shows</th></tr>
+                <tr><td>Total Items</td><td>Number of active inventory items</td></tr>
+                <tr><td>Low Stock</td><td>Items at or below reorder level</td></tr>
+                <tr><td>Total Value</td><td>Estimated inventory value at cost</td></tr>
+                <tr><td>Pending POs</td><td>Purchase orders awaiting receipt</td></tr>
+            </table>
+        </div>
+
+        <div class="article-card" id="inventory-items">
+            <h2>🏷️ Inventory Items</h2>
+            <p>Items represent individual products your practice stocks — from gloves and syringes to medications and equipment.</p>
+
+            <h3>Adding a New Item</h3>
+            <ol>
+                <li>Go to <strong>Inventory → Items</strong> tab</li>
+                <li>Click <strong>+ New Item</strong></li>
+                <li>Fill in the required fields: Name, Item Type, and Unit of Measure</li>
+                <li>Set Unit Cost and optional Selling Price</li>
+                <li>Enter Reorder Level and Reorder Quantity to enable low-stock alerts</li>
+                <li>Optionally assign a Category and Primary Supplier</li>
+                <li>Enable tracking options (Lot/Batch, Expiry Date, Refrigeration) if needed</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <h3>Item Types</h3>
+            <table>
+                <tr><th>Type</th><th>Examples</th></tr>
+                <tr><td>Supply</td><td>Gloves, bandages, syringes</td></tr>
+                <tr><td>Medication</td><td>Vaccines, injectables, oral medications</td></tr>
+                <tr><td>Equipment</td><td>Blood pressure cuffs, pulse oximeters</td></tr>
+                <tr><td>Consumable</td><td>Reagents, test strips, single-use items</td></tr>
+                <tr><td>Implant</td><td>Surgical implants, IUDs, pacemakers</td></tr>
+            </table>
+
+            <h3>Item Statuses</h3>
+            <table>
+                <tr><th>Status</th><th>Meaning</th></tr>
+                <tr><td>Active</td><td>In use, appears in stock movements and POs</td></tr>
+                <tr><td>Inactive</td><td>Hidden from new transactions, history preserved</td></tr>
+                <tr><td>Discontinued</td><td>No longer stocked, flagged for review</td></tr>
+                <tr><td>Low Stock</td><td>On-hand quantity ≤ reorder level</td></tr>
+            </table>
+        </div>
+
+        <div class="article-card" id="stock-movements">
+            <h2>🔄 Stock Movements</h2>
+            <p>Every change in stock quantity is recorded as a movement — this creates a full audit trail of your inventory.</p>
+
+            <h3>Movement Types</h3>
+            <table>
+                <tr><th>Type</th><th>When to use</th></tr>
+                <tr><td>Receipt (In)</td><td>Goods received from a supplier or PO</td></tr>
+                <tr><td>Issue (Out)</td><td>Items used in patient care or procedures</td></tr>
+                <tr><td>Adjustment</td><td>Correcting a count discrepancy</td></tr>
+                <tr><td>Transfer</td><td>Moving stock between locations or departments</td></tr>
+                <tr><td>Return</td><td>Returning unused items to supplier</td></tr>
+            </table>
+
+            <h3>Recording a Movement</h3>
+            <ol>
+                <li>Go to <strong>Inventory → Stock Movements</strong> tab</li>
+                <li>Click <strong>+ New Movement</strong></li>
+                <li>Select the item and movement type</li>
+                <li>Enter quantity, date, and an optional lot/batch number</li>
+                <li>Add a reason or reference note</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <p><strong>Note:</strong> Receipts increase quantity on hand; issues and returns decrease it. Adjustments can go either direction.</p>
+        </div>
+
+        <div class="article-card" id="purchase-orders">
+            <h2>🛒 Purchase Orders</h2>
+            <p>Purchase Orders (POs) formalise requests to suppliers and let you track what has been ordered and received.</p>
+
+            <h3>Creating a Purchase Order</h3>
+            <ol>
+                <li>Go to <strong>Inventory → Purchase Orders</strong> tab</li>
+                <li>Click <strong>+ New PO</strong></li>
+                <li>Select the <strong>Supplier</strong></li>
+                <li>Set the expected delivery date</li>
+                <li>Add line items: Item, Quantity, and Unit Cost</li>
+                <li>Add any notes or terms</li>
+                <li>Click <strong>Save as Draft</strong> or <strong>Submit Order</strong></li>
+            </ol>
+
+            <h3>PO Statuses</h3>
+            <table>
+                <tr><th>Status</th><th>Meaning</th></tr>
+                <tr><td>Draft</td><td>Being prepared, not yet sent to supplier</td></tr>
+                <tr><td>Pending</td><td>Submitted and awaiting supplier confirmation</td></tr>
+                <tr><td>Approved</td><td>Confirmed by supplier, goods in transit</td></tr>
+                <tr><td>Ordered</td><td>Order placed, awaiting delivery</td></tr>
+                <tr><td>Partial</td><td>Some items received, remainder pending</td></tr>
+                <tr><td>Received</td><td>All items delivered — auto-creates stock movements</td></tr>
+                <tr><td>Cancelled</td><td>Order cancelled before fulfilment</td></tr>
+            </table>
+
+            <h3>Receiving a PO</h3>
+            <p>When goods arrive, open the PO and click <strong>Mark as Received</strong>. The system automatically creates stock receipt movements for each line item, updating quantities on hand.</p>
+        </div>
+
+        <div class="article-card" id="suppliers">
+            <h2>🚚 Suppliers</h2>
+            <p>The Suppliers directory stores contact information for all vendors your practice orders from.</p>
+
+            <h3>Adding a Supplier</h3>
+            <ol>
+                <li>Go to <strong>Inventory → Suppliers</strong> tab</li>
+                <li>Click <strong>+ New Supplier</strong></li>
+                <li>Enter Name, Contact Person, Email, Phone, and Address</li>
+                <li>Optionally add payment terms and notes</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <p>Suppliers appear in the Purchase Order form and can be linked as the primary supplier for individual items.</p>
+        </div>
+
+        <div class="article-card" id="categories">
+            <h2>📂 Categories</h2>
+            <p>Categories let you organise items into logical groups for filtering and reporting.</p>
+
+            <h3>Adding a Category</h3>
+            <ol>
+                <li>Go to <strong>Inventory → Categories</strong> tab</li>
+                <li>Click <strong>+ New Category</strong></li>
+                <li>Enter a category code (e.g. <code>MED</code>) and name (e.g. <em>Medications</em>)</li>
+                <li>Add a description and set the active status</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+        </div>
+
+        <div class="article-card" id="low-stock">
+            <h2>⚠️ Low Stock Alerts</h2>
+            <p>AureonCare automatically flags items whose quantity on hand is at or below the configured reorder level.</p>
+
+            <h3>Viewing Low-Stock Items</h3>
+            <ol>
+                <li>Go to <strong>Inventory → Dashboard</strong></li>
+                <li>The <strong>Low Stock</strong> card shows the count — click it to filter the item list</li>
+                <li>Or go to <strong>Items</strong> tab and filter by status <em>Low Stock</em></li>
+            </ol>
+
+            <h3>Setting Reorder Levels</h3>
+            <p>Edit any item and set <strong>Reorder Level</strong> (minimum quantity before reordering) and <strong>Reorder Quantity</strong> (how much to order). When stock drops to or below the reorder level, the item status automatically updates to <em>Low Stock</em>.</p>
+
+            <h3>Reordering Quickly</h3>
+            <ol>
+                <li>From the Items list, select low-stock items</li>
+                <li>Click <strong>Create Purchase Order</strong> to auto-populate a PO with the item and reorder quantity</li>
+                <li>Select the supplier and submit</li>
+            </ol>
+        </div>
+
+        <div class="doc-footer">
+            <p><strong>AureonCare v1.2</strong> | Inventory Management Guide</p>
+            <p>For technical support, contact your system administrator</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Accounts Management - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📒 Accounts Management</h1>
+                    <p>General ledger, AR/AP, and financial reporting</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.2</span>
+        </div>
+    </header>
+
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+
+        <div class="card-grid" style="margin-bottom: 2rem;">
+            <a href="#chart-of-accounts">
+                <div class="card">
+                    <div class="card-icon">📋</div>
+                    <h3>Chart of Accounts</h3>
+                    <p>Manage your practice's account structure and categories</p>
+                </div>
+            </a>
+            <a href="#journal-entries">
+                <div class="card">
+                    <div class="card-icon">📝</div>
+                    <h3>Journal Entries</h3>
+                    <p>Create and post double-entry accounting transactions</p>
+                </div>
+            </a>
+            <a href="#accounts-receivable">
+                <div class="card">
+                    <div class="card-icon">📈</div>
+                    <h3>Accounts Receivable</h3>
+                    <p>Track money owed to your practice</p>
+                </div>
+            </a>
+            <a href="#accounts-payable">
+                <div class="card">
+                    <div class="card-icon">📉</div>
+                    <h3>Accounts Payable</h3>
+                    <p>Manage bills and vendor payments</p>
+                </div>
+            </a>
+            <a href="#reconciliation">
+                <div class="card">
+                    <div class="card-icon">✅</div>
+                    <h3>Bank Reconciliation</h3>
+                    <p>Reconcile bank statements with your ledger</p>
+                </div>
+            </a>
+            <a href="#financial-statements">
+                <div class="card">
+                    <div class="card-icon">📊</div>
+                    <h3>Financial Statements</h3>
+                    <p>Generate income statements and balance sheets</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="article-card" id="overview">
+            <h1>Accounts Management Overview</h1>
+            <p><strong>Accounts Management</strong> gives your practice a complete double-entry general ledger. Track every financial transaction, manage AR and AP, reconcile bank accounts, and generate standard financial statements — all from within AureonCare.</p>
+
+            <h2>Getting to Accounts Management</h2>
+            <ol>
+                <li>Log in as an <strong>Admin</strong> or <strong>Finance</strong> role user</li>
+                <li>Click <strong>Accounts</strong> in the top navigation</li>
+                <li>The dashboard shows AR, AP, Cash Balance, and draft journal entries at a glance</li>
+            </ol>
+
+            <h2>Dashboard at a Glance</h2>
+            <table>
+                <tr><th>Card</th><th>What it shows</th></tr>
+                <tr><td>Total AR</td><td>Sum of all open receivable balances</td></tr>
+                <tr><td>Total AP</td><td>Sum of all pending payable amounts</td></tr>
+                <tr><td>Cash Balance</td><td>Current balance of cash/bank accounts</td></tr>
+                <tr><td>Draft Entries</td><td>Journal entries awaiting posting</td></tr>
+            </table>
+        </div>
+
+        <div class="article-card" id="chart-of-accounts">
+            <h2>📋 Chart of Accounts</h2>
+            <p>The Chart of Accounts (COA) is the master list of accounts used by your practice's general ledger. Each account belongs to one of five types: <strong>Asset</strong>, <strong>Liability</strong>, <strong>Equity</strong>, <strong>Revenue</strong>, or <strong>Expense</strong>.</p>
+
+            <h3>Adding a New Account</h3>
+            <ol>
+                <li>Go to <strong>Accounts → Chart of Accounts</strong> tab</li>
+                <li>Click <strong>+ New Account</strong></li>
+                <li>Enter the account code (e.g. <code>1100</code>)</li>
+                <li>Enter the account name (e.g. <em>Cash – Checking</em>)</li>
+                <li>Select the account type</li>
+                <li>Set whether the account is currently active</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <h3>Standard Account Numbering</h3>
+            <table>
+                <tr><th>Range</th><th>Type</th><th>Examples</th></tr>
+                <tr><td>1000–1999</td><td>Assets</td><td>Cash, AR, Equipment</td></tr>
+                <tr><td>2000–2999</td><td>Liabilities</td><td>AP, Loans payable</td></tr>
+                <tr><td>3000–3999</td><td>Equity</td><td>Owner's equity, Retained earnings</td></tr>
+                <tr><td>4000–4999</td><td>Revenue</td><td>Patient services revenue</td></tr>
+                <tr><td>5000–5999</td><td>Expenses</td><td>Salaries, Rent, Supplies</td></tr>
+            </table>
+        </div>
+
+        <div class="article-card" id="journal-entries">
+            <h2>📝 Journal Entries</h2>
+            <p>Journal entries are the core of double-entry bookkeeping. Every entry must have equal debits and credits before it can be posted.</p>
+
+            <h3>Creating a Journal Entry</h3>
+            <ol>
+                <li>Go to <strong>Accounts → Journal Entries</strong> tab</li>
+                <li>Click <strong>+ New Entry</strong></li>
+                <li>Enter the entry date and a description/memo</li>
+                <li>Add line items — each line needs an Account, a Debit or Credit amount, and a description</li>
+                <li>Verify the entry is balanced (Debit total = Credit total)</li>
+                <li>Click <strong>Save as Draft</strong> to save without posting, or <strong>Post Entry</strong> to commit it to the ledger</li>
+            </ol>
+
+            <h3>Entry Statuses</h3>
+            <table>
+                <tr><th>Status</th><th>Meaning</th></tr>
+                <tr><td>Draft</td><td>Saved but not yet posted — can be edited or deleted</td></tr>
+                <tr><td>Posted</td><td>Committed to the ledger — creates an immutable audit trail</td></tr>
+                <tr><td>Voided</td><td>Reversed by a system-generated reversing entry</td></tr>
+            </table>
+
+            <h3>Voiding an Entry</h3>
+            <p>Posted entries cannot be deleted. To reverse one, use the <strong>Void</strong> action. The system creates an equal and opposite reversing entry automatically.</p>
+        </div>
+
+        <div class="article-card" id="accounts-receivable">
+            <h2>📈 Accounts Receivable (AR)</h2>
+            <p>AR tracks money that patients and insurers owe your practice for services already rendered.</p>
+
+            <h3>Viewing AR Records</h3>
+            <ol>
+                <li>Go to <strong>Accounts → Accounts Receivable</strong> tab</li>
+                <li>The list shows all open AR items with patient name, original amount, amount paid, and balance due</li>
+                <li>Filter by status: <em>Open</em>, <em>Partial</em>, <em>Paid</em>, <em>Written Off</em></li>
+            </ol>
+
+            <h3>AR Statuses</h3>
+            <table>
+                <tr><th>Status</th><th>Meaning</th></tr>
+                <tr><td>Open</td><td>Full balance outstanding</td></tr>
+                <tr><td>Partial</td><td>Some payment received, balance remains</td></tr>
+                <tr><td>Paid</td><td>Fully collected</td></tr>
+                <tr><td>Written Off</td><td>Balance deemed uncollectible</td></tr>
+                <tr><td>Disputed</td><td>Patient or insurer is contesting the charge</td></tr>
+            </table>
+
+            <h3>Creating an AR Record</h3>
+            <p>Click <strong>+ New AR</strong>, select the patient, enter the original amount, due date, and reference (e.g. claim or invoice number). AR records link automatically to claims posted from Revenue Cycle Management.</p>
+        </div>
+
+        <div class="article-card" id="accounts-payable">
+            <h2>📉 Accounts Payable (AP)</h2>
+            <p>AP tracks bills your practice owes to vendors, suppliers, and service providers.</p>
+
+            <h3>Adding a Bill</h3>
+            <ol>
+                <li>Go to <strong>Accounts → Accounts Payable</strong> tab</li>
+                <li>Click <strong>+ New AP</strong></li>
+                <li>Select the vendor/payee</li>
+                <li>Enter invoice number, amount, and due date</li>
+                <li>Choose the expense account to debit</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <h3>Recording a Payment</h3>
+            <p>Open an AP record and click <strong>Record Payment</strong>. Enter the payment date and amount. The system updates the balance due and changes the status to <em>Paid</em> when fully settled.</p>
+        </div>
+
+        <div class="article-card" id="reconciliation">
+            <h2>✅ Bank Reconciliation</h2>
+            <p>Bank reconciliation matches your practice's ledger transactions against your actual bank statement to catch errors and ensure accuracy.</p>
+
+            <h3>Running a Reconciliation</h3>
+            <ol>
+                <li>Go to <strong>Accounts → Reconciliation</strong> tab</li>
+                <li>Click <strong>+ New Reconciliation</strong></li>
+                <li>Select the bank/cash account and enter the statement date</li>
+                <li>Enter the closing balance from your bank statement</li>
+                <li>Check off each transaction that appears on the statement</li>
+                <li>The system calculates the difference — aim for <strong>$0.00</strong></li>
+                <li>Once balanced, click <strong>Complete Reconciliation</strong></li>
+            </ol>
+
+            <h3>Reconciliation Statuses</h3>
+            <table>
+                <tr><th>Status</th><th>Meaning</th></tr>
+                <tr><td>In Progress</td><td>Reconciliation started, not yet completed</td></tr>
+                <tr><td>Completed</td><td>Balanced and locked</td></tr>
+                <tr><td>Discrepancy</td><td>Completed with a non-zero difference flagged for review</td></tr>
+            </table>
+        </div>
+
+        <div class="article-card" id="financial-statements">
+            <h2>📊 Financial Statements</h2>
+            <p>Generate standard financial reports directly from your general ledger data.</p>
+
+            <h3>Available Statements</h3>
+            <table>
+                <tr><th>Report</th><th>Purpose</th></tr>
+                <tr><td>Income Statement (P&amp;L)</td><td>Shows revenue, expenses, and net income for a period</td></tr>
+                <tr><td>Balance Sheet</td><td>Snapshot of assets, liabilities, and equity at a date</td></tr>
+                <tr><td>Trial Balance</td><td>Lists all accounts with debit/credit totals to verify balance</td></tr>
+            </table>
+
+            <h3>Generating a Statement</h3>
+            <ol>
+                <li>Go to <strong>Accounts → Statements</strong> tab</li>
+                <li>Click <strong>+ New Statement</strong></li>
+                <li>Select report type and date range</li>
+                <li>Click <strong>Generate</strong></li>
+                <li>View on-screen or export to PDF/Excel via the <strong>Reports</strong> module</li>
+            </ol>
+        </div>
+
+        <div class="doc-footer">
+            <p><strong>AureonCare v1.2</strong> | Accounts Management Guide</p>
+            <p>For technical support, contact your system administrator</p>
+        </div>
+    </div>
+</body>
+</html>
