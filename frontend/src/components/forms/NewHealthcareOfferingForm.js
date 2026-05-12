@@ -9,6 +9,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [formTemplates, setFormTemplates] = useState([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -29,7 +30,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
     contraindications: '',
     imageUrl: '',
     consentFormRequired: false,
-    consentFormUrl: ''
+    consentFormId: ''
   });
 
   // Log form view on mount
@@ -58,6 +59,12 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
     };
     loadCategories();
   }, [api, addNotification]);
+
+  useEffect(() => {
+    api.getFormTemplates({ is_active: true })
+      .then(data => setFormTemplates(Array.isArray(data) ? data : (data?.templates || [])))
+      .catch(() => setFormTemplates([]));
+  }, [api]);
 
   // Populate form when editing
   useEffect(() => {
@@ -108,7 +115,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
           contraindications: editingOffering.contraindications || '',
           imageUrl: editingOffering.imageUrl || '',
           consentFormRequired: editingOffering.consentFormRequired || false,
-          consentFormUrl: editingOffering.consentFormUrl || ''
+          consentFormId: editingOffering.consentFormId || editingOffering.consent_form_id || ''
         });
       }
     };
@@ -154,7 +161,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
       contraindications: formData.contraindications.trim() || null,
       imageUrl: formData.imageUrl.trim() || null,
       consentFormRequired: formData.consentFormRequired,
-      consentFormUrl: formData.consentFormRequired ? formData.consentFormUrl.trim() || null : null
+      consentFormId: formData.consentFormRequired ? formData.consentFormId || null : null
     };
 
     try {
@@ -475,15 +482,25 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
               {formData.consentFormRequired && (
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {t.consentFormUrl || 'Consent Form URL'}
+                    Consent Form
                   </label>
-                  <input
-                    type="text"
-                    value={formData.consentFormUrl}
-                    onChange={(e) => setFormData({...formData, consentFormUrl: e.target.value})}
+                  <select
+                    value={formData.consentFormId}
+                    onChange={(e) => setFormData({...formData, consentFormId: e.target.value})}
                     className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                    placeholder={t.enterConsentFormUrl || 'Enter consent form URL'}
-                  />
+                  >
+                    <option value="">— Select a consent form —</option>
+                    {formTemplates.map(tpl => (
+                      <option key={tpl.id} value={tpl.id}>
+                        {tpl.name}{tpl.template_type ? ` (${tpl.template_type})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {formTemplates.length === 0 && (
+                    <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                      No forms available. Create forms in the Form Management module first.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
