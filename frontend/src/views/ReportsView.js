@@ -899,7 +899,7 @@ const DataTable = ({ data = [], columns = [], theme, onRowClick, title, currency
     const val = row[col];
     if (val === null || val === undefined) return <span className="opacity-30">—</span>;
     if (col === 'status') return <StatusBadge status={val} />;
-    if (col.includes('amount') || col.includes('revenue') || col.includes('billed') || col.includes('collected') || col.includes('paid')) {
+    if (col.includes('amount') || col.includes('revenue') || col.includes('billed') || col.includes('collected') || col.includes('paid') || col.includes('balance') || col.includes('cost') || col.includes('price') || col.includes('fee') || col.includes('charge')) {
       const num = parseFloat(val);
       return !isNaN(num) ? formatCurrency(num, currency) : val;
     }
@@ -1509,7 +1509,17 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
       autoTable(doc, {
         startY: 40,
         head: [cols.map(c => c.replace(/_/g, ' ').toUpperCase())],
-        body: tableData.slice(0, 100).map(row => cols.map(c => String(row[c] ?? ''))),
+        body: tableData.slice(0, 100).map(row => cols.map(c => {
+          const val = row[c];
+          if (val === null || val === undefined) return '';
+          if (typeof val === 'number' || (c.includes('amount') || c.includes('revenue') || c.includes('billed') || c.includes('paid') || c.includes('balance') || c.includes('cost') || c.includes('price') || c.includes('outstanding'))) {
+            const num = parseFloat(val);
+            if (!isNaN(num) && (c.includes('amount') || c.includes('revenue') || c.includes('billed') || c.includes('paid') || c.includes('balance') || c.includes('cost') || c.includes('price') || c.includes('outstanding'))) {
+              return formatCurrency(num, currency);
+            }
+          }
+          return String(val ?? '');
+        })),
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
         styles: { fontSize: 8 }

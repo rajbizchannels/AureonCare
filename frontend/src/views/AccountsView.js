@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useAudit } from '../hooks/useAudit';
+import { useApp } from '../context/AppContext';
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
 
@@ -55,24 +56,27 @@ const Badge = ({ status }) => {
   );
 };
 
-const StatCard = ({ label, value, sub, icon: Icon, color, trend }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 flex items-start gap-3">
-    <div className={`p-2.5 rounded-lg ${color || 'bg-emerald-100'}`}>
-      <Icon size={20} className={color ? '' : 'text-emerald-600'} />
+const StatCard = ({ label, value, sub, icon: Icon, color, trend }) => {
+  const { theme } = useApp();
+  return (
+    <div className={`rounded-xl border p-4 flex items-start gap-3 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+      <div className={`p-2.5 rounded-lg ${color || 'bg-emerald-100'}`}>
+        <Icon size={20} className={color ? '' : 'text-emerald-600'} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={`text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{label}</p>
+        <p className={`text-xl font-bold mt-0.5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{value}</p>
+        {sub && <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{sub}</p>}
+        {trend !== undefined && (
+          <p className={`text-xs mt-0.5 flex items-center gap-1 ${trend >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+            {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {Math.abs(trend).toFixed(1)}%
+          </p>
+        )}
+      </div>
     </div>
-    <div className="min-w-0 flex-1">
-      <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{label}</p>
-      <p className="text-xl font-bold text-gray-900 dark:text-white mt-0.5">{value}</p>
-      {sub && <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{sub}</p>}
-      {trend !== undefined && (
-        <p className={`text-xs mt-0.5 flex items-center gap-1 ${trend >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-          {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-          {Math.abs(trend).toFixed(1)}%
-        </p>
-      )}
-    </div>
-  </div>
-);
+  );
+};
 
 const Modal = ({ title, onClose, children, wide }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">

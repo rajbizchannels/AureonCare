@@ -1816,7 +1816,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Patient
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {patients.find(p => p.id === viewingClaim.patient_id) ?
                   `${patients.find(p => p.id === viewingClaim.patient_id).first_name} ${patients.find(p => p.id === viewingClaim.patient_id).last_name}` :
                   'Unknown Patient'}
@@ -1826,7 +1826,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Payer
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {viewingClaim.payer || 'N/A'}
               </div>
             </div>
@@ -1834,7 +1834,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Service Date
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {formatDate(viewingClaim.service_date)}
               </div>
             </div>
@@ -1842,7 +1842,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Amount
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {formatCurrency(viewingClaim.amount, currency)}
               </div>
             </div>
@@ -1850,7 +1850,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Status
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   viewingClaim.status === 'Approved' ? 'bg-green-500/20 text-green-400' :
                   viewingClaim.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' :
@@ -1865,7 +1865,7 @@ const RCMView = ({
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Pre-approval
                 </label>
-                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                   {viewingClaim.preapproval_id}
                 </div>
               </div>
@@ -1875,7 +1875,7 @@ const RCMView = ({
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Notes
                 </label>
-                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                   {viewingClaim.notes}
                 </div>
               </div>
