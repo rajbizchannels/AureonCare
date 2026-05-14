@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Search, Filter, Plus, CheckCircle, FileText, Shield, CreditCard,
   Calendar, Stethoscope, MessageSquare, Scale, Star, Users, Activity,
-  ClipboardList, Heart, Pill, Eye, ChevronRight, Tag
+  ClipboardList, Heart, Pill, Eye, ChevronRight, Tag, Send, Edit2
 } from 'lucide-react';
 
 const CATEGORY_ICONS = {
@@ -67,6 +67,9 @@ const FormTemplateLibrary = ({
   templates = [],
   onSelect,
   onCreateNew,
+  onPreview,
+  onEdit,
+  onSendToPatient,
   theme = 'light',
   multiSelect = false,
   selectedIds = [],
@@ -294,66 +297,102 @@ const FormTemplateLibrary = ({
                 const isSelected = selectedIds.includes(id);
                 const compliance = template.compliance_tags || [];
 
+                const hasActions = !multiSelect && (onPreview || onEdit || onSendToPatient);
                 return (
                   <div
                     key={id}
-                    onClick={() => multiSelect ? toggleSelect(id) : (onSelect && onSelect(template))}
-                    className={`rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md group ${
+                    className={`rounded-xl border transition-all hover:shadow-md group ${
                       isSelected
                         ? dark ? 'border-blue-500 bg-blue-900/20' : 'border-blue-500 bg-blue-50'
                         : dark ? 'border-slate-700 bg-slate-800 hover:border-slate-600' : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          {multiSelect && (
-                            <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600' : dark ? 'border-slate-500' : 'border-gray-300'}`}>
-                              {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
-                            </div>
+                    {/* Card body — click to select/open */}
+                    <div
+                      onClick={() => multiSelect ? toggleSelect(id) : (onSelect && onSelect(template))}
+                      className="p-4 cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            {multiSelect && (
+                              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600' : dark ? 'border-slate-500' : 'border-gray-300'}`}>
+                                {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
+                              </div>
+                            )}
+                            <p className={`font-medium text-sm leading-tight ${dark ? 'text-slate-100' : 'text-gray-800'}`}>
+                              {template.name}
+                            </p>
+                          </div>
+                          {template.subcategory && (
+                            <p className={`text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{template.subcategory}</p>
                           )}
-                          <p className={`font-medium text-sm leading-tight ${dark ? 'text-slate-100' : 'text-gray-800'}`}>
-                            {template.name}
-                          </p>
                         </div>
-                        {template.subcategory && (
-                          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{template.subcategory}</p>
+                        {!multiSelect && !hasActions && <ChevronRight className={`w-4 h-4 flex-shrink-0 mt-0.5 transition-transform group-hover:translate-x-0.5 ${dark ? 'text-slate-500' : 'text-gray-400'}`} />}
+                      </div>
+
+                      {template.description && (
+                        <p className={`text-xs mb-2 line-clamp-2 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{template.description}</p>
+                      )}
+
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {template.require_signature && (
+                          <span className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full ${dark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>
+                            <Shield className="w-2.5 h-2.5" /> Signature
+                          </span>
+                        )}
+                        {template.require_witness && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${dark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>
+                            Witness
+                          </span>
+                        )}
+                        {template.fhir_questionnaire && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${dark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-700'}`}>
+                            FHIR
+                          </span>
+                        )}
+                        {compliance.map(tag => (
+                          <span key={tag} className={`text-xs px-1.5 py-0.5 rounded-full ${COMPLIANCE_COLORS[tag] || 'bg-gray-100 text-gray-600'}`}>
+                            {tag}
+                          </span>
+                        ))}
+                        {template.version && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ml-auto ${dark ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>
+                            v{template.version}
+                          </span>
                         )}
                       </div>
-                      {!multiSelect && <ChevronRight className={`w-4 h-4 flex-shrink-0 mt-0.5 transition-transform group-hover:translate-x-0.5 ${dark ? 'text-slate-500' : 'text-gray-400'}`} />}
                     </div>
 
-                    {template.description && (
-                      <p className={`text-xs mb-2 line-clamp-2 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{template.description}</p>
+                    {/* Action buttons row */}
+                    {hasActions && (
+                      <div className={`flex items-center gap-1 px-3 pb-3`}>
+                        {onPreview && (
+                          <button
+                            onClick={e => { e.stopPropagation(); onPreview(template); }}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${dark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                          >
+                            <Eye className="w-3 h-3" /> Preview
+                          </button>
+                        )}
+                        {onEdit && (
+                          <button
+                            onClick={e => { e.stopPropagation(); onEdit(template); }}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${dark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                          >
+                            <Edit2 className="w-3 h-3" /> Edit
+                          </button>
+                        )}
+                        {onSendToPatient && (
+                          <button
+                            onClick={e => { e.stopPropagation(); onSendToPatient(template); }}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors bg-blue-600 hover:bg-blue-700 text-white ml-auto"
+                          >
+                            <Send className="w-3 h-3" /> Send to Patient
+                          </button>
+                        )}
+                      </div>
                     )}
-
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {template.require_signature && (
-                        <span className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full ${dark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>
-                          <Shield className="w-2.5 h-2.5" /> Signature
-                        </span>
-                      )}
-                      {template.require_witness && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${dark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>
-                          Witness
-                        </span>
-                      )}
-                      {template.fhir_questionnaire && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${dark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-700'}`}>
-                          FHIR
-                        </span>
-                      )}
-                      {compliance.map(tag => (
-                        <span key={tag} className={`text-xs px-1.5 py-0.5 rounded-full ${COMPLIANCE_COLORS[tag] || 'bg-gray-100 text-gray-600'}`}>
-                          {tag}
-                        </span>
-                      ))}
-                      {template.version && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ml-auto ${dark ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>
-                          v{template.version}
-                        </span>
-                      )}
-                    </div>
                   </div>
                 );
               })}
