@@ -388,11 +388,11 @@ ALTER FUNCTION public.update_payment_postings_updated_at() OWNER TO postgres;
 
 CREATE FUNCTION public.update_preapprovals_updated_at() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
+    AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
 $$;
 
 
@@ -2454,7 +2454,8 @@ CREATE TABLE public.patients (
     state character varying(2),
     zip character varying(10),
     insurance character varying(100),
-    insurance_id character varying(100)
+    insurance_id character varying(100),
+    telehealth_preference character varying(50) DEFAULT NULL
 );
 
 
@@ -2549,6 +2550,13 @@ COMMENT ON COLUMN public.patients.insurance IS 'Insurance provider name';
 --
 
 COMMENT ON COLUMN public.patients.insurance_id IS 'Insurance member ID';
+
+
+--
+-- Name: COLUMN patients.telehealth_preference; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.patients.telehealth_preference IS 'Preferred telehealth provider (zoom, google_meet, microsoft_teams, webex). NULL = clinic default.';
 
 
 --

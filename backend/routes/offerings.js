@@ -372,9 +372,9 @@ router.post('/', async (req, res) => {
         min_age, max_age, gender_restriction,
         contraindications, prerequisites, allowed_provider_specializations,
         image_url, video_url, brochure_url,
-        consent_form_required, consent_form_url,
+        consent_form_required, consent_form_url, consent_form_id,
         seo_title, seo_description, seo_keywords, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
       RETURNING *`,
       [
         name, description, _category_id, _duration_minutes,

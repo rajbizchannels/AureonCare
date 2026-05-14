@@ -160,10 +160,8 @@ const OAUTH_CONFIGS = {
     scope: [
       'meeting:write:meeting',              // Create / update own meetings
       'meeting:read:meeting',               // Read own meeting details
-      'meeting:delete:meeting',             // Delete own meetings
       'user:read:user',                     // Read own user profile
       'user:read:zak',                      // Read own ZAK token for embedded SDK hosting
-      'cloud_recording:read:list_recordings', // List own cloud recordings
     ].join(' '),
   },
   google_meet: {

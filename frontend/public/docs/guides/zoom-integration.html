@@ -125,14 +125,6 @@
                         <td>Retrieve meeting join URLs and IDs to display in the appointment record and deliver secure join links to patients</td>
                     </tr>
                     <tr>
-                        <td><code>meeting:delete</code></td>
-                        <td>Delete the associated Zoom meeting when an appointment is cancelled or rescheduled, preventing orphaned meetings and invalidating stale join links</td>
-                    </tr>
-                    <tr>
-                        <td><code>recording:read</code></td>
-                        <td>Retrieve cloud recording links after a session ends and attach them to the appointment record for clinical review (only when the provider has enabled recording with documented patient consent)</td>
-                    </tr>
-                    <tr>
                         <td><code>user:read</code></td>
                         <td>Verify the identity and account status of the connecting Zoom user at authorization time, and display the linked email in the Integrations settings panel</td>
                     </tr>
@@ -244,7 +236,6 @@
             <ul>
                 <li>Cloud recording enabled on the connected Zoom account (Zoom Pro or higher).</li>
                 <li>Explicit verbal or written patient consent documented in the chart before recording begins.</li>
-                <li><code>recording:read</code> scope granted during OAuth authorization.</li>
             </ul>
 
             <h3>Steps</h3>
@@ -386,7 +377,6 @@
                 <a href="../troubleshooting/common-issues.html">full troubleshooting guide</a>.
             </p>
         </div>
-    </div>
 
         <!-- ============================================================
              SECTION 5 — FAQ
@@ -430,7 +420,7 @@
             <p><strong>How do I contact support?</strong><br>
             Email <a href="mailto:info@aureoncare.tech">info@aureoncare.tech</a>. Include your practice name and a description of the issue. For urgent matters during business hours, reference "Zoom Integration" in the subject line.</p>
         </div>
-    </div>
+    </div><!-- end doc-container -->
 
     <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
         <p>AureonCare v1.2 | <a href="../index.html" style="color: white; text-decoration: underline;">Documentation Home</a></p>

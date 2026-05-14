@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const TelehealthProviderManager = require('../services/telehealthProviders');
+const notificationService = require('../services/notificationService');
 
 // Get all telehealth sessions
 router.get('/', async (req, res) => {
@@ -157,11 +158,19 @@ router.post('/', async (req, res) => {
       meetingResult.provider
     ]);
 
+    const session = result.rows[0];
     res.status(201).json({
-      ...result.rows[0],
+      ...session,
       start_url: meetingResult.startUrl || null,
       meetingDetails: meetingResult
     });
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'telehealth.session_created', {
+      session,
+      patient_id: patientId,
+      provider_id: providerId,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error creating telehealth session:', error);
     // Use 422 for configuration errors, 500 for server errors
