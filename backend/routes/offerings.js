@@ -339,10 +339,17 @@ router.post('/', async (req, res) => {
     brochure_url,
     consent_form_required,
     consent_form_url,
+    consent_form_id,
     seo_title,
     seo_description,
     seo_keywords,
-    created_by
+    created_by,
+    // Accept camelCase keys from frontend
+    consentFormRequired,
+    consentFormUrl,
+    consentFormId,
+    categoryId,
+    durationMinutes
   } = req.body;
 
   if (!name) {
@@ -350,6 +357,12 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    const _category_id = category_id || categoryId;
+    const _duration_minutes = duration_minutes || durationMinutes;
+    const _consent_form_required = consent_form_required ?? consentFormRequired ?? false;
+    const _consent_form_url = consent_form_url || consentFormUrl || null;
+    const _consent_form_id = consent_form_id || consentFormId || null;
+
     const result = await pool.query(
       `INSERT INTO healthcare_offerings (
         name, description, category_id, duration_minutes,
@@ -364,14 +377,14 @@ router.post('/', async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
       RETURNING *`,
       [
-        name, description, category_id, duration_minutes,
+        name, description, _category_id, _duration_minutes,
         requires_preparation || false, preparation_instructions,
         is_active !== false, is_featured || false, available_online !== false, requires_referral || false,
         cpt_codes, icd_codes, hcpcs_codes,
         min_age, max_age, gender_restriction || 'any',
         contraindications, prerequisites, allowed_provider_specializations,
         image_url, video_url, brochure_url,
-        consent_form_required || false, consent_form_url,
+        _consent_form_required || false, _consent_form_url || _consent_form_id,
         seo_title, seo_description, seo_keywords, created_by
       ]
     );
@@ -383,11 +396,47 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Map camelCase keys from frontend to snake_case DB columns
+const CAMEL_TO_SNAKE = {
+  categoryId: 'category_id',
+  durationMinutes: 'duration_minutes',
+  requiresPreparation: 'requires_preparation',
+  preparationInstructions: 'preparation_instructions',
+  isActive: 'is_active',
+  isFeatured: 'is_featured',
+  availableOnline: 'available_online',
+  requiresReferral: 'requires_referral',
+  cptCodes: 'cpt_codes',
+  icdCodes: 'icd_codes',
+  hcpcsCodes: 'hcpcs_codes',
+  minAge: 'min_age',
+  maxAge: 'max_age',
+  genderRestriction: 'gender_restriction',
+  imageUrl: 'image_url',
+  videoUrl: 'video_url',
+  brochureUrl: 'brochure_url',
+  consentFormRequired: 'consent_form_required',
+  consentFormUrl: 'consent_form_url',
+  consentFormId: 'consent_form_url',
+  seoTitle: 'seo_title',
+  seoDescription: 'seo_description',
+  seoKeywords: 'seo_keywords',
+  createdBy: 'created_by',
+  allowedProviderSpecializations: 'allowed_provider_specializations'
+};
+
 // Update healthcare offering
 router.put('/:id', async (req, res) => {
   const pool = req.app.locals.pool;
   const { id } = req.params;
-  const updates = req.body;
+
+  // Normalize camelCase keys to snake_case
+  const updates = {};
+  for (const [key, value] of Object.entries(req.body)) {
+    const mapped = CAMEL_TO_SNAKE[key] || key;
+    // Don't overwrite a snake_case key already set by a later camelCase key
+    if (!(mapped in updates)) updates[mapped] = value;
+  }
 
   try {
     // Build dynamic update query
