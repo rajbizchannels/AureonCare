@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import api from '../api/apiService';
+import { formatCurrency } from '../utils/formatters';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewHealthcareOfferingForm from '../components/forms/NewHealthcareOfferingForm';
 import { useAudit } from '../hooks/useAudit';
@@ -35,7 +36,7 @@ import {
 } from 'lucide-react';
 
 const OfferingManagementView = () => {
-  const { user, theme, setCurrentModule } = useApp();
+  const { user, theme, setCurrentModule, currency } = useApp();
   const [activeTab, setActiveTab] = useState('offerings');
   const [offerings, setOfferings] = useState([]);
   const [packages, setPackages] = useState([]);
@@ -666,7 +667,7 @@ const OfferingManagementView = () => {
 
           {/* Statistics Tab */}
           {activeTab === 'statistics' && statistics && (
-            <StatisticsView statistics={statistics} theme={theme} />
+            <StatisticsView statistics={statistics} theme={theme} currency={currency} />
           )}
         </>
       )}
@@ -941,7 +942,7 @@ const PromotionCard = ({ promotion, theme, onEdit, onToggleStatus }) => (
 );
 
 // Statistics View Component
-const StatisticsView = ({ statistics, theme }) => (
+const StatisticsView = ({ statistics, theme, currency }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <StatCard
@@ -967,7 +968,7 @@ const StatisticsView = ({ statistics, theme }) => (
       />
       <StatCard
         title="Total Revenue"
-        value={`$${parseFloat(statistics.overview.total_revenue || 0).toLocaleString()}`}
+        value={formatCurrency(parseFloat(statistics.overview.total_revenue || 0), currency)}
         icon={DollarSign}
         color="emerald"
         theme={theme}

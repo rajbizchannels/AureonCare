@@ -204,7 +204,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, user, theme, t }) => {
         <div className={`flex items-center justify-between p-6 border-b sticky top-0 ${
           theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-white'
         }`}>
-          <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-500'}`}>
             {isEditMode ? (t.editUser || 'Edit User') : (t.addUser || 'Add New User')}
           </h2>
           <button

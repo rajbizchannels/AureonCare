@@ -1670,6 +1670,39 @@ const api = {
     return response.json();
   },
 
+  // Stripe Integration Settings
+  getStripeSettings: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings`);
+    if (!response.ok) throw new Error('Failed to fetch Stripe settings');
+    return response.json();
+  },
+  saveStripeSettings: async (settings) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings`, {
+      method: 'POST',
+      body: JSON.stringify(settings)
+    });
+    if (!response.ok) throw new Error('Failed to save Stripe settings');
+    return response.json();
+  },
+  toggleStripeIntegration: async (isEnabled) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings/toggle`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_enabled: isEnabled })
+    });
+    if (!response.ok) throw new Error('Failed to toggle Stripe integration');
+    return response.json();
+  },
+  testStripeConnection: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings/test`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Stripe connection test failed');
+    }
+    return response.json();
+  },
+
   // Lab Orders
   getLabOrders: async (filters = {}) => {
     const params = new URLSearchParams(filters);
@@ -2743,6 +2776,377 @@ const api = {
     const response = await authenticatedFetch(`${API_BASE_URL}/form-management/stats`);
     if (!response.ok) throw new Error('Failed to fetch form stats');
     return response.json();
+  },
+
+  // ─── Accounts Management ───────────────────────────────────────────────────
+
+  // Chart of Accounts
+  getAccounts: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch accounts');
+    return response.json();
+  },
+  getAccount: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch account');
+    return response.json();
+  },
+  createAccount: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create account'); }
+    return response.json();
+  },
+  updateAccount: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update account'); }
+    return response.json();
+  },
+  deleteAccount: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/${id}`, { method: 'DELETE' });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to delete account'); }
+    return response.json();
+  },
+  getAccountTransactions: async (id, params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/${id}/transactions${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch account transactions');
+    return response.json();
+  },
+
+  // Journal Entries
+  getJournalEntries: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch journal entries');
+    return response.json();
+  },
+  getJournalEntry: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch journal entry');
+    return response.json();
+  },
+  createJournalEntry: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create journal entry'); }
+    return response.json();
+  },
+  postJournalEntry: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries/${id}/post`, { method: 'POST' });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to post journal entry'); }
+    return response.json();
+  },
+  voidJournalEntry: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries/${id}/void`, { method: 'POST' });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to void journal entry'); }
+    return response.json();
+  },
+
+  // Accounts Receivable
+  getAccountReceivables: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/receivables${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch receivables');
+    return response.json();
+  },
+  createAccountReceivable: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/receivables`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create AR record'); }
+    return response.json();
+  },
+  updateAccountReceivable: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/receivables/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update AR record'); }
+    return response.json();
+  },
+
+  // Accounts Payable
+  getAccountPayables: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/payables${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch payables');
+    return response.json();
+  },
+  createAccountPayable: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/payables`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create AP record'); }
+    return response.json();
+  },
+  updateAccountPayable: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/payables/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update AP record'); }
+    return response.json();
+  },
+
+  // Reconciliations
+  getReconciliations: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reconciliations${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch reconciliations');
+    return response.json();
+  },
+  createReconciliation: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reconciliations`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create reconciliation'); }
+    return response.json();
+  },
+  updateReconciliation: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reconciliations/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update reconciliation'); }
+    return response.json();
+  },
+
+  // Statements
+  getAccountStatements: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/statements${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch statements');
+    return response.json();
+  },
+  createAccountStatement: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/statements`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create statement'); }
+    return response.json();
+  },
+  sendAccountStatement: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/statements/${id}/send`, { method: 'PUT' });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to send statement'); }
+    return response.json();
+  },
+
+  // Reports
+  getAccountsDashboard: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/dashboard`);
+    if (!response.ok) throw new Error('Failed to fetch accounts dashboard');
+    return response.json();
+  },
+  getTrialBalance: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/trial-balance${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch trial balance');
+    return response.json();
+  },
+  getIncomeStatement: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/income-statement${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch income statement');
+    return response.json();
+  },
+  getBalanceSheet: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/balance-sheet${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch balance sheet');
+    return response.json();
+  },
+  getARAgingReport: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/ar-aging`);
+    if (!response.ok) throw new Error('Failed to fetch AR aging report');
+    return response.json();
+  },
+  getAPAgingReport: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/ap-aging`);
+    if (!response.ok) throw new Error('Failed to fetch AP aging report');
+    return response.json();
+  },
+  createARAgingSnapshot: async (data = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/ar-aging/snapshot`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) throw new Error('Failed to create aging snapshot');
+    return response.json();
+  },
+
+  // RBAC
+  getAccountPermissions: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/rbac/permissions`);
+    if (!response.ok) throw new Error('Failed to fetch account permissions');
+    return response.json();
+  },
+  updateAccountPermission: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/rbac/permissions`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update permission'); }
+    return response.json();
+  },
+
+  // Backup & Archive
+  getAccountBackups: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`);
+    if (!response.ok) throw new Error('Failed to fetch backups');
+    return response.json();
+  },
+  createAccountBackup: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Backup failed'); }
+    return response.json();
+  },
+  archiveAccountRecords: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/archive`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Archive failed'); }
+    return response.json();
+  },
+
+  // ─── INVENTORY ────────────────────────────────────────────────────────────
+  getInventoryItems: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items${qs ? `?${qs}` : ''}`);
+    if (!r.ok) throw new Error('Failed to fetch inventory items');
+    return r.json();
+  },
+  getInventoryItem: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items/${id}`);
+    if (!r.ok) throw new Error('Failed to fetch inventory item');
+    return r.json();
+  },
+  createInventoryItem: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create item'); }
+    return r.json();
+  },
+  updateInventoryItem: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update item'); }
+    return r.json();
+  },
+  deleteInventoryItem: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete item'); }
+    return r.json();
+  },
+
+  getInventoryCategories: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories`);
+    if (!r.ok) throw new Error('Failed to fetch categories');
+    return r.json();
+  },
+  createInventoryCategory: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create category'); }
+    return r.json();
+  },
+  updateInventoryCategory: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update category'); }
+    return r.json();
+  },
+  deleteInventoryCategory: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete category'); }
+    return r.json();
+  },
+
+  getInventorySuppliers: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers`);
+    if (!r.ok) throw new Error('Failed to fetch suppliers');
+    return r.json();
+  },
+  createInventorySupplier: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create supplier'); }
+    return r.json();
+  },
+  updateInventorySupplier: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update supplier'); }
+    return r.json();
+  },
+  deleteInventorySupplier: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete supplier'); }
+    return r.json();
+  },
+
+  getInventoryMovements: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/movements${qs ? `?${qs}` : ''}`);
+    if (!r.ok) throw new Error('Failed to fetch movements');
+    return r.json();
+  },
+  createInventoryMovement: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/movements`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to record movement'); }
+    return r.json();
+  },
+
+  getInventoryOrders: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders${qs ? `?${qs}` : ''}`);
+    if (!r.ok) throw new Error('Failed to fetch purchase orders');
+    return r.json();
+  },
+  getInventoryOrder: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}`);
+    if (!r.ok) throw new Error('Failed to fetch purchase order');
+    return r.json();
+  },
+  createInventoryOrder: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create order'); }
+    return r.json();
+  },
+  updateInventoryOrder: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update order'); }
+    return r.json();
+  },
+  receiveInventoryOrder: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}/receive`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to receive order'); }
+    return r.json();
+  },
+  deleteInventoryOrder: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete order'); }
+    return r.json();
+  },
+
+  getInventorySummary: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/summary`);
+    if (!r.ok) throw new Error('Failed to fetch inventory summary');
+    return r.json();
+  },
+  getInventoryStockLevels: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/stock-levels`);
+    if (!r.ok) throw new Error('Failed to fetch stock levels');
+    return r.json();
+  },
+  getInventoryLowStock: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/low-stock`);
+    if (!r.ok) throw new Error('Failed to fetch low stock report');
+    return r.json();
+  },
+  getInventoryMovementHistory: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/movement-history`);
+    if (!r.ok) throw new Error('Failed to fetch movement history');
+    return r.json();
+  },
+  getInventoryValuation: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/valuation`);
+    if (!r.ok) throw new Error('Failed to fetch valuation');
+    return r.json();
+  },
+  getInventoryExpiryAlerts: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/expiry-alerts`);
+    if (!r.ok) throw new Error('Failed to fetch expiry alerts');
+    return r.json();
+  },
+
+  getInventoryPermissions: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/rbac/permissions`);
+    if (!r.ok) throw new Error('Failed to fetch inventory permissions');
+    return r.json();
+  },
+  updateInventoryPermission: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/rbac/permissions`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update permission'); }
+    return r.json();
+  },
+  getInventoryBackups: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`);
+    if (!r.ok) throw new Error('Failed to fetch inventory backups');
+    return r.json();
+  },
+  createInventoryBackup: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Backup failed'); }
+    return r.json();
   }
 };
 

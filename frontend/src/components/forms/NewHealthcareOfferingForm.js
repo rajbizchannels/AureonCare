@@ -14,6 +14,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [formTemplates, setFormTemplates] = useState([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -64,6 +65,12 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
     };
     loadCategories();
   }, [api, addNotification]);
+
+  useEffect(() => {
+    api.getFormTemplates({ is_active: true })
+      .then(data => setFormTemplates(Array.isArray(data) ? data : (data?.templates || [])))
+      .catch(() => setFormTemplates([]));
+  }, [api]);
 
   // Populate form when editing
   useEffect(() => {

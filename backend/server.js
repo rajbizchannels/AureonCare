@@ -43,6 +43,13 @@ app.use(
   helmet({
     crossOriginEmbedderPolicy: { policy: 'credentialless' },
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        frameAncestors: ["'self'"],
+      },
+    },
+    frameguard: { action: 'sameorigin' },
   })
 );
 // Support multiple allowed origins via a comma-separated FRONTEND_URL env var,
@@ -125,6 +132,7 @@ app.use('/api/telehealth-settings', require('./routes/telehealthSettings'));
 app.use('/api/vendor-integration-settings', require('./routes/vendorIntegrationSettings'));
 app.use('/api/integrations/oauth', require('./routes/integrationOAuth'));
 app.use('/api/backup-providers', require('./routes/backupProviders'));
+app.use('/api/stripe-settings', require('./routes/stripeSettings'));
 app.use('/api/clinic-settings', require('./routes/clinicSettings'));
 app.use('/api/notification-preferences', require('./routes/notificationPreferences'));
 app.use('/api/fhir', require('./routes/fhir'));
@@ -149,6 +157,8 @@ app.use('/api/archive', require('./routes/archive'));
 app.use('/api/archive-rules', require('./routes/archiveRules'));
 app.use('/api/audit', require('./routes/audit'));
 app.use('/api/billing', require('./routes/billing'));
+app.use('/api/accounts', require('./routes/accounts'));
+app.use('/api/inventory', require('./routes/inventory'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/form-management', require('./routes/form-management'));
 
