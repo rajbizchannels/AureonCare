@@ -1294,6 +1294,75 @@ router.put('/promotions/:id', async (req, res) => {
   }
 });
 
+// ==================== OFFERING → FORM LINKS ====================
+
+const ENSURE_OFFERING_FORM_LINKS = `
+  CREATE TABLE IF NOT EXISTS offering_form_links (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    offering_id UUID NOT NULL REFERENCES healthcare_offerings(id) ON DELETE CASCADE,
+    form_template_id TEXT NOT NULL,
+    form_template_name VARCHAR(255),
+    trigger_on VARCHAR(50) DEFAULT 'order',
+    is_active BOOLEAN DEFAULT true,
+    created_by UUID,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(offering_id, form_template_id)
+  );
+`;
+
+// GET /api/offerings/:id/forms
+router.get('/:id/forms', async (req, res) => {
+  const pool = req.app.locals.pool;
+  try {
+    await pool.query(ENSURE_OFFERING_FORM_LINKS);
+    const result = await pool.query(
+      'SELECT * FROM offering_form_links WHERE offering_id = $1 AND is_active = true ORDER BY created_at',
+      [req.params.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching offering form links:', error);
+    res.status(500).json({ error: 'Failed to fetch offering forms' });
+  }
+});
+
+// POST /api/offerings/:id/forms
+router.post('/:id/forms', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { form_template_id, form_template_name, trigger_on } = req.body;
+  const actorId = req.headers['x-user-id'];
+  try {
+    await pool.query(ENSURE_OFFERING_FORM_LINKS);
+    const result = await pool.query(
+      `INSERT INTO offering_form_links (offering_id, form_template_id, form_template_name, trigger_on, created_by)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (offering_id, form_template_id) DO UPDATE SET is_active = true, form_template_name = EXCLUDED.form_template_name
+       RETURNING *`,
+      [req.params.id, form_template_id, form_template_name || null, trigger_on || 'order', actorId || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error linking form to offering:', error);
+    res.status(500).json({ error: 'Failed to link form to offering' });
+  }
+});
+
+// DELETE /api/offerings/:id/forms/:formTemplateId
+router.delete('/:id/forms/:formTemplateId', async (req, res) => {
+  const pool = req.app.locals.pool;
+  try {
+    await pool.query(ENSURE_OFFERING_FORM_LINKS);
+    await pool.query(
+      'DELETE FROM offering_form_links WHERE offering_id = $1 AND form_template_id = $2',
+      [req.params.id, req.params.formTemplateId]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error unlinking form from offering:', error);
+    res.status(500).json({ error: 'Failed to unlink form from offering' });
+  }
+});
+
 // ==================== STATISTICS ====================
 
 // Get offering statistics
