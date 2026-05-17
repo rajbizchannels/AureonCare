@@ -64,7 +64,18 @@ router.get('/', async (req, res) => {
       LIMIT 1
     `);
 
-    res.json(result.rows[0] || {});
+    const row = result.rows[0] || {};
+
+    // When platform integration is active, surface the platform publishable key
+    // so the frontend can initialise Stripe.js without a separate request.
+    if (row.use_platform_integration) {
+      const platformPk = process.env.AC_STRIPE_PK || process.env.STRIPE_PUBLISHABLE_KEY;
+      if (platformPk) row.publishable_key = platformPk;
+      row.has_platform_secret = !!(process.env.AC_STRIPE_SK || process.env.STRIPE_SECRET_KEY);
+      row.has_platform_webhook = !!(process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET);
+    }
+
+    res.json(row);
   } catch (error) {
     console.error('Error fetching Stripe settings:', error);
     res.status(500).json({ error: 'Failed to fetch Stripe settings' });
@@ -162,7 +173,7 @@ router.post('/test', async (req, res) => {
     // Resolve which secret key to use
     let secretKey = row.secret_key;
     if (row.use_platform_integration) {
-      secretKey = process.env.STRIPE_SECRET_KEY || process.env.AC_STRIPE_SK;
+      secretKey = process.env.AC_STRIPE_SK || process.env.STRIPE_SECRET_KEY;
     }
 
     if (!secretKey) {
