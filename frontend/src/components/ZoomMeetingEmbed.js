@@ -12,6 +12,7 @@ const HIDDEN_MORE_ITEMS = [
   'stop summary',
   'caption settings',
   'report',
+  'livestream',
 ];
 
 function hideRestrictedMenuItems(root) {
