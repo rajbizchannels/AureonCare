@@ -60,6 +60,13 @@ class TeamsService {
     const clientId = this.config.client_id;
     const clientSecret = this.config.client_secret;
 
+    if (!clientId || !clientSecret) {
+      throw new Error(
+        'Microsoft Teams client credentials are missing. ' +
+        'Please set AC_MS_CID and AC_MS_CSK environment variables, or reconnect Teams in Admin Settings.'
+      );
+    }
+
     const response = await axios.post(
       'https://login.microsoftonline.com/common/oauth2/v2.0/token',
       new URLSearchParams({
