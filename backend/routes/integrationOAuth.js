@@ -456,20 +456,29 @@ router.get('/:providerType/callback', async (req, res) => {
       });
 
       await pool.query(
-        `UPDATE telehealth_provider_settings
-         SET access_token = $1,
-             refresh_token = $2,
-             token_type = $3,
-             token_scope = $4,
-             token_expires_at = $5,
-             account_id = COALESCE($6, account_id),
-             zoom_user_id = COALESCE($7, zoom_user_id),
-             zoom_user_email = COALESCE($8, zoom_user_email),
-             is_enabled = true,
-             settings = $10::jsonb,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE provider_type = $9`,
+        `INSERT INTO telehealth_provider_settings
+           (provider_type, client_id, client_secret, access_token, refresh_token,
+            token_type, token_scope, token_expires_at, account_id,
+            zoom_user_id, zoom_user_email, is_enabled, settings)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, $12::jsonb)
+         ON CONFLICT (provider_type) DO UPDATE SET
+           client_id = COALESCE(EXCLUDED.client_id, telehealth_provider_settings.client_id),
+           client_secret = COALESCE(EXCLUDED.client_secret, telehealth_provider_settings.client_secret),
+           access_token = EXCLUDED.access_token,
+           refresh_token = EXCLUDED.refresh_token,
+           token_type = EXCLUDED.token_type,
+           token_scope = EXCLUDED.token_scope,
+           token_expires_at = EXCLUDED.token_expires_at,
+           account_id = COALESCE(EXCLUDED.account_id, telehealth_provider_settings.account_id),
+           zoom_user_id = COALESCE(EXCLUDED.zoom_user_id, telehealth_provider_settings.zoom_user_id),
+           zoom_user_email = COALESCE(EXCLUDED.zoom_user_email, telehealth_provider_settings.zoom_user_email),
+           is_enabled = true,
+           settings = EXCLUDED.settings,
+           updated_at = CURRENT_TIMESTAMP`,
         [
+          providerType,
+          client_id,
+          client_secret,
           tokens.access_token,
           tokens.refresh_token || null,
           tokens.token_type || 'Bearer',
@@ -478,7 +487,6 @@ router.get('/:providerType/callback', async (req, res) => {
           accountId,
           connectedUserId,
           connectedUserEmail,
-          providerType,
           settingsJson,
         ]
       );
