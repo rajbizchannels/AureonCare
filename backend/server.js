@@ -68,6 +68,10 @@ app.use(cors({
   },
   credentials: true
 }));
+// Stripe webhook MUST be mounted before express.json() so it receives the raw body.
+// Stripe-Signature verification fails if the body has been JSON-parsed first.
+app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }), require('./routes/stripeWebhook'));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
