@@ -128,23 +128,24 @@ function resolveProviderEnv(key) {
 
 /**
  * Resolve client_id and client_secret for a telehealth provider.
- * Falls back to env vars (AC_ZM_CID, etc.) when DB has no credentials.
+ * Env vars (AC_ZM_CID, etc.) take precedence over DB values so that
+ * updating credentials after Marketplace approval takes effect immediately.
  */
 function resolveClientCredentials(providerType, dbRow) {
-  let client_id = dbRow?.client_id || null;
-  let client_secret = dbRow?.client_secret || null;
+  const prefix = providerType.toUpperCase();
+  const envPrefixes = providerType === 'microsoft_teams'
+    ? ['TEAMS', prefix]
+    : [prefix];
 
-  if (!client_id || !client_secret) {
-    const prefix = providerType.toUpperCase();
-    // microsoft_teams → try TEAMS_ first, then MICROSOFT_TEAMS_
-    const envPrefixes = providerType === 'microsoft_teams'
-      ? ['TEAMS', prefix]
-      : [prefix];
-    for (const ep of envPrefixes) {
-      client_id = client_id || resolveProviderEnv(`${ep}_CLIENT_ID`) || null;
-      client_secret = client_secret || resolveProviderEnv(`${ep}_CLIENT_SECRET`) || null;
-    }
+  let envClientId = null;
+  let envClientSecret = null;
+  for (const ep of envPrefixes) {
+    envClientId = envClientId || resolveProviderEnv(`${ep}_CLIENT_ID`) || null;
+    envClientSecret = envClientSecret || resolveProviderEnv(`${ep}_CLIENT_SECRET`) || null;
   }
+
+  const client_id = envClientId || dbRow?.client_id || null;
+  const client_secret = envClientSecret || dbRow?.client_secret || null;
 
   return { client_id, client_secret };
 }
@@ -280,7 +281,8 @@ router.get('/:providerType/initiate', async (req, res) => {
       });
     }
 
-    // If credentials came from env vars and there's no DB row yet, create one
+    // Sync DB with resolved credentials (env vars may have changed after
+    // Marketplace approval, or DB row may not exist yet).
     if (!dbRow) {
       await pool.query(
         `INSERT INTO ${info.table} (${info.field}, client_id, client_secret, is_enabled)
@@ -291,12 +293,11 @@ router.get('/:providerType/initiate', async (req, res) => {
            updated_at = CURRENT_TIMESTAMP`,
         [providerType, client_id, client_secret]
       );
-    } else if (!dbRow.client_id || !dbRow.client_secret) {
-      // DB row exists but missing creds — persist from env vars
+    } else if (dbRow.client_id !== client_id || dbRow.client_secret !== client_secret) {
       await pool.query(
         `UPDATE ${info.table}
-         SET client_id = COALESCE(client_id, $1),
-             client_secret = COALESCE(client_secret, $2),
+         SET client_id = $1,
+             client_secret = $2,
              updated_at = CURRENT_TIMESTAMP
          WHERE ${info.field} = $3`,
         [client_id, client_secret, providerType]
