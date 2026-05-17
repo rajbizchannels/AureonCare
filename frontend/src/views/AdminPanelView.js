@@ -1511,20 +1511,36 @@ const AdminPanelView = ({
           }
         }
 
-        // Platform env vars not set — show admin-facing message
+        // Credentials not set in env vars — open credential entry modal so the
+        // admin can paste their own Client ID + Secret, then OAuth proceeds.
         setProviderEnvMissing(prev => ({ ...prev, [providerType]: true }));
 
-        const envVarHint = {
-          zoom: 'ZOOM_CLIENT_ID and ZOOM_CLIENT_SECRET',
-          google_meet: 'GOOGLE_MEET_CLIENT_ID and GOOGLE_MEET_CLIENT_SECRET',
-          webex: 'WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET',
-          microsoft_teams: 'TEAMS_CLIENT_ID and TEAMS_CLIENT_SECRET',
-        }[providerType] || `${providerType.toUpperCase()}_CLIENT_ID and ${providerType.toUpperCase()}_CLIENT_SECRET`;
+        const initiateOAuthAfterSave = async () => {
+          setProviderEnvMissing(prev => ({ ...prev, [providerType]: false }));
+          await openOAuthPopup(providerType, displayName);
+          const settings = await api.getTelehealthSettings();
+          if (settings && Array.isArray(settings)) {
+            const statusMap = {};
+            settings.forEach((s) => {
+              statusMap[s.provider_type] = {
+                is_enabled: s.is_enabled || false,
+                is_configured: Boolean(s.client_id || s.api_key),
+                has_tokens: s.has_tokens || false,
+              };
+            });
+            setTelehealthStatus((prev) => ({ ...prev, ...statusMap }));
+          }
+        };
 
-        await addNotification(
-          'warning',
-          `${displayName} integration is not enabled on this platform. A system administrator needs to set the ${envVarHint} environment variables on the server.`
-        );
+        setCredentialModalConfig({
+          providerName: displayName,
+          providerType,
+          credentialType: 'oauth',
+          existingCredentials: null,
+          onSuccess: initiateOAuthAfterSave,
+          onConnect: null,
+        });
+        setShowCredentialModal(true);
       } catch (error) {
         console.error('Error starting provider configuration:', error);
         await addNotification('alert', error.message || 'Failed to start configuration flow');
