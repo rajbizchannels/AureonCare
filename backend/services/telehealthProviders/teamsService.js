@@ -74,7 +74,7 @@ class TeamsService {
         refresh_token: refreshToken,
         client_id: clientId,
         client_secret: clientSecret,
-        scope: 'OnlineMeetings.ReadWrite User.Read offline_access',
+        scope: 'https://graph.microsoft.com/OnlineMeetings.ReadWrite https://graph.microsoft.com/User.Read offline_access',
       }).toString(),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
