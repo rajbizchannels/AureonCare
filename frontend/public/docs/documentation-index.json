@@ -1,6 +1,6 @@
 {
-  "version": "1.1",
-  "lastUpdated": "2025-12-27",
+  "version": "1.2",
+  "lastUpdated": "2026-05-11",
   "sections": [
     {
       "id": "getting-started",
@@ -344,15 +344,19 @@
         {
           "id": "claims",
           "title": "Claims Management",
-          "path": "/docs/index.html#claims",
-          "url": "/docs/index.html#claims",
+          "path": "/docs/guides/claims.html",
+          "url": "/docs/guides/claims.html",
           "keywords": [
             "claims",
             "billing",
             "insurance",
             "submit",
             "837",
-            "eob"
+            "eob",
+            "cpt",
+            "icd-10",
+            "denial",
+            "appeal"
           ],
           "summary": "Create and submit insurance claims electronically\n\nSubmit claims to insurance payers with real-time eligibility verification and status tracking.",
           "content": "**Creating Insurance Claims:**\n\n**Accessing Claims:**\n1. Go to Revenue Cycle Management module\n2. Click 'Claims' tab\n3. Click '+ New Claim' button\n\n**Automatic Claim Generation:**\nClaims auto-generate from:\n• Completed appointments\n• Signed clinical encounter notes\n• Procedures performed\n• Services rendered\n\nSystem automatically:\n• Links diagnosis codes (ICD-10)\n• Links procedure codes (CPT)\n• Pulls patient insurance information\n• Calculates charges\n• Validates claim data\n\n**Manual Claim Creation:**\n\nStep 1: Patient Selection\n• Search by name or MRN\n• System displays active insurance\n• Verify coverage is active\n\nStep 2: Service Information\n• Date of Service (DOS)\n• Place of Service (POS code)\n• Type of Service\n• Rendering Provider\n• Referring Provider (if applicable)\n\nStep 3: Diagnosis Codes (ICD-10)\n• Primary diagnosis (required)\n• Secondary diagnoses (up to 11)\n• Diagnosis pointer for each procedure\n• Search by code or description\n\nStep 4: Procedure Codes (CPT/HCPCS)\nFor each service:\n• CPT/HCPCS code\n• Modifiers (if applicable)\n• Units/quantity\n• Charge amount\n• Diagnosis pointer (links to ICD-10)\n\n**Common CPT Codes:**\n• 99213 - Established patient office visit (15 min)\n• 99214 - Established patient office visit (25 min)\n• 99203 - New patient office visit (30 min)\n• 99204 - New patient office visit (45 min)\n• 99396 - Preventive visit, established\n\nStep 5: Review and Validate\nSystem checks:\n• Coverage verification\n• Medical necessity (diagnosis supports procedure)\n• Duplicate claim detection\n• Missing required fields\n• Coding errors\n\n**Real-Time Eligibility Verification:**\n1. Click 'Verify Coverage' button\n2. System contacts payer in real-time\n3. Returns:\n   • Active/Inactive status\n   • Deductible met/remaining\n   • Co-pay amount\n   • Co-insurance percentage\n   • Out-of-pocket max\n   • Prior authorization requirements\n\n**Submitting Claims:**\n\n**Electronic Submission (837):**\n1. Review claim details\n2. Click 'Submit Electronically'\n3. Claim sent via clearinghouse\n4. Receive acknowledgement (999/997)\n5. Status updates automatically\n\n**Paper Submission (CMS-1500):**\n1. Click 'Print CMS-1500'\n2. Review form for accuracy\n3. Print and sign\n4. Mail to payer address\n5. Manually track status\n\n**Claim Status Tracking:**\n\n• Draft - Claim created, not submitted\n• Ready to Submit - Validated, awaiting submission\n• Submitted - Sent to payer\n• Acknowledged - Payer received claim\n• In Process - Payer processing claim\n• Accepted - Claim approved for payment\n• Paid - Payment received (EOB posted)\n• Denied - Claim rejected by payer\n• Appealed - Denial appealed\n• Closed - Claim finalized\n\n**Claim Denials:**\n\nCommon Denial Reasons:\n• Coverage terminated\n• Services not covered\n• Missing/invalid diagnosis code\n• Medical necessity not met\n• Timely filing limit exceeded\n• Duplicate claim\n• Incorrect patient information\n\n**Handling Denials:**\n1. Click denied claim\n2. Review denial reason code\n3. Check EOB/remittance advice\n4. Determine action:\n   • Correct and resubmit\n   • Appeal with documentation\n   • Write off as adjustment\n   • Bill patient (if applicable)\n\n**Corrected Claims:**\n1. Open denied claim\n2. Click 'Create Corrected Claim'\n3. Update incorrect information\n4. Mark as 'Corrected Claim' (Claim Frequency 7)\n5. Reference original claim number (ICN)\n6. Resubmit\n\n**Appeals Process:**\n1. Click 'Appeal Denial'\n2. Select appeal level (1st, 2nd, 3rd)\n3. Upload supporting documents:\n   • Clinical notes\n   • Lab results\n   • Medical necessity letter\n   • Peer-reviewed articles\n4. Write appeal letter\n5. Submit appeal\n6. Track appeal status\n\n**Payment Posting (EOB/ERA):**\n\nWhen payment received:\n1. System receives ERA (Electronic Remittance)\n2. Or manually enter EOB (Explanation of Benefits)\n3. Post payment:\n   • Amount paid by insurance\n   • Patient responsibility\n   • Adjustments/contractual write-offs\n   • Denial amounts\n4. System updates:\n   • Patient account balance\n   • Claim status to 'Paid'\n   • Generates patient statement if balance due\n\n**Batch Claims Processing:**\n\n1. Go to Claims > Batch Processing\n2. Filter claims:\n   • Date range\n   • Payer\n   • Provider\n   • Status (Ready to Submit)\n3. Select multiple claims\n4. Bulk actions:\n   • Submit all\n   • Validate all\n   • Export to file\n   • Print batch\n\n**Claims Reporting:**\n\n**Available Reports:**\n• Claims Aging (by payer, provider)\n• Denial Rate Analysis\n• Days in A/R\n• Clean Claim Rate\n• Payment by Payer\n• Top Denial Reasons\n• Revenue by CPT Code\n\n**Best Practices:**\n• Verify insurance before each visit\n• Submit claims within 24-48 hours\n• Review claims for accuracy before submission\n• Monitor aging reports weekly\n• Follow up on claims >30 days\n• Appeal valid denials promptly\n• Document all payer communications\n• Keep CPT and ICD-10 codes current\n• Train staff on coding updates\n• Use correct modifiers\n• Link appropriate diagnoses to procedures\n• Check timely filing limits by payer",
@@ -364,20 +368,278 @@
         {
           "id": "payments",
           "title": "Payment Processing",
-          "path": "/docs/index.html#payments",
-          "url": "/docs/index.html#payments",
+          "path": "/docs/guides/payments.html",
+          "url": "/docs/guides/payments.html",
           "keywords": [
             "payment",
             "process",
             "credit card",
-            "cash"
+            "cash",
+            "copay",
+            "coinsurance",
+            "deductible",
+            "refund"
           ],
-          "content": "Processing patient payments and managing transactions",
+          "summary": "Record and track patient payments\n\nProcess payments via cash, card, check, ACH, or patient portal with automatic receipt generation.",
+          "content": "Processing patient payments and managing transactions. Record payments from multiple sources, post to claims, generate receipts, and reconcile daily deposits. Support for copays, coinsurance, deductibles, and self-pay amounts.",
           "roles": [
             "admin",
             "billing_manager",
             "receptionist"
           ]
+        },
+        {
+          "id": "billing-overview",
+          "title": "Billing & Revenue Cycle Overview",
+          "path": "/docs/guides/billing-overview.html",
+          "url": "/docs/guides/billing-overview.html",
+          "keywords": [
+            "billing",
+            "revenue cycle",
+            "rcm",
+            "overview",
+            "workflow",
+            "accounts receivable",
+            "ar",
+            "collection"
+          ],
+          "summary": "Complete guide to Revenue Cycle Management operations\n\nManage the entire billing process from patient registration through final payment collection.",
+          "content": "**Revenue Cycle Management Overview**\n\nThe RCM module manages the complete billing lifecycle including patient registration, charge capture, claims submission, payment posting, denial management, patient billing, and financial reporting.\n\n**Key RCM Workflows:**\n• Claims Management - Create and submit insurance claims\n• Payment Processing - Record patient and insurance payments\n• Denial Management - Handle rejected claims\n• Insurance Payer Management - Maintain payer information\n• Financial Reporting - Track practice performance\n\n**RCM Dashboard Metrics:**\n• Days in A/R (Target: 30-40 days)\n• Collection Rate (Target: >95%)\n• Clean Claim Rate (Target: >90%)\n• Denial Rate (Target: <5%)\n• Net Collection Rate (Target: >95%)\n\n**Best Practices:**\n• Submit claims within 24-48 hours of service\n• Verify insurance before every appointment\n• Collect copays at time of service\n• Review A/R aging weekly\n• Address denials within 24 hours\n• Post payments daily\n• Reconcile deposits daily\n• Monitor KPIs monthly",
+          "roles": [
+            "admin",
+            "billing_manager"
+          ]
+        },
+        {
+          "id": "insurance-payers",
+          "title": "Insurance Payers Management",
+          "path": "/docs/guides/insurance-payers.html",
+          "url": "/docs/guides/insurance-payers.html",
+          "keywords": [
+            "insurance",
+            "payer",
+            "payers",
+            "insurance company",
+            "commercial",
+            "medicare",
+            "medicaid",
+            "fee schedule",
+            "electronic payer id"
+          ],
+          "summary": "Manage insurance companies and payers\n\nMaintain payer information, submission requirements, fee schedules, and authorization rules.",
+          "content": "**Insurance Payers Management**\n\nManage all insurance companies and payers your practice bills. Maintain accurate payer information for smooth claims submission.\n\n**Payer Types:**\n• Commercial Insurance (BCBS, UnitedHealthcare, Aetna)\n• Government Programs (Medicare, Medicaid, TRICARE)\n• Managed Care (HMO, PPO, EPO)\n• Workers' Compensation\n\n**Adding a Payer:**\n1. Go to RCM > Insurance Payers\n2. Click + Add Insurance Payer\n3. Enter payer information:\n   • Payer name (required)\n   • Payer type\n   • Electronic Payer ID (for EDI)\n   • Address and contact info\n   • Claims submission method\n4. Configure payer-specific settings:\n   • Prior authorization requirements\n   • Timely filing limits\n   • Fee schedules\n   • Accepted codes\n5. Save Payer\n\n**Payer Settings:**\n• Submission requirements\n• Prior auth rules\n• Fee schedules\n• Expected payment timelines\n\n**Eligibility Verification:**\nWhen properly configured, verify patient coverage in real-time including deductible, copay, coinsurance, and coverage status.\n\n**Best Practices:**\n• Verify Electronic Payer ID with clearinghouse\n• Document special requirements in Notes\n• Update fee schedules when contracts change\n• Review payer information quarterly\n• Track denial patterns by payer",
+          "roles": [
+            "admin",
+            "billing_manager"
+          ]
+        },
+        {
+          "id": "financial-reports",
+          "title": "Financial Reports & Analytics",
+          "path": "/docs/guides/financial-reports.html",
+          "url": "/docs/guides/financial-reports.html",
+          "keywords": [
+            "reports",
+            "financial",
+            "analytics",
+            "revenue",
+            "kpi",
+            "metrics",
+            "ar aging",
+            "collection rate",
+            "denial rate"
+          ],
+          "summary": "RCM reporting and business intelligence\n\nAccess claims, payment, revenue, A/R, and productivity reports with export options.",
+          "content": "**Financial Reports & Analytics**\n\nComprehensive reports to monitor practice performance and make data-driven decisions.\n\n**Report Categories:**\n• Claims Reports - Submission status, aging, clean claim rate\n• Payment Reports - Daily deposits, payment methods, reconciliation\n• Revenue Reports - By service, provider, payer, time period\n• A/R Reports - Aging, outstanding balances, days in A/R\n• Denial Reports - Denial reasons, trends, appeal status\n• Productivity Reports - Provider volume, RVUs, patient counts\n\n**Running Reports:**\n1. Go to RCM > Reports\n2. Select report type\n3. Set parameters (date range, provider, payer)\n4. Generate Report\n5. Export (PDF, Excel, CSV)\n\n**Key Performance Indicators:**\n• Days in A/R: (Total A/R ÷ Avg Daily Charges) - Target: 30-40\n• Collection Rate: (Payments ÷ Charges) × 100 - Target: >95%\n• Clean Claim Rate: (Accepted ÷ Total) × 100 - Target: >90%\n• Denial Rate: (Denied ÷ Total) × 100 - Target: <5%\n\n**Scheduled Reports:**\nAutomatically email reports on daily, weekly, monthly, or quarterly schedules.\n\n**Export Options:**\n• PDF - Professional presentation, printing\n• Excel - Data analysis, pivot tables\n• CSV - System integration, import\n\n**Best Practices:**\n• Review daily: Deposit report, claims summary\n• Review weekly: A/R aging, denials\n• Review monthly: Revenue, productivity, KPIs\n• Review quarterly: Strategic analysis, payer performance",
+          "roles": [
+            "admin",
+            "billing_manager"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "accounts",
+      "title": "Accounts Management",
+      "icon": "📒",
+      "articles": [
+        {
+          "id": "accounts-overview",
+          "title": "Accounts Management Overview",
+          "path": "/docs/index.html#accounts-overview",
+          "url": "/docs/index.html#accounts-overview",
+          "keywords": [
+            "accounts", "accounting", "finance", "ledger", "chart of accounts",
+            "journal entry", "receivables", "payables", "reconciliation",
+            "financial statements", "balance sheet", "income statement"
+          ],
+          "summary": "NEW: Full double-entry accounting module with AR, AP, reconciliation, and financial statements\n\nAccess via the Accounts module. Manage your chart of accounts, record journal entries, track receivables and payables, reconcile bank statements, and generate financial reports.",
+          "content": "**Accounts Management Module Overview:**\n\nThe Accounts module provides a complete double-entry bookkeeping system for your practice.\n\n**Accessing Accounts:**\n1. Click 'Accounts' in the main navigation\n2. The module opens to the Overview tab\n3. Six tabs are available: Overview, Accounts, Journal Entries, Receivables, Payables, Reconciliation, Statements\n\n**Dashboard (Overview Tab):**\nKey financial metrics displayed at a glance:\n• Total Accounts Receivable (AR)\n• Total Accounts Payable (AP)\n• Cash Balance\n• Account balances by type (Assets, Liabilities, Equity, Revenue, Expenses)\n• Recent journal entry activity\n\n**Currency:**\nAll amounts display in the currency configured in Admin Panel > Clinic Settings. Change currency there to update all financial displays across the system.\n\n**Six Core Tabs:**\n\n1. **Overview** – KPI cards and account balance summary\n2. **Accounts** – Chart of accounts (create, edit, manage account hierarchy)\n3. **Journal Entries** – Manual and system-generated double-entry entries\n4. **Receivables (AR)** – Patient and payer amounts owed to your practice\n5. **Payables (AP)** – Vendor and supplier invoices your practice owes\n6. **Reconciliation** – Match bank/credit card statements to your books\n7. **Statements** – Generate financial statements (income statement, balance sheet, trial balance)\n\n**Role-Based Access:**\nAccess to specific actions is controlled by role:\n• Admin – Full access\n• Billing Manager – AR/AP and journal entries\n• Accountant – Full read access, can create entries\n• Staff – Read-only access\n• Doctor / Nurse – No access by default\n\n**Best Practices:**\n• Record transactions promptly\n• Reconcile accounts monthly\n• Review AR aging weekly\n• Generate financial statements at month-end\n• Never delete journal entries (void instead)\n• Keep chart of accounts clean and organized",
+          "roles": ["admin", "billing_manager", "accountant"]
+        },
+        {
+          "id": "chart-of-accounts",
+          "title": "Chart of Accounts",
+          "path": "/docs/index.html#chart-of-accounts",
+          "url": "/docs/index.html#chart-of-accounts",
+          "keywords": [
+            "chart of accounts", "account", "ledger account", "asset", "liability",
+            "equity", "revenue", "expense", "account code", "account type"
+          ],
+          "summary": "Set up and manage your practice's chart of accounts\n\nCreate accounts organized by type: Assets, Liabilities, Equity, Revenue, and Expenses. Each account tracks its running balance.",
+          "content": "**Chart of Accounts:**\n\nThe chart of accounts is the foundation of your accounting system — a complete list of all financial accounts used by your practice.\n\n**Accessing Chart of Accounts:**\n1. Go to Accounts module\n2. Click 'Accounts' tab\n3. All accounts are listed with type, code, and current balance\n\n**Account Types:**\n\n**Assets** – What your practice owns\n• Cash and Bank Accounts\n• Accounts Receivable\n• Equipment\n• Prepaid Expenses\n• Inventory\n\n**Liabilities** – What your practice owes\n• Accounts Payable\n• Loans Payable\n• Accrued Expenses\n• Deferred Revenue\n\n**Equity** – Owner's stake\n• Owner's Capital\n• Retained Earnings\n• Distributions\n\n**Revenue** – Income from services\n• Patient Services Revenue\n• Insurance Reimbursements\n• Telehealth Revenue\n\n**Expenses** – Operating costs\n• Payroll Expense\n• Rent Expense\n• Medical Supplies\n• Utilities\n• Insurance Expense\n\n**Creating a New Account:**\n1. Go to Accounts tab\n2. Click '+ New Account'\n3. Fill in:\n   • Account Name (required)\n   • Account Code (optional, e.g., 1001)\n   • Account Type (Asset, Liability, Equity, Revenue, Expense)\n   • Description (optional)\n   • Opening Balance (if migrating)\n4. Click Save\n\n**Editing Accounts:**\n1. Click account name in the list\n2. Click 'Edit' icon\n3. Update fields\n4. Save changes\n\nNote: Accounts with transactions cannot have their type changed.\n\n**Account Balance:**\n• Each account shows its current running balance\n• Balance updates automatically when journal entries are posted\n• Drill down into an account to see all transactions\n\n**Best Practices:**\n• Use consistent naming conventions\n• Assign account codes for easy sorting (e.g., 1000s = Assets)\n• Don't create duplicate accounts\n• Deactivate unused accounts instead of deleting\n• Review chart of accounts quarterly",
+          "roles": ["admin", "billing_manager", "accountant"]
+        },
+        {
+          "id": "journal-entries",
+          "title": "Journal Entries",
+          "path": "/docs/index.html#journal-entries",
+          "url": "/docs/index.html#journal-entries",
+          "keywords": [
+            "journal entry", "debit", "credit", "double entry", "general ledger",
+            "transaction", "adjusting entry", "manual entry", "balanced"
+          ],
+          "summary": "Record and review double-entry journal entries\n\nEvery transaction requires balanced debits and credits. System auto-generates entries for AR, AP, and reconciliation; manual entries can also be created.",
+          "content": "**Journal Entries:**\n\nJournal entries are the core of double-entry bookkeeping. Every financial transaction must have equal debits and credits.\n\n**Accessing Journal Entries:**\n1. Go to Accounts module\n2. Click 'Journal Entries' tab\n3. All entries are listed chronologically\n\n**Creating a Manual Journal Entry:**\n1. Click '+ New Journal Entry'\n2. Fill in header:\n   • Entry Date\n   • Description (what this entry records)\n   • Entry Type (manual, adjustment, closing)\n   • Reference Number (optional)\n3. Add journal lines:\n   • Select Account\n   • Choose Debit or Credit\n   • Enter Amount\n   • Add line description (optional)\n4. Add more lines as needed (minimum 2)\n5. Verify the entry is Balanced (Debits = Credits)\n6. Click 'Create Entry'\n\n**Balanced Entries:**\nThe form shows running totals:\n• Total Debits\n• Total Credits\n• Balance indicator (green = balanced, red = not balanced)\n\nYou cannot save an unbalanced entry.\n\n**Common Journal Entry Types:**\n\n**Revenue Recording:**\nDebit: Accounts Receivable\nCredit: Patient Services Revenue\n\n**Cash Receipt:**\nDebit: Cash/Bank Account\nCredit: Accounts Receivable\n\n**Expense Payment:**\nDebit: Expense Account\nCredit: Cash/Bank Account\n\n**Payroll:**\nDebit: Payroll Expense\nCredit: Cash/Bank Account\n\n**Depreciation:**\nDebit: Depreciation Expense\nCredit: Accumulated Depreciation\n\n**Viewing Journal Entries:**\n• Date, description, entry type, and totals shown in list\n• Click any entry to view all lines\n• Filter by date range, entry type, or account\n• Export to CSV/Excel\n\n**Voiding Entries:**\nNever delete a journal entry — void it instead:\n1. Open the journal entry\n2. Click 'Void Entry'\n3. Add reason for void\n4. System creates a reversing entry automatically\n5. Both original and void entries remain in audit trail\n\n**Auto-Generated Entries:**\nThe system automatically creates journal entries when:\n• An AR record is created (debit AR, credit Revenue)\n• An AP invoice is entered (debit Expense, credit AP)\n• A payment is received (debit Cash, credit AR)\n• A payment is made (debit AP, credit Cash)\n• A reconciliation is completed\n\n**Best Practices:**\n• Include clear, descriptive entry descriptions\n• Reference source documents (invoice #, receipt #)\n• Review entries for accuracy before month-end\n• Never delete entries — always void\n• Post entries in the correct accounting period\n• Reconcile accounts after posting entries",
+          "roles": ["admin", "billing_manager", "accountant"]
+        },
+        {
+          "id": "accounts-receivable",
+          "title": "Accounts Receivable (AR)",
+          "path": "/docs/index.html#accounts-receivable",
+          "url": "/docs/index.html#accounts-receivable",
+          "keywords": [
+            "accounts receivable", "ar", "receivable", "patient balance",
+            "outstanding", "invoice", "amount owed", "payer", "insurance payment"
+          ],
+          "summary": "Track amounts owed to your practice by patients and payers\n\nManage patient and insurance receivables, record payments, and monitor aging balances to maintain healthy cash flow.",
+          "content": "**Accounts Receivable (AR):**\n\nAR tracks money owed to your practice — amounts patients and payers have been billed but haven't yet paid.\n\n**Accessing Receivables:**\n1. Go to Accounts module\n2. Click 'Receivables' tab\n3. All open AR records are listed\n\n**AR Overview Cards:**\n• Total AR – All outstanding receivables\n• Patient AR – Patient-owed amounts\n• Insurance AR – Payer-owed amounts\n• Overdue AR – Past due amounts\n\n**Creating an AR Record:**\n1. Click '+ New AR'\n2. Fill in:\n   • AR Type (Patient or Payer/Insurance)\n   • Patient Name\n   • Original Amount\n   • Service Date\n   • Due Date\n   • Account (links to chart of accounts)\n   • Notes\n3. Save\n\n**AR Status:**\n• Open – Balance is outstanding\n• Partial – Some payment received\n• Paid – Fully paid\n• Written Off – Deemed uncollectable\n• Overdue – Past due date\n\n**Recording a Payment:**\n1. Click on an AR record\n2. Click 'Record Payment'\n3. Enter:\n   • Payment Date\n   • Payment Amount\n   • Payment Method (check, EFT, credit card)\n   • Reference Number\n4. System updates the balance and marks as Paid if fully settled\n\n**AR Aging:**\nAging shows how long receivables have been outstanding:\n• Current (0-30 days)\n• 31-60 days\n• 61-90 days\n• 91-120 days\n• 120+ days\n\nReview aging weekly. Follow up on balances over 60 days.\n\n**Best Practices:**\n• Create AR records promptly after service\n• Follow up on overdue balances regularly\n• Document all payment attempts\n• Write off small balances per policy\n• Run aging report weekly",
+          "roles": ["admin", "billing_manager", "accountant", "receptionist"]
+        },
+        {
+          "id": "accounts-payable",
+          "title": "Accounts Payable (AP)",
+          "path": "/docs/index.html#accounts-payable",
+          "url": "/docs/index.html#accounts-payable",
+          "keywords": [
+            "accounts payable", "ap", "payable", "vendor", "invoice",
+            "bill", "expense", "supplier", "due", "payment"
+          ],
+          "summary": "Manage invoices and amounts your practice owes to vendors\n\nTrack vendor invoices, schedule payments, and maintain a clear picture of outstanding obligations.",
+          "content": "**Accounts Payable (AP):**\n\nAP tracks money your practice owes to vendors, suppliers, and service providers.\n\n**Accessing Payables:**\n1. Go to Accounts module\n2. Click 'Payables' tab\n3. All open AP records are listed\n\n**Creating an AP Record:**\n1. Click '+ New AP'\n2. Fill in:\n   • AP Type (Vendor or other)\n   • Vendor Name\n   • Vendor Reference/Invoice Number\n   • Invoice Amount\n   • Invoice Date\n   • Due Date\n   • Expense Category\n   • Department (optional)\n   • Account (from chart of accounts)\n   • Notes\n3. Save\n\n**AP Status:**\n• Open – Invoice unpaid\n• Partial – Partially paid\n• Paid – Fully paid\n• Overdue – Past due date\n• Cancelled – Invoice cancelled\n\n**Recording a Payment:**\n1. Click on an AP record\n2. Click 'Pay'\n3. Enter payment details\n4. System records the payment and updates the balance\n\n**Best Practices:**\n• Enter invoices promptly when received\n• Pay by due date to maintain vendor relationships\n• Match invoices to purchase orders\n• Review AP aging weekly\n• Verify invoices before payment",
+          "roles": ["admin", "billing_manager", "accountant"]
+        },
+        {
+          "id": "reconciliation",
+          "title": "Bank Reconciliation",
+          "path": "/docs/index.html#reconciliation",
+          "url": "/docs/index.html#reconciliation",
+          "keywords": [
+            "reconciliation", "bank reconciliation", "reconcile", "bank statement",
+            "statement balance", "system balance", "discrepancy", "match"
+          ],
+          "summary": "Reconcile your bank and credit card statements with your books\n\nMatch bank statement transactions against your accounting records to identify discrepancies and ensure accuracy.",
+          "content": "**Bank Reconciliation:**\n\nReconciliation verifies that your accounting records match your actual bank or credit card statements.\n\n**Accessing Reconciliation:**\n1. Go to Accounts module\n2. Click 'Reconciliation' tab\n3. All reconciliation records are listed\n\n**Creating a Reconciliation:**\n1. Click '+ New Reconciliation'\n2. Fill in:\n   • Account (bank or credit card account)\n   • Reconciliation Type (Bank, Credit Card, Other)\n   • Period Start Date\n   • Period End Date\n   • Statement Balance (from your bank statement)\n   • Notes\n3. Save\n\n**Reconciliation Status:**\n• In Progress – Still being worked on\n• Balanced – Statement balance matches system balance\n• Discrepancy – Difference found between statement and books\n• Completed – Reconciliation finalized\n\n**Resolving Discrepancies:**\nIf Statement Balance ≠ System Balance:\n1. Check for transactions in the bank not in your books (add journal entry)\n2. Check for transactions in your books not on the statement (timing difference)\n3. Look for transposition errors or duplicate entries\n4. Check for bank fees or interest not yet recorded\n\n**Best Practices:**\n• Reconcile every account monthly\n• Use bank statement end date as the reconciliation period end\n• Investigate all discrepancies — never force-balance\n• Complete reconciliation within 10 days of statement receipt\n• Keep copies of bank statements on file",
+          "roles": ["admin", "billing_manager", "accountant"]
+        },
+        {
+          "id": "financial-statements",
+          "title": "Financial Statements",
+          "path": "/docs/index.html#financial-statements",
+          "url": "/docs/index.html#financial-statements",
+          "keywords": [
+            "financial statement", "income statement", "balance sheet", "trial balance",
+            "profit and loss", "p&l", "statement", "report", "cash flow"
+          ],
+          "summary": "Generate income statements, balance sheets, and trial balances\n\nCreate standard financial reports for your practice to review profitability, financial position, and account accuracy.",
+          "content": "**Financial Statements:**\n\nGenerate standard financial reports from your accounting data.\n\n**Accessing Statements:**\n1. Go to Accounts module\n2. Click 'Statements' tab\n3. Select statement type and period\n\n**Available Statement Types:**\n\n**Income Statement (Profit & Loss):**\nShows revenue, expenses, and net income for a period\n• Revenue by category\n• Expenses by category\n• Gross Profit\n• Net Income/Loss\n\n**Balance Sheet:**\nSnapshot of financial position at a specific date\n• Assets (current and non-current)\n• Liabilities (current and long-term)\n• Equity\n• Must balance: Assets = Liabilities + Equity\n\n**Trial Balance:**\nList of all accounts with debit and credit balances\n• Verifies books are in balance\n• Used to prepare other statements\n• Adjusted trial balance includes adjusting entries\n\n**Statement of Cash Flows:**\nShows cash inflows and outflows\n• Operating activities\n• Investing activities\n• Financing activities\n\n**Generating a Statement:**\n1. Select statement type\n2. Set the period (date range)\n3. Click 'Generate'\n4. Review on screen\n5. Export as PDF or CSV\n\n**Best Practices:**\n• Generate statements at month-end and year-end\n• Compare current period to prior period\n• Share income statement with practice leadership monthly\n• Use trial balance to verify books before period close\n• Keep statements for at least 7 years",
+          "roles": ["admin", "billing_manager", "accountant"]
+        }
+      ]
+    },
+    {
+      "id": "inventory",
+      "title": "Inventory Management",
+      "icon": "📦",
+      "articles": [
+        {
+          "id": "inventory-overview",
+          "title": "Inventory Management Overview",
+          "path": "/docs/index.html#inventory-overview",
+          "url": "/docs/index.html#inventory-overview",
+          "keywords": [
+            "inventory", "stock", "supplies", "medical supplies", "items",
+            "purchase order", "supplier", "low stock", "reorder", "categories"
+          ],
+          "summary": "NEW: Full inventory management module for medical supplies and equipment\n\nAccess via the Inventory module. Track items, manage stock levels, create purchase orders, and monitor supplier relationships.",
+          "content": "**Inventory Management Module Overview:**\n\nThe Inventory module gives your practice full visibility and control over medical supplies, equipment, and consumables.\n\n**Accessing Inventory:**\n1. Click 'Inventory' in the main navigation\n2. The module opens to the Overview tab\n3. Six tabs are available: Overview, Items, Stock, Purchase Orders, Suppliers, Categories\n\n**Dashboard (Overview Tab):**\n• Total Inventory Value\n• Total Items\n• Low Stock Alerts (items at or below reorder level)\n• Items expiring soon\n• Recent stock movements\n\n**Currency:**\nAll item costs and order values display in the currency configured in Admin Panel > Clinic Settings.\n\n**Six Core Tabs:**\n\n1. **Overview** – KPI cards and inventory health summary\n2. **Items** – Full item catalog with current stock levels and costs\n3. **Stock** – Record stock movements (receive, dispense, adjust, transfer)\n4. **Purchase Orders** – Create and manage supplier purchase orders\n5. **Suppliers** – Supplier directory and contact information\n6. **Categories** – Item categorization and taxonomy\n\n**Role-Based Access:**\nInventory permissions are managed in Admin Panel > Inventory Module Permissions:\n• Admin – Full access (create, read, update, delete, approve, report)\n• Nurse – Receive stock and record dispensing\n• Receptionist – Read-only access\n• Doctor – Read-only access\n• Billing Manager – Read access for cost reporting\n• Practice Manager – Full operational access\n\n**Best Practices:**\n• Set reorder levels for all items to get low-stock alerts\n• Record all stock movements immediately\n• Conduct monthly stock counts\n• Review expiry dates monthly\n• Use purchase orders for all supplier orders",
+          "roles": ["admin", "nurse", "practice_manager"]
+        },
+        {
+          "id": "inventory-items",
+          "title": "Managing Inventory Items",
+          "path": "/docs/index.html#inventory-items",
+          "url": "/docs/index.html#inventory-items",
+          "keywords": [
+            "inventory item", "item", "sku", "product", "medical supply",
+            "unit cost", "reorder level", "reorder quantity", "expiry",
+            "barcode", "category", "supplier"
+          ],
+          "summary": "Add, edit, and manage items in your inventory catalog\n\nEach item tracks name, SKU, category, supplier, unit cost, current stock, reorder level, and expiry date.",
+          "content": "**Managing Inventory Items:**\n\n**Accessing Items:**\n1. Go to Inventory module\n2. Click 'Items' tab\n3. All items listed with current stock, cost, and status\n\n**Adding a New Item:**\n1. Click '+ New Item'\n2. Fill in required fields:\n   • Item Name\n   • SKU / Item Code (unique identifier)\n   • Category\n   • Unit of Measure (each, box, ml, mg, etc.)\n   • Unit Cost\n   • Reorder Level (minimum stock before alert triggers)\n   • Reorder Quantity (how much to order when restocking)\n3. Optional fields:\n   • Description\n   • Supplier (preferred supplier)\n   • Barcode\n   • Expiry Date\n   • Storage Location\n   • Notes\n4. Save\n\n**Item Status:**\n• Active – In use, appears in stock movements\n• Inactive – Discontinued, hidden from stock forms\n• Low Stock – Current stock ≤ Reorder Level (highlighted)\n• Out of Stock – Current stock = 0 (flagged)\n\n**Editing Items:**\n1. Click item name or edit icon\n2. Update fields\n3. Save\n\nNote: Changing Unit Cost affects future valuation but not historical records.\n\n**Low Stock Alerts:**\nWhen current stock ≤ reorder level:\n• Item highlighted in the list\n• Low Stock count shown on Overview card\n• Use this to trigger purchase orders\n\n**Item Search and Filter:**\n• Search by name, SKU, or barcode\n• Filter by category, supplier, status\n• Sort by name, stock level, cost, or expiry date\n• Export item list to CSV/Excel\n\n**Best Practices:**\n• Use consistent, descriptive item names\n• Assign unique SKUs to all items\n• Set realistic reorder levels (consider lead time)\n• Keep supplier information current\n• Review and update costs when supplier prices change\n• Mark items as Inactive rather than deleting them",
+          "roles": ["admin", "nurse", "practice_manager"]
+        },
+        {
+          "id": "stock-movements",
+          "title": "Stock Movements",
+          "path": "/docs/index.html#stock-movements",
+          "url": "/docs/index.html#stock-movements",
+          "keywords": [
+            "stock movement", "stock", "receive", "dispense", "adjust",
+            "transfer", "stock count", "quantity", "movement history"
+          ],
+          "summary": "Record all stock in and out movements to maintain accurate inventory\n\nUse the Stock tab to receive new shipments, record usage, make adjustments, and transfer between locations.",
+          "content": "**Stock Movements:**\n\nEvery change in stock quantity must be recorded as a movement to maintain accurate inventory levels.\n\n**Accessing Stock Movements:**\n1. Go to Inventory module\n2. Click 'Stock' tab\n3. All movement history is listed\n\n**Movement Types:**\n\n**Receive:**\nAdd stock when shipment arrives\n• Select item\n• Enter quantity received\n• Enter unit cost (if different from item default)\n• Add reference (PO number, delivery note)\n• Add notes\n\n**Dispense:**\nRemove stock when used in patient care\n• Select item\n• Enter quantity dispensed\n• Link to patient or department\n• Add notes\n\n**Adjust:**\nCorrect stock after a count discrepancy\n• Select item\n• Enter adjustment quantity (positive or negative)\n• Add reason (damaged, expired, count correction)\n\n**Transfer:**\nMove stock between locations or departments\n• Select item\n• Enter quantity\n• Specify from/to location\n\n**Creating a Stock Movement:**\n1. Click '+ New Movement'\n2. Select Movement Type\n3. Select Item (search by name or SKU)\n4. Enter Quantity\n5. Add Reference and Notes\n6. Save\n\nStock levels update immediately. The system prevents stock from going below zero on dispense movements.\n\n**Movement History:**\n• Full audit trail of all movements\n• Filter by item, movement type, date range, or user\n• Export movement history for audits\n• Each movement shows who created it and when\n\n**Best Practices:**\n• Record movements as they happen — don't batch\n• Always reference the PO or delivery note when receiving\n• Conduct monthly stock counts and adjust for discrepancies\n• Investigate all negative adjustments\n• Use consistent movement types for reporting accuracy",
+          "roles": ["admin", "nurse", "practice_manager"]
+        },
+        {
+          "id": "purchase-orders",
+          "title": "Purchase Orders",
+          "path": "/docs/index.html#purchase-orders",
+          "url": "/docs/index.html#purchase-orders",
+          "keywords": [
+            "purchase order", "po", "order", "supplier order", "reorder",
+            "receive order", "order status", "pending order", "approved"
+          ],
+          "summary": "Create and manage purchase orders for inventory replenishment\n\nRaise POs against suppliers, track approval status, and receive items directly from the PO to update stock levels.",
+          "content": "**Purchase Orders (PO):**\n\nPurchase orders formalize your requests to suppliers and enable accurate receiving.\n\n**Accessing Purchase Orders:**\n1. Go to Inventory module\n2. Click 'Purchase Orders' tab\n3. All POs listed with status and total value\n\n**Creating a Purchase Order:**\n1. Click '+ New PO'\n2. Select Supplier\n3. Set Order Date and Expected Delivery Date\n4. Add line items:\n   • Select Item\n   • Enter Quantity Ordered\n   • Confirm Unit Cost\n   • Line total auto-calculated\n5. Add more lines as needed\n6. Review Order Total\n7. Add Notes (special instructions, delivery notes)\n8. Save\n\n**PO Status Workflow:**\n• Draft – PO created, not yet sent\n• Submitted – PO sent to supplier\n• Approved – Supplier confirmed the order\n• Partially Received – Some items received\n• Received – All items received\n• Cancelled – PO cancelled\n\n**Receiving a Purchase Order:**\nWhen items arrive:\n1. Find the PO in the list\n2. Click 'Receive'\n3. For each line, enter quantity actually received\n4. Confirm unit costs match invoice\n5. Click 'Confirm Receipt'\n6. System automatically creates stock movement (Receive) for all items\n7. Stock levels update immediately\n\n**Partial Receipts:**\nIf only some items arrive:\n1. Enter actual quantities received for each line\n2. Leave undelivered lines at 0 or partial quantity\n3. PO status changes to 'Partially Received'\n4. Receive remaining items when they arrive\n\n**PO Total:**\nOrder total displayed in the currency from your Clinic Settings. All line totals auto-calculate.\n\n**Best Practices:**\n• Create a PO before ordering from any supplier\n• Reference PO number in all supplier communications\n• Match received goods to PO before accepting delivery\n• Record partial receipts immediately\n• Review open POs weekly for overdue deliveries\n• Cancel POs for items no longer needed",
+          "roles": ["admin", "nurse", "practice_manager"]
+        },
+        {
+          "id": "inventory-suppliers",
+          "title": "Suppliers",
+          "path": "/docs/index.html#inventory-suppliers",
+          "url": "/docs/index.html#inventory-suppliers",
+          "keywords": [
+            "supplier", "vendor", "contact", "distributor", "medical supplier",
+            "supplier directory", "account number", "lead time"
+          ],
+          "summary": "Manage your supplier directory for inventory procurement\n\nStore supplier contact details, account numbers, and lead times to streamline purchasing.",
+          "content": "**Managing Suppliers:**\n\n**Accessing Suppliers:**\n1. Go to Inventory module\n2. Click 'Suppliers' tab\n\n**Adding a Supplier:**\n1. Click '+ New Supplier'\n2. Fill in:\n   • Supplier Name (required)\n   • Contact Person\n   • Email\n   • Phone\n   • Address\n   • Account Number (your account with this supplier)\n   • Payment Terms (Net 30, Net 60, etc.)\n   • Lead Time (days from order to delivery)\n   • Notes\n3. Save\n\n**Using Suppliers:**\n• Link items to their preferred supplier in the Items tab\n• Select supplier when creating purchase orders\n• Supplier contact info visible on PO detail\n\n**Best Practices:**\n• Keep contact information current\n• Record account numbers for reference\n• Note payment terms to manage AP timing\n• Add lead time to plan reorders in advance\n• Have at least one backup supplier for critical items",
+          "roles": ["admin", "practice_manager"]
+        },
+        {
+          "id": "inventory-categories",
+          "title": "Inventory Categories",
+          "path": "/docs/index.html#inventory-categories",
+          "url": "/docs/index.html#inventory-categories",
+          "keywords": [
+            "category", "inventory category", "classify", "group",
+            "subcategory", "item type", "organize"
+          ],
+          "summary": "Organize inventory items into categories and subcategories\n\nCategories help you filter, report, and manage items by type (e.g., Medications, PPE, Diagnostic Supplies).",
+          "content": "**Inventory Categories:**\n\n**Accessing Categories:**\n1. Go to Inventory module\n2. Click 'Categories' tab\n\n**Creating a Category:**\n1. Click '+ New Category'\n2. Enter Category Name\n3. Select Parent Category (for subcategories) or leave blank for top-level\n4. Add Description\n5. Save\n\n**Example Category Structure:**\n• Medications\n  - Prescription Drugs\n  - OTC Medications\n  - Vaccines\n• PPE (Personal Protective Equipment)\n  - Gloves\n  - Masks\n  - Gowns\n• Diagnostic Supplies\n  - Lab Reagents\n  - Test Strips\n  - Collection Tubes\n• Office Supplies\n• Equipment\n\n**Using Categories:**\n• Assign category when creating/editing items\n• Filter item list by category\n• View inventory value by category\n• Organize purchase orders by category\n\n**Best Practices:**\n• Keep the category hierarchy shallow (2-3 levels max)\n• Use broad top-level categories\n• Be consistent when assigning categories to items\n• Review and consolidate rarely-used categories periodically",
+          "roles": ["admin", "practice_manager"]
         }
       ]
     },
@@ -499,11 +761,10 @@
           "title": "System Settings",
           "path": "/docs/admin/settings.html",
           "keywords": [
-            "settings",
-            "configuration",
-            "organization"
+            "settings", "configuration", "organization", "clinic settings",
+            "currency", "currency symbol", "tax id", "npi", "website", "admin panel"
           ],
-          "content": "Configuring clinic settings and preferences",
+          "content": "**System Settings (Admin Panel):**\n\nAccess Admin Panel from the main navigation to configure your practice.\n\n**Clinic Settings Tab:**\nConfigure your practice identity:\n• Clinic Name\n• Address\n• Phone and Email\n• Website\n• Tax ID\n• NPI Number\n• Currency – Select the display currency for all financial amounts (USD, EUR, GBP, CAD, AUD, and more)\n\n**Changing Currency:**\n1. Go to Admin Panel > Clinic Settings tab\n2. Find the Currency field\n3. Select your currency from the dropdown\n4. Click Save Clinic Settings\n5. All financial displays update immediately across Dashboard, Accounts, Inventory, RCM, and Reports\n\n**Other Admin Tabs:**\n• Users – Manage staff accounts and roles\n• Roles & Permissions – Configure module access per role\n• Inventory Permissions – Set inventory access per role\n• Working Hours – Set practice operating hours\n• Appointment Settings – Configure appointment types and reminders\n• Backup – Export data backups for Accounts and Inventory modules",
           "roles": [
             "admin"
           ]
@@ -599,6 +860,61 @@
       "title": "Laboratory Directory",
       "content": "Manage lab facilities with electronic ordering and integration settings.",
       "articleId": "lab-directory"
+    },
+    "accounts-module": {
+      "title": "Accounts Management",
+      "content": "Double-entry bookkeeping with AR, AP, bank reconciliation, and financial statements.",
+      "articleId": "accounts-overview"
+    },
+    "chart-of-accounts": {
+      "title": "Chart of Accounts",
+      "content": "Set up and manage accounts by type: Assets, Liabilities, Equity, Revenue, Expenses.",
+      "articleId": "chart-of-accounts"
+    },
+    "journal-entry-form": {
+      "title": "Journal Entry",
+      "content": "Enter balanced debits and credits. Debits must equal credits before saving.",
+      "articleId": "journal-entries"
+    },
+    "accounts-receivable": {
+      "title": "Accounts Receivable",
+      "content": "Track patient and insurance balances owed to your practice. Record payments to close AR.",
+      "articleId": "accounts-receivable"
+    },
+    "accounts-payable": {
+      "title": "Accounts Payable",
+      "content": "Track vendor invoices your practice owes. Record payments to close AP.",
+      "articleId": "accounts-payable"
+    },
+    "reconciliation-form": {
+      "title": "Bank Reconciliation",
+      "content": "Enter your statement balance and compare to system balance. Investigate all discrepancies.",
+      "articleId": "reconciliation"
+    },
+    "inventory-module": {
+      "title": "Inventory Management",
+      "content": "Track medical supplies and equipment. Manage stock levels, purchase orders, and suppliers.",
+      "articleId": "inventory-overview"
+    },
+    "inventory-item-form": {
+      "title": "Inventory Item",
+      "content": "Set reorder level and quantity so you receive alerts before running out of stock.",
+      "articleId": "inventory-items"
+    },
+    "stock-movement-form": {
+      "title": "Stock Movement",
+      "content": "Record every stock change: receive, dispense, adjust, or transfer. Stock cannot go below zero.",
+      "articleId": "stock-movements"
+    },
+    "purchase-order-form": {
+      "title": "Purchase Order",
+      "content": "Add line items per supplier. Receive the PO when goods arrive to auto-update stock levels.",
+      "articleId": "purchase-orders"
+    },
+    "clinic-settings": {
+      "title": "Clinic Settings",
+      "content": "Update practice information including currency. Currency changes apply across all financial modules immediately.",
+      "articleId": "settings"
     }
   },
   "onboarding": {

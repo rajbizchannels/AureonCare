@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AureonCare Executive Presentation - Version 1.2 (Pre-Beta)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --teal-primary: #14b8a6;
+            --teal-dark: #0f766e;
+            --teal-light: #5eead4;
+            --gold-primary: #f59e0b;
+            --gold-dark: #d97706;
+            --gold-light: #fbbf24;
+            --navy: #1e293b;
+            --white: #ffffff;
+            --light-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal-primary) 50%, var(--gold-primary) 100%);
+            color: var(--navy);
+            min-height: 100vh;
+        }
+
+        .presentation-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .slide {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 60px 80px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, var(--teal-primary) 0%, var(--gold-primary) 100%);
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            color: var(--teal-dark);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .logo-image {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 10px 30px rgba(20, 184, 166, 0.3));
+        }
+
+        .logo-text {
+            font-size: 72px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--teal-primary), var(--gold-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -2px;
+        }
+
+        .logo-tagline {
+            font-size: 20px;
+            color: var(--teal-dark);
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        h1 {
+            font-size: 56px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--teal-primary), var(--gold-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 42px;
+            color: var(--teal-dark);
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        h3 {
+            font-size: 28px;
+            color: var(--navy);
+            margin: 25px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            font-size: 24px;
+            color: var(--navy);
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .pre-launch-badge {
+            display: inline-block;
+            padding: 10px 25px;
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
+            color: var(--white);
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 10px 0;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--teal-light) 0%, var(--teal-primary) 100%);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 900;
+            color: var(--white);
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: var(--navy);
+            font-weight: 600;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        .feature-list li {
+            padding: 18px 25px;
+            margin-bottom: 12px;
+            background: linear-gradient(90deg, rgba(20, 184, 166, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%);
+            border-left: 5px solid var(--teal-primary);
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .feature-list li:hover {
+            background: linear-gradient(90deg, rgba(20, 184, 166, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%);
+            border-left-color: var(--gold-primary);
+            transform: translateX(10px);
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold-primary) 100%);
+            padding: 30px 40px;
+            border-radius: 12px;
+            margin: 30px 0;
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+        }
+
+        .highlight-box h3 {
+            color: var(--white);
+            margin-top: 0;
+        }
+
+        .highlight-box p {
+            color: var(--navy);
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: var(--white);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background: linear-gradient(90deg, var(--teal-primary) 0%, var(--teal-dark) 100%);
+        }
+
+        th {
+            color: var(--white);
+            padding: 20px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        td {
+            padding: 18px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 17px;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(20, 184, 166, 0.05);
+        }
+
+        tr:hover {
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin: 30px 0;
+        }
+
+        .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--teal-dark) 100%);
+            padding: 50px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .cta-section h3 {
+            color: var(--gold-primary);
+            font-size: 32px;
+        }
+
+        .cta-section p {
+            color: var(--white);
+            font-size: 20px;
+            margin: 15px 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: var(--gold-primary);
+            color: var(--white);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0 5px;
+        }
+
+        .metric-large {
+            font-size: 72px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--teal-primary), var(--gold-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--white);
+            font-size: 14px;
+        }
+
+        @media print {
+            .slide {
+                page-break-after: always;
+                margin-bottom: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 40px 30px;
+                min-height: auto;
+            }
+            h1 { font-size: 36px; }
+            h2 { font-size: 28px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .two-column { grid-template-columns: 1fr; }
+            .logo-image { width: 150px; height: 150px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        
+        <!-- Slide 1: Title Slide -->
+        <div class="slide">
+            <div class="logo-container">
+                <img src="assets/aureoncare-logo.png" alt="AureonCare Logo" class="logo-image">
+                <div class="logo-text">AureonCare</div>
+                <div class="logo-tagline">Empowering Healthcare with Modern Technology</div>
+            </div>
+            <div class="pre-launch-badge">Pre-Beta Development</div>
+            <h1 style="text-align: center; margin-top: 50px;">Executive Presentation</h1>
+            <p class="subtitle" style="text-align: center;">Version 1.2 Platform Overview</p>
+            <p class="subtitle" style="text-align: center; font-size: 20px;">February 2026</p>
+            <div class="cta-section" style="margin-top: 60px;">
+                <p style="font-size: 18px; font-style: italic;">"Comprehensive Practice Management | Enhanced Patient Care | Optimized Revenue Cycle"</p>
+            </div>
+            <div class="slide-number">1</div>
+        </div>
+
+        <!-- Slide 2: Platform Targets -->
+        <div class="slide">
+            <h2>🎯 Year 1 Targets & Projections</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">5,000+</div>
+                    <div class="stat-label">Target Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">150</div>
+                    <div class="stat-label">Target Practices</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">2M+</div>
+                    <div class="stat-label">Platform Capacity</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">14</div>
+                    <div class="stat-label">Core Modules</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">Uptime SLA</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">4.5★</div>
+                    <div class="stat-label">Target Satisfaction</div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <h3>Launch Timeline</h3>
+                <p><strong>Q2 2026 Launch</strong> | Early Adopter Program Available | 20% Discount for First 50 Practices</p>
+            </div>
+            <div class="slide-number">2</div>
+        </div>
+
+        <!-- Slide 3: Version 1.2 Key Features -->
+        <div class="slide">
+            <h2>🚀 Version 1.2 Key Features</h2>
+            <ul class="feature-list">
+                <li>🔍 <strong>Universal Search</strong> - 50-60% projected time savings</li>
+                <li>📦 <strong>Data Archiving</strong> - 35-40% DB reduction projected</li>
+                <li>📋 <strong>Audit Logging</strong> - Complete HIPAA/SOX compliance</li>
+                <li>☁️ <strong>Cloud Backup</strong> - OAuth with Google Drive & OneDrive</li>
+                <li>📝 <strong>SOAP Notes</strong> - 20-25% projected denial reduction</li>
+                <li>🏥 <strong>Enhanced Registration</strong> - Allergies, PMH, Family History</li>
+                <li>🔐 <strong>Expanded Permissions</strong> - Granular RBAC, 14 modules</li>
+                <li>💡 <strong>Help System</strong> - AI assistant, 55-60% projected ticket reduction</li>
+            </ul>
+            <div class="slide-number">3</div>
+        </div>
+
+        <!-- Slide 4: Projected ROI -->
+        <div class="slide">
+            <h2>💰 Projected First-Year ROI</h2>
+            <div class="metric-large">650-750%</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Projected Annual Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Operational Savings</strong></td>
+                        <td><strong>$450K - $550K</strong></td>
+                    </tr>
+                    <tr>
+                        <td>• Time savings (50-60% reduction)</td>
+                        <td>$100K - $120K</td>
+                    </tr>
+                    <tr>
+                        <td>• Reduced denials (20-25%)</td>
+                        <td>$160K - $200K</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Revenue Improvements</strong></td>
+                        <td><strong>$550K - $665K</strong></td>
+                    </tr>
+                    <tr>
+                        <td>• Days in A/R (52→35-38)</td>
+                        <td>$150K - $180K</td>
+                    </tr>
+                    <tr>
+                        <td>• Collection rate (92%→96-97%)</td>
+                        <td>$200K - $250K</td>
+                    </tr>
+                    <tr style="background: linear-gradient(90deg, rgba(20, 184, 166, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%);">
+                        <td><strong>Total Projected Benefit</strong></td>
+                        <td><strong>$1.0M - $1.2M</strong></td>
+                    </tr>
+                    <tr style="background: linear-gradient(90deg, var(--teal-primary) 0%, var(--gold-primary) 100%); color: white;">
+                        <td><strong>Projected Net ROI</strong></td>
+                        <td><strong>$850K - $1.065M</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="highlight-box">
+                <h3>Estimated Payback: 1.5 - 2.5 Months</h3>
+            </div>
+            <div class="slide-number">4</div>
+        </div>
+
+        <!-- Slide 5: Development Status -->
+        <div class="slide">
+            <h2>🔬 Development Status & Readiness</h2>
+            <div class="highlight-box">
+                <h3>Pre-Beta Phase: Final Development & Testing</h3>
+                <p><strong>Platform ready for beta launch Q1 2026</strong></p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">95%</div>
+                    <div class="stat-label">Code Complete</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Documentation</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">14</div>
+                    <div class="stat-label">Modules Ready</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">Q1 2026</div>
+                    <div class="stat-label">Beta Launch</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">10-15</div>
+                    <div class="stat-label">Beta Practices (Planned)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">Q2 2026</div>
+                    <div class="stat-label">General Launch</div>
+                </div>
+            </div>
+            <div class="slide-number">5</div>
+        </div>
+
+        <!-- Slide 6: Comprehensive Help System -->
+        <div class="slide">
+            <h2>💡 Help & Documentation System</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">55-60%</div>
+                    <div class="stat-label">Projected Ticket Reduction</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">45-50%</div>
+                    <div class="stat-label">Faster Training</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">12</div>
+                    <div class="stat-label">Documentation Guides</div>
+                </div>
+            </div>
+            <h3>System Components</h3>
+            <ul class="feature-list">
+                <li><strong>In-App Help Drawer</strong> - Browse, Search, AI Assistant tabs</li>
+                <li><strong>AI Assistant</strong> - Natural language Q&A, context-aware responses</li>
+                <li><strong>12 Comprehensive Guides</strong> - Clinical, Billing, Admin documentation</li>
+                <li><strong>50+ Help Articles</strong> - Searchable, categorized, role-based</li>
+                <li><strong>Multi-Language</strong> - 8 languages supported</li>
+            </ul>
+            <div class="highlight-box">
+                <h3>Complete Billing Documentation</h3>
+                <p>Overview • Insurance Payers • Financial Reports • Claims • Payments</p>
+            </div>
+            <div class="slide-number">6</div>
+        </div>
+
+        <!-- Slide 7: Security & Compliance -->
+        <div class="slide">
+            <h2>🔒 Security & Compliance</h2>
+            <div class="two-column">
+                <div>
+                    <h3>Planned Certifications</h3>
+                    <ul class="feature-list">
+                        <li>✅ HIPAA Compliant Design</li>
+                        <li>🔄 SOC 2 Type II (Q3 2026)</li>
+                        <li>✅ FDA 21 CFR Part 11</li>
+                        <li>✅ GDPR Ready</li>
+                        <li>✅ 50 State Compliant</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Security Features</h3>
+                    <ul class="feature-list">
+                        <li>AES-256 Encryption</li>
+                        <li>Multi-Factor Auth (MFA)</li>
+                        <li>Role-Based Access (RBAC)</li>
+                        <li>24/7 Monitoring</li>
+                        <li>Quarterly Pen Testing</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3>Complete Audit Trail</h3>
+                <p><strong>60-70% projected reduction</strong> in audit prep time with immutable logs and real-time compliance monitoring</p>
+            </div>
+            <div class="slide-number">7</div>
+        </div>
+
+        <!-- Slide 8: Competitive Advantages -->
+        <div class="slide">
+            <h2>⚡ Competitive Advantages</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>AureonCare</th>
+                        <th>Typical Competitors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Implementation Time</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">30 days (goal)</td>
+                        <td>90-180 days</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Universal Search</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">14 modules</td>
+                        <td>2-3 modules</td>
+                    </tr>
+                    <tr>
+                        <td><strong>AI Help Assistant</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">✓ Included</td>
+                        <td>✗ Not available</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Languages Supported</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">8 languages</td>
+                        <td>2-3 languages</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Technology Stack</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">Modern (React 18)</td>
+                        <td>Legacy (2010s)</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3>Market Opportunity</h3>
+                <p><strong>$8.5B addressable market</strong> | Target 0.5% Year 1 | $4.5M ARR Goal</p>
+            </div>
+            <div class="slide-number">8</div>
+        </div>
+
+        <!-- Slide 9: Development & Launch Roadmap -->
+        <div class="slide">
+            <h2>🗺️ Development & Launch Roadmap</h2>
+            <h3>Q1 2026 (Jan-Mar) - Beta Phase</h3>
+            <ul class="feature-list">
+                <li>🔬 Complete final development & testing</li>
+                <li>🎯 Launch closed beta (10-15 practices)</li>
+                <li>🐛 Bug fixes & optimization</li>
+                <li>✅ Complete security audits</li>
+            </ul>
+            <h3>Q2 2026 (Apr-Jun) - General Launch</h3>
+            <ul class="feature-list">
+                <li>🚀 Official product launch (April 2026)</li>
+                <li>🎯 Onboard first 50 paying practices</li>
+                <li>📱 Mobile app (beta) release</li>
+                <li>🔗 Integration marketplace launch</li>
+            </ul>
+            <h3>Q3-Q4 2026 - Growth & Scale</h3>
+            <ul class="feature-list">
+                <li>🎯 Reach 150 practices by year-end</li>
+                <li>🤖 AI Clinical Assistant launch</li>
+                <li>💳 Advanced features rollout</li>
+            </ul>
+            <div class="slide-number">9</div>
+        </div>
+
+        <!-- Slide 10: Pricing & Early Adopter Program -->
+        <div class="slide">
+            <h2>💵 Pricing & Early Adopter Benefits</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plan</th>
+                        <th>Monthly/User</th>
+                        <th>Annual/User</th>
+                        <th>Target Segment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Essential</strong></td>
+                        <td>$99</td>
+                        <td>$950</td>
+                        <td>2-5 users</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Professional</strong></td>
+                        <td>$149</td>
+                        <td>$1,425</td>
+                        <td>5-20 users</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Enterprise</strong></td>
+                        <td>$199</td>
+                        <td>$1,900</td>
+                        <td>20+ users</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3>🎁 Early Adopter Program</h3>
+                <p><strong>20% discount for first 50 practices</strong> | Priority implementation | Lifetime VIP support | Influence roadmap</p>
+            </div>
+            <p style="text-align: center; margin-top: 30px; font-size: 18px; color: var(--teal-dark);">
+                Implementation: $2,500-$10,000 | Premium Support: 15% of subscription
+            </p>
+            <div class="slide-number">10</div>
+        </div>
+
+        <!-- Slide 11: Call to Action -->
+        <div class="slide">
+            <h2>📞 Join the Healthcare Revolution</h2>
+            <div class="cta-section">
+                <h3>Be Among the First</h3>
+                <p>Limited spots available in our Early Adopter Program</p>
+                <div class="pre-launch-badge" style="margin-top: 20px;">Beta: Q1 2026 | Launch: Q2 2026</div>
+            </div>
+            <div class="two-column" style="margin-top: 50px;">
+                <div>
+                    <h3>For Healthcare Practices</h3>
+                    <ul class="feature-list">
+                        <li>Schedule product demo</li>
+                        <li>Join beta program</li>
+                        <li>Request pricing</li>
+                        <li>Reserve early adopter spot</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>For Investors & Partners</h3>
+                    <ul class="feature-list">
+                        <li>Investment overview</li>
+                        <li>Financial projections</li>
+                        <li>Partnership opportunities</li>
+                        <li>Market validation data</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="highlight-box" style="margin-top: 40px;">
+                <h3>Contact Us Today</h3>
+                <p><strong>Sales:</strong> sales@aureoncare.com | 1-800-AUREON1<br>
+                <strong>Website:</strong> https://aureoncare.com (launching Q2 2026)</p>
+            </div>
+            <div class="slide-number">11</div>
+        </div>
+
+        <!-- Slide 12: Summary -->
+        <div class="slide">
+            <div class="logo-container">
+                <img src="assets/aureoncare-logo.png" alt="AureonCare Logo" class="logo-image">
+                <div class="logo-text">AureonCare</div>
+            </div>
+            <h2 style="text-align: center; margin-top: 30px;">The Future of Healthcare Starts Here</h2>
+            <div class="stats-grid" style="margin-top: 50px;">
+                <div class="stat-card">
+                    <div class="stat-number">650-750%</div>
+                    <div class="stat-label">Projected ROI</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">30-Day</div>
+                    <div class="stat-label">Implementation Goal</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">14</div>
+                    <div class="stat-label">Integrated Modules</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">Q2 2026</div>
+                    <div class="stat-label">Launch Date</div>
+                </div>
+            </div>
+            <div class="cta-section" style="margin-top: 60px;">
+                <h3>Ready to Transform Your Practice?</h3>
+                <p style="font-size: 24px; font-weight: 600;">Reserve Your Spot Today</p>
+                <p style="font-size: 18px;">sales@aureoncare.com | 1-800-AUREON1</p>
+                <div class="pre-launch-badge" style="margin-top: 20px;">Beta Program & Early Adopter Slots Available</div>
+            </div>
+            <div class="slide-number">12</div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <p>© 2026 AureonCare Inc. | Confidential - For Business Use Only<br>
+        Pre-Beta Development Phase | Beta Launch Q1 2026 | General Launch Q2 2026 | Projections based on market research</p>
+    </div>
+
+    <script>
+        // Add print functionality
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                window.print();
+            }
+        });
+
+        // Add smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>

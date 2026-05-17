@@ -27,7 +27,8 @@ const RCMView = ({
   setCurrentModule,
   tasks,
   setTasks,
-  t = {}
+  t = {},
+  currency = 'USD',
 }) => {
   const [activeTab, setActiveTab] = useState('claims');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -305,7 +306,7 @@ const RCMView = ({
                     <tr key={claim.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{claim.claim_number || 'N/A'}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{patientName}</td>
-                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(claim.amount)}</td>
+                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(claim.amount, currency)}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{claim.payer}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(claim.service_date || claim.serviceDate || claim.date)}</td>
                       <td className="px-6 py-4">
@@ -617,7 +618,7 @@ const RCMView = ({
                   return (
                     <tr key={payment.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{patientName}</td>
-                      <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount)}</td>
+                      <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount, currency)}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.payment_method || 'N/A'}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(payment.payment_date)}</td>
                       <td className="px-6 py-4">
@@ -899,7 +900,7 @@ const RCMView = ({
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.patient_name}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.claim_number || 'N/A'}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.insurance_payer_name || 'N/A'}</td>
-                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(posting.payment_amount)}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(posting.payment_amount, currency)}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(posting.posting_date)}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -1034,7 +1035,7 @@ const RCMView = ({
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.patient_name}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.claim_number || 'N/A'}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.denial_category}</td>
-                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(denial.denial_amount)}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(denial.denial_amount, currency)}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(denial.appeal_deadline)}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -1222,7 +1223,7 @@ const RCMView = ({
                 <tr key={quote.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                   <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{quote.quoteNumber}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{quote.patientName || 'N/A'}</td>
-                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(quote.totalAmount)}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(quote.totalAmount, currency)}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(quote.issueDate)}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(quote.expiryDate)}</td>
                   <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(quote.status)}`}>{quote.status?.replace('_', ' ')}</span></td>
@@ -1316,9 +1317,9 @@ const RCMView = ({
                 <tr key={invoice.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                   <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{invoice.invoiceNumber}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{invoice.patientName || 'N/A'}</td>
-                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(invoice.totalAmount)}</td>
-                  <td className={`px-6 py-4 text-green-400`}>{formatCurrency(invoice.amountPaid)}</td>
-                  <td className={`px-6 py-4 ${parseFloat(invoice.balanceDue) > 0 ? 'text-red-400' : 'text-green-400'}`}>{formatCurrency(invoice.balanceDue)}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(invoice.totalAmount, currency)}</td>
+                  <td className={`px-6 py-4 text-green-400`}>{formatCurrency(invoice.amountPaid, currency)}</td>
+                  <td className={`px-6 py-4 ${parseFloat(invoice.balanceDue) > 0 ? 'text-red-400' : 'text-green-400'}`}>{formatCurrency(invoice.balanceDue, currency)}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(invoice.dueDate)}</td>
                   <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(invoice.status)}`}>{invoice.status?.replace('_', ' ')}</span></td>
                   <td className="px-6 py-4">
@@ -1399,7 +1400,7 @@ const RCMView = ({
                   <td className={`px-6 py-4 font-medium font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{coupon.code}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{coupon.name}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : formatCurrency(coupon.discountValue)}
+                    {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : formatCurrency(coupon.discountValue, currency)}
                   </td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {coupon.usedCount || 0}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ' / unlimited'}
@@ -1492,7 +1493,7 @@ const RCMView = ({
                   <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{payment.paymentNumber}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.patientName || 'N/A'}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.invoiceNumber || 'N/A'}</td>
-                  <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount)}</td>
+                  <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount, currency)}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.paymentMethod?.replace('_', ' ') || 'N/A'}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(payment.paymentDate)}</td>
                   <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(payment.status)}`}>{payment.status}</span></td>
@@ -1815,7 +1816,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Patient
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {patients.find(p => p.id === viewingClaim.patient_id) ?
                   `${patients.find(p => p.id === viewingClaim.patient_id).first_name} ${patients.find(p => p.id === viewingClaim.patient_id).last_name}` :
                   'Unknown Patient'}
@@ -1825,7 +1826,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Payer
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {viewingClaim.payer || 'N/A'}
               </div>
             </div>
@@ -1833,7 +1834,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Service Date
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {formatDate(viewingClaim.service_date)}
               </div>
             </div>
@@ -1841,15 +1842,15 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Amount
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
-                {formatCurrency(viewingClaim.amount)}
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
+                {formatCurrency(viewingClaim.amount, currency)}
               </div>
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Status
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   viewingClaim.status === 'Approved' ? 'bg-green-500/20 text-green-400' :
                   viewingClaim.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' :
@@ -1864,7 +1865,7 @@ const RCMView = ({
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Pre-approval
                 </label>
-                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                   {viewingClaim.preapproval_id}
                 </div>
               </div>
@@ -1874,7 +1875,7 @@ const RCMView = ({
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Notes
                 </label>
-                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                   {viewingClaim.notes}
                 </div>
               </div>

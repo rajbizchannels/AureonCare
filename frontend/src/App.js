@@ -41,6 +41,8 @@ import LaboratoryManagementView from './views/LaboratoryManagementView';
 import ClinicalServicesView from './views/ClinicalServicesView';
 import WaitlistManagementView from './views/WaitlistManagementView';
 import FormManagementView from './views/FormManagementView';
+import AccountsView from './views/AccountsView';
+import InventoryView from './views/InventoryView';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
@@ -127,6 +129,8 @@ function App() {
     setAppointmentViewType,
     calendarViewType,
     setCalendarViewType,
+    currency,
+    setCurrency,
 
     // Data
     appointments,
@@ -300,6 +304,7 @@ function App() {
             updateUserPreferences={updateUserPreferences}
             addNotification={addNotification}
             planTier={planTier}
+            currency={currency}
           />
         );
       case 'practiceManagement':
@@ -434,6 +439,29 @@ function App() {
             setCurrentModule={setCurrentModule}
             tasks={tasks}
             setTasks={setTasks}
+            currency={currency}
+          />
+        );
+      case 'accounts':
+        return (
+          <AccountsView
+            theme={theme}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            currency={currency}
+          />
+        );
+      case 'inventory':
+        return (
+          <InventoryView
+            theme={theme}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            currency={currency}
           />
         );
       case 'reports':
@@ -447,6 +475,7 @@ function App() {
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
             api={api}
+            currency={currency}
           />
         );
       case 'crm':
@@ -488,6 +517,7 @@ function App() {
             api={api}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            onCurrencyChange={setCurrency}
           />
         );
       case 'offerings':
@@ -914,6 +944,7 @@ function App() {
               setUser={setUser}
               user={user}
               t={t}
+              currency={currency}
             />
           </div>
         )}
@@ -972,6 +1003,7 @@ function App() {
           setEditingItem={handleSetEditingItem}
           setCurrentView={setCurrentView}
           t={t}
+          currency={currency}
         />
       )}
 

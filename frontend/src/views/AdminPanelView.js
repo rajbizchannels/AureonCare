@@ -55,6 +55,11 @@ import {
   ChevronUp,
   ExternalLink,
   Copy,
+  MessageCircle,
+  Edit2,
+  Bell,
+  BookOpen,
+  Package,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -83,6 +88,9 @@ import {
   validateCancellationDeadline,
   sanitizeString,
   safeJSONParse,
+  isPhoneValid,
+  validateOptionalPhone,
+  validateOptionalEmail,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
 
@@ -297,6 +305,7 @@ const AdminPanelView = ({
   addNotification,
   setCurrentModule = () => {},
   t = {},
+  onCurrencyChange,
 }) => {
   // ==================== CONTEXT ====================
   const { setPlanTier, updateUserPreferences, planTier, user } = useApp();
@@ -349,6 +358,16 @@ const AdminPanelView = ({
   });
   const [rolePermissions, setRolePermissions] = useState(DEFAULT_ROLE_PERMISSIONS);
 
+  // Accounts module RBAC & backup
+  const [acctPermissions, setAcctPermissions] = useState([]);
+  const [acctPermLoading, setAcctPermLoading] = useState(false);
+  const [acctBackups, setAcctBackups] = useState([]);
+  const [acctBackupLoading, setAcctBackupLoading] = useState(false);
+  const [invPermissions, setInvPermissions] = useState([]);
+  const [invPermLoading, setInvPermLoading] = useState(false);
+  const [invBackups, setInvBackups] = useState([]);
+  const [invBackupLoading, setInvBackupLoading] = useState(false);
+
   const [currentPlan, setCurrentPlan] = useState(planTier || PLAN_IDS.PROFESSIONAL);
 
   // Integration settings: status + connection info (never raw tokens)
@@ -366,6 +385,29 @@ const AdminPanelView = ({
     optum: { is_enabled: false, is_configured: false, sandbox_mode: true },
   });
   const [vendorDbMissing, setVendorDbMissing] = useState(false);
+
+  // Stripe integration state
+  const [stripeStatus, setStripeStatus] = useState({
+    is_enabled: false,
+    is_configured: false,
+    has_secret_key: false,
+    has_webhook_secret: false,
+    use_platform_integration: false,
+    publishable_key: '',
+    sandbox_mode: true,
+    test_status: null,
+    test_message: null,
+  });
+  const [stripeExpanded, setStripeExpanded] = useState(false);
+  const [stripeForm, setStripeForm] = useState({
+    publishable_key: '',
+    secret_key: '',
+    webhook_secret: '',
+    sandbox_mode: true,
+    use_platform_integration: false,
+  });
+  const [savingStripe, setSavingStripe] = useState(false);
+  const [testingStripe, setTestingStripe] = useState(false);
 
   // Custom role creation state
   const [showCustomRoleForm, setShowCustomRoleForm] = useState(false);
@@ -397,6 +439,19 @@ const AdminPanelView = ({
     onConfirm: null,
   });
 
+  // Preferences panel state (current logged-in user's prefs)
+  const [prefWhatsappNumber, setPrefWhatsappNumber] = useState(
+    user?.preferences?.whatsappNumber ?? user?.phone ?? ''
+  );
+  const [prefEditingWhatsapp, setPrefEditingWhatsapp] = useState(false);
+  const [prefWhatsappDraft, setPrefWhatsappDraft] = useState('');
+  const [prefWhatsappDraftError, setPrefWhatsappDraftError] = useState('');
+
+  // Keep whatsapp in sync when user object changes
+  useEffect(() => {
+    setPrefWhatsappNumber(user?.preferences?.whatsappNumber ?? user?.phone ?? '');
+  }, [user?.preferences?.whatsappNumber, user?.phone]);
+
   // User form inline state
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -414,6 +469,8 @@ const AdminPanelView = ({
     timezone: '',
     license_number: '',
     language: '',
+    whatsappNumber: '',
+    whatsappNotifications: false,
     password: '',
     confirmPassword: '',
   });
@@ -525,6 +582,44 @@ const AdminPanelView = ({
   }, [api, addNotification]);
 
   /**
+   * Load accounts RBAC permissions when Roles tab is active
+   */
+  useEffect(() => {
+    if (activeTab !== ADMIN_TABS.ROLES) return;
+    setAcctPermLoading(true);
+    api.getAccountPermissions()
+      .then(setAcctPermissions)
+      .catch(err => console.error('Failed to load accounts permissions:', err))
+      .finally(() => setAcctPermLoading(false));
+  }, [activeTab, api]);
+
+  /**
+   * Load accounts backup history when Backup tab is active
+   */
+  useEffect(() => {
+    if (activeTab !== ADMIN_TABS.BACKUP) return;
+    api.getAccountBackups()
+      .then(setAcctBackups)
+      .catch(err => console.error('Failed to load accounts backups:', err));
+  }, [activeTab, api]);
+
+  useEffect(() => {
+    if (activeTab !== ADMIN_TABS.ROLES) return;
+    setInvPermLoading(true);
+    api.getInventoryPermissions()
+      .then(setInvPermissions)
+      .catch(err => console.error('Failed to load inventory permissions:', err))
+      .finally(() => setInvPermLoading(false));
+  }, [activeTab, api]);
+
+  useEffect(() => {
+    if (activeTab !== ADMIN_TABS.BACKUP) return;
+    api.getInventoryBackups()
+      .then(data => setInvBackups(Array.isArray(data) ? data : (data?.backupHistory || [])))
+      .catch(err => console.error('Failed to load inventory backups:', err));
+  }, [activeTab, api]);
+
+  /**
    * Load telehealth integration status (NOT credentials)
    * SECURITY: Only status information is loaded, credentials remain server-side
    */
@@ -621,6 +716,39 @@ const AdminPanelView = ({
   }, [api, addNotification]);
 
   /**
+   * Load Stripe integration status
+   */
+  useEffect(() => {
+    const loadStripeStatus = async () => {
+      try {
+        const data = await api.getStripeSettings();
+        if (data && (data.id || data.is_enabled !== undefined)) {
+          setStripeStatus({
+            is_enabled: data.is_enabled || false,
+            is_configured: data.use_platform_integration || !!(data.publishable_key) || !!(data.has_secret_key),
+            has_secret_key: data.has_secret_key || false,
+            has_webhook_secret: data.has_webhook_secret || false,
+            use_platform_integration: data.use_platform_integration || false,
+            publishable_key: data.publishable_key || '',
+            sandbox_mode: data.sandbox_mode !== undefined ? data.sandbox_mode : true,
+            test_status: data.test_status || null,
+            test_message: data.test_message || null,
+          });
+          setStripeForm((prev) => ({
+            ...prev,
+            publishable_key: data.publishable_key || '',
+            sandbox_mode: data.sandbox_mode !== undefined ? data.sandbox_mode : true,
+            use_platform_integration: data.use_platform_integration || false,
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading Stripe settings:', error);
+      }
+    };
+    loadStripeStatus();
+  }, [api]);
+
+  /**
    * Load role permissions from backend
    */
   useEffect(() => {
@@ -692,9 +820,15 @@ const AdminPanelView = ({
    * Save clinic settings handler - uses the hook
    */
   const handleSaveClinicSettingsClick = useCallback(() => {
-    setPendingSaveAction(() => saveClinicSettings);
+    const action = async () => {
+      const result = await saveClinicSettings();
+      if (result?.success && onCurrencyChange && clinicSettings.currency) {
+        onCurrencyChange(clinicSettings.currency);
+      }
+    };
+    setPendingSaveAction(() => action);
     setShowSaveConfirmation(true);
-  }, [saveClinicSettings]);
+  }, [saveClinicSettings, clinicSettings.currency, onCurrencyChange]);
 
   /**
    * Delete user handler with proper confirmation
@@ -807,6 +941,10 @@ const AdminPanelView = ({
             timezone: formData.timezone,
             license_number: formData.license_number,
             language: formData.language,
+            preferences: {
+              whatsappNumber: formData.whatsappNumber || '',
+              whatsappNotifications: formData.whatsappNumber ? (formData.whatsappNotifications ?? false) : false,
+            },
           };
 
           // Only include password if it was changed
@@ -838,6 +976,10 @@ const AdminPanelView = ({
             license_number: formData.license_number,
             language: formData.language,
             password: formData.password,
+            preferences: {
+              whatsappNumber: formData.whatsappNumber || '',
+              whatsappNotifications: formData.whatsappNumber ? (formData.whatsappNotifications ?? false) : false,
+            },
           };
 
           const newUser = await api.createUser(userData);
@@ -1462,6 +1604,64 @@ const AdminPanelView = ({
     }
   }, [addNotification]);
 
+  const handleToggleStripe = useCallback(async () => {
+    const newEnabled = !stripeStatus.is_enabled;
+    try {
+      setStripeStatus((prev) => ({ ...prev, is_enabled: newEnabled }));
+      await api.toggleStripeIntegration(newEnabled);
+      await addNotification('success', `Stripe ${newEnabled ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+      setStripeStatus((prev) => ({ ...prev, is_enabled: !newEnabled }));
+      await addNotification('alert', 'Failed to toggle Stripe integration');
+    }
+  }, [api, stripeStatus.is_enabled, addNotification]);
+
+  const handleSaveStripe = useCallback(async () => {
+    setSavingStripe(true);
+    try {
+      const payload = { ...stripeForm };
+      if (!payload.secret_key) delete payload.secret_key;
+      if (!payload.webhook_secret) delete payload.webhook_secret;
+      const updated = await api.saveStripeSettings(payload);
+      setStripeStatus((prev) => ({
+        ...prev,
+        is_configured: updated.use_platform_integration || !!(updated.publishable_key) || !!(updated.has_secret_key),
+        has_secret_key: updated.has_secret_key || false,
+        has_webhook_secret: updated.has_webhook_secret || false,
+        use_platform_integration: updated.use_platform_integration || false,
+        publishable_key: updated.publishable_key || '',
+        sandbox_mode: updated.sandbox_mode !== undefined ? updated.sandbox_mode : true,
+      }));
+      setStripeForm((prev) => ({
+        ...prev,
+        secret_key: '',
+        webhook_secret: '',
+        publishable_key: updated.publishable_key || prev.publishable_key,
+        use_platform_integration: updated.use_platform_integration || false,
+        sandbox_mode: updated.sandbox_mode !== undefined ? updated.sandbox_mode : true,
+      }));
+      await addNotification('success', 'Stripe settings saved successfully');
+    } catch (error) {
+      await addNotification('alert', 'Failed to save Stripe settings: ' + error.message);
+    } finally {
+      setSavingStripe(false);
+    }
+  }, [api, stripeForm, addNotification]);
+
+  const handleTestStripe = useCallback(async () => {
+    setTestingStripe(true);
+    try {
+      const result = await api.testStripeConnection();
+      setStripeStatus((prev) => ({ ...prev, test_status: 'success', test_message: result.message }));
+      await addNotification('success', 'Stripe connection test passed');
+    } catch (error) {
+      setStripeStatus((prev) => ({ ...prev, test_status: 'failed', test_message: error.message }));
+      await addNotification('alert', 'Stripe test failed: ' + error.message);
+    } finally {
+      setTestingStripe(false);
+    }
+  }, [api, addNotification]);
+
   /**
    * Save working hours with validation
    */
@@ -1896,6 +2096,42 @@ const AdminPanelView = ({
           />
           {validationErrors.npi && <p className="text-red-500 text-sm mt-1">{validationErrors.npi}</p>}
         </div>
+
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Currency
+          </label>
+          <select
+            value={clinicSettings.currency || 'USD'}
+            onChange={(e) => updateClinicSetting('currency', e.target.value)}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            {[
+              { code: 'USD', label: 'USD – US Dollar ($)' },
+              { code: 'EUR', label: 'EUR – Euro (€)' },
+              { code: 'GBP', label: 'GBP – British Pound (£)' },
+              { code: 'CAD', label: 'CAD – Canadian Dollar (CA$)' },
+              { code: 'AUD', label: 'AUD – Australian Dollar (A$)' },
+              { code: 'INR', label: 'INR – Indian Rupee (₹)' },
+              { code: 'AED', label: 'AED – UAE Dirham (AED)' },
+              { code: 'SAR', label: 'SAR – Saudi Riyal (SAR)' },
+              { code: 'NGN', label: 'NGN – Nigerian Naira (₦)' },
+              { code: 'ZAR', label: 'ZAR – South African Rand (R)' },
+              { code: 'JPY', label: 'JPY – Japanese Yen (¥)' },
+              { code: 'CNY', label: 'CNY – Chinese Yuan (¥)' },
+              { code: 'BRL', label: 'BRL – Brazilian Real (R$)' },
+              { code: 'MXN', label: 'MXN – Mexican Peso (MX$)' },
+              { code: 'CHF', label: 'CHF – Swiss Franc (CHF)' },
+              { code: 'SGD', label: 'SGD – Singapore Dollar (S$)' },
+              { code: 'NZD', label: 'NZD – New Zealand Dollar (NZ$)' },
+              { code: 'PKR', label: 'PKR – Pakistani Rupee (₨)' },
+              { code: 'BDT', label: 'BDT – Bangladeshi Taka (৳)' },
+              { code: 'KES', label: 'KES – Kenyan Shilling (KSh)' },
+            ].map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="flex justify-end">
@@ -1934,6 +2170,8 @@ const AdminPanelView = ({
         timezone: editingUser.timezone || '',
         license_number: editingUser.license_number || '',
         language: editingUser.language || '',
+        whatsappNumber: editingUser.preferences?.whatsappNumber ?? editingUser.phone ?? '',
+        whatsappNotifications: editingUser.preferences?.whatsappNotifications ?? false,
         password: '',
         confirmPassword: '',
       });
@@ -1952,6 +2190,8 @@ const AdminPanelView = ({
         timezone: '',
         license_number: '',
         language: '',
+        whatsappNumber: '',
+        whatsappNotifications: false,
         password: '',
         confirmPassword: '',
       });
@@ -1974,8 +2214,14 @@ const AdminPanelView = ({
     if (!userFormData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userFormData.email)) {
-      newErrors.email = 'Invalid email format';
+      newErrors.email = 'Enter a valid email address';
     }
+
+    const phoneErr = validateOptionalPhone(userFormData.phone);
+    if (phoneErr) newErrors.phone = phoneErr;
+
+    const whatsappErr = validateOptionalPhone(userFormData.whatsappNumber);
+    if (whatsappErr) newErrors.whatsappNumber = whatsappErr;
 
     if (!isEditMode) {
       if (!userFormData.password) {
@@ -2056,6 +2302,187 @@ const AdminPanelView = ({
    */
   const renderUserManagementTab = () => (
     <div className="space-y-6">
+
+      {/* ── My Preferences Card ─────────────────────────────── */}
+      <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <h3 className={`text-base font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          <Bell className="w-4 h-4 text-blue-500" />
+          My Notification Preferences
+        </h3>
+        <div className="space-y-4">
+
+          {/* Email Notifications */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mail className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+              <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.emailNotifications || 'Email Notifications'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const next = !(user.preferences?.emailNotifications ?? true);
+                const ok = await updateUserPreferences({ emailNotifications: next });
+                if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                (user.preferences?.emailNotifications ?? true)
+                  ? 'bg-blue-500'
+                  : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                (user.preferences?.emailNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {/* SMS Alerts */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Phone className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+              <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                {t.smsAlerts || 'SMS Alerts'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const next = !(user.preferences?.smsAlerts ?? true);
+                const ok = await updateUserPreferences({ smsAlerts: next });
+                if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                (user.preferences?.smsAlerts ?? true)
+                  ? 'bg-blue-500'
+                  : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                (user.preferences?.smsAlerts ?? true) ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {/* WhatsApp */}
+          <div className={`rounded-lg p-3 space-y-3 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-green-500" />
+              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
+                WhatsApp
+              </span>
+            </div>
+
+            {/* WhatsApp number inline edit */}
+            <div className="flex items-center gap-2">
+              <Phone className={`w-4 h-4 flex-shrink-0 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+              {prefEditingWhatsapp ? (
+                <>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <input
+                      type="tel"
+                      value={prefWhatsappDraft}
+                      onChange={e => { setPrefWhatsappDraft(e.target.value); setPrefWhatsappDraftError(''); }}
+                      placeholder="+1 555 000 0000"
+                      autoFocus
+                      className={`w-full text-sm px-2 py-1 rounded border focus:outline-none ${
+                        prefWhatsappDraftError ? 'border-red-500 focus:border-red-500' : 'focus:border-green-500'
+                      } ${
+                        theme === 'dark'
+                          ? 'bg-slate-600 border-slate-500 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    />
+                    {prefWhatsappDraftError && (
+                      <p className="text-xs text-red-500">{prefWhatsappDraftError}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    title="Save"
+                    onClick={async () => {
+                      const val = prefWhatsappDraft.trim();
+                      const err = validateOptionalPhone(val);
+                      if (err) { setPrefWhatsappDraftError(err); return; }
+                      setPrefWhatsappNumber(val);
+                      setPrefEditingWhatsapp(false);
+                      setPrefWhatsappDraftError('');
+                      const ok = await updateUserPreferences({ whatsappNumber: val });
+                      if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
+                    }}
+                    className="p-1 rounded text-green-500 hover:bg-green-500/10 transition-colors flex-shrink-0"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Cancel"
+                    onClick={() => { setPrefEditingWhatsapp(false); setPrefWhatsappDraftError(''); }}
+                    className={`p-1 rounded transition-colors flex-shrink-0 ${theme === 'dark' ? 'text-slate-400 hover:bg-slate-600' : 'text-gray-400 hover:bg-gray-200'}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className={`flex-1 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {prefWhatsappNumber || (t.notApplicable || 'N/A')}
+                  </span>
+                  <button
+                    type="button"
+                    title="Edit WhatsApp number"
+                    onClick={() => { setPrefWhatsappDraft(prefWhatsappNumber); setPrefEditingWhatsapp(true); }}
+                    className={`p-1 rounded transition-colors ${
+                      theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-600' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* WhatsApp Notifications toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.whatsappNotifications || 'WhatsApp Notifications'}
+                </span>
+                {!isPhoneValid(prefWhatsappNumber) && (
+                  <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {prefWhatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={!isPhoneValid(prefWhatsappNumber)}
+                onClick={async () => {
+                  if (!isPhoneValid(prefWhatsappNumber)) return;
+                  const next = !(user.preferences?.whatsappNotifications ?? false);
+                  const ok = await updateUserPreferences({ whatsappNotifications: next });
+                  if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  !isPhoneValid(prefWhatsappNumber)
+                    ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                    : (user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber))
+                      ? 'bg-green-500 cursor-pointer'
+                      : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  (user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {/* ─────────────────────────────────────────────────────── */}
+
       <div className="flex justify-between items-center">
         <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Users
@@ -2156,10 +2583,11 @@ const AdminPanelView = ({
                     onChange={(e) => handleUserFormChange('phone', e.target.value)}
                     className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    } ${userFormErrors.phone ? 'border-red-500' : ''}`}
                     placeholder="+1 (555) 123-4567"
                   />
                 </div>
+                {userFormErrors.phone && <p className="mt-1 text-sm text-red-500">{userFormErrors.phone}</p>}
               </div>
 
               <div>
@@ -2177,6 +2605,69 @@ const AdminPanelView = ({
                     }`}
                     placeholder="123 Main St"
                   />
+                </div>
+              </div>
+            </div>
+
+            {/* WhatsApp Number and Notifications */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  WhatsApp Number
+                </label>
+                <div className="relative">
+                  <MessageCircle className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <input
+                    type="tel"
+                    value={userFormData.whatsappNumber}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setUserFormData(prev => ({
+                        ...prev,
+                        whatsappNumber: val,
+                        whatsappNotifications: isPhoneValid(val) ? prev.whatsappNotifications : false,
+                      }));
+                      setUserFormErrors(prev => ({ ...prev, whatsappNumber: validateOptionalPhone(e.target.value) || undefined }));
+                    }}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    } ${userFormErrors.whatsappNumber ? 'border-red-500' : ''}`}
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+                {userFormErrors.whatsappNumber && <p className="mt-1 text-sm text-red-500">{userFormErrors.whatsappNumber}</p>}
+              </div>
+              <div className="flex items-end pb-1">
+                <div className="flex items-center justify-between w-full">
+                  <div>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      WhatsApp Notifications
+                    </p>
+                    {!isPhoneValid(userFormData.whatsappNumber) && (
+                      <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        {userFormData.whatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!isPhoneValid(userFormData.whatsappNumber)}
+                    onClick={() => {
+                      if (!isPhoneValid(userFormData.whatsappNumber)) return;
+                      handleUserFormChange('whatsappNotifications', !userFormData.whatsappNotifications);
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      !isPhoneValid(userFormData.whatsappNumber)
+                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                        : (userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber))
+                          ? 'bg-green-500 cursor-pointer'
+                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -2447,7 +2938,7 @@ const AdminPanelView = ({
                       setShowUserForm(true);
                     }}
                     className={`p-2 rounded-lg transition-colors ${
-                      theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
+                      theme === 'dark' ? 'hover:bg-slate-500 text-slate-100' : 'hover:bg-gray-100 text-gray-600'
                     }`}
                     title="Edit user"
                   >
@@ -2894,6 +3385,200 @@ const AdminPanelView = ({
           />
         </div>
       </div>
+
+      {/* Stripe / Payment Processing */}
+      <div className="mt-8">
+        <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Payment Processing
+        </h2>
+
+        <div className={`border rounded-lg overflow-hidden ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+          {/* Header row */}
+          <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-indigo-500/10' : 'bg-indigo-50'}`}>
+                  <svg className="w-6 h-6 text-indigo-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Stripe
+                  </h3>
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Accept payments from patients via card, ACH, and more
+                  </p>
+                  {stripeStatus.is_configured && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {stripeStatus.use_platform_integration ? 'Using platform Stripe account' : 'Configured'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setStripeExpanded((v) => !v)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                    theme === 'dark'
+                      ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
+                      : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {stripeExpanded ? 'Hide' : 'Configure'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleStripe}
+                  disabled={!stripeStatus.is_configured}
+                  role="switch"
+                  aria-checked={stripeStatus.is_enabled}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    !stripeStatus.is_configured
+                      ? theme === 'dark' ? 'bg-slate-700 cursor-not-allowed' : 'bg-gray-200 cursor-not-allowed'
+                      : stripeStatus.is_enabled ? 'bg-green-500 cursor-pointer' : theme === 'dark' ? 'bg-slate-600 cursor-pointer' : 'bg-gray-300 cursor-pointer'
+                  }`}
+                  title={!stripeStatus.is_configured ? 'Configure Stripe before enabling' : ''}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${stripeStatus.is_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+
+            {!stripeStatus.is_configured && (
+              <div className={`mt-4 p-3 rounded-lg flex items-start gap-2 ${theme === 'dark' ? 'bg-yellow-500/10' : 'bg-yellow-50'}`}>
+                <svg className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div>
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'}`}>Configuration Required</p>
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-yellow-400/80' : 'text-yellow-600'}`}>
+                    Add your Stripe keys below or enable platform integration, then save.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Expandable config form */}
+          {stripeExpanded && (
+            <div className="p-6 space-y-4">
+              {/* Platform integration */}
+              <div className={`flex items-start gap-3 p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
+                <input
+                  type="checkbox"
+                  id="stripe-platform-admin"
+                  checked={stripeForm.use_platform_integration}
+                  onChange={(e) => setStripeForm((prev) => ({ ...prev, use_platform_integration: e.target.checked }))}
+                  className="mt-0.5 rounded"
+                />
+                <div>
+                  <label htmlFor="stripe-platform-admin" className={`text-sm font-medium cursor-pointer ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
+                    Use platform Stripe account
+                  </label>
+                  <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Subscribers process payments through the platform's Stripe account. No custom keys needed.
+                  </p>
+                </div>
+              </div>
+
+              {!stripeForm.use_platform_integration && (
+                <>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Publishable Key
+                    </label>
+                    <input
+                      type="text"
+                      value={stripeForm.publishable_key}
+                      onChange={(e) => setStripeForm((prev) => ({ ...prev, publishable_key: e.target.value }))}
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-mono border ${
+                        theme === 'dark' ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'
+                      } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                      placeholder="pk_live_... or pk_test_..."
+                    />
+                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>Safe to expose in client-side code</p>
+                  </div>
+
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Secret Key {stripeStatus.has_secret_key && <span className="text-green-500 font-normal ml-1">(saved)</span>}
+                    </label>
+                    <input
+                      type="password"
+                      value={stripeForm.secret_key}
+                      onChange={(e) => setStripeForm((prev) => ({ ...prev, secret_key: e.target.value }))}
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-mono border ${
+                        theme === 'dark' ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'
+                      } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                      placeholder={stripeStatus.has_secret_key ? '•••••••••••••• (leave blank to keep existing)' : 'sk_live_... or sk_test_...'}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Webhook Secret {stripeStatus.has_webhook_secret && <span className="text-green-500 font-normal ml-1">(saved)</span>}
+                    </label>
+                    <input
+                      type="password"
+                      value={stripeForm.webhook_secret}
+                      onChange={(e) => setStripeForm((prev) => ({ ...prev, webhook_secret: e.target.value }))}
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-mono border ${
+                        theme === 'dark' ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'
+                      } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                      placeholder={stripeStatus.has_webhook_secret ? '•••••••••••••• (leave blank to keep existing)' : 'whsec_...'}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="stripe-sandbox-admin"
+                  checked={stripeForm.sandbox_mode}
+                  onChange={(e) => setStripeForm((prev) => ({ ...prev, sandbox_mode: e.target.checked }))}
+                  className="rounded"
+                />
+                <label htmlFor="stripe-sandbox-admin" className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Test / Sandbox Mode
+                </label>
+              </div>
+
+              {stripeStatus.test_status && (
+                <p className={`text-sm ${stripeStatus.test_status === 'success' ? 'text-green-500' : 'text-red-400'}`}>
+                  Last test: {stripeStatus.test_status === 'success' ? 'Passed' : 'Failed'}
+                  {stripeStatus.test_message ? ` — ${stripeStatus.test_message}` : ''}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleSaveStripe}
+                  disabled={savingStripe}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-white ${
+                    savingStripe ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-500 hover:bg-indigo-600 cursor-pointer'
+                  }`}
+                >
+                  {savingStripe ? 'Saving...' : 'Save Configuration'}
+                </button>
+                <button
+                  onClick={handleTestStripe}
+                  disabled={testingStripe || !stripeStatus.is_configured}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    testingStripe || !stripeStatus.is_configured
+                      ? 'opacity-50 cursor-not-allowed ' + (theme === 'dark' ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-400')
+                      : theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  {testingStripe ? 'Testing...' : 'Test Connection'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 
@@ -3234,6 +3919,172 @@ const AdminPanelView = ({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Accounts Module RBAC */}
+      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accounts Module Permissions</h3>
+            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Fine-grained access control for the Accounts Management module</p>
+          </div>
+          {acctPermLoading && <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />}
+        </div>
+        {acctPermissions.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">
+            <table className="w-full text-xs">
+              <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium">Role</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Resource</th>
+                  {['View','Create','Edit','Delete','Approve','Export'].map(a => (
+                    <th key={a} className="px-3 py-2.5 text-center font-medium">{a}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
+                {['admin','billing_manager','doctor','nurse','receptionist','crm_manager'].map(role =>
+                  ['chart_of_accounts','journal_entries','accounts_receivable','accounts_payable','reconciliation','statements'].map((resource, ri) => {
+                    const perm = acctPermissions.find(p => p.roleName === role && p.resource === resource) || {};
+                    const permMap = { View:'canView', Create:'canCreate', Edit:'canEdit', Delete:'canDelete', Approve:'canApprove', Export:'canExport' };
+                    return (
+                      <tr key={`${role}-${resource}`} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
+                        {ri === 0 && (
+                          <td className={`px-4 py-2 font-medium capitalize ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`} rowSpan={6}>
+                            {role.replace('_',' ')}
+                          </td>
+                        )}
+                        <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{resource.replace(/_/g,' ')}</td>
+                        {['View','Create','Edit','Delete','Approve','Export'].map(action => (
+                          <td key={action} className="px-3 py-2 text-center">
+                            <button
+                              disabled={!canManageRoles || role === 'admin'}
+                              onClick={async () => {
+                                if (!canManageRoles || role === 'admin') return;
+                                const key = permMap[action];
+                                const newVal = !perm[key];
+                                try {
+                                  const updated = await api.updateAccountPermission({
+                                    roleName: role, resource,
+                                    canView: perm.canView || false, canCreate: perm.canCreate || false,
+                                    canEdit: perm.canEdit || false, canDelete: perm.canDelete || false,
+                                    canApprove: perm.canApprove || false, canExport: perm.canExport || false,
+                                    [key]: newVal
+                                  });
+                                  setAcctPermissions(prev => {
+                                    const idx = prev.findIndex(p => p.roleName === role && p.resource === resource);
+                                    if (idx >= 0) return prev.map((p, i) => i === idx ? updated : p);
+                                    return [...prev, updated];
+                                  });
+                                } catch (err) {
+                                  addNotification('error', 'Failed to update permission');
+                                }
+                              }}
+                              className={`w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors ${
+                                perm[permMap[action]]
+                                  ? 'bg-emerald-500 text-white'
+                                  : theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
+                              } ${(!canManageRoles || role === 'admin') ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
+                            >
+                              {perm[permMap[action]] ? <Check className="w-3 h-3" /> : null}
+                            </button>
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className={`text-center py-8 text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+            {acctPermLoading ? 'Loading accounts permissions…' : 'No accounts permissions found — visit Accounts Management to initialize.'}
+          </div>
+        )}
+      </div>
+
+      {/* Inventory Module RBAC */}
+      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Inventory Module Permissions</h3>
+            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Fine-grained access control for the Inventory Management module</p>
+          </div>
+          {invPermLoading && <RefreshCw className="w-4 h-4 animate-spin text-orange-500" />}
+        </div>
+        {invPermissions.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">
+            <table className="w-full text-xs">
+              <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium">Role</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Resource</th>
+                  {['View','Create','Edit','Delete','Approve','Export'].map(a => (
+                    <th key={a} className="px-3 py-2.5 text-center font-medium">{a}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
+                {['admin','billing_manager','doctor','nurse','receptionist','crm_manager'].map(role =>
+                  ['items','categories','suppliers','stock_movements','purchase_orders'].map((resource, ri) => {
+                    const perm = invPermissions.find(p => p.roleName === role && p.resource === resource) || {};
+                    const permMap = { View:'canView', Create:'canCreate', Edit:'canEdit', Delete:'canDelete', Approve:'canApprove', Export:'canExport' };
+                    return (
+                      <tr key={`inv-${role}-${resource}`} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
+                        {ri === 0 && (
+                          <td className={`px-4 py-2 font-medium capitalize ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`} rowSpan={5}>
+                            {role.replace('_',' ')}
+                          </td>
+                        )}
+                        <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{resource.replace(/_/g,' ')}</td>
+                        {['View','Create','Edit','Delete','Approve','Export'].map(action => (
+                          <td key={action} className="px-3 py-2 text-center">
+                            <button
+                              disabled={!canManageRoles || role === 'admin'}
+                              onClick={async () => {
+                                if (!canManageRoles || role === 'admin') return;
+                                const key = permMap[action];
+                                const newVal = !perm[key];
+                                try {
+                                  const updated = await api.updateInventoryPermission({
+                                    roleName: role, resource,
+                                    canView: perm.canView || false, canCreate: perm.canCreate || false,
+                                    canEdit: perm.canEdit || false, canDelete: perm.canDelete || false,
+                                    canApprove: perm.canApprove || false, canExport: perm.canExport || false,
+                                    [key]: newVal
+                                  });
+                                  setInvPermissions(prev => {
+                                    const idx = prev.findIndex(p => p.roleName === role && p.resource === resource);
+                                    if (idx >= 0) return prev.map((p, i) => i === idx ? updated : p);
+                                    return [...prev, updated];
+                                  });
+                                } catch (err) {
+                                  addNotification('error', 'Failed to update inventory permission');
+                                }
+                              }}
+                              className={`w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors ${
+                                perm[permMap[action]]
+                                  ? 'bg-orange-500 text-white'
+                                  : theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
+                              } ${(!canManageRoles || role === 'admin') ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
+                            >
+                              {perm[permMap[action]] ? <Check className="w-3 h-3" /> : null}
+                            </button>
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className={`text-center py-8 text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+            {invPermLoading ? 'Loading inventory permissions…' : 'No inventory permissions found — visit Inventory Management to initialize.'}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -3706,6 +4557,165 @@ const AdminPanelView = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Accounts Module Backup */}
+      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex items-center gap-2 mb-4">
+          <BookOpen className={`w-5 h-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+          <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accounts Module Backup</h3>
+        </div>
+        <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Download selective backups of your accounts data (chart of accounts, journal entries, AR/AP, statements).
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+          {[
+            { type: 'full',       label: 'Full Accounts Backup', desc: 'All accounts data' },
+            { type: 'accounts',   label: 'Chart of Accounts',    desc: 'GL account definitions' },
+            { type: 'journal',    label: 'Journal Entries',      desc: 'All journal entries + lines' },
+            { type: 'ar',         label: 'Accounts Receivable',  desc: 'All AR records' },
+            { type: 'ap',         label: 'Accounts Payable',     desc: 'All AP records' },
+            { type: 'statements', label: 'Statements',           desc: 'All billing statements' },
+          ].map(b => (
+            <button key={b.type}
+              onClick={async () => {
+                setAcctBackupLoading(true);
+                try {
+                  addNotification('info', `Starting ${b.label} backup…`);
+                  const result = await api.createAccountBackup({ backupType: b.type });
+                  setAcctBackups(prev => [result, ...prev]);
+                  const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = result.fileName; a.click();
+                  URL.revokeObjectURL(url);
+                  addNotification('success', `Backup complete: ${result.recordCount} records`);
+                } catch (err) {
+                  addNotification('error', err.message || 'Accounts backup failed');
+                } finally { setAcctBackupLoading(false); }
+              }}
+              disabled={acctBackupLoading}
+              className={`flex flex-col items-start p-4 rounded-xl border-2 border-dashed transition-all text-left gap-1 ${
+                theme === 'dark'
+                  ? 'border-slate-600 hover:border-emerald-500 hover:bg-emerald-900/20 text-slate-300'
+                  : 'border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 text-gray-700'
+              } ${acctBackupLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Download className={`w-5 h-5 mb-1 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-500'}`} />
+              <span className="font-medium text-sm">{b.label}</span>
+              <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{b.desc}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Accounts backup history */}
+        {acctBackups.length > 0 && (
+          <div>
+            <h4 className={`text-sm font-medium mb-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Recent Accounts Backups</h4>
+            <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <table className="w-full text-xs">
+                <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
+                  <tr>
+                    {['Type','Status','Records','Size','Date'].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-left font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
+                  {acctBackups.slice(0, 10).map(b => (
+                    <tr key={b.id} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
+                      <td className={`px-4 py-2 capitalize ${theme === 'dark' ? 'text-slate-300' : ''}`}>{b.backupType}</td>
+                      <td className="px-4 py-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${b.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{b.status}</span>
+                      </td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.recordCount?.toLocaleString() || '—'}</td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.fileSizeBytes ? `${(b.fileSizeBytes/1024).toFixed(1)} KB` : '—'}</td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Inventory Module Backup */}
+      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex items-center gap-2 mb-4">
+          <Package className={`w-5 h-5 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`} />
+          <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Inventory Module Backup</h3>
+        </div>
+        <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          Download backups of your inventory data (items, categories, suppliers, stock movements, purchase orders).
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+          {[
+            { type: 'full',       label: 'Full Inventory Backup', desc: 'All inventory data' },
+            { type: 'items',      label: 'Items',                 desc: 'Item catalog & stock levels' },
+            { type: 'movements',  label: 'Stock Movements',       desc: 'All receipt/issue records' },
+            { type: 'orders',     label: 'Purchase Orders',       desc: 'PO history & lines' },
+            { type: 'suppliers',  label: 'Suppliers',             desc: 'Supplier directory' },
+            { type: 'categories', label: 'Categories',            desc: 'Category hierarchy' },
+          ].map(b => (
+            <button key={b.type}
+              onClick={async () => {
+                setInvBackupLoading(true);
+                try {
+                  addNotification('info', `Starting ${b.label} backup…`);
+                  const result = await api.createInventoryBackup({ backupType: b.type });
+                  setInvBackups(prev => [result, ...prev]);
+                  const blob = new Blob([JSON.stringify(result.data || result, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = result.fileName || `inventory_backup_${b.type}.json`; a.click();
+                  URL.revokeObjectURL(url);
+                  addNotification('success', `Backup complete: ${result.totalRecords || '?'} records`);
+                } catch (err) {
+                  addNotification('error', err.message || 'Inventory backup failed');
+                } finally { setInvBackupLoading(false); }
+              }}
+              disabled={invBackupLoading}
+              className={`flex flex-col items-start p-4 rounded-xl border-2 border-dashed transition-all text-left gap-1 ${
+                theme === 'dark'
+                  ? 'border-slate-600 hover:border-orange-500 hover:bg-orange-900/20 text-slate-300'
+                  : 'border-gray-200 hover:border-orange-400 hover:bg-orange-50 text-gray-700'
+              } ${invBackupLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Download className={`w-5 h-5 mb-1 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-500'}`} />
+              <span className="font-medium text-sm">{b.label}</span>
+              <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{b.desc}</span>
+            </button>
+          ))}
+        </div>
+
+        {invBackups.length > 0 && (
+          <div>
+            <h4 className={`text-sm font-medium mb-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Recent Inventory Backups</h4>
+            <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <table className="w-full text-xs">
+                <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
+                  <tr>
+                    {['Type','Status','Records','Size','Date'].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-left font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
+                  {invBackups.slice(0, 10).map((b, i) => (
+                    <tr key={b.id || i} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
+                      <td className={`px-4 py-2 capitalize ${theme === 'dark' ? 'text-slate-300' : ''}`}>{b.backupType || b.backup_type || '—'}</td>
+                      <td className="px-4 py-2">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">completed</span>
+                      </td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.totalRecords?.toLocaleString() || '—'}</td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.fileSizeBytes ? `${(b.fileSizeBytes/1024).toFixed(1)} KB` : '—'}</td>
+                      <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -3,12 +3,18 @@ import { X, Heart, Clock, Tag, Shield, AlertCircle } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import { FORM_TEMPLATES } from '../../data/formTemplates';
+
+const CONSENT_FORM_OPTIONS = FORM_TEMPLATES.filter(t =>
+  ['consent', 'privacy', 'legal'].includes(t.category_slug)
+);
 
 const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotification, t, editingOffering = null }) => {
   const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [formTemplates, setFormTemplates] = useState([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -29,7 +35,8 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
     contraindications: '',
     imageUrl: '',
     consentFormRequired: false,
-    consentFormUrl: ''
+    consentFormUrl: '',
+    consentFormId: ''
   });
 
   // Log form view on mount
@@ -58,6 +65,12 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
     };
     loadCategories();
   }, [api, addNotification]);
+
+  useEffect(() => {
+    api.getFormTemplates({ is_active: true })
+      .then(data => setFormTemplates(Array.isArray(data) ? data : (data?.templates || [])))
+      .catch(() => setFormTemplates([]));
+  }, [api]);
 
   // Populate form when editing
   useEffect(() => {
@@ -108,7 +121,8 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
           contraindications: editingOffering.contraindications || '',
           imageUrl: editingOffering.imageUrl || '',
           consentFormRequired: editingOffering.consentFormRequired || false,
-          consentFormUrl: editingOffering.consentFormUrl || ''
+          consentFormUrl: editingOffering.consentFormUrl || '',
+          consentFormId: editingOffering.consentFormId || ''
         });
       }
     };
@@ -154,7 +168,8 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
       contraindications: formData.contraindications.trim() || null,
       imageUrl: formData.imageUrl.trim() || null,
       consentFormRequired: formData.consentFormRequired,
-      consentFormUrl: formData.consentFormRequired ? formData.consentFormUrl.trim() || null : null
+      consentFormUrl: formData.consentFormRequired ? formData.consentFormUrl.trim() || null : null,
+      consentFormId: formData.consentFormRequired ? formData.consentFormId || null : null
     };
 
     try {
@@ -473,17 +488,42 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
               </div>
 
               {formData.consentFormRequired && (
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {t.consentFormUrl || 'Consent Form URL'}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.consentFormUrl}
-                    onChange={(e) => setFormData({...formData, consentFormUrl: e.target.value})}
-                    className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                    placeholder={t.enterConsentFormUrl || 'Enter consent form URL'}
-                  />
+                <div className="space-y-3">
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Select Consent Form Template
+                    </label>
+                    <select
+                      value={formData.consentFormId}
+                      onChange={(e) => setFormData({ ...formData, consentFormId: e.target.value })}
+                      className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    >
+                      <option value="">— Select a consent form —</option>
+                      {CONSENT_FORM_OPTIONS.map(tpl => (
+                        <option key={tpl.id} value={tpl.id}>
+                          {tpl.name}{tpl.subcategory ? ` (${tpl.subcategory})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.consentFormId && (() => {
+                      const selected = CONSENT_FORM_OPTIONS.find(t => t.id === formData.consentFormId);
+                      return selected?.description ? (
+                        <p className="mt-1 text-xs text-gray-500">{selected.description}</p>
+                      ) : null;
+                    })()}
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {t.consentFormUrl || 'Or enter external consent form URL (optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.consentFormUrl}
+                      onChange={(e) => setFormData({ ...formData, consentFormUrl: e.target.value })}
+                      className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      placeholder="https://..."
+                    />
+                  </div>
                 </div>
               )}
             </div>

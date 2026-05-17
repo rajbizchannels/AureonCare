@@ -138,6 +138,54 @@ const EnhancedAIAssistant = ({
       };
     }
 
+    if (lowerQuery.includes('account') && (lowerQuery.includes('receivable') || lowerQuery.includes('ar') || lowerQuery.includes('payable') || lowerQuery.includes('ap') || lowerQuery.includes('journal') || lowerQuery.includes('ledger') || lowerQuery.includes('reconcil') || lowerQuery.includes('balance sheet') || lowerQuery.includes('financial statement') || lowerQuery.includes('chart of account'))) {
+      return {
+        content: "The Accounts Management module provides full double-entry bookkeeping! 📒\n\n**Key features:**\n• Chart of Accounts – Organize accounts by type (Assets, Liabilities, Equity, Revenue, Expenses)\n• Journal Entries – Record balanced debit/credit transactions\n• Accounts Receivable (AR) – Track what patients and payers owe you\n• Accounts Payable (AP) – Track what you owe vendors\n• Bank Reconciliation – Match bank statements to your books\n• Financial Statements – Income statement, balance sheet, trial balance\n\n**To access:** Click 'Accounts' in the main navigation.",
+        suggestions: ['How to create a journal entry?', 'How to reconcile bank statements?', 'How to record AR payments?'],
+        articles: relevantArticles
+      };
+    }
+
+    if (lowerQuery.includes('journal entry') || lowerQuery.includes('debit') || lowerQuery.includes('credit') || lowerQuery.includes('double entry')) {
+      return {
+        content: "Journal entries are the core of double-entry bookkeeping! 📝\n\n**Creating a journal entry:**\n1. Go to Accounts > Journal Entries tab\n2. Click '+ New Journal Entry'\n3. Add entry date and description\n4. Add lines with Account, Debit/Credit, and Amount\n5. The form shows running totals — Debits must equal Credits\n6. Click 'Create Entry' when balanced\n\n**Important:** Never delete entries — void them instead. The system creates a reversing entry automatically.",
+        suggestions: ['What is double-entry bookkeeping?', 'How to void a journal entry?', 'Common journal entry types'],
+        articles: relevantArticles
+      };
+    }
+
+    if (lowerQuery.includes('reconcil') || lowerQuery.includes('bank statement')) {
+      return {
+        content: "Bank reconciliation keeps your books accurate! 🏦\n\n**Steps:**\n1. Go to Accounts > Reconciliation tab\n2. Click '+ New Reconciliation'\n3. Select the bank/credit card account\n4. Set the period dates\n5. Enter the Statement Balance from your bank\n6. Save — the system compares to your book balance\n\n**If there's a discrepancy:**\n• Check for missing transactions\n• Look for bank fees not recorded\n• Check for timing differences\n• Investigate transposition errors\n\nReconcile every account monthly within 10 days of receiving the statement.",
+        suggestions: ['How to investigate discrepancies?', 'Monthly reconciliation checklist', 'Recording bank fees'],
+        articles: relevantArticles
+      };
+    }
+
+    if (lowerQuery.includes('inventory') || lowerQuery.includes('stock') || lowerQuery.includes('supplies') || lowerQuery.includes('purchase order') || lowerQuery.includes(' po ') || lowerQuery.includes('supplier')) {
+      return {
+        content: "The Inventory Management module tracks all your medical supplies! 📦\n\n**Key features:**\n• Items – Catalog with SKU, cost, reorder levels, and expiry dates\n• Stock Movements – Record every receive, dispense, adjust, or transfer\n• Purchase Orders – Formalize supplier orders; receiving a PO auto-updates stock\n• Suppliers – Directory with contact info and lead times\n• Categories – Organize items by type (Medications, PPE, Diagnostic Supplies, etc.)\n\n**To access:** Click 'Inventory' in the main navigation.\n\n**Low stock alerts** trigger when stock ≤ reorder level — visible on the Overview tab.",
+        suggestions: ['How to add inventory items?', 'How to create a purchase order?', 'How to record stock movements?'],
+        articles: relevantArticles
+      };
+    }
+
+    if (lowerQuery.includes('low stock') || lowerQuery.includes('reorder') || lowerQuery.includes('out of stock')) {
+      return {
+        content: "Managing stock levels and reorder alerts! 🔔\n\n**Setting up alerts:**\n1. Go to Inventory > Items tab\n2. Edit an item\n3. Set Reorder Level (minimum before alert)\n4. Set Reorder Quantity (how much to order)\n5. Save\n\nWhen current stock ≤ reorder level, the item is flagged as Low Stock and shown on the Overview dashboard.\n\n**Restocking:**\n1. Create a Purchase Order for the supplier\n2. When goods arrive, open the PO and click 'Receive'\n3. Enter quantities received\n4. Stock levels update automatically",
+        suggestions: ['How to create a purchase order?', 'How to receive a PO?', 'Setting up supplier information'],
+        articles: relevantArticles
+      };
+    }
+
+    if (lowerQuery.includes('currency') || lowerQuery.includes('currency symbol') || lowerQuery.includes('change currency')) {
+      return {
+        content: "Currency is controlled from your Clinic Settings! 💱\n\n**To change currency:**\n1. Go to Admin Panel\n2. Click the 'Clinic Settings' tab\n3. Find the Currency field\n4. Select your currency (USD, EUR, GBP, CAD, AUD, and more)\n5. Click 'Save Clinic Settings'\n\nThe change takes effect immediately — all financial cards on the Dashboard, Accounts, Inventory, RCM, and Reports will update to the new currency symbol.",
+        suggestions: ['Where are Clinic Settings?', 'What currencies are supported?', 'How to access Admin Panel?'],
+        articles: relevantArticles
+      };
+    }
+
     // Default response with documentation search
     if (relevantArticles.length > 0) {
       return {
@@ -148,8 +196,8 @@ const EnhancedAIAssistant = ({
     }
 
     return {
-      content: "I can help you with:\n\n• Appointment scheduling and waitlist\n• Patient management and registration\n• ePrescribe and medication management\n• Lab orders with CPT codes\n• Pharmacy and laboratory directories\n• Claims and payment processing\n• Reports and analytics\n\nTry asking about a specific feature, and I'll provide detailed guidance!",
-      suggestions: ['How to create appointments?', 'What\'s new in v1.1?', 'Show me help topics'],
+      content: "I can help you with:\n\n• Appointment scheduling and waitlist\n• Patient management and registration\n• ePrescribe and medication management\n• Lab orders with CPT codes\n• **Accounts Management** – AR, AP, journal entries, reconciliation\n• **Inventory Management** – stock levels, purchase orders, suppliers\n• Claims and payment processing\n• Currency settings\n• Reports and analytics\n\nTry asking about a specific feature, and I'll provide detailed guidance!",
+      suggestions: ['How to use Accounts module?', 'How to manage inventory?', 'How to change currency?'],
       articles: []
     };
   };
@@ -315,7 +363,7 @@ const EnhancedAIAssistant = ({
           </button>
         </div>
         <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-          💡 Try asking about waitlist, ePrescribe, or lab orders
+          💡 Try: "How to use Accounts?", "Inventory low stock", "Change currency"
         </p>
       </div>
     </div>

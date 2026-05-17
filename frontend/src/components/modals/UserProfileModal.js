@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, MessageCircle, Phone, Edit2, Check } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { getTranslations } from '../../config/translations';
 import { useAudit } from '../../hooks/useAudit';
+import { isPhoneValid, validateOptionalPhone } from '../../utils/validators';
 
 const UserProfileModal = ({
   theme,
@@ -27,6 +28,14 @@ const UserProfileModal = ({
     confirmPassword: ''
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // WhatsApp state — defaults to the user's phone number
+  const [whatsappNumber, setWhatsappNumber] = useState(
+    user?.preferences?.whatsappNumber ?? user?.phone ?? ''
+  );
+  const [editingWhatsapp, setEditingWhatsapp] = useState(false);
+  const [whatsappDraft, setWhatsappDraft] = useState('');
+  const [whatsappDraftError, setWhatsappDraftError] = useState('');
 
   // Log modal open on mount
   useEffect(() => {
@@ -224,6 +233,127 @@ const UserProfileModal = ({
                   />
                 </button>
               </div>
+              {/* WhatsApp Number + Notification Toggle */}
+              <div className={`rounded-lg p-3 space-y-3 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <MessageCircle className="w-4 h-4 text-green-500" />
+                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
+                    WhatsApp
+                  </span>
+                </div>
+
+                {/* WhatsApp number field */}
+                <div className="flex items-center gap-2">
+                  <Phone className={`w-4 h-4 flex-shrink-0 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  {editingWhatsapp ? (
+                    <>
+                      <div className="flex-1 flex flex-col gap-1">
+                        <input
+                          type="tel"
+                          value={whatsappDraft}
+                          onChange={e => { setWhatsappDraft(e.target.value); setWhatsappDraftError(''); }}
+                          placeholder="+1 555 000 0000"
+                          className={`w-full text-sm px-2 py-1 rounded border focus:outline-none ${
+                            whatsappDraftError
+                              ? 'border-red-500 focus:border-red-500'
+                              : 'focus:border-green-500'
+                          } ${
+                            theme === 'dark'
+                              ? 'bg-slate-600 border-slate-500 text-white'
+                              : 'bg-white border-gray-300 text-gray-900'
+                          }`}
+                          autoFocus
+                        />
+                        {whatsappDraftError && (
+                          <p className="text-xs text-red-500">{whatsappDraftError}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const trimmed = whatsappDraft.trim();
+                          const err = validateOptionalPhone(trimmed);
+                          if (err) { setWhatsappDraftError(err); return; }
+                          setWhatsappNumber(trimmed);
+                          setEditingWhatsapp(false);
+                          setWhatsappDraftError('');
+                          const success = await updateUserPreferences({ whatsappNumber: trimmed });
+                          if (success) await addNotification('success', t.preferenceSaved || 'Preference saved');
+                        }}
+                        className="p-1 rounded text-green-500 hover:bg-green-500/10 transition-colors flex-shrink-0"
+                        title="Save"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingWhatsapp(false); setWhatsappDraftError(''); }}
+                        className={`p-1 rounded transition-colors flex-shrink-0 ${theme === 'dark' ? 'text-slate-400 hover:bg-slate-600' : 'text-gray-400 hover:bg-gray-200'}`}
+                        title="Cancel"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className={`flex-1 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        {whatsappNumber || (t.notApplicable || 'N/A')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWhatsappDraft(whatsappNumber);
+                          setEditingWhatsapp(true);
+                        }}
+                        className={`p-1 rounded transition-colors ${
+                          theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-600' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title="Edit WhatsApp number"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* WhatsApp notifications toggle */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {t.whatsappNotifications || 'WhatsApp Notifications'}
+                    </span>
+                    {!isPhoneValid(whatsappNumber) && (
+                      <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        {whatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!isPhoneValid(whatsappNumber)}
+                    onClick={async () => {
+                      if (!isPhoneValid(whatsappNumber)) return;
+                      const newValue = !(user.preferences?.whatsappNotifications ?? false);
+                      const success = await updateUserPreferences({ whatsappNotifications: newValue });
+                      if (success) await addNotification('success', t.preferenceSaved || 'Preference saved');
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      !isPhoneValid(whatsappNumber)
+                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                        : (user.preferences?.whatsappNotifications && isPhoneValid(whatsappNumber))
+                          ? 'bg-green-500 cursor-pointer'
+                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        (user.preferences?.whatsappNotifications && isPhoneValid(whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.darkMode || 'Dark Mode'}</span>
                 <button

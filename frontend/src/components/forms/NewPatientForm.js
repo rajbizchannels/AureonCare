@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, X, Save } from 'lucide-react';
+import { Users, X, Save, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import { FORM_TEMPLATES } from '../../data/formTemplates';
 
 const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -28,6 +29,12 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingPayers, setLoadingPayers] = useState(true);
+  const [showAdditionalForms, setShowAdditionalForms] = useState(false);
+  const [additionalForms, setAdditionalForms] = useState([]);
+
+  const OPTIONAL_FORM_TEMPLATES = FORM_TEMPLATES.filter(t =>
+    ['onboarding', 'consent', 'medical', 'clinical', 'billing'].includes(t.category_slug)
+  ).slice(0, 15);
 
   // Log form view on mount
   useEffect(() => {
@@ -83,9 +90,16 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
     { name: 'Consent for Treatment', slug: 'consent-for-treatment', version: '1.0' }
   ];
 
-  const triggerDefaultIntakeForms = async (patientId) => {
-    try {
-      for (const form of DEFAULT_INTAKE_FORMS) {
+  const triggerIntakeForms = async (patientId, extraForms = []) => {
+    const allForms = [
+      ...DEFAULT_INTAKE_FORMS,
+      ...extraForms.map(f => ({ name: f.name, slug: f.id || f.slug, version: f.version || '1.0' }))
+    ];
+    const seen = new Set();
+    for (const form of allForms) {
+      if (seen.has(form.slug)) continue;
+      seen.add(form.slug);
+      try {
         await api.createFormSubmission({
           template_name: form.name,
           template_version: form.version,
@@ -93,11 +107,14 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
           form_data: {},
           status: 'draft',
           language: 'en',
-          metadata: { trigger: 'patient_registration', template_slug: form.slug }
+          metadata: {
+            trigger: extraForms.find(f => (f.id || f.slug) === form.slug) ? 'practice_sent' : 'patient_registration',
+            template_slug: form.slug
+          }
         });
+      } catch (err) {
+        console.error('Non-critical: Could not trigger form:', form.name, err);
       }
-    } catch (err) {
-      console.error('Non-critical: Could not trigger default intake forms:', err);
     }
   };
 
@@ -141,8 +158,8 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
         },
       });
 
-      // Trigger default intake forms (non-blocking)
-      await triggerDefaultIntakeForms(newPatient.id);
+      // Trigger intake forms (defaults + any additionally selected ones)
+      await triggerIntakeForms(newPatient.id, additionalForms);
 
       // Add computed 'name' field for compatibility
       const patientWithName = {
@@ -469,6 +486,64 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
               </div>
             </div>
           </div>
+
+            {/* Additional Forms (Optional) */}
+            <div className={`rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <button
+                type="button"
+                onClick={() => setShowAdditionalForms(p => !p)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-800' : 'text-gray-700 hover:bg-gray-50'}`}
+              >
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-teal-500" />
+                  <span className="text-sm font-medium">Additional Forms to Send <span className={`text-xs font-normal ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>(Optional){additionalForms.length > 0 ? ` · ${additionalForms.length} selected` : ''}</span></span>
+                </div>
+                {showAdditionalForms ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+              {showAdditionalForms && (
+                <div className={`px-4 pb-4 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-100'}`}>
+                  <p className={`text-xs mt-3 mb-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Select additional forms to send to this patient after registration. Default intake forms will always be included.
+                  </p>
+                  <div className="space-y-1 max-h-56 overflow-y-auto">
+                    {OPTIONAL_FORM_TEMPLATES.map(tmpl => {
+                      const isDefault = DEFAULT_INTAKE_FORMS.some(d => d.slug === (tmpl.id || tmpl.slug));
+                      const isSelected = additionalForms.some(f => (f.id || f.slug) === (tmpl.id || tmpl.slug));
+                      return (
+                        <label
+                          key={tmpl.id || tmpl.slug}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                            isDefault
+                              ? theme === 'dark' ? 'bg-slate-700/40 opacity-60' : 'bg-gray-100 opacity-60'
+                              : isSelected
+                                ? theme === 'dark' ? 'bg-teal-900/30 border border-teal-700/50' : 'bg-teal-50 border border-teal-200'
+                                : theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={isDefault}
+                            checked={isDefault || isSelected}
+                            onChange={e => {
+                              if (isDefault) return;
+                              setAdditionalForms(prev =>
+                                e.target.checked ? [...prev, tmpl] : prev.filter(f => (f.id || f.slug) !== (tmpl.id || tmpl.slug))
+                              );
+                            }}
+                            className="w-4 h-4 rounded text-teal-500"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>{tmpl.name}</p>
+                            <p className={`text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{tmpl.subcategory || tmpl.template_type}</p>
+                          </div>
+                          {isDefault && <span className="text-xs text-teal-500 font-medium flex-shrink-0">Default</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
           <div className={`flex gap-3 mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
             <button
