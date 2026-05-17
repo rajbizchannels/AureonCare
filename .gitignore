@@ -2,3 +2,4 @@ node_modules
 frontend/build
 /backend/uploads/medical-records
 ~$ER_MANUAL.docx
+assets/aureoncare-logo.png
