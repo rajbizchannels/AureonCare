@@ -106,50 +106,58 @@ router.post('/', enforceUserQuota, enforceProviderQuota, async (req, res) => {
 
     const newUser = result.rows[0];
 
-    // Auto-create patient record for new patient users
+    // Auto-create patient record and assign role — non-fatal so the user
+    // creation response always succeeds even if ancillary steps fail.
     if ((newUser.role || 'patient') === 'patient' && newUser.email) {
-      const patientColumnCheck = await pool.query(`
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name = 'patients' AND column_name = 'user_id'
-      `);
-      const hasPatientUserIdColumn = patientColumnCheck.rows.length > 0;
+      try {
+        const patientColumnCheck = await pool.query(`
+          SELECT column_name FROM information_schema.columns
+          WHERE table_name = 'patients' AND column_name = 'user_id'
+        `);
+        const hasPatientUserIdColumn = patientColumnCheck.rows.length > 0;
 
-      const patientCheck = await pool.query(
-        'SELECT id FROM patients WHERE email = $1',
-        [newUser.email]
-      );
-
-      if (patientCheck.rows.length === 0) {
-        const mrnResult = await pool.query(
-          "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
+        const patientCheck = await pool.query(
+          'SELECT id FROM patients WHERE email = $1',
+          [newUser.email]
         );
-        const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
-        const mrn = `MRN-${nextMrnNumber}`;
 
-        if (hasPatientUserIdColumn) {
-          await pool.query(
-            `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
-            [newUser.first_name, newUser.last_name, mrn, '1990-01-01', newUser.email, newUser.phone, newUser.id]
+        if (patientCheck.rows.length === 0) {
+          const mrnResult = await pool.query(
+            "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
           );
-        } else {
-          await pool.query(
-            `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
-             VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
-            [newUser.first_name, newUser.last_name, mrn, '1990-01-01', newUser.email, newUser.phone]
-          );
+          const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
+          const mrn = `MRN-${nextMrnNumber}`;
+
+          if (hasPatientUserIdColumn) {
+            await pool.query(
+              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
+              [newUser.first_name, newUser.last_name, mrn, '1990-01-01', newUser.email, newUser.phone, newUser.id]
+            );
+          } else {
+            await pool.query(
+              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
+               VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
+              [newUser.first_name, newUser.last_name, mrn, '1990-01-01', newUser.email, newUser.phone]
+            );
+          }
         }
+      } catch (patientErr) {
+        console.error('Non-fatal: failed to auto-create patient record for new user:', patientErr.message);
       }
 
-      // Assign patient role in user_roles table
-      const patientRoleResult = await pool.query(
-        "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
-      );
-      if (patientRoleResult.rows.length > 0) {
-        await pool.query(
-          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [newUser.id, patientRoleResult.rows[0].id]
+      try {
+        const patientRoleResult = await pool.query(
+          "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
         );
+        if (patientRoleResult.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [newUser.id, patientRoleResult.rows[0].id]
+          );
+        }
+      } catch (roleErr) {
+        console.error('Non-fatal: failed to assign patient role for new user:', roleErr.message);
       }
     }
 
@@ -179,7 +187,7 @@ router.post('/', enforceUserQuota, enforceProviderQuota, async (req, res) => {
 
 // Update user
 router.put('/:id', async (req, res) => {
-  const { firstName, lastName, first_name, last_name, role, avatar, email, phone, license, specialty, preferences, status, language, country, password } = req.body;
+  const { firstName, lastName, first_name, last_name, role, avatar, email, phone, address, practice, license, specialty, preferences, status, language, country, password } = req.body;
 
   try {
     const pool = req.app.locals.pool;
@@ -225,7 +233,9 @@ router.put('/:id', async (req, res) => {
            phone = COALESCE($6, phone),
            license_number = COALESCE($7, license_number),
            specialty = COALESCE($8, specialty),
-           preferences = COALESCE($9, preferences),
+           preferences = CASE WHEN $9::jsonb IS NOT NULL
+                              THEN preferences || $9::jsonb
+                              ELSE preferences END,
            status = COALESCE($10, status),
            language = COALESCE($11, language),
            country = COALESCE($12, country),
@@ -249,7 +259,7 @@ router.put('/:id', async (req, res) => {
         country,
         timezone,
         passwordHash,
-        req.params.id
+        req.params.id,
       ]
     );
 
