@@ -483,7 +483,8 @@ const api = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.error || 'Failed to update user');
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error((errorData.message || errorData.error || 'Failed to update user') + detail);
     }
     return response.json();
   },
@@ -499,7 +500,8 @@ const api = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.error || 'Failed to create user');
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error((errorData.message || errorData.error || 'Failed to create user') + detail);
     }
     return response.json();
   },
