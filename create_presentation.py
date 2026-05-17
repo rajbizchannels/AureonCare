@@ -68,13 +68,13 @@ def add_title_slide():
     p.font.color.rgb = GOLD_LIGHT
     p.alignment = PP_ALIGN.CENTER
     
-    # Pre-launch badge
+    # Pre-beta badge
     badge_box = slide.shapes.add_textbox(
-        Inches(3), Inches(4.5),
-        Inches(4), Inches(0.5)
+        Inches(2.5), Inches(4.5),
+        Inches(5), Inches(0.5)
     )
     badge_frame = badge_box.text_frame
-    badge_frame.text = "Pre-Launch - Q2 2026"
+    badge_frame.text = "Pre-Beta Development"
     p = badge_frame.paragraphs[0]
     p.font.size = Pt(20)
     p.font.bold = True
@@ -345,16 +345,16 @@ add_table_slide(
     ["Category", "Projected Annual Value"]
 )
 
-# Slide 5: Beta Program Results
+# Slide 5: Development Status
 add_stats_slide(
-    "📊 Beta Program Validation",
+    "🔬 Development Status & Readiness",
     [
-        ("88%", "Module Adoption"),
-        ("4.4★", "User Satisfaction"),
-        ("25-35", "Days to Implement"),
-        ("85%", "Search Adoption"),
-        ("45%", "Ticket Reduction"),
-        ("38%", "Faster Claims")
+        ("95%", "Code Complete"),
+        ("100%", "Documentation"),
+        ("14", "Modules Ready"),
+        ("Q1 2026", "Beta Launch"),
+        ("10-15", "Beta Practices"),
+        ("Q2 2026", "General Launch")
     ]
 )
 
@@ -410,25 +410,26 @@ add_table_slide(
     ["Feature", "AureonCare", "Typical Competitors"]
 )
 
-# Slide 9: Launch Roadmap
+# Slide 9: Development & Launch Roadmap
 add_content_slide(
-    "🗺️ Launch & Growth Roadmap",
+    "🗺️ Development & Launch Roadmap",
     [
-        "Q2 2026 (April-June) - Launch:",
-        "🚀 Product launch (April 1, 2026)",
-        "🎯 Onboard first 50 practices",
-        "📱 Mobile companion app release",
-        "🔗 Integration marketplace",
+        "Q1 2026 (Jan-Mar) - Beta Phase:",
+        "🔬 Complete final development & testing",
+        "🎯 Launch closed beta (10-15 practices)",
+        "🐛 Bug fixes & optimization",
+        "✅ Complete security audits",
         "",
-        "Q3 2026 (July-September) - Growth:",
-        "🎯 Reach 100 active practices",
+        "Q2 2026 (Apr-Jun) - General Launch:",
+        "🚀 Official product launch (April 2026)",
+        "🎯 Onboard first 50 paying practices",
+        "📱 Mobile app (beta) release",
+        "🔗 Integration marketplace launch",
+        "",
+        "Q3-Q4 2026 - Growth & Scale:",
+        "🎯 Reach 150 practices by year-end",
         "🤖 AI Clinical Assistant launch",
-        "🏥 Specialty templates (5 specialties)",
-        "",
-        "Q4 2026 (October-December) - Scale:",
-        "🎯 Target 150 practices by year-end",
-        "💳 Patient financial automation",
-        "🎯 Value-based care reporting"
+        "💳 Advanced features rollout"
     ]
 )
 
@@ -464,7 +465,7 @@ add_content_slide(
         "For Investors & Partners:",
         "Investment overview • Financial projections • Partnership opportunities"
     ],
-    "Launch: April 2026 | Limited Early Adopter Slots Available"
+    "Beta: Q1 2026 | Launch: Q2 2026 | Beta & Early Adopter Slots Available"
 )
 
 # Slide 12: Summary
@@ -474,7 +475,7 @@ add_stats_slide(
         ("650-750%", "Projected ROI"),
         ("30-Day", "Implementation"),
         ("14", "Integrated Modules"),
-        ("Q2 2026", "Launch Date"),
+        ("Q1→Q2", "Beta→Launch"),
         ("$850K+", "Net Benefit"),
         ("20%", "Early Adopter Discount")
     ]
