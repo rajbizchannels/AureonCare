@@ -344,15 +344,19 @@
         {
           "id": "claims",
           "title": "Claims Management",
-          "path": "/docs/index.html#claims",
-          "url": "/docs/index.html#claims",
+          "path": "/docs/guides/claims.html",
+          "url": "/docs/guides/claims.html",
           "keywords": [
             "claims",
             "billing",
             "insurance",
             "submit",
             "837",
-            "eob"
+            "eob",
+            "cpt",
+            "icd-10",
+            "denial",
+            "appeal"
           ],
           "summary": "Create and submit insurance claims electronically\n\nSubmit claims to insurance payers with real-time eligibility verification and status tracking.",
           "content": "**Creating Insurance Claims:**\n\n**Accessing Claims:**\n1. Go to Revenue Cycle Management module\n2. Click 'Claims' tab\n3. Click '+ New Claim' button\n\n**Automatic Claim Generation:**\nClaims auto-generate from:\n• Completed appointments\n• Signed clinical encounter notes\n• Procedures performed\n• Services rendered\n\nSystem automatically:\n• Links diagnosis codes (ICD-10)\n• Links procedure codes (CPT)\n• Pulls patient insurance information\n• Calculates charges\n• Validates claim data\n\n**Manual Claim Creation:**\n\nStep 1: Patient Selection\n• Search by name or MRN\n• System displays active insurance\n• Verify coverage is active\n\nStep 2: Service Information\n• Date of Service (DOS)\n• Place of Service (POS code)\n• Type of Service\n• Rendering Provider\n• Referring Provider (if applicable)\n\nStep 3: Diagnosis Codes (ICD-10)\n• Primary diagnosis (required)\n• Secondary diagnoses (up to 11)\n• Diagnosis pointer for each procedure\n• Search by code or description\n\nStep 4: Procedure Codes (CPT/HCPCS)\nFor each service:\n• CPT/HCPCS code\n• Modifiers (if applicable)\n• Units/quantity\n• Charge amount\n• Diagnosis pointer (links to ICD-10)\n\n**Common CPT Codes:**\n• 99213 - Established patient office visit (15 min)\n• 99214 - Established patient office visit (25 min)\n• 99203 - New patient office visit (30 min)\n• 99204 - New patient office visit (45 min)\n• 99396 - Preventive visit, established\n\nStep 5: Review and Validate\nSystem checks:\n• Coverage verification\n• Medical necessity (diagnosis supports procedure)\n• Duplicate claim detection\n• Missing required fields\n• Coding errors\n\n**Real-Time Eligibility Verification:**\n1. Click 'Verify Coverage' button\n2. System contacts payer in real-time\n3. Returns:\n   • Active/Inactive status\n   • Deductible met/remaining\n   • Co-pay amount\n   • Co-insurance percentage\n   • Out-of-pocket max\n   • Prior authorization requirements\n\n**Submitting Claims:**\n\n**Electronic Submission (837):**\n1. Review claim details\n2. Click 'Submit Electronically'\n3. Claim sent via clearinghouse\n4. Receive acknowledgement (999/997)\n5. Status updates automatically\n\n**Paper Submission (CMS-1500):**\n1. Click 'Print CMS-1500'\n2. Review form for accuracy\n3. Print and sign\n4. Mail to payer address\n5. Manually track status\n\n**Claim Status Tracking:**\n\n• Draft - Claim created, not submitted\n• Ready to Submit - Validated, awaiting submission\n• Submitted - Sent to payer\n• Acknowledged - Payer received claim\n• In Process - Payer processing claim\n• Accepted - Claim approved for payment\n• Paid - Payment received (EOB posted)\n• Denied - Claim rejected by payer\n• Appealed - Denial appealed\n• Closed - Claim finalized\n\n**Claim Denials:**\n\nCommon Denial Reasons:\n• Coverage terminated\n• Services not covered\n• Missing/invalid diagnosis code\n• Medical necessity not met\n• Timely filing limit exceeded\n• Duplicate claim\n• Incorrect patient information\n\n**Handling Denials:**\n1. Click denied claim\n2. Review denial reason code\n3. Check EOB/remittance advice\n4. Determine action:\n   • Correct and resubmit\n   • Appeal with documentation\n   • Write off as adjustment\n   • Bill patient (if applicable)\n\n**Corrected Claims:**\n1. Open denied claim\n2. Click 'Create Corrected Claim'\n3. Update incorrect information\n4. Mark as 'Corrected Claim' (Claim Frequency 7)\n5. Reference original claim number (ICN)\n6. Resubmit\n\n**Appeals Process:**\n1. Click 'Appeal Denial'\n2. Select appeal level (1st, 2nd, 3rd)\n3. Upload supporting documents:\n   • Clinical notes\n   • Lab results\n   • Medical necessity letter\n   • Peer-reviewed articles\n4. Write appeal letter\n5. Submit appeal\n6. Track appeal status\n\n**Payment Posting (EOB/ERA):**\n\nWhen payment received:\n1. System receives ERA (Electronic Remittance)\n2. Or manually enter EOB (Explanation of Benefits)\n3. Post payment:\n   • Amount paid by insurance\n   • Patient responsibility\n   • Adjustments/contractual write-offs\n   • Denial amounts\n4. System updates:\n   • Patient account balance\n   • Claim status to 'Paid'\n   • Generates patient statement if balance due\n\n**Batch Claims Processing:**\n\n1. Go to Claims > Batch Processing\n2. Filter claims:\n   • Date range\n   • Payer\n   • Provider\n   • Status (Ready to Submit)\n3. Select multiple claims\n4. Bulk actions:\n   • Submit all\n   • Validate all\n   • Export to file\n   • Print batch\n\n**Claims Reporting:**\n\n**Available Reports:**\n• Claims Aging (by payer, provider)\n• Denial Rate Analysis\n• Days in A/R\n• Clean Claim Rate\n• Payment by Payer\n• Top Denial Reasons\n• Revenue by CPT Code\n\n**Best Practices:**\n• Verify insurance before each visit\n• Submit claims within 24-48 hours\n• Review claims for accuracy before submission\n• Monitor aging reports weekly\n• Follow up on claims >30 days\n• Appeal valid denials promptly\n• Document all payer communications\n• Keep CPT and ICD-10 codes current\n• Train staff on coding updates\n• Use correct modifiers\n• Link appropriate diagnoses to procedures\n• Check timely filing limits by payer",
@@ -364,19 +368,92 @@
         {
           "id": "payments",
           "title": "Payment Processing",
-          "path": "/docs/index.html#payments",
-          "url": "/docs/index.html#payments",
+          "path": "/docs/guides/payments.html",
+          "url": "/docs/guides/payments.html",
           "keywords": [
             "payment",
             "process",
             "credit card",
-            "cash"
+            "cash",
+            "copay",
+            "coinsurance",
+            "deductible",
+            "refund"
           ],
-          "content": "Processing patient payments and managing transactions",
+          "summary": "Record and track patient payments\n\nProcess payments via cash, card, check, ACH, or patient portal with automatic receipt generation.",
+          "content": "Processing patient payments and managing transactions. Record payments from multiple sources, post to claims, generate receipts, and reconcile daily deposits. Support for copays, coinsurance, deductibles, and self-pay amounts.",
           "roles": [
             "admin",
             "billing_manager",
             "receptionist"
+          ]
+        },
+        {
+          "id": "billing-overview",
+          "title": "Billing & Revenue Cycle Overview",
+          "path": "/docs/guides/billing-overview.html",
+          "url": "/docs/guides/billing-overview.html",
+          "keywords": [
+            "billing",
+            "revenue cycle",
+            "rcm",
+            "overview",
+            "workflow",
+            "accounts receivable",
+            "ar",
+            "collection"
+          ],
+          "summary": "Complete guide to Revenue Cycle Management operations\n\nManage the entire billing process from patient registration through final payment collection.",
+          "content": "**Revenue Cycle Management Overview**\n\nThe RCM module manages the complete billing lifecycle including patient registration, charge capture, claims submission, payment posting, denial management, patient billing, and financial reporting.\n\n**Key RCM Workflows:**\n• Claims Management - Create and submit insurance claims\n• Payment Processing - Record patient and insurance payments\n• Denial Management - Handle rejected claims\n• Insurance Payer Management - Maintain payer information\n• Financial Reporting - Track practice performance\n\n**RCM Dashboard Metrics:**\n• Days in A/R (Target: 30-40 days)\n• Collection Rate (Target: >95%)\n• Clean Claim Rate (Target: >90%)\n• Denial Rate (Target: <5%)\n• Net Collection Rate (Target: >95%)\n\n**Best Practices:**\n• Submit claims within 24-48 hours of service\n• Verify insurance before every appointment\n• Collect copays at time of service\n• Review A/R aging weekly\n• Address denials within 24 hours\n• Post payments daily\n• Reconcile deposits daily\n• Monitor KPIs monthly",
+          "roles": [
+            "admin",
+            "billing_manager"
+          ]
+        },
+        {
+          "id": "insurance-payers",
+          "title": "Insurance Payers Management",
+          "path": "/docs/guides/insurance-payers.html",
+          "url": "/docs/guides/insurance-payers.html",
+          "keywords": [
+            "insurance",
+            "payer",
+            "payers",
+            "insurance company",
+            "commercial",
+            "medicare",
+            "medicaid",
+            "fee schedule",
+            "electronic payer id"
+          ],
+          "summary": "Manage insurance companies and payers\n\nMaintain payer information, submission requirements, fee schedules, and authorization rules.",
+          "content": "**Insurance Payers Management**\n\nManage all insurance companies and payers your practice bills. Maintain accurate payer information for smooth claims submission.\n\n**Payer Types:**\n• Commercial Insurance (BCBS, UnitedHealthcare, Aetna)\n• Government Programs (Medicare, Medicaid, TRICARE)\n• Managed Care (HMO, PPO, EPO)\n• Workers' Compensation\n\n**Adding a Payer:**\n1. Go to RCM > Insurance Payers\n2. Click + Add Insurance Payer\n3. Enter payer information:\n   • Payer name (required)\n   • Payer type\n   • Electronic Payer ID (for EDI)\n   • Address and contact info\n   • Claims submission method\n4. Configure payer-specific settings:\n   • Prior authorization requirements\n   • Timely filing limits\n   • Fee schedules\n   • Accepted codes\n5. Save Payer\n\n**Payer Settings:**\n• Submission requirements\n• Prior auth rules\n• Fee schedules\n• Expected payment timelines\n\n**Eligibility Verification:**\nWhen properly configured, verify patient coverage in real-time including deductible, copay, coinsurance, and coverage status.\n\n**Best Practices:**\n• Verify Electronic Payer ID with clearinghouse\n• Document special requirements in Notes\n• Update fee schedules when contracts change\n• Review payer information quarterly\n• Track denial patterns by payer",
+          "roles": [
+            "admin",
+            "billing_manager"
+          ]
+        },
+        {
+          "id": "financial-reports",
+          "title": "Financial Reports & Analytics",
+          "path": "/docs/guides/financial-reports.html",
+          "url": "/docs/guides/financial-reports.html",
+          "keywords": [
+            "reports",
+            "financial",
+            "analytics",
+            "revenue",
+            "kpi",
+            "metrics",
+            "ar aging",
+            "collection rate",
+            "denial rate"
+          ],
+          "summary": "RCM reporting and business intelligence\n\nAccess claims, payment, revenue, A/R, and productivity reports with export options.",
+          "content": "**Financial Reports & Analytics**\n\nComprehensive reports to monitor practice performance and make data-driven decisions.\n\n**Report Categories:**\n• Claims Reports - Submission status, aging, clean claim rate\n• Payment Reports - Daily deposits, payment methods, reconciliation\n• Revenue Reports - By service, provider, payer, time period\n• A/R Reports - Aging, outstanding balances, days in A/R\n• Denial Reports - Denial reasons, trends, appeal status\n• Productivity Reports - Provider volume, RVUs, patient counts\n\n**Running Reports:**\n1. Go to RCM > Reports\n2. Select report type\n3. Set parameters (date range, provider, payer)\n4. Generate Report\n5. Export (PDF, Excel, CSV)\n\n**Key Performance Indicators:**\n• Days in A/R: (Total A/R ÷ Avg Daily Charges) - Target: 30-40\n• Collection Rate: (Payments ÷ Charges) × 100 - Target: >95%\n• Clean Claim Rate: (Accepted ÷ Total) × 100 - Target: >90%\n• Denial Rate: (Denied ÷ Total) × 100 - Target: <5%\n\n**Scheduled Reports:**\nAutomatically email reports on daily, weekly, monthly, or quarterly schedules.\n\n**Export Options:**\n• PDF - Professional presentation, printing\n• Excel - Data analysis, pivot tables\n• CSV - System integration, import\n\n**Best Practices:**\n• Review daily: Deposit report, claims summary\n• Review weekly: A/R aging, denials\n• Review monthly: Revenue, productivity, KPIs\n• Review quarterly: Strategic analysis, payer performance",
+          "roles": [
+            "admin",
+            "billing_manager"
           ]
         }
       ]

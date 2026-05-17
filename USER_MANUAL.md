@@ -1,6 +1,6 @@
 # AureonCare User Manual
 
-**Version 1.2 - Updated January 2026**
+**Version 1.2 - Updated February 2026**
 **Modern Healthcare Practice Management System**
 
 ---
@@ -160,6 +160,26 @@ This manual is designed for:
 - Consistent design across all confirmation dialogs
 - Better visual feedback for user actions
 - Improved accessibility
+
+🆕 **Comprehensive Help & Documentation System**
+- Interactive in-app help drawer accessible from any page
+- AI-powered assistant for contextual help
+- 9 comprehensive documentation guides covering all major features:
+  - Clinical Notes & SOAP documentation
+  - Vital signs recording and management
+  - Telehealth video consultations
+  - Insurance claims management
+  - Payment processing and collections
+  - Reports and analytics
+  - User management and permissions
+  - Practice settings configuration
+  - Common issues troubleshooting
+- Publicly accessible documentation website (no login required)
+- Professional styling matching main AureonCare theme
+- Search functionality across all help articles
+- Step-by-step instructions with tables, lists, and best practices
+- Contextual help based on current module
+- Quick access via Help icon in header or ?help=true URL parameter
 
 ### 1.6 What's New in Version 1.1 (December 2025)
 
@@ -404,6 +424,187 @@ When you click a search result, AureonCare automatically:
 - You can only search and view records you have permission to access
 - Search results respect role-based permissions
 - Hidden/archived records not shown in search results
+
+### 2.7 Help & Documentation System
+
+**🆕 NEW IN V1.2:** Comprehensive in-app help and documentation!
+
+AureonCare now includes a powerful help system to assist you with any questions or tasks. Get instant answers, step-by-step instructions, and contextual guidance without leaving the application.
+
+#### 2.7.1 Accessing Help
+
+**In-App Help Drawer:**
+
+1. Click the **Help icon** (question mark) in the top header
+2. Or add `?help=true` to any URL to open help automatically after login
+3. Help drawer slides in from the right side of the screen
+
+**Documentation Website:**
+
+1. Navigate to `/docs` from your browser (e.g., `http://localhost:3001/docs`)
+2. No login required - publicly accessible
+3. Browse all documentation guides and articles
+
+#### 2.7.2 Help Drawer Features
+
+The help drawer provides three main tabs:
+
+**📚 Browse Tab:**
+- Explore all help articles organized by category:
+  - **Getting Started** - Login, navigation, dashboard basics
+  - **Clinical Workflows** - Patient management, EHR, prescriptions, diagnoses
+  - **Revenue Cycle** - Claims, payments, billing
+  - **Administration** - User management, settings, reports
+  - **Troubleshooting** - Common issues and solutions
+- Click any article to view full content
+- Click "Read Full Documentation" to open detailed guide in new tab
+
+**🔍 Search Tab:**
+- Search across all help articles
+- Real-time results as you type
+- Shows article title, category, and summary (headline + 2 lines)
+- Click any result to view full article
+- Search by keywords, module names, or topics
+
+**🤖 AI Assistant Tab:**
+- Interactive AI-powered help assistant
+- Ask questions in natural language
+- Get contextual answers based on your current module
+- Suggested questions to get started
+- View related documentation articles
+- Click articles to see full content
+- AI provides specific, actionable guidance
+
+#### 2.7.3 Comprehensive Documentation Guides
+
+The following detailed guides are available in the documentation system:
+
+| Guide | Description | Access URL |
+|-------|-------------|------------|
+| **Clinical Notes** | Complete guide to clinical documentation with SOAP notes format, templates, macros, voice dictation, signing procedures, and addendums | `/docs/guides/clinical-notes.html` |
+| **Vital Signs** | Vital signs management including recording methods, normal ranges, color-coded alerts, trending, and graphs | `/docs/guides/vitals.html` |
+| **Telehealth** | Virtual care guide covering scheduling, video controls, billing with CPT codes and Modifier 95, privacy, security, and troubleshooting | `/docs/guides/telehealth.html` |
+| **Claims Management** | Insurance claims workflow including CPT codes, eligibility verification, submissions (EDI 837, CMS-1500), claim status, denials, and appeals | `/docs/guides/claims.html` |
+| **Payment Processing** | Complete payment guide with payment methods (Cash, Check, Card, ACH, Portal), payment types, posting to claims, refunds, and reports | `/docs/guides/payments.html` |
+| **Reports & Analytics** | Reports system covering clinical, operational, and financial reports with parameters, filters, exports (PDF, Excel, CSV), and scheduled reports | `/docs/guides/reports.html` |
+| **User Management** | User administration with v1.2 features including language selection (8 languages with auto-switching), inline forms, role assignment, and permissions for all 14 modules | `/docs/guides/user-management.html` |
+| **Practice Settings** | Practice configuration guide covering organization info, working hours, appointment settings, billing, communication, security, integrations, and OAuth cloud backups | `/docs/guides/practice-settings.html` |
+| **Common Issues** | Troubleshooting guide for login issues, performance problems, appointments, prescriptions, claims, telehealth, data entry, and browser compatibility | `/docs/troubleshooting/common-issues.html` |
+
+#### 2.7.4 Documentation Features
+
+**Professional Styling:**
+- Blue gradient theme matching main AureonCare interface
+- Responsive design for desktop, tablet, and mobile
+- Clean, readable layout with proper typography
+- Consistent headers, footers, and navigation
+
+**Comprehensive Content:**
+- Step-by-step instructions for all major workflows
+- Tables summarizing key information (CPT codes, vital ranges, payment types, etc.)
+- Lists of features and options
+- Best practices and tips
+- Common questions and answers
+- Visual hierarchy with headings and sections
+
+**No Authentication Required:**
+- All documentation is publicly accessible
+- No login needed to browse guides
+- Direct URL access for sharing with team members
+- Can be accessed from any device or browser
+
+**Easy Navigation:**
+- Home button to return to main website
+- Back to documentation link on each page
+- Hash-based navigation for deep linking
+- Breadcrumb navigation showing current location
+
+#### 2.7.5 Using the AI Assistant
+
+The AI Assistant provides intelligent, contextual help:
+
+**How to Use:**
+
+1. Open Help Drawer and click **AI Assistant** tab
+2. Type your question in the chat input
+3. Press Enter or click Send
+4. AI analyzes your question and current context
+5. Receive detailed answer with relevant documentation links
+6. Click suggested articles to learn more
+
+**Example Questions:**
+
+- "How do I create a new patient?"
+- "What are the steps to submit a claim?"
+- "How do I schedule a telehealth appointment?"
+- "Where can I find payment reports?"
+- "How do I add a new user with specific permissions?"
+- "What should I do if a patient's chart won't load?"
+
+**AI Assistant Features:**
+
+- **Context-Aware:** Knows which module you're currently using
+- **Documentation Links:** Provides relevant help articles with each response
+- **Conversational:** Ask follow-up questions for clarification
+- **Suggested Questions:** Click pre-written questions to get started
+- **Article Preview:** View full article content in modal without leaving chat
+- **Persistent History:** See previous questions and answers in session
+
+**Tips for Best Results:**
+
+💡 **Be Specific:** "How do I record vital signs?" is better than "vitals?"
+💡 **Include Context:** "How do I void a posted payment?" vs "void payment"
+💡 **Ask Follow-ups:** Get clarification or more details on any answer
+💡 **Check Articles:** Click related articles for comprehensive step-by-step guides
+
+#### 2.7.6 Help Access by Module
+
+Help is contextual - when you open the help drawer from a specific module, you'll see:
+
+- Relevant articles for that module highlighted
+- AI Assistant knows your current module context
+- Search results prioritized by relevance to current module
+- Quick actions specific to the module you're working in
+
+**Module-Specific Help:**
+
+| Module | Contextual Help Includes |
+|--------|-------------------------|
+| **Patients** | Patient registration, searching, demographics, allergies, PMH, family history |
+| **Appointments** | Scheduling, rescheduling, cancellations, waitlist, calendar views |
+| **EHR/Medical Records** | Clinical notes, SOAP format, vital signs, templates, macros, signing |
+| **Prescriptions** | ePrescribe workflow, medication search, drug interactions, refills |
+| **Diagnoses** | ICD code search, SOAP notes, linking prescriptions, diagnosis tracking |
+| **Telehealth** | Session setup, video controls, troubleshooting, billing, documentation |
+| **Lab Orders** | Creating orders, CPT codes, tracking results, printing orders |
+| **Claims** | Creating claims, CPT codes, submissions, status tracking, denials |
+| **Payments** | Recording payments, payment types, posting, refunds, reports |
+| **Reports** | Accessing reports, parameters, filters, exports, scheduled reports |
+| **Administration** | User management, roles, permissions, settings, backups, audit logs |
+
+#### 2.7.7 Getting Help When You Need It
+
+**During Onboarding:**
+- First-time users can access guided tours (opt-in)
+- Help drawer provides getting started articles
+- AI Assistant answers common beginner questions
+
+**While Working:**
+- Click Help icon anytime you have questions
+- Search for specific topics instantly
+- Get step-by-step guidance without leaving your workflow
+
+**For Troubleshooting:**
+- Access comprehensive troubleshooting guide
+- Search for error messages or symptoms
+- AI Assistant helps diagnose common issues
+- Links to technical support when needed
+
+**For Advanced Features:**
+- Detailed guides for complex workflows
+- Best practices from clinical and operational experts
+- Tips for optimizing efficiency
+- Instructions for all v1.2 features
 
 ---
 
@@ -4338,12 +4539,50 @@ A: Credit card, debit card, cash, check, bank transfer, and insurance (varies by
 
 ### 21.8 Getting Help
 
-**Contact Methods:**
+**🆕 In-App Help System (NEW IN V1.2):**
+
+**Help Drawer:**
+1. Click the **Help icon** (?) in the top header
+2. Browse articles by category or search for specific topics
+3. Use AI Assistant for interactive help and answers
+4. Access comprehensive documentation guides
+5. Get contextual help based on your current module
+
+**Documentation Website:**
+- Navigate to `/docs` (e.g., `http://localhost:3001/docs`)
+- No login required - publicly accessible
+- 9 comprehensive guides covering all major features
+- Step-by-step instructions with tables and best practices
+- Professional styling matching AureonCare theme
+
+**AI Assistant:**
+- Ask questions in natural language
+- Get instant answers with relevant documentation links
+- Context-aware based on current module
+- View related articles and guides
+- Available 24/7 within the application
+
+**Comprehensive Guides Available:**
+- Clinical Notes & SOAP documentation (`/docs/guides/clinical-notes.html`)
+- Vital Signs management (`/docs/guides/vitals.html`)
+- Telehealth consultations (`/docs/guides/telehealth.html`)
+- Claims management (`/docs/guides/claims.html`)
+- Payment processing (`/docs/guides/payments.html`)
+- Reports & analytics (`/docs/guides/reports.html`)
+- User management (`/docs/guides/user-management.html`)
+- Practice settings (`/docs/guides/practice-settings.html`)
+- Troubleshooting (`/docs/troubleshooting/common-issues.html`)
+
+See **Section 2.7 Help & Documentation System** for complete details on using the help system.
 
 **Technical Support:**
+
+If you need additional assistance beyond the help system:
+
 - Email: support@aureoncare.com
 - Phone: [Clinic phone number]
 - Live chat: Available during business hours
+- Support ticket system via Administration > Support
 
 **For Medical Questions:**
 - Contact your provider directly
@@ -4355,6 +4594,18 @@ A: Credit card, debit card, cash, check, bank transfer, and insurance (varies by
 - [Insert clinic hours]
 
 ⚠️ **For Medical Emergencies:** Call 911 or go to the nearest emergency room. Do not use AureonCare for emergencies.
+
+**When Contacting Support:**
+
+Provide the following information to get faster help:
+
+- Your name and role
+- Description of the issue
+- Steps you took before the problem occurred
+- Error messages (take a screenshot if possible)
+- Browser and operating system you're using
+- Module/feature you were working with
+- Date and time the issue occurred
 
 ---
 
@@ -4686,6 +4937,21 @@ A: Credit card, debit card, cash, check, bank transfer, and insurance (varies by
 ---
 
 ## Document Version History
+
+**Version 1.2** - January-February 2026 - Major Update with:
+- Universal Search across all 14 modules
+- Comprehensive Data Archiving System
+- Complete Audit Logging for compliance
+- Cloud Backup Integration (OAuth for Google Drive & OneDrive)
+- SOAP Notes in Diagnosis Management
+- Enhanced Patient Registration (Allergies, PMH, Family History)
+- Expanded Roles & Permissions for all 14 modules
+- User Management improvements (Language selection, inline forms)
+- Themed Modals and Confirmations
+- **Comprehensive Help & Documentation System** with 9 detailed guides
+- In-app Help Drawer with Browse, Search, and AI Assistant tabs
+- Publicly accessible documentation website
+- Context-aware AI-powered help assistant
 
 **Version 1.1** - December 2025 - Updated with:
 - Waitlist management integration into Practice Management

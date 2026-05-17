@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Financial Reports - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📊 Financial Reports & Analytics</h1>
+                    <p>RCM reporting and business intelligence</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.2</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Financial Reports & Analytics</h1>
+            <p>AureonCare provides comprehensive <strong>financial reports</strong> to help you monitor practice performance, track revenue, manage accounts receivable, and make data-driven business decisions.</p>
+
+            <h2>Accessing Financial Reports</h2>
+            <ol>
+                <li>Navigate to <strong>Revenue Cycle Management</strong> (RCM)</li>
+                <li>Click the <strong>Reports</strong> tab</li>
+                <li>Browse available reports by category</li>
+                <li>Select a report to run</li>
+            </ol>
+
+            <h2>Report Categories</h2>
+
+            <h3>1. Claims Reports</h3>
+            <p>Track insurance claim submissions, status, and performance.</p>
+
+            <h3>2. Payment Reports</h3>
+            <p>Monitor all payments received from patients and insurance companies.</p>
+
+            <h3>3. Revenue Reports</h3>
+            <p>Analyze practice revenue by provider, service, payer, and time period.</p>
+
+            <h3>4. Accounts Receivable (A/R) Reports</h3>
+            <p>Track outstanding balances and aging of unpaid claims and patient balances.</p>
+
+            <h3>5. Denial Reports</h3>
+            <p>Analyze claim denials to identify trends and reduce future denials.</p>
+
+            <h3>6. Productivity Reports</h3>
+            <p>Measure provider productivity and practice efficiency.</p>
+
+            <h2>Available Reports</h2>
+
+            <h3>Claims Reports</h3>
+            <table>
+                <tr>
+                    <th>Report Name</th>
+                    <th>Description</th>
+                    <th>Use Case</th>
+                </tr>
+                <tr>
+                    <td><strong>Claims Summary</strong></td>
+                    <td>All claims by status, date range, payer</td>
+                    <td>Daily/weekly claims review</td>
+                </tr>
+                <tr>
+                    <td><strong>Claims by Provider</strong></td>
+                    <td>Claims submitted per provider</td>
+                    <td>Provider productivity analysis</td>
+                </tr>
+                <tr>
+                    <td><strong>Claims by Payer</strong></td>
+                    <td>Claims submitted to each insurance payer</td>
+                    <td>Payer relationship analysis</td>
+                </tr>
+                <tr>
+                    <td><strong>Claims by Status</strong></td>
+                    <td>Breakdown of pending, submitted, approved, denied, paid</td>
+                    <td>Monitor claim pipeline</td>
+                </tr>
+                <tr>
+                    <td><strong>Claims Aging</strong></td>
+                    <td>Outstanding claims by age (0-30, 31-60, 61-90, 90+)</td>
+                    <td>Follow up on old claims</td>
+                </tr>
+                <tr>
+                    <td><strong>Clean Claim Rate</strong></td>
+                    <td>% of claims accepted on first submission</td>
+                    <td>Quality metric monitoring</td>
+                </tr>
+            </table>
+
+            <h3>Payment Reports</h3>
+            <table>
+                <tr>
+                    <th>Report Name</th>
+                    <th>Description</th>
+                    <th>Use Case</th>
+                </tr>
+                <tr>
+                    <td><strong>Daily Deposit Report</strong></td>
+                    <td>All payments received by date</td>
+                    <td>Daily reconciliation</td>
+                </tr>
+                <tr>
+                    <td><strong>Payment by Method</strong></td>
+                    <td>Cash, card, check, ACH, insurance breakdown</td>
+                    <td>Payment method analysis</td>
+                </tr>
+                <tr>
+                    <td><strong>Payment Reconciliation</strong></td>
+                    <td>Compare recorded payments to bank deposits</td>
+                    <td>Accounting reconciliation</td>
+                </tr>
+                <tr>
+                    <td><strong>Unapplied Payments</strong></td>
+                    <td>Payments not yet posted to claims/invoices</td>
+                    <td>Find unposted payments</td>
+                </tr>
+                <tr>
+                    <td><strong>Payment Trends</strong></td>
+                    <td>Monthly/quarterly payment comparison</td>
+                    <td>Cash flow analysis</td>
+                </tr>
+                <tr>
+                    <td><strong>Refunds Report</strong></td>
+                    <td>All refunds issued</td>
+                    <td>Refund tracking and audit</td>
+                </tr>
+            </table>
+
+            <h3>Revenue Reports</h3>
+            <table>
+                <tr>
+                    <th>Report Name</th>
+                    <th>Description</th>
+                    <th>Use Case</th>
+                </tr>
+                <tr>
+                    <td><strong>Revenue Summary</strong></td>
+                    <td>Total revenue by period</td>
+                    <td>High-level financial overview</td>
+                </tr>
+                <tr>
+                    <td><strong>Revenue by Service</strong></td>
+                    <td>Income by CPT code</td>
+                    <td>Identify most profitable services</td>
+                </tr>
+                <tr>
+                    <td><strong>Revenue by Provider</strong></td>
+                    <td>Income generated per provider</td>
+                    <td>Provider compensation and productivity</td>
+                </tr>
+                <tr>
+                    <td><strong>Revenue by Payer</strong></td>
+                    <td>Income by insurance company</td>
+                    <td>Payer mix analysis</td>
+                </tr>
+                <tr>
+                    <td><strong>Revenue Trend</strong></td>
+                    <td>Monthly/quarterly/yearly comparison</td>
+                    <td>Growth tracking, forecasting</td>
+                </tr>
+                <tr>
+                    <td><strong>Collection Rate</strong></td>
+                    <td>% of billed amount collected</td>
+                    <td>Collection efficiency metric</td>
+                </tr>
+                <tr>
+                    <td><strong>Net Collection Rate</strong></td>
+                    <td>Collections ÷ (Charges - Contractual Adjustments)</td>
+                    <td>True collection performance</td>
+                </tr>
+            </table>
+
+            <h3>Accounts Receivable (A/R) Reports</h3>
+            <table>
+                <tr>
+                    <th>Report Name</th>
+                    <th>Description</th>
+                    <th>Use Case</th>
+                </tr>
+                <tr>
+                    <td><strong>A/R Aging Summary</strong></td>
+                    <td>Outstanding balances by age bucket</td>
+                    <td>Track uncollected revenue</td>
+                </tr>
+                <tr>
+                    <td><strong>A/R Aging Detail</strong></td>
+                    <td>Detailed list of all outstanding claims</td>
+                    <td>Follow-up work list</td>
+                </tr>
+                <tr>
+                    <td><strong>Patient Balance Report</strong></td>
+                    <td>All patients with outstanding balances</td>
+                    <td>Patient collections follow-up</td>
+                </tr>
+                <tr>
+                    <td><strong>Insurance A/R</strong></td>
+                    <td>Outstanding claims by payer</td>
+                    <td>Insurance follow-up priority</td>
+                </tr>
+                <tr>
+                    <td><strong>Days in A/R</strong></td>
+                    <td>Average days to collect payment</td>
+                    <td>Key performance metric</td>
+                </tr>
+                <tr>
+                    <td><strong>Outstanding Charges</strong></td>
+                    <td>Total unbilled charges</td>
+                    <td>Identify billing backlog</td>
+                </tr>
+            </table>
+
+            <h3>Denial Reports</h3>
+            <table>
+                <tr>
+                    <th>Report Name</th>
+                    <th>Description</th>
+                    <th>Use Case</th>
+                </tr>
+                <tr>
+                    <td><strong>Denial Summary</strong></td>
+                    <td>All denied claims with reasons</td>
+                    <td>Denial management workflow</td>
+                </tr>
+                <tr>
+                    <td><strong>Denial Rate by Payer</strong></td>
+                    <td>% of claims denied per payer</td>
+                    <td>Identify problematic payers</td>
+                </tr>
+                <tr>
+                    <td><strong>Denial Rate by Provider</strong></td>
+                    <td>% of claims denied per provider</td>
+                    <td>Provider documentation issues</td>
+                </tr>
+                <tr>
+                    <td><strong>Denial Reasons</strong></td>
+                    <td>Breakdown by denial reason code</td>
+                    <td>Root cause analysis</td>
+                </tr>
+                <tr>
+                    <td><strong>Denial Trends</strong></td>
+                    <td>Denial rate over time</td>
+                    <td>Track improvement efforts</td>
+                </tr>
+                <tr>
+                    <td><strong>Appeal Status</strong></td>
+                    <td>Status of all claim appeals</td>
+                    <td>Appeal management</td>
+                </tr>
+            </table>
+
+            <h3>Productivity Reports</h3>
+            <table>
+                <tr>
+                    <th>Report Name</th>
+                    <th>Description</th>
+                    <th>Use Case</th>
+                </tr>
+                <tr>
+                    <td><strong>Provider Productivity</strong></td>
+                    <td>Patients seen, procedures, revenue per provider</td>
+                    <td>Performance evaluation</td>
+                </tr>
+                <tr>
+                    <td><strong>RVU Analysis</strong></td>
+                    <td>Relative Value Units per provider</td>
+                    <td>Work volume measurement</td>
+                </tr>
+                <tr>
+                    <td><strong>CPT Code Frequency</strong></td>
+                    <td>Most common procedures performed</td>
+                    <td>Service mix analysis</td>
+                </tr>
+                <tr>
+                    <td><strong>Patient Volume</strong></td>
+                    <td>Patients seen per day/week/month</td>
+                    <td>Scheduling optimization</td>
+                </tr>
+                <tr>
+                    <td><strong>No-Show Rate</strong></td>
+                    <td>% of appointments missed</td>
+                    <td>Lost revenue analysis</td>
+                </tr>
+            </table>
+
+            <h2>Running a Report</h2>
+
+            <h3>Step-by-Step Instructions</h3>
+            <ol>
+                <li>Go to <strong>RCM</strong> > <strong>Reports</strong></li>
+                <li>Select the report you want to run</li>
+                <li>Set report parameters:
+                    <ul>
+                        <li><strong>Date Range:</strong> Select start and end dates</li>
+                        <li><strong>Provider:</strong> Filter by specific provider or "All Providers"</li>
+                        <li><strong>Payer:</strong> Filter by insurance payer or "All Payers"</li>
+                        <li><strong>Status:</strong> Filter by claim/payment status</li>
+                        <li><strong>Location:</strong> Filter by practice location (if multiple)</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Generate Report</strong></li>
+                <li>Review report on screen</li>
+                <li>Export if needed (PDF, Excel, CSV)</li>
+            </ol>
+
+            <h3>Common Date Range Options</h3>
+            <ul>
+                <li><strong>Today:</strong> Current day only</li>
+                <li><strong>Yesterday:</strong> Previous day</li>
+                <li><strong>This Week:</strong> Monday through today</li>
+                <li><strong>Last Week:</strong> Previous Monday-Sunday</li>
+                <li><strong>This Month:</strong> 1st of month through today</li>
+                <li><strong>Last Month:</strong> Previous calendar month</li>
+                <li><strong>This Quarter:</strong> Current quarter (Q1-Q4)</li>
+                <li><strong>Last Quarter:</strong> Previous quarter</li>
+                <li><strong>Year to Date:</strong> January 1 through today</li>
+                <li><strong>Last Year:</strong> Previous calendar year</li>
+                <li><strong>Custom:</strong> Specify exact start and end dates</li>
+            </ul>
+
+            <h2>Exporting Reports</h2>
+            <p>All reports can be exported in multiple formats:</p>
+
+            <h3>PDF Export</h3>
+            <ul>
+                <li><strong>Use Case:</strong> Professional presentation, printing</li>
+                <li><strong>Features:</strong> Formatted layout, headers/footers, page numbers</li>
+                <li><strong>Best For:</strong> Stakeholder reports, documentation</li>
+            </ul>
+
+            <h3>Excel Export</h3>
+            <ul>
+                <li><strong>Use Case:</strong> Further analysis, pivot tables, charts</li>
+                <li><strong>Features:</strong> Editable spreadsheet, formulas supported</li>
+                <li><strong>Best For:</strong> Data analysis, financial modeling</li>
+            </ul>
+
+            <h3>CSV Export</h3>
+            <ul>
+                <li><strong>Use Case:</strong> Import into other systems, database load</li>
+                <li><strong>Features:</strong> Plain text, comma-separated values</li>
+                <li><strong>Best For:</strong> System integration, data import</li>
+            </ul>
+
+            <h3>How to Export</h3>
+            <ol>
+                <li>Generate the report</li>
+                <li>Click <strong>Export</strong> button</li>
+                <li>Select format (PDF, Excel, or CSV)</li>
+                <li>File downloads to your computer</li>
+                <li>Open with appropriate application</li>
+            </ol>
+
+            <h2>Scheduled Reports</h2>
+            <p>Set up reports to run automatically and email to specified recipients.</p>
+
+            <h3>Creating a Scheduled Report</h3>
+            <ol>
+                <li>Generate the report you want to schedule</li>
+                <li>Click <strong>Schedule Report</strong></li>
+                <li>Configure schedule:
+                    <ul>
+                        <li><strong>Frequency:</strong> Daily, Weekly, Monthly, Quarterly</li>
+                        <li><strong>Day/Date:</strong> When to run</li>
+                        <li><strong>Time:</strong> What time to run</li>
+                        <li><strong>Format:</strong> PDF, Excel, or CSV</li>
+                        <li><strong>Recipients:</strong> Email addresses to receive report</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Save Schedule</strong></li>
+            </ol>
+
+            <h3>Example Scheduled Reports</h3>
+            <ul>
+                <li><strong>Daily Deposit Report:</strong> Emailed every morning at 8 AM</li>
+                <li><strong>Weekly A/R Aging:</strong> Emailed every Monday at 9 AM</li>
+                <li><strong>Monthly Revenue Summary:</strong> Emailed 1st of each month</li>
+                <li><strong>Quarterly Productivity:</strong> Emailed 1st day of new quarter</li>
+            </ul>
+
+            <h2>Key Performance Indicators (KPIs)</h2>
+            <p>Monitor these critical metrics regularly:</p>
+
+            <h3>Days in Accounts Receivable</h3>
+            <p><strong>Formula:</strong> (Total A/R ÷ Average Daily Charges)</p>
+            <p><strong>Target:</strong> 30-40 days</p>
+            <p><strong>Why It Matters:</strong> Measures how quickly you collect payment. Lower is better.</p>
+
+            <h3>Collection Rate</h3>
+            <p><strong>Formula:</strong> (Payments ÷ Charges) × 100</p>
+            <p><strong>Target:</strong> >95%</p>
+            <p><strong>Why It Matters:</strong> Percentage of revenue actually collected.</p>
+
+            <h3>Net Collection Rate</h3>
+            <p><strong>Formula:</strong> (Payments ÷ (Charges - Contractual Adjustments)) × 100</p>
+            <p><strong>Target:</strong> >95%</p>
+            <p><strong>Why It Matters:</strong> True collection rate excluding contractual write-offs.</p>
+
+            <h3>Clean Claim Rate</h3>
+            <p><strong>Formula:</strong> (Claims Accepted First Time ÷ Total Claims) × 100</p>
+            <p><strong>Target:</strong> >90%</p>
+            <p><strong>Why It Matters:</strong> Quality of claim submissions. Higher = less rework.</p>
+
+            <h3>Denial Rate</h3>
+            <p><strong>Formula:</strong> (Denied Claims ÷ Total Claims) × 100</p>
+            <p><strong>Target:</strong> <5%</p>
+            <p><strong>Why It Matters:</strong> Lower denial rate = better revenue capture.</p>
+
+            <h3>First Pass Resolution Rate</h3>
+            <p><strong>Formula:</strong> (Claims Paid on First Submission ÷ Total Claims) × 100</p>
+            <p><strong>Target:</strong> >90%</p>
+            <p><strong>Why It Matters:</strong> Efficiency metric - less rework needed.</p>
+
+            <h2>Using Reports for Decision Making</h2>
+
+            <h3>Improving Collections</h3>
+            <ul>
+                <li>Run <strong>A/R Aging</strong> weekly</li>
+                <li>Focus on 60+ day old claims first</li>
+                <li>Follow up with payers on delayed claims</li>
+                <li>Send patient statements for outstanding balances</li>
+                <li>Track <strong>Days in A/R</strong> monthly - aim to reduce</li>
+            </ul>
+
+            <h3>Reducing Denials</h3>
+            <ul>
+                <li>Run <strong>Denial Reasons</strong> report monthly</li>
+                <li>Identify top 3 denial reasons</li>
+                <li>Train staff on proper coding/documentation</li>
+                <li>Update billing processes to prevent common errors</li>
+                <li>Track <strong>Denial Rate</strong> to measure improvement</li>
+            </ul>
+
+            <h3>Optimizing Revenue</h3>
+            <ul>
+                <li>Run <strong>Revenue by Service</strong> quarterly</li>
+                <li>Identify most profitable services</li>
+                <li>Consider offering more of high-revenue services</li>
+                <li>Review low-revenue services for efficiency improvements</li>
+                <li>Compare to previous periods to track growth</li>
+            </ul>
+
+            <h3>Managing Payer Relationships</h3>
+            <ul>
+                <li>Run <strong>Claims by Payer</strong> quarterly</li>
+                <li>Identify payers with high volume</li>
+                <li>Review <strong>Denial Rate by Payer</strong></li>
+                <li>Negotiate better rates with high-volume, low-denial payers</li>
+                <li>Consider dropping high-denial, low-payment payers</li>
+            </ul>
+
+            <h2>Best Practices</h2>
+
+            <h3>Daily Reports</h3>
+            <ul>
+                <li>✅ <strong>Daily Deposit Report:</strong> Reconcile payments received</li>
+                <li>✅ <strong>Claims Summary:</strong> Monitor submissions and status changes</li>
+            </ul>
+
+            <h3>Weekly Reports</h3>
+            <ul>
+                <li>✅ <strong>A/R Aging:</strong> Prioritize follow-up work</li>
+                <li>✅ <strong>Denial Summary:</strong> Address denials quickly</li>
+                <li>✅ <strong>Unapplied Payments:</strong> Post to correct claims</li>
+            </ul>
+
+            <h3>Monthly Reports</h3>
+            <ul>
+                <li>✅ <strong>Revenue Summary:</strong> Track overall performance</li>
+                <li>✅ <strong>Provider Productivity:</strong> Measure provider performance</li>
+                <li>✅ <strong>Collection Rate:</strong> Monitor collection efficiency</li>
+                <li>✅ <strong>Denial Trends:</strong> Identify patterns</li>
+            </ul>
+
+            <h3>Quarterly Reports</h3>
+            <ul>
+                <li>✅ <strong>Revenue by Service:</strong> Service mix analysis</li>
+                <li>✅ <strong>Claims by Payer:</strong> Payer relationship review</li>
+                <li>✅ <strong>Revenue Trend:</strong> Compare to previous quarters</li>
+            </ul>
+
+            <h3>Annual Reports</h3>
+            <ul>
+                <li>✅ <strong>Year-over-Year Revenue:</strong> Annual growth</li>
+                <li>✅ <strong>All KPIs:</strong> Comprehensive performance review</li>
+            </ul>
+
+            <h2>Common Questions</h2>
+
+            <h3>Q: How often should I run financial reports?</h3>
+            <p><strong>A:</strong> It depends on the report:
+                <ul>
+                    <li>Daily: Deposit, claims summary</li>
+                    <li>Weekly: A/R aging, denials</li>
+                    <li>Monthly: Revenue, productivity, KPIs</li>
+                    <li>Quarterly: Strategic analysis (revenue by service, payer analysis)</li>
+                </ul>
+            </p>
+
+            <h3>Q: Can I save my report parameters?</h3>
+            <p><strong>A:</strong> Yes, use the "Save as Favorite" feature to save commonly used report configurations for quick access.</p>
+
+            <h3>Q: Why don't the numbers match my accounting system?</h3>
+            <p><strong>A:</strong> Ensure you're comparing the same date ranges and using the same accounting method (cash vs. accrual). AureonCare uses accrual accounting by default.</p>
+
+            <h3>Q: Can I create custom reports?</h3>
+            <p><strong>A:</strong> Export to Excel and use pivot tables for custom analysis. For complex custom reports, contact support about custom report development.</p>
+
+            <h3>Q: How far back does historical data go?</h3>
+            <p><strong>A:</strong> All data since you started using AureonCare is available. There's no limit on historical reporting.</p>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="billing-overview.html">Billing & Revenue Cycle Overview</a></li>
+                <li><a href="claims.html">Claims Management</a></li>
+                <li><a href="payments.html">Payment Processing</a></li>
+                <li><a href="insurance-payers.html">Insurance Payers</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.2 - Financial Reports & Analytics</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Insurance Payers Management - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>🏥 Insurance Payers Management</h1>
+                    <p>Managing insurance companies and payers</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.2</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Insurance Payers Management</h1>
+            <p>The <strong>Insurance Payers</strong> module manages all insurance companies and payers that your practice bills. Maintaining accurate payer information ensures smooth claims submission and faster reimbursement.</p>
+
+            <h2>What are Insurance Payers?</h2>
+            <p>Insurance payers are the companies or organizations that pay healthcare claims on behalf of patients. They include:</p>
+            <ul>
+                <li><strong>Commercial Insurance</strong> - Private insurance companies (e.g., Blue Cross Blue Shield, UnitedHealthcare, Aetna)</li>
+                <li><strong>Government Programs</strong> - Medicare, Medicaid, TRICARE, VA</li>
+                <li><strong>Managed Care</strong> - HMO, PPO, EPO plans</li>
+                <li><strong>Workers' Compensation</strong> - Employer-sponsored injury coverage</li>
+                <li><strong>Third-Party Administrators</strong> - Companies managing self-funded plans</li>
+            </ul>
+
+            <h2>Accessing Insurance Payers</h2>
+            <ol>
+                <li>Navigate to <strong>Revenue Cycle Management</strong> (RCM)</li>
+                <li>Click the <strong>Insurance Payers</strong> tab</li>
+                <li>View list of all configured payers</li>
+            </ol>
+
+            <h2>Adding a New Insurance Payer</h2>
+
+            <h3>Step-by-Step Instructions</h3>
+            <ol>
+                <li>Go to <strong>RCM</strong> > <strong>Insurance Payers</strong></li>
+                <li>Click <strong>+ Add Insurance Payer</strong> button</li>
+                <li>Fill in payer information form</li>
+                <li>Click <strong>Save Payer</strong></li>
+            </ol>
+
+            <h3>Required Fields</h3>
+            <table>
+                <tr>
+                    <th>Field</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                </tr>
+                <tr>
+                    <td><strong>Payer Name</strong></td>
+                    <td>Full name of insurance company</td>
+                    <td>Blue Cross Blue Shield of California</td>
+                </tr>
+                <tr>
+                    <td><strong>Payer Type</strong></td>
+                    <td>Commercial, Government, HMO, PPO, etc.</td>
+                    <td>Commercial</td>
+                </tr>
+                <tr>
+                    <td><strong>Status</strong></td>
+                    <td>Active or Inactive</td>
+                    <td>Active</td>
+                </tr>
+            </table>
+
+            <h3>Optional Fields</h3>
+            <table>
+                <tr>
+                    <th>Field</th>
+                    <th>Description</th>
+                    <th>When to Use</th>
+                </tr>
+                <tr>
+                    <td><strong>Payer ID</strong></td>
+                    <td>Electronic payer identifier</td>
+                    <td>Required for electronic claims submission</td>
+                </tr>
+                <tr>
+                    <td><strong>Address</strong></td>
+                    <td>Payer mailing address</td>
+                    <td>For paper claims and correspondence</td>
+                </tr>
+                <tr>
+                    <td><strong>Phone Number</strong></td>
+                    <td>Main contact number</td>
+                    <td>For claims follow-up and support</td>
+                </tr>
+                <tr>
+                    <td><strong>Website</strong></td>
+                    <td>Payer website URL</td>
+                    <td>Quick access to payer portal</td>
+                </tr>
+                <tr>
+                    <td><strong>Claims Submission Method</strong></td>
+                    <td>Electronic, Paper, or Both</td>
+                    <td>Determines how claims are submitted</td>
+                </tr>
+                <tr>
+                    <td><strong>Electronic Payer ID</strong></td>
+                    <td>EDI payer identifier</td>
+                    <td>Required for EDI 837 electronic submission</td>
+                </tr>
+                <tr>
+                    <td><strong>Claims Mailing Address</strong></td>
+                    <td>Where to mail paper claims</td>
+                    <td>Different from main address sometimes</td>
+                </tr>
+                <tr>
+                    <td><strong>Contact Person</strong></td>
+                    <td>Name of representative</td>
+                    <td>Your contact for claims issues</td>
+                </tr>
+                <tr>
+                    <td><strong>Contact Email</strong></td>
+                    <td>Email for claims support</td>
+                    <td>For electronic correspondence</td>
+                </tr>
+                <tr>
+                    <td><strong>Notes</strong></td>
+                    <td>Special instructions or requirements</td>
+                    <td>Prior auth requirements, special rules</td>
+                </tr>
+            </table>
+
+            <h2>Configuring Payer-Specific Settings</h2>
+            <p>Each payer may have unique requirements. Configure these settings to ensure smooth claims processing:</p>
+
+            <h3>Claim Submission Requirements</h3>
+            <ul>
+                <li><strong>Submission Method:</strong> Electronic (EDI 837), Paper (CMS-1500), or Both</li>
+                <li><strong>Required Forms:</strong> Which forms does this payer accept?</li>
+                <li><strong>Attachments:</strong> Do they accept electronic attachments?</li>
+                <li><strong>Timely Filing Limit:</strong> How many days to submit (e.g., 90 days, 1 year)</li>
+            </ul>
+
+            <h3>Prior Authorization Requirements</h3>
+            <ul>
+                <li><strong>Services Requiring Auth:</strong> List of CPT codes requiring prior authorization</li>
+                <li><strong>Authorization Process:</strong> Phone, online portal, fax</li>
+                <li><strong>Authorization Contact:</strong> Phone number or website for obtaining auth</li>
+                <li><strong>Auth Reference Number Format:</strong> Expected format for auth numbers</li>
+            </ul>
+
+            <h3>Accepted Codes and Fee Schedules</h3>
+            <ul>
+                <li><strong>Accepted CPT Codes:</strong> Which procedure codes does this payer cover?</li>
+                <li><strong>Accepted ICD-10 Codes:</strong> Are there restrictions on diagnosis codes?</li>
+                <li><strong>Fee Schedule:</strong> Upload or link to payer's fee schedule</li>
+                <li><strong>Contracted Rates:</strong> Your practice's contracted rates with this payer</li>
+            </ul>
+
+            <h3>Payment Information</h3>
+            <ul>
+                <li><strong>Expected Payment Time:</strong> Average days to payment (e.g., 14-30 days)</li>
+                <li><strong>Payment Method:</strong> EFT, check, ACH</li>
+                <li><strong>ERA (Electronic Remittance Advice):</strong> Do they send electronic payment details?</li>
+                <li><strong>Payment Portal:</strong> URL for checking payment status</li>
+            </ul>
+
+            <h2>Editing Insurance Payer Information</h2>
+            <ol>
+                <li>Go to <strong>RCM</strong> > <strong>Insurance Payers</strong></li>
+                <li>Find the payer in the list</li>
+                <li>Click on the payer name or <strong>Edit</strong> button</li>
+                <li>Update information as needed</li>
+                <li>Click <strong>Save Changes</strong></li>
+            </ol>
+
+            <h2>Deactivating an Insurance Payer</h2>
+            <p>When you no longer bill a payer, deactivate rather than delete to maintain historical records:</p>
+            <ol>
+                <li>Open the payer record</li>
+                <li>Change <strong>Status</strong> to <strong>Inactive</strong></li>
+                <li>Add reason in <strong>Notes</strong> (e.g., "Contract terminated 01/2026")</li>
+                <li>Click <strong>Save Changes</strong></li>
+            </ol>
+            <p><strong>Note:</strong> Inactive payers won't appear in dropdown menus for new claims but existing claims remain accessible.</p>
+
+            <h2>Common Insurance Payers Setup</h2>
+
+            <h3>Medicare</h3>
+            <table>
+                <tr>
+                    <th>Setting</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Payer Name</td>
+                    <td>Medicare (with your MAC region)</td>
+                </tr>
+                <tr>
+                    <td>Payer Type</td>
+                    <td>Government</td>
+                </tr>
+                <tr>
+                    <td>Electronic Payer ID</td>
+                    <td>Varies by MAC (e.g., 00590 for Noridian)</td>
+                </tr>
+                <tr>
+                    <td>Timely Filing</td>
+                    <td>1 year from date of service</td>
+                </tr>
+                <tr>
+                    <td>Special Requirements</td>
+                    <td>CLIA number required for lab claims</td>
+                </tr>
+            </table>
+
+            <h3>Medicaid</h3>
+            <table>
+                <tr>
+                    <th>Setting</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Payer Name</td>
+                    <td>State Medicaid (e.g., "California Medicaid (Medi-Cal)")</td>
+                </tr>
+                <tr>
+                    <td>Payer Type</td>
+                    <td>Government</td>
+                </tr>
+                <tr>
+                    <td>Electronic Payer ID</td>
+                    <td>Varies by state</td>
+                </tr>
+                <tr>
+                    <td>Timely Filing</td>
+                    <td>Varies by state (typically 90-365 days)</td>
+                </tr>
+                <tr>
+                    <td>Special Requirements</td>
+                    <td>Patient Medicaid ID required</td>
+                </tr>
+            </table>
+
+            <h3>Commercial Insurance (Example: Blue Cross)</h3>
+            <table>
+                <tr>
+                    <th>Setting</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Payer Name</td>
+                    <td>Blue Cross Blue Shield of [State]</td>
+                </tr>
+                <tr>
+                    <td>Payer Type</td>
+                    <td>Commercial</td>
+                </tr>
+                <tr>
+                    <td>Electronic Payer ID</td>
+                    <td>Varies by state (e.g., 00590)</td>
+                </tr>
+                <tr>
+                    <td>Timely Filing</td>
+                    <td>Typically 90-180 days</td>
+                </tr>
+                <tr>
+                    <td>Website</td>
+                    <td>bcbs.com or state-specific site</td>
+                </tr>
+            </table>
+
+            <h2>Searching and Filtering Payers</h2>
+            <p>Use search and filter options to quickly find payers:</p>
+            <ul>
+                <li><strong>Search by Name:</strong> Type payer name in search box</li>
+                <li><strong>Filter by Type:</strong> Show only Commercial, Government, HMO, etc.</li>
+                <li><strong>Filter by Status:</strong> Show Active or Inactive payers</li>
+                <li><strong>Sort:</strong> Sort by name, type, or number of active claims</li>
+            </ul>
+
+            <h2>Payer Dashboard and Analytics</h2>
+            <p>View important metrics for each payer:</p>
+            <ul>
+                <li><strong>Total Claims Submitted:</strong> Lifetime and current period</li>
+                <li><strong>Claims by Status:</strong> Pending, approved, denied breakdown</li>
+                <li><strong>Denial Rate:</strong> Percentage of claims denied by this payer</li>
+                <li><strong>Average Days to Payment:</strong> How quickly this payer pays</li>
+                <li><strong>Total Revenue:</strong> Amount collected from this payer</li>
+                <li><strong>Outstanding A/R:</strong> Claims pending payment</li>
+            </ul>
+
+            <h2>Eligibility Verification Integration</h2>
+            <p>When properly configured, payers support real-time eligibility verification:</p>
+            <ol>
+                <li>Ensure <strong>Electronic Payer ID</strong> is configured</li>
+                <li>When creating a claim, click <strong>Verify Eligibility</strong></li>
+                <li>System queries payer in real-time</li>
+                <li>Returns:
+                    <ul>
+                        <li>Coverage status (active/inactive)</li>
+                        <li>Deductible (met/remaining)</li>
+                        <li>Copay amount</li>
+                        <li>Coinsurance percentage</li>
+                        <li>Out-of-pocket maximum</li>
+                        <li>Coverage limitations</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2>Best Practices</h2>
+
+            <h3>Setting Up New Payers</h3>
+            <ul>
+                <li>✅ <strong>Verify Electronic Payer ID:</strong> Check with clearinghouse or payer</li>
+                <li>✅ <strong>Get Complete Contact Info:</strong> Phone, website, claims address</li>
+                <li>✅ <strong>Document Special Requirements:</strong> Note any unique submission rules</li>
+                <li>✅ <strong>Test Electronic Submission:</strong> Submit test claim before going live</li>
+                <li>✅ <strong>Set Up Contracted Rates:</strong> Enter your negotiated fee schedule</li>
+            </ul>
+
+            <h3>Maintaining Payer Information</h3>
+            <ul>
+                <li>✅ <strong>Review Quarterly:</strong> Verify contact info and requirements are current</li>
+                <li>✅ <strong>Update Fee Schedules:</strong> When contracts are renegotiated</li>
+                <li>✅ <strong>Track Changes:</strong> Document updates in Notes field</li>
+                <li>✅ <strong>Monitor Denial Patterns:</strong> If denials increase, review payer requirements</li>
+                <li>✅ <strong>Keep Authorization Lists Current:</strong> Update services requiring prior auth</li>
+            </ul>
+
+            <h3>Working with Clearinghouses</h3>
+            <p>If you use a clearinghouse for electronic claims:</p>
+            <ul>
+                <li>✅ <strong>Use Clearinghouse Payer IDs:</strong> They may be different from standard IDs</li>
+                <li>✅ <strong>Enable Payers in Clearinghouse:</strong> Must be activated on both sides</li>
+                <li>✅ <strong>Test Connections:</strong> Submit test claims to verify connectivity</li>
+                <li>✅ <strong>Review Clearinghouse Reports:</strong> Check for transmission errors</li>
+            </ul>
+
+            <h2>Troubleshooting Common Issues</h2>
+
+            <h3>Claims Rejected - Invalid Payer ID</h3>
+            <p><strong>Problem:</strong> Claims rejected with "invalid payer ID" error</p>
+            <p><strong>Solution:</strong></p>
+            <ol>
+                <li>Verify Electronic Payer ID is correct</li>
+                <li>Check with clearinghouse for their specific payer ID</li>
+                <li>Ensure payer is enabled in clearinghouse account</li>
+                <li>Test with clearinghouse support if issues persist</li>
+            </ol>
+
+            <h3>Eligibility Verification Not Working</h3>
+            <p><strong>Problem:</strong> Cannot verify patient eligibility</p>
+            <p><strong>Solution:</strong></p>
+            <ol>
+                <li>Verify Electronic Payer ID is configured</li>
+                <li>Check that payer supports real-time eligibility</li>
+                <li>Ensure patient insurance info is complete (member ID, group number)</li>
+                <li>Try again in a few minutes (may be temporary payer system issue)</li>
+            </ol>
+
+            <h3>Payer Not Appearing in Dropdown</h3>
+            <p><strong>Problem:</strong> Cannot find payer when creating claim</p>
+            <p><strong>Solution:</strong></p>
+            <ol>
+                <li>Check if payer Status is set to "Active"</li>
+                <li>Search by partial name</li>
+                <li>If not found, add new payer entry</li>
+            </ol>
+
+            <h2>Common Questions</h2>
+
+            <h3>Q: How many insurance payers can I add?</h3>
+            <p><strong>A:</strong> Unlimited. Add all payers you bill.</p>
+
+            <h3>Q: Can I delete an insurance payer?</h3>
+            <p><strong>A:</strong> It's not recommended. Instead, deactivate the payer to preserve historical claim data. Only delete if the payer was added by mistake and has no associated claims.</p>
+
+            <h3>Q: What if a payer has multiple plan types?</h3>
+            <p><strong>A:</strong> You can either:
+                <ul>
+                    <li>Create one payer entry and note plan variations in Notes field</li>
+                    <li>Create separate entries for each plan (e.g., "BCBS PPO", "BCBS HMO")</li>
+                </ul>
+                Best practice: Use one entry per payer, multiple if submission requirements differ significantly.
+            </p>
+
+            <h3>Q: How do I find the Electronic Payer ID?</h3>
+            <p><strong>A:</strong> Contact:
+                <ul>
+                    <li>Your clearinghouse (they provide payer ID lists)</li>
+                    <li>The insurance company's provider services</li>
+                    <li>Online payer ID directories</li>
+                </ul>
+            </p>
+
+            <h3>Q: Should I add out-of-state payers?</h3>
+            <p><strong>A:</strong> Yes, if you treat patients with out-of-state insurance. Add each state plan separately (e.g., "Blue Cross Blue Shield of California" and "Blue Cross Blue Shield of Nevada" are different entities).</p>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="billing-overview.html">Billing & Revenue Cycle Overview</a></li>
+                <li><a href="claims.html">Claims Management</a></li>
+                <li><a href="payments.html">Payment Processing</a></li>
+                <li><a href="financial-reports.html">Financial Reports</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.2 - Insurance Payers Management</p>
+    </footer>
+</body>
+</html>
