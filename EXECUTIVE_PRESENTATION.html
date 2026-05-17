@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AureonCare Executive Presentation - Version 1.2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --teal-primary: #14b8a6;
+            --teal-dark: #0f766e;
+            --teal-light: #5eead4;
+            --gold-primary: #f59e0b;
+            --gold-dark: #d97706;
+            --gold-light: #fbbf24;
+            --navy: #1e293b;
+            --white: #ffffff;
+            --light-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal-primary) 50%, var(--gold-primary) 100%);
+            color: var(--navy);
+            min-height: 100vh;
+        }
+
+        .presentation-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .slide {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 60px 80px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, var(--teal-primary) 0%, var(--gold-primary) 100%);
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            color: var(--teal-dark);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        h1 {
+            font-size: 56px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--teal-primary), var(--gold-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 42px;
+            color: var(--teal-dark);
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        h3 {
+            font-size: 28px;
+            color: var(--navy);
+            margin: 25px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            font-size: 24px;
+            color: var(--navy);
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .logo-text {
+            font-size: 72px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--teal-primary), var(--gold-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -2px;
+        }
+
+        .logo-tagline {
+            font-size: 20px;
+            color: var(--teal-dark);
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--teal-light) 0%, var(--teal-primary) 100%);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 900;
+            color: var(--white);
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: var(--navy);
+            font-weight: 600;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        .feature-list li {
+            padding: 18px 25px;
+            margin-bottom: 12px;
+            background: linear-gradient(90deg, rgba(20, 184, 166, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%);
+            border-left: 5px solid var(--teal-primary);
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .feature-list li:hover {
+            background: linear-gradient(90deg, rgba(20, 184, 166, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%);
+            border-left-color: var(--gold-primary);
+            transform: translateX(10px);
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold-primary) 100%);
+            padding: 30px 40px;
+            border-radius: 12px;
+            margin: 30px 0;
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+        }
+
+        .highlight-box h3 {
+            color: var(--white);
+            margin-top: 0;
+        }
+
+        .highlight-box p {
+            color: var(--navy);
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: var(--white);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background: linear-gradient(90deg, var(--teal-primary) 0%, var(--teal-dark) 100%);
+        }
+
+        th {
+            color: var(--white);
+            padding: 20px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        td {
+            padding: 18px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 17px;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(20, 184, 166, 0.05);
+        }
+
+        tr:hover {
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin: 30px 0;
+        }
+
+        .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--teal-dark) 100%);
+            padding: 50px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .cta-section h3 {
+            color: var(--gold-primary);
+            font-size: 32px;
+        }
+
+        .cta-section p {
+            color: var(--white);
+            font-size: 20px;
+            margin: 15px 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: var(--gold-primary);
+            color: var(--white);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0 5px;
+        }
+
+        .metric-large {
+            font-size: 72px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--teal-primary), var(--gold-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--white);
+            font-size: 14px;
+        }
+
+        @media print {
+            .slide {
+                page-break-after: always;
+                margin-bottom: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 40px 30px;
+                min-height: auto;
+            }
+            h1 { font-size: 36px; }
+            h2 { font-size: 28px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .two-column { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        
+        <!-- Slide 1: Title Slide -->
+        <div class="slide">
+            <div class="logo">
+                <div class="logo-text">🏥 AureonCare</div>
+                <div class="logo-tagline">Empowering Healthcare with Modern Technology</div>
+            </div>
+            <h1 style="text-align: center; margin-top: 80px;">Executive Presentation</h1>
+            <p class="subtitle" style="text-align: center;">Version 1.2 Platform Update</p>
+            <p class="subtitle" style="text-align: center; font-size: 20px;">February 2026</p>
+            <div class="cta-section" style="margin-top: 60px;">
+                <p style="font-size: 18px; font-style: italic;">"Comprehensive Practice Management | Enhanced Patient Care | Optimized Revenue Cycle"</p>
+            </div>
+            <div class="slide-number">1</div>
+        </div>
+
+        <!-- Slide 2: Platform at a Glance -->
+        <div class="slide">
+            <h2>🎯 Platform at a Glance</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">25K+</div>
+                    <div class="stat-label">Healthcare Professionals</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">850+</div>
+                    <div class="stat-label">Medical Practices</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">5.2M</div>
+                    <div class="stat-label">Patient Records</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">14</div>
+                    <div class="stat-label">Core Modules</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">99.95%</div>
+                    <div class="stat-label">System Uptime</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">4.6★</div>
+                    <div class="stat-label">Customer Satisfaction</div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <h3>Market Leadership</h3>
+                <p>45% year-over-year growth | 96% customer retention | 68 Net Promoter Score</p>
+            </div>
+            <div class="slide-number">2</div>
+        </div>
+
+        <!-- Slide 3: Version 1.2 Major Features -->
+        <div class="slide">
+            <h2>🚀 Version 1.2 Highlights</h2>
+            <ul class="feature-list">
+                <li>🔍 <strong>Universal Search</strong> - Search across 14 modules, 60% time savings</li>
+                <li>📦 <strong>Data Archiving</strong> - 40% DB size reduction, automated compliance</li>
+                <li>📋 <strong>Audit Logging</strong> - Complete HIPAA/SOX compliance tracking</li>
+                <li>☁️ <strong>Cloud Backup</strong> - OAuth integration with Google Drive & OneDrive</li>
+                <li>📝 <strong>SOAP Notes</strong> - Structured clinical documentation, 25% fewer denials</li>
+                <li>🏥 <strong>Enhanced Patient Registration</strong> - Allergies, PMH, Family History</li>
+                <li>🔐 <strong>Expanded Permissions</strong> - Granular RBAC across 14 modules</li>
+                <li>💡 <strong>Help System</strong> - AI assistant, 12 guides, 50+ articles</li>
+            </ul>
+            <div class="slide-number">3</div>
+        </div>
+
+        <!-- Slide 4: ROI & Business Impact -->
+        <div class="slide">
+            <h2>💰 First-Year ROI</h2>
+            <div class="metric-large">713% ROI</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Annual Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Operational Savings</strong></td>
+                        <td><strong>$555,000</strong></td>
+                    </tr>
+                    <tr>
+                        <td>• Time savings (60% search reduction)</td>
+                        <td>$120,000</td>
+                    </tr>
+                    <tr>
+                        <td>• Reduced denials (25% improvement)</td>
+                        <td>$200,000</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Revenue Improvements</strong></td>
+                        <td><strong>$665,000</strong></td>
+                    </tr>
+                    <tr>
+                        <td>• Days in A/R (52→35 days)</td>
+                        <td>$180,000</td>
+                    </tr>
+                    <tr>
+                        <td>• Collection rate (92%→97%)</td>
+                        <td>$250,000</td>
+                    </tr>
+                    <tr style="background: linear-gradient(90deg, rgba(20, 184, 166, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%);">
+                        <td><strong>Total Annual Benefit</strong></td>
+                        <td><strong>$1,220,000</strong></td>
+                    </tr>
+                    <tr style="background: linear-gradient(90deg, var(--teal-primary) 0%, var(--gold-primary) 100%); color: white;">
+                        <td><strong>Net ROI</strong></td>
+                        <td><strong>$1,070,000</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="highlight-box">
+                <h3>Payback Period: 1.5 Months</h3>
+            </div>
+            <div class="slide-number">4</div>
+        </div>
+
+        <!-- Slide 5: Universal Search -->
+        <div class="slide">
+            <h2>🔍 Universal Search System</h2>
+            <div class="two-column">
+                <div>
+                    <h3>Key Features</h3>
+                    <ul class="feature-list">
+                        <li>Search 14 modules instantly</li>
+                        <li>Real-time results (<500ms)</li>
+                        <li>Intelligent ranking</li>
+                        <li>Ctrl+K / Cmd+K shortcuts</li>
+                        <li>Role-based security</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Business Impact</h3>
+                    <div class="stat-card">
+                        <div class="stat-number">60%</div>
+                        <div class="stat-label">Time Reduction</div>
+                    </div>
+                    <div class="stat-card" style="margin-top: 20px;">
+                        <div class="stat-number">40%</div>
+                        <div class="stat-label">Productivity Gain</div>
+                    </div>
+                </div>
+            </div>
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3>Searchable Entities</h3>
+                <p>Patients • Providers • Appointments • Prescriptions • Diagnoses • Lab Orders • Medical Records • Pharmacies • Insurance Payers • Campaigns</p>
+            </div>
+            <div class="slide-number">5</div>
+        </div>
+
+        <!-- Slide 6: Comprehensive Help System -->
+        <div class="slide">
+            <h2>💡 Help & Documentation System</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">60%</div>
+                    <div class="stat-label">Support Ticket Reduction</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">50%</div>
+                    <div class="stat-label">Faster Training</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">12</div>
+                    <div class="stat-label">Documentation Guides</div>
+                </div>
+            </div>
+            <h3>System Components</h3>
+            <ul class="feature-list">
+                <li><strong>In-App Help Drawer</strong> - Browse, Search, AI Assistant tabs</li>
+                <li><strong>AI Assistant</strong> - Natural language Q&A, context-aware responses</li>
+                <li><strong>12 Comprehensive Guides</strong> - Clinical, Billing, Admin documentation</li>
+                <li><strong>50+ Help Articles</strong> - Searchable, categorized, role-based</li>
+                <li><strong>Multi-Language</strong> - 8 languages supported</li>
+            </ul>
+            <div class="highlight-box">
+                <h3>New Billing Documentation</h3>
+                <p>Billing Overview • Insurance Payers • Financial Reports • Claims • Payments</p>
+            </div>
+            <div class="slide-number">6</div>
+        </div>
+
+        <!-- Slide 7: Security & Compliance -->
+        <div class="slide">
+            <h2>🔒 Security & Compliance</h2>
+            <div class="two-column">
+                <div>
+                    <h3>Certifications</h3>
+                    <ul class="feature-list">
+                        <li>✅ HIPAA Compliant</li>
+                        <li>✅ SOC 2 Type II</li>
+                        <li>✅ FDA 21 CFR Part 11</li>
+                        <li>✅ GDPR Ready</li>
+                        <li>✅ 50 State Compliant</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Security Features</h3>
+                    <ul class="feature-list">
+                        <li>AES-256 Encryption</li>
+                        <li>Multi-Factor Auth (MFA)</li>
+                        <li>Role-Based Access (RBAC)</li>
+                        <li>24/7 Monitoring</li>
+                        <li>Quarterly Pen Testing</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3>Audit Logging</h3>
+                <p><strong>70% reduction</strong> in compliance audit preparation time with complete tracking of all user actions, immutable logs, and real-time monitoring.</p>
+            </div>
+            <div class="slide-number">7</div>
+        </div>
+
+        <!-- Slide 8: Customer Success -->
+        <div class="slide">
+            <h2>🏆 Customer Success Stories</h2>
+            <div class="highlight-box">
+                <h3>Riverside Family Medicine</h3>
+                <p><strong>12 providers | 15,000 patients</strong></p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">+23%</div>
+                    <div class="stat-label">Revenue Increase</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">58→32</div>
+                    <div class="stat-label">Days in A/R</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">4.6★</div>
+                    <div class="stat-label">Patient Satisfaction</div>
+                </div>
+            </div>
+            <div class="highlight-box" style="background: linear-gradient(135deg, var(--teal-primary), var(--teal-dark)); margin-top: 30px;">
+                <h3 style="color: var(--gold-primary);">Metro Pediatrics Group</h3>
+                <p style="color: white;"><strong>8 providers | 3 locations</strong></p>
+            </div>
+            <ul class="feature-list">
+                <li>No-shows reduced by 35%</li>
+                <li>Patient portal usage: 22% → 78%</li>
+                <li>Revenue per provider: +18%</li>
+                <li>Telehealth adoption: 45% of visits</li>
+            </ul>
+            <div class="slide-number">8</div>
+        </div>
+
+        <!-- Slide 9: Competitive Advantages -->
+        <div class="slide">
+            <h2>⚡ Why AureonCare Wins</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>AureonCare</th>
+                        <th>Competitors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Implementation Time</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">30 days</td>
+                        <td>90-180 days</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Universal Search</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">14 modules</td>
+                        <td>2-3 modules</td>
+                    </tr>
+                    <tr>
+                        <td><strong>AI Help Assistant</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">✓ Included</td>
+                        <td>✗ Not available</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Languages Supported</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">8 languages</td>
+                        <td>2-3 languages</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Technology Stack</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">Modern (React 18)</td>
+                        <td>Legacy frameworks</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Customer Satisfaction</strong></td>
+                        <td style="color: var(--teal-primary); font-weight: 700;">4.6/5 ⭐</td>
+                        <td>3.8/5 average</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3>Market Position</h3>
+                <p><strong>45% YoY Growth</strong> | $18.5M ARR → $28M Target | 96% Retention</p>
+            </div>
+            <div class="slide-number">9</div>
+        </div>
+
+        <!-- Slide 10: Future Roadmap -->
+        <div class="slide">
+            <h2>🗺️ Future Roadmap</h2>
+            <h3>Q2 2026 (April-June)</h3>
+            <ul class="feature-list">
+                <li>🤖 AI Clinical Assistant with decision support</li>
+                <li>📱 Native mobile apps (iOS & Android)</li>
+                <li>🔗 Integration Marketplace launch</li>
+            </ul>
+            <h3>Q3 2026 (July-September)</h3>
+            <ul class="feature-list">
+                <li>🌐 Canada market expansion</li>
+                <li>📊 Predictive analytics suite</li>
+                <li>🏥 Specialty-specific modules</li>
+            </ul>
+            <h3>Q4 2026 (October-December)</h3>
+            <ul class="feature-list">
+                <li>🔬 Clinical research integration</li>
+                <li>💳 Patient financial automation</li>
+                <li>🎯 Value-based care reporting</li>
+            </ul>
+            <div class="slide-number">10</div>
+        </div>
+
+        <!-- Slide 11: Call to Action -->
+        <div class="slide">
+            <h2>📞 Take the Next Step</h2>
+            <div class="cta-section">
+                <h3>Transform Your Practice Today</h3>
+                <p>Join 850+ practices experiencing the AureonCare difference</p>
+            </div>
+            <div class="two-column" style="margin-top: 50px;">
+                <div>
+                    <h3>For Healthcare Practices</h3>
+                    <ul class="feature-list">
+                        <li>Schedule personalized demo</li>
+                        <li>Request pricing proposal</li>
+                        <li>Speak with reference customers</li>
+                        <li>Plan 30-day implementation</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>For Investors & Partners</h3>
+                    <ul class="feature-list">
+                        <li>Review financial model</li>
+                        <li>Technical due diligence</li>
+                        <li>Customer interviews</li>
+                        <li>Discuss opportunities</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="highlight-box" style="margin-top: 40px;">
+                <h3>Contact Us</h3>
+                <p><strong>Sales:</strong> sales@aureoncare.com | 1-800-AUREON1<br>
+                <strong>Website:</strong> https://aureoncare.com</p>
+            </div>
+            <div class="slide-number">11</div>
+        </div>
+
+        <!-- Slide 12: Summary -->
+        <div class="slide">
+            <div class="logo">
+                <div class="logo-text">🏥 AureonCare</div>
+            </div>
+            <h2 style="text-align: center; margin-top: 50px;">The Future of Healthcare is Here</h2>
+            <div class="stats-grid" style="margin-top: 50px;">
+                <div class="stat-card">
+                    <div class="stat-number">713%</div>
+                    <div class="stat-label">First-Year ROI</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">30-Day</div>
+                    <div class="stat-label">Implementation</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">96%</div>
+                    <div class="stat-label">Retention Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">45%</div>
+                    <div class="stat-label">YoY Growth</div>
+                </div>
+            </div>
+            <div class="cta-section" style="margin-top: 60px;">
+                <h3>Ready to Transform Your Practice?</h3>
+                <p style="font-size: 24px; font-weight: 600;">Let's Talk</p>
+                <p style="font-size: 18px;">sales@aureoncare.com | 1-800-AUREON1</p>
+            </div>
+            <div class="slide-number">12</div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <p>© 2026 AureonCare Inc. | Confidential - For Business Use Only<br>
+        Document Version 1.0 | February 17, 2026</p>
+    </div>
+
+    <script>
+        // Add print functionality
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                window.print();
+            }
+        });
+
+        // Add smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
