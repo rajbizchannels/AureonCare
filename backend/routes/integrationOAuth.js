@@ -183,7 +183,7 @@ const OAUTH_CONFIGS = {
   microsoft_teams: {
     authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    scope: 'OnlineMeetings.ReadWrite User.Read offline_access',
+    scope: 'https://graph.microsoft.com/OnlineMeetings.ReadWrite https://graph.microsoft.com/User.Read offline_access',
   },
   google_drive: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
