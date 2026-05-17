@@ -34,7 +34,7 @@ class TeamsService {
       tokenLength: accessToken?.length,
       hasRefreshToken: Boolean(refreshToken),
       expiresAt,
-      isExpired: expiresAt ? Date.now() >= expiresAt : 'unknown',
+      isExpired: expiresAt ? Date.now() >= Number(expiresAt) : 'unknown',
       hasClientId: Boolean(this.config.client_id),
       hasClientSecret: Boolean(this.config.client_secret),
       tokenScope: this.config.token_scope,
@@ -43,6 +43,17 @@ class TeamsService {
     if (!accessToken) {
       throw new Error(
         'Microsoft Teams is not authenticated. Please sign in via Admin Settings.'
+      );
+    }
+
+    // Verify the token has the required Graph scope
+    const scope = this.config.token_scope || '';
+    if (!scope.toLowerCase().includes('onlinemeetings')) {
+      throw new Error(
+        'Microsoft Teams token is missing the OnlineMeetings.ReadWrite permission. ' +
+        'In Azure Portal > App registrations > your app > API permissions, add ' +
+        'Microsoft Graph > Delegated > OnlineMeetings.ReadWrite and click ' +
+        '"Grant admin consent". Then disconnect and reconnect Teams in Admin Settings.'
       );
     }
 
