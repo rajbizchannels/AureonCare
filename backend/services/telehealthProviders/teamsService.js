@@ -35,14 +35,20 @@ class TeamsService {
       );
     }
 
-    // Token still valid (60s buffer)
-    if (!expiresAt || Date.now() < expiresAt - 60000) {
+    // Token still valid (60s buffer) — only trust this if expiresAt is known
+    if (expiresAt && Date.now() < expiresAt - 60000) {
       return accessToken;
     }
 
-    // Expired — try refresh
+    // Token expired or expiry unknown — refresh if possible
     if (refreshToken) {
       return this.refreshAccessToken(refreshToken);
+    }
+
+    // No refresh token and expiry unknown — return what we have and let the
+    // caller surface the 401 if the token is actually expired.
+    if (!expiresAt) {
+      return accessToken;
     }
 
     throw new Error(
@@ -97,30 +103,30 @@ class TeamsService {
    * Create an online meeting via Microsoft Graph
    */
   async createMeeting(sessionData) {
+    const startDateTime = sessionData.instant
+      ? new Date()
+      : new Date(sessionData.startTime);
+    const endDateTime = new Date(
+      startDateTime.getTime() + (sessionData.duration || 30) * 60000
+    );
+
+    const meetingData = {
+      subject:
+        sessionData.topic ||
+        `Telehealth Session - ${sessionData.patientName}`,
+      startDateTime: startDateTime.toISOString(),
+      endDateTime: endDateTime.toISOString(),
+      lobbyBypassSettings: {
+        scope: 'organizer',
+        isDialInBypassEnabled: false,
+      },
+      isEntryExitAnnounced: true,
+      allowedPresenters: 'organizer',
+    };
+
+    let token = await this.getAccessToken();
+
     try {
-      const token = await this.getAccessToken();
-
-      const startDateTime = sessionData.instant
-        ? new Date()
-        : new Date(sessionData.startTime);
-      const endDateTime = new Date(
-        startDateTime.getTime() + (sessionData.duration || 30) * 60000
-      );
-
-      const meetingData = {
-        subject:
-          sessionData.topic ||
-          `Telehealth Session - ${sessionData.patientName}`,
-        startDateTime: startDateTime.toISOString(),
-        endDateTime: endDateTime.toISOString(),
-        lobbyBypassSettings: {
-          scope: 'organizer',
-          isDialInBypassEnabled: false,
-        },
-        isEntryExitAnnounced: true,
-        allowedPresenters: 'organizer',
-      };
-
       const response = await axios.post(
         `${this.graphBaseUrl}/me/onlineMeetings`,
         meetingData,
@@ -144,6 +150,35 @@ class TeamsService {
         rawData: data,
       };
     } catch (error) {
+      // 401 means the token is invalid/expired — retry with a fresh token
+      const refreshToken =
+        this.config.refresh_token ||
+        (this.config.settings && this.config.settings.refresh_token);
+
+      if (error.response?.status === 401 && refreshToken) {
+        token = await this.refreshAccessToken(refreshToken);
+        const retryResponse = await axios.post(
+          `${this.graphBaseUrl}/me/onlineMeetings`,
+          meetingData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        const data = retryResponse.data;
+        return {
+          success: true,
+          meetingId: data.id,
+          meetingUrl: data.joinWebUrl || data.joinUrl,
+          roomId: data.id,
+          password: data.videoTeleconferenceId || '',
+          provider: 'microsoft_teams',
+          rawData: data,
+        };
+      }
+
       console.error(
         'Error creating Teams meeting:',
         error.response?.data || error.message
