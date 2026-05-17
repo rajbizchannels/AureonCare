@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
+const { enforcePatientQuota } = require('../middleware/planEnforcement');
 
 // Get all patients
 router.get('/', async (req, res) => {
@@ -37,8 +38,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new patient
-router.post('/', async (req, res) => {
+// Create new patient  (patient quota check runs first)
+router.post('/', enforcePatientQuota, async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
     address, city, state, zip, insurance, insurance_id, insurance_payer_id,

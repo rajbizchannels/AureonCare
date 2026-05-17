@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
+const { enforceUserQuota, enforceProviderQuota } = require('../middleware/planEnforcement');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -62,8 +63,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new user
-router.post('/', async (req, res) => {
+// Create new user  (quota + provider-seat checks run first)
+router.post('/', enforceUserQuota, enforceProviderQuota, async (req, res) => {
   const { firstName, lastName, first_name, last_name, role, practice, avatar, email, phone, license, specialty, preferences, status, password } = req.body;
 
   try {
