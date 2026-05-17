@@ -123,7 +123,12 @@ const PROVIDER_ENV_MAP = {
 };
 
 function resolveProviderEnv(key) {
-  return process.env[PROVIDER_ENV_MAP[key] || key];
+  const mappedKey = PROVIDER_ENV_MAP[key];
+  if (mappedKey) {
+    // Try the canonical abbreviated var first, then the legacy full-name var
+    return process.env[mappedKey] || process.env[key] || null;
+  }
+  return process.env[key] || null;
 }
 
 /**
