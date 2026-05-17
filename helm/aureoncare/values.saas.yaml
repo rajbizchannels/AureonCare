@@ -1,0 +1,94 @@
+###############################################################################
+# AureonCare Helm — SaaS Fleet Override Values
+# Usage: helm upgrade --install aureoncare helm/aureoncare/ \
+#          -f helm/aureoncare/values.yaml \
+#          -f helm/aureoncare/values.saas.yaml \
+#          --set env.AC_TK_S=<from-secret-manager> \
+#          --set env.AC_EK=<from-secret-manager> \
+#          --set env.AC_PG_URI=<external-db-uri>
+#
+# For SaaS: vendor manages the cluster, uses an external managed PostgreSQL
+# (e.g., AWS RDS, Google Cloud SQL), and deploys via ArgoCD GitOps.
+###############################################################################
+
+replicaCount:
+  backend: 3
+  frontend: 3
+
+image:
+  pullPolicy: Always
+
+backend:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+frontend:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+# Vendor uses external managed PostgreSQL — disable the in-cluster PG
+postgresql:
+  enabled: false
+
+# Enable Redis for session store and caching at SaaS scale
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    # Set via --set redis.auth.password=<value> or external secrets
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  # Replace with your actual SaaS domain
+  host: app.aureoncare.com
+  tls: true
+  tlsSecret: aureoncare-tls
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 75
+
+updateAgent:
+  # SaaS is managed by vendor — update agent not needed (ArgoCD handles deploys)
+  enabled: false
+
+env:
+  NODE_ENV: production
+  AC_LOG_LVL: info
+  AC_USE_RD: "true"
+  AC_TK_E: 12h
+  # Set externally via secrets manager:
+  # AC_TK_S, AC_EK, AC_PG_URI, AC_SG_KEY, AC_RD_W
