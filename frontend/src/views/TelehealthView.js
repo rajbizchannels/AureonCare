@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft, Settings, Zap, X, AlertCircle } from 'lucide-react';
+import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, ArrowLeft, Settings, Zap, X, AlertCircle, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
 import ZoomMeetingEmbed from '../components/ZoomMeetingEmbed';
+import { FORM_TEMPLATES } from '../data/formTemplates';
 
 const PROVIDER_LABELS = {
   zoom: 'Zoom',
@@ -41,6 +42,13 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
 
   // Embedded Zoom meeting state (null = not active)
   const [zoomEmbedConfig, setZoomEmbedConfig] = useState(null);
+
+  // Optional pre-session forms
+  const [showSessionForms, setShowSessionForms] = useState(false);
+  const [selectedSessionForms, setSelectedSessionForms] = useState([]);
+  const SESSION_FORM_OPTIONS = FORM_TEMPLATES.filter(t =>
+    ['consent', 'clinical', 'medical', 'onboarding'].includes(t.category_slug)
+  ).slice(0, 10);
 
   const { logViewAccess } = useAudit();
 
@@ -134,6 +142,27 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       };
 
       const newSession = await api.createTelehealthSession(sessionData);
+
+      // Trigger any selected pre-session forms (non-blocking)
+      if (selectedSessionForms.length > 0 && patientId) {
+        for (const tmpl of selectedSessionForms) {
+          api.createFormSubmission({
+            template_name: tmpl.name,
+            template_version: tmpl.version || '1.0',
+            patient_id: patientId,
+            form_data: {},
+            status: 'draft',
+            language: 'en',
+            metadata: {
+              trigger: 'practice_sent',
+              template_slug: tmpl.id || tmpl.slug,
+              session_id: newSession.id
+            }
+          }).catch(err => console.error('Non-critical: Could not create form submission:', err));
+        }
+        addNotification('success', `${selectedSessionForms.length} pre-session form(s) sent to patient`);
+        setSelectedSessionForms([]);
+      }
 
       // If Zoom is the resolved provider, launch embedded; otherwise show success
       if (newSession.provider_type === 'zoom' && newSession.room_id) {
@@ -520,6 +549,56 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
               <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                 {t.selectAppointmentForSession || 'Select an upcoming appointment to create a telehealth session:'}
               </p>
+
+              {/* Optional pre-session forms */}
+              <div className={`rounded-xl border mb-4 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+                <button
+                  type="button"
+                  onClick={() => setShowSessionForms(p => !p)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-50'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-cyan-500" />
+                    <span className="text-sm font-medium">Pre-Session Forms <span className={`text-xs font-normal ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>(Optional){selectedSessionForms.length > 0 ? ` · ${selectedSessionForms.length} selected` : ''}</span></span>
+                  </div>
+                  {showSessionForms ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {showSessionForms && (
+                  <div className={`px-4 pb-4 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-100'}`}>
+                    <p className={`text-xs mt-3 mb-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      Selected forms will be sent to the patient's "Forms Requested" tab when the session is created.
+                    </p>
+                    <div className="grid grid-cols-2 gap-1 max-h-48 overflow-y-auto">
+                      {SESSION_FORM_OPTIONS.map(tmpl => {
+                        const isSelected = selectedSessionForms.some(f => (f.id || f.slug) === (tmpl.id || tmpl.slug));
+                        return (
+                          <label
+                            key={tmpl.id || tmpl.slug}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                              isSelected
+                                ? theme === 'dark' ? 'bg-cyan-900/30 border border-cyan-700/50' : 'bg-cyan-50 border border-cyan-200'
+                                : theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={e => setSelectedSessionForms(prev =>
+                                e.target.checked ? [...prev, tmpl] : prev.filter(f => (f.id || f.slug) !== (tmpl.id || tmpl.slug))
+                              )}
+                              className="w-4 h-4 rounded text-cyan-500"
+                            />
+                            <div className="min-w-0">
+                              <p className={`text-xs font-medium truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>{tmpl.name}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-3">
                 {loadingAppointments ? (
                   <div className="flex items-center justify-center py-6">

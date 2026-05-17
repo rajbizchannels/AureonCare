@@ -5,6 +5,28 @@ import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
 const HEADER_HEIGHT = 44;
 const FOOTER_HEIGHT = 28;
 
+const HIDDEN_MORE_ITEMS = [
+  'polls/quizzes',
+  'record',
+  'breakout rooms',
+  'stop summary',
+  'caption settings',
+  'report',
+  'livestream',
+];
+
+function hideRestrictedMenuItems(root) {
+  const menuItems = root.querySelectorAll(
+    '[class*="MuiMenuItem"], [class*="MuiListItem"], [role="menuitem"], li[class*="dropdown-item"]'
+  );
+  menuItems.forEach((item) => {
+    const text = (item.textContent || '').trim().toLowerCase();
+    if (HIDDEN_MORE_ITEMS.some((label) => text === label || text.startsWith(label))) {
+      item.style.display = 'none';
+    }
+  });
+}
+
 const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => {
   const containerRef = useRef(null);
   const clientRef    = useRef(null);
@@ -160,6 +182,20 @@ const ZoomMeetingEmbed = ({ meetingId, onClose, api, displayName = 'Host' }) => 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status === 'loading']);
+
+  // Hide disallowed items from the SDK "More" dropdown whenever it opens.
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node.nodeType !== 1) continue;
+          hideRestrictedMenuItems(node);
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   const handleClose = useCallback(async () => {
     await endActiveSession();

@@ -1464,10 +1464,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <AlertCircle className="w-5 h-5 text-teal-500 flex-shrink-0" />
             <div>
               <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-teal-300' : 'text-teal-800'}`}>
-                You have {pendingForms.filter(f => f.status === 'draft').length} pending form{pendingForms.filter(f => f.status === 'draft').length > 1 ? 's' : ''} to complete
+                You have {pendingForms.filter(f => f.status === 'draft').length} form{pendingForms.filter(f => f.status === 'draft').length > 1 ? 's' : ''} requested — please complete them
               </p>
               <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                Please complete your intake forms at your earliest convenience
+                Forms sent by your care team are waiting in your "Forms Requested" tab
               </p>
             </div>
           </div>
@@ -2829,7 +2829,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
               <div>
                 <h3 className={`text-lg font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   <AlertCircle className="w-5 h-5 text-teal-500" />
-                  Pending Forms ({draft.length})
+                  Forms Requested ({draft.length})
                 </h3>
                 <div className="space-y-3">
                   {draft.map(submission => (
@@ -3157,7 +3157,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           { id: 'diagnoses', label: t.diagnosesTab || 'Diagnoses', icon: Activity, count: diagnoses.length },
           { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
           { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
-          { id: 'forms', label: 'Forms', icon: ClipboardList, count: pendingForms.filter(f => f.status === 'draft').length || null, highlight: pendingForms.filter(f => f.status === 'draft').length > 0 }
+          { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => f.status === 'draft').length || null, highlight: pendingForms.filter(f => f.status === 'draft').length > 0 }
         ].map((tab) => (
           <button
             key={tab.id}

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import api from '../api/apiService';
+import { formatCurrency } from '../utils/formatters';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewHealthcareOfferingForm from '../components/forms/NewHealthcareOfferingForm';
 import { useAudit } from '../hooks/useAudit';
+import { FORM_TEMPLATES } from '../data/formTemplates';
 import {
   Package,
   FolderTree,
@@ -34,7 +36,7 @@ import {
 } from 'lucide-react';
 
 const OfferingManagementView = () => {
-  const { user, theme, setCurrentModule } = useApp();
+  const { user, theme, setCurrentModule, currency } = useApp();
   const [activeTab, setActiveTab] = useState('offerings');
   const [offerings, setOfferings] = useState([]);
   const [packages, setPackages] = useState([]);
@@ -268,14 +270,18 @@ const OfferingManagementView = () => {
     setShowFormsPanel(true);
     setLoadingForms(true);
     try {
-      const [linked, templates] = await Promise.all([
+      const [linked, apiTemplates] = await Promise.all([
         api.getOfferingLinkedForms(offering.id).catch(() => []),
         api.getFormTemplates().catch(() => [])
       ]);
       setOfferingLinkedForms(linked);
-      setAvailableFormTemplates(templates);
+      // Merge DB templates with seed templates, deduplicating by slug/id
+      const apiIds = new Set(apiTemplates.map(t => t.slug || t.id));
+      const seedOnly = FORM_TEMPLATES.filter(t => !apiIds.has(t.id));
+      setAvailableFormTemplates([...apiTemplates, ...seedOnly]);
     } catch (error) {
       console.error('Error loading forms:', error);
+      setAvailableFormTemplates(FORM_TEMPLATES);
     } finally {
       setLoadingForms(false);
     }
@@ -289,14 +295,21 @@ const OfferingManagementView = () => {
   };
 
   const handleToggleFormLink = async (formTemplate) => {
-    const isLinked = offeringLinkedForms.some(f => f.form_template_id === formTemplate.id || f.id === formTemplate.id);
+    // Use slug as the stable identifier (seed templates use slug as id)
+    const templateKey = formTemplate.id || formTemplate.slug;
+    const isLinked = offeringLinkedForms.some(f =>
+      f.form_template_id === templateKey || f.form_template_id === formTemplate.slug
+    );
     try {
       if (isLinked) {
-        await api.unlinkFormFromOffering(selectedOfferingForForms.id, formTemplate.id);
-        setOfferingLinkedForms(prev => prev.filter(f => f.form_template_id !== formTemplate.id && f.id !== formTemplate.id));
+        await api.unlinkFormFromOffering(selectedOfferingForForms.id, templateKey);
+        setOfferingLinkedForms(prev => prev.filter(f =>
+          f.form_template_id !== templateKey && f.form_template_id !== formTemplate.slug
+        ));
       } else {
         const result = await api.linkFormToOffering(selectedOfferingForForms.id, {
-          form_template_id: formTemplate.id,
+          form_template_id: templateKey,
+          form_template_name: formTemplate.name,
           trigger_on: 'order'
         });
         setOfferingLinkedForms(prev => [...prev, result]);
@@ -654,7 +667,7 @@ const OfferingManagementView = () => {
 
           {/* Statistics Tab */}
           {activeTab === 'statistics' && statistics && (
-            <StatisticsView statistics={statistics} theme={theme} />
+            <StatisticsView statistics={statistics} theme={theme} currency={currency} />
           )}
         </>
       )}
@@ -929,7 +942,7 @@ const PromotionCard = ({ promotion, theme, onEdit, onToggleStatus }) => (
 );
 
 // Statistics View Component
-const StatisticsView = ({ statistics, theme }) => (
+const StatisticsView = ({ statistics, theme, currency }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <StatCard
@@ -955,7 +968,7 @@ const StatisticsView = ({ statistics, theme }) => (
       />
       <StatCard
         title="Total Revenue"
-        value={`$${parseFloat(statistics.overview.total_revenue || 0).toLocaleString()}`}
+        value={formatCurrency(parseFloat(statistics.overview.total_revenue || 0), currency)}
         icon={DollarSign}
         color="emerald"
         theme={theme}
@@ -1249,7 +1262,7 @@ const CheckboxField = ({ label, checked, onChange, theme }) => (
 
 // Offering Forms Panel — assign form templates that auto-trigger on order
 const OfferingFormsPanel = ({ offering, linkedForms, availableTemplates, loading, onToggle, onClose, theme }) => {
-  const linkedIds = new Set(linkedForms.map(f => f.form_template_id ?? f.id));
+  const linkedIds = new Set(linkedForms.flatMap(f => [f.form_template_id, f.id].filter(Boolean)));
 
   return (
     <div className={`mb-6 rounded-xl shadow-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
@@ -1283,10 +1296,11 @@ const OfferingFormsPanel = ({ offering, linkedForms, availableTemplates, loading
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {availableTemplates.map(template => {
-              const linked = linkedIds.has(template.id);
+              const templateKey = template.id || template.slug;
+              const linked = linkedIds.has(templateKey) || linkedIds.has(template.slug);
               return (
                 <button
-                  key={template.id}
+                  key={templateKey}
                   onClick={() => onToggle(template)}
                   className={`flex items-start gap-3 p-4 rounded-lg border text-left transition-colors ${
                     linked

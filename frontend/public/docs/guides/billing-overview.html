@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Billing & Revenue Cycle - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>💼 Billing & Revenue Cycle Management</h1>
+                    <p>Complete guide to RCM operations</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.2</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Revenue Cycle Management Overview</h1>
+            <p>The <strong>Revenue Cycle Management (RCM)</strong> module manages the entire billing process from patient registration through final payment collection. It handles insurance claims, payment processing, payer management, and financial reporting.</p>
+
+            <h2>What is Revenue Cycle Management?</h2>
+            <p>Revenue Cycle Management is the financial process healthcare facilities use to track patient care episodes from registration and appointment scheduling to final payment. The RCM process involves:</p>
+            <ul>
+                <li>Patient registration and insurance verification</li>
+                <li>Charge capture for services provided</li>
+                <li>Claims submission to insurance payers</li>
+                <li>Payment posting (insurance and patient)</li>
+                <li>Denial management and appeals</li>
+                <li>Patient billing and collections</li>
+                <li>Financial reporting and analysis</li>
+            </ul>
+
+            <h2>Accessing the RCM Module</h2>
+            <ol>
+                <li>From the main navigation, click <strong>Revenue Cycle Management</strong> or <strong>RCM</strong></li>
+                <li>You'll see the RCM dashboard with key metrics:
+                    <ul>
+                        <li>Total revenue (current period)</li>
+                        <li>Claims submitted</li>
+                        <li>Claims pending</li>
+                        <li>Claims denied</li>
+                        <li>Outstanding A/R (accounts receivable)</li>
+                        <li>Collection rate</li>
+                    </ul>
+                </li>
+                <li>Use tabs to navigate to different sections:
+                    <ul>
+                        <li><strong>Claims</strong> - Create and manage insurance claims</li>
+                        <li><strong>Payments</strong> - Record and track payments</li>
+                        <li><strong>Insurance Payers</strong> - Manage insurance companies</li>
+                        <li><strong>Reports</strong> - Financial and operational reports</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2>Key RCM Workflows</h2>
+
+            <h3>1. Claims Management Workflow</h3>
+            <table>
+                <tr>
+                    <th>Step</th>
+                    <th>Action</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>Create Claim</td>
+                    <td>Manually create or auto-generate from completed appointments</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Add Diagnosis</td>
+                    <td>Add ICD-10 codes (up to 12)</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Add Procedures</td>
+                    <td>Add CPT codes with charges</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Verify Eligibility</td>
+                    <td>Check patient insurance coverage</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>Validate</td>
+                    <td>System checks for errors</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>Submit</td>
+                    <td>Electronic (EDI 837) or Paper (CMS-1500)</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>Track Status</td>
+                    <td>Monitor claim progress</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td>Post Payment</td>
+                    <td>Apply insurance payment to claim</td>
+                </tr>
+            </table>
+
+            <h3>2. Payment Processing Workflow</h3>
+            <ol>
+                <li><strong>Receive Payment</strong> - Patient pays via cash, card, check, ACH, or patient portal</li>
+                <li><strong>Record Payment</strong> - Enter payment details in RCM > Payments</li>
+                <li><strong>Link to Claim/Invoice</strong> - Associate payment with specific claim or patient balance</li>
+                <li><strong>Post Payment</strong> - Apply payment to patient account</li>
+                <li><strong>Generate Receipt</strong> - Print or email receipt to patient</li>
+                <li><strong>Reconcile</strong> - Daily reconciliation of payments received</li>
+            </ol>
+
+            <h3>3. Denial Management Workflow</h3>
+            <ol>
+                <li><strong>Identify Denial</strong> - Monitor denied claims dashboard</li>
+                <li><strong>Review Denial Reason</strong> - Understand why claim was denied</li>
+                <li><strong>Determine Action</strong> - Correct and resubmit OR appeal</li>
+                <li><strong>Correct Errors</strong> - Fix diagnosis codes, procedures, or information</li>
+                <li><strong>Resubmit or Appeal</strong> - Send corrected claim or file appeal with documentation</li>
+                <li><strong>Track Resolution</strong> - Monitor resubmission/appeal status</li>
+            </ol>
+
+            <h2>RCM Dashboard Metrics Explained</h2>
+
+            <h3>Key Performance Indicators (KPIs)</h3>
+            <table>
+                <tr>
+                    <th>Metric</th>
+                    <th>What It Means</th>
+                    <th>Target Range</th>
+                </tr>
+                <tr>
+                    <td><strong>Days in A/R</strong></td>
+                    <td>Average days to collect payment</td>
+                    <td>30-40 days</td>
+                </tr>
+                <tr>
+                    <td><strong>Collection Rate</strong></td>
+                    <td>% of collectible revenue actually collected</td>
+                    <td>&gt;95%</td>
+                </tr>
+                <tr>
+                    <td><strong>Clean Claim Rate</strong></td>
+                    <td>% of claims accepted on first submission</td>
+                    <td>&gt;90%</td>
+                </tr>
+                <tr>
+                    <td><strong>Denial Rate</strong></td>
+                    <td>% of claims denied by payers</td>
+                    <td>&lt;5%</td>
+                </tr>
+                <tr>
+                    <td><strong>Net Collection Rate</strong></td>
+                    <td>Collections ÷ (Charges - Contractual Adjustments)</td>
+                    <td>&gt;95%</td>
+                </tr>
+            </table>
+
+            <h2>Common Billing Tasks</h2>
+
+            <h3>Creating a Claim</h3>
+            <ol>
+                <li>Go to <strong>RCM</strong> > <strong>Claims</strong></li>
+                <li>Click <strong>+ New Claim</strong></li>
+                <li>Enter claim information:
+                    <ul>
+                        <li>Patient (search by name or MRN)</li>
+                        <li>Insurance payer</li>
+                        <li>Service date</li>
+                        <li>Rendering provider</li>
+                        <li>Place of service (e.g., Office: 11, Hospital: 21)</li>
+                    </ul>
+                </li>
+                <li>Add diagnosis codes (ICD-10):
+                    <ul>
+                        <li>Primary diagnosis (required)</li>
+                        <li>Secondary diagnoses (optional, up to 11 more)</li>
+                    </ul>
+                </li>
+                <li>Add procedure codes (CPT):
+                    <ul>
+                        <li>CPT code</li>
+                        <li>Description</li>
+                        <li>Units (quantity)</li>
+                        <li>Charge per unit</li>
+                        <li>Total charge (auto-calculated)</li>
+                    </ul>
+                </li>
+                <li>Review total claim amount</li>
+                <li>Click <strong>Save Claim</strong></li>
+            </ol>
+
+            <h3>Recording a Payment</h3>
+            <ol>
+                <li>Go to <strong>RCM</strong> > <strong>Payments</strong></li>
+                <li>Click <strong>+ New Payment</strong></li>
+                <li>Select patient</li>
+                <li>Enter payment amount</li>
+                <li>Select payment method:
+                    <ul>
+                        <li><strong>Credit Card</strong> - Enter last 4 digits, card type, transaction ID</li>
+                        <li><strong>Cash</strong> - Record amount received</li>
+                        <li><strong>Check</strong> - Enter check number, bank name</li>
+                        <li><strong>ACH/Bank Transfer</strong> - Enter transaction reference</li>
+                        <li><strong>Insurance Payment</strong> - Link to claim</li>
+                    </ul>
+                </li>
+                <li>Select payment type:
+                    <ul>
+                        <li>Copay</li>
+                        <li>Coinsurance</li>
+                        <li>Deductible</li>
+                        <li>Self-Pay (full payment)</li>
+                    </ul>
+                </li>
+                <li>Link to claim or invoice (optional)</li>
+                <li>Add description/notes</li>
+                <li>Click <strong>Save Payment</strong></li>
+                <li>Print or email receipt to patient</li>
+            </ol>
+
+            <h3>Managing Insurance Payers</h3>
+            <ol>
+                <li>Go to <strong>RCM</strong> > <strong>Insurance Payers</strong></li>
+                <li>View all insurance companies</li>
+                <li>Click <strong>+ Add Insurance Payer</strong> to add new</li>
+                <li>Enter payer information:
+                    <ul>
+                        <li>Payer name</li>
+                        <li>Payer ID (electronic)</li>
+                        <li>Address and contact information</li>
+                        <li>Claims submission method (Electronic/Paper)</li>
+                        <li>Claims address (for paper claims)</li>
+                        <li>Contact person</li>
+                        <li>Notes (special requirements)</li>
+                    </ul>
+                </li>
+                <li>Configure payer-specific settings:
+                    <ul>
+                        <li>Prior authorization requirements</li>
+                        <li>Accepted procedure codes</li>
+                        <li>Fee schedule</li>
+                        <li>Expected payment timeframe</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Save Payer</strong></li>
+            </ol>
+
+            <h2>Understanding Claim Statuses</h2>
+            <table>
+                <tr>
+                    <th>Status</th>
+                    <th>Icon</th>
+                    <th>Meaning</th>
+                    <th>Action Required</th>
+                </tr>
+                <tr>
+                    <td><strong>Draft</strong></td>
+                    <td>📋</td>
+                    <td>Created but not yet complete</td>
+                    <td>Complete required fields</td>
+                </tr>
+                <tr>
+                    <td><strong>Ready</strong></td>
+                    <td>✅</td>
+                    <td>Validated and ready to submit</td>
+                    <td>Submit to payer</td>
+                </tr>
+                <tr>
+                    <td><strong>Pending</strong></td>
+                    <td>⏳</td>
+                    <td>Awaiting submission</td>
+                    <td>Schedule for batch submission</td>
+                </tr>
+                <tr>
+                    <td><strong>Submitted</strong></td>
+                    <td>📤</td>
+                    <td>Sent to insurance payer</td>
+                    <td>Wait for acknowledgment</td>
+                </tr>
+                <tr>
+                    <td><strong>Acknowledged</strong></td>
+                    <td>📨</td>
+                    <td>Payer received claim</td>
+                    <td>Wait for processing</td>
+                </tr>
+                <tr>
+                    <td><strong>In Review</strong></td>
+                    <td>🔄</td>
+                    <td>Payer is processing</td>
+                    <td>Monitor status</td>
+                </tr>
+                <tr>
+                    <td><strong>Approved</strong></td>
+                    <td>✅</td>
+                    <td>Claim approved for payment</td>
+                    <td>Wait for payment</td>
+                </tr>
+                <tr>
+                    <td><strong>Paid</strong></td>
+                    <td>💰</td>
+                    <td>Payment received</td>
+                    <td>Post payment, send patient statement</td>
+                </tr>
+                <tr>
+                    <td><strong>Denied</strong></td>
+                    <td>❌</td>
+                    <td>Claim rejected by payer</td>
+                    <td>Review reason, correct, resubmit or appeal</td>
+                </tr>
+                <tr>
+                    <td><strong>Resubmitted</strong></td>
+                    <td>🔁</td>
+                    <td>Corrected and resubmitted</td>
+                    <td>Monitor resubmission status</td>
+                </tr>
+            </table>
+
+            <h2>Common Denial Reasons and Solutions</h2>
+            <table>
+                <tr>
+                    <th>Denial Reason</th>
+                    <th>Explanation</th>
+                    <th>Solution</th>
+                </tr>
+                <tr>
+                    <td><strong>Missing Information</strong></td>
+                    <td>Required fields not completed</td>
+                    <td>Add missing diagnosis, procedure, or demographic info</td>
+                </tr>
+                <tr>
+                    <td><strong>Invalid Code</strong></td>
+                    <td>ICD-10 or CPT code incorrect</td>
+                    <td>Verify codes are current and valid</td>
+                </tr>
+                <tr>
+                    <td><strong>Not Covered Service</strong></td>
+                    <td>Service not covered by plan</td>
+                    <td>Bill patient as self-pay or appeal with medical necessity</td>
+                </tr>
+                <tr>
+                    <td><strong>Pre-Auth Required</strong></td>
+                    <td>Prior authorization needed</td>
+                    <td>Obtain authorization, add auth number to claim</td>
+                </tr>
+                <tr>
+                    <td><strong>Duplicate Claim</strong></td>
+                    <td>Already submitted</td>
+                    <td>Check claim history, avoid resubmitting</td>
+                </tr>
+                <tr>
+                    <td><strong>Patient Not Eligible</strong></td>
+                    <td>Coverage not active on service date</td>
+                    <td>Verify coverage dates, bill patient if ineligible</td>
+                </tr>
+                <tr>
+                    <td><strong>Timely Filing</strong></td>
+                    <td>Submitted too late</td>
+                    <td>Appeal with explanation for delay</td>
+                </tr>
+            </table>
+
+            <h2>Financial Reports Available</h2>
+            <p>Go to <strong>RCM</strong> > <strong>Reports</strong> to access:</p>
+
+            <h3>Claims Reports</h3>
+            <ul>
+                <li><strong>Claims Summary</strong> - All claims by status and payer</li>
+                <li><strong>Claims by Provider</strong> - Claims submitted per provider</li>
+                <li><strong>Denial Report</strong> - All denied claims with reasons</li>
+                <li><strong>Claims Aging</strong> - Outstanding claims by age (0-30, 31-60, 61-90, 90+ days)</li>
+            </ul>
+
+            <h3>Payment Reports</h3>
+            <ul>
+                <li><strong>Daily Deposit Report</strong> - All payments received by date</li>
+                <li><strong>Payment by Method</strong> - Cash, card, check, ACH breakdown</li>
+                <li><strong>Payment Reconciliation</strong> - Compare payments to deposits</li>
+                <li><strong>Unapplied Payments</strong> - Payments not yet posted to claims</li>
+            </ul>
+
+            <h3>Revenue Reports</h3>
+            <ul>
+                <li><strong>Revenue by Service</strong> - Income by CPT code</li>
+                <li><strong>Revenue by Provider</strong> - Income generated per provider</li>
+                <li><strong>Revenue Trend</strong> - Monthly/quarterly revenue comparison</li>
+                <li><strong>Collection Rate</strong> - Percentage of billed amount collected</li>
+            </ul>
+
+            <h3>A/R Reports</h3>
+            <ul>
+                <li><strong>Accounts Receivable Aging</strong> - Outstanding balances by age</li>
+                <li><strong>Patient Balance Report</strong> - All patients with outstanding balances</li>
+                <li><strong>Insurance A/R</strong> - Outstanding claims by payer</li>
+            </ul>
+
+            <h2>Best Practices for Revenue Cycle Management</h2>
+
+            <h3>Claim Submission Best Practices</h3>
+            <ul>
+                <li>✅ <strong>Verify insurance</strong> before every appointment</li>
+                <li>✅ <strong>Collect copays</strong> at time of service</li>
+                <li>✅ <strong>Submit claims within 24-48 hours</strong> of service</li>
+                <li>✅ <strong>Use electronic submission</strong> for faster processing (EDI 837)</li>
+                <li>✅ <strong>Validate claims</strong> before submission to catch errors</li>
+                <li>✅ <strong>Include all diagnosis codes</strong> to support medical necessity</li>
+                <li>✅ <strong>Use specific CPT codes</strong> rather than generic codes</li>
+                <li>✅ <strong>Link diagnosis to procedures</strong> to show medical necessity</li>
+            </ul>
+
+            <h3>Denial Management Best Practices</h3>
+            <ul>
+                <li>✅ <strong>Review denials daily</strong> - Address within 24 hours</li>
+                <li>✅ <strong>Track denial reasons</strong> - Identify patterns</li>
+                <li>✅ <strong>Correct and resubmit quickly</strong> - Within 7-10 days</li>
+                <li>✅ <strong>Appeal when appropriate</strong> - With supporting documentation</li>
+                <li>✅ <strong>Document denial trends</strong> - Train staff on prevention</li>
+                <li>✅ <strong>Follow up on appeals</strong> - Don't let them expire</li>
+            </ul>
+
+            <h3>Payment Posting Best Practices</h3>
+            <ul>
+                <li>✅ <strong>Post payments daily</strong> - Don't let them accumulate</li>
+                <li>✅ <strong>Reconcile daily deposits</strong> - Match to payment records</li>
+                <li>✅ <strong>Generate receipts</strong> - For all patient payments</li>
+                <li>✅ <strong>Document payment method</strong> - For audit trail</li>
+                <li>✅ <strong>Apply to correct claim</strong> - Link payments accurately</li>
+                <li>✅ <strong>Handle refunds promptly</strong> - Process within 30 days</li>
+            </ul>
+
+            <h3>Financial Reporting Best Practices</h3>
+            <ul>
+                <li>✅ <strong>Review reports weekly</strong> - Monitor key metrics</li>
+                <li>✅ <strong>Track Days in A/R</strong> - Keep under 40 days</li>
+                <li>✅ <strong>Monitor collection rate</strong> - Maintain above 95%</li>
+                <li>✅ <strong>Review aging reports</strong> - Follow up on old balances</li>
+                <li>✅ <strong>Analyze denial trends</strong> - Implement corrective actions</li>
+                <li>✅ <strong>Compare period over period</strong> - Identify revenue trends</li>
+            </ul>
+
+            <h2>Common Questions</h2>
+
+            <h3>Q: How quickly should claims be submitted?</h3>
+            <p><strong>A:</strong> Best practice is to submit claims within 24-48 hours of service. Most payers have filing deadlines (30-90 days), but faster submission leads to faster payment.</p>
+
+            <h3>Q: What if a patient doesn't have insurance?</h3>
+            <p><strong>A:</strong> Mark the patient as self-pay and collect payment at time of service or offer a payment plan. Do not submit claims to insurance payers.</p>
+
+            <h3>Q: How do I handle partial insurance payments?</h3>
+            <p><strong>A:</strong> Post the insurance payment to the claim, then bill the patient for the remaining balance (deductible, coinsurance, or copay). Generate a patient statement.</p>
+
+            <h3>Q: Can I edit a claim after it's submitted?</h3>
+            <p><strong>A:</strong> No, submitted claims cannot be edited. If you need to make changes, you must void the original claim and create a corrected claim.</p>
+
+            <h3>Q: How long should we wait before following up on a claim?</h3>
+            <p><strong>A:</strong> Follow up if no response within:
+                <ul>
+                    <li>Electronic claims: 14 days</li>
+                    <li>Paper claims: 21 days</li>
+                </ul>
+            </p>
+
+            <h3>Q: What's the difference between copay, coinsurance, and deductible?</h3>
+            <p><strong>A:</strong></p>
+            <ul>
+                <li><strong>Copay:</strong> Fixed amount patient pays per visit (e.g., $25)</li>
+                <li><strong>Coinsurance:</strong> Percentage patient pays after deductible (e.g., 20%)</li>
+                <li><strong>Deductible:</strong> Amount patient must pay before insurance coverage begins (e.g., $1,000/year)</li>
+            </ul>
+
+            <h2>Getting Help</h2>
+            <p>For additional billing and RCM support:</p>
+            <ul>
+                <li>Use the <strong>Help icon</strong> (?) in the header for in-app help</li>
+                <li>Click <strong>AI Assistant</strong> to ask billing questions</li>
+                <li>Review detailed guides:
+                    <ul>
+                        <li><a href="claims.html">Claims Management Guide</a></li>
+                        <li><a href="payments.html">Payment Processing Guide</a></li>
+                        <li><a href="insurance-payers.html">Insurance Payers Guide</a></li>
+                        <li><a href="financial-reports.html">Financial Reports Guide</a></li>
+                    </ul>
+                </li>
+                <li>Contact billing support: <strong>support@aureoncare.com</strong></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.2 - Revenue Cycle Management</p>
+    </footer>
+</body>
+</html>

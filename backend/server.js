@@ -68,6 +68,10 @@ app.use(cors({
   },
   credentials: true
 }));
+// Stripe webhook MUST be mounted before express.json() so it receives the raw body.
+// Stripe-Signature verification fails if the body has been JSON-parsed first.
+app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }), require('./routes/stripeWebhook'));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -132,6 +136,7 @@ app.use('/api/telehealth-settings', require('./routes/telehealthSettings'));
 app.use('/api/vendor-integration-settings', require('./routes/vendorIntegrationSettings'));
 app.use('/api/integrations/oauth', require('./routes/integrationOAuth'));
 app.use('/api/backup-providers', require('./routes/backupProviders'));
+app.use('/api/stripe-settings', require('./routes/stripeSettings'));
 app.use('/api/clinic-settings', require('./routes/clinicSettings'));
 app.use('/api/notification-preferences', require('./routes/notificationPreferences'));
 app.use('/api/fhir', require('./routes/fhir'));
@@ -156,6 +161,8 @@ app.use('/api/archive', require('./routes/archive'));
 app.use('/api/archive-rules', require('./routes/archiveRules'));
 app.use('/api/audit', require('./routes/audit'));
 app.use('/api/billing', require('./routes/billing'));
+app.use('/api/accounts', require('./routes/accounts'));
+app.use('/api/inventory', require('./routes/inventory'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/form-management', require('./routes/form-management'));
 app.use('/api/licenses', require('./routes/licenses'));
