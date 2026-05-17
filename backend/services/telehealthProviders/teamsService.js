@@ -29,6 +29,17 @@ class TeamsService {
       this.config.token_expires_at ||
       (this.config.settings && this.config.settings.expires_at);
 
+    console.log('[Teams getAccessToken]', {
+      hasAccessToken: Boolean(accessToken),
+      tokenLength: accessToken?.length,
+      hasRefreshToken: Boolean(refreshToken),
+      expiresAt,
+      isExpired: expiresAt ? Date.now() >= expiresAt : 'unknown',
+      hasClientId: Boolean(this.config.client_id),
+      hasClientSecret: Boolean(this.config.client_secret),
+      tokenScope: this.config.token_scope,
+    });
+
     if (!accessToken) {
       throw new Error(
         'Microsoft Teams is not authenticated. Please sign in via Admin Settings.'
@@ -186,10 +197,15 @@ class TeamsService {
         };
       }
 
-      console.error(
-        'Error creating Teams meeting:',
-        error.response?.data || error.message
-      );
+      console.error('[Teams createMeeting] Graph API error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: JSON.stringify(error.response?.data),
+        headers: error.response?.headers ? {
+          'www-authenticate': error.response.headers['www-authenticate'],
+        } : null,
+        message: error.message,
+      });
       throw new Error(
         'Failed to create Teams meeting: ' +
           (error.response?.data?.error?.message || error.message)
