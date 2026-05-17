@@ -392,6 +392,14 @@ router.get('/:providerType/callback', async (req, res) => {
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
       tokens = tokenResponse.data;
+      console.log(`[OAuth callback] ${providerType} token exchange succeeded:`, {
+        hasAccessToken: Boolean(tokens.access_token),
+        tokenLength: tokens.access_token?.length,
+        hasRefreshToken: Boolean(tokens.refresh_token),
+        scope: tokens.scope,
+        expiresIn: tokens.expires_in,
+        tokenType: tokens.token_type,
+      });
     } catch (tokenError) {
       console.error('Token exchange error:', tokenError.response?.data || tokenError.message);
       return sendOAuthResult(res, false, providerType, 'Token exchange failed — check your Client Secret and Redirect URL.');
