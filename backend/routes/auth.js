@@ -163,11 +163,10 @@ router.post('/forgot-password', async (req, res) => {
       [resetToken, resetTokenExpires, email]
     );
 
-    // In a real application, you would send an email here
-    // For now, we'll just return the token (in production, NEVER do this!)
+    // TODO: send resetToken via email (e.g. SendGrid) — do NOT return it in the response.
+    // The token is stored in the database; the user must receive it through their email inbox.
     res.json({
-      message: 'If the email exists, a password reset link has been sent',
-      resetToken // Remove this in production!
+      message: 'If the email exists, a password reset link has been sent'
     });
   } catch (error) {
     console.error('Error requesting password reset:', error);
