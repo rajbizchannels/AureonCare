@@ -30,6 +30,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
 
     try {
       const response = await api.login(email, password);
+      api.storeToken(response.token);
       setUser(response.user);
       setIsAuthenticated(true);
 
@@ -65,6 +66,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
           userInfo
         );
 
+        api.storeToken(response.token);
         setUser(response.user);
         setIsAuthenticated(true);
 
@@ -103,6 +105,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
         userInfo
       );
 
+      api.storeToken(response.token);
       setUser(response.user);
       setIsAuthenticated(true);
 

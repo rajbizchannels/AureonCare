@@ -4,24 +4,20 @@ const API_BASE_URL = process.env.REACT_APP_SVC_URL || 'http://localhost:3001/api
 console.log('API Service: Base URL configured as:', API_BASE_URL);
 
 /**
- * Get authentication headers from localStorage
- * @returns {Object} Headers object with authentication info
+ * Get authentication headers using the stored JWT.
+ * @returns {Object} Headers object with Authorization: Bearer <token>
  */
 const getAuthHeaders = () => {
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
+  const headers = { 'Content-Type': 'application/json' };
   try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user && user.id) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-role'] = user.role || 'patient';
+    const token = sessionStorage.getItem('token');
+    console.log('[DEBUG apiService] getAuthHeaders token present:', !!token);
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
   } catch (error) {
-    console.error('Error parsing user from localStorage:', error);
+    console.error('Error reading token from sessionStorage:', error);
   }
-
   return headers;
 };
 
@@ -3149,6 +3145,24 @@ const api = {
     const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`, { method: 'POST', body: JSON.stringify(data) });
     if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Backup failed'); }
     return r.json();
+  },
+
+  // Token lifecycle helpers — called by LoginPage (store) and App logout (clear)
+  storeToken: (token) => {
+    try {
+      sessionStorage.setItem('token', token);
+      console.log('[DEBUG apiService] Token stored in sessionStorage');
+    } catch (e) {
+      console.error('Failed to store token:', e);
+    }
+  },
+  clearToken: () => {
+    try {
+      sessionStorage.removeItem('token');
+      console.log('[DEBUG apiService] Token cleared from sessionStorage');
+    } catch (e) {
+      console.error('Failed to clear token:', e);
+    }
   }
 };
 

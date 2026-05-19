@@ -781,6 +781,7 @@ function App() {
 
               <button
                 onClick={() => {
+                  api.clearToken();
                   setIsAuthenticated(false);
                   setUser(null);
                 }}
