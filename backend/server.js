@@ -98,13 +98,7 @@ app.use((req, res, next) => {
         req.body = {};
         return next();
       }
-      // Non-empty content received but not valid JSON — include raw preview
-      // to diagnose what Vercel's runtime is actually sending (TEMP DEBUG).
-      return res.status(400).json({
-        error: 'Invalid JSON in request body',
-        _debug_received: received.substring(0, 200),
-        _debug_body_type: typeof err.body,
-      });
+      return next(err);
     }
     if (err) return next(err);
     next();

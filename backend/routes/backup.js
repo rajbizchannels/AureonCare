@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const { requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 const { google } = require('googleapis');
 const { Client } = require('@microsoft/microsoft-graph-client');
 const axios = require('axios');
 
 // Middleware to ensure only admins can access backup endpoints
-router.use(requireAdmin);
+router.use(authenticate, requireAdmin);
 
 /**
  * Generate complete backup of all system data

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { signToken } = require('../middleware/auth');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -69,8 +70,12 @@ router.post('/login', async (req, res) => {
     // Don't send password_hash back to client
     const { password_hash, reset_token, reset_token_expires, ...userData } = user;
 
+    const token = signToken(user);
+    console.log('[DEBUG auth] JWT issued for userId:', user.id, 'role:', user.role);
+
     res.json({
       message: 'Login successful',
+      token,
       user: toCamelCase(userData)
     });
   } catch (error) {
@@ -408,8 +413,12 @@ router.post('/social-login', async (req, res) => {
     // Don't send password_hash back to client
     const { password_hash, ...userData } = user;
 
+    const token = signToken(user);
+    console.log('[DEBUG auth] JWT issued (social-login) for userId:', user.id, 'role:', user.role);
+
     res.json({
       message: 'Social login successful',
+      token,
       user: toCamelCase(userData),
       isNewUser
     });
@@ -511,8 +520,12 @@ router.post('/social-register', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
     `, [newUser.id, provider, providerId, accessToken, JSON.stringify(profileData || {})]);
 
+    const token = signToken(newUser);
+    console.log('[DEBUG auth] JWT issued (social-register) for userId:', newUser.id);
+
     res.status(201).json({
       message: 'Registration successful! Your account is ready to use.',
+      token,
       user: {
         id: newUser.id,
         email: newUser.email,
