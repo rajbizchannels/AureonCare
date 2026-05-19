@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const redis = require('redis');
+const path = require('path');
+const fs = require('fs');
 
 // Use centralised Supabase-aware pool from db.js
 const pool = require('./db');
@@ -167,13 +169,38 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/form-management', require('./routes/form-management'));
 app.use('/api/licenses', require('./routes/licenses'));
 
-// Serve uploaded files
-app.use('/uploads', express.static('uploads'));
+// Serve uploaded files — requires a valid authenticated session.
+// express.static is intentionally NOT used here; unauthenticated access to
+// PHI documents (medical records, consent forms) would be a HIPAA violation.
+const { authenticate } = require('./middleware/auth');
+const UPLOADS_ROOT = path.resolve(__dirname, 'uploads');
+
+app.get('/uploads/*', authenticate, (req, res) => {
+  // Resolve the requested path and confirm it stays inside UPLOADS_ROOT
+  // to prevent directory traversal (e.g. ../../etc/passwd).
+  const requestedPath = path.resolve(UPLOADS_ROOT, req.params[0]);
+  if (!requestedPath.startsWith(UPLOADS_ROOT + path.sep) &&
+      requestedPath !== UPLOADS_ROOT) {
+    return res.status(400).json({ error: 'Invalid file path' });
+  }
+
+  if (!fs.existsSync(requestedPath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  res.sendFile(requestedPath);
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  // express.json() throws a SyntaxError for malformed request bodies.
+  // Return 400 so clients get a useful signal rather than a generic 500.
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
