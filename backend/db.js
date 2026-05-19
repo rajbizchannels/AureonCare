@@ -28,8 +28,10 @@ const poolConfig = process.env.AC_PG_URI
 const pool = new Pool(poolConfig);
 
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle database client', err);
-  process.exit(-1);
+  // Log but do NOT exit — especially critical in Vercel serverless where
+  // process.exit() kills the function instance before any response is sent,
+  // causing Vercel to return an unformatted 500 instead of our JSON error.
+  console.error('Unexpected error on idle database client', err.message);
 });
 
 module.exports = pool;
