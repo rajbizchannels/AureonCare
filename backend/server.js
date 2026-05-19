@@ -74,8 +74,19 @@ app.use(cors({
 // Stripe-Signature verification fails if the body has been JSON-parsed first.
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }), require('./routes/stripeWebhook'));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Vercel's @vercel/node runtime pre-parses application/json bodies and sets
+// req.body before Express runs, consuming the raw stream. Calling
+// express.json() after that re-reads an empty stream → SyntaxError on every
+// request. Guard both parsers so they only run when req.body is not yet set
+// (local dev / non-Vercel environments).
+app.use((req, res, next) => {
+  if (req.body !== undefined) return next();
+  express.json({ limit: '10mb' })(req, res, next);
+});
+app.use((req, res, next) => {
+  if (req.body !== undefined) return next();
+  express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+});
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
