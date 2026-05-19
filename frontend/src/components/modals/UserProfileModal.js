@@ -102,7 +102,7 @@ const UserProfileModal = ({
     setShowConfirmation(false);
 
     try {
-      await api.changePassword(user.id, localPasswordData.currentPassword, localPasswordData.newPassword);
+      await api.changePassword(localPasswordData.currentPassword, localPasswordData.newPassword);
       await addNotification('success', t.passwordChanged);
       setLocalPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setShowChangePassword(false);
