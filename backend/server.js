@@ -74,14 +74,29 @@ app.use(cors({
 // Stripe-Signature verification fails if the body has been JSON-parsed first.
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }), require('./routes/stripeWebhook'));
 
-// Vercel's @vercel/node runtime pre-parses application/json bodies and sets
-// req.body before Express runs, consuming the raw stream. Calling
-// express.json() after that re-reads an empty stream → SyntaxError on every
-// request. Guard both parsers so they only run when req.body is not yet set
-// (local dev / non-Vercel environments).
+// Body parsing — Vercel's @vercel/node runtime consumes the request stream
+// before Express middleware runs but does NOT set req.body, so express.json()
+// always reads an empty stream and throws SyntaxError for every request.
+// Fix: intercept the parse error inside the wrapper and inspect err.body —
+// the raw bytes body-parser actually received. Empty means Vercel ate the
+// stream (treat as empty body); non-empty means genuinely malformed JSON.
 app.use((req, res, next) => {
   if (req.body !== undefined) return next();
-  express.json({ limit: '10mb' })(req, res, next);
+  express.json({ limit: '10mb' })(req, res, (err) => {
+    if (err && err instanceof SyntaxError && err.status === 400) {
+      const received = typeof err.body === 'string' ? err.body.trim() : '';
+      if (!received) {
+        // Stream was empty — Vercel consumed it before we could read it.
+        // Treat as an empty body so routes handle missing fields normally.
+        req.body = {};
+        return next();
+      }
+      // Real content was received but is not valid JSON.
+      return next(err);
+    }
+    if (err) return next(err);
+    next();
+  });
 });
 app.use((req, res, next) => {
   if (req.body !== undefined) return next();
