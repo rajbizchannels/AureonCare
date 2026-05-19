@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { signToken } = require('../middleware/auth');
+const { signToken, authenticate } = require('../middleware/auth');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -84,13 +84,17 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Change password endpoint
-router.post('/change-password', async (req, res) => {
+// Change password — requires a valid JWT; user can only change their own password
+router.post('/change-password', authenticate, async (req, res) => {
   try {
-    const { userId, currentPassword, newPassword } = req.body || {};
+    const { currentPassword, newPassword } = req.body || {};
+    // userId comes exclusively from the verified JWT — never from the request body
+    const userId = req.user.id;
 
-    if (!userId || !currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'User ID, current password, and new password are required' });
+    console.log('[DEBUG change-password] Request from userId:', userId);
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
     if (newPassword.length < 6) {
@@ -99,36 +103,34 @@ router.post('/change-password', async (req, res) => {
 
     const pool = req.app.locals.pool;
 
-    // Get user
     const userResult = await pool.query(
-      'SELECT * FROM users WHERE id = $1',
+      'SELECT id, password_hash FROM users WHERE id = $1',
       [userId]
     );
 
     if (userResult.rows.length === 0) {
+      console.log('[DEBUG change-password] User not found for id:', userId);
       return res.status(404).json({ error: 'User not found' });
     }
 
     const user = userResult.rows[0];
 
-    // Verify current password
     if (user.password_hash) {
       const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+      console.log('[DEBUG change-password] Current password match:', isMatch);
       if (!isMatch) {
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
     }
 
-    // Hash new password
-    const saltRounds = 10;
-    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-    // Update password
     await pool.query(
       'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
       [newPasswordHash, userId]
     );
 
+    console.log('[DEBUG change-password] Password updated successfully for userId:', userId);
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
     console.error('Error changing password:', error);
