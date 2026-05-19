@@ -11,7 +11,6 @@ const getAuthHeaders = () => {
   const headers = { 'Content-Type': 'application/json' };
   try {
     const token = sessionStorage.getItem('token');
-    console.log('[DEBUG apiService] getAuthHeaders token present:', !!token);
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -468,7 +467,7 @@ const api = {
 
   // Users
   getUser: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/users/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/users/${id}`);
     if (!response.ok) throw new Error('Failed to fetch user');
     return response.json();
   },
@@ -3151,7 +3150,6 @@ const api = {
   storeToken: (token) => {
     try {
       sessionStorage.setItem('token', token);
-      console.log('[DEBUG apiService] Token stored in sessionStorage');
     } catch (e) {
       console.error('Failed to store token:', e);
     }
@@ -3159,7 +3157,6 @@ const api = {
   clearToken: () => {
     try {
       sessionStorage.removeItem('token');
-      console.log('[DEBUG apiService] Token cleared from sessionStorage');
     } catch (e) {
       console.error('Failed to clear token:', e);
     }

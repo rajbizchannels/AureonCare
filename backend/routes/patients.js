@@ -61,8 +61,16 @@ router.post('/', enforcePatientQuota, async (req, res) => {
     // IMPORTANT: With new schema, patient.id = user.id
     // So we must create the user FIRST to get the ID
 
-    // Create corresponding user account with patient role if email is provided
-    if (email && createUserAccount !== false) {
+    // Auto-create a linked user account when all required fields are present.
+    // Skip silently when first_name or last_name is missing — inserting an
+    // unnamed user row is the root cause of phantom unnamed patient accounts
+    // showing up in GET /api/users.
+    const hasName = first_name && first_name.trim() && last_name && last_name.trim();
+
+    if (email && hasName && createUserAccount !== false) {
+      console.log('[DEBUG patients] Auto-creating user account — email:', email,
+        'name:', first_name, last_name);
+
       // Check if user with this email already exists
       const existingUser = await client.query(
         'SELECT id FROM users WHERE email = $1',
@@ -70,12 +78,10 @@ router.post('/', enforcePatientQuota, async (req, res) => {
       );
 
       if (existingUser.rows.length > 0) {
-        // Use existing user ID
         userId = existingUser.rows[0].id;
+        console.log('[DEBUG patients] Linked to existing user:', userId);
       } else {
-        // Create user with patient role
         const bcrypt = require('bcryptjs');
-        // Generate a temporary password (user should reset via patient portal)
         tempPassword = Math.random().toString(36).slice(-8);
         const passwordHash = await bcrypt.hash(tempPassword, 10);
 
@@ -84,12 +90,14 @@ router.post('/', enforcePatientQuota, async (req, res) => {
            (id, email, password_hash, first_name, last_name, role, phone, status, created_at, updated_at)
            VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', $5, 'active', NOW(), NOW())
            RETURNING id`,
-          [email, passwordHash, first_name, last_name, phone]
+          [email, passwordHash, first_name.trim(), last_name.trim(), phone]
         );
 
         userId = userResult.rows[0].id;
-        console.log(`Created user account for patient ${first_name} ${last_name} with temporary password: ${tempPassword}`);
+        console.log('[DEBUG patients] New user created:', userId);
       }
+    } else if (email && !hasName && createUserAccount !== false) {
+      console.log('[DEBUG patients] Skipped user auto-creation — first_name or last_name missing for email:', email);
     }
 
     // Create patient record with user ID (patient.id = user.id)
