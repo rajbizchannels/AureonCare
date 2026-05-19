@@ -1,7 +1,19 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate, authorize } = require('../middleware/auth');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforceUserQuota, enforceProviderQuota } = require('../middleware/planEnforcement');
+
+// All user routes require a valid JWT
+router.use(authenticate);
+
+// Reusable guard: passes if caller is admin OR is acting on their own record
+const isSelfOrAdmin = (req, res, next) => {
+  if (req.user.role === 'admin' || String(req.user.id) === String(req.params.id)) {
+    return next();
+  }
+  return res.status(403).json({ error: 'Access denied' });
+};
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -24,8 +36,8 @@ const toCamelCase = (obj) => {
   return newObj;
 };
 
-// Get all users
-router.get('/', async (req, res) => {
+// Get all users — admin only
+router.get('/', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(`
@@ -41,8 +53,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single user
-router.get('/:id', async (req, res) => {
+// Get single user — admin or own user
+router.get('/:id', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
@@ -63,8 +75,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new user  (quota + provider-seat checks run first)
-router.post('/', enforceUserQuota, enforceProviderQuota, async (req, res) => {
+// Create new user — admin only (quota + provider-seat checks run after)
+router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, async (req, res) => {
   const { firstName, lastName, first_name, last_name, role, practice, avatar, email, phone, license, specialty, preferences, status, password } = req.body;
 
   try {
@@ -185,8 +197,8 @@ router.post('/', enforceUserQuota, enforceProviderQuota, async (req, res) => {
   }
 });
 
-// Update user
-router.put('/:id', async (req, res) => {
+// Update user — admin or own user
+router.put('/:id', isSelfOrAdmin, async (req, res) => {
   const { firstName, lastName, first_name, last_name, role, avatar, email, phone, address, practice, license, specialty, preferences, status, language, country, password } = req.body;
 
   try {
@@ -405,8 +417,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete user
-router.delete('/:id', async (req, res) => {
+// Delete user — admin only
+router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
@@ -425,8 +437,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Update user language preference
-router.put('/:id/language', async (req, res) => {
+// Update user language preference — admin or own user
+router.put('/:id/language', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { language } = req.body;
@@ -463,8 +475,8 @@ router.put('/:id/language', async (req, res) => {
   }
 });
 
-// Switch active role (for users with multiple roles)
-router.put('/:id/switch-role', async (req, res) => {
+// Switch active role — own user only
+router.put('/:id/switch-role', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { role_name } = req.body;
@@ -512,8 +524,8 @@ router.put('/:id/switch-role', async (req, res) => {
   }
 });
 
-// Get user's roles
-router.get('/:id/roles', async (req, res) => {
+// Get user's roles — admin or own user
+router.get('/:id/roles', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 
@@ -535,8 +547,8 @@ router.get('/:id/roles', async (req, res) => {
   }
 });
 
-// Assign role to user
-router.post('/:id/roles', async (req, res) => {
+// Assign role to user — admin only
+router.post('/:id/roles', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { role_id, assigned_by } = req.body;
@@ -597,8 +609,8 @@ router.post('/:id/roles', async (req, res) => {
   }
 });
 
-// Remove role from user
-router.delete('/:id/roles/:role_id', async (req, res) => {
+// Remove role from user — admin only
+router.delete('/:id/roles/:role_id', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 
