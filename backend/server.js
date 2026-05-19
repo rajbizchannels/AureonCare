@@ -84,15 +84,27 @@ app.use((req, res, next) => {
   if (req.body !== undefined) return next();
   express.json({ limit: '10mb' })(req, res, (err) => {
     if (err && err instanceof SyntaxError && err.status === 400) {
-      const received = typeof err.body === 'string' ? err.body.trim() : '';
+      let received = '';
+      if (typeof err.body === 'string') {
+        received = err.body.trim();
+      } else if (Buffer.isBuffer(err.body)) {
+        received = err.body.toString('utf8').trim();
+      } else if (err.body != null) {
+        received = String(err.body).trim();
+      }
       if (!received) {
         // Stream was empty — Vercel consumed it before we could read it.
         // Treat as an empty body so routes handle missing fields normally.
         req.body = {};
         return next();
       }
-      // Real content was received but is not valid JSON.
-      return next(err);
+      // Non-empty content received but not valid JSON — include raw preview
+      // to diagnose what Vercel's runtime is actually sending (TEMP DEBUG).
+      return res.status(400).json({
+        error: 'Invalid JSON in request body',
+        _debug_received: received.substring(0, 200),
+        _debug_body_type: typeof err.body,
+      });
     }
     if (err) return next(err);
     next();
