@@ -42,24 +42,14 @@ import ConfirmationModal from '../modals/ConfirmationModal';
 // API Base URL
 const API_BASE_URL = process.env.REACT_APP_SVC_URL || 'http://localhost:3000/api';
 
-/**
- * Get authentication headers from localStorage
- */
 const getAuthHeaders = () => {
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
+  const headers = { 'Content-Type': 'application/json' };
   try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user && user.id) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-role'] = user.role || 'admin';
-    }
-  } catch (error) {
-    console.error('Error parsing user from localStorage:', error);
+    const token = sessionStorage.getItem('token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  } catch (e) {
+    console.error('Error reading token:', e);
   }
-
   return headers;
 };
 
