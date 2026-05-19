@@ -26,13 +26,13 @@ const toCamelCase = (obj) => {
 
 // Login endpoint
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
-  }
-
   try {
+    const { email, password } = req.body || {};
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
     const pool = req.app.locals.pool;
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
@@ -81,17 +81,17 @@ router.post('/login', async (req, res) => {
 
 // Change password endpoint
 router.post('/change-password', async (req, res) => {
-  const { userId, currentPassword, newPassword } = req.body;
-
-  if (!userId || !currentPassword || !newPassword) {
-    return res.status(400).json({ error: 'User ID, current password, and new password are required' });
-  }
-
-  if (newPassword.length < 6) {
-    return res.status(400).json({ error: 'New password must be at least 6 characters long' });
-  }
-
   try {
+    const { userId, currentPassword, newPassword } = req.body || {};
+
+    if (!userId || !currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'User ID, current password, and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
     const pool = req.app.locals.pool;
 
     // Get user
@@ -133,13 +133,13 @@ router.post('/change-password', async (req, res) => {
 
 // Forgot password - request reset token
 router.post('/forgot-password', async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).json({ error: 'Email is required' });
-  }
-
   try {
+    const { email } = req.body || {};
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
     const pool = req.app.locals.pool;
 
     // Check if user exists
@@ -176,17 +176,17 @@ router.post('/forgot-password', async (req, res) => {
 
 // Reset password with token
 router.post('/reset-password', async (req, res) => {
-  const { resetToken, newPassword } = req.body;
-
-  if (!resetToken || !newPassword) {
-    return res.status(400).json({ error: 'Reset token and new password are required' });
-  }
-
-  if (newPassword.length < 6) {
-    return res.status(400).json({ error: 'New password must be at least 6 characters long' });
-  }
-
   try {
+    const { resetToken, newPassword } = req.body || {};
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ error: 'Reset token and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
     const pool = req.app.locals.pool;
 
     // Find user with valid reset token
