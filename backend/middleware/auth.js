@@ -25,7 +25,6 @@ const signToken = (user) =>
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    console.log('[DEBUG auth] authenticate called, header present:', !!authHeader);
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -35,12 +34,10 @@ const authenticate = async (req, res, next) => {
     let payload;
     try {
       payload = jwt.verify(token, JWT_SECRET);
-      console.log('[DEBUG auth] JWT verified, sub:', payload.sub, 'role:', payload.role);
     } catch (err) {
       const msg = err.name === 'TokenExpiredError'
         ? 'Token expired, please log in again'
         : 'Invalid token';
-      console.log('[DEBUG auth] JWT verification failed:', err.name);
       return res.status(401).json({ error: msg });
     }
 
@@ -52,7 +49,6 @@ const authenticate = async (req, res, next) => {
     );
 
     if (result.rows.length === 0) {
-      console.log('[DEBUG auth] User not found or inactive for sub:', payload.sub);
       return res.status(401).json({ error: 'User not found or inactive' });
     }
 
@@ -64,7 +60,6 @@ const authenticate = async (req, res, next) => {
       firstName: user.first_name,
       lastName: user.last_name
     };
-    console.log('[DEBUG auth] User authenticated:', user.id, 'role:', user.role);
 
     next();
   } catch (error) {
@@ -143,10 +138,7 @@ const optionalAuth = async (req, res, next) => {
 const requireAdmin = async (req, res, next) => {
   try {
     if (!req.user) {
-      // authenticate has not run — perform independent JWT + DB verification
       const authHeader = req.headers['authorization'];
-      console.log('[DEBUG requireAdmin] req.user absent — verifying Bearer token independently');
-
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Authentication required' });
       }
@@ -155,12 +147,10 @@ const requireAdmin = async (req, res, next) => {
       let payload;
       try {
         payload = jwt.verify(token, JWT_SECRET);
-        console.log('[DEBUG requireAdmin] Token verified, sub:', payload.sub);
       } catch (err) {
         const msg = err.name === 'TokenExpiredError'
           ? 'Token expired, please log in again'
           : 'Invalid token';
-        console.log('[DEBUG requireAdmin] Token verification failed:', err.name);
         return res.status(401).json({ error: msg });
       }
 
@@ -171,23 +161,17 @@ const requireAdmin = async (req, res, next) => {
         [payload.sub, 'active']
       );
       if (result.rows.length === 0) {
-        console.log('[DEBUG requireAdmin] User not found or inactive, sub:', payload.sub);
         return res.status(401).json({ error: 'User not found or inactive' });
       }
 
       const u = result.rows[0];
       req.user = { id: u.id, email: u.email, role: u.role };
-      console.log('[DEBUG requireAdmin] DB role fetched:', u.role, 'for user:', u.id);
-    } else {
-      console.log('[DEBUG requireAdmin] req.user already set by authenticate, role:', req.user.role);
     }
 
     if (req.user.role !== 'admin') {
-      console.log('[DEBUG requireAdmin] Access denied — role is:', req.user.role);
       return res.status(403).json({ error: 'Admin privileges required' });
     }
 
-    console.log('[DEBUG requireAdmin] Admin access granted for user:', req.user.id);
     next();
   } catch (error) {
     console.error('requireAdmin error:', error);
