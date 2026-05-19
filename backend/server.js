@@ -193,8 +193,14 @@ app.get('/uploads/*', authenticate, (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  // express.json() throws a SyntaxError for malformed request bodies.
+  // Return 400 so clients get a useful signal rather than a generic 500.
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
