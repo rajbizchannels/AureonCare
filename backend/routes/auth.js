@@ -91,8 +91,6 @@ router.post('/change-password', authenticate, async (req, res) => {
     // userId comes exclusively from the verified JWT — never from the request body
     const userId = req.user.id;
 
-    console.log('[DEBUG change-password] Request from userId:', userId);
-
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
@@ -109,7 +107,6 @@ router.post('/change-password', authenticate, async (req, res) => {
     );
 
     if (userResult.rows.length === 0) {
-      console.log('[DEBUG change-password] User not found for id:', userId);
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -117,7 +114,6 @@ router.post('/change-password', authenticate, async (req, res) => {
 
     if (user.password_hash) {
       const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
-      console.log('[DEBUG change-password] Current password match:', isMatch);
       if (!isMatch) {
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
@@ -130,7 +126,6 @@ router.post('/change-password', authenticate, async (req, res) => {
       [newPasswordHash, userId]
     );
 
-    console.log('[DEBUG change-password] Password updated successfully for userId:', userId);
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
     console.error('Error changing password:', error);
@@ -546,31 +541,18 @@ router.post('/social-register', async (req, res) => {
   }
 });
 
-// Link social account to existing user
-router.post('/link-social-account', async (req, res) => {
+// Link social account to existing user — requires a valid JWT; can only link to own account
+router.post('/link-social-account', authenticate, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const {
-      userId,
-      provider,
-      providerId,
-      accessToken,
-      refreshToken,
-      profileData
-    } = req.body;
+    // userId comes from the verified JWT, not the request body
+    const userId = req.user.id;
+    const { provider, providerId, accessToken, refreshToken, profileData } = req.body;
 
-    if (!userId || !provider || !providerId) {
-      return res.status(400).json({ error: 'User ID, provider, and provider ID are required' });
-    }
+    console.log('[DEBUG link-social-account] Request from userId:', userId, 'provider:', provider);
 
-    // Check if user exists
-    const userResult = await pool.query(
-      'SELECT * FROM users WHERE id = $1',
-      [userId]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    if (!provider || !providerId) {
+      return res.status(400).json({ error: 'Provider and provider ID are required' });
     }
 
     // Check if this social account is already linked to another user
@@ -579,7 +561,7 @@ router.post('/link-social-account', async (req, res) => {
       [provider, providerId]
     );
 
-    if (existingSocialAuth.rows.length > 0 && existingSocialAuth.rows[0].user_id !== userId) {
+    if (existingSocialAuth.rows.length > 0 && String(existingSocialAuth.rows[0].user_id) !== String(userId)) {
       return res.status(409).json({ error: 'This social account is already linked to another user' });
     }
 
@@ -603,6 +585,7 @@ router.post('/link-social-account', async (req, res) => {
         updated_at = CURRENT_TIMESTAMP
     `, [userId, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
+    console.log('[DEBUG link-social-account] Social account linked successfully for userId:', userId);
     res.json({ message: 'Social account linked successfully' });
 
   } catch (error) {
@@ -611,14 +594,18 @@ router.post('/link-social-account', async (req, res) => {
   }
 });
 
-// Unlink social account
-router.post('/unlink-social-account', async (req, res) => {
+// Unlink social account — requires a valid JWT; can only unlink own account
+router.post('/unlink-social-account', authenticate, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { userId, provider } = req.body;
+    // userId comes from the verified JWT, not the request body
+    const userId = req.user.id;
+    const { provider } = req.body;
 
-    if (!userId || !provider) {
-      return res.status(400).json({ error: 'User ID and provider are required' });
+    console.log('[DEBUG unlink-social-account] Request from userId:', userId, 'provider:', provider);
+
+    if (!provider) {
+      return res.status(400).json({ error: 'Provider is required' });
     }
 
     const result = await pool.query(
@@ -630,6 +617,7 @@ router.post('/unlink-social-account', async (req, res) => {
       return res.status(404).json({ error: 'Social account link not found' });
     }
 
+    console.log('[DEBUG unlink-social-account] Social account unlinked for userId:', userId);
     res.json({ message: 'Social account unlinked successfully' });
 
   } catch (error) {
@@ -638,11 +626,14 @@ router.post('/unlink-social-account', async (req, res) => {
   }
 });
 
-// Get linked social accounts for a user
-router.get('/social-accounts/:userId', async (req, res) => {
+// Get linked social accounts for a user — self or admin only
+router.get('/social-accounts/:userId', authenticate, async (req, res) => {
+  const { userId } = req.params;
+  if (req.user.role !== 'admin' && String(req.user.id) !== String(userId)) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   try {
     const pool = req.app.locals.pool;
-    const { userId } = req.params;
 
     const result = await pool.query(
       'SELECT id, provider, provider_user_id, created_at FROM social_auth WHERE user_id = $1',
