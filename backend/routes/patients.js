@@ -68,9 +68,6 @@ router.post('/', enforcePatientQuota, async (req, res) => {
     const hasName = first_name && first_name.trim() && last_name && last_name.trim();
 
     if (email && hasName && createUserAccount !== false) {
-      console.log('[DEBUG patients] Auto-creating user account — email:', email,
-        'name:', first_name, last_name);
-
       // Check if user with this email already exists
       const existingUser = await client.query(
         'SELECT id FROM users WHERE email = $1',
@@ -79,7 +76,6 @@ router.post('/', enforcePatientQuota, async (req, res) => {
 
       if (existingUser.rows.length > 0) {
         userId = existingUser.rows[0].id;
-        console.log('[DEBUG patients] Linked to existing user:', userId);
       } else {
         const bcrypt = require('bcryptjs');
         tempPassword = Math.random().toString(36).slice(-8);
@@ -94,10 +90,7 @@ router.post('/', enforcePatientQuota, async (req, res) => {
         );
 
         userId = userResult.rows[0].id;
-        console.log('[DEBUG patients] New user created:', userId);
       }
-    } else if (email && !hasName && createUserAccount !== false) {
-      console.log('[DEBUG patients] Skipped user auto-creation — first_name or last_name missing for email:', email);
     }
 
     // Create patient record with user ID (patient.id = user.id)

@@ -896,7 +896,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
 
     try {
-      await api.changePassword(user.id, passwordData.currentPassword, passwordData.newPassword);
+      await api.changePassword(passwordData.currentPassword, passwordData.newPassword);
 
       addNotification('success', t.passwordChangedSuccessfully || 'Password changed successfully');
       setShowChangePassword(false);
