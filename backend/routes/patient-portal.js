@@ -16,7 +16,7 @@ router.post('/login', async (req, res) => {
     if (provider && providerId) {
       // Check if social auth exists
       const socialAuth = await pool.query(
-        'SELECT patient_id FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
+        'SELECT user_id FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
         [provider, providerId]
       );
 
@@ -26,7 +26,7 @@ router.post('/login', async (req, res) => {
           FROM patients p
           LEFT JOIN users u ON p.id = u.id
           WHERE p.id = $1 AND p.portal_enabled = true
-        `, [socialAuth.rows[0].patient_id]);
+        `, [socialAuth.rows[0].user_id]);
         patient = patientResult.rows[0];
       } else {
         return res.status(404).json({ error: 'Social account not linked to a patient' });
