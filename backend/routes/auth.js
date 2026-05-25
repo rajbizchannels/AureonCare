@@ -277,34 +277,17 @@ router.post('/social-login', async (req, res) => {
     let isNewUser = false;
 
     if (socialAuthResult.rows.length > 0) {
-      // Existing social auth — resolve the linked user.
-      // Old records (pre-migration-050) only set patient_id, not user_id.
-      // patient.id = users.id in the current schema, so patient_id can serve as user_id.
-      let userId = socialAuthResult.rows[0].user_id || socialAuthResult.rows[0].patient_id;
-      let userResult = userId
-        ? await pool.query('SELECT * FROM users WHERE id = $1', [userId])
-        : { rows: [] };
-
-      // Last-resort fallback: find by provider-verified email (heals corrupt/legacy records)
-      if (userResult.rows.length === 0) {
-        console.log('[DEBUG social-validation] social-login user_id lookup failed for id:', userId, '— falling back to email lookup');
-        userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-      }
+      // Existing social auth — user_id is the canonical identifier (= patients.id = users.id).
+      // Migration 058 ensures all rows have user_id populated, so a single direct lookup suffices.
+      const userId = socialAuthResult.rows[0].user_id;
+      console.log('[DEBUG social-validation] social-login existing auth found, user_id:', userId);
+      const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
 
       if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found. Please register a new account.' });
       }
 
       user = userResult.rows[0];
-
-      // Heal the social_auth record if user_id was null or mismatched
-      if (String(socialAuthResult.rows[0].user_id) !== String(user.id)) {
-        await pool.query(
-          'UPDATE social_auth SET user_id = $1 WHERE id = $2',
-          [user.id, socialAuthResult.rows[0].id]
-        );
-        console.log('[DEBUG social-validation] social-login healed social_auth.user_id for auth id:', socialAuthResult.rows[0].id);
-      }
 
       // Check if user is blocked
       if (user.status === 'blocked') {
@@ -345,15 +328,8 @@ router.post('/social-login', async (req, res) => {
         }
 
         await pool.query(`
-          INSERT INTO social_auth (
-            user_id,
-            provider,
-            provider_user_id,
-            access_token,
-            refresh_token,
-            profile_data
-          )
-          VALUES ($1, $2, $3, $4, $5, $6)
+          INSERT INTO social_auth (user_id, patient_id, provider, provider_user_id, access_token, refresh_token, profile_data)
+          VALUES ($1, $1, $2, $3, $4, $5, $6)
         `, [user.id, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
       } else {
@@ -408,10 +384,11 @@ router.post('/social-login', async (req, res) => {
             );
           }
 
-          // Create social auth entry
+          // Create social auth entry — set both user_id and patient_id to the same UUID
+          // (patients.id = users.id in current schema, so both columns hold user.id)
           await sl_client.query(`
-            INSERT INTO social_auth (user_id, provider, provider_user_id, access_token, refresh_token, profile_data)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO social_auth (user_id, patient_id, provider, provider_user_id, access_token, refresh_token, profile_data)
+            VALUES ($1, $1, $2, $3, $4, $5, $6)
           `, [user.id, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
           await sl_client.query('COMMIT');
@@ -560,10 +537,10 @@ router.post('/social-register', async (req, res) => {
         );
       }
 
-      // Link social auth record using the verified canonical provider ID
+      // Link social auth — set both user_id and patient_id to the same UUID
       await regClient.query(`
-        INSERT INTO social_auth (user_id, provider, provider_user_id, access_token, profile_data)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO social_auth (user_id, patient_id, provider, provider_user_id, access_token, profile_data)
+        VALUES ($1, $1, $2, $3, $4, $5)
       `, [newUser.id, provider, canonicalProviderId, accessToken, JSON.stringify(profileData || {})]);
 
       await regClient.query('COMMIT');
@@ -620,20 +597,14 @@ router.post('/link-social-account', authenticate, async (req, res) => {
       return res.status(409).json({ error: 'This social account is already linked to another user' });
     }
 
-    // Create or update social auth
+    // Create or update social auth — both user_id and patient_id hold the same UUID
     await pool.query(`
-      INSERT INTO social_auth (
-        user_id,
-        provider,
-        provider_user_id,
-        access_token,
-        refresh_token,
-        profile_data
-      )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO social_auth (user_id, patient_id, provider, provider_user_id, access_token, refresh_token, profile_data)
+      VALUES ($1, $1, $2, $3, $4, $5, $6)
       ON CONFLICT (provider, provider_user_id)
       DO UPDATE SET
         user_id = $1,
+        patient_id = $1,
         access_token = $4,
         refresh_token = $5,
         profile_data = $6,
