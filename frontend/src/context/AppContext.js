@@ -46,22 +46,14 @@ const AppProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
 
-  // User state - requires both sessionStorage and localStorage
+  // User state - stored in sessionStorage (clears on tab close, not readable cross-tab)
   const [user, setUser] = useState(() => {
-    // Check session validity first (sessionStorage clears on tab close)
     try {
-      const isSessionValid = sessionStorage.getItem('isAuthenticated') === 'true';
-      if (!isSessionValid) {
-        // Clear stale localStorage data
-        localStorage.removeItem('user');
-        return null;
-      }
-
-      // Load user from localStorage only if session is valid
-      const storedUser = localStorage.getItem('user');
+      const storedUser = sessionStorage.getItem('user');
+      console.log('[DEBUG session-state] init: loaded user from sessionStorage, role:', storedUser ? JSON.parse(storedUser)?.role : 'none');
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (error) {
-      console.error('Error loading user from localStorage:', error);
+      console.error('Error loading user from sessionStorage:', error);
       return null;
     }
   });
@@ -73,25 +65,25 @@ const AppProvider = ({ children }) => {
         sessionStorage.setItem('isAuthenticated', 'true');
       } else {
         sessionStorage.removeItem('isAuthenticated');
-        // Also clear user data on logout
-        sessionStorage.removeItem('sessionUser');
+        sessionStorage.removeItem('user');
       }
     } catch (error) {
       console.error('Error saving authentication status:', error);
     }
   }, [isAuthenticated]);
 
-  // Persist user data to localStorage whenever it changes
+  // Persist user data to sessionStorage whenever it changes
   useEffect(() => {
-    if (user) {
-      try {
-        localStorage.setItem('user', JSON.stringify(user));
-      } catch (error) {
-        console.error('Error saving user to localStorage:', error);
+    try {
+      if (user) {
+        sessionStorage.setItem('user', JSON.stringify(user));
+        console.log('[DEBUG session-state] user persisted to sessionStorage, role:', user.role, 'id:', user.id);
+      } else {
+        sessionStorage.removeItem('user');
+        console.log('[DEBUG session-state] user cleared from sessionStorage');
       }
-    } else {
-      // Clear localStorage when user logs out
-      localStorage.removeItem('user');
+    } catch (error) {
+      console.error('Error saving user to sessionStorage:', error);
     }
   }, [user]);
 

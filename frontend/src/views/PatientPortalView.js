@@ -135,10 +135,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       console.log('Fetching providers for patient portal...');
       console.log('User data:', { id: user?.id, role: user?.role });
 
-      // Ensure user is in localStorage for authentication
-      if (user && user.id) {
-        localStorage.setItem('user', JSON.stringify(user));
-      } else {
+      if (!user || !user.id) {
         throw new Error('User not authenticated');
       }
 
