@@ -279,18 +279,34 @@ router.post('/social-login', async (req, res) => {
     let isNewUser = false;
 
     if (socialAuthResult.rows.length > 0) {
-      // Existing social auth - get the user
-      const userId = socialAuthResult.rows[0].user_id;
-      const userResult = await pool.query(
-        'SELECT * FROM users WHERE id = $1',
-        [userId]
-      );
+      // Existing social auth — resolve the linked user.
+      // Old records (pre-migration-050) only set patient_id, not user_id.
+      // patient.id = users.id in the current schema, so patient_id can serve as user_id.
+      let userId = socialAuthResult.rows[0].user_id || socialAuthResult.rows[0].patient_id;
+      let userResult = userId
+        ? await pool.query('SELECT * FROM users WHERE id = $1', [userId])
+        : { rows: [] };
+
+      // Last-resort fallback: find by provider-verified email (heals corrupt/legacy records)
+      if (userResult.rows.length === 0) {
+        console.log('[DEBUG social-validation] social-login user_id lookup failed for id:', userId, '— falling back to email lookup');
+        userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+      }
 
       if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ error: 'User not found. Please register a new account.' });
       }
 
       user = userResult.rows[0];
+
+      // Heal the social_auth record if user_id was null or mismatched
+      if (String(socialAuthResult.rows[0].user_id) !== String(user.id)) {
+        await pool.query(
+          'UPDATE social_auth SET user_id = $1 WHERE id = $2',
+          [user.id, socialAuthResult.rows[0].id]
+        );
+        console.log('[DEBUG social-validation] social-login healed social_auth.user_id for auth id:', socialAuthResult.rows[0].id);
+      }
 
       // Check if user is blocked
       if (user.status === 'blocked') {
@@ -310,14 +326,14 @@ router.post('/social-login', async (req, res) => {
       `, [accessToken, refreshToken, JSON.stringify(profileData), socialAuthResult.rows[0].id]);
 
     } else {
-      // New social auth - check if user exists by email
+      // No existing social auth — check if user exists by email
       const existingUserResult = await pool.query(
         'SELECT * FROM users WHERE email = $1',
         [email]
       );
 
       if (existingUserResult.rows.length > 0) {
-        // User exists - link social auth
+        // User exists — link social auth
         user = existingUserResult.rows[0];
 
         // Check if user is blocked
@@ -344,90 +360,69 @@ router.post('/social-login', async (req, res) => {
 
       } else {
         isNewUser = true;
-        // Create new active patient user (auto-approved)
-        const sl_firstName = firstName || '';
-        const sl_lastName = lastName || '';
-        const newUserResult = await pool.query(`
-          INSERT INTO users (
-            id,
+        // Create new active patient user — use a transaction so that a failure in
+        // patient/role/social_auth creation does not leave an orphaned users row.
+        const sl_client = await pool.connect();
+        try {
+          await sl_client.query('BEGIN');
+
+          const sl_firstName = firstName || '';
+          const sl_lastName = lastName || '';
+
+          const newUserResult = await sl_client.query(`
+            INSERT INTO users (id, email, first_name, last_name, role, status, avatar, created_at, updated_at)
+            VALUES (gen_random_uuid(), $1, $2, $3, 'patient', 'active', $4, NOW(), NOW())
+            RETURNING *
+          `, [
             email,
-            first_name,
-            last_name,
-            name,
-            role,
-            status,
-            avatar
-          )
-          VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', 'active', $5)
-          RETURNING *
-        `, [
-          email,
-          sl_firstName,
-          sl_lastName,
-          `${sl_firstName} ${sl_lastName}`.trim(),
-          `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase()
-        ]);
+            sl_firstName,
+            sl_lastName,
+            `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase()
+          ]);
 
-        user = newUserResult.rows[0];
+          user = newUserResult.rows[0];
 
-        // Check if user is blocked
-        if (user.status === 'blocked') {
-          return res.status(403).json({ error: 'Your account has been blocked. Please contact an administrator.' });
-        }
-
-        // Auto-create patient record for new user
-        const sl_patientColumnCheck = await pool.query(`
-          SELECT column_name FROM information_schema.columns
-          WHERE table_name = 'patients' AND column_name = 'user_id'
-        `);
-        const sl_hasPatientUserIdColumn = sl_patientColumnCheck.rows.length > 0;
-
-        const sl_patientCheck = await pool.query('SELECT id FROM patients WHERE email = $1', [user.email]);
-        if (sl_patientCheck.rows.length === 0) {
-          const sl_mrnResult = await pool.query(
-            "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
+          // Create patient record — patients.id = users.id in current schema
+          const sl_patientCheck = await sl_client.query(
+            'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
+            [user.id, user.email]
           );
-          const sl_nextMrnNumber = (sl_mrnResult.rows[0].max_mrn || 1000) + 1;
-          const sl_mrn = `MRN-${sl_nextMrnNumber}`;
-
-          if (sl_hasPatientUserIdColumn) {
-            await pool.query(
-              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
-              [user.first_name, user.last_name, sl_mrn, '1990-01-01', user.email, user.phone, user.id]
+          if (sl_patientCheck.rows.length === 0) {
+            const sl_mrnResult = await sl_client.query(
+              "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
             );
-          } else {
-            await pool.query(
-              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
-               VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
-              [user.first_name, user.last_name, sl_mrn, '1990-01-01', user.email, user.phone]
+            const sl_mrn = `MRN-${(sl_mrnResult.rows[0].max_mrn || 1000) + 1}`;
+            await sl_client.query(
+              `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, '1990-01-01', $5, 'active', NOW(), NOW())`,
+              [user.id, sl_firstName, sl_lastName, sl_mrn, user.email]
             );
           }
-        }
 
-        // Assign patient role in user_roles table
-        const sl_patientRoleResult = await pool.query(
-          "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
-        );
-        if (sl_patientRoleResult.rows.length > 0) {
-          await pool.query(
-            `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-            [user.id, sl_patientRoleResult.rows[0].id]
+          // Assign patient role
+          const sl_roleResult = await sl_client.query(
+            "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
           );
-        }
+          if (sl_roleResult.rows.length > 0) {
+            await sl_client.query(
+              `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+              [user.id, sl_roleResult.rows[0].id]
+            );
+          }
 
-        // Create social auth entry
-        await pool.query(`
-          INSERT INTO social_auth (
-            user_id,
-            provider,
-            provider_user_id,
-            access_token,
-            refresh_token,
-            profile_data
-          )
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `, [user.id, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
+          // Create social auth entry
+          await sl_client.query(`
+            INSERT INTO social_auth (user_id, provider, provider_user_id, access_token, refresh_token, profile_data)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `, [user.id, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
+
+          await sl_client.query('COMMIT');
+        } catch (txErr) {
+          await sl_client.query('ROLLBACK');
+          throw txErr;
+        } finally {
+          sl_client.release();
+        }
       }
     }
 
@@ -519,65 +514,66 @@ router.post('/social-register', async (req, res) => {
       return res.status(409).json({ error: 'This email is already registered. Please sign in or link your social account from your profile settings.' });
     }
 
-    // Create new active patient user
+    // Create user + patient + social_auth atomically so no orphaned rows on failure
     const firstName_ = firstName || '';
     const lastName_ = lastName || '';
     const avatarInitials = `${(firstName_[0] || '')}${(lastName_[0] || '')}`.toUpperCase();
-    const fullName = `${firstName_} ${lastName_}`.trim();
-    const newUserResult = await pool.query(`
-      INSERT INTO users (id, email, first_name, last_name, name, role, status, avatar)
-      VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', 'active', $5)
-      RETURNING id, email, first_name, last_name, role, status
-    `, [email, firstName_, lastName_, fullName, avatarInitials]);
 
-    const newUser = newUserResult.rows[0];
+    const regClient = await pool.connect();
+    let newUser;
+    try {
+      await regClient.query('BEGIN');
 
-    // Auto-create patient record
-    const patientColumnCheck = await pool.query(`
-      SELECT column_name FROM information_schema.columns
-      WHERE table_name = 'patients' AND column_name = 'user_id'
-    `);
-    const hasPatientUserIdColumn = patientColumnCheck.rows.length > 0;
+      const newUserResult = await regClient.query(`
+        INSERT INTO users (id, email, first_name, last_name, role, status, avatar, created_at, updated_at)
+        VALUES (gen_random_uuid(), $1, $2, $3, 'patient', 'active', $4, NOW(), NOW())
+        RETURNING id, email, first_name, last_name, role, status
+      `, [email, firstName_, lastName_, avatarInitials]);
+      newUser = newUserResult.rows[0];
 
-    const patientCheck = await pool.query('SELECT id FROM patients WHERE email = $1', [newUser.email]);
-    if (patientCheck.rows.length === 0) {
-      const mrnResult = await pool.query(
-        "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
+      console.log('[DEBUG social-validation] social-register user created:', newUser.id);
+
+      // Create patient record — patients.id = users.id in current schema
+      const patientCheck = await regClient.query(
+        'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
+        [newUser.id, newUser.email]
       );
-      const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
-      const mrn = `MRN-${nextMrnNumber}`;
-
-      if (hasPatientUserIdColumn) {
-        await pool.query(
-          `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
-          [firstName_, lastName_, mrn, '1990-01-01', newUser.email, null, newUser.id]
+      if (patientCheck.rows.length === 0) {
+        const mrnResult = await regClient.query(
+          "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
         );
-      } else {
-        await pool.query(
-          `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
-           VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
-          [firstName_, lastName_, mrn, '1990-01-01', newUser.email, null]
+        const mrn = `MRN-${(mrnResult.rows[0].max_mrn || 1000) + 1}`;
+        await regClient.query(
+          `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, '1990-01-01', $5, 'active', NOW(), NOW())`,
+          [newUser.id, firstName_, lastName_, mrn, newUser.email]
         );
       }
-    }
 
-    // Assign patient role in user_roles table
-    const patientRoleResult = await pool.query(
-      "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
-    );
-    if (patientRoleResult.rows.length > 0) {
-      await pool.query(
-        `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [newUser.id, patientRoleResult.rows[0].id]
+      // Assign patient role
+      const patientRoleResult = await regClient.query(
+        "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
       );
-    }
+      if (patientRoleResult.rows.length > 0) {
+        await regClient.query(
+          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [newUser.id, patientRoleResult.rows[0].id]
+        );
+      }
 
-    // Link social auth record using the verified canonical provider ID
-    await pool.query(`
-      INSERT INTO social_auth (user_id, provider, provider_user_id, access_token, profile_data)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [newUser.id, provider, canonicalProviderId, accessToken, JSON.stringify(profileData || {})]);
+      // Link social auth record using the verified canonical provider ID
+      await regClient.query(`
+        INSERT INTO social_auth (user_id, provider, provider_user_id, access_token, profile_data)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [newUser.id, provider, canonicalProviderId, accessToken, JSON.stringify(profileData || {})]);
+
+      await regClient.query('COMMIT');
+    } catch (txErr) {
+      await regClient.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      regClient.release();
+    }
 
     const token = signToken(newUser);
     console.log('[DEBUG social-validation] social-register complete for userId:', newUser.id, 'provider:', provider);
