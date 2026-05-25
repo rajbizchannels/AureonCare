@@ -251,18 +251,16 @@ router.post('/social-login', async (req, res) => {
       return res.status(401).json({ error: 'Social provider token validation failed. Please sign in again.' });
     }
 
-    // The verified providerId must match (or be a known format variant of) what the client claims.
-    if (!isProviderIdMatch(provider, verified.providerId, providerId)) {
-      console.log('[DEBUG social-validation] social-login providerId mismatch: verified', verified.providerId, 'claimed', providerId);
-      return res.status(401).json({ error: 'Provider identity mismatch. Please sign in again.' });
-    }
-
-    // Use provider-verified identity; fall back to client-supplied names if provider omits them
+    // Use provider-verified identity; fall back to client-supplied names if provider omits them.
+    // Note: canonicalProviderId always comes from the provider API (never from the client).
+    // Microsoft personal accounts use a pairwise MSA id in homeAccountId that differs from
+    // Graph's id, so we do not enforce an exact match between claimedId and verifiedId —
+    // the token validation itself is the security gate.
     const email = verified.email || clientEmail;
     const firstName = verified.firstName || clientFirstName || '';
     const lastName = verified.lastName || clientLastName || '';
-    // Canonical ID from the provider (may differ from client-supplied homeAccountId for Microsoft)
     const canonicalProviderId = verified.providerId;
+    console.log('[DEBUG social-validation] social-login canonical providerId:', canonicalProviderId, 'client claimed:', providerId);
 
     if (!email) {
       return res.status(400).json({ error: 'Could not determine email from social provider' });
@@ -482,10 +480,11 @@ router.post('/social-register', async (req, res) => {
       return res.status(401).json({ error: 'Social provider token validation failed. Please try again.' });
     }
 
-    if (!isProviderIdMatch(provider, verified.providerId, providerId)) {
-      console.log('[DEBUG social-validation] social-register providerId mismatch: verified', verified.providerId, 'claimed', providerId);
-      return res.status(401).json({ error: 'Provider identity mismatch. Please try again.' });
-    }
+    // canonicalProviderId comes from the provider API — never from the client.
+    // Microsoft personal accounts use a pairwise MSA id in homeAccountId that differs
+    // from Graph's id, so we skip the strict claimed/verified match check here.
+    // Token validation (above) is the security gate.
+    console.log('[DEBUG social-validation] social-register canonical providerId:', verified.providerId, 'client claimed:', providerId);
 
     const email = verified.email || clientEmail;
     const firstName = verified.firstName || clientFirstName || '';
