@@ -118,9 +118,44 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
 
     const newUser = result.rows[0];
 
-    // Auto-create patient record and assign role — non-fatal so the user
-    // creation response always succeeds even if ancillary steps fail.
+    // Auto-create ancillary role records — non-fatal so the user creation
+    // response always succeeds even if these steps fail.
+
+    if (newUser.role === 'doctor' && newUser.email) {
+      // Create providers record with id = user.id (migration 025 schema)
+      try {
+        const providerCheck = await pool.query(
+          'SELECT id FROM providers WHERE id = $1 OR email = $2 LIMIT 1',
+          [newUser.id, newUser.email]
+        );
+        if (providerCheck.rows.length === 0) {
+          await pool.query(
+            `INSERT INTO providers (id, first_name, last_name, specialization, email, phone, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+            [newUser.id, newUser.first_name, newUser.last_name, newUser.specialty || 'General Practice', newUser.email, newUser.phone]
+          );
+        }
+      } catch (providerErr) {
+        console.error('Non-fatal: failed to auto-create provider record for new doctor user:', providerErr.message);
+      }
+
+      try {
+        const doctorRoleResult = await pool.query(
+          "SELECT id FROM roles WHERE name = 'doctor' AND is_active = true LIMIT 1"
+        );
+        if (doctorRoleResult.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [newUser.id, doctorRoleResult.rows[0].id]
+          );
+        }
+      } catch (roleErr) {
+        console.error('Non-fatal: failed to assign doctor role for new user:', roleErr.message);
+      }
+    }
+
     if ((newUser.role || 'patient') === 'patient' && newUser.email) {
+      // Create patients record with id = user.id (migration 023 schema)
       try {
         const patientCheck = await pool.query(
           'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
@@ -134,7 +169,6 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
           const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
           const mrn = `MRN-${nextMrnNumber}`;
 
-          // patients.id = users.id (migration 023 schema)
           await pool.query(
             `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, phone, status, created_at, updated_at)
              VALUES ($1, $2, $3, $4, '1990-01-01', $5, $6, 'active', NOW(), NOW())`,
