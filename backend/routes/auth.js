@@ -72,7 +72,6 @@ router.post('/login', async (req, res) => {
     const { password_hash, reset_token, reset_token_expires, ...userData } = user;
 
     const token = signToken(user);
-    console.log('[DEBUG auth] JWT issued for userId:', user.id, 'role:', user.role);
 
     res.json({
       message: 'Login successful',
@@ -245,9 +244,7 @@ router.post('/social-login', async (req, res) => {
     let verified;
     try {
       verified = await validateSocialToken(provider, accessToken);
-      console.log('[DEBUG social-validation] social-login verified:', provider, verified.providerId, verified.email);
     } catch (validationErr) {
-      console.log('[DEBUG social-validation] social-login token rejected:', provider, validationErr.message);
       return res.status(401).json({ error: 'Social provider token validation failed. Please sign in again.' });
     }
 
@@ -260,7 +257,6 @@ router.post('/social-login', async (req, res) => {
     const firstName = verified.firstName || clientFirstName || '';
     const lastName = verified.lastName || clientLastName || '';
     const canonicalProviderId = verified.providerId;
-    console.log('[DEBUG social-validation] social-login canonical providerId:', canonicalProviderId, 'client claimed:', providerId);
 
     if (!email) {
       return res.status(400).json({ error: 'Could not determine email from social provider' });
@@ -280,7 +276,6 @@ router.post('/social-login', async (req, res) => {
       // Existing social auth — user_id is the canonical identifier (= patients.id = users.id).
       // Migration 058 ensures all rows have user_id populated, so a single direct lookup suffices.
       const userId = socialAuthResult.rows[0].user_id;
-      console.log('[DEBUG social-validation] social-login existing auth found, user_id:', userId);
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
 
       if (userResult.rows.length === 0) {
@@ -411,7 +406,6 @@ router.post('/social-login', async (req, res) => {
     const { password_hash, ...userData } = user;
 
     const token = signToken(user);
-    console.log('[DEBUG social-validation] social-login complete for userId:', user.id, 'provider:', provider, 'isNewUser:', isNewUser);
 
     res.json({
       message: 'Social login successful',
@@ -451,9 +445,7 @@ router.post('/social-register', async (req, res) => {
     let verified;
     try {
       verified = await validateSocialToken(provider, accessToken);
-      console.log('[DEBUG social-validation] social-register verified:', provider, verified.providerId, verified.email);
     } catch (validationErr) {
-      console.log('[DEBUG social-validation] social-register token rejected:', provider, validationErr.message);
       return res.status(401).json({ error: 'Social provider token validation failed. Please try again.' });
     }
 
@@ -461,8 +453,6 @@ router.post('/social-register', async (req, res) => {
     // Microsoft personal accounts use a pairwise MSA id in homeAccountId that differs
     // from Graph's id, so we skip the strict claimed/verified match check here.
     // Token validation (above) is the security gate.
-    console.log('[DEBUG social-validation] social-register canonical providerId:', verified.providerId, 'client claimed:', providerId);
-
     const email = verified.email || clientEmail;
     const firstName = verified.firstName || clientFirstName || '';
     const lastName = verified.lastName || clientLastName || '';
@@ -507,8 +497,6 @@ router.post('/social-register', async (req, res) => {
       `, [email, firstName_, lastName_, avatarInitials]);
       newUser = newUserResult.rows[0];
 
-      console.log('[DEBUG social-validation] social-register user created:', newUser.id);
-
       // Create patient record — patients.id = users.id in current schema
       const patientCheck = await regClient.query(
         'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
@@ -552,7 +540,6 @@ router.post('/social-register', async (req, res) => {
     }
 
     const token = signToken(newUser);
-    console.log('[DEBUG social-validation] social-register complete for userId:', newUser.id, 'provider:', provider);
 
     res.status(201).json({
       message: 'Registration successful! Your account is ready to use.',
