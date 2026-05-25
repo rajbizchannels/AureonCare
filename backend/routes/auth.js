@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { signToken, authenticate } = require('../middleware/auth');
+const { validateSocialToken, isProviderIdMatch } = require('../utils/socialTokenValidator');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -229,20 +230,49 @@ router.post('/social-login', async (req, res) => {
       providerId,
       accessToken,
       refreshToken,
-      email,
-      firstName,
-      lastName,
+      email: clientEmail,
+      firstName: clientFirstName,
+      lastName: clientLastName,
       profileData
     } = req.body;
 
-    if (!provider || !providerId || !email) {
-      return res.status(400).json({ error: 'Provider, provider ID, and email are required' });
+    if (!provider || !providerId || !accessToken) {
+      return res.status(400).json({ error: 'Provider, provider ID, and access token are required' });
     }
 
-    // Check if social auth already exists
+    // Validate the access token server-side with the provider's identity API.
+    // This prevents account takeover by clients that forge providerId/email.
+    let verified;
+    try {
+      verified = await validateSocialToken(provider, accessToken);
+      console.log('[DEBUG social-validation] social-login verified:', provider, verified.providerId, verified.email);
+    } catch (validationErr) {
+      console.log('[DEBUG social-validation] social-login token rejected:', provider, validationErr.message);
+      return res.status(401).json({ error: 'Social provider token validation failed. Please sign in again.' });
+    }
+
+    // The verified providerId must match (or be a known format variant of) what the client claims.
+    if (!isProviderIdMatch(provider, verified.providerId, providerId)) {
+      console.log('[DEBUG social-validation] social-login providerId mismatch: verified', verified.providerId, 'claimed', providerId);
+      return res.status(401).json({ error: 'Provider identity mismatch. Please sign in again.' });
+    }
+
+    // Use provider-verified identity; fall back to client-supplied names if provider omits them
+    const email = verified.email || clientEmail;
+    const firstName = verified.firstName || clientFirstName || '';
+    const lastName = verified.lastName || clientLastName || '';
+    // Canonical ID from the provider (may differ from client-supplied homeAccountId for Microsoft)
+    const canonicalProviderId = verified.providerId;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Could not determine email from social provider' });
+    }
+
+    // Check if social auth already exists — try canonical (Graph id) first, then
+    // the client-supplied id (handles Microsoft MSAL homeAccountId migration)
     const socialAuthResult = await pool.query(
-      'SELECT * FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
-      [provider, providerId]
+      'SELECT * FROM social_auth WHERE provider = $1 AND (provider_user_id = $2 OR provider_user_id = $3)',
+      [provider, canonicalProviderId, providerId]
     );
 
     let user;
@@ -310,7 +340,7 @@ router.post('/social-login', async (req, res) => {
             profile_data
           )
           VALUES ($1, $2, $3, $4, $5, $6)
-        `, [user.id, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
+        `, [user.id, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
       } else {
         isNewUser = true;
@@ -397,7 +427,7 @@ router.post('/social-login', async (req, res) => {
             profile_data
           )
           VALUES ($1, $2, $3, $4, $5, $6)
-        `, [user.id, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
+        `, [user.id, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
       }
     }
 
@@ -411,7 +441,7 @@ router.post('/social-login', async (req, res) => {
     const { password_hash, ...userData } = user;
 
     const token = signToken(user);
-    console.log('[DEBUG auth] JWT issued (social-login) for userId:', user.id, 'role:', user.role);
+    console.log('[DEBUG social-validation] social-login complete for userId:', user.id, 'provider:', provider, 'isNewUser:', isNewUser);
 
     res.json({
       message: 'Social login successful',
@@ -433,16 +463,48 @@ router.post('/social-login', async (req, res) => {
 router.post('/social-register', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { provider, providerId, accessToken, email, firstName, lastName, profileData } = req.body;
+    const {
+      provider,
+      providerId,
+      accessToken,
+      email: clientEmail,
+      firstName: clientFirstName,
+      lastName: clientLastName,
+      profileData
+    } = req.body;
 
-    if (!provider || !providerId || !email) {
-      return res.status(400).json({ error: 'Provider, provider ID, and email are required' });
+    if (!provider || !providerId || !accessToken) {
+      return res.status(400).json({ error: 'Provider, provider ID, and access token are required' });
+    }
+
+    // Validate the access token server-side before creating any account
+    let verified;
+    try {
+      verified = await validateSocialToken(provider, accessToken);
+      console.log('[DEBUG social-validation] social-register verified:', provider, verified.providerId, verified.email);
+    } catch (validationErr) {
+      console.log('[DEBUG social-validation] social-register token rejected:', provider, validationErr.message);
+      return res.status(401).json({ error: 'Social provider token validation failed. Please try again.' });
+    }
+
+    if (!isProviderIdMatch(provider, verified.providerId, providerId)) {
+      console.log('[DEBUG social-validation] social-register providerId mismatch: verified', verified.providerId, 'claimed', providerId);
+      return res.status(401).json({ error: 'Provider identity mismatch. Please try again.' });
+    }
+
+    const email = verified.email || clientEmail;
+    const firstName = verified.firstName || clientFirstName || '';
+    const lastName = verified.lastName || clientLastName || '';
+    const canonicalProviderId = verified.providerId;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Could not determine email from social provider' });
     }
 
     // If this social account is already linked, tell the user to sign in instead
     const existingSocial = await pool.query(
-      'SELECT id FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
-      [provider, providerId]
+      'SELECT id FROM social_auth WHERE provider = $1 AND (provider_user_id = $2 OR provider_user_id = $3)',
+      [provider, canonicalProviderId, providerId]
     );
     if (existingSocial.rows.length > 0) {
       return res.status(409).json({ error: 'An account already exists for this social profile. Please sign in instead.' });
@@ -511,14 +573,14 @@ router.post('/social-register', async (req, res) => {
       );
     }
 
-    // Link social auth record
+    // Link social auth record using the verified canonical provider ID
     await pool.query(`
       INSERT INTO social_auth (user_id, provider, provider_user_id, access_token, profile_data)
       VALUES ($1, $2, $3, $4, $5)
-    `, [newUser.id, provider, providerId, accessToken, JSON.stringify(profileData || {})]);
+    `, [newUser.id, provider, canonicalProviderId, accessToken, JSON.stringify(profileData || {})]);
 
     const token = signToken(newUser);
-    console.log('[DEBUG auth] JWT issued (social-register) for userId:', newUser.id);
+    console.log('[DEBUG social-validation] social-register complete for userId:', newUser.id, 'provider:', provider);
 
     res.status(201).json({
       message: 'Registration successful! Your account is ready to use.',
@@ -548,8 +610,6 @@ router.post('/link-social-account', authenticate, async (req, res) => {
     // userId comes from the verified JWT, not the request body
     const userId = req.user.id;
     const { provider, providerId, accessToken, refreshToken, profileData } = req.body;
-
-    console.log('[DEBUG link-social-account] Request from userId:', userId, 'provider:', provider);
 
     if (!provider || !providerId) {
       return res.status(400).json({ error: 'Provider and provider ID are required' });
@@ -585,7 +645,6 @@ router.post('/link-social-account', authenticate, async (req, res) => {
         updated_at = CURRENT_TIMESTAMP
     `, [userId, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
-    console.log('[DEBUG link-social-account] Social account linked successfully for userId:', userId);
     res.json({ message: 'Social account linked successfully' });
 
   } catch (error) {
@@ -602,8 +661,6 @@ router.post('/unlink-social-account', authenticate, async (req, res) => {
     const userId = req.user.id;
     const { provider } = req.body;
 
-    console.log('[DEBUG unlink-social-account] Request from userId:', userId, 'provider:', provider);
-
     if (!provider) {
       return res.status(400).json({ error: 'Provider is required' });
     }
@@ -617,7 +674,6 @@ router.post('/unlink-social-account', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Social account link not found' });
     }
 
-    console.log('[DEBUG unlink-social-account] Social account unlinked for userId:', userId);
     res.json({ message: 'Social account unlinked successfully' });
 
   } catch (error) {
