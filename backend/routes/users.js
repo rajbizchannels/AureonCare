@@ -122,15 +122,9 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
     // creation response always succeeds even if ancillary steps fail.
     if ((newUser.role || 'patient') === 'patient' && newUser.email) {
       try {
-        const patientColumnCheck = await pool.query(`
-          SELECT column_name FROM information_schema.columns
-          WHERE table_name = 'patients' AND column_name = 'user_id'
-        `);
-        const hasPatientUserIdColumn = patientColumnCheck.rows.length > 0;
-
         const patientCheck = await pool.query(
-          'SELECT id FROM patients WHERE email = $1',
-          [newUser.email]
+          'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
+          [newUser.id, newUser.email]
         );
 
         if (patientCheck.rows.length === 0) {
@@ -140,19 +134,12 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
           const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
           const mrn = `MRN-${nextMrnNumber}`;
 
-          if (hasPatientUserIdColumn) {
-            await pool.query(
-              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
-              [newUser.first_name, newUser.last_name, mrn, '1990-01-01', newUser.email, newUser.phone, newUser.id]
-            );
-          } else {
-            await pool.query(
-              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
-               VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
-              [newUser.first_name, newUser.last_name, mrn, '1990-01-01', newUser.email, newUser.phone]
-            );
-          }
+          // patients.id = users.id (migration 023 schema)
+          await pool.query(
+            `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, phone, status, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, '1990-01-01', $5, $6, 'active', NOW(), NOW())`,
+            [newUser.id, newUser.first_name, newUser.last_name, mrn, newUser.email, newUser.phone]
+          );
         }
       } catch (patientErr) {
         console.error('Non-fatal: failed to auto-create patient record for new user:', patientErr.message);
@@ -279,117 +266,64 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
 
     // Handle role-based table synchronization
     if (oldRole !== newRole) {
-      // Check if user_id column exists in providers and patients tables
-      const providerColumnCheck = await pool.query(`
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'providers' AND column_name = 'user_id'
-      `);
-      const patientColumnCheck = await pool.query(`
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'patients' AND column_name = 'user_id'
-      `);
-
-      const hasProviderUserIdColumn = providerColumnCheck.rows.length > 0;
-      const hasPatientUserIdColumn = patientColumnCheck.rows.length > 0;
-
-      // If new role is doctor, add to providers table
+      // If new role is doctor, ensure a providers record exists with id = user.id
       if (newRole === 'doctor') {
-        // Check if already exists in providers
         const providerCheck = await pool.query(
-          'SELECT id FROM providers WHERE email = $1',
-          [updatedUser.email]
+          'SELECT id FROM providers WHERE id = $1 OR email = $2 LIMIT 1',
+          [updatedUser.id, updatedUser.email]
         );
 
         if (providerCheck.rows.length === 0) {
-          if (hasProviderUserIdColumn) {
-            // Include user_id if column exists
-            await pool.query(
-              `INSERT INTO providers (first_name, last_name, specialization, email, phone, user_id)
-               VALUES ($1, $2, $3, $4, $5, $6)`,
-              [
-                updatedUser.first_name,
-                updatedUser.last_name,
-                updatedUser.specialty || 'General Practice',
-                updatedUser.email,
-                updatedUser.phone,
-                updatedUser.id
-              ]
-            );
-          } else {
-            // Exclude user_id if column doesn't exist
-            await pool.query(
-              `INSERT INTO providers (first_name, last_name, specialization, email, phone)
-               VALUES ($1, $2, $3, $4, $5)`,
-              [
-                updatedUser.first_name,
-                updatedUser.last_name,
-                updatedUser.specialty || 'General Practice',
-                updatedUser.email,
-                updatedUser.phone
-              ]
-            );
-          }
+          // providers.id = users.id (migration 025 schema)
+          await pool.query(
+            `INSERT INTO providers (id, first_name, last_name, specialization, email, phone, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+            [
+              updatedUser.id,
+              updatedUser.first_name,
+              updatedUser.last_name,
+              updatedUser.specialty || 'General Practice',
+              updatedUser.email,
+              updatedUser.phone
+            ]
+          );
         }
 
-        // NOTE: We do NOT remove from patients table
-        // A user can be both a doctor (provider) and a patient
-        // Medical records (FHIR resources) must be preserved
-        // This prevents foreign key constraint violations
+        // NOTE: We do NOT remove from patients table — a user can be both a doctor
+        // and a patient; medical records and FK integrity must be preserved.
       }
-      // If new role is patient, add to patients table
+      // If new role is patient, ensure a patients record exists with id = user.id
       else if (newRole === 'patient') {
-        // Check if already exists in patients
         const patientCheck = await pool.query(
-          'SELECT id FROM patients WHERE email = $1',
-          [updatedUser.email]
+          'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
+          [updatedUser.id, updatedUser.email]
         );
 
         if (patientCheck.rows.length === 0) {
-          // Generate unique MRN
           const mrnResult = await pool.query(
-            'SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE \'MRN-%\''
+            "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
           );
           const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
           const mrn = `MRN-${nextMrnNumber}`;
 
-          if (hasPatientUserIdColumn) {
-            // Include user_id if column exists
-            await pool.query(
-              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
-              [
-                updatedUser.first_name,
-                updatedUser.last_name,
-                mrn,
-                updatedUser.dob || '1990-01-01', // Default DOB if not provided
-                updatedUser.email,
-                updatedUser.phone,
-                updatedUser.id
-              ]
-            );
-          } else {
-            // Exclude user_id if column doesn't exist
-            await pool.query(
-              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
-               VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
-              [
-                updatedUser.first_name,
-                updatedUser.last_name,
-                mrn,
-                updatedUser.dob || '1990-01-01', // Default DOB if not provided
-                updatedUser.email,
-                updatedUser.phone
-              ]
-            );
-          }
+          // patients.id = users.id (migration 023 schema)
+          await pool.query(
+            `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, phone, status, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NOW(), NOW())`,
+            [
+              updatedUser.id,
+              updatedUser.first_name,
+              updatedUser.last_name,
+              mrn,
+              updatedUser.dob || updatedUser.date_of_birth || '1990-01-01',
+              updatedUser.email,
+              updatedUser.phone
+            ]
+          );
         }
 
-        // NOTE: We do NOT remove from providers table
-        // A user can have multiple roles (e.g., a doctor who becomes a patient)
-        // Provider records should be preserved for historical appointment data
-        // This maintains referential integrity with appointments and other records
+        // NOTE: We do NOT remove from providers table — historical appointment data
+        // and FK integrity must be preserved.
       }
     }
 
