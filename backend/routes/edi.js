@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const multer = require('multer');
 const { parse835File, convertToPaymentPostings, validate835File, generate835File } = require('../utils/edi835Parser');
 const { generate837File, validateClaimData } = require('../utils/edi837Generator');
