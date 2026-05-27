@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 // Search medical codes (ICD-10 and CPT) - Now queries from database
 router.get('/search', async (req, res) => {
