@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const crypto = require('crypto');
 const TelehealthProviderManager = require('../services/telehealthProviders');
 const notificationService = require('../services/notificationService');
