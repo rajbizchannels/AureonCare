@@ -52,7 +52,6 @@ const AppProvider = ({ children }) => {
       // One-time migration: remove stale 'user' entry left in localStorage by the old code
       localStorage.removeItem('user');
       const storedUser = sessionStorage.getItem('user');
-      console.log('[DEBUG session-state] init: loaded user from sessionStorage, role:', storedUser ? JSON.parse(storedUser)?.role : 'none');
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (error) {
       console.error('Error loading user from sessionStorage:', error);
