@@ -49,6 +49,8 @@ const AppProvider = ({ children }) => {
   // User state - stored in sessionStorage (clears on tab close, not readable cross-tab)
   const [user, setUser] = useState(() => {
     try {
+      // One-time migration: remove stale 'user' entry left in localStorage by the old code
+      localStorage.removeItem('user');
       const storedUser = sessionStorage.getItem('user');
       console.log('[DEBUG session-state] init: loaded user from sessionStorage, role:', storedUser ? JSON.parse(storedUser)?.role : 'none');
       return storedUser ? JSON.parse(storedUser) : null;
