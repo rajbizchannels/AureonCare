@@ -195,7 +195,7 @@ p.append(text(W/2, cta_y + 132, "at a time convenient to your schedule.", 18, 40
 pill_w, pill_h = 720, 58
 px, py = (W - pill_w)/2, cta_y + 164
 p.append(f'<rect x="{px}" y="{py}" width="{pill_w}" height="{pill_h}" rx="29" fill="{GOLD}"/>')
-p.append(text(W/2, py + 37, "www.aureoncare.com      ·      support@aureoncare.com", 20, 700, TEAL_DEEP, "middle"))
+p.append(text(W/2, py + 37, "www.aureoncare.tech      ·      support@aureoncare.tech", 20, 700, TEAL_DEEP, "middle"))
 p.append(text(W/2, cta_y + cta_h - 28,
               "AureonCare  ·  Health | Efficiency | Growth  ·  Empowering Healthcare Practices with Modern Technology",
               14, 400, "#9CC4C0", "middle"))
