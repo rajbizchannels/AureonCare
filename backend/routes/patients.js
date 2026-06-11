@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforcePatientQuota } = require('../middleware/planEnforcement');
 
