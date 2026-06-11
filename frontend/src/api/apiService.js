@@ -734,6 +734,12 @@ const api = {
   },
 
   // Patient Portal
+  // Returns the current portal session token from sessionStorage (set after login).
+  _getPortalAuthHeader: () => {
+    const token = sessionStorage.getItem('portalSessionToken');
+    console.log(`[DEBUG portal-session] _getPortalAuthHeader: token ${token ? 'present' : 'MISSING'}`);
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  },
   patientPortalLogin: async (email, password, provider, providerId, accessToken) => {
     const response = await fetch(`${API_BASE_URL}/patient-portal/login`, {
       method: 'POST',
@@ -753,14 +759,16 @@ const api = {
     return response.json();
   },
   getPatientAppointments: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments`);
+    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments`, {
+      headers: { ...api._getPortalAuthHeader() }
+    });
     if (!response.ok) throw new Error('Failed to fetch patient appointments');
     return response.json();
   },
   updatePatientAppointment: async (patientId, appointmentId, data) => {
     const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to update appointment');
@@ -768,34 +776,39 @@ const api = {
   },
   deletePatientAppointment: async (patientId, appointmentId) => {
     const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: { ...api._getPortalAuthHeader() }
     });
     if (!response.ok) throw new Error('Failed to delete appointment');
     return response.json();
   },
   getPatientProfile: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`);
+    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
+      headers: { ...api._getPortalAuthHeader() }
+    });
     if (!response.ok) throw new Error('Failed to fetch patient profile');
     return response.json();
   },
   updatePatientProfile: async (patientId, data) => {
     const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to update patient profile');
     return response.json();
   },
   getPatientMedicalRecords: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/medical-records`);
+    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/medical-records`, {
+      headers: { ...api._getPortalAuthHeader() }
+    });
     if (!response.ok) throw new Error('Failed to fetch patient medical records');
     return response.json();
   },
   linkSocialToPatient: async (patientId, provider, providerId, accessToken, refreshToken, profileData) => {
     const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/link-social`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
       body: JSON.stringify({ provider, providerId, accessToken, refreshToken, profileData })
     });
     if (!response.ok) throw new Error('Failed to link social account');
