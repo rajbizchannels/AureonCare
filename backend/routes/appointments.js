@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const WhatsAppService = require('../services/whatsappService');
 const TelehealthProviderManager = require('../services/telehealthProviders/index');
 const notificationService = require('../services/notificationService');

@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 // Get all role permissions (organized by role and module)
 router.get('/', async (req, res) => {

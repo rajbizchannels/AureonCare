@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 const getDateRange = (query) => {
   const { startDate, endDate, days } = query;

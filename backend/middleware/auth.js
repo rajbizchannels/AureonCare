@@ -61,6 +61,7 @@ const authenticate = async (req, res, next) => {
       lastName: user.last_name
     };
 
+    console.log(`[DEBUG auth-gate] authenticated: ${req.method} ${req.originalUrl} user:${user.id} role:${user.role}`);
     next();
   } catch (error) {
     console.error('Authentication error:', error);
