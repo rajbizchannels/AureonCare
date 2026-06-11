@@ -67,6 +67,7 @@ const AppProvider = ({ children }) => {
       } else {
         sessionStorage.removeItem('isAuthenticated');
         sessionStorage.removeItem('user');
+        sessionStorage.removeItem('portalSessionToken');
       }
     } catch (error) {
       console.error('Error saving authentication status:', error);
@@ -78,10 +79,8 @@ const AppProvider = ({ children }) => {
     try {
       if (user) {
         sessionStorage.setItem('user', JSON.stringify(user));
-        console.log('[DEBUG session-state] user persisted to sessionStorage, role:', user.role, 'id:', user.id);
       } else {
         sessionStorage.removeItem('user');
-        console.log('[DEBUG session-state] user cleared from sessionStorage');
       }
     } catch (error) {
       console.error('Error saving user to sessionStorage:', error);
