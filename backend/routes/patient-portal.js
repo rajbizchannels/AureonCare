@@ -4,6 +4,42 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 
+// Verify the portal session token and bind it to the URL :patientId.
+// Runs automatically for every route that includes :patientId in its path.
+router.param('patientId', async (req, res, next, patientId) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Portal session required' });
+    }
+
+    const token = authHeader.slice(7);
+    const pool = req.app.locals.pool;
+    const result = await pool.query(
+      'SELECT patient_id FROM patient_portal_sessions WHERE session_token = $1 AND expires_at > NOW()',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid or expired portal session' });
+    }
+
+    const sessionPatientId = String(result.rows[0].patient_id);
+    req.portalPatientId = sessionPatientId;
+
+    console.log(`[DEBUG portal-bind] ${req.method} ${req.originalUrl} session:${sessionPatientId} url:${patientId}`);
+
+    if (String(patientId) !== sessionPatientId) {
+      return res.status(403).json({ error: 'Access denied: session does not belong to this patient' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Portal session validation error:', error);
+    res.status(500).json({ error: 'Session validation failed' });
+  }
+});
+
 // Patient portal login
 router.post('/login', async (req, res) => {
   try {
