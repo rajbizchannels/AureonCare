@@ -737,7 +737,6 @@ const api = {
   // Returns the current portal session token from sessionStorage (set after login).
   _getPortalAuthHeader: () => {
     const token = sessionStorage.getItem('portalSessionToken');
-    console.log(`[DEBUG portal-session] _getPortalAuthHeader: token ${token ? 'present' : 'MISSING'}`);
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
   patientPortalLogin: async (email, password, provider, providerId, accessToken) => {
