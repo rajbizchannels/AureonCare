@@ -4,6 +4,13 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 
+// Session tokens are stored HASHED (SHA-256) in patient_portal_sessions.session_token.
+// The raw token is only ever held by the client; a DB leak exposes only hashes,
+// which cannot be replayed as bearer tokens. SHA-256 (not bcrypt) is used because
+// lookups must be deterministic — we query by the hash — and the token is already
+// 256 bits of CSPRNG entropy, so slow hashing buys nothing.
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
 // Verify the portal session token and bind it to the URL :patientId.
 // Runs automatically for every route that includes :patientId in its path.
 router.param('patientId', async (req, res, next, patientId) => {
@@ -14,10 +21,12 @@ router.param('patientId', async (req, res, next, patientId) => {
     }
 
     const token = authHeader.slice(7);
+    const tokenHash = hashToken(token);
+    console.log(`[DEBUG token-hash] validate: raw=${token.slice(0, 6)}… hash=${tokenHash.slice(0, 12)}…`);
     const pool = req.app.locals.pool;
     const result = await pool.query(
       'SELECT patient_id FROM patient_portal_sessions WHERE session_token = $1 AND expires_at > NOW()',
-      [token]
+      [tokenHash]
     );
 
     if (result.rows.length === 0) {
@@ -26,8 +35,6 @@ router.param('patientId', async (req, res, next, patientId) => {
 
     const sessionPatientId = String(result.rows[0].patient_id);
     req.portalPatientId = sessionPatientId;
-
-    console.log(`[DEBUG portal-bind] ${req.method} ${req.originalUrl} session:${sessionPatientId} url:${patientId}`);
 
     if (String(patientId) !== sessionPatientId) {
       return res.status(403).json({ error: 'Access denied: session does not belong to this patient' });
@@ -89,14 +96,17 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // Create session token
+    // Create session token — return the raw token to the client but persist only
+    // its SHA-256 hash, so the DB never holds a replayable credential.
     const sessionToken = crypto.randomBytes(32).toString('hex');
+    const sessionTokenHash = hashToken(sessionToken);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    console.log(`[DEBUG token-hash] issue: raw=${sessionToken.slice(0, 6)}… stored-hash=${sessionTokenHash.slice(0, 12)}…`);
 
     await pool.query(`
       INSERT INTO patient_portal_sessions (patient_id, session_token, ip_address, user_agent, expires_at)
       VALUES ($1, $2, $3, $4, $5)
-    `, [patient.id, sessionToken, req.ip, req.get('user-agent'), expiresAt]);
+    `, [patient.id, sessionTokenHash, req.ip, req.get('user-agent'), expiresAt]);
 
     // Return patient data without sensitive info
     const { portal_password_hash, ...patientData } = patient;
@@ -536,9 +546,10 @@ router.post('/logout', async (req, res) => {
     const pool = req.app.locals.pool;
     const { sessionToken } = req.body;
 
+    // Sessions are stored hashed — hash the presented token to find the row.
     await pool.query(
       'DELETE FROM patient_portal_sessions WHERE session_token = $1',
-      [sessionToken]
+      [sessionToken ? hashToken(sessionToken) : null]
     );
 
     res.json({ message: 'Logged out successfully' });
