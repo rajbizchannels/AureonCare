@@ -38,7 +38,6 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
 
       // Patient portal login returns { patient, sessionToken, expiresAt }
       sessionStorage.setItem('portalSessionToken', response.sessionToken);
-      console.log('[DEBUG portal-session] token stored after email login, patientId:', response.patient?.id);
       setUser(response.patient);
       setIsAuthenticated(true);
 
@@ -81,7 +80,6 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
 
         // Patient portal login returns { patient, sessionToken, expiresAt }
         sessionStorage.setItem('portalSessionToken', response.sessionToken);
-        console.log('[DEBUG portal-session] token stored after Google login, patientId:', response.patient?.id);
         setUser(response.patient);
         setIsAuthenticated(true);
 
@@ -132,7 +130,6 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
 
       // Patient portal login returns { patient, sessionToken, expiresAt }
       sessionStorage.setItem('portalSessionToken', response.sessionToken);
-      console.log('[DEBUG portal-session] token stored after Microsoft login, patientId:', response.patient?.id);
       setUser(response.patient);
       setIsAuthenticated(true);
 
