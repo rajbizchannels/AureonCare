@@ -16,7 +16,6 @@ const loginIpLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    console.log(`[DEBUG login-throttle] IP limit hit: ip=${req.ip}`);
     res.status(429).json({ error: 'Too many login attempts from this device. Please try again later.' });
   },
 });
@@ -28,14 +27,13 @@ const loginIpLimiter = rateLimit({
 // would otherwise share a single 'unknown'-email bucket.
 const loginAccountLimiter = rateLimit({
   windowMs: LOGIN_WINDOW_MS,
-  max: 5,
+  max: 3,
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => (req.body?.email || 'unknown').toLowerCase(),
   skip: (req) => Boolean(req.body?.provider && req.body?.providerId),
   handler: (req, res) => {
-    console.log(`[DEBUG login-throttle] account lockout: email=${(req.body?.email || '').toLowerCase()}`);
     res.status(429).json({ error: 'Account temporarily locked due to too many failed attempts. Please try again in 15 minutes.' });
   },
 });
@@ -87,7 +85,6 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { email, password, provider, providerId, accessToken } = req.body;
-    console.log(`[DEBUG login-throttle] attempt: ip=${req.ip} email=${email || '(social)'} remaining=${res.getHeader('RateLimit-Remaining')}`);
 
     let patient;
 
