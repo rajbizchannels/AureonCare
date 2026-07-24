@@ -12,6 +12,11 @@ const pool = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust the first proxy hop (Vercel / load balancer) so req.ip reflects the
+// real client address from X-Forwarded-For — required for correct per-IP rate
+// limiting on the auth endpoints.
+app.set('trust proxy', 1);
+
 // Make pool available to routes
 app.locals.pool = pool;
 

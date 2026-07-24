@@ -2,7 +2,43 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
+
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+// Per-IP limiter: blunt protection against one host hammering the login
+// endpoint (credential stuffing across many accounts, DoS). Counts every
+// request regardless of outcome.
+const loginIpLimiter = rateLimit({
+  windowMs: LOGIN_WINDOW_MS,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    console.log(`[DEBUG login-throttle] IP limit hit: ip=${req.ip}`);
+    res.status(429).json({ error: 'Too many login attempts from this device. Please try again later.' });
+  },
+});
+
+// Per-account lockout: counts only FAILED logins (skipSuccessfulRequests),
+// keyed by the submitted email, so a single account cannot be brute-forced
+// even from a rotating set of IPs. A successful login resets the counter.
+// Social logins (no password) bypass this — they can't be brute-forced and
+// would otherwise share a single 'unknown'-email bucket.
+const loginAccountLimiter = rateLimit({
+  windowMs: LOGIN_WINDOW_MS,
+  max: 5,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.body?.email || 'unknown').toLowerCase(),
+  skip: (req) => Boolean(req.body?.provider && req.body?.providerId),
+  handler: (req, res) => {
+    console.log(`[DEBUG login-throttle] account lockout: email=${(req.body?.email || '').toLowerCase()}`);
+    res.status(429).json({ error: 'Account temporarily locked due to too many failed attempts. Please try again in 15 minutes.' });
+  },
+});
 
 // Session tokens are stored HASHED (SHA-256) in patient_portal_sessions.session_token.
 // The raw token is only ever held by the client; a DB leak exposes only hashes,
@@ -22,7 +58,6 @@ router.param('patientId', async (req, res, next, patientId) => {
 
     const token = authHeader.slice(7);
     const tokenHash = hashToken(token);
-    console.log(`[DEBUG token-hash] validate: raw=${token.slice(0, 6)}… hash=${tokenHash.slice(0, 12)}…`);
     const pool = req.app.locals.pool;
     const result = await pool.query(
       'SELECT patient_id FROM patient_portal_sessions WHERE session_token = $1 AND expires_at > NOW()',
@@ -47,11 +82,12 @@ router.param('patientId', async (req, res, next, patientId) => {
   }
 });
 
-// Patient portal login
-router.post('/login', async (req, res) => {
+// Patient portal login — rate limited per IP and locked out per account
+router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { email, password, provider, providerId, accessToken } = req.body;
+    console.log(`[DEBUG login-throttle] attempt: ip=${req.ip} email=${email || '(social)'} remaining=${res.getHeader('RateLimit-Remaining')}`);
 
     let patient;
 
@@ -101,7 +137,6 @@ router.post('/login', async (req, res) => {
     const sessionToken = crypto.randomBytes(32).toString('hex');
     const sessionTokenHash = hashToken(sessionToken);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-    console.log(`[DEBUG token-hash] issue: raw=${sessionToken.slice(0, 6)}… stored-hash=${sessionTokenHash.slice(0, 12)}…`);
 
     await pool.query(`
       INSERT INTO patient_portal_sessions (patient_id, session_token, ip_address, user_agent, expires_at)
