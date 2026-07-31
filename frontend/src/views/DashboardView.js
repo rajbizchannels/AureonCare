@@ -104,28 +104,24 @@ const DashboardView = ({
   const enabledQuickActions = user?.preferences?.quickActions || permittedQuickActions.map(a => a.id);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className={`text-3xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {t.welcome}, {user?.firstName || user?.first_name || 'User'}
           </h1>
-          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+          <p className={`text-sm mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
             {user?.practice || clinicName} {planTier && `| ${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan`}
           </p>
         </div>
-        <div className="flex gap-3">
-          <div className="px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Bot className="w-5 h-5 text-cyan-400" />
-              <span className="text-sm text-cyan-400 font-medium">AI Enabled</span>
-            </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-lg whitespace-nowrap">
+            <Bot className="w-4 h-4 text-cyan-500" />
+            <span className="text-xs text-cyan-500 font-medium">AI Enabled</span>
           </div>
-          <div className="px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-green-400" />
-              <span className="text-sm text-green-400 font-medium">HIPAA Compliant</span>
-            </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-lg whitespace-nowrap">
+            <Shield className="w-4 h-4 text-green-500" />
+            <span className="text-xs text-green-500 font-medium">HIPAA Compliant</span>
           </div>
 
           {/* Quick Actions Dropdown */}
@@ -195,7 +191,7 @@ const DashboardView = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Today's Appointments - Show if user can view appointments */}
         {hasPermission(user, 'appointments', 'view') && (
           <StatCard
@@ -226,6 +222,7 @@ const DashboardView = ({
               const change = avgPerDay > 0 ? Math.round(((todayCount - avgPerDay) / avgPerDay) * 100) : 0;
               return change >= 0 ? `+${change}% ${t.fromAverage || 'from average'}` : `${change}% ${t.fromAverage || 'from average'}`;
             })()}
+            theme={theme}
             color="from-blue-500 to-cyan-500"
             onClick={() => {
               if (setAppointmentViewType && setCalendarViewType) {
@@ -243,6 +240,7 @@ const DashboardView = ({
           value={tasks.filter(t => t.status === 'Pending').length.toString()}
           icon={Clock}
           trend={`${tasks.filter(t => t.priority === 'High' && t.status === 'Pending').length} ${t.urgent}`}
+          theme={theme}
           color="from-purple-500 to-pink-500"
           onClick={() => setSelectedItem('tasks')}
         />
@@ -286,6 +284,7 @@ const DashboardView = ({
             const change = Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100);
             return change >= 0 ? `+${change}% ${t.vsLastMonth || 'vs last month'}` : `${change}% ${t.vsLastMonth || 'vs last month'}`;
           })()}
+          theme={theme}
           color="from-green-500 to-emerald-500"
           onClick={() => setSelectedItem('revenue')}
         />
@@ -307,6 +306,7 @@ const DashboardView = ({
               }).length;
               return `+${recentPatients} ${t.thisWeek}`;
             })()}
+            theme={theme}
             color="from-yellow-500 to-orange-500"
             onClick={() => setCurrentModule('ehr')}
           />
@@ -412,8 +412,8 @@ const DashboardView = ({
       )}
 
       <div>
-        <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.availableModules}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <h2 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.availableModules}</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
           {modules.map(module => (
             <ModuleCard
               key={module.id}
@@ -428,7 +428,7 @@ const DashboardView = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div
           onClick={() => {
             if (setAppointmentViewType && setCalendarViewType) {

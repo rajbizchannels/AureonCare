@@ -267,11 +267,16 @@ function App() {
     setEditingItem(null);
     setShowForm(null);
     setNavSelection({ module: item.module, tab: item.tab || null });
-    if (item.module === 'practiceManagement') {
-      setAppointmentViewType(item.tab || 'list');
+    if (item.module === 'practiceManagement' && item.tab) {
+      setAppointmentViewType(item.tab);
     }
     setCurrentModule(item.module);
   };
+
+  // Anything inside a view that jumps to another module — the dashboard's
+  // module tiles and stat cards, most of all — goes through the shell so the
+  // rail switches group and pane 2 opens the branch that owns the module.
+  const navigateToModule = (moduleId) => handleSelectNavItem({ module: moduleId });
 
   const handleSelectNavGroup = (group) => {
     if (group.id === activeGroup?.id) return;
@@ -332,7 +337,7 @@ function App() {
             setSelectedItem={handleSetSelectedItem}
             showForm={showForm}
             setShowForm={handleSetShowForm}
-            setCurrentModule={setCurrentModule}
+            setCurrentModule={navigateToModule}
             setAppointmentViewType={setAppointmentViewType}
             setCalendarViewType={setCalendarViewType}
             setAppointments={setAppointments}
@@ -605,6 +610,8 @@ function App() {
           <React.Suspense fallback={null}>
             <PatientPortalView
               theme={theme}
+              activeTab={activeTab || 'profile'}
+              onTabChange={(tab) => selectModuleTab('patientPortal', tab)}
               api={api}
               addNotification={addNotification}
               user={user}

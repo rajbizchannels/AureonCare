@@ -8,11 +8,15 @@ import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
 import { useAudit } from '../hooks/useAudit';
+import { useShellTab } from '../hooks/useShellTab';
 
-const PatientPortalView = ({ theme, api, addNotification, user }) => {
+const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange }) => {
   const { language, setLanguage, setTheme } = useApp();
   const t = getTranslations(language);
-  const [currentView, setCurrentView] = useState('profile'); // profile (overview), appointments, diagnoses, prescriptions, records, bookAppointment
+  // profile (overview), appointments, diagnoses, prescriptions, records,
+  // forms, bookAppointment — listed in the shell's secondary pane when the
+  // portal is rendered inside it.
+  const [currentView, setCurrentView, tabsInShell] = useShellTab(shellTab, onTabChange, 'profile');
 
   // Data states
   const [appointments, setAppointments] = useState([]);
@@ -3146,7 +3150,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         </p>
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Navigation Tabs — the app shell's secondary pane replaces these */}
+      {!tabsInShell && (
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
           { id: 'profile', label: t.overviewTab || 'Overview', icon: User, count: null },
@@ -3181,6 +3186,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           </button>
         ))}
       </div>
+      )}
 
       {/* Content */}
       {currentView === 'profile' && renderProfile()}
