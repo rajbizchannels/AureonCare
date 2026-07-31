@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowLeft, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2 } from 'lucide-react';
+import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { isProvider, isPatient } from '../utils/rolePermissions';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -372,13 +372,6 @@ const PracticeManagementView = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title={t.backToDashboard || 'Back to Dashboard'}
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.appointments || 'Appointments'}</h2>
         </div>
         <div className="flex items-center gap-3">

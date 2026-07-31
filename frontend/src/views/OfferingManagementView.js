@@ -5,6 +5,7 @@ import { formatCurrency } from '../utils/formatters';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewHealthcareOfferingForm from '../components/forms/NewHealthcareOfferingForm';
 import { useAudit } from '../hooks/useAudit';
+import { useShellTab } from '../hooks/useShellTab';
 import { FORM_TEMPLATES } from '../data/formTemplates';
 import {
   Package,
@@ -31,13 +32,12 @@ import {
   BarChart3,
   ShoppingCart,
   Percent,
-  ArrowLeft,
   ClipboardList
 } from 'lucide-react';
 
-const OfferingManagementView = () => {
-  const { user, theme, setCurrentModule, currency } = useApp();
-  const [activeTab, setActiveTab] = useState('offerings');
+const OfferingManagementView = ({ activeTab: shellTab, onTabChange }) => {
+  const { user, theme, currency } = useApp();
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'offerings');
   const [offerings, setOfferings] = useState([]);
   const [packages, setPackages] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -359,21 +359,13 @@ const OfferingManagementView = () => {
         {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <button
-            onClick={() => setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${
-              theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-200'
-            }`}
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
           <h1 className="text-3xl font-bold">Healthcare Offering Management</h1>
         </div>
-        <p className="text-gray-500 ml-14">Manage your healthcare services, packages, and promotions</p>
+        <p className="text-gray-500">Manage your healthcare services, packages, and promotions</p>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — the app shell's secondary pane replaces these when present */}
+      {!tabsInShell && (
       <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
         <nav className="flex space-x-8">
           {[
@@ -401,6 +393,7 @@ const OfferingManagementView = () => {
           })}
         </nav>
       </div>
+      )}
 
       {/* Inline Offering Form - shown when adding/editing offering */}
       {showModal && modalType === 'offering' && activeTab === 'offerings' && (

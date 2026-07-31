@@ -31,7 +31,6 @@ import {
   Lock,
   Unlock,
   CheckCircle,
-  ArrowLeft,
   CreditCard,
   Check,
   Video,
@@ -69,6 +68,7 @@ import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import { useClinicSettings } from '../hooks/useClinicSettings';
+import { useShellTab } from '../hooks/useShellTab';
 import {
   USER_ROLES,
   USER_STATUS,
@@ -296,6 +296,8 @@ TEAMS_CLIENT_SECRET=`}
  */
 const AdminPanelView = ({
   theme,
+  activeTab: shellTab,
+  onTabChange,
   users,
   setUsers,
   setShowForm,
@@ -311,7 +313,7 @@ const AdminPanelView = ({
   const { setPlanTier, updateUserPreferences, planTier, user } = useApp();
 
   // ==================== STATE ====================
-  const [activeTab, setActiveTab] = useState(ADMIN_TABS.CLINIC);
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, ADMIN_TABS.CLINIC);
 
   // Use custom hook for clinic settings (with built-in validation)
   const {
@@ -4744,18 +4746,6 @@ const AdminPanelView = ({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
-              }`}
-              title={t.backToDashboard || 'Back to Dashboard'}
-              aria-label="Back to Dashboard"
-            >
-              <ArrowLeft
-                className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}
-              />
-            </button>
             <div>
               <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {t.adminPanel || 'Admin Panel'}
@@ -4767,7 +4757,8 @@ const AdminPanelView = ({
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — the app shell's secondary pane replaces these when present */}
+        {!tabsInShell && (
         <div className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <div className="flex space-x-8 overflow-x-auto">
             {tabs.map((tab) => {
@@ -4794,6 +4785,7 @@ const AdminPanelView = ({
             })}
           </div>
         </div>
+        )}
 
         {/* Tab Content */}
         <div>
@@ -4931,6 +4923,10 @@ const AdminPanelView = ({
 
 AdminPanelView.propTypes = {
   theme: PropTypes.oneOf(['light', 'dark']).isRequired,
+  // Sub-module tab driven by the app shell's secondary pane (optional —
+  // the view manages its own tabs when rendered outside the shell).
+  activeTab: PropTypes.string,
+  onTabChange: PropTypes.func,
   users: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
