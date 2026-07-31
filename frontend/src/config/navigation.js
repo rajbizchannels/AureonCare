@@ -85,47 +85,46 @@ export const getNavigation = (t = {}) => [
         label: null,
         items: [
           {
+            // Home → Dashboard. The dashboard is the same view as before the
+            // shell, laid out for the content pane; its drill-downs hang off
+            // it as a nested branch instead of sitting beside it, so pane 2
+            // mirrors the fact that they open *from* the dashboard.
             id: 'home.dashboard',
             label: t.dashboard || 'Dashboard',
-            description: t.dashboardDescription || 'Practice overview and KPIs',
+            description: t.dashboardDescription || 'Today at a glance',
             icon: LayoutDashboard,
             module: 'dashboard',
             access: 'dashboard',
-          },
-          {
-            id: 'home.tasks',
-            label: t.myTasks || 'My Tasks',
-            description: t.myTasksDescription || 'Open and high-priority work',
-            icon: CheckSquare,
-            action: 'tasks',
-            access: 'dashboard',
-          },
-        ],
-      },
-      {
-        id: 'home.snapshots',
-        label: t.snapshots || 'Snapshots',
-        items: [
-          {
-            id: 'home.patientsSnapshot',
-            label: t.patientsSnapshot || 'Patient Snapshot',
-            icon: Users,
-            action: 'patients',
-            access: 'ehr',
-          },
-          {
-            id: 'home.revenueSnapshot',
-            label: t.revenueSnapshot || 'Revenue Snapshot',
-            icon: DollarSign,
-            action: 'revenue',
-            access: 'rcm',
-          },
-          {
-            id: 'home.appointmentsSnapshot',
-            label: t.appointmentsSnapshot || 'Appointment Snapshot',
-            icon: Calendar,
-            action: 'appointments',
-            access: 'practiceManagement',
+            children: [
+              {
+                id: 'home.tasks',
+                label: t.myTasks || 'My Tasks',
+                icon: CheckSquare,
+                action: 'tasks',
+                access: 'dashboard',
+              },
+              {
+                id: 'home.patientsSnapshot',
+                label: t.patientsSnapshot || 'Patient Snapshot',
+                icon: Users,
+                action: 'patients',
+                access: 'ehr',
+              },
+              {
+                id: 'home.revenueSnapshot',
+                label: t.revenueSnapshot || 'Revenue Snapshot',
+                icon: DollarSign,
+                action: 'revenue',
+                access: 'rcm',
+              },
+              {
+                id: 'home.appointmentsSnapshot',
+                label: t.appointmentsSnapshot || 'Appointment Snapshot',
+                icon: Calendar,
+                action: 'appointments',
+                access: 'practiceManagement',
+              },
+            ],
           },
         ],
       },
@@ -283,6 +282,44 @@ export const getNavigation = (t = {}) => [
             description: t.patientPortalNavDescription || 'What the patient sees',
             icon: UserCircle,
             module: 'patientPortal',
+            tab: 'profile',
+            children: [
+              {
+                id: 'patients.portalAppointments',
+                label: t.appointmentsTab || 'Appointments',
+                icon: Calendar,
+                module: 'patientPortal',
+                tab: 'appointments',
+              },
+              {
+                id: 'patients.portalDiagnoses',
+                label: t.diagnosesTab || 'Diagnoses',
+                icon: Activity,
+                module: 'patientPortal',
+                tab: 'diagnoses',
+              },
+              {
+                id: 'patients.portalPrescriptions',
+                label: t.prescriptionsTab || 'Prescriptions',
+                icon: Pill,
+                module: 'patientPortal',
+                tab: 'prescriptions',
+              },
+              {
+                id: 'patients.portalRecords',
+                label: t.recordsTab || 'Records',
+                icon: FileText,
+                module: 'patientPortal',
+                tab: 'records',
+              },
+              {
+                id: 'patients.portalForms',
+                label: t.formsRequested || 'Forms Requested',
+                icon: ClipboardList,
+                module: 'patientPortal',
+                tab: 'forms',
+              },
+            ],
           },
         ],
       },
@@ -755,6 +792,17 @@ export const getNavigation = (t = {}) => [
 /** The plan/role gate id for an item (falls back to its module id). */
 export const accessIdFor = (item) => item.access || item.module;
 
+/** Depth-first flatten of an item list, parents before their children. */
+const flattenItems = (items = []) =>
+  items.reduce((all, item) => all.concat(item, flattenItems(item.children)), []);
+
+const filterItems = (items, canAccess) =>
+  items
+    .filter((item) => canAccess(accessIdFor(item)))
+    .map((item) =>
+      item.children ? { ...item, children: filterItems(item.children, canAccess) } : item
+    );
+
 /**
  * Drop every item the current user cannot reach, then drop the sections and
  * groups that end up empty. Returns a new tree — the source is never mutated.
@@ -763,18 +811,15 @@ export const filterNavigation = (navigation, canAccess) =>
   navigation
     .map((group) => {
       const sections = group.sections
-        .map((section) => ({
-          ...section,
-          items: section.items.filter((item) => canAccess(accessIdFor(item))),
-        }))
+        .map((section) => ({ ...section, items: filterItems(section.items, canAccess) }))
         .filter((section) => section.items.length > 0);
       return { ...group, sections };
     })
     .filter((group) => group.sections.length > 0);
 
-/** Flat list of every item in a group, in display order. */
+/** Flat list of every item in a group — nested children included, in display order. */
 export const groupItems = (group) =>
-  group ? group.sections.reduce((all, section) => all.concat(section.items), []) : [];
+  group ? flattenItems(group.sections.reduce((all, section) => all.concat(section.items), [])) : [];
 
 /** The item a group navigates to when its rail entry is clicked. */
 export const defaultItemFor = (group) => groupItems(group).find((item) => item.module) || groupItems(group)[0];
