@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Save } from 'lucide-react';
+import { ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Save } from 'lucide-react';
 import api from '../api/apiService';
 import { useAudit } from '../hooks/useAudit';
 
@@ -697,13 +697,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title={t?.backToDashboard || 'Back to Dashboard'}
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {t?.apiAndIntegrations || 'API & Integrations'}
           </h2>
@@ -719,13 +712,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title={t?.backToDashboard || 'Back to Dashboard'}
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {t?.apiAndIntegrations || 'API & Integrations'}
           </h2>
@@ -740,13 +726,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-          title={t?.backToDashboard || 'Back to Dashboard'}
-        >
-          <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-        </button>
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           {t?.apiAndIntegrations || 'API & Integrations'}
         </h2>

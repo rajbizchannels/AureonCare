@@ -14,6 +14,7 @@ import { canAccessModule } from '../utils/rolePermissions';
 export const planFeatures = {
   // ── Tier 1: Practice Essentials ───────────────────────────────────────────
   essentials: [
+    'dashboard',
     'practiceManagement',
     'providerManagement',
     'ehr',
@@ -21,10 +22,14 @@ export const planFeatures = {
     'clinicalServices',
     'reports',
     'formManagement',
+    'accounts',
+    'inventory',
+    'adminPanel',
   ],
 
   // ── Tier 2: Clinical Pro ──────────────────────────────────────────────────
   clinical_pro: [
+    'dashboard',
     'practiceManagement',
     'providerManagement',
     'ehr',
@@ -36,10 +41,14 @@ export const planFeatures = {
     'offerings',
     'reports',
     'formManagement',
+    'accounts',
+    'inventory',
+    'adminPanel',
   ],
 
   // ── Tier 3: Enterprise ────────────────────────────────────────────────────
   enterprise: [
+    'dashboard',
     'practiceManagement',
     'providerManagement',
     'ehr',
@@ -52,10 +61,14 @@ export const planFeatures = {
     'offerings',
     'reports',
     'formManagement',
+    'accounts',
+    'inventory',
+    'adminPanel',
   ],
 
   // ── Tier 4: On-Premises / Customer Cloud ──────────────────────────────────
   onprem: [
+    'dashboard',
     'practiceManagement',
     'providerManagement',
     'ehr',
@@ -68,6 +81,9 @@ export const planFeatures = {
     'offerings',
     'reports',
     'formManagement',
+    'accounts',
+    'inventory',
+    'adminPanel',
   ],
 };
 

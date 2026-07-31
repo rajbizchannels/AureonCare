@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   User, Calendar, Clock, Settings, Link2, Mail, Phone,
-  Plus, Edit2, Trash2, Eye, EyeOff, Copy, Check, AlertCircle, ArrowLeft
+  Plus, Edit2, Trash2, Eye, EyeOff, Copy, Check, AlertCircle
 } from 'lucide-react';
 import { DoctorAvailabilityManager } from '../components/scheduling';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -352,17 +352,6 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
       }`}>
         <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3 mb-2">
-            {setCurrentModule && (
-              <button
-                onClick={() => setCurrentModule('dashboard')}
-                className={`p-2 rounded-lg transition-colors ${
-                  theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'
-                }`}
-                title="Back to Dashboard"
-              >
-                <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-              </button>
-            )}
             <div className="flex-1">
               <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>Providers</h2>
             </div>
