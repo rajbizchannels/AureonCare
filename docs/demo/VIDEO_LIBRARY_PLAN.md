@@ -8,6 +8,11 @@ This complements — it does not replace — the existing 13.5-minute executive 
 in `docs/demo/EXECUTIVE_DEMO_SCRIPT.md`. That one sells the platform to buyers;
 these train the people who use it.
 
+Production is tracked in **`AureonCare_Video_Library_Tracker.xlsx`** (same folder):
+one row per video, with owner, status, the four production stages, dates and a
+formula-driven dashboard. This document is the reference; the workbook is the
+working copy — edit the workbook, not this file, as work progresses.
+
 **Status: plan only. Nothing in this list has been produced yet.**
 The Google Meet OAuth video in `docs/google-verification/` is the only recording
 that exists today; it was made for Google's review, not for this library.
