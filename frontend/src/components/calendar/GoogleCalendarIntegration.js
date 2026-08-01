@@ -1,275 +1,211 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, CheckCircle, XCircle, Link as LinkIcon, Unlink, RefreshCw } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, Calendar, CheckCircle, Link as LinkIcon, RefreshCw, Unlink } from 'lucide-react';
 
-const GoogleCalendarIntegration = ({ patientId, theme = 'light' }) => {
-  const [calendarStatus, setCalendarStatus] = useState({
-    connected: false,
-    account: null
-  });
+import api from '../../api/apiService';
+import ConfirmationModal from '../modals/ConfirmationModal';
+
+/**
+ * Lets a patient connect their Google Calendar so appointments can be pushed to
+ * it. Every call goes through apiService, which attaches the Bearer token —
+ * /api/calendar-sync is authenticated and authorises the caller against the
+ * patient in the path.
+ */
+const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification }) => {
+  const dark = theme === 'dark';
+
+  const [calendarStatus, setCalendarStatus] = useState({ connected: false, account: null });
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [notConfigured, setNotConfigured] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
-  useEffect(() => {
-    checkCalendarStatus();
-  }, [patientId]);
+  const showMessage = useCallback((type, text) => {
+    setMessage({ type, text });
+    if (addNotification) addNotification(type === 'error' ? 'alert' : type, text);
+    setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+  }, [addNotification]);
 
-  const checkCalendarStatus = async () => {
+  const checkCalendarStatus = useCallback(async () => {
+    if (!patientId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const response = await fetch(`/api/calendar-sync/status/${patientId}`);
-      const data = await response.json();
-      setCalendarStatus(data);
+      const status = await api.getCalendarSyncStatus(patientId);
+      setCalendarStatus(status);
+      setNotConfigured(status.configured === false);
     } catch (error) {
       console.error('Error checking calendar status:', error);
-      showMessage('error', 'Failed to check calendar status');
+      showMessage('error', error.message || 'Failed to check calendar status');
     } finally {
       setLoading(false);
     }
-  };
+  }, [patientId, showMessage]);
+
+  useEffect(() => {
+    checkCalendarStatus();
+  }, [checkCalendarStatus]);
+
+  // The OAuth callback returns the browser here with a result in the query.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('calendar_connected');
+    const failure = params.get('calendar_error');
+    if (!connected && !failure) return;
+
+    if (connected) {
+      showMessage('success', 'Google Calendar connected successfully');
+      checkCalendarStatus();
+    } else {
+      const reasons = {
+        not_configured: 'Google Calendar sync is not configured on this server',
+        missing_code: 'Google did not return an authorization code',
+        invalid_state: 'The authorization link expired — please try again',
+        exchange_failed: 'Could not complete the Google authorization'
+      };
+      showMessage('error', reasons[failure] || 'Failed to connect Google Calendar');
+    }
+
+    params.delete('calendar_connected');
+    params.delete('calendar_error');
+    const query = params.toString();
+    window.history.replaceState({}, document.title, window.location.pathname + (query ? `?${query}` : ''));
+  }, [showMessage, checkCalendarStatus]);
 
   const connectGoogleCalendar = async () => {
     try {
-      const response = await fetch(`/api/calendar-sync/auth-url?patientId=${patientId}`);
-      const data = await response.json();
-
-      if (data.authUrl) {
-        // Open Google OAuth in a new window
-        window.location.href = data.authUrl;
-      }
+      setConnecting(true);
+      const authUrl = await api.getCalendarAuthUrl(patientId);
+      if (authUrl) window.location.href = authUrl;
     } catch (error) {
       console.error('Error connecting calendar:', error);
-      showMessage('error', 'Failed to connect Google Calendar');
+      showMessage('error', error.message || 'Failed to connect Google Calendar');
+      setConnecting(false);
     }
   };
 
   const disconnectGoogleCalendar = async () => {
-    if (!window.confirm('Are you sure you want to disconnect Google Calendar?')) {
-      return;
-    }
-
+    setConfirmDisconnect(false);
     try {
-      const response = await fetch(`/api/calendar-sync/disconnect/${patientId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        setCalendarStatus({ connected: false, account: null });
-        showMessage('success', 'Google Calendar disconnected successfully');
-      } else {
-        throw new Error('Failed to disconnect');
-      }
+      await api.disconnectCalendarSync(patientId);
+      setCalendarStatus({ connected: false, account: null });
+      showMessage('success', 'Google Calendar disconnected successfully');
     } catch (error) {
       console.error('Error disconnecting calendar:', error);
-      showMessage('error', 'Failed to disconnect Google Calendar');
+      showMessage('error', error.message || 'Failed to disconnect Google Calendar');
     }
   };
 
-  const syncAppointment = async (appointmentId) => {
-    try {
-      setSyncing(true);
-      const response = await fetch('/api/calendar-sync/sync-appointment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          appointmentId,
-          patientId
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        showMessage('success', 'Appointment synced to Google Calendar!');
-        return data;
-      } else {
-        throw new Error('Failed to sync appointment');
-      }
-    } catch (error) {
-      console.error('Error syncing appointment:', error);
-      showMessage('error', 'Failed to sync appointment to calendar');
-      throw error;
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const showMessage = (type, text) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage({ type: '', text: '' }), 5000);
-  };
+  const panel = `p-5 rounded-xl border ${dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`;
+  const heading = dark ? 'text-white' : 'text-gray-900';
+  const muted = dark ? 'text-slate-400' : 'text-gray-500';
 
   if (loading) {
     return (
-      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-center">
-          <RefreshCw className="w-6 h-6 animate-spin text-cyan-500" />
-          <span className={`ml-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
-            Loading calendar status...
-          </span>
+      <div className={panel}>
+        <div className={`flex items-center justify-center gap-2 ${muted}`}>
+          <RefreshCw className="w-5 h-5 animate-spin text-cyan-500" />
+          Loading calendar status…
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-      <div className="flex items-center gap-3 mb-4">
-        <Calendar className="w-6 h-6 text-cyan-500" />
-        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Google Calendar Integration
-        </h3>
-      </div>
+    <>
+      <ConfirmationModal
+        theme={theme}
+        isOpen={confirmDisconnect}
+        onClose={() => setConfirmDisconnect(false)}
+        onConfirm={disconnectGoogleCalendar}
+        title="Disconnect Google Calendar"
+        message="Appointments will stop syncing to your Google Calendar. Events already added stay in your calendar."
+        type="warning"
+        confirmText="Disconnect"
+        cancelText="Cancel"
+      />
 
-      {message.text && (
-        <div className={`mb-4 p-4 rounded-lg ${
-          message.type === 'success'
-            ? 'bg-green-100 border border-green-200 text-green-800'
-            : 'bg-red-100 border border-red-200 text-red-800'
-        }`}>
-          <div className="flex items-center gap-2">
-            {message.type === 'success' ? (
-              <CheckCircle className="w-5 h-5" />
-            ) : (
-              <XCircle className="w-5 h-5" />
-            )}
+      <div className={panel}>
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Calendar className="w-6 h-6 text-cyan-500 flex-shrink-0" />
+            <div className="min-w-0">
+              <h3 className={`font-semibold ${heading}`}>Google Calendar</h3>
+              <p className={`text-sm ${muted}`}>Add your appointments to your own calendar</p>
+            </div>
+          </div>
+          {calendarStatus.connected ? (
+            <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium flex-shrink-0 ${
+              dark ? 'bg-green-500/15 text-green-300 border-green-500/30' : 'bg-green-50 text-green-700 border-green-200'
+            }`}>
+              <CheckCircle className="w-3.5 h-3.5" /> Connected
+            </span>
+          ) : (
+            <span className={`px-2.5 py-1 rounded-full border text-xs font-medium flex-shrink-0 ${
+              dark ? 'bg-slate-700/50 text-slate-300 border-slate-600' : 'bg-gray-100 text-gray-600 border-gray-200'
+            }`}>
+              Not connected
+            </span>
+          )}
+        </div>
+
+        {message.text && (
+          <div className={`mb-4 rounded-lg border px-3 py-2 flex items-start gap-2 text-sm ${
+            message.type === 'error'
+              ? dark ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-red-50 border-red-200 text-red-700'
+              : dark ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-green-50 border-green-200 text-green-700'
+          }`}>
+            {message.type === 'error'
+              ? <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              : <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />}
             <span>{message.text}</span>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="space-y-4">
-        {calendarStatus.connected ? (
-          <div>
-            <div className={`flex items-center gap-3 p-4 rounded-lg ${
-              theme === 'dark' ? 'bg-green-900/30 border border-green-700' : 'bg-green-50 border border-green-200'
-            }`}>
-              <CheckCircle className="w-6 h-6 text-green-500" />
-              <div className="flex-1">
-                <p className={`font-medium ${theme === 'dark' ? 'text-green-300' : 'text-green-800'}`}>
-                  Connected to Google Calendar
+        {notConfigured && !calendarStatus.connected ? (
+          <div className={`rounded-lg border px-3 py-2 flex items-start gap-2 text-sm ${
+            dark ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700'
+          }`}>
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>Google Calendar sync has not been set up for this practice yet.</span>
+          </div>
+        ) : calendarStatus.connected ? (
+          <div className="space-y-4">
+            <div className={`rounded-lg px-3 py-2.5 ${dark ? 'bg-slate-900/50' : 'bg-gray-50'}`}>
+              {calendarStatus.account?.email && (
+                <p className={`text-sm ${heading}`}>{calendarStatus.account.email}</p>
+              )}
+              {calendarStatus.account?.connectedAt && (
+                <p className={`text-xs mt-0.5 ${muted}`}>
+                  Connected {new Date(calendarStatus.account.connectedAt).toLocaleDateString()}
                 </p>
-                {calendarStatus.account && (
-                  <div className={`text-sm mt-1 ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
-                    <p>{calendarStatus.account.email}</p>
-                    {calendarStatus.account.name && (
-                      <p className="text-xs">{calendarStatus.account.name}</p>
-                    )}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-
-            <div className={`mt-4 p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
-              <h4 className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Features
-              </h4>
-              <ul className={`text-sm space-y-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  Automatically sync appointments to your Google Calendar
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  Receive calendar notifications for upcoming appointments
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  View appointments across all your devices
-                </li>
-              </ul>
-            </div>
-
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => checkCalendarStatus()}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 hover:bg-slate-600 text-white'
-                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                }`}
-              >
-                <RefreshCw className="w-4 h-4" />
-                Refresh Status
-              </button>
-              <button
-                onClick={disconnectGoogleCalendar}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-white font-medium"
-              >
-                <Unlink className="w-4 h-4" />
-                Disconnect
-              </button>
-            </div>
+            <button
+              onClick={() => setConfirmDisconnect(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                dark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Unlink className="w-4 h-4" />
+              Disconnect
+            </button>
           </div>
         ) : (
-          <div>
-            <div className={`p-4 rounded-lg mb-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
-              <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                Connect your Google Calendar to:
-              </p>
-              <ul className={`text-sm space-y-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 mt-0.5 text-cyan-500" />
-                  <span>Automatically add your medical appointments to your calendar</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 mt-0.5 text-cyan-500" />
-                  <span>Receive timely reminders about upcoming appointments</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 mt-0.5 text-cyan-500" />
-                  <span>Keep all your appointments synchronized across devices</span>
-                </li>
-              </ul>
-            </div>
-
-            <button
-              onClick={connectGoogleCalendar}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-cyan-500 hover:bg-cyan-600 rounded-lg text-white font-medium transition-colors"
-            >
-              <LinkIcon className="w-5 h-5" />
-              Connect Google Calendar
-            </button>
-
-            <p className={`text-xs mt-3 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-              Your calendar data is secure and you can disconnect at any time
-            </p>
-          </div>
+          <button
+            onClick={connectGoogleCalendar}
+            disabled={connecting}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {connecting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <LinkIcon className="w-4 h-4" />}
+            {connecting ? 'Redirecting…' : 'Connect Google Calendar'}
+          </button>
         )}
       </div>
-    </div>
+    </>
   );
-};
-
-// Export the syncAppointment function for use in other components
-export const useSyncAppointment = (patientId) => {
-  const syncAppointment = async (appointmentId) => {
-    try {
-      const response = await fetch('/api/calendar-sync/sync-appointment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          appointmentId,
-          patientId
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return { success: true, data };
-      } else {
-        throw new Error('Failed to sync appointment');
-      }
-    } catch (error) {
-      console.error('Error syncing appointment:', error);
-      return { success: false, error: error.message };
-    }
-  };
-
-  return { syncAppointment };
 };
 
 export default GoogleCalendarIntegration;

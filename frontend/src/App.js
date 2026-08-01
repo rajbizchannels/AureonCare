@@ -589,6 +589,8 @@ function App() {
         return (
           <FHIRView
             theme={theme}
+            activeTab={activeTab || 'resources'}
+            onTabChange={(tab) => selectModuleTab('fhir', tab)}
             api={api}
             patients={patients}
             addNotification={addNotification}
