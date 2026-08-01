@@ -12,11 +12,14 @@ This is the first video in the AureonCare Getting Started series — watch it be
 
 Chapters:
 0:00 Introduction
-0:21 The three-pane layout
-0:46 Universal search
-0:59 Notifications, help and the assistant
+0:11 Signing in
+0:27 The three-pane layout
+0:57 Universal search
+1:19 Notifications, help and the assistant
+1:59 Recap
 
 Subtitles: upload v01-find-your-way-around-aureoncare.srt as the English track — do not rely on auto-captions.
+Narration: spoken track included (espeak/mb-us2).
 
 This video uses a demo environment with synthetic data. No real patient
 information appears in it.
@@ -37,8 +40,9 @@ AureonCare, practice management software, EHR software, clinic software tutorial
 | Thumbnail | v01-find-your-way-around-aureoncare.thumbnail.png |
 | Subtitles | v01-find-your-way-around-aureoncare.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:31 |
+| Duration | 2:09 |
 | Resolution | 1920x1080, 30fps, H.264 |
+| Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
 ## Facts for the description box
 

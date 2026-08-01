@@ -22,6 +22,19 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const F = require('./fixtures');
+const voice = require('./voice');
+
+/** Brand kit. Colours are sampled from the logo, not invented. */
+const BRAND = {
+  amber: '#f0b000',
+  amberLight: '#ffd24a',
+  teal: '#00b0a0',
+  tealLight: '#2dd4bf',
+  ink: '#041016',
+  logo: 'data:image/png;base64,' + fs.readFileSync(
+    path.join(__dirname, 'brand', 'aureoncare-logo-wide.png')
+  ).toString('base64'),
+};
 
 const BASE_URL = process.env.DEMO_BASE_URL || 'http://localhost:3000';
 const API_BASE = process.env.DEMO_API_URL || 'http://localhost:3001/api';
@@ -264,7 +277,9 @@ async function handleApi(route, store) {
 /* ────────────────────────── on-screen overlay ───────────────────────────── */
 
 const OVERLAY_SCRIPT = `
+window.__demoBrand = ${JSON.stringify(BRAND)};
 window.__demo = (() => {
+  const B = window.__demoBrand;
   const ensure = () => {
     if (document.getElementById('demo-overlay-style')) return;
     const style = document.createElement('style');
@@ -272,60 +287,77 @@ window.__demo = (() => {
     style.textContent = \`
       #demo-caption {
         position: fixed; left: 0; right: 0; bottom: 0; z-index: 2147483646;
-        padding: 22px 48px 26px; font: 500 26px/1.4 system-ui, -apple-system, Segoe UI, sans-serif;
-        color: #f8fafc; background: linear-gradient(to top, rgba(2,6,23,.97), rgba(2,6,23,.84));
-        border-top: 3px solid #22d3ee; opacity: 0; transition: opacity .3s ease; pointer-events: none;
+        display: flex; align-items: center; gap: 26px;
+        padding: 20px 44px 24px; font: 500 26px/1.4 system-ui, -apple-system, Segoe UI, sans-serif;
+        color: #f8fafc; background: linear-gradient(to top, rgba(4,16,22,.97), rgba(4,16,22,.86));
+        border-top: 3px solid \${B.teal}; opacity: 0; transition: opacity .3s ease; pointer-events: none;
       }
       #demo-caption.on { opacity: 1; }
-      #demo-caption b { color: #67e8f9; font-weight: 600; }
+      #demo-caption .mark { height: 40px; flex: 0 0 auto; opacity: .95; }
+      #demo-caption .txt { flex: 1 1 auto; }
+      #demo-caption b { color: \${B.amberLight}; font-weight: 600; }
       #demo-step {
-        position: fixed; left: 48px; top: 88px; z-index: 2147483646;
-        font: 600 15px/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase;
-        color: #0f172a; background: #22d3ee; border-radius: 999px; padding: 9px 18px;
+        position: fixed; left: 44px; top: 88px; z-index: 2147483646;
+        font: 700 15px/1 system-ui, sans-serif; letter-spacing: .09em; text-transform: uppercase;
+        color: #1a1200; background: \${B.amber}; border-radius: 999px; padding: 10px 20px;
+        box-shadow: 0 6px 20px rgba(0,0,0,.35);
         opacity: 0; transition: opacity .3s ease; pointer-events: none;
       }
       #demo-step.on { opacity: 1; }
       #demo-watermark {
-        position: fixed; bottom: 118px; right: 24px; z-index: 2147483646;
+        position: fixed; bottom: 116px; right: 24px; z-index: 2147483646;
         font: 500 13px/1 system-ui, sans-serif; color: #94a3b8;
-        background: rgba(2,6,23,.72); border: 1px solid rgba(148,163,184,.35);
+        background: rgba(4,16,22,.75); border: 1px solid rgba(148,163,184,.3);
         border-radius: 999px; padding: 8px 16px; pointer-events: none;
       }
       #demo-cursor {
         position: fixed; z-index: 2147483647; width: 30px; height: 30px; margin: -15px 0 0 -15px;
-        border-radius: 50%; border: 3px solid #22d3ee; background: rgba(34,211,238,.26);
-        box-shadow: 0 0 0 6px rgba(34,211,238,.10); pointer-events: none;
+        border-radius: 50%; border: 3px solid \${B.tealLight}; background: rgba(45,212,191,.26);
+        box-shadow: 0 0 0 6px rgba(45,212,191,.10); pointer-events: none;
         transition: left .5s cubic-bezier(.4,0,.2,1), top .5s cubic-bezier(.4,0,.2,1), transform .18s ease;
         left: -200px; top: -200px;
       }
-      #demo-cursor.press { transform: scale(.55); background: rgba(34,211,238,.62); }
+      #demo-cursor.press { transform: scale(.55); background: rgba(45,212,191,.62); }
       #demo-card {
         position: fixed; inset: 0; z-index: 2147483645; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; gap: 26px; text-align: center; padding: 0 12%;
-        background: radial-gradient(circle at 50% 38%, #0f172a, #020617 72%);
+        align-items: center; justify-content: center; gap: 24px; text-align: center; padding: 0 11%;
+        background: radial-gradient(circle at 50% 34%, #06222b, \${B.ink} 72%);
         color: #e2e8f0; font-family: system-ui, -apple-system, Segoe UI, sans-serif;
         opacity: 0; transition: opacity .45s ease; pointer-events: none;
       }
       #demo-card.on { opacity: 1; }
+      #demo-card .logo { height: 92px; margin-bottom: 10px; }
+      #demo-card .logo.big { height: 150px; }
       #demo-card .kicker {
-        font: 600 17px/1 system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #22d3ee;
+        font: 700 17px/1 system-ui, sans-serif; letter-spacing: .18em;
+        text-transform: uppercase; color: \${B.teal};
       }
-      #demo-card h1 { font-size: 62px; font-weight: 700; color: #f8fafc; margin: 0; line-height: 1.1; }
-      #demo-card h2 { font-size: 30px; font-weight: 500; color: #67e8f9; margin: 0; }
-      #demo-card p { font-size: 22px; color: #94a3b8; margin: 0; max-width: 1100px; line-height: 1.6; }
-      #demo-card ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
+      #demo-card h1 { font-size: 60px; font-weight: 700; color: #f8fafc; margin: 0; line-height: 1.08; }
+      #demo-card h2 { font-size: 29px; font-weight: 500; color: \${B.amberLight}; margin: 0; }
+      #demo-card p { font-size: 22px; color: #94a3b8; margin: 0; max-width: 1080px; line-height: 1.6; }
+      #demo-card ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
       #demo-card li { font-size: 24px; color: #cbd5e1; }
-      #demo-card li::before { content: '—'; color: #22d3ee; margin-right: 14px; }
+      #demo-card li::before { content: '—'; color: \${B.teal}; margin-right: 14px; }
+      #demo-card .rule {
+        width: 190px; height: 4px; border-radius: 99px;
+        background: linear-gradient(90deg, \${B.amber}, \${B.teal});
+      }
+      #demo-card .tagline { font-size: 21px; color: #64748b; letter-spacing: .04em; }
+      @keyframes demoBumperIn {
+        from { opacity: 0; transform: scale(.92); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      #demo-card.bumper .logo { animation: demoBumperIn 1.1s cubic-bezier(.2,.7,.3,1) both; }
     \`;
     document.head.appendChild(style);
-    const add = (id, cls) => {
+    const add = (id) => {
       const el = document.createElement('div');
       el.id = id;
-      if (cls) el.className = cls;
       document.body.appendChild(el);
       return el;
     };
-    add('demo-caption');
+    const cap = add('demo-caption');
+    cap.innerHTML = '<img class="mark" src="' + B.logo + '" alt="AureonCare"><span class="txt"></span>';
     const mark = add('demo-watermark');
     mark.textContent = 'AureonCare demo environment · synthetic data, no real patients';
     add('demo-step');
@@ -337,7 +369,7 @@ window.__demo = (() => {
     caption(html) {
       ensure();
       const el = document.getElementById('demo-caption');
-      el.innerHTML = html || '';
+      el.querySelector('.txt').innerHTML = html || '';
       el.classList.toggle('on', Boolean(html));
     },
     step(text) {
@@ -346,17 +378,21 @@ window.__demo = (() => {
       el.textContent = text || '';
       el.classList.toggle('on', Boolean(text));
     },
-    card(html) {
+    card(html, variant) {
       ensure();
+      const mark = document.getElementById('demo-watermark');
+      if (mark) mark.style.opacity = html ? '0' : '1';
       let el = document.getElementById('demo-card');
       if (!el) {
         el = document.createElement('div');
         el.id = 'demo-card';
         document.body.appendChild(el);
       }
+      el.className = variant ? variant : '';
       el.innerHTML = html || '';
       el.classList.toggle('on', Boolean(html));
     },
+    logo() { return window.__demoBrand.logo; },
     moveCursor(x, y) {
       ensure();
       const c = document.getElementById('demo-cursor');
@@ -386,12 +422,28 @@ window.print = function () {};
 /* ──────────────────────────────── director ──────────────────────────────── */
 
 class Director {
-  constructor(page, t0) {
+  constructor(page, t0, spec = {}) {
     this.page = page;
     this.t0 = t0;
+    this.spec = spec;
     this.captions = [];   // { start, end, text }
     this.chapters = [];   // { start, title }
+    this.narration = [];  // { start, file, duration, text }
     this._open = null;
+    this._line = 0;
+  }
+
+  /**
+   * Synthesise a narration line and return how long the picture must wait.
+   *
+   * The caption is held for the length of its own audio plus a breath, so the
+   * spoken track never runs past the frame it is describing.
+   */
+  _narrate(html, holdMs) {
+    const clip = voice.synthesise(html, { slug: this.spec.slug, index: this._line++ });
+    if (!clip) return holdMs;
+    this.narration.push({ ...clip, start: this.now() });
+    return Math.max(holdMs, Math.round(clip.duration * 1000) + 450);
   }
 
   now() {
@@ -417,7 +469,7 @@ class Director {
     await this._closeCaption();
     this._open = { start: this.now(), text: html };
     await this.page.evaluate((t) => window.__demo.caption(t), html);
-    await sleep(holdMs);
+    await sleep(this._narrate(html, holdMs));
   }
 
   async _closeCaption() {
@@ -431,27 +483,60 @@ class Director {
     await this.page.evaluate(() => window.__demo.caption('')).catch(() => {});
   }
 
-  /** Full-screen card. `bullets` renders a recap list. */
-  async card({ kicker, heading, sub, body, bullets = [], holdMs = 4200 }) {
+  /** Full-screen branded card. `bullets` renders a recap list. */
+  async card({ kicker, heading, sub, body, bullets = [], holdMs = 4200, logo = true, variant = '' }) {
     await this.ensure();
     await this.clearCaption();
+    const logoTag = logo
+      ? `<img class="logo" src="${BRAND.logo}" alt="AureonCare">`
+      : '';
     const html = [
+      logoTag,
       kicker ? `<div class="kicker">${kicker}</div>` : '',
       heading ? `<h1>${heading}</h1>` : '',
       sub ? `<h2>${sub}</h2>` : '',
       body ? `<p>${body}</p>` : '',
       bullets.length ? `<ul>${bullets.map((b) => `<li>${b}</li>`).join('')}</ul>` : '',
     ].join('');
-    await this.page.evaluate((h) => window.__demo.card(h), html);
-    // Cards carry their own narration, so they get a subtitle line too.
+    await this.page.evaluate(([h, v]) => window.__demo.card(h, v), [html, variant]);
+
+    // Cards are narrated too, so the spoken track never goes silent over them.
+    const spoken = [heading, sub, body, ...bullets].filter(Boolean).join('. ');
+    const hold = this._narrate(spoken, holdMs);
     this.captions.push({
       start: this.now(),
-      end: this.now() + holdMs / 1000,
-      text: [heading, sub, body].filter(Boolean).join(' — '),
+      end: this.now() + hold / 1000,
+      text: [heading, sub, body].filter(Boolean).join(' — ') || bullets.join('. '),
     });
-    await sleep(holdMs);
+    await sleep(hold);
     await this.page.evaluate(() => window.__demo.card(''));
     await sleep(500);
+  }
+
+  /** Silent brand bumper: the logo alone, opening and closing the video. */
+  async bumper({ tagline = 'Getting Started series', holdMs = 2600 } = {}) {
+    await this.ensure();
+    // The logo is a data URI; showing the card before it decodes yields a
+    // bumper with a hole where the mark should be.
+    await this.page.evaluate(() => new Promise((resolve) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = resolve;
+      img.src = window.__demoBrand.logo;
+      setTimeout(resolve, 3000);
+    })).catch(() => {});
+    await this.page.evaluate(
+      ([logo, tag]) => window.__demo.card(
+        `<img class="logo big" src="${logo}" alt="AureonCare">`
+        + '<div class="rule"></div>'
+        + `<div class="tagline">${tag}</div>`,
+        'bumper'
+      ),
+      [BRAND.logo, tagline]
+    );
+    await sleep(holdMs);
+    await this.page.evaluate(() => window.__demo.card(''));
+    await sleep(400);
   }
 
   async click(locator, { pause = 900 } = {}) {
@@ -674,23 +759,25 @@ function parseDuration(text) {
 
 const THUMBNAIL_HTML = (spec) => `
 <div style="width:1280px;height:720px;box-sizing:border-box;display:flex;flex-direction:column;
-  justify-content:space-between;padding:72px 80px;background:radial-gradient(circle at 22% 20%,#0b3b47,#020617 68%);
+  justify-content:space-between;padding:64px 76px;
+  background:radial-gradient(circle at 20% 16%,#0a3540,${BRAND.ink} 70%);
   font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#f8fafc;">
-  <div style="display:flex;align-items:center;gap:16px;">
-    <div style="width:14px;height:56px;border-radius:99px;background:linear-gradient(#22d3ee,#0ea5e9);"></div>
-    <div>
-      <div style="font-size:30px;font-weight:700;letter-spacing:.02em;">AureonCare</div>
-      <div style="font-size:17px;color:#7dd3fc;letter-spacing:.22em;text-transform:uppercase;">${spec.moduleLabel}</div>
-    </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <img src="${BRAND.logo}" alt="AureonCare" style="height:76px;">
+    <span style="font-size:17px;letter-spacing:.2em;text-transform:uppercase;color:${BRAND.teal};">
+      ${spec.moduleLabel}
+    </span>
   </div>
   <div>
-    <div style="font-size:${spec.headline.length > 26 ? 78 : 92}px;font-weight:800;line-height:1.03;max-width:1050px;">
+    <div style="width:150px;height:6px;border-radius:99px;margin-bottom:28px;
+      background:linear-gradient(90deg,${BRAND.amber},${BRAND.teal});"></div>
+    <div style="font-size:${spec.headline.length > 26 ? 76 : 90}px;font-weight:800;line-height:1.03;max-width:1060px;">
       ${spec.headline}
     </div>
-    <div style="margin-top:26px;font-size:31px;color:#94a3b8;max-width:900px;line-height:1.35;">${spec.sub}</div>
+    <div style="margin-top:24px;font-size:30px;color:#94a3b8;max-width:900px;line-height:1.35;">${spec.sub}</div>
   </div>
   <div style="display:flex;align-items:center;gap:18px;">
-    <span style="font-size:22px;font-weight:600;color:#0f172a;background:#22d3ee;border-radius:99px;padding:12px 26px;">
+    <span style="font-size:22px;font-weight:700;color:#1a1200;background:${BRAND.amber};border-radius:99px;padding:12px 26px;">
       ${spec.badge}
     </span>
     <span style="font-size:21px;color:#64748b;">${spec.audience}</span>
@@ -732,6 +819,7 @@ Chapters:
 ${chapterLines}
 
 Subtitles: upload ${spec.slug}.srt as the English track — do not rely on auto-captions.
+Narration: spoken track included (${voice.ENGINE}${voice.ENGINE === 'espeak' ? `/${voice.VOICE}` : ''}).
 
 This video uses a demo environment with synthetic data. No real patient
 information appears in it.
@@ -754,6 +842,7 @@ ${spec.tags.join(', ')}
 | End screen | Link to the next video in the playlist |
 | Duration | ${ts(durationSec)} |
 | Resolution | 1920x1080, 30fps, H.264 |
+| Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
 ## Facts for the description box
 
@@ -811,7 +900,7 @@ async function record(spec) {
     if (m.type() === 'error') console.warn('   [page]', m.text().slice(0, 120));
   });
 
-  const d = new Director(page, t0);
+  const d = new Director(page, t0, spec);
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 90000 });
   await page.waitForSelector(spec.showsLogin ? 'input[type="email"]' : 'nav[aria-label="Primary"]',
     { timeout: 90000 });
@@ -823,6 +912,8 @@ async function record(spec) {
       await spec.run(d, page, { store, fixtures: F, sleep });
       throw { __probeDone: true };
     }
+    d.videoStart = d.now();
+    await d.bumper();
     await d.card({
       kicker: 'AureonCare training',
       heading: spec.title,
@@ -841,7 +932,13 @@ async function record(spec) {
       holdMs: 6000,
     });
     d.chapter('Recap');
-    await sleep(800);
+    await d.card({
+      kicker: 'AureonCare',
+      heading: 'Health | Efficiency | Growth',
+      body: 'More in the Getting Started series — the next video is linked on screen.',
+      holdMs: 4200,
+    });
+    await sleep(700);
   } catch (err) {
     failure = err && err.__probeDone ? null : err;
     // A failed step is almost always a DOM guess gone stale, so capture what
@@ -885,12 +982,19 @@ async function record(spec) {
       const webm = path.join(OUT_DIR, `${spec.slug}.webm`);
       fs.renameSync(raw, webm);
       const mp4 = path.join(OUT_DIR, `${spec.slug}.mp4`);
-      encodeForYouTube(webm, mp4);
+      const startAt = d.videoStart || 0;
+      const spoken = voice.muxNarration(webm, d.narration, mp4, { fps: FPS, startAt });
       fs.unlinkSync(webm);
+      if (spoken) console.log(`  ${spec.id} narration: ${spoken} lines (${voice.ENGINE}/${voice.VOICE})`);
 
       const duration = probeDuration(mp4);
-      const chapters = normaliseChapters(d.chapters, duration);
-      writeSrt(path.join(OUT_DIR, `${spec.slug}.srt`), d.captions);
+      const shift = (rows) => rows.map((r) => ({
+        ...r,
+        start: Math.max(0, r.start - startAt),
+        ...(r.end === undefined ? {} : { end: Math.max(0, r.end - startAt) }),
+      }));
+      const chapters = normaliseChapters(shift(d.chapters), duration);
+      writeSrt(path.join(OUT_DIR, `${spec.slug}.srt`), shift(d.captions));
       fs.writeFileSync(
         path.join(OUT_DIR, `${spec.slug}.chapters.txt`),
         chapters.map((c) => `${ts(c.start)} ${c.title}`).join('\n') + '\n',

@@ -12,10 +12,12 @@ Part of the AureonCare Getting Started series.
 
 Chapters:
 0:00 Introduction
-0:27 Click through to the work
-0:46 Quick actions
+0:11 The tiles
+0:35 Click through to the work
+0:55 Quick actions
 
 Subtitles: upload v04-read-your-day-on-the-dashboard.srt as the English track — do not rely on auto-captions.
+Narration: spoken track included (espeak/mb-us2).
 
 This video uses a demo environment with synthetic data. No real patient
 information appears in it.
@@ -36,8 +38,9 @@ AureonCare, medical practice dashboard, clinic dashboard, practice management so
 | Thumbnail | v04-read-your-day-on-the-dashboard.thumbnail.png |
 | Subtitles | v04-read-your-day-on-the-dashboard.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:05 |
+| Duration | 1:31 |
 | Resolution | 1920x1080, 30fps, H.264 |
+| Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
 ## Facts for the description box
 

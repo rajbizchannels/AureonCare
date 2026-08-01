@@ -5,12 +5,55 @@ a mocked API so no backend or database is involved, and a recorder that emits
 YouTube-ready files.
 
 ```
-harness.js    the recorder: mock API, overlay, caption/chapter capture, encode
+harness.js    the recorder: mock API, branded overlay, caption/chapter capture, encode
+voice.js      narration: synthesis, mastering, and the mix onto the picture
 fixtures.js   the synthetic clinic — patients, appointments, claims, sessions
+brand/        the AureonCare logo used by the bumper, captions, cards and thumbnails
 record.js     CLI: record one video or all of them
 probe.js      development helper: dump the selectors on any screen
 scripts/      one file per video
 ```
+
+## Branding
+
+Every video opens on a logo bumper and closes on a branded outro card. In
+between, the logo sits at the left of the caption bar, so a frame grabbed from
+anywhere in the video is recognisably AureonCare.
+
+The palette is sampled from the logo itself rather than invented: amber
+`#f0b000` for emphasis and the step badge, teal `#00b0a0` for rules, the caption
+border and the chapter kickers, on a near-black `#041016`. Change `BRAND` at the
+top of `harness.js` and every surface follows — bumper, captions, cards and
+thumbnails.
+
+The recording starts at the bumper: the app's cold-start frames are trimmed off
+in the encode, and the caption, chapter and narration timings are shifted to
+match.
+
+## Narration
+
+Captions and narration are the same text, so the spoken line, the burned-in
+caption and the `.srt` cannot drift apart. Each line is synthesised *before* its
+caption is shown and the caption is then held for at least the length of its
+audio — sync comes from the recording rather than from aligning afterwards.
+Clips are mixed at their caption timestamps and mastered to -16 LUFS, which is
+what YouTube normalises to.
+
+| `VOICE_ENGINE` | What it does |
+| --- | --- |
+| `espeak` (default) | Offline espeak-ng through an mbrola voice. Always available, and audibly synthetic |
+| `files` | Pre-recorded audio from `narration/<slug>/<NN>.wav`, numbered in speaking order |
+| `none` | Silent track |
+
+**The default voice is a placeholder.** It is clear and correctly timed, but it
+sounds like a speech synthesiser and should not be what a customer hears. To
+replace it, record or buy the lines, drop them in `narration/<slug>/00.wav`,
+`01.wav`, … and re-run with `VOICE_ENGINE=files`. The picture does not need to
+be re-recorded, and mastering, mixing and subtitles are unchanged. The exact
+lines are in each video's `.srt`, in order.
+
+Other knobs: `VOICE_NAME` (default `mb-us2`), `VOICE_RATE` (default 160 wpm),
+`VOICE_CACHE`.
 
 ## Recording
 
@@ -31,7 +74,7 @@ Output lands in `docs/demo/video-library/wave1/`, five files per video:
 
 | File | What to do with it |
 | --- | --- |
-| `<slug>.mp4` | 1920×1080, 30fps, H.264 high, faststart, silent AAC track — upload as-is |
+| `<slug>.mp4` | 1920×1080, 30fps, H.264 high, faststart, narrated AAC track — upload as-is |
 | `<slug>.srt` | Upload as the English subtitle track. Do not settle for auto-captions |
 | `<slug>.chapters.txt` | Paste into the description; the first entry is always 0:00 |
 | `<slug>.metadata.md` | Title, description, tags and the upload checklist |
@@ -61,8 +104,9 @@ encode. `d` is the director:
 | --- | --- |
 | `d.chapter('Booking the visit')` | Marks a YouTube chapter boundary |
 | `d.step('Step 2 — New Appointment')` | Sets the step badge in the corner |
-| `d.say(html, ms)` | Caption at the bottom; also becomes a subtitle line |
-| `d.card({...})` | Full-screen card (kicker, heading, sub, body, bullets) |
+| `d.say(html, ms)` | Caption at the bottom; also the narration line and a subtitle |
+| `d.card({...})` | Full-screen branded card (kicker, heading, sub, body, bullets) |
+| `d.bumper()` | Logo bumper; the harness plays one at the top of every video |
 | `d.click(locator)` | Moves the on-screen cursor, then clicks |
 | `d.type(locator, text)` | Types at a readable speed |
 | `d.fill(locator, value)` | Sets a value directly — use for date, time and number inputs |
@@ -103,7 +147,7 @@ session — otherwise every video would start at the login screen.
 
 ## Conventions
 
-- 1920×1080, no voiceover in v1; the captions carry the teaching.
+- 1920×1080 with narration; the captions carry the same words for sound-off viewing.
 - Every frame carries the "demo environment · synthetic data" watermark.
 - Personas match `../DEMO_SCENARIOS.md`: Sarah Williams is the patient,
   Dr. Anderson the provider.

@@ -13,3 +13,6 @@ AureonCare_Executive_Presentation1.pptx
 
 # Google verification demo recording scratch output
 docs/google-verification/out/
+
+# Narration cache (regenerated on demand)
+docs/demo/video-harness/.voice-cache/
