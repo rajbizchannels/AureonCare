@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Activity, Plus, Search, Calendar, User, Edit2, Trash2, Filter, AlertCircle } from 'lucide-react';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -37,12 +37,9 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
     });
   }, [logViewAccess, selectedPatient?.id]);
 
-  // Load initial data
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const loadData = async () => {
+  // Declared before the effect that depends on it — a `const` referenced from a
+  // dependency array is still in its temporal dead zone during that render.
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [diagnosesData, patientsData, providersData] = await Promise.all([
@@ -60,7 +57,12 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api, addNotification]);
+
+  // Load initial data
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Handle add new diagnosis
   const handleAddDiagnosis = (patient = null) => {

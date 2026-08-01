@@ -52,6 +52,7 @@ import {
 } from 'lucide-react';
 
 import { ADMIN_TABS } from '../constants/adminConstants';
+import { REPORT_CATEGORIES } from '../views/ReportsView';
 
 /**
  * ── AureonCare navigation model ──────────────────────────────────────────────
@@ -662,6 +663,9 @@ export const getNavigation = (t = {}) => [
   },
 
   // ── Insights ──────────────────────────────────────────────────────────────
+  // The report catalogue is the sub-module tree: one branch per category, one
+  // leaf per report. Built from the same REPORT_CATEGORIES the view uses, so
+  // the two can never drift apart.
   {
     id: 'insights',
     label: t.insights || 'Insights',
@@ -670,14 +674,34 @@ export const getNavigation = (t = {}) => [
     sections: [
       {
         id: 'insights.reports',
-        label: null,
+        label: t.reports || 'Reports',
+        items: REPORT_CATEGORIES.map((category) => ({
+          id: `insights.${category.id}`,
+          label: category.name,
+          icon: category.icon,
+          access: 'reports',
+          children: category.reports.map((report) => ({
+            id: `insights.${category.id}.${report.id}`,
+            label: report.name,
+            icon: report.icon,
+            module: 'reports',
+            tab: `${category.id}:${report.id}`,
+            access: 'reports',
+          })),
+        })),
+      },
+      {
+        id: 'insights.custom',
+        label: t.tools || 'Tools',
         items: [
           {
-            id: 'insights.reportsAnalytics',
-            label: t.reports || 'Reports & Analytics',
-            description: t.reportsDescription || 'Operational and financial reporting',
-            icon: BarChart3,
+            id: 'insights.customReport',
+            label: t.customReport || 'Custom Report',
+            description: t.customReportDescription || 'Build a report from raw data',
+            icon: SlidersHorizontal,
             module: 'reports',
+            tab: 'custom',
+            access: 'reports',
           },
         ],
       },

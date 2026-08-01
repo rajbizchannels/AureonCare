@@ -255,6 +255,10 @@ function App() {
   const selectModuleTab = (moduleId, tab) => setNavSelection({ module: moduleId, tab });
 
   const handleSelectNavItem = (item) => {
+    // Grouping-only branches (a report category, say) have nowhere to go —
+    // pane 2 expands them instead.
+    if (!item.module && !item.action) return;
+
     // Snapshot entries open a quick-view drawer instead of switching modules.
     if (item.action) {
       setEditingItem(null);
@@ -540,6 +544,8 @@ function App() {
         return (
           <ReportsView
             theme={theme}
+            activeTab={activeTab}
+            onTabChange={(tab) => selectModuleTab('reports', tab)}
             patients={patients}
             appointments={appointments}
             claims={claims}
