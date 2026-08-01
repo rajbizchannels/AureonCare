@@ -5,6 +5,28 @@ import { getTranslations } from '../config/translations';
 // Create the context
 const AppContext = createContext();
 
+/**
+ * A page load always starts a fresh session.
+ *
+ * This module is evaluated once per page load, so clearing the stored session
+ * here means a browser refresh (or a restored tab) lands on the login page
+ * instead of resuming the previous session. Note that this also applies when
+ * an external OAuth callback redirects back into the app — the user signs in
+ * again on return.
+ */
+const clearStoredSession = () => {
+  try {
+    sessionStorage.removeItem('isAuthenticated');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('portalSessionToken');
+  } catch (error) {
+    /* storage unavailable — nothing to clear */
+  }
+};
+
+clearStoredSession();
+
 // AppProvider component
 const AppProvider = ({ children }) => {
   // Authentication and UI state - use sessionStorage for authentication (clears on tab/window close)
@@ -231,15 +253,14 @@ const AppProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Fetch all data on component mount
+  // Load practice data once the user is authenticated. Every API router sits
+  // behind `authenticate`, so fetching before sign-in only produced a wave of
+  // 401s on the login screen. Re-runs when `user` changes (fetchAllData is
+  // keyed on it), which is what refreshes data straight after login.
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchAllData();
-  }, [fetchAllData]);
-
-  // Fetch all data on component mount
-  useEffect(() => {
-    fetchAllData();
-  }, []);
+  }, [isAuthenticated, fetchAllData]);
 
   // Load currency from clinic settings after authentication
   useEffect(() => {

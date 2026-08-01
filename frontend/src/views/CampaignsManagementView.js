@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Mail, Send, Calendar, Inbox, Search } from 'lucide-react';
 import NewCampaignForm from '../components/forms/NewCampaignForm';
 import { useAudit } from '../hooks/useAudit';
@@ -26,11 +26,9 @@ const CampaignsManagementView = ({
     });
   }, [logViewAccess]);
 
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
-
-  const loadCampaigns = async () => {
+  // Declared before the effect that depends on it — a `const` referenced from a
+  // dependency array is still in its temporal dead zone during that render.
+  const loadCampaigns = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.getCampaigns();
@@ -41,7 +39,11 @@ const CampaignsManagementView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification]);
+
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this campaign?')) {
