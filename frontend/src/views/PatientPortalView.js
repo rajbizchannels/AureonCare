@@ -9,6 +9,7 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
 import { useAudit } from '../hooks/useAudit';
 import { useShellTab } from '../hooks/useShellTab';
+import { apiFetch } from '../api/apiService';
 import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
 import AddToCalendarButton from '../components/calendar/AddToCalendarButton';
 import { useCalendarSync } from '../components/calendar/useCalendarSync';
@@ -468,7 +469,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
 
     setLoadingSlots(true);
     try {
-      const response = await fetch(`/api/scheduling/slots/${providerId}?date=${date}`);
+      const response = await apiFetch(`/scheduling/slots/${providerId}?date=${date}`);
       if (response.ok) {
         const slots = await response.json();
         setAvailableSlots(slots);
@@ -501,7 +502,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
 
     setLoadingEditSlots(true);
     try {
-      const response = await fetch(`/api/scheduling/slots/${providerId}?date=${date}`);
+      const response = await apiFetch(`/scheduling/slots/${providerId}?date=${date}`);
       if (response.ok) {
         const slots = await response.json();
         setEditAvailableSlots(slots);
@@ -719,7 +720,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     if (!recordToDelete) return;
 
     try {
-      const response = await fetch(`/api/patient-portal/${user.id}/medical-records/${recordToDelete.id}`, {
+      const response = await apiFetch(`/patient-portal/${user.id}/medical-records/${recordToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -745,7 +746,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     if (!editingRecord) return;
 
     try {
-      const response = await fetch(`/api/patient-portal/${user.id}/medical-records/${editingRecord.id}`, {
+      const response = await apiFetch(`/patient-portal/${user.id}/medical-records/${editingRecord.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -775,7 +776,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     if (!appointmentToCancel) return;
 
     try {
-      const response = await fetch(`/api/scheduling/cancel/${appointmentToCancel.id}`, {
+      const response = await apiFetch(`/scheduling/cancel/${appointmentToCancel.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

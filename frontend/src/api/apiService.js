@@ -44,6 +44,24 @@ const authenticatedFetch = async (url, options = {}) => {
   return fetch(url, mergedOptions);
 };
 
+/**
+ * Authenticated request to an API path, for callers outside this module.
+ *
+ * Views used to call `fetch('/api/…')` directly. That sends no Authorization
+ * header — every router behind `authenticate` answers 401 — and a relative path
+ * only resolves when the frontend and backend share an origin, which this
+ * deployment does not guarantee (AC_FE_URL and AC_BE_URL are configured
+ * separately). Pass the path *without* the /api prefix, e.g. apiFetch('/users').
+ *
+ * @param {string} path    path relative to the API base, leading slash included
+ * @param {Object} options standard fetch options; FormData bodies keep their
+ *                         own Content-Type
+ * @returns {Promise<Response>} the raw response, so callers keep their own
+ *                              status handling
+ */
+export const apiFetch = (path, options = {}) =>
+  authenticatedFetch(`${API_BASE_URL}${path}`, options);
+
 // API Service
 const api = {
   // Appointments
