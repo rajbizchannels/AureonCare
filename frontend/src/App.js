@@ -54,6 +54,9 @@ import FormManagementView from './views/FormManagementView';
 import AccountsView from './views/AccountsView';
 import InventoryView from './views/InventoryView';
 
+// Public pages
+import PublicBookingPage from './components/scheduling/PublicBookingPage';
+
 // Modals
 import LoginPage from './components/modals/LoginPage';
 import PatientLoginPage from './components/modals/PatientLoginPage';
@@ -321,6 +324,14 @@ function App() {
     }
   };
 
+
+  // Provider public booking link: /book/<slug>. Served before the auth gate so
+  // the link works for anyone who receives it.
+  const bookingSlug = React.useMemo(() => {
+    const match = window.location.pathname.match(/^\/book\/([^/?#]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }, []);
+  const [showBookingLogin, setShowBookingLogin] = React.useState(false);
 
   // Check if URL is patient login page
   const isPatientLoginUrl = React.useMemo(() => {
@@ -717,6 +728,37 @@ function App() {
         return null;
     }
   };
+
+  // ── Public booking page ────────────────────────────────────────────────────
+  // Open to anyone with the link. A patient may sign in from here to have their
+  // details filled in; signing in happens in-place, so the session survives.
+  if (bookingSlug) {
+    if (showBookingLogin && !isAuthenticated) {
+      return (
+        <PatientLoginPage
+          theme={theme}
+          setTheme={setTheme}
+          api={api}
+          setUser={setUser}
+          setIsAuthenticated={setIsAuthenticated}
+          addNotification={addNotification}
+          setShowForgotPassword={setShowForgotPassword}
+          setShowRegister={setShowRegister}
+          setCurrentModule={setCurrentModule}
+          onBack={() => setShowBookingLogin(false)}
+        />
+      );
+    }
+
+    return (
+      <PublicBookingPage
+        providerSlug={bookingSlug}
+        theme={theme}
+        patient={isAuthenticated && user?.role === 'patient' ? user : null}
+        onSignIn={() => setShowBookingLogin(true)}
+      />
+    );
+  }
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
