@@ -60,6 +60,34 @@ const PatientHealthMetricsForm = ({
   const currentMedSearchTimeoutRef = useRef(null);
 
   // Fetch enabled telehealth providers for preference dropdown
+  // Load active prescriptions for the patient
+  const loadActivePrescriptions = useCallback(async () => {
+    if (!patient?.id) return;
+
+    setLoadingPrescriptions(true);
+    try {
+      const prescriptions = await api.getPatientActivePrescriptions(patient.id);
+      if (prescriptions && Array.isArray(prescriptions)) {
+        // Map prescriptions to medication format
+        const meds = prescriptions.map(rx => ({
+          id: rx.id,
+          ndc_code: rx.ndc_code || rx.ndcCode,
+          drug_name: rx.medicationName || rx.medication || rx.drug_name || 'Unknown',
+          strength: rx.dosage || rx.strength || '',
+          dosage_form: rx.dosage_form || '',
+          frequency: rx.frequency || '',
+          isPrescription: true // Flag to identify as prescription
+        }));
+        setActivePrescriptions(meds);
+      }
+    } catch (error) {
+      console.error('Error loading prescriptions:', error);
+      setActivePrescriptions([]);
+    } finally {
+      setLoadingPrescriptions(false);
+    }
+  }, [api, patient]);
+
   useEffect(() => {
     if (api.getEnabledTelehealthProviders) {
       api.getEnabledTelehealthProviders()
@@ -126,33 +154,6 @@ const PatientHealthMetricsForm = ({
     }
   }, [patient, loadActivePrescriptions]);
 
-  // Load active prescriptions for the patient
-  const loadActivePrescriptions = useCallback(async () => {
-    if (!patient?.id) return;
-
-    setLoadingPrescriptions(true);
-    try {
-      const prescriptions = await api.getPatientActivePrescriptions(patient.id);
-      if (prescriptions && Array.isArray(prescriptions)) {
-        // Map prescriptions to medication format
-        const meds = prescriptions.map(rx => ({
-          id: rx.id,
-          ndc_code: rx.ndc_code || rx.ndcCode,
-          drug_name: rx.medicationName || rx.medication || rx.drug_name || 'Unknown',
-          strength: rx.dosage || rx.strength || '',
-          dosage_form: rx.dosage_form || '',
-          frequency: rx.frequency || '',
-          isPrescription: true // Flag to identify as prescription
-        }));
-        setActivePrescriptions(meds);
-      }
-    } catch (error) {
-      console.error('Error loading prescriptions:', error);
-      setActivePrescriptions([]);
-    } finally {
-      setLoadingPrescriptions(false);
-    }
-  }, [api, patient]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({

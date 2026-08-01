@@ -143,12 +143,15 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
     `, [patient.id, sessionTokenHash, req.ip, req.get('user-agent'), expiresAt]);
 
-    // Return patient data without sensitive info
+    // Return patient data without sensitive info.
+    // `role` is stated explicitly: the patients table has no role column, and
+    // the frontend keys navigation and access checks off user.role — without it
+    // a portal session looks role-less and falls through to the staff shell.
     const { portal_password_hash, ...patientData } = patient;
 
     res.json({
       message: 'Login successful',
-      patient: patientData,
+      patient: { ...patientData, role: 'patient' },
       sessionToken,
       expiresAt
     });
@@ -183,7 +186,7 @@ router.post('/register', async (req, res) => {
 
     res.json({
       message: 'Patient portal enabled successfully',
-      patient: patientData
+      patient: { ...patientData, role: 'patient' }
     });
   } catch (error) {
     console.error('Error registering patient portal:', error);

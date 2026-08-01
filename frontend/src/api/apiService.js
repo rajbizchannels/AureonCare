@@ -3238,6 +3238,40 @@ const api = {
     return r.json();
   },
 
+  // ── Public provider booking (/book/<slug>) ─────────────────────────────────
+  // These endpoints are open, but they still go through API_BASE_URL so the
+  // page works when the frontend and backend are on different origins.
+  getPublicBookingConfig: async (slug) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/booking-config/slug/${encodeURIComponent(slug)}`);
+    if (!r.ok) throw new Error('Provider not found or booking not available');
+    return r.json();
+  },
+  getPublicAppointmentTypes: async (providerId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/appointment-types/${encodeURIComponent(providerId)}`);
+    if (!r.ok) throw new Error('Failed to fetch appointment types');
+    return r.json();
+  },
+  getPublicAvailableDates: async (providerId, { startDate, endDate, appointmentTypeId }) => {
+    const query = new URLSearchParams({ startDate, endDate, appointmentTypeId }).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/available-dates/${encodeURIComponent(providerId)}?${query}`);
+    if (!r.ok) throw new Error('Failed to fetch available dates');
+    return r.json();
+  },
+  getPublicAvailableSlots: async (providerId, { date, appointmentTypeId }) => {
+    const query = new URLSearchParams({ date, appointmentTypeId }).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/slots/${encodeURIComponent(providerId)}?${query}`);
+    if (!r.ok) throw new Error('Failed to fetch available slots');
+    return r.json();
+  },
+  bookPublicAppointment: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/book`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to book appointment'); }
+    return r.json();
+  },
+
   // Token lifecycle helpers — called by LoginPage (store) and App logout (clear)
   storeToken: (token) => {
     try {

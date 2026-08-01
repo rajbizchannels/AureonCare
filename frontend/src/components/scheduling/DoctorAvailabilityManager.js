@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, Plus, Trash2, Save, X } from 'lucide-react';
 
 const getAuthHeaders = () => {
@@ -30,13 +30,9 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
     const [editedSchedules, setEditedSchedules] = useState([]);
     const [selectedDayForAdd, setSelectedDayForAdd] = useState(1); // Default to Monday
 
-    useEffect(() => {
-        if (providerId) {
-            fetchAvailability();
-        }
-    }, [fetchAvailability, providerId]);
-
-    const fetchAvailability = async () => {
+    // Declared before the effect that depends on it — a `const` referenced from
+    // a dependency array is still in its temporal dead zone during that render.
+    const fetchAvailability = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -52,7 +48,13 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [providerId]);
+
+    useEffect(() => {
+        if (providerId) {
+            fetchAvailability();
+        }
+    }, [fetchAvailability, providerId]);
 
     const addNewSchedule = () => {
         setEditedSchedules([

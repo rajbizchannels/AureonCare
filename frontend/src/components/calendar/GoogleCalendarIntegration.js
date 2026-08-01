@@ -4,6 +4,7 @@ import { AlertCircle, Calendar, CheckCircle, Link as LinkIcon, RefreshCw, Unlink
 import api from '../../api/apiService';
 import { markOAuthDeparture } from '../../context/AppContext';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import { useCalendarSync } from './useCalendarSync';
 
 /**
  * Lets a patient connect their Google Calendar so appointments can be pushed to
@@ -11,13 +12,15 @@ import ConfirmationModal from '../modals/ConfirmationModal';
  * /api/calendar-sync is authenticated and authorises the caller against the
  * patient in the path.
  */
-const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification }) => {
+const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification, sync }) => {
   const dark = theme === 'dark';
 
-  const [calendarStatus, setCalendarStatus] = useState({ connected: false, account: null });
-  const [loading, setLoading] = useState(true);
+  // The parent may already hold the status (the portal does, to decide whether
+  // to offer per-appointment buttons); share it rather than asking twice.
+  const ownSync = useCalendarSync(sync ? null : patientId);
+  const { configured, connected, account, loading, refresh, setStatus } = sync || ownSync;
+
   const [connecting, setConnecting] = useState(false);
-  const [notConfigured, setNotConfigured] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
@@ -26,28 +29,6 @@ const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification
     if (addNotification) addNotification(type === 'error' ? 'alert' : type, text);
     setTimeout(() => setMessage({ type: '', text: '' }), 5000);
   }, [addNotification]);
-
-  const checkCalendarStatus = useCallback(async () => {
-    if (!patientId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const status = await api.getCalendarSyncStatus(patientId);
-      setCalendarStatus(status);
-      setNotConfigured(status.configured === false);
-    } catch (error) {
-      console.error('Error checking calendar status:', error);
-      showMessage('error', error.message || 'Failed to check calendar status');
-    } finally {
-      setLoading(false);
-    }
-  }, [patientId, showMessage]);
-
-  useEffect(() => {
-    checkCalendarStatus();
-  }, [checkCalendarStatus]);
 
   // The OAuth callback returns the browser here with a result in the query.
   useEffect(() => {
@@ -58,7 +39,7 @@ const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification
 
     if (connected) {
       showMessage('success', 'Google Calendar connected successfully');
-      checkCalendarStatus();
+      refresh();
     } else {
       const reasons = {
         not_configured: 'Google Calendar sync is not configured on this server',
@@ -73,7 +54,7 @@ const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification
     params.delete('calendar_error');
     const query = params.toString();
     window.history.replaceState({}, document.title, window.location.pathname + (query ? `?${query}` : ''));
-  }, [showMessage, checkCalendarStatus]);
+  }, [showMessage, refresh]);
 
   const connectGoogleCalendar = async () => {
     try {
@@ -95,7 +76,7 @@ const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification
     setConfirmDisconnect(false);
     try {
       await api.disconnectCalendarSync(patientId);
-      setCalendarStatus({ connected: false, account: null });
+      setStatus(prev => ({ ...prev, connected: false, account: null }));
       showMessage('success', 'Google Calendar disconnected successfully');
     } catch (error) {
       console.error('Error disconnecting calendar:', error);
@@ -106,6 +87,8 @@ const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification
   const panel = `p-5 rounded-xl border ${dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`;
   const heading = dark ? 'text-white' : 'text-gray-900';
   const muted = dark ? 'text-slate-400' : 'text-gray-500';
+
+  if (!configured) return null;
 
   if (loading) {
     return (
@@ -141,7 +124,7 @@ const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification
               <p className={`text-sm ${muted}`}>Add your appointments to your own calendar</p>
             </div>
           </div>
-          {calendarStatus.connected ? (
+          {connected ? (
             <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium flex-shrink-0 ${
               dark ? 'bg-green-500/15 text-green-300 border-green-500/30' : 'bg-green-50 text-green-700 border-green-200'
             }`}>
@@ -169,22 +152,15 @@ const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification
           </div>
         )}
 
-        {notConfigured && !calendarStatus.connected ? (
-          <div className={`rounded-lg border px-3 py-2 flex items-start gap-2 text-sm ${
-            dark ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700'
-          }`}>
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>Google Calendar sync has not been set up for this practice yet.</span>
-          </div>
-        ) : calendarStatus.connected ? (
+        {connected ? (
           <div className="space-y-4">
             <div className={`rounded-lg px-3 py-2.5 ${dark ? 'bg-slate-900/50' : 'bg-gray-50'}`}>
-              {calendarStatus.account?.email && (
-                <p className={`text-sm ${heading}`}>{calendarStatus.account.email}</p>
+              {account?.email && (
+                <p className={`text-sm ${heading}`}>{account.email}</p>
               )}
-              {calendarStatus.account?.connectedAt && (
+              {account?.connectedAt && (
                 <p className={`text-xs mt-0.5 ${muted}`}>
-                  Connected {new Date(calendarStatus.account.connectedAt).toLocaleDateString()}
+                  Connected {new Date(account.connectedAt).toLocaleDateString()}
                 </p>
               )}
             </div>

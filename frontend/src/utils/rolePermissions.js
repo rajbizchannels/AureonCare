@@ -157,7 +157,7 @@ export const modulePermissions = {
   providerManagement: 'patients', // Requires patients.view
   ehr: 'ehr', // Requires ehr.view
   telehealth: 'appointments', // Requires appointments.view
-  rcm: 'billing', // Requires billing.view (uses billing key for backwards compat)
+  rcm: 'rcm', // Requires rcm.view
   accounts: 'accounts', // Requires accounts.view
   inventory: null, // No dedicated permission yet — open to all authenticated staff
   crm: 'crm', // Requires crm.view
