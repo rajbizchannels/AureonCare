@@ -728,13 +728,7 @@ const FormManagementView = ({
     <div className={`h-full flex flex-col ${dark ? 'bg-slate-900' : 'bg-gray-50'}`}>
       {/* Header */}
       <div className={`flex-shrink-0 px-6 py-4 border-b ${dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className={`text-xl font-bold ${dark ? 'text-slate-100' : 'text-gray-900'}`}>Form Management</h1>
-              <p className={`text-sm ${dark ? 'text-slate-400' : 'text-gray-500'}`}>Dynamic form builder, templates, eSignatures, and submissions</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-end mb-4">
           <div className="flex gap-2">
             <button onClick={loadData} className={`p-2 rounded-lg border transition-colors ${dark ? 'border-slate-600 hover:bg-slate-700 text-slate-400' : 'border-gray-300 hover:bg-gray-50 text-gray-500'}`}>
               <RefreshCw className="w-4 h-4" />

@@ -1681,18 +1681,6 @@ const RCMView = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Revenue Cycle Management
-            </h2>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Manage claims, pre-authorizations, payments, insurance payers, and billing
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Tabs — hidden when the app shell's secondary pane already lists them */}
       {!tabsInShell && (

@@ -224,15 +224,7 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Patient Diagnoses
-            </h1>
-            <p className={`mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Manage patient diagnoses with ICD-10 and CPT codes
-            </p>
-          </div>
+        <div className="flex items-center justify-end mb-4">
           <button
             onClick={() => handleAddDiagnosis()}
             className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg hover:from-green-600 hover:to-teal-600 transition-all flex items-center gap-2 font-medium shadow-lg"

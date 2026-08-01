@@ -370,10 +370,7 @@ const PracticeManagementView = ({
       />
 
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.appointments || 'Appointments'}</h2>
-        </div>
+      <div className="flex items-center justify-end flex-wrap gap-4">
         <div className="flex items-center gap-3">
           {/* View Type Toggle */}
           <div className={`flex items-center gap-2 p-1 rounded-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-200'}`}>

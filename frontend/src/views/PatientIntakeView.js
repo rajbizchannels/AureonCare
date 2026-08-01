@@ -633,14 +633,6 @@ const PatientIntakeView = ({
           >
             <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
-          <div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Patient Intake Forms
-            </h2>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Manage patient intake forms, workflows, and consent documentation
-            </p>
-          </div>
         </div>
       </div>
 

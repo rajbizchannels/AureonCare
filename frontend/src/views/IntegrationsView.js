@@ -725,11 +725,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t?.apiAndIntegrations || 'API & Integrations'}
-        </h2>
-      </div>
 
       {/* Stripe Integration - full width */}
       <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
