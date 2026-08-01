@@ -5,14 +5,42 @@ import { getTranslations } from '../config/translations';
 // Create the context
 const AppContext = createContext();
 
+const OAUTH_DEPARTURE_KEY = 'aureoncare.oauthDeparture';
+const OAUTH_DEPARTURE_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * Record that we are about to hand the browser to an external OAuth provider.
+ *
+ * Call this immediately before navigating away. The return trip is a fresh page
+ * load, which would otherwise be treated as a refresh and end the session — the
+ * user would come back from Google only to face the login page.
+ */
+export const markOAuthDeparture = () => {
+  try {
+    sessionStorage.setItem(OAUTH_DEPARTURE_KEY, String(Date.now()));
+  } catch (error) {
+    /* storage unavailable — the return trip will just ask for a fresh login */
+  }
+};
+
+/** True when this page load is the return leg of an OAuth round trip. */
+const isOAuthReturn = () => {
+  try {
+    const departedAt = Number(sessionStorage.getItem(OAUTH_DEPARTURE_KEY));
+    sessionStorage.removeItem(OAUTH_DEPARTURE_KEY);
+    return Boolean(departedAt) && Date.now() - departedAt < OAUTH_DEPARTURE_TTL_MS;
+  } catch (error) {
+    return false;
+  }
+};
+
 /**
  * A page load always starts a fresh session.
  *
  * This module is evaluated once per page load, so clearing the stored session
  * here means a browser refresh (or a restored tab) lands on the login page
- * instead of resuming the previous session. Note that this also applies when
- * an external OAuth callback redirects back into the app — the user signs in
- * again on return.
+ * instead of resuming the previous session. The one exception is the return
+ * leg of an OAuth round trip, which is a page load the app itself initiated.
  */
 const clearStoredSession = () => {
   try {
@@ -25,7 +53,9 @@ const clearStoredSession = () => {
   }
 };
 
-clearStoredSession();
+if (!isOAuthReturn()) {
+  clearStoredSession();
+}
 
 // AppProvider component
 const AppProvider = ({ children }) => {
