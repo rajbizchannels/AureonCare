@@ -1,0 +1,47 @@
+1
+00:00:02,781 --> 00:00:07,781
+Register a new patient — Patients ▸ Electronic Health Records — Create a patient record properly, so scheduling, billing and the portal all work later.
+
+2
+00:00:13,077 --> 00:00:16,282
+Patients ▸ Electronic Health Records is the register: every patient the practice knows.
+
+3
+00:00:16,282 --> 00:00:21,582
+Search accepts a name, an MRN, an email or a phone number.
+
+4
+00:00:21,583 --> 00:00:29,670
+New Patient opens one form. Required fields are marked; the rest can follow later.
+
+5
+00:00:29,670 --> 00:00:36,719
+Name, date of birth and gender identify the record. The MRN is generated for you.
+
+6
+00:00:36,719 --> 00:00:50,284
+The email address is what invites this patient to the portal later — worth getting right at the desk.
+
+7
+00:00:50,284 --> 00:00:58,509
+Insurance is what claims are built from. A record without it will bill as self-pay.
+
+8
+00:00:58,509 --> 00:01:04,196
+An emergency contact takes ten seconds now and matters on the worst day.
+
+9
+00:01:04,196 --> 00:01:10,825
+AureonCare confirms before it writes a new record.
+
+10
+00:01:10,825 --> 00:01:16,759
+Saved. The patient joins the register immediately, with an MRN assigned.
+
+11
+00:01:16,759 --> 00:01:19,767
+Searching by surname brings the new record straight back.
+
+12
+00:01:19,779 --> 00:01:25,779
+What you just did

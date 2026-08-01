@@ -13,9 +13,13 @@ one row per video, with owner, status, the four production stages, dates and a
 formula-driven dashboard. This document is the reference; the workbook is the
 working copy — edit the workbook, not this file, as work progresses.
 
-**Status: plan only. Nothing in this list has been produced yet.**
-The Google Meet OAuth video in `docs/google-verification/` is the only recording
-that exists today; it was made for Google's review, not for this library.
+**Status: Wave 1 is produced** — the eight videos below are recorded and sit in
+`video-library/wave1/`, each with subtitles, chapters, a thumbnail and upload
+metadata. They are awaiting SME review, then upload. Waves 2-4 are still plans.
+
+The prep task (a shared recorder harness) is done too: `video-harness/` drives
+the real UI against a mocked API, so any video can be re-cut by re-running its
+script rather than re-recording by hand.
 
 ---
 
@@ -24,19 +28,19 @@ that exists today; it was made for Google's review, not for this library.
 | Aspect | Convention |
 | --- | --- |
 | Length | 60–120 s. Hard cap 120 s — split rather than overrun |
-| Resolution | 1280×720, no audio track in v1 (captions carry the teaching) |
+| Resolution | 1920×1080 at 30fps for YouTube; silent AAC track so narration can be added later without a re-encode |
 | Structure | 5 s title card → 10 s "why this matters" → 60–90 s journey → 10 s recap card |
 | Voice | Second person, imperative: "Open Scheduling ▸ Calendar", not "the user can" |
 | Data | Synthetic only, with the permanent "demo environment · synthetic data" watermark |
 | Personas | Reuse `DEMO_SCENARIOS.md`: Sarah Williams (patient), Dr. Anderson (provider), plus a front-desk and an admin persona |
 | Recap card | 3 bullets max — the steps, not the benefits |
 
-**Production accelerator:** `docs/google-verification/record-google-meet-demo.js`
-already implements the reusable pieces — Playwright driving the real UI, an
-`/api` mock layer fed from fixtures, caption bar, synthetic cursor, title cards,
-mp4 conversion. Generalising it into a shared recorder plus one script per video
-is the cheapest path through this list, and keeps every video re-cuttable when
-the UI changes. Budget that refactor before Wave 1.
+**Production accelerator (built):** `video-harness/` is the shared recorder —
+Playwright driving the real UI, an `/api` mock layer fed from shared fixtures,
+caption bar, synthetic cursor, title and recap cards, chapter and subtitle
+capture, and a YouTube-ready encode. Each video is one script against it, so a
+UI change costs a re-run rather than a re-record. Waves 2-4 should extend it
+rather than start over.
 
 **Prioritisation basis:** how many users touch the feature daily, whether it
 blocks go-live, whether it protects revenue, and how often it generates support
@@ -52,13 +56,13 @@ this order.
 | # | Title | Where in app | Primary audience |
 | --- | --- | --- | --- |
 | 1 | Find your way around AureonCare | App shell, search, help | Everyone |
-| 2 | Register a new patient | Patients ▸ Patient Records | Front desk |
+| 2 | Register a new patient | Patients ▸ Electronic Health Records | Front desk |
 | 3 | Book an appointment | Scheduling ▸ Calendar | Front desk |
 | 4 | Read your day on the dashboard | Home ▸ Dashboard | Everyone |
-| 5 | Document a visit | Patients ▸ Patient Records | Clinician |
+| 5 | Document a visit | Patients ▸ Patient History | Clinician |
 | 6 | Run a telehealth visit | Clinical ▸ Telehealth | Clinician |
 | 7 | Create and submit a claim | Billing ▸ Claims | Billing |
-| 8 | What your patients see | Patients ▸ Patient Portal | Front desk, clinician |
+| 8 | What your patients see | Patient Portal (patient's own account) | Front desk, clinician |
 
 **1. Find your way around AureonCare** *(~90 s)*
 Sign in → the three-pane shell (workspace rail → module list → content) → switch

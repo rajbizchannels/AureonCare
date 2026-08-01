@@ -1,0 +1,59 @@
+1
+00:00:02,693 --> 00:00:07,693
+Book an appointment — Scheduling ▸ Calendar — Create, find and change an appointment — and understand what the type controls.
+
+2
+00:00:12,982 --> 00:00:18,832
+Scheduling ▸ Calendar is the practice diary — every provider, every room.
+
+3
+00:00:18,832 --> 00:00:23,885
+Day view for working the desk hour by hour.
+
+4
+00:00:23,885 --> 00:00:29,388
+Week view for spotting the gaps worth filling.
+
+5
+00:00:29,388 --> 00:00:33,548
+Every booking answers four questions: who, what, with whom, and when.
+
+6
+00:00:33,548 --> 00:00:37,888
+Who. Start typing or pick from the register — the MRN disambiguates namesakes.
+
+7
+00:00:37,888 --> 00:00:42,624
+What. The appointment type sets the duration for you — change the type, not the clock.
+
+8
+00:00:42,624 --> 00:00:47,809
+With whom. Only providers who work that day are offered.
+
+9
+00:00:47,809 --> 00:00:53,318
+When. Pick the slot; the duration follows the type you chose.
+
+10
+00:00:53,318 --> 00:00:58,917
+A one-line reason is what the clinician reads before the patient walks in.
+
+11
+00:00:58,917 --> 00:01:05,925
+A confirmation step, so a mis-click never books a patient.
+
+12
+00:01:05,925 --> 00:01:12,557
+Booked. The slot fills on the calendar and the patient gets their reminder.
+
+13
+00:01:12,557 --> 00:01:16,162
+The List view is the same diary as a searchable table — where you change or cancel a booking.
+
+14
+00:01:16,162 --> 00:01:19,969
+Cancelling keeps the record and its reason. Deleting would erase the history — so cancel, do not delete.
+
+15
+00:01:19,979 --> 00:01:25,979
+What you just did
