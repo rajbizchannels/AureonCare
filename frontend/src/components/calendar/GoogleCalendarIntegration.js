@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Calendar, CheckCircle, Link as LinkIcon, RefreshCw, Unlink } from 'lucide-react';
 
 import api from '../../api/apiService';
+import { markOAuthDeparture } from '../../context/AppContext';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
 /**
@@ -78,7 +79,11 @@ const GoogleCalendarIntegration = ({ patientId, theme = 'light', addNotification
     try {
       setConnecting(true);
       const authUrl = await api.getCalendarAuthUrl(patientId);
-      if (authUrl) window.location.href = authUrl;
+      if (authUrl) {
+        // Keeps the session alive across the round trip to Google.
+        markOAuthDeparture();
+        window.location.href = authUrl;
+      }
     } catch (error) {
       console.error('Error connecting calendar:', error);
       showMessage('error', error.message || 'Failed to connect Google Calendar');
