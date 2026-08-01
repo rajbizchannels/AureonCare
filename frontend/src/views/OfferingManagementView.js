@@ -356,14 +356,6 @@ const OfferingManagementView = ({ activeTab: shellTab, onTabChange }) => {
       />
 
       <div className={`p-6 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
-        {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-3xl font-bold">Healthcare Offering Management</h1>
-        </div>
-        <p className="text-gray-500">Manage your healthcare services, packages, and promotions</p>
-      </div>
-
       {/* Tabs — the app shell's secondary pane replaces these when present */}
       {!tabsInShell && (
       <div className="mb-6 border-b border-gray-200 dark:border-gray-700">

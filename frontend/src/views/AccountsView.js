@@ -1214,18 +1214,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
     <div className={`flex flex-col h-full ${theme === 'dark' ? 'bg-slate-950' : 'bg-gray-50'}`}>
       {/* Header */}
       <div className={`border-b px-6 py-4 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div>
-              <h2 className={`text-2xl font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                <BookOpen className="text-emerald-500" size={24} />
-                Accounts Management
-              </h2>
-              <p className={`text-sm mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                Chart of accounts · journal entries · AR/AP · reconciliation
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center justify-end">
           <button
             onClick={() => fetchData(activeTab)}
             disabled={loading}

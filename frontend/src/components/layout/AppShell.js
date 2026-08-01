@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, PanelLeftOpen, X } from 'lucide-react';
+import { ChevronRight, X } from 'lucide-react';
 
 import PrimaryNav from './PrimaryNav';
 import SecondaryNav from './SecondaryNav';
@@ -49,7 +49,7 @@ const AppShell = ({
   const dark = theme === 'dark';
 
   const [railCollapsed, setRailCollapsed] = React.useState(() => readFlag(RAIL_STORAGE_KEY));
-  const [secondaryHidden, setSecondaryHidden] = React.useState(() => readFlag(SECONDARY_STORAGE_KEY));
+  const [secondaryCollapsed, setSecondaryCollapsed] = React.useState(() => readFlag(SECONDARY_STORAGE_KEY));
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
   const toggleRail = () => {
@@ -59,14 +59,13 @@ const AppShell = ({
     });
   };
 
-  const setSecondary = (hidden) => {
-    writeFlag(SECONDARY_STORAGE_KEY, hidden);
-    setSecondaryHidden(hidden);
+  const setSecondary = (collapsed) => {
+    writeFlag(SECONDARY_STORAGE_KEY, collapsed);
+    setSecondaryCollapsed(collapsed);
   };
 
   // A group with a single destination has nothing to list in pane 2.
   const groupHasSubModules = groupItems(activeGroup).length > 1;
-  const showSecondary = groupHasSubModules && !secondaryHidden;
 
   const handleSelectGroup = (group) => {
     onSelectGroup(group);
@@ -90,13 +89,14 @@ const AppShell = ({
         collapsed={compact || railCollapsed}
         onToggleCollapsed={compact ? null : toggleRail}
       />
-      {(compact ? groupHasSubModules : showSecondary) && (
+      {groupHasSubModules && (
         <SecondaryNav
           theme={theme}
           group={activeGroup}
           activeItemId={activeItem?.id}
           onSelectItem={handleSelectItem}
-          onHide={compact ? null : () => setSecondary(true)}
+          collapsed={compact ? false : secondaryCollapsed}
+          onToggleCollapsed={compact ? null : () => setSecondary(!secondaryCollapsed)}
         />
       )}
     </>
@@ -136,17 +136,6 @@ const AppShell = ({
                 dark ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-gray-200'
               }`}
             >
-              {groupHasSubModules && secondaryHidden && (
-                <button
-                  onClick={() => setSecondary(false)}
-                  title="Show sub-modules"
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    dark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
-                  }`}
-                >
-                  <PanelLeftOpen className="w-4 h-4" />
-                </button>
-              )}
               <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 min-w-0">
                 <span className={`text-sm truncate ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
                   {activeGroup?.label}

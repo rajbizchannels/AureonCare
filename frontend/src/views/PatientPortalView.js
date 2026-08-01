@@ -3192,14 +3192,6 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
         showCancel={false}
       />
       <div className="space-y-6">
-      <div>
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t.patientPortal}
-        </h2>
-        <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-          {t.patientPortalDescription}
-        </p>
-      </div>
 
       {/* Navigation Tabs — the app shell's secondary pane replaces these */}
       {!tabsInShell && (
