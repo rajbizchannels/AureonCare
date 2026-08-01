@@ -58,10 +58,7 @@ const EHRView = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Patient Records</h2>
-        </div>
+      <div className="flex items-center justify-end flex-wrap gap-4">
         <button
           onClick={() => setShowForm('patient')}
           className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors text-white font-medium"

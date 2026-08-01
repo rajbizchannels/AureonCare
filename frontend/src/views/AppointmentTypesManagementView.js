@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Inbox, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentTypeForm from '../components/forms/NewAppointmentTypeForm';
 import { useAudit } from '../hooks/useAudit';
@@ -115,10 +115,6 @@ const AppointmentTypesManagementView = ({
             >
               <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
             </button>
-            <Clock className="w-6 h-6 text-purple-400" />
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t.appointmentTypes || 'Appointment Types'}
-            </h2>
           </div>
           <button
             onClick={() => {

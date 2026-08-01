@@ -211,7 +211,9 @@ router.post('/admin/notify-next', authenticate, authorize('admin', 'receptionist
        JOIN users u ON w.patient_id = u.id
        WHERE w.status = 'active'
        AND w.preferred_date = $1
-       AND ($2::integer IS NULL OR w.provider_id = $2)
+       -- Compared as text so this works whether provider_id is UUID (current
+       -- schema) or INTEGER (pre-migration-025 installs).
+       AND ($2::text IS NULL OR w.provider_id::text = $2::text)
        ORDER BY w.priority DESC, w.created_at ASC
        LIMIT 1`,
       [date, providerId || null]

@@ -4745,18 +4745,6 @@ const AdminPanelView = ({
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t.adminPanel || 'Admin Panel'}
-              </h1>
-              <p className={`mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                {t.manageClinicSettingsUsers || 'Manage clinic settings and users'}
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Tabs — the app shell's secondary pane replaces these when present */}
         {!tabsInShell && (
