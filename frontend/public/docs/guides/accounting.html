@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Accounting - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📒 Accounting</h1>
+                    <p>Double-entry bookkeeping for the practice</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.3</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Accounting</h1>
+            <p>Found under <strong>Operations → Accounting</strong>. Double-entry bookkeeping linked directly to Revenue Cycle payments and Inventory purchase orders.</p>
+
+            <h2>Accounting Overview</h2>
+            <p>The overview dashboard shows:</p>
+            <ul>
+                <li>Cash position across all bank accounts</li>
+                <li>Outstanding receivables and payables</li>
+                <li>Revenue and expenses for the current period</li>
+                <li>Unreconciled transaction count</li>
+                <li>Period-over-period comparison</li>
+            </ul>
+
+            <h2>Chart of Accounts</h2>
+            <p>The Chart of Accounts is the list of every account the practice books against.</p>
+
+            <table>
+                <tr><th>Type</th><th>Normal Balance</th><th>Examples</th></tr>
+                <tr><td>Asset</td><td>Debit</td><td>Cash, Accounts Receivable, Equipment, Inventory</td></tr>
+                <tr><td>Liability</td><td>Credit</td><td>Accounts Payable, Loans, Accrued Expenses</td></tr>
+                <tr><td>Equity</td><td>Credit</td><td>Owner's Capital, Retained Earnings</td></tr>
+                <tr><td>Revenue</td><td>Credit</td><td>Patient Revenue, Insurance Revenue, Product Sales</td></tr>
+                <tr><td>Expense</td><td>Debit</td><td>Salaries, Rent, Supplies, Utilities</td></tr>
+            </table>
+
+            <h3>Adding an Account</h3>
+            <ol>
+                <li>Go to <strong>Operations → Chart of Accounts</strong></li>
+                <li>Click <strong>+ New Account</strong></li>
+                <li>Enter the account number, name, and type</li>
+                <li>Optionally nest it under a parent account</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+            <p><strong>Tip:</strong> Number accounts in blocks — 1000s for assets, 2000s liabilities, 3000s equity, 4000s revenue, 5000s expenses. Reports group cleanly when you do.</p>
+
+            <h2>Journal Entries</h2>
+            <ol>
+                <li>Go to <strong>Operations → Journal</strong></li>
+                <li>Click <strong>+ New Journal Entry</strong></li>
+                <li>Set the entry date and a description</li>
+                <li>Add lines — each takes an account, a debit or credit, and an optional memo</li>
+                <li>Confirm total debits equal total credits</li>
+                <li>Click <strong>Post Entry</strong></li>
+            </ol>
+            <p><strong>Note:</strong> An entry will not post unless debits and credits balance exactly.</p>
+
+            <h3>Automatic Entries</h3>
+            <p>The system posts journal entries for you when:</p>
+            <ul>
+                <li>A patient or insurance payment is recorded in Revenue Cycle</li>
+                <li>An invoice is issued</li>
+                <li>A purchase order is received into Inventory</li>
+                <li>A refund is processed</li>
+            </ul>
+            <p>Automatic entries carry a system flag and link back to the source record.</p>
+
+            <h2>Accounts Receivable</h2>
+            <p><strong>Operations → Receivables</strong> tracks money owed to the practice:</p>
+            <ul>
+                <li>Outstanding patient balances</li>
+                <li>Outstanding insurance claims</li>
+                <li>Aging buckets: current, 31–60, 61–90, 90+ days</li>
+                <li>Drill through to the originating claim or invoice</li>
+            </ul>
+
+            <h2>Accounts Payable</h2>
+            <h3>Recording a Bill</h3>
+            <ol>
+                <li>Go to <strong>Operations → Payables</strong></li>
+                <li>Click <strong>+ New Bill</strong></li>
+                <li>Select the supplier</li>
+                <li>Enter the bill number, date, due date, and amount</li>
+                <li>Assign it to an expense account</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <h3>Paying a Bill</h3>
+            <ol>
+                <li>Open the bill</li>
+                <li>Click <strong>Record Payment</strong></li>
+                <li>Enter the amount, date, and payment method</li>
+                <li>Click <strong>Save</strong> — the journal entry posts automatically</li>
+            </ol>
+            <p>Bills raised from Inventory purchase orders appear here automatically when stock is received.</p>
+
+            <h2>Bank Reconciliation</h2>
+            <ol>
+                <li>Go to <strong>Operations → Reconciliation</strong></li>
+                <li>Select the bank account and statement period</li>
+                <li>Enter the closing balance from your bank statement</li>
+                <li>Tick each transaction that appears on the statement</li>
+                <li>The difference must reach zero</li>
+                <li>Click <strong>Complete Reconciliation</strong></li>
+            </ol>
+            <p>Reconciled transactions lock. Reopen the reconciliation to amend them.</p>
+
+            <h2>Financial Statements</h2>
+            <table>
+                <tr><th>Statement</th><th>Shows</th></tr>
+                <tr><td>Profit &amp; Loss</td><td>Revenue less expenses over a period</td></tr>
+                <tr><td>Balance Sheet</td><td>Assets, liabilities, and equity at a point in time</td></tr>
+                <tr><td>Cash Flow</td><td>Cash movement across operating, investing, financing</td></tr>
+                <tr><td>Trial Balance</td><td>All account balances, proving debits equal credits</td></tr>
+                <tr><td>General Ledger</td><td>Every transaction, by account</td></tr>
+            </table>
+            <p>All statements export to PDF, Excel, and CSV.</p>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>✓ Reconcile bank accounts monthly, without exception</li>
+                <li>✓ Review the trial balance before closing a period</li>
+                <li>✓ Post journal entries with descriptions a colleague would understand</li>
+                <li>✓ Match payables to purchase orders before paying</li>
+                <li>✓ Run P&amp;L monthly and compare against the prior period</li>
+                <li>✗ Don't edit reconciled transactions without reopening the reconciliation</li>
+                <li>✗ Don't post to a suspense account and forget about it</li>
+            </ul>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="inventory.html">Inventory Management</a></li>
+                <li><a href="payments.html">Payment Processing</a></li>
+                <li><a href="financial-reports.html">Financial Reports</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.3 - Accounting</p>
+    </footer>
+</body>
+</html>
