@@ -68,6 +68,7 @@ import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import { useClinicSettings } from '../hooks/useClinicSettings';
+import { apiFetch } from '../api/apiService';
 import { useShellTab } from '../hooks/useShellTab';
 import {
   USER_ROLES,
@@ -115,7 +116,7 @@ const PlatformSetupGuide = ({ theme }) => {
 
   React.useEffect(() => {
     ['zoom', 'google_meet', 'webex', 'microsoft_teams'].forEach((p) => {
-      fetch(`/api/integrations/oauth/${p}/redirect-url`)
+      apiFetch(`/integrations/oauth/${p}/redirect-url`)
         .then(r => r.json())
         .then(data => setRedirectUrls(prev => ({ ...prev, [p]: data.redirectUrl || '' })))
         .catch(() => {});
@@ -1166,7 +1167,7 @@ const AdminPanelView = ({
 
     try {
       // Save credentials
-      const saveResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`, {
+      const saveResponse = await apiFetch(`/integrations/oauth/${providerType}/credentials`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials)
@@ -1207,7 +1208,7 @@ const AdminPanelView = ({
 
         await addNotification('info', `Starting ${displayName} OneClick Integration...`);
 
-        const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+        const response = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -1258,7 +1259,7 @@ const AdminPanelView = ({
    */
   const fetchBackupConfigStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/backup-providers/config/status');
+      const response = await apiFetch('/backup-providers/config/status');
       if (response.ok) {
         const status = await response.json();
         setBackupConfig({
@@ -1290,7 +1291,7 @@ const AdminPanelView = ({
       }
 
       try {
-        const statusResponse = await fetch(`/api/integrations/oauth/${providerType}/status`);
+        const statusResponse = await apiFetch(`/integrations/oauth/${providerType}/status`);
         if (statusResponse.ok) {
           const status = await statusResponse.json();
           if (status.hasTokens) {
@@ -1313,7 +1314,7 @@ const AdminPanelView = ({
     async (providerType, providerName, credentialType = 'oauth') => {
       try {
         // Fetch existing credentials
-        const response = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
+        const response = await apiFetch(`/integrations/oauth/${providerType}/credentials`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -1322,7 +1323,7 @@ const AdminPanelView = ({
 
         // Helper: initiate OAuth popup and poll for completion
         const initiateOAuthPopup = async () => {
-          const oauthResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+          const oauthResponse = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
           const oauthData = await oauthResponse.json();
 
           if (!oauthResponse.ok) {
@@ -1387,7 +1388,7 @@ const AdminPanelView = ({
    * Helper: open OAuth popup and poll for completion
    */
   const openOAuthPopup = useCallback(async (providerType, displayName) => {
-    const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+    const response = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -1468,7 +1469,7 @@ const AdminPanelView = ({
     const displayName = providerNames[providerType] || providerType;
 
     try {
-      const response = await fetch(`/api/integrations/oauth/${providerType}`, { method: 'DELETE' });
+      const response = await apiFetch(`/integrations/oauth/${providerType}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to disconnect');
 
       setTelehealthStatus((prev) => ({
@@ -1854,7 +1855,7 @@ const AdminPanelView = ({
   const handleConfigureCloudBackup = useCallback(async (providerType) => {
     const displayName = providerType === 'google_drive' ? 'Google Drive' : 'OneDrive';
     try {
-      const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+      const response = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `Failed to start ${displayName} sign-in`);
 

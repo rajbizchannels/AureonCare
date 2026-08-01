@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Upload, X, FileText, Image, File, Calendar } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import { apiFetch } from '../../api/apiService';
 
 const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'light', providers = [] }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -119,7 +120,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
         uploadFormData.append('providerId', formData.providerId);
       }
 
-      const response = await fetch('/api/medical-records/with-file', {
+      const response = await apiFetch('/medical-records/with-file', {
         method: 'POST',
         body: uploadFormData
       });

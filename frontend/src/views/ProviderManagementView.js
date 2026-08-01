@@ -6,17 +6,8 @@ import {
 import { DoctorAvailabilityManager } from '../components/scheduling';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
+import { apiFetch } from '../api/apiService';
 
-const getAuthHeaders = () => {
-  const headers = { 'Content-Type': 'application/json' };
-  try {
-    const token = sessionStorage.getItem('token');
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-  } catch (e) {
-    console.error('Error reading token:', e);
-  }
-  return headers;
-};
 
 const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
   const [providers, setProviders] = useState([]);
@@ -44,9 +35,7 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
   const fetchProviders = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/providers', {
-        headers: getAuthHeaders()
-      });
+      const response = await apiFetch('/providers');
       if (!response.ok) {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -126,9 +115,7 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
   const fetchProviderDetails = async (providerId) => {
     try {
       // Fetch booking config
-      const configResponse = await fetch(`/api/scheduling/booking-config/${providerId}`, {
-        headers: getAuthHeaders()
-      });
+      const configResponse = await apiFetch(`/scheduling/booking-config/${providerId}`);
       if (configResponse.ok) {
         const contentType = configResponse.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -144,9 +131,7 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
       }
 
       // Fetch appointment types
-      const typesResponse = await fetch(`/api/scheduling/appointment-types/${providerId}`, {
-        headers: getAuthHeaders()
-      });
+      const typesResponse = await apiFetch(`/scheduling/appointment-types/${providerId}`);
       if (typesResponse.ok) {
         const contentType = typesResponse.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -162,9 +147,7 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
       }
 
       // Fetch availability schedule
-      const availabilityResponse = await fetch(`/api/scheduling/availability/${providerId}`, {
-        headers: getAuthHeaders()
-      });
+      const availabilityResponse = await apiFetch(`/scheduling/availability/${providerId}`);
       if (availabilityResponse.ok) {
         const contentType = availabilityResponse.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -198,9 +181,8 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
         { dayOfWeek: 5, startTime: '09:00', endTime: '17:00', timezone: 'America/New_York' }
       ];
 
-      const response = await fetch('/api/scheduling/availability/bulk', {
+      const response = await apiFetch('/scheduling/availability/bulk', {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           providerId,
           schedules: clinicSchedule
@@ -218,9 +200,8 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
 
       // Create default appointment type only if none exist
       if (appointmentTypes.length === 0) {
-        const appointmentTypeResponse = await fetch('/api/scheduling/appointment-types', {
+        const appointmentTypeResponse = await apiFetch('/scheduling/appointment-types', {
           method: 'POST',
-          headers: getAuthHeaders(),
           body: JSON.stringify({
             providerId,
             name: 'Office Visit',
@@ -248,9 +229,8 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
         const provider = providers.find(p => p.id === providerId);
         const slug = `dr${providerId}`.toLowerCase();
 
-        const bookingConfigResponse = await fetch('/api/scheduling/booking-config', {
+        const bookingConfigResponse = await apiFetch('/scheduling/booking-config', {
           method: 'POST',
-          headers: getAuthHeaders(),
           body: JSON.stringify({
             providerId,
             bookingUrlSlug: slug,
@@ -293,9 +273,8 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
 
   const togglePublicBooking = async () => {
     try {
-      const response = await fetch(`/api/scheduling/booking-config/${selectedProvider.id}`, {
+      const response = await apiFetch(`/scheduling/booking-config/${selectedProvider.id}`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           allowPublicBooking: !bookingConfig.allow_public_booking
         })
