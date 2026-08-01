@@ -89,6 +89,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const [loadingEditSlots, setLoadingEditSlots] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
   const [appointmentToCancel, setAppointmentToCancel] = useState(null);
+  const [waitlistConfirmation, setWaitlistConfirmation] = useState(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
@@ -426,7 +427,17 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
         reason: bookingData.reason
       });
 
-      addNotification('success', result.message || 'Added to waitlist successfully!');
+      const provider = providers.find(p => String(p.id) === String(bookingData.providerId));
+      const providerName = provider
+        ? `Dr. ${provider.first_name} ${provider.last_name}`
+        : 'your provider';
+
+      setWaitlistConfirmation({
+        providerName,
+        date: bookingData.date,
+        appointmentType: bookingData.type,
+        message: result.message,
+      });
       fetchWaitlist();
 
       // Optionally reset form
@@ -2972,6 +2983,21 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   // Main Portal Layout
   return (
     <>
+      {/* Waitlist Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!waitlistConfirmation}
+        onClose={() => setWaitlistConfirmation(null)}
+        onConfirm={() => setWaitlistConfirmation(null)}
+        title={t.addedToWaitlist || "You're on the waitlist"}
+        message={waitlistConfirmation
+          ? `We'll contact you if a ${waitlistConfirmation.appointmentType || 'appointment'} slot opens with ${waitlistConfirmation.providerName} on ${formatDate(waitlistConfirmation.date)}. Your request is listed under Waitlist Requests below.`
+          : ''}
+        type="success"
+        confirmText={t.gotIt || 'Got it'}
+        showCancel={false}
+      />
+
       {/* Delete Appointment Confirmation Modal */}
       <ConfirmationModal
         theme={theme}
