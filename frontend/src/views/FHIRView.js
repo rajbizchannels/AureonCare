@@ -99,17 +99,7 @@ const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule, act
     : fhirResources.filter(r => r.resource_type === selectedResourceType);
 
   const header = (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div>
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            FHIR HL7 Integration
-          </h2>
-          <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            Fast Healthcare Interoperability Resources (FHIR R4)
-          </p>
-        </div>
-      </div>
+    <div className="flex items-center justify-end">
       {activeTab === 'resources' && (
         <button
           onClick={fetchFhirResources}

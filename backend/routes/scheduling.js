@@ -1041,7 +1041,7 @@ router.post('/book', async (req, res) => {
             // Create new patient
             const newPatient = await client.query(
                 `INSERT INTO patients
-                 (first_name, last_name, email, phone, dob, status)
+                 (first_name, last_name, email, phone, date_of_birth, status)
                  VALUES ($1, $2, $3, $4, $5, 'Active')
                  RETURNING id`,
                 [

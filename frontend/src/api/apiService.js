@@ -769,7 +769,12 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, provider, providerId, accessToken })
     });
-    if (!response.ok) throw new Error('Failed to login to patient portal');
+    if (!response.ok) {
+      // Surface the server's reason — "portal not enabled" and "wrong password"
+      // are different problems and the patient can only act on one of them.
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || 'Failed to login to patient portal');
+    }
     return response.json();
   },
   registerPatientPortal: async (patientId, email, password) => {

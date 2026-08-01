@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Mail, Send, Calendar, Inbox, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Send, Calendar, Inbox, Search } from 'lucide-react';
 import NewCampaignForm from '../components/forms/NewCampaignForm';
 import { useAudit } from '../hooks/useAudit';
 
@@ -87,10 +87,6 @@ const CampaignsManagementView = ({
           >
             <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
           </button>
-          <Mail className="w-6 h-6 text-red-400" />
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t.emailCampaigns || 'Email Campaigns'}
-          </h2>
         </div>
         <button
           onClick={() => {

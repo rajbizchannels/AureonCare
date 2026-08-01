@@ -440,12 +440,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
       )}
 
       <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t.videoConsultations || 'Video Consultations'}
-          </h2>
-        </div>
+      <div className="flex items-center justify-end">
         {/* Action buttons when provider is configured */}
         {!checkingProvider && activeProvider && (
           <div className="flex items-center gap-3">

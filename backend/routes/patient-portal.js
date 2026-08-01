@@ -112,15 +112,23 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
       }
     } else {
       // Traditional login
+      // Match either address: patients.email is what the portal registers, but a
+      // record created through the staff EHR may only carry the email on the
+      // linked users row, and the patient signs in with the address they know.
       const result = await pool.query(`
         SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
         FROM patients p
         LEFT JOIN users u ON p.id = u.id
-        WHERE p.email = $1 AND p.portal_enabled = true
+        WHERE (LOWER(p.email) = LOWER($1) OR LOWER(u.email) = LOWER($1))
+          AND p.portal_enabled = true
       `, [email]);
 
       if (result.rows.length === 0) {
-        return res.status(401).json({ error: 'Invalid credentials or portal not enabled' });
+        // Distinguish "no portal access" from "wrong password" without saying
+        // whether the address exists.
+        return res.status(401).json({
+          error: 'No portal access for this email. Ask the practice to enable your patient portal.'
+        });
       }
 
       patient = result.rows[0];
