@@ -1595,10 +1595,6 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
         {/* Sidebar Header */}
         <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-2 mb-3">
-            <button onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-              className={`p-1.5 rounded-lg ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-200'}`}>
-              <ArrowLeft className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
-            </button>
             <h2 className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Reports</h2>
           </div>
           <button onClick={() => setShowCustomBuilder(true)}

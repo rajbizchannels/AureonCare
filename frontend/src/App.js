@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Sun, Moon, LogOut, HelpCircle } from 'lucide-react';
+import { Bot, X, Users, AlertCircle } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -17,6 +17,15 @@ import api from './api/apiService';
 import { getTranslations } from './config/translations';
 import { getModules } from './config/modules';
 import { hasAccess } from './config/planFeatures';
+import {
+  getNavigation,
+  filterNavigation,
+  findNavLocation,
+  defaultItemFor,
+} from './config/navigation';
+
+// App shell (3-pane layout)
+import AppShell from './components/layout/AppShell';
 
 // Views
 import DashboardView from './views/DashboardView';
@@ -225,6 +234,56 @@ function App() {
     }
   }, [currentModule, showForm]);
 
+  // ── App-shell navigation ──────────────────────────────────────────────────
+  // The shell tracks which sub-module (tab) of a module is on screen. It is
+  // stored together with the module it belongs to so that navigating straight
+  // to a module from elsewhere in the app (search results, deep links inside a
+  // view) falls back to that module's default tab instead of a stale one.
+  const [navSelection, setNavSelection] = React.useState({ module: 'dashboard', tab: null });
+
+  const navigation = filterNavigation(getNavigation(t), hasModuleAccess);
+
+  // Appointments keep their sub-module in appointmentViewType (list/calendar/waitlist).
+  const moduleTab = navSelection.module === currentModule ? navSelection.tab : null;
+  const activeTab = currentModule === 'practiceManagement' ? appointmentViewType : moduleTab;
+
+  const navLocation = findNavLocation(navigation, currentModule, activeTab);
+  const activeGroup = navLocation?.group || navigation[0];
+  const activeItem = navLocation?.item;
+
+  // Selects a sub-module tab from inside a view, keeping the shell in sync.
+  const selectModuleTab = (moduleId, tab) => setNavSelection({ module: moduleId, tab });
+
+  const handleSelectNavItem = (item) => {
+    // Snapshot entries open a quick-view drawer instead of switching modules.
+    if (item.action) {
+      setEditingItem(null);
+      setShowForm(null);
+      setSelectedItem(item.action);
+      return;
+    }
+
+    setSelectedItem(null);
+    setEditingItem(null);
+    setShowForm(null);
+    setNavSelection({ module: item.module, tab: item.tab || null });
+    if (item.module === 'practiceManagement' && item.tab) {
+      setAppointmentViewType(item.tab);
+    }
+    setCurrentModule(item.module);
+  };
+
+  // Anything inside a view that jumps to another module — the dashboard's
+  // module tiles and stat cards, most of all — goes through the shell so the
+  // rail switches group and pane 2 opens the branch that owns the module.
+  const navigateToModule = (moduleId) => handleSelectNavItem({ module: moduleId });
+
+  const handleSelectNavGroup = (group) => {
+    if (group.id === activeGroup?.id) return;
+    const item = defaultItemFor(group);
+    if (item) handleSelectNavItem(item);
+  };
+
   // Modal management: close other modals when opening a new one
   const handleSetEditingItem = (item) => {
     setEditingItem(item);
@@ -250,20 +309,6 @@ function App() {
     }
   };
 
-
-  // Get user initials from first_name and last_name
-  const getUserInitials = () => {
-    if (user?.avatar) return user.avatar;
-    const firstName = user?.firstName || user?.first_name || '';
-    const lastName = user?.lastName || user?.last_name || '';
-    if (firstName && lastName) {
-      return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-    }
-    if (firstName) {
-      return firstName.substring(0, 2).toUpperCase();
-    }
-    return 'U';
-  };
 
   // Check if URL is patient login page
   const isPatientLoginUrl = React.useMemo(() => {
@@ -292,7 +337,7 @@ function App() {
             setSelectedItem={handleSetSelectedItem}
             showForm={showForm}
             setShowForm={handleSetShowForm}
-            setCurrentModule={setCurrentModule}
+            setCurrentModule={navigateToModule}
             setAppointmentViewType={setAppointmentViewType}
             setCalendarViewType={setCalendarViewType}
             setAppointments={setAppointments}
@@ -398,6 +443,27 @@ function App() {
           />
         );
       case 'patientHistory':
+        // Reached from the shell without a patient in context — point the user
+        // at the record list rather than rendering an empty chart.
+        if (!selectedPatient) {
+          return (
+            <div className={`rounded-xl border p-10 text-center ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-gray-200'}`}>
+              <Users className={`w-10 h-10 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-300'}`} />
+              <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {t.selectAPatient || 'Select a patient'}
+              </h3>
+              <p className={`text-sm mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                {t.selectAPatientHint || 'Open a chart from Patient Records to see the full history timeline.'}
+              </p>
+              <button
+                onClick={() => handleSelectNavItem({ module: 'ehr' })}
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                {t.ehr || 'Patient Records'}
+              </button>
+            </div>
+          );
+        }
         return (
           <PatientHistoryView
             theme={theme}
@@ -428,6 +494,8 @@ function App() {
         return (
           <RCMView
             theme={theme}
+            activeTab={activeTab || 'claims'}
+            onTabChange={(tab) => selectModuleTab('rcm', tab)}
             claims={claims}
             patients={patients}
             setShowForm={handleSetShowForm}
@@ -446,6 +514,8 @@ function App() {
         return (
           <AccountsView
             theme={theme}
+            activeTab={activeTab || 'overview'}
+            onTabChange={(tab) => selectModuleTab('accounts', tab)}
             api={api}
             user={user}
             addNotification={addNotification}
@@ -457,6 +527,8 @@ function App() {
         return (
           <InventoryView
             theme={theme}
+            activeTab={activeTab || 'overview'}
+            onTabChange={(tab) => selectModuleTab('inventory', tab)}
             api={api}
             user={user}
             addNotification={addNotification}
@@ -493,11 +565,55 @@ function App() {
             t={t}
           />
         );
+      case 'pharmacies':
+        return (
+          <PharmacyManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            t={t}
+          />
+        );
+      case 'laboratories':
+        return (
+          <LaboratoryManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            t={t}
+          />
+        );
+      case 'fhir':
+        return (
+          <FHIRView
+            theme={theme}
+            activeTab={activeTab || 'resources'}
+            onTabChange={(tab) => selectModuleTab('fhir', tab)}
+            api={api}
+            patients={patients}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+          />
+        );
+      case 'waitlist':
+        return (
+          <WaitlistManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            t={t}
+          />
+        );
       case 'patientPortal':
         return (
           <React.Suspense fallback={null}>
             <PatientPortalView
               theme={theme}
+              activeTab={activeTab || 'profile'}
+              onTabChange={(tab) => selectModuleTab('patientPortal', tab)}
               api={api}
               addNotification={addNotification}
               user={user}
@@ -508,6 +624,8 @@ function App() {
         return (
           <AdminPanelView
             theme={theme}
+            activeTab={activeTab || 'clinic'}
+            onTabChange={(tab) => selectModuleTab('admin', tab)}
             t={t}
             users={users}
             setUsers={setUsers}
@@ -523,6 +641,8 @@ function App() {
       case 'offerings':
         return (
           <OfferingManagementView
+            activeTab={activeTab || 'offerings'}
+            onTabChange={(tab) => selectModuleTab('offerings', tab)}
             theme={theme}
             api={api}
             user={user}
@@ -569,6 +689,8 @@ function App() {
         return (
           <FormManagementView
             theme={theme}
+            activeTab={activeTab || 'templates'}
+            onTabChange={(tab) => selectModuleTab('formManagement', tab)}
             api={api}
             patients={patients}
             user={user}
@@ -639,7 +761,7 @@ function App() {
   }
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gradient-to-br from-gray-100 via-white to-gray-100'}`}>
+    <>
       {/* Loading Overlay */}
       {loading && (
         <div className={`fixed inset-0 z-50 flex items-center justify-center ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`}>
@@ -668,135 +790,40 @@ function App() {
         </div>
       )}
 
-      {/* Header */}
-      <header className={`backdrop-blur-md border-b sticky top-0 z-50 ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800/50' : 'bg-white/50 border-gray-200/50'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <button
-              onClick={() => {
-                // Route to patient portal if user is a patient, otherwise dashboard
-                if (user?.role === 'patient') {
-                  setCurrentModule('patientPortal');
-                } else {
-                  setCurrentModule('dashboard');
-                }
-              }}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            >
-              <img
-                src="/assets/aureoncare-logo-wide.png"
-                alt="AureonCare Logo"
-                className="h-10 w-auto object-contain"
-                style={{ aspectRatio: '3/1' }}
-              />
-            </button>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowSearch(!showSearch)}
-                className={`p-2 rounded-lg transition-colors relative ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title="Search"
-              >
-                <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-              </button>
-
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className={`p-2 rounded-lg transition-colors relative ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title="Notifications"
-              >
-                <Bell className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-                {notifications.length > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setShowHelpDrawer(!showHelpDrawer)}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title="Help & Documentation"
-              >
-                <HelpCircle className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-              </button>
-
-              <button
-                onClick={() => setShowAIAssistant(!showAIAssistant)}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title="AI Assistant"
-              >
-                <Bot className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-              </button>
-
-              {/* Settings button - hidden for patients as they have settings in their profile tab */}
-              {user?.role !== 'patient' && (
-                <button
-                  onClick={() => handleSetShowForm('settings')}
-                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                  title="Settings"
-                >
-                  <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-                </button>
-              )}
-
-              {/* Theme Toggle */}
-              <button
-                onClick={async () => {
-                  const newTheme = theme === 'dark' ? 'light' : 'dark';
-                  setTheme(newTheme);
-                  await updateUserPreferences({ darkMode: newTheme === 'dark' });
-                  await addNotification('success', `Switched to ${newTheme} mode`);
-                }}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-              >
-                {theme === 'dark' ? (
-                  <Sun className="w-5 h-5 text-slate-400" />
-                ) : (
-                  <Moon className="w-5 h-5 text-gray-600" />
-                )}
-              </button>
-
-              {/* User Menu */}
-              <button
-                onClick={() => {
-                  // Only open profile modal for non-patient users
-                  // Patients use the profile tab in patient portal
-                  if (user?.role !== 'patient') {
-                    handleSetShowForm('userProfile');
-                  }
-                }}
-                className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${user?.role === 'patient' ? 'cursor-default' : 'hover:bg-slate-800'}`}
-                title={`${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''} (${user?.role || 'user'})`}
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  {getUserInitials()}
-                </div>
-                <div className="text-left">
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{`${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''}`.trim() || 'User'}</p>
-                  <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.role || 'user'}</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  api.clearToken();
-                  setIsAuthenticated(false);
-                  setUser(null);
-                }}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-gray-600'}`}
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* ── Three-pane app shell ──────────────────────────────────────────── */}
+      <AppShell
+        theme={theme}
+        navigation={navigation}
+        activeGroup={activeGroup}
+        activeItem={activeItem}
+        onSelectGroup={handleSelectNavGroup}
+        onSelectItem={handleSelectNavItem}
+        topBar={{
+          user,
+          notificationCount: notifications.length,
+          onLogoClick: () => handleSelectNavItem({ module: user?.role === 'patient' ? 'patientPortal' : 'dashboard' }),
+          onSearch: () => setShowSearch(!showSearch),
+          onNotifications: () => setShowNotifications(!showNotifications),
+          onHelp: () => setShowHelpDrawer(!showHelpDrawer),
+          onAssistant: () => setShowAIAssistant(!showAIAssistant),
+          onSettings: () => handleSetShowForm('settings'),
+          onProfile: () => {
+            // Patients manage their profile from the portal's profile tab
+            if (user?.role !== 'patient') handleSetShowForm('userProfile');
+          },
+          onLogout: () => {
+            api.clearToken();
+            setIsAuthenticated(false);
+            setUser(null);
+          },
+          onToggleTheme: async () => {
+            const newTheme = theme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+            await updateUserPreferences({ darkMode: newTheme === 'dark' });
+            await addNotification('success', `Switched to ${newTheme} mode`);
+          },
+        }}
+      >
         {/* Forms - appointment, patient, task, claim, diagnosis are now handled in their respective views */}
         {/* Only forms not handled by specific views are rendered here */}
 
@@ -952,7 +979,7 @@ function App() {
 
         {/* Main View Content */}
         {renderModule()}
-      </main>
+      </AppShell>
 
       {/* Floating AI Assistant Button */}
       {!showAIAssistant && (
@@ -1269,7 +1296,7 @@ function App() {
           addNotification={addNotification}
         />
       )}
-    </div>
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp, X, Receipt, FileText, Tag, Bell, ArrowRightLeft, Percent } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, CreditCard, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp, X, Receipt, FileText, Tag, Bell, ArrowRightLeft, Percent } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import NewPaymentForm from '../components/forms/NewPaymentForm';
 import NewClaimForm from '../components/forms/NewClaimForm';
@@ -13,9 +13,12 @@ import NewCouponForm from '../components/forms/NewCouponForm';
 import NewBillingPaymentForm from '../components/forms/NewBillingPaymentForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
+import { useShellTab } from '../hooks/useShellTab';
 
 const RCMView = ({
   theme,
+  activeTab: shellTab,
+  onTabChange,
   claims,
   patients,
   setShowForm,
@@ -30,7 +33,7 @@ const RCMView = ({
   t = {},
   currency = 'USD',
 }) => {
-  const [activeTab, setActiveTab] = useState('claims');
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'claims');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [showInsurancePayerForm, setShowInsurancePayerForm] = useState(false);
@@ -1680,13 +1683,6 @@ const RCMView = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
           <div>
             <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               Revenue Cycle Management
@@ -1698,7 +1694,8 @@ const RCMView = ({
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — hidden when the app shell's secondary pane already lists them */}
+      {!tabsInShell && (
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
           { id: 'claims', label: 'Claims', icon: DollarSign, count: claims.length },
@@ -1735,6 +1732,7 @@ const RCMView = ({
           );
         })}
       </div>
+      )}
 
       {/* Add Button for Active Tab */}
       <div className="flex justify-end">

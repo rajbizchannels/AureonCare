@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Clock, CheckCircle, XCircle, Bell, User, Calendar, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Bell, User, Calendar, RefreshCw } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { formatDate } from '../utils/formatters';
 import { useAudit } from '../hooks/useAudit';
@@ -126,15 +126,6 @@ const WaitlistManagementView = ({
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
-              }`}
-              title="Back to Dashboard"
-            >
-              <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-            </button>
             <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {t.waitlistManagement || 'Waitlist Management'}
             </h2>

@@ -159,6 +159,7 @@ export const modulePermissions = {
   telehealth: 'appointments', // Requires appointments.view
   rcm: 'billing', // Requires billing.view (uses billing key for backwards compat)
   accounts: 'accounts', // Requires accounts.view
+  inventory: null, // No dedicated permission yet — open to all authenticated staff
   crm: 'crm', // Requires crm.view
   reports: 'reports', // Requires reports.view
   integrations: 'admin', // Requires admin permissions
@@ -203,6 +204,14 @@ export const canAccessModule = (user, moduleId) => {
   // Patient portal is accessible to patients only
   if (moduleId === 'patientPortal') {
     return user.role === 'patient';
+  }
+
+  // Patients only ever get the portal and the dashboard. Their permission rows
+  // (ehr.view, appointments.view, …) describe access to *their own* data
+  // through the portal, not to the staff-facing consoles, so the shell must not
+  // offer those consoles in the navigation.
+  if (user.role === 'patient') {
+    return moduleId === 'dashboard';
   }
 
   // Admin panel is only for admin

@@ -13,6 +13,7 @@ import FormTemplateLibrary from '../components/forms/FormTemplateLibrary';
 import SignatureCapture from '../components/forms/SignatureCapture';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { FORM_TEMPLATES, FORM_CATEGORIES } from '../data/formTemplates';
+import { useShellTab } from '../hooks/useShellTab';
 
 // ─── PDF Export ────────────────────────────────────────────────────────────
 const exportToPDF = async (template, submission, signatures) => {
@@ -136,6 +137,8 @@ const StatusBadge = ({ status }) => {
 // ─── Main View ──────────────────────────────────────────────────────────────
 const FormManagementView = ({
   theme = 'light',
+  activeTab: shellTab,
+  onTabChange,
   api,
   addNotification,
   user,
@@ -147,7 +150,7 @@ const FormManagementView = ({
   const { logViewAccess, logAction } = useAudit();
 
   // Tabs: templates | submissions | builder | audit
-  const [activeTab, setActiveTab] = useState('templates');
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'templates');
   const [subView, setSubView] = useState(null); // null | 'edit' | 'preview' | 'submit' | 'view'
 
   // Templates
@@ -727,15 +730,6 @@ const FormManagementView = ({
       <div className={`flex-shrink-0 px-6 py-4 border-b ${dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            {setCurrentModule && (
-              <button
-                onClick={() => setCurrentModule('dashboard')}
-                className={`p-2 rounded-lg border transition-colors ${dark ? 'border-slate-600 hover:bg-slate-700 text-slate-300' : 'border-gray-300 hover:bg-gray-50 text-gray-600'}`}
-                title="Back to Dashboard"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
             <div>
               <h1 className={`text-xl font-bold ${dark ? 'text-slate-100' : 'text-gray-900'}`}>Form Management</h1>
               <p className={`text-sm ${dark ? 'text-slate-400' : 'text-gray-500'}`}>Dynamic form builder, templates, eSignatures, and submissions</p>
@@ -774,7 +768,8 @@ const FormManagementView = ({
           ))}
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — the app shell's secondary pane replaces these when present */}
+        {!tabsInShell && (
         <div className="flex gap-1">
           {[
             { id: 'templates', label: 'Templates', icon: FileText },
@@ -788,6 +783,7 @@ const FormManagementView = ({
             </button>
           ))}
         </div>
+        )}
       </div>
 
       {/* Toolbar */}
