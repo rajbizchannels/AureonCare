@@ -3157,6 +3157,81 @@ const api = {
     return r.json();
   },
 
+  // ── FHIR tracking ──────────────────────────────────────────────────────────
+  // Every /api/fhir-tracking route sits behind `authenticate`, so these must go
+  // through authenticatedFetch — a bare fetch/axios call gets a 401.
+  getFhirTracking: async (trackingNumber) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/${encodeURIComponent(trackingNumber)}`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking'); }
+    const data = await r.json();
+    return data.tracking;
+  },
+  getFhirTrackingForResource: async (resourceType, resourceId) => {
+    const r = await authenticatedFetch(
+      `${API_BASE_URL}/fhir-tracking/resource/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`
+    );
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking'); }
+    const data = await r.json();
+    return data.tracking;
+  },
+  getFhirTrackingErrors: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/errors/action-required`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking errors'); }
+    const data = await r.json();
+    return data.errors || [];
+  },
+  getPatientFhirTrackingSummary: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/patient/${encodeURIComponent(patientId)}/summary`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking summary'); }
+    return r.json();
+  },
+  resolveFhirTrackingError: async (trackingId, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/${encodeURIComponent(trackingId)}/resolve-error`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to resolve error'); }
+    return r.json();
+  },
+
+  // ── Google Calendar sync (patient-scoped) ──────────────────────────────────
+  // /api/calendar-sync is authenticated and authorises the caller against the
+  // patient in the path, so these calls must carry the Bearer token.
+  getCalendarSyncStatus: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/status/${encodeURIComponent(patientId)}`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to check calendar status'); }
+    return r.json();
+  },
+  getCalendarAuthUrl: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/auth-url?patientId=${encodeURIComponent(patientId)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to start Google Calendar authorization');
+    return data.authUrl;
+  },
+  disconnectCalendarSync: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/disconnect/${encodeURIComponent(patientId)}`, {
+      method: 'DELETE'
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to disconnect Google Calendar'); }
+    return r.json();
+  },
+  syncAppointmentToCalendar: async (appointmentId, patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/sync-appointment`, {
+      method: 'POST',
+      body: JSON.stringify({ appointmentId, patientId })
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to sync appointment'); }
+    return r.json();
+  },
+  setCalendarAutoSync: async (patientId, enabled) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/auto-sync/${encodeURIComponent(patientId)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled })
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update auto-sync'); }
+    return r.json();
+  },
+
   // Token lifecycle helpers — called by LoginPage (store) and App logout (clear)
   storeToken: (token) => {
     try {

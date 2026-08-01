@@ -9,6 +9,7 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
 import { useAudit } from '../hooks/useAudit';
 import { useShellTab } from '../hooks/useShellTab';
+import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
 
 const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange }) => {
   const { language, setLanguage, setTheme } = useApp();
@@ -966,6 +967,13 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   // Appointments View
   const renderAppointments = () => (
     <div className="space-y-6">
+      {/* Patients can push their appointments to their own Google Calendar */}
+      <GoogleCalendarIntegration
+        patientId={user?.id}
+        theme={theme}
+        addNotification={addNotification}
+      />
+
       <div className="flex justify-between items-center">
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           {t.myAppointments}
