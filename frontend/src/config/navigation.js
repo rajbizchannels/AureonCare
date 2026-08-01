@@ -824,6 +824,39 @@ export const getNavigation = (t = {}) => [
   },
 ];
 
+/**
+ * Navigation for a signed-in patient.
+ *
+ * A patient's whole app is their portal, so Home *is* the portal: appointments,
+ * diagnoses, prescriptions, records and requested forms sit under it as the
+ * portal's own tabs. The group holds a single destination, which makes the
+ * shell drop its secondary pane — panes 2 and 3 merge into one surface — and
+ * none of the practice-side modules are reachable from here.
+ */
+export const getPatientNavigation = (t = {}) => [
+  {
+    id: 'home',
+    label: t.home || 'Home',
+    icon: LayoutDashboard,
+    color: 'from-cyan-500 to-blue-500',
+    sections: [
+      {
+        id: 'home.portal',
+        label: null,
+        items: [
+          {
+            id: 'home.patientPortal',
+            label: t.patientPortal || 'Patient Portal',
+            description: t.patientPortalNavDescription || 'Your health at a glance',
+            icon: UserCircle,
+            module: 'patientPortal',
+          },
+        ],
+      },
+    ],
+  },
+];
+
 /** The plan/role gate id for an item (falls back to its module id). */
 export const accessIdFor = (item) => item.access || item.module;
 
