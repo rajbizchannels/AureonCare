@@ -41,13 +41,18 @@ const SecondaryNav = ({
     const active = item.id === activeItemId;
     const hasChildren = item.children && item.children.length > 0;
     const expanded = hasChildren && (toggled[item.id] ?? holdsActive(item));
+    // A branch with no destination of its own (e.g. a report category) exists
+    // only to group its children, so its label toggles rather than navigates.
+    const isGroupingOnly = hasChildren && !item.module && !item.action;
+    const toggle = () => setToggled((prev) => ({ ...prev, [item.id]: !expanded }));
 
     return (
       <React.Fragment key={item.id}>
         <div className="flex items-stretch">
           <button
-            onClick={() => onSelectItem(item)}
+            onClick={() => (isGroupingOnly ? toggle() : onSelectItem(item))}
             aria-current={active ? 'page' : undefined}
+            aria-expanded={isGroupingOnly ? expanded : undefined}
             style={{ paddingLeft: `${12 + depth * 18}px` }}
             className={`flex-1 min-w-0 flex items-start gap-2.5 pr-2 py-2 rounded-lg text-left transition-colors ${
               active
@@ -78,7 +83,7 @@ const SecondaryNav = ({
 
           {hasChildren && (
             <button
-              onClick={() => setToggled((prev) => ({ ...prev, [item.id]: !expanded }))}
+              onClick={toggle}
               aria-expanded={expanded}
               aria-label={`${expanded ? 'Collapse' : 'Expand'} ${item.label}`}
               className={`px-1.5 rounded-lg transition-colors ${

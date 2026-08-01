@@ -342,7 +342,7 @@ const ReportChart = ({ type = 'bar', data = [], theme, onDataClick, valueFormatt
 // REPORT CATEGORIES CONFIG
 // ─────────────────────────────────────────────────────────────
 
-const REPORT_CATEGORIES = [
+export const REPORT_CATEGORIES = [
   {
     id: 'operational',
     name: 'Operational',
@@ -1424,7 +1424,11 @@ const CustomReportResultView = ({ result, config, theme, onBack, currency = 'USD
 // MAIN REPORTS VIEW COMPONENT
 // ─────────────────────────────────────────────────────────────
 
-const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api, currency = 'USD' }) => {
+const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api, currency = 'USD', activeTab: shellTab, onTabChange }) => {
+  // The app shell lists the report catalogue in its secondary pane and passes
+  // the selection down as "<categoryId>:<reportId>" (or "custom"). Rendered
+  // outside the shell the view keeps its own sidebar.
+  const tabsInShell = typeof onTabChange === 'function';
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [reportData, setReportData] = useState(null);
@@ -1478,14 +1482,33 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
     }
   }, [selectedReport, selectedCategory, dateRange, customStartDate, customEndDate]);
 
-  const selectReport = (cat, rep) => {
+  const selectReport = useCallback((cat, rep) => {
     setSelectedCategory(cat);
     setSelectedReport(rep);
     setReportData(null);
     setError(null);
     setChartConfig({});
     setCustomResult(null);
-  };
+  }, []);
+
+  // Mirror the shell's pane-2 selection into the view's own state.
+  useEffect(() => {
+    if (!tabsInShell) return;
+
+    if (shellTab === 'custom') {
+      setSelectedReport(null);
+      setSelectedCategory(null);
+      setShowCustomBuilder(true);
+      return;
+    }
+
+    const [catId, repId] = String(shellTab || '').split(':');
+    const cat = REPORT_CATEGORIES.find(c => c.id === catId);
+    const rep = cat?.reports.find(r => r.id === repId);
+    if (!cat || !rep) return;
+    if (selectedReport?.id === rep.id && selectedCategory?.id === cat.id) return;
+    selectReport(cat, rep);
+  }, [tabsInShell, shellTab, selectReport, selectedReport, selectedCategory]);
 
   const toggleCategory = (catId) => {
     setExpandedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
@@ -1589,7 +1612,8 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
 
   return (
     <div className="flex h-full gap-0">
-      {/* Sidebar */}
+      {/* Sidebar — replaced by the app shell's secondary pane when present */}
+      {!tabsInShell && (
       <div className={`w-64 shrink-0 border-r flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-200'}`}
         style={{ minHeight: 'calc(100vh - 120px)' }}>
         {/* Sidebar Header */}
@@ -1651,6 +1675,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
           })}
         </div>
       </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">

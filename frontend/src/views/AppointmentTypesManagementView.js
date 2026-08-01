@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentTypeForm from '../components/forms/NewAppointmentTypeForm';
@@ -29,11 +29,9 @@ const AppointmentTypesManagementView = ({
     });
   }, [logViewAccess]);
 
-  useEffect(() => {
-    loadAppointmentTypes();
-  }, [loadAppointmentTypes]);
-
-  const loadAppointmentTypes = async () => {
+  // Declared before the effect that depends on it — a `const` referenced from a
+  // dependency array is still in its temporal dead zone during that render.
+  const loadAppointmentTypes = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.getAppointmentTypes();
@@ -44,7 +42,11 @@ const AppointmentTypesManagementView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification]);
+
+  useEffect(() => {
+    loadAppointmentTypes();
+  }, [loadAppointmentTypes]);
 
   const handleDeleteClick = (id) => {
     setDeletingId(id);
