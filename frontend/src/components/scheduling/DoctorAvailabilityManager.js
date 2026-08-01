@@ -1,16 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, Plus, Trash2, Save, X } from 'lucide-react';
 
-const getAuthHeaders = () => {
-    const headers = { 'Content-Type': 'application/json' };
-    try {
-        const token = sessionStorage.getItem('token');
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-    } catch (e) {
-        console.error('Error reading token:', e);
-    }
-    return headers;
-};
+import { apiFetch } from '../../api/apiService';
+
 
 const DAYS_OF_WEEK = [
     { value: 0, label: 'Sunday' },
@@ -36,8 +28,7 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`/api/scheduling/availability/${providerId}`, {
-                headers: getAuthHeaders()
+            const response = await apiFetch(`/scheduling/availability/${providerId}`, {
             });
             if (!response.ok) throw new Error('Failed to fetch availability');
             const data = await response.json();
@@ -95,9 +86,8 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                 isAvailable: s.isAvailable !== false
             }));
 
-            const response = await fetch('/api/scheduling/availability/bulk', {
+            const response = await apiFetch('/scheduling/availability/bulk', {
                 method: 'POST',
-                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     providerId,
                     schedules: schedulesToSave
