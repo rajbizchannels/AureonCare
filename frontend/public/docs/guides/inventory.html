@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory Management - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📦 Inventory Management</h1>
+                    <p>Items, stock, purchase orders, and suppliers</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.3</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Inventory Management</h1>
+            <p>Found under <strong>Operations → Inventory</strong>. Track consumables, medications, and equipment — from purchase order through to consumption.</p>
+
+            <h2>Inventory Overview</h2>
+            <p>The overview shows:</p>
+            <ul>
+                <li>Total inventory value</li>
+                <li>Items at or below reorder point</li>
+                <li>Out-of-stock items</li>
+                <li>Open purchase orders</li>
+                <li>Recent stock movements</li>
+                <li>Expiring stock, where expiry dates are tracked</li>
+            </ul>
+
+            <h2>Items</h2>
+            <h3>Adding an Item</h3>
+            <ol>
+                <li>Go to <strong>Operations → Items</strong></li>
+                <li>Click <strong>+ New Item</strong></li>
+                <li>Enter the item details</li>
+                <li>Click <strong>Save Item</strong></li>
+            </ol>
+
+            <table>
+                <tr><th>Field</th><th>Description</th></tr>
+                <tr><td>Item Name</td><td>What the item is called (required)</td></tr>
+                <tr><td>SKU / Code</td><td>Your internal identifier</td></tr>
+                <tr><td>Category</td><td>Groups the item for reporting</td></tr>
+                <tr><td>Unit of Measure</td><td>Each, box, vial, ml, etc.</td></tr>
+                <tr><td>Unit Cost</td><td>What you pay per unit</td></tr>
+                <tr><td>Reorder Point</td><td>Stock level that triggers a low-stock alert</td></tr>
+                <tr><td>Reorder Quantity</td><td>How much to order when restocking</td></tr>
+                <tr><td>Preferred Supplier</td><td>Default supplier for purchase orders</td></tr>
+                <tr><td>Track Expiry</td><td>Whether the item carries expiry dates</td></tr>
+                <tr><td>Storage Location</td><td>Where it is kept</td></tr>
+            </table>
+
+            <h2>Stock Levels</h2>
+            <p><strong>Operations → Stock</strong> shows current quantity on hand for every item.</p>
+
+            <h3>Recording a Stock Movement</h3>
+            <ol>
+                <li>Go to <strong>Operations → Stock</strong></li>
+                <li>Find the item and click <strong>Adjust Stock</strong></li>
+                <li>Choose the movement type</li>
+                <li>Enter the quantity and a reason</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <table>
+                <tr><th>Type</th><th>Effect</th><th>Used When</th></tr>
+                <tr><td>Receipt</td><td>Increase</td><td>Stock arrives from a supplier</td></tr>
+                <tr><td>Consumption</td><td>Decrease</td><td>Item used during patient care</td></tr>
+                <tr><td>Adjustment</td><td>Either</td><td>Correcting a count discrepancy</td></tr>
+                <tr><td>Transfer</td><td>Moves</td><td>Shifting stock between locations</td></tr>
+                <tr><td>Write-off</td><td>Decrease</td><td>Damaged, expired, or lost stock</td></tr>
+            </table>
+
+            <p>Every movement is timestamped and attributed to the user who recorded it.</p>
+
+            <h3>Low-Stock Alerts</h3>
+            <p>When stock falls to the reorder point, inventory managers are notified by email and WhatsApp. The item stays flagged on the overview until stock is replenished.</p>
+
+            <h2>Purchase Orders</h2>
+            <h3>Raising an Order</h3>
+            <ol>
+                <li>Go to <strong>Operations → Purchase Orders</strong></li>
+                <li>Click <strong>+ New Purchase Order</strong></li>
+                <li>Select the supplier</li>
+                <li>Add line items — item, quantity, unit cost</li>
+                <li>Review the order total</li>
+                <li>Click <strong>Submit Order</strong></li>
+            </ol>
+
+            <h3>Order Statuses</h3>
+            <ul>
+                <li><strong>Draft</strong> — Being prepared, not yet sent</li>
+                <li><strong>Submitted</strong> — Sent to the supplier</li>
+                <li><strong>Confirmed</strong> — Supplier acknowledged</li>
+                <li><strong>Partially Received</strong> — Some lines delivered</li>
+                <li><strong>Received</strong> — All lines delivered</li>
+                <li><strong>Cancelled</strong> — Order withdrawn</li>
+            </ul>
+
+            <h3>Receiving Stock</h3>
+            <ol>
+                <li>Open the purchase order</li>
+                <li>Click <strong>Receive Stock</strong></li>
+                <li>Enter the quantity received per line — partial receipts are supported</li>
+                <li>Record batch numbers and expiry dates where the item tracks them</li>
+                <li>Click <strong>Confirm Receipt</strong></li>
+            </ol>
+            <p>Stock levels increase, and a bill is raised in Accounts Payable automatically.</p>
+
+            <h2>Suppliers</h2>
+            <p><strong>Operations → Suppliers</strong> holds your vendor list:</p>
+            <ul>
+                <li>Supplier name and account number</li>
+                <li>Contact person, phone, email</li>
+                <li>Address and delivery terms</li>
+                <li>Payment terms (e.g. Net 30)</li>
+                <li>Items typically supplied</li>
+            </ul>
+            <p>Supplier performance — order volume, on-time delivery, average lead time — is visible on the supplier record.</p>
+
+            <h2>Categories</h2>
+            <p><strong>Operations → Categories</strong> groups items for reporting and reorder policy. Categories can nest, for example <em>Consumables → Wound Care → Dressings</em>.</p>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>✓ Set realistic reorder points based on actual usage, not guesswork</li>
+                <li>✓ Count physical stock quarterly and reconcile against the system</li>
+                <li>✓ Record consumption at the point of use, not at the end of the week</li>
+                <li>✓ Review expiring stock monthly</li>
+                <li>✓ Match delivery notes against purchase orders before confirming receipt</li>
+                <li>✗ Don't let write-offs accumulate unexplained</li>
+                <li>✗ Don't order outside the purchase order system — the audit trail breaks</li>
+            </ul>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="accounting.html">Accounting</a></li>
+                <li><a href="financial-reports.html">Financial Reports</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.3 - Inventory Management</p>
+    </footer>
+</body>
+</html>
