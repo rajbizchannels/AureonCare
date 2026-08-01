@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Send, Calendar, Inbox, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Send, Calendar, Inbox, Search } from 'lucide-react';
 import NewCampaignForm from '../components/forms/NewCampaignForm';
 import { useAudit } from '../hooks/useAudit';
 
@@ -8,7 +8,6 @@ const CampaignsManagementView = ({
   api,
   setShowForm,
   setEditingCampaign,
-  setCurrentModule,
   addNotification,
   t = {}
 }) => {
@@ -78,16 +77,7 @@ const CampaignsManagementView = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('crm')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title={t.backToCRM || 'Back to CRM'}
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
-        </div>
+      <div className="flex items-center justify-end">
         <button
           onClick={() => {
             setEditingCampaignLocal(null);

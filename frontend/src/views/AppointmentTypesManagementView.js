@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Inbox, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Inbox, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentTypeForm from '../components/forms/NewAppointmentTypeForm';
 import { useAudit } from '../hooks/useAudit';
@@ -9,7 +9,6 @@ const AppointmentTypesManagementView = ({
   api,
   setShowForm,
   setEditingAppointmentType,
-  setCurrentModule,
   addNotification,
   t = {}
 }) => {
@@ -106,16 +105,7 @@ const AppointmentTypesManagementView = ({
       />
 
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentModule && setCurrentModule('crm')}
-              className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-              title={t.backToCRM || 'Back to CRM'}
-            >
-              <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-            </button>
-          </div>
+        <div className="flex items-center justify-end">
           <button
             onClick={() => {
               setEditingAppointmentTypeLocal(null);
