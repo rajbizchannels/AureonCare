@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, X, Users, AlertCircle } from 'lucide-react';
+import { Bot, X, AlertCircle } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -42,7 +42,7 @@ import FHIRView from './views/FHIRView';
 import AdminPanelView from './views/AdminPanelView';
 import OfferingManagementView from './views/OfferingManagementView';
 import PatientDiagnosisView from './views/PatientDiagnosisView';
-import PatientHistoryView from './views/PatientHistoryView';
+import PatientHistoryDirectoryView from './views/PatientHistoryDirectoryView';
 import CampaignsManagementView from './views/CampaignsManagementView';
 import AppointmentTypesManagementView from './views/AppointmentTypesManagementView';
 import PatientIntakeView from './views/PatientIntakeView';
@@ -261,6 +261,7 @@ function App() {
   const navLocation = findNavLocation(navigation, activeModule, activeTab);
   const activeGroup = navLocation?.group || navigation[0];
   const activeItem = navLocation?.item;
+  const activeTrail = navLocation?.trail || (activeItem ? [activeItem] : []);
 
   // Selects a sub-module tab from inside a view, keeping the shell in sync.
   const selectModuleTab = (moduleId, tab) => setNavSelection({ module: moduleId, tab });
@@ -436,16 +437,6 @@ function App() {
             addNotification={addNotification}
             user={user}
             t={t}
-            onViewHistory={(patient) => {
-              setSelectedPatient(patient);
-              setPatientHistoryInitialTab('overview');
-              setCurrentModule('patientHistory');
-            }}
-            onViewPrescriptions={(patient) => {
-              setSelectedPatient(patient);
-              setPatientHistoryInitialTab('prescriptions');
-              setCurrentModule('patientHistory');
-            }}
             onViewTelehealth={(patient) => {
               setCurrentModule('telehealth');
               addNotification('info', `Starting telehealth session with ${patient.first_name} ${patient.last_name}`);
@@ -466,40 +457,19 @@ function App() {
           />
         );
       case 'patientHistory':
-        // Reached from the shell without a patient in context — point the user
-        // at the record list rather than rendering an empty chart.
-        if (!selectedPatient) {
-          return (
-            <div className={`rounded-xl border p-10 text-center ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-gray-200'}`}>
-              <Users className={`w-10 h-10 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-300'}`} />
-              <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t.selectAPatient || 'Select a patient'}
-              </h3>
-              <p className={`text-sm mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                {t.selectAPatientHint || 'Open a chart from Patient Records to see the full history timeline.'}
-              </p>
-              <button
-                onClick={() => handleSelectNavItem({ module: 'ehr' })}
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                {t.ehr || 'Patient Records'}
-              </button>
-            </div>
-          );
-        }
+        // The roster is the module; a row expands into that patient's chart.
+        // Arriving with a patient already picked (search, quick view) simply
+        // opens that row.
         return (
-          <PatientHistoryView
+          <PatientHistoryDirectoryView
             theme={theme}
             api={api}
+            patients={patients}
             addNotification={addNotification}
             user={user}
-            patient={selectedPatient}
+            t={t}
+            initialPatientId={selectedPatient?.id || null}
             initialTab={patientHistoryInitialTab}
-            onBack={() => {
-              setCurrentModule('dashboard');
-              setSelectedPatient(null);
-              setPatientHistoryInitialTab('overview'); // Reset to default
-            }}
           />
         );
       case 'telehealth':
@@ -852,6 +822,7 @@ function App() {
         navigation={navigation}
         activeGroup={activeGroup}
         activeItem={activeItem}
+        activeTrail={activeTrail}
         onSelectGroup={handleSelectNavGroup}
         onSelectItem={handleSelectNavItem}
         topBar={{

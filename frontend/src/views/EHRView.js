@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Calendar, Phone, Mail, Edit, History, Pill, User, Search, Video } from 'lucide-react';
+import { Plus, FileText, Calendar, Phone, Mail, Edit, User, Search, Video } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 import NewPatientForm from '../components/forms/NewPatientForm';
 import ViewEditModal from '../components/modals/ViewEditModal';
@@ -25,8 +25,6 @@ const EHRView = ({
   addNotification,
   user,
   t,
-  onViewHistory,
-  onViewPrescriptions,
   onViewTelehealth
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -232,40 +230,6 @@ const EHRView = ({
                             title="Edit Patient Chart"
                           >
                             <Edit className="w-4 h-4" />
-                          </button>
-
-                          {/* View History */}
-                          <button
-                            onClick={() => {
-                              if (onViewHistory) {
-                                onViewHistory(patient);
-                              }
-                            }}
-                            className={`p-2 rounded-lg transition-colors ${
-                              theme === 'dark'
-                                ? 'hover:bg-teal-500/20 text-teal-400'
-                                : 'hover:bg-teal-100 text-teal-600'
-                            }`}
-                            title="View Patient History"
-                          >
-                            <History className="w-4 h-4" />
-                          </button>
-
-                          {/* View Prescriptions */}
-                          <button
-                            onClick={() => {
-                              if (onViewPrescriptions) {
-                                onViewPrescriptions(patient);
-                              }
-                            }}
-                            className={`p-2 rounded-lg transition-colors ${
-                              theme === 'dark'
-                                ? 'hover:bg-green-500/20 text-green-400'
-                                : 'hover:bg-green-100 text-green-600'
-                            }`}
-                            title="View Prescriptions"
-                          >
-                            <Pill className="w-4 h-4" />
                           </button>
 
                           {/* Telehealth */}

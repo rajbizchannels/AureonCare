@@ -858,16 +858,33 @@ export const defaultItemFor = (group) => groupItems(group).find((item) => item.m
  * Locate the group + item matching the module/tab currently on screen.
  * `tab` is compared loosely: an item without a tab matches any tab, so a module
  * still highlights its first entry when the shell has no sub-module selected.
+ *
+ * `trail` is the ancestry from the group's top-level item down to the match, so
+ * a nested destination (a report inside its category) can name every step.
  */
 export const findNavLocation = (navigation, moduleId, tab) => {
   let looseMatch = null;
 
+  const search = (items, ancestors, group) => {
+    for (const item of items) {
+      const trail = ancestors.concat(item);
+
+      if (item.module === moduleId) {
+        if (item.tab && tab && item.tab === tab) return { group, item, trail };
+        if (!item.tab && !tab) return { group, item, trail };
+        if (!looseMatch) looseMatch = { group, item, trail };
+      }
+
+      const nested = search(item.children || [], trail, group);
+      if (nested) return nested;
+    }
+    return null;
+  };
+
   for (const group of navigation) {
-    for (const item of groupItems(group)) {
-      if (item.module !== moduleId) continue;
-      if (item.tab && tab && item.tab === tab) return { group, item };
-      if (!item.tab && !tab) return { group, item };
-      if (!looseMatch) looseMatch = { group, item };
+    for (const section of group.sections) {
+      const match = search(section.items, [], group);
+      if (match) return match;
     }
   }
 

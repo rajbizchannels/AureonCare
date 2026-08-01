@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  User, Calendar, Activity, FileText, Pill, ArrowLeft,
+  User, Calendar, Activity, FileText, Pill,
   Edit, Trash2, Plus, Clock, MapPin, Phone, Mail, Microscope, Printer,
   Heart, Ruler, Scale, Droplet, Users, Video, Loader2
 } from 'lucide-react';
@@ -27,7 +27,7 @@ const toTitleCase = (str) => {
     .join(' ');
 };
 
-const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack, initialTab = 'overview' }) => {
+const PatientHistoryView = ({ theme, api, addNotification, user, patient, initialTab = 'overview', embedded = false }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
 
@@ -1354,61 +1354,57 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className={`flex items-center justify-center ${embedded ? 'py-16' : 'min-h-screen'}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
+  // Embedded, the chart sits inside a row that already names the patient and
+  // supplies its own frame, so it drops the page chrome and the centring rail.
+  const frame = embedded ? '' : 'max-w-7xl mx-auto px-6';
+  const canStartTelehealth = isProvider(user) || isPatient(user);
+
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
-      {/* Header with Back Button */}
-      <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={onBack}
-                className={`p-2 rounded-lg transition-colors ${
-                  theme === 'dark'
-                    ? 'hover:bg-slate-700 text-slate-300'
-                    : 'hover:bg-gray-100 text-gray-600'
-                }`}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {patientData.first_name} {patientData.last_name}
-                </h1>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  Patient History
-                </p>
-              </div>
+    <div className={embedded ? '' : `min-h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+      {(!embedded || canStartTelehealth) && (
+        <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+          <div className={`${frame} py-4`}>
+            <div className={`flex items-center ${embedded ? 'justify-end' : 'justify-between'}`}>
+              {!embedded && (
+                <div>
+                  <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {patientData.first_name} {patientData.last_name}
+                  </h1>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Patient History
+                  </p>
+                </div>
+              )}
+              {canStartTelehealth && (
+                <button
+                  onClick={() => handleStartTelehealth()}
+                  disabled={telehealthLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+                  title="Start Telehealth Session"
+                >
+                  {telehealthLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Video className="w-4 h-4" />
+                  )}
+                  {telehealthLoading ? 'Starting...' : 'Start Telehealth Session'}
+                </button>
+              )}
             </div>
-            {(isProvider(user) || isPatient(user)) && (
-              <button
-                onClick={() => handleStartTelehealth()}
-                disabled={telehealthLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
-                title="Start Telehealth Session"
-              >
-                {telehealthLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Video className="w-4 h-4" />
-                )}
-                {telehealthLoading ? 'Starting...' : 'Start Telehealth Session'}
-              </button>
-            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tab Navigation */}
       <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-1">
+        <div className={frame}>
+          <div className="flex gap-1 overflow-x-auto">
             {[
               { id: 'overview', label: 'Patient Chart', icon: Heart, count: null },
               { id: 'diagnoses', label: 'Diagnoses', icon: Activity, count: diagnoses.length },
@@ -1422,7 +1418,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 shrink-0 whitespace-nowrap transition-colors ${
                     activeTab === tab.id
                       ? theme === 'dark'
                         ? 'border-blue-500 text-blue-400'
@@ -1455,7 +1451,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       </div>
 
       {/* Inline Forms Area - Between tabs and content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className={`${frame} py-6`}>
         {/* Appointment Form - shown when adding new appointment */}
         {showAppointmentForm && (
           <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
