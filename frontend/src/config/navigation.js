@@ -353,13 +353,6 @@ export const getNavigation = (t = {}) => [
         label: t.clinicalServices || 'Clinical Services',
         items: [
           {
-            id: 'clinical.services',
-            label: t.servicesConsole || 'Services Console',
-            description: t.servicesConsoleDescription || 'Pharmacies, labs and FHIR',
-            icon: Activity,
-            module: 'clinicalServices',
-          },
-          {
             id: 'clinical.pharmacies',
             label: t.pharmacies || 'Pharmacies',
             description: t.pharmaciesDescription || 'Pharmacy directory',
