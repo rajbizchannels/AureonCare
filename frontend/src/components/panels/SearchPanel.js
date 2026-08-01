@@ -14,7 +14,10 @@ import {
   Briefcase,
   Megaphone,
   Shield,
-  AlertCircle
+  AlertCircle,
+  Receipt,
+  CreditCard,
+  Tag
 } from 'lucide-react';
 import { formatDate, formatTime } from '../../utils/formatters';
 import api from '../../api/apiService';
@@ -96,6 +99,14 @@ const SearchPanel = ({
         return <Shield {...iconProps} className="w-5 h-5 text-amber-400" />;
       case 'denial':
         return <AlertCircle {...iconProps} className="w-5 h-5 text-rose-400" />;
+      case 'billing_quote':
+        return <FileText {...iconProps} className="w-5 h-5 text-sky-400" />;
+      case 'billing_invoice':
+        return <Receipt {...iconProps} className="w-5 h-5 text-lime-400" />;
+      case 'billing_coupon':
+        return <Tag {...iconProps} className="w-5 h-5 text-fuchsia-400" />;
+      case 'billing_payment':
+        return <CreditCard {...iconProps} className="w-5 h-5 text-yellow-400" />;
       default:
         return <FileText {...iconProps} className="w-5 h-5 text-gray-400" />;
     }
@@ -116,7 +127,11 @@ const SearchPanel = ({
       offering: 'Service Offering',
       campaign: 'Campaign',
       preapproval: 'Pre-authorization',
-      denial: 'Denial'
+      denial: 'Denial',
+      billing_quote: 'Billing Quote',
+      billing_invoice: 'Billing Invoice',
+      billing_coupon: 'Billing Coupon',
+      billing_payment: 'Billing Payment'
     };
     return labels[resultType] || resultType;
   };

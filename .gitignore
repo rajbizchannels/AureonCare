@@ -1,4 +1,12 @@
 node_modules
 frontend/build
 /backend/uploads/medical-records
+
+# Environment files — never commit secrets
+backend/.env
+frontend/.env
+
 ~$ER_MANUAL.docx
+assets/aureoncare-logo.png
+AureonCare_Executive_Presentation.pptx
+AureonCare_Executive_Presentation1.pptx

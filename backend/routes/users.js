@@ -1,6 +1,19 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate, authorize } = require('../middleware/auth');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
+const { enforceUserQuota, enforceProviderQuota } = require('../middleware/planEnforcement');
+
+// All user routes require a valid JWT
+router.use(authenticate);
+
+// Reusable guard: passes if caller is admin OR is acting on their own record
+const isSelfOrAdmin = (req, res, next) => {
+  if (req.user.role === 'admin' || String(req.user.id) === String(req.params.id)) {
+    return next();
+  }
+  return res.status(403).json({ error: 'Access denied' });
+};
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -23,8 +36,8 @@ const toCamelCase = (obj) => {
   return newObj;
 };
 
-// Get all users
-router.get('/', async (req, res) => {
+// Get all users — admin only
+router.get('/', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(`
@@ -40,8 +53,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single user
-router.get('/:id', async (req, res) => {
+// Get single user — admin or own user
+router.get('/:id', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
@@ -62,8 +75,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new user
-router.post('/', async (req, res) => {
+// Create new user — admin only (quota + provider-seat checks run after)
+router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, async (req, res) => {
   const { firstName, lastName, first_name, last_name, role, practice, avatar, email, phone, license, specialty, preferences, status, password } = req.body;
 
   try {
@@ -98,11 +111,90 @@ router.post('/', async (req, res) => {
         license,
         specialty,
         JSON.stringify(preferences || {}),
-        status || 'pending',
+        status || 'active',
         passwordHash
       ]
     );
-    res.status(201).json(toCamelCase(result.rows[0]));
+
+    const newUser = result.rows[0];
+
+    // Auto-create ancillary role records — non-fatal so the user creation
+    // response always succeeds even if these steps fail.
+
+    if (newUser.role === 'doctor' && newUser.email) {
+      // Create providers record with id = user.id (migration 025 schema)
+      try {
+        const providerCheck = await pool.query(
+          'SELECT id FROM providers WHERE id = $1 OR email = $2 LIMIT 1',
+          [newUser.id, newUser.email]
+        );
+        if (providerCheck.rows.length === 0) {
+          await pool.query(
+            `INSERT INTO providers (id, first_name, last_name, specialization, email, phone, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+            [newUser.id, newUser.first_name, newUser.last_name, newUser.specialty || 'General Practice', newUser.email, newUser.phone]
+          );
+        }
+      } catch (providerErr) {
+        console.error('Non-fatal: failed to auto-create provider record for new doctor user:', providerErr.message);
+      }
+
+      try {
+        const doctorRoleResult = await pool.query(
+          "SELECT id FROM roles WHERE name = 'doctor' AND is_active = true LIMIT 1"
+        );
+        if (doctorRoleResult.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [newUser.id, doctorRoleResult.rows[0].id]
+          );
+        }
+      } catch (roleErr) {
+        console.error('Non-fatal: failed to assign doctor role for new user:', roleErr.message);
+      }
+    }
+
+    if ((newUser.role || 'patient') === 'patient' && newUser.email) {
+      // Create patients record with id = user.id (migration 023 schema)
+      try {
+        const patientCheck = await pool.query(
+          'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
+          [newUser.id, newUser.email]
+        );
+
+        if (patientCheck.rows.length === 0) {
+          const mrnResult = await pool.query(
+            "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
+          );
+          const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
+          const mrn = `MRN-${nextMrnNumber}`;
+
+          await pool.query(
+            `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, phone, status, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, '1990-01-01', $5, $6, 'active', NOW(), NOW())`,
+            [newUser.id, newUser.first_name, newUser.last_name, mrn, newUser.email, newUser.phone]
+          );
+        }
+      } catch (patientErr) {
+        console.error('Non-fatal: failed to auto-create patient record for new user:', patientErr.message);
+      }
+
+      try {
+        const patientRoleResult = await pool.query(
+          "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
+        );
+        if (patientRoleResult.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [newUser.id, patientRoleResult.rows[0].id]
+          );
+        }
+      } catch (roleErr) {
+        console.error('Non-fatal: failed to assign patient role for new user:', roleErr.message);
+      }
+    }
+
+    res.status(201).json(toCamelCase(newUser));
   } catch (error) {
     console.error('Error creating user:', error);
 
@@ -126,9 +218,9 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update user
-router.put('/:id', async (req, res) => {
-  const { firstName, lastName, first_name, last_name, role, avatar, email, phone, license, specialty, preferences, status, language, country, password } = req.body;
+// Update user — admin or own user
+router.put('/:id', isSelfOrAdmin, async (req, res) => {
+  const { firstName, lastName, first_name, last_name, role, avatar, email, phone, address, practice, license, specialty, preferences, status, language, country, password } = req.body;
 
   try {
     const pool = req.app.locals.pool;
@@ -174,7 +266,9 @@ router.put('/:id', async (req, res) => {
            phone = COALESCE($6, phone),
            license_number = COALESCE($7, license_number),
            specialty = COALESCE($8, specialty),
-           preferences = COALESCE($9, preferences),
+           preferences = CASE WHEN $9::jsonb IS NOT NULL
+                              THEN preferences || $9::jsonb
+                              ELSE preferences END,
            status = COALESCE($10, status),
            language = COALESCE($11, language),
            country = COALESCE($12, country),
@@ -198,7 +292,7 @@ router.put('/:id', async (req, res) => {
         country,
         timezone,
         passwordHash,
-        req.params.id
+        req.params.id,
       ]
     );
 
@@ -206,117 +300,64 @@ router.put('/:id', async (req, res) => {
 
     // Handle role-based table synchronization
     if (oldRole !== newRole) {
-      // Check if user_id column exists in providers and patients tables
-      const providerColumnCheck = await pool.query(`
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'providers' AND column_name = 'user_id'
-      `);
-      const patientColumnCheck = await pool.query(`
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'patients' AND column_name = 'user_id'
-      `);
-
-      const hasProviderUserIdColumn = providerColumnCheck.rows.length > 0;
-      const hasPatientUserIdColumn = patientColumnCheck.rows.length > 0;
-
-      // If new role is doctor, add to providers table
+      // If new role is doctor, ensure a providers record exists with id = user.id
       if (newRole === 'doctor') {
-        // Check if already exists in providers
         const providerCheck = await pool.query(
-          'SELECT id FROM providers WHERE email = $1',
-          [updatedUser.email]
+          'SELECT id FROM providers WHERE id = $1 OR email = $2 LIMIT 1',
+          [updatedUser.id, updatedUser.email]
         );
 
         if (providerCheck.rows.length === 0) {
-          if (hasProviderUserIdColumn) {
-            // Include user_id if column exists
-            await pool.query(
-              `INSERT INTO providers (first_name, last_name, specialization, email, phone, user_id)
-               VALUES ($1, $2, $3, $4, $5, $6)`,
-              [
-                updatedUser.first_name,
-                updatedUser.last_name,
-                updatedUser.specialty || 'General Practice',
-                updatedUser.email,
-                updatedUser.phone,
-                updatedUser.id
-              ]
-            );
-          } else {
-            // Exclude user_id if column doesn't exist
-            await pool.query(
-              `INSERT INTO providers (first_name, last_name, specialization, email, phone)
-               VALUES ($1, $2, $3, $4, $5)`,
-              [
-                updatedUser.first_name,
-                updatedUser.last_name,
-                updatedUser.specialty || 'General Practice',
-                updatedUser.email,
-                updatedUser.phone
-              ]
-            );
-          }
+          // providers.id = users.id (migration 025 schema)
+          await pool.query(
+            `INSERT INTO providers (id, first_name, last_name, specialization, email, phone, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+            [
+              updatedUser.id,
+              updatedUser.first_name,
+              updatedUser.last_name,
+              updatedUser.specialty || 'General Practice',
+              updatedUser.email,
+              updatedUser.phone
+            ]
+          );
         }
 
-        // NOTE: We do NOT remove from patients table
-        // A user can be both a doctor (provider) and a patient
-        // Medical records (FHIR resources) must be preserved
-        // This prevents foreign key constraint violations
+        // NOTE: We do NOT remove from patients table — a user can be both a doctor
+        // and a patient; medical records and FK integrity must be preserved.
       }
-      // If new role is patient, add to patients table
+      // If new role is patient, ensure a patients record exists with id = user.id
       else if (newRole === 'patient') {
-        // Check if already exists in patients
         const patientCheck = await pool.query(
-          'SELECT id FROM patients WHERE email = $1',
-          [updatedUser.email]
+          'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
+          [updatedUser.id, updatedUser.email]
         );
 
         if (patientCheck.rows.length === 0) {
-          // Generate unique MRN
           const mrnResult = await pool.query(
-            'SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE \'MRN-%\''
+            "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
           );
           const nextMrnNumber = (mrnResult.rows[0].max_mrn || 1000) + 1;
           const mrn = `MRN-${nextMrnNumber}`;
 
-          if (hasPatientUserIdColumn) {
-            // Include user_id if column exists
-            await pool.query(
-              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, user_id, status)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active')`,
-              [
-                updatedUser.first_name,
-                updatedUser.last_name,
-                mrn,
-                updatedUser.dob || '1990-01-01', // Default DOB if not provided
-                updatedUser.email,
-                updatedUser.phone,
-                updatedUser.id
-              ]
-            );
-          } else {
-            // Exclude user_id if column doesn't exist
-            await pool.query(
-              `INSERT INTO patients (first_name, last_name, mrn, dob, email, phone, status)
-               VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
-              [
-                updatedUser.first_name,
-                updatedUser.last_name,
-                mrn,
-                updatedUser.dob || '1990-01-01', // Default DOB if not provided
-                updatedUser.email,
-                updatedUser.phone
-              ]
-            );
-          }
+          // patients.id = users.id (migration 023 schema)
+          await pool.query(
+            `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, phone, status, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NOW(), NOW())`,
+            [
+              updatedUser.id,
+              updatedUser.first_name,
+              updatedUser.last_name,
+              mrn,
+              updatedUser.dob || updatedUser.date_of_birth || '1990-01-01',
+              updatedUser.email,
+              updatedUser.phone
+            ]
+          );
         }
 
-        // NOTE: We do NOT remove from providers table
-        // A user can have multiple roles (e.g., a doctor who becomes a patient)
-        // Provider records should be preserved for historical appointment data
-        // This maintains referential integrity with appointments and other records
+        // NOTE: We do NOT remove from providers table — historical appointment data
+        // and FK integrity must be preserved.
       }
     }
 
@@ -344,8 +385,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete user
-router.delete('/:id', async (req, res) => {
+// Delete user — admin only
+router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(
@@ -364,8 +405,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Update user language preference
-router.put('/:id/language', async (req, res) => {
+// Update user language preference — admin or own user
+router.put('/:id/language', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { language } = req.body;
@@ -402,8 +443,8 @@ router.put('/:id/language', async (req, res) => {
   }
 });
 
-// Switch active role (for users with multiple roles)
-router.put('/:id/switch-role', async (req, res) => {
+// Switch active role — own user only
+router.put('/:id/switch-role', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { role_name } = req.body;
@@ -451,8 +492,8 @@ router.put('/:id/switch-role', async (req, res) => {
   }
 });
 
-// Get user's roles
-router.get('/:id/roles', async (req, res) => {
+// Get user's roles — admin or own user
+router.get('/:id/roles', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 
@@ -474,8 +515,8 @@ router.get('/:id/roles', async (req, res) => {
   }
 });
 
-// Assign role to user
-router.post('/:id/roles', async (req, res) => {
+// Assign role to user — admin only
+router.post('/:id/roles', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { role_id, assigned_by } = req.body;
@@ -536,8 +577,8 @@ router.post('/:id/roles', async (req, res) => {
   }
 });
 
-// Remove role from user
-router.delete('/:id/roles/:role_id', async (req, res) => {
+// Remove role from user — admin only
+router.delete('/:id/roles/:role_id', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 

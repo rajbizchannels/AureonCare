@@ -1,16 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus, Heart, Star, Clock } from 'lucide-react';
-import { formatDate, formatTime } from '../utils/formatters';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight } from 'lucide-react';
+import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
+import { FORM_TEMPLATES } from '../data/formTemplates';
+import { formatDate, formatTime, toLocalDateString } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
 import { useAudit } from '../hooks/useAudit';
+import { useShellTab } from '../hooks/useShellTab';
+import { apiFetch } from '../api/apiService';
+import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
+import AddToCalendarButton from '../components/calendar/AddToCalendarButton';
+import { useCalendarSync } from '../components/calendar/useCalendarSync';
 
-const PatientPortalView = ({ theme, api, addNotification, user }) => {
+const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange }) => {
   const { language, setLanguage, setTheme } = useApp();
   const t = getTranslations(language);
-  const [currentView, setCurrentView] = useState('profile'); // profile (overview), appointments, diagnoses, prescriptions, records, bookAppointment
+  // profile (overview), appointments, diagnoses, prescriptions, records,
+  // forms, bookAppointment — listed in the shell's secondary pane when the
+  // portal is rendered inside it.
+  const [currentView, setCurrentView, tabsInShell] = useShellTab(shellTab, onTabChange, 'profile');
+
+  // Google Calendar status, read once and shared by the connect card and the
+  // per-appointment "Add to Google Calendar" buttons.
+  const calendarSync = useCalendarSync(user?.id);
 
   // Data states
   const [appointments, setAppointments] = useState([]);
@@ -46,6 +60,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [hidesFeaturedOfferings, setHidesFeaturedOfferings] = useState(false);
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingPayers, setLoadingPayers] = useState(true);
+  const [pendingForms, setPendingForms] = useState([]);
+  const [loadingForms, setLoadingForms] = useState(false);
+  const [activePendingForm, setActivePendingForm] = useState(null);
+  const [activeFormData, setActiveFormData] = useState({});
+  const [submittingForm, setSubmittingForm] = useState(false);
 
   // Appointment booking state
   const [bookingData, setBookingData] = useState({
@@ -71,6 +90,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [loadingEditSlots, setLoadingEditSlots] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
   const [appointmentToCancel, setAppointmentToCancel] = useState(null);
+  const [waitlistConfirmation, setWaitlistConfirmation] = useState(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
@@ -84,48 +104,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       module: 'Patient Portal',
       patient_id: user?.id,
     });
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      // Initialize profile data from user
-      let parsedUser = { ...user };
-
-      // Always preserve the original address field (even if null/empty)
-      parsedUser.address = user.address || '';
-
-      // Ensure country is preserved
-      parsedUser.country = user.country || '';
-
-      // Convert language code to full name for display
-      const codeToNameMap = {
-        'en': 'English',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'ar': 'Arabic'
-      };
-      if (parsedUser.language && codeToNameMap[parsedUser.language]) {
-        parsedUser.language = codeToNameMap[parsedUser.language];
-      } else if (!parsedUser.language) {
-        parsedUser.language = 'English'; // Default
-      }
-
-      setProfileData(parsedUser);
-      fetchPatientData();
-      fetchProviders();
-      fetchPharmacyData();
-      fetchWaitlist();
-      loadFeaturedOfferings();
-      fetchInsurancePayers();
-    }
-    // Fetch appointment types on component mount (doesn't require user)
-    fetchAppointmentTypes();
-    // Load WhatsApp preference
-    loadWhatsAppPreference();
-    // Load featured offerings hide preference
-    loadFeaturedOfferingsPreference();
-  }, [user]);
+  }, [logViewAccess, user?.id]);
 
   // Load featured offerings hide preference
   const loadFeaturedOfferingsPreference = () => {
@@ -134,17 +113,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       setHidesFeaturedOfferings(hidden === 'true');
     } catch (error) {
       console.error('Error loading featured offerings preference:', error);
-    }
-  };
-
-  const handleDismissFeaturedOfferings = () => {
-    try {
-      localStorage.setItem('hideFeaturedOfferings', 'true');
-      setHidesFeaturedOfferings(true);
-      addNotification('success', 'Featured offerings hidden. You can clear browser data to show them again.');
-    } catch (error) {
-      console.error('Error saving featured offerings preference:', error);
-      addNotification('alert', 'Failed to save preference');
     }
   };
 
@@ -173,18 +141,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
-  // Handle ESC key to close prescription modal
-  useEffect(() => {
-    const handleEscKey = (event) => {
-      if (event.key === 'Escape' && selectedPrescription) {
-        setSelectedPrescription(null);
-      }
-    };
-
-    document.addEventListener('keydown', handleEscKey);
-    return () => document.removeEventListener('keydown', handleEscKey);
-  }, [selectedPrescription]);
-
   const fetchProviders = async () => {
     setLoadingProviders(true);
     setProvidersError(null);
@@ -192,10 +148,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       console.log('Fetching providers for patient portal...');
       console.log('User data:', { id: user?.id, role: user?.role });
 
-      // Ensure user is in localStorage for authentication
-      if (user && user.id) {
-        localStorage.setItem('user', JSON.stringify(user));
-      } else {
+      if (!user || !user.id) {
         throw new Error('User not authenticated');
       }
 
@@ -264,109 +217,6 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
-  const handleJoinWaitlist = async () => {
-    if (!bookingData.date || !bookingData.providerId) {
-      addNotification('alert', 'Please select a date and provider first');
-      return;
-    }
-
-    try {
-      const result = await api.addToWaitlist({
-        providerId: bookingData.providerId,
-        preferredDate: bookingData.date,
-        appointmentType: bookingData.type,
-        reason: bookingData.reason
-      });
-
-      addNotification('success', result.message || 'Added to waitlist successfully!');
-      fetchWaitlist();
-
-      // Optionally reset form
-      setBookingData({ date: '', time: '', type: appointmentTypes[0]?.name || 'General Consultation', providerId: '', reason: '' });
-      setAvailableSlots([]);
-    } catch (error) {
-      console.error('Error joining waitlist:', error);
-      addNotification('alert', error.message || 'Failed to join waitlist');
-    }
-  };
-
-  const handleRemoveFromWaitlist = async (id) => {
-    try {
-      const result = await api.removeFromWaitlist(id);
-      addNotification('success', result.message || 'Removed from waitlist');
-      fetchWaitlist();
-    } catch (error) {
-      console.error('Error removing from waitlist:', error);
-      addNotification('alert', error.message || 'Failed to remove from waitlist');
-    }
-  };
-
-  const fetchAvailableSlots = async (providerId, date) => {
-    if (!providerId || !date) {
-      setAvailableSlots([]);
-      return;
-    }
-
-    setLoadingSlots(true);
-    try {
-      const response = await fetch(`/api/scheduling/slots/${providerId}?date=${date}`);
-      if (response.ok) {
-        const slots = await response.json();
-        setAvailableSlots(slots);
-      } else {
-        console.error('Failed to fetch available slots');
-        setAvailableSlots([]);
-      }
-    } catch (error) {
-      console.error('Error fetching available slots:', error);
-      setAvailableSlots([]);
-    } finally {
-      setLoadingSlots(false);
-    }
-  };
-
-  // Fetch available slots when provider or date changes (booking)
-  useEffect(() => {
-    if (bookingData.providerId && bookingData.date) {
-      fetchAvailableSlots(bookingData.providerId, bookingData.date);
-    } else {
-      setAvailableSlots([]);
-    }
-  }, [bookingData.providerId, bookingData.date]);
-
-  // Fetch available slots when provider or date changes (editing)
-  useEffect(() => {
-    if (editingAppointment && editAppointmentData.providerId && editAppointmentData.date) {
-      fetchEditAvailableSlots(editAppointmentData.providerId, editAppointmentData.date);
-    } else {
-      setEditAvailableSlots([]);
-    }
-  }, [editAppointmentData.providerId, editAppointmentData.date, editingAppointment]);
-
-  const fetchEditAvailableSlots = async (providerId, date) => {
-    if (!providerId || !date) {
-      setEditAvailableSlots([]);
-      return;
-    }
-
-    setLoadingEditSlots(true);
-    try {
-      const response = await fetch(`/api/scheduling/slots/${providerId}?date=${date}`);
-      if (response.ok) {
-        const slots = await response.json();
-        setEditAvailableSlots(slots);
-      } else {
-        console.error('Failed to fetch available slots for editing');
-        setEditAvailableSlots([]);
-      }
-    } catch (error) {
-      console.error('Error fetching available slots for editing:', error);
-      setEditAvailableSlots([]);
-    } finally {
-      setLoadingEditSlots(false);
-    }
-  };
-
   const fetchPharmacyData = async () => {
     try {
       // Fetch all pharmacies for selection
@@ -397,40 +247,16 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
-  const handleAddPreferredPharmacy = async () => {
-    if (!selectedPharmacyId || !user?.id) {
-      addNotification('alert', t.pleaseSelectPharmacy);
-      return;
-    }
-
+  const fetchPendingForms = async () => {
+    if (!user?.id) return;
+    setLoadingForms(true);
     try {
-      // Save the new preferred pharmacy (backend will delete old ones and insert new one)
-      await api.addPreferredPharmacy(user.id, selectedPharmacyId, true);
-
-      // Clear current preferred pharmacies immediately to prevent showing stale data
-      setPreferredPharmacies([]);
-
-      // Refresh preferred pharmacies list from database
-      await fetchPharmacyData();
-
-      addNotification('success', t.preferredPharmacyUpdated);
-
-      // Show success confirmation
-      setConfirmationMessage('Your preferred pharmacy has been updated successfully!');
-      setShowConfirmation(true);
+      const submissions = await api.getFormSubmissions({ patient_id: user.id });
+      setPendingForms(submissions || []);
     } catch (error) {
-      console.error('Error adding preferred pharmacy:', error);
-      addNotification('alert', t.failedToUpdatePharmacy);
-    }
-  };
-
-  const fetchMedicalRecords = async () => {
-    try {
-      const patientId = user.id;
-      const records = await (api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]));
-      setMedicalRecords(records);
-    } catch (error) {
-      console.error('Error fetching medical records:', error);
+      console.error('Error fetching pending forms:', error);
+    } finally {
+      setLoadingForms(false);
     }
   };
 
@@ -523,6 +349,221 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
+  useEffect(() => {
+    if (user) {
+      // Initialize profile data from user
+      let parsedUser = { ...user };
+
+      // Always preserve the original address field (even if null/empty)
+      parsedUser.address = user.address || '';
+
+      // Ensure country is preserved
+      parsedUser.country = user.country || '';
+
+      // Convert language code to full name for display
+      const codeToNameMap = {
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'ar': 'Arabic'
+      };
+      if (parsedUser.language && codeToNameMap[parsedUser.language]) {
+        parsedUser.language = codeToNameMap[parsedUser.language];
+      } else if (!parsedUser.language) {
+        parsedUser.language = 'English'; // Default
+      }
+
+      setProfileData(parsedUser);
+      fetchPatientData();
+      fetchProviders();
+      fetchPharmacyData();
+      fetchWaitlist();
+      loadFeaturedOfferings();
+      fetchInsurancePayers();
+      fetchPendingForms();
+    }
+    // Fetch appointment types on component mount (doesn't require user)
+    fetchAppointmentTypes();
+    // Load WhatsApp preference
+    loadWhatsAppPreference();
+    // Load featured offerings hide preference
+    loadFeaturedOfferingsPreference();
+  }, [user]);
+
+  const handleDismissFeaturedOfferings = () => {
+    try {
+      localStorage.setItem('hideFeaturedOfferings', 'true');
+      setHidesFeaturedOfferings(true);
+      addNotification('success', 'Featured offerings hidden. You can clear browser data to show them again.');
+    } catch (error) {
+      console.error('Error saving featured offerings preference:', error);
+      addNotification('alert', 'Failed to save preference');
+    }
+  };
+
+  // Handle ESC key to close prescription modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && selectedPrescription) {
+        setSelectedPrescription(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [selectedPrescription]);
+
+  const handleJoinWaitlist = async () => {
+    if (!bookingData.date || !bookingData.providerId) {
+      addNotification('alert', 'Please select a date and provider first');
+      return;
+    }
+
+    try {
+      const result = await api.addToWaitlist({
+        providerId: bookingData.providerId,
+        preferredDate: bookingData.date,
+        appointmentType: bookingData.type,
+        reason: bookingData.reason
+      });
+
+      const provider = providers.find(p => String(p.id) === String(bookingData.providerId));
+      const providerName = provider
+        ? `Dr. ${provider.first_name} ${provider.last_name}`
+        : 'your provider';
+
+      setWaitlistConfirmation({
+        providerName,
+        date: bookingData.date,
+        appointmentType: bookingData.type,
+        message: result.message,
+      });
+      fetchWaitlist();
+
+      // Optionally reset form
+      setBookingData({ date: '', time: '', type: appointmentTypes[0]?.name || 'General Consultation', providerId: '', reason: '' });
+      setAvailableSlots([]);
+    } catch (error) {
+      console.error('Error joining waitlist:', error);
+      addNotification('alert', error.message || 'Failed to join waitlist');
+    }
+  };
+
+  const handleRemoveFromWaitlist = async (id) => {
+    try {
+      const result = await api.removeFromWaitlist(id);
+      addNotification('success', result.message || 'Removed from waitlist');
+      fetchWaitlist();
+    } catch (error) {
+      console.error('Error removing from waitlist:', error);
+      addNotification('alert', error.message || 'Failed to remove from waitlist');
+    }
+  };
+
+  const fetchAvailableSlots = async (providerId, date) => {
+    if (!providerId || !date) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    setLoadingSlots(true);
+    try {
+      const response = await apiFetch(`/scheduling/slots/${providerId}?date=${date}`);
+      if (response.ok) {
+        const slots = await response.json();
+        setAvailableSlots(slots);
+      } else {
+        console.error('Failed to fetch available slots');
+        setAvailableSlots([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available slots:', error);
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  // Fetch available slots when provider or date changes (booking)
+  useEffect(() => {
+    if (bookingData.providerId && bookingData.date) {
+      fetchAvailableSlots(bookingData.providerId, bookingData.date);
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [bookingData.providerId, bookingData.date]);
+
+  const fetchEditAvailableSlots = async (providerId, date) => {
+    if (!providerId || !date) {
+      setEditAvailableSlots([]);
+      return;
+    }
+
+    setLoadingEditSlots(true);
+    try {
+      const response = await apiFetch(`/scheduling/slots/${providerId}?date=${date}`);
+      if (response.ok) {
+        const slots = await response.json();
+        setEditAvailableSlots(slots);
+      } else {
+        console.error('Failed to fetch available slots for editing');
+        setEditAvailableSlots([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available slots for editing:', error);
+      setEditAvailableSlots([]);
+    } finally {
+      setLoadingEditSlots(false);
+    }
+  };
+
+  // Fetch available slots when provider or date changes (editing)
+  useEffect(() => {
+    if (editingAppointment && editAppointmentData.providerId && editAppointmentData.date) {
+      fetchEditAvailableSlots(editAppointmentData.providerId, editAppointmentData.date);
+    } else {
+      setEditAvailableSlots([]);
+    }
+  }, [editAppointmentData.providerId, editAppointmentData.date, editingAppointment]);
+
+  const handleAddPreferredPharmacy = async () => {
+    if (!selectedPharmacyId || !user?.id) {
+      addNotification('alert', t.pleaseSelectPharmacy);
+      return;
+    }
+
+    try {
+      // Save the new preferred pharmacy (backend will delete old ones and insert new one)
+      await api.addPreferredPharmacy(user.id, selectedPharmacyId, true);
+
+      // Clear current preferred pharmacies immediately to prevent showing stale data
+      setPreferredPharmacies([]);
+
+      // Refresh preferred pharmacies list from database
+      await fetchPharmacyData();
+
+      addNotification('success', t.preferredPharmacyUpdated);
+
+      // Show success confirmation
+      setConfirmationMessage('Your preferred pharmacy has been updated successfully!');
+      setShowConfirmation(true);
+    } catch (error) {
+      console.error('Error adding preferred pharmacy:', error);
+      addNotification('alert', t.failedToUpdatePharmacy);
+    }
+  };
+
+  const fetchMedicalRecords = async () => {
+    try {
+      const patientId = user.id;
+      const records = await (api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]));
+      setMedicalRecords(records);
+    } catch (error) {
+      console.error('Error fetching medical records:', error);
+    }
+  };
+
   const handleBookAppointment = async (e) => {
     e.preventDefault();
     try {
@@ -597,7 +638,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
     // Parse the start_time to get date and time
     const startTime = new Date(appointment.start_time);
-    const date = startTime.toISOString().split('T')[0];
+    const date = toLocalDateString(startTime);
     const time = startTime.toTimeString().slice(0, 5);
 
     setEditingAppointment(appointment);
@@ -679,7 +720,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     if (!recordToDelete) return;
 
     try {
-      const response = await fetch(`/api/patient-portal/${user.id}/medical-records/${recordToDelete.id}`, {
+      const response = await apiFetch(`/patient-portal/${user.id}/medical-records/${recordToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -705,7 +746,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     if (!editingRecord) return;
 
     try {
-      const response = await fetch(`/api/patient-portal/${user.id}/medical-records/${editingRecord.id}`, {
+      const response = await apiFetch(`/patient-portal/${user.id}/medical-records/${editingRecord.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -735,7 +776,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     if (!appointmentToCancel) return;
 
     try {
-      const response = await fetch(`/api/scheduling/cancel/${appointmentToCancel.id}`, {
+      const response = await apiFetch(`/scheduling/cancel/${appointmentToCancel.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -875,7 +916,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
 
     try {
-      await api.changePassword(user.id, passwordData.currentPassword, passwordData.newPassword);
+      await api.changePassword(passwordData.currentPassword, passwordData.newPassword);
 
       addNotification('success', t.passwordChangedSuccessfully || 'Password changed successfully');
       setShowChangePassword(false);
@@ -944,6 +985,14 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   // Appointments View
   const renderAppointments = () => (
     <div className="space-y-6">
+      {/* Renders nothing unless the practice has Google Calendar configured */}
+      <GoogleCalendarIntegration
+        patientId={user?.id}
+        theme={theme}
+        addNotification={addNotification}
+        sync={calendarSync}
+      />
+
       <div className="flex justify-between items-center">
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           {t.myAppointments}
@@ -1172,6 +1221,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                         </button>
                       )}
                     </div>
+                    {apt.status !== 'cancelled' && (
+                      <AddToCalendarButton
+                        appointmentId={apt.id}
+                        patientId={user?.id}
+                        connected={calendarSync.connected}
+                        theme={theme}
+                        addNotification={addNotification}
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -1435,6 +1493,29 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           </button>
         )}
       </div>
+
+      {/* Pending Forms Alert */}
+      {!editingProfile && pendingForms.filter(f => f.status === 'draft').length > 0 && (
+        <div className={`p-4 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'bg-teal-900/20 border-teal-700/50' : 'bg-teal-50 border-teal-200'}`}>
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-teal-500 flex-shrink-0" />
+            <div>
+              <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-teal-300' : 'text-teal-800'}`}>
+                You have {pendingForms.filter(f => f.status === 'draft').length} form{pendingForms.filter(f => f.status === 'draft').length > 1 ? 's' : ''} requested — please complete them
+              </p>
+              <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
+                Forms sent by your care team are waiting in your "Forms Requested" tab
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setCurrentView('forms')}
+            className="flex items-center gap-1 px-3 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+          >
+            Fill Now <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Featured Healthcare Offerings - Top Priority */}
       {!editingProfile && !loadingOfferings && !hidesFeaturedOfferings && featuredOfferings.length > 0 && (
@@ -2730,9 +2811,194 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     </div>
   );
 
+  const handleOpenForm = (submission) => {
+    const template = FORM_TEMPLATES.find(t =>
+      t.name === submission.template_name ||
+      (submission.metadata?.template_slug && t.id === submission.metadata.template_slug)
+    );
+    setActivePendingForm({ submission, fields: template?.fields || [] });
+    setActiveFormData(submission.form_data || {});
+  };
+
+  const handleSubmitForm = async () => {
+    if (!activePendingForm) return;
+    setSubmittingForm(true);
+    try {
+      await api.updateFormSubmission(activePendingForm.submission.id, {
+        form_data: activeFormData,
+        status: 'submitted'
+      });
+      setPendingForms(prev => prev.map(f =>
+        f.id === activePendingForm.submission.id ? { ...f, status: 'submitted', form_data: activeFormData } : f
+      ));
+      setActivePendingForm(null);
+      setActiveFormData({});
+      addNotification('success', `"${activePendingForm.submission.template_name}" submitted successfully`);
+    } catch (err) {
+      console.error('Error submitting form:', err);
+      addNotification('alert', 'Failed to submit form. Please try again.');
+    } finally {
+      setSubmittingForm(false);
+    }
+  };
+
+  const renderForms = () => {
+    const draft = pendingForms.filter(f => f.status === 'draft');
+    const submitted = pendingForms.filter(f => f.status !== 'draft');
+
+    return (
+      <div className="space-y-6">
+        {loadingForms ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500" />
+          </div>
+        ) : (
+          <>
+            {draft.length === 0 && submitted.length === 0 && (
+              <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700 text-slate-400' : 'border-gray-200 text-gray-500'}`}>
+                <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                <p className="font-medium">No forms assigned</p>
+                <p className="text-sm mt-1">Forms will appear here when assigned by your care team</p>
+              </div>
+            )}
+
+            {draft.length > 0 && (
+              <div>
+                <h3 className={`text-lg font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  <AlertCircle className="w-5 h-5 text-teal-500" />
+                  Forms Requested ({draft.length})
+                </h3>
+                <div className="space-y-3">
+                  {draft.map(submission => (
+                    <div key={submission.id} className={`flex items-center justify-between p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                          <ClipboardList className="w-5 h-5 text-teal-500" />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{submission.template_name}</p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            Assigned {new Date(submission.created_at).toLocaleDateString()} · Action required
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleOpenForm(submission)}
+                        className="flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Fill Now <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {submitted.length > 0 && (
+              <div>
+                <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Completed Forms ({submitted.length})
+                </h3>
+                <div className="space-y-3">
+                  {submitted.map(submission => (
+                    <div key={submission.id} className={`flex items-center justify-between p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                          <Check className="w-5 h-5 text-green-500" />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{submission.template_name}</p>
+                          <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {submission.status} · {submission.submitted_at ? new Date(submission.submitted_at).toLocaleDateString() : new Date(submission.updated_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-xs font-medium capitalize">{submission.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Form Filling Modal */}
+        {activePendingForm && (
+          <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 p-4 overflow-y-auto">
+            <div className={`max-w-3xl w-full my-8 rounded-xl shadow-2xl ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
+              <div className={`p-6 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+                <div>
+                  <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {activePendingForm.submission.template_name}
+                  </h3>
+                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Please fill out all required fields</p>
+                </div>
+                <button
+                  onClick={() => { setActivePendingForm(null); setActiveFormData({}); }}
+                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                {activePendingForm.fields.length > 0 ? (
+                  <DynamicFormRenderer
+                    fields={activePendingForm.fields}
+                    formData={activeFormData}
+                    onChange={setActiveFormData}
+                    theme={theme}
+                    language="en"
+                    userRole="patient"
+                  />
+                ) : (
+                  <div className={`p-6 rounded-lg text-center ${theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
+                    <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                    <p>This form's fields are not available for online completion.</p>
+                    <p className="text-sm mt-1">Please contact your care team for assistance.</p>
+                  </div>
+                )}
+              </div>
+              <div className={`p-6 border-t flex gap-3 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+                <button
+                  onClick={handleSubmitForm}
+                  disabled={submittingForm}
+                  className="flex items-center gap-2 px-6 py-3 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white rounded-lg font-medium transition-colors"
+                >
+                  {submittingForm ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : <Check className="w-4 h-4" />}
+                  {submittingForm ? 'Submitting...' : 'Submit Form'}
+                </button>
+                <button
+                  onClick={() => { setActivePendingForm(null); setActiveFormData({}); }}
+                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
+                >
+                  Save & Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Main Portal Layout
   return (
     <>
+      {/* Waitlist Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!waitlistConfirmation}
+        onClose={() => setWaitlistConfirmation(null)}
+        onConfirm={() => setWaitlistConfirmation(null)}
+        title={t.addedToWaitlist || "You're on the waitlist"}
+        message={waitlistConfirmation
+          ? `We'll contact you if a ${waitlistConfirmation.appointmentType || 'appointment'} slot opens with ${waitlistConfirmation.providerName} on ${formatDate(waitlistConfirmation.date)}. Your request is listed under Waitlist Requests below.`
+          : ''}
+        type="success"
+        confirmText={t.gotIt || 'Got it'}
+        showCancel={false}
+      />
+
       {/* Delete Appointment Confirmation Modal */}
       <ConfirmationModal
         theme={theme}
@@ -2926,23 +3192,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         showCancel={false}
       />
       <div className="space-y-6">
-      <div>
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t.patientPortal}
-        </h2>
-        <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-          {t.patientPortalDescription}
-        </p>
-      </div>
 
-      {/* Navigation Tabs */}
+      {/* Navigation Tabs — the app shell's secondary pane replaces these */}
+      {!tabsInShell && (
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
           { id: 'profile', label: t.overviewTab || 'Overview', icon: User, count: null },
           { id: 'appointments', label: t.appointmentsTab || 'Appointments', icon: Calendar, count: appointments.length },
           { id: 'diagnoses', label: t.diagnosesTab || 'Diagnoses', icon: Activity, count: diagnoses.length },
           { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
-          { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length }
+          { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
+          { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => f.status === 'draft').length || null, highlight: pendingForms.filter(f => f.status === 'draft').length > 0 }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -2956,10 +3216,12 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <tab.icon className="w-4 h-4" />
             {tab.label}
             {tab.count !== null && (
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
-                currentView === tab.id
-                  ? `${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`
-                  : `${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                tab.highlight && currentView !== tab.id
+                  ? 'bg-teal-500 text-white'
+                  : currentView === tab.id
+                    ? `${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`
+                    : `${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`
               }`}>
                 {tab.count}
               </span>
@@ -2967,6 +3229,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           </button>
         ))}
       </div>
+      )}
 
       {/* Content */}
       {currentView === 'profile' && renderProfile()}
@@ -2975,6 +3238,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       {currentView === 'diagnoses' && renderDiagnoses()}
       {currentView === 'prescriptions' && renderPrescriptions()}
       {currentView === 'records' && renderMedicalRecords()}
+      {currentView === 'forms' && renderForms()}
 
       {/* Prescription Details Modal */}
       {selectedPrescription && (

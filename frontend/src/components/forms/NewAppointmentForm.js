@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, X, Save } from 'lucide-react';
+import { Calendar, X, Save, AlertTriangle } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import { toLocalDateTimeString } from '../../utils/formatters';
 
 const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -18,6 +19,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
+  const [conflictError, setConflictError] = useState(null);
   const [offerings, setOfferings] = useState([]);
   const [appointmentTypes, setAppointmentTypes] = useState([]);
 
@@ -33,7 +35,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
         preselectedProvider: !!user,
       },
     });
-  }, []);
+  }, [logFormView, patient, startAction, user]);
 
   // Fetch active offerings
   useEffect(() => {
@@ -63,7 +65,8 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
             { id: 3, name: 'Check-up', durationMinutes: 30 },
             { id: 4, name: 'Physical Exam', durationMinutes: 45 },
             { id: 5, name: 'Vaccination', durationMinutes: 15 },
-            { id: 6, name: 'Lab Results', durationMinutes: 15 }
+            { id: 6, name: 'Lab Results', durationMinutes: 15 },
+            { id: 7, name: 'Telehealth', durationMinutes: 30 }
           ]);
         }
       } catch (error) {
@@ -75,18 +78,26 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
           { id: 3, name: 'Check-up', durationMinutes: 30 },
           { id: 4, name: 'Physical Exam', durationMinutes: 45 },
           { id: 5, name: 'Vaccination', durationMinutes: 15 },
-          { id: 6, name: 'Lab Results', durationMinutes: 15 }
+          { id: 6, name: 'Lab Results', durationMinutes: 15 },
+          { id: 7, name: 'Telehealth', durationMinutes: 30 }
         ]);
       }
     };
     fetchAppointmentTypes();
   }, [api]);
 
-  // Set default provider to first available provider when users are loaded
+  // Set default provider to first available doctor when users are loaded
   useEffect(() => {
     if (users && users.length > 0 && !formData.providerId) {
-      const firstProvider = users.find(u => u.role === 'physician' || u.role === 'doctor' || u.role === 'provider') || users[0];
-      setFormData(prev => ({ ...prev, providerId: firstProvider.id }));
+      const doctorRoles = ['physician', 'doctor'];
+      const firstDoctor = users.find(u => {
+        const hasRole = u.role || u.activeRole || u.active_role;
+        if (!hasRole) return true; // No role info = from providers table, all are doctors
+        return doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role);
+      });
+      if (firstDoctor) {
+        setFormData(prev => ({ ...prev, providerId: firstDoctor.id }));
+      }
     }
   }, [users, formData.providerId]);
 
@@ -142,11 +153,11 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
       // Combine date and time into start_time timestamp
       const startTime = `${formData.date}T${formData.time}:00`;
 
-      // Calculate end_time by adding duration
+      // Calculate end_time by adding duration (use local time, not UTC)
       const startDate = new Date(startTime);
       const endDate = new Date(startDate.getTime() + formData.duration * 60000);
-      const endTime = endDate.toISOString().slice(0, 19).replace('T', ' ');
-      const formattedStartTime = startDate.toISOString().slice(0, 19).replace('T', ' ');
+      const endTime = toLocalDateTimeString(endDate);
+      const formattedStartTime = toLocalDateTimeString(startDate);
 
       appointmentData.start_time = formattedStartTime;
       appointmentData.end_time = endTime;
@@ -180,7 +191,14 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
       }, 2000);
     } catch (err) {
       console.error('Error creating appointment:', err);
-      addNotification('alert', t.failedToCreateAppointment || 'Failed to create appointment. Please try again.');
+
+      // Show themed conflict popup for scheduling conflicts
+      const conflictType = err.response?.data?.conflictType;
+      if (conflictType || err.message?.includes('busy at the selected time') || err.message?.includes('already has an appointment booked')) {
+        setConflictError(err.message || 'Scheduling conflict detected.');
+      } else {
+        addNotification('alert', t.failedToCreateAppointment || 'Failed to create appointment. Please try again.');
+      }
 
       // Log error
       logError('NewAppointmentForm', 'form', err.message || 'Failed to create appointment', {
@@ -192,10 +210,15 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     }
   };
 
-  // Filter providers from users
-  const providers = users?.filter(u =>
-    u.role === 'physician' || u.role === 'doctor' || u.role === 'provider' || u.role === 'admin'
-  ) || [];
+  // Filter providers from users - only show doctors/physicians
+  // If entries lack a role field (e.g. data from providers table), include them all
+  // since the providers table only contains doctors by definition
+  const doctorRoles = ['physician', 'doctor'];
+  const providers = users?.filter(u => {
+    const hasRole = u.role || u.activeRole || u.active_role;
+    if (!hasRole) return true; // No role info = from providers table, include all
+    return doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role);
+  }) || [];
 
   return (
     <>
@@ -224,6 +247,58 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
         confirmText={t.ok || 'OK'}
         showCancel={false}
       />
+      {/* Scheduling Conflict Error Popup */}
+      {conflictError && (
+        <div
+          className={`fixed inset-0 backdrop-blur-sm z-[70] flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`}
+          onClick={() => setConflictError(null)}
+        >
+          <div
+            className={`rounded-xl border max-w-md w-full shadow-2xl ${theme === 'dark' ? 'bg-slate-900 border-red-500/30' : 'bg-white border-red-300'}`}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <h2 className={`text-xl font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                  <AlertTriangle className="w-6 h-6" />
+                  Scheduling Conflict
+                </h2>
+                <button
+                  onClick={() => setConflictError(null)}
+                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                >
+                  <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${theme === 'dark' ? 'bg-red-500/20' : 'bg-red-100'}`}>
+                  <AlertTriangle className={`w-8 h-8 ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`} />
+                </div>
+                <p className={`text-lg ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {conflictError}
+                </p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  Please choose a different date or time to avoid the conflict.
+                </p>
+              </div>
+            </div>
+            <div className={`p-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <button
+                onClick={() => setConflictError(null)}
+                className={`w-full px-6 py-3 rounded-lg font-medium text-white transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
+              >
+                Choose Different Time
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
         <div className={`p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-cyan-500/10 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-white'}`}>
           <div className="flex items-center gap-3">

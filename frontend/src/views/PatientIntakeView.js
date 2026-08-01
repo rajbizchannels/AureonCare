@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Eye, Edit, Trash2, FileText, GitBranch, FileCheck, ArrowLeft, Search, X, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Eye, Edit, Trash2, FileText, GitBranch, FileCheck, Search, X, Filter } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 import NewIntakeFormForm from '../components/forms/NewIntakeFormForm';
 import NewIntakeFlowForm from '../components/forms/NewIntakeFlowForm';
@@ -10,7 +10,6 @@ import { useAudit } from '../hooks/useAudit';
 const PatientIntakeView = ({
   theme,
   patients,
-  setCurrentModule,
   addNotification,
   api,
   t = {}
@@ -53,7 +52,7 @@ const PatientIntakeView = ({
     logViewAccess('PatientIntakeView', {
       module: 'Patient Intake',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Close all forms when tab changes
   useEffect(() => {
@@ -69,11 +68,7 @@ const PatientIntakeView = ({
   }, [activeTab]);
 
   // Fetch all intake data
-  useEffect(() => {
-    fetchIntakeData();
-  }, []);
-
-  const fetchIntakeData = async () => {
+  const fetchIntakeData = useCallback(async () => {
     setLoading(true);
     try {
       const [formsData, flowsData, consentsData] = await Promise.all([
@@ -91,7 +86,11 @@ const PatientIntakeView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification]);
+
+  useEffect(() => {
+    fetchIntakeData();
+  }, [fetchIntakeData]);
 
   // Filter functions
   const filteredIntakeForms = intakeForms.filter(form => {
@@ -623,27 +622,6 @@ const PatientIntakeView = ({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('crm')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title="Back to Patient CRM"
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
-          <div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Patient Intake Forms
-            </h2>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Manage patient intake forms, workflows, and consent documentation
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[

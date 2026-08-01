@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 /**
  * Clinic Settings Management
@@ -92,6 +94,7 @@ router.get('/', async (req, res) => {
         name: orgResult.rows[0].organization_name || '',
         website: orgSettings.website || '',
         npi: orgSettings.npi || '',
+        currency: orgSettings.currency || 'USD',
       };
     }
 
@@ -121,7 +124,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { name, address, phone, email, website, taxId, npi } = req.body;
+    const { name, address, phone, email, website, taxId, npi, currency } = req.body;
 
     // Start transaction
     await pool.query('BEGIN');
@@ -139,22 +142,26 @@ router.post('/', async (req, res) => {
           SET organization_name = $1,
               settings = jsonb_set(
                 jsonb_set(
-                  COALESCE(settings, '{}'::jsonb),
-                  '{website}',
-                  $2::jsonb
+                  jsonb_set(
+                    COALESCE(settings, '{}'::jsonb),
+                    '{website}',
+                    $2::jsonb
+                  ),
+                  '{npi}',
+                  $3::jsonb
                 ),
-                '{npi}',
-                $3::jsonb
+                '{currency}',
+                $4::jsonb
               ),
               updated_at = CURRENT_TIMESTAMP
-          WHERE id = $4
-        `, [name, JSON.stringify(website || ''), JSON.stringify(npi || ''), orgResult.rows[0].id]);
+          WHERE id = $5
+        `, [name, JSON.stringify(website || ''), JSON.stringify(npi || ''), JSON.stringify(currency || 'USD'), orgResult.rows[0].id]);
       } else {
         // Insert new organization settings
         await pool.query(`
           INSERT INTO organization_settings (organization_name, settings)
           VALUES ($1, $2)
-        `, [name, JSON.stringify({ website: website || '', npi: npi || '' })]);
+        `, [name, JSON.stringify({ website: website || '', npi: npi || '', currency: currency || 'USD' })]);
       }
 
       // Update or insert into practices table

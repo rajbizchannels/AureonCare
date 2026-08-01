@@ -1,6 +1,9 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const vendorIntegrationManager = require('../services/vendorIntegrations');
+const notificationService = require('../services/notificationService');
 
 // Get all claims
 router.get('/', async (req, res) => {
@@ -177,6 +180,9 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(claim);
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'claim.created', { claim, patient_id }).catch(() => {});
   } catch (error) {
     console.error('Error creating claim:', error);
     res.status(500).json({ error: 'Failed to create claim' });
@@ -213,7 +219,17 @@ router.put('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Claim not found' });
     }
-    res.json(result.rows[0]);
+    const updatedClaim = result.rows[0];
+    res.json(updatedClaim);
+
+    // Send status change notification (non-blocking)
+    if (status) {
+      notificationService.dispatch(pool, 'claim.status_changed', {
+        claim: updatedClaim,
+        patient_id: updatedClaim.patient_id,
+        old_status: 'previous',
+      }).catch(() => {});
+    }
   } catch (error) {
     console.error('Error updating claim:', error);
     res.status(500).json({ error: 'Failed to update claim' });

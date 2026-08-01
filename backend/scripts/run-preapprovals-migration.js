@@ -4,10 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'postgres',
+  host: process.env.AC_DB_H || 'localhost',
+  port: process.env.AC_DB_P || 5432,
+  database: process.env.AC_DB_N || 'aureoncare',
+  user: process.env.AC_DB_U || 'postgres',
   password: 'AureonCare2024!',
 });
 

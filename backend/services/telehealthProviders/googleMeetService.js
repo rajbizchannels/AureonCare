@@ -3,19 +3,20 @@ const { OAuth2Client } = require('google-auth-library');
 
 /**
  * Google Meet Telehealth Integration Service
- * Handles creating and managing Google Meet sessions for telehealth
+ * Handles creating and managing Google Meet sessions via Calendar API.
+ *
+ * Auth: OAuth 2.0. Reads tokens from dedicated columns first,
+ * then falls back to JSONB settings for backwards compatibility.
  */
 
 class GoogleMeetService {
-  constructor(config) {
+  constructor(config, pool) {
     this.config = config;
+    this.pool = pool || null;
     this.calendar = null;
     this.initializeClient();
   }
 
-  /**
-   * Initialize Google OAuth2 client
-   */
   initializeClient() {
     if (!this.config.client_id || !this.config.client_secret) {
       throw new Error('Google Meet Client ID and Secret are required');
@@ -27,26 +28,29 @@ class GoogleMeetService {
       this.config.settings?.redirect_uri || 'http://localhost:3000/oauth/callback'
     );
 
-    // Set credentials if available
-    if (this.config.settings?.refresh_token) {
+    // Read tokens from dedicated columns first, then JSONB fallback
+    const refreshToken =
+      this.config.refresh_token ||
+      (this.config.settings && this.config.settings.refresh_token);
+    const accessToken =
+      this.config.access_token ||
+      (this.config.settings && this.config.settings.access_token);
+
+    if (refreshToken || accessToken) {
       this.oauth2Client.setCredentials({
-        refresh_token: this.config.settings.refresh_token,
-        access_token: this.config.settings.access_token
+        refresh_token: refreshToken,
+        access_token: accessToken,
       });
     }
 
     this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
   }
 
-  /**
-   * Get authorization URL for OAuth flow
-   */
   getAuthUrl() {
     const scopes = [
       'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/calendar'
     ];
-
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
@@ -54,9 +58,6 @@ class GoogleMeetService {
     });
   }
 
-  /**
-   * Exchange authorization code for tokens
-   */
   async getTokensFromCode(code) {
     try {
       const { tokens } = await this.oauth2Client.getToken(code);
@@ -68,35 +69,30 @@ class GoogleMeetService {
     }
   }
 
-  /**
-   * Create a Google Meet session via Calendar API
-   */
   async createMeeting(sessionData) {
     try {
-      if (!this.config.settings?.refresh_token) {
+      const refreshToken =
+        this.config.refresh_token ||
+        (this.config.settings && this.config.settings.refresh_token);
+
+      if (!refreshToken) {
         throw new Error('Google Meet is not authenticated. Please complete OAuth setup.');
       }
 
-      const startDateTime = new Date(sessionData.startTime);
+      const startDateTime = sessionData.instant
+        ? new Date()
+        : new Date(sessionData.startTime);
       const endDateTime = new Date(startDateTime.getTime() + (sessionData.duration || 30) * 60000);
 
       const event = {
         summary: sessionData.topic || `Telehealth Session - ${sessionData.patientName}`,
         description: sessionData.agenda || 'Telehealth consultation',
-        start: {
-          dateTime: startDateTime.toISOString(),
-          timeZone: 'UTC'
-        },
-        end: {
-          dateTime: endDateTime.toISOString(),
-          timeZone: 'UTC'
-        },
+        start: { dateTime: startDateTime.toISOString(), timeZone: 'UTC' },
+        end: { dateTime: endDateTime.toISOString(), timeZone: 'UTC' },
         conferenceData: {
           createRequest: {
             requestId: `telehealth-${Date.now()}`,
-            conferenceSolutionKey: {
-              type: 'hangoutsMeet'
-            }
+            conferenceSolutionKey: { type: 'hangoutsMeet' }
           }
         },
         attendees: sessionData.attendees || [],
@@ -136,29 +132,23 @@ class GoogleMeetService {
     }
   }
 
-  /**
-   * Get meeting details
-   */
+  async createInstantMeeting(sessionData) {
+    return this.createMeeting({ ...sessionData, instant: true });
+  }
+
   async getMeeting(eventId) {
     try {
       const response = await this.calendar.events.get({
         calendarId: 'primary',
         eventId: eventId
       });
-
-      return {
-        success: true,
-        meeting: response.data
-      };
+      return { success: true, meeting: response.data };
     } catch (error) {
       console.error('Error getting Google Meet event:', error.message);
       throw new Error('Failed to get Google Meet details');
     }
   }
 
-  /**
-   * Update meeting
-   */
   async updateMeeting(eventId, updates) {
     try {
       const response = await this.calendar.events.patch({
@@ -166,21 +156,13 @@ class GoogleMeetService {
         eventId: eventId,
         resource: updates
       });
-
-      return {
-        success: true,
-        message: 'Meeting updated successfully',
-        meeting: response.data
-      };
+      return { success: true, message: 'Meeting updated successfully', meeting: response.data };
     } catch (error) {
       console.error('Error updating Google Meet event:', error.message);
       throw new Error('Failed to update Google Meet session');
     }
   }
 
-  /**
-   * Delete meeting
-   */
   async deleteMeeting(eventId) {
     try {
       await this.calendar.events.delete({
@@ -188,14 +170,29 @@ class GoogleMeetService {
         eventId: eventId,
         sendUpdates: 'all'
       });
-
-      return {
-        success: true,
-        message: 'Meeting deleted successfully'
-      };
+      return { success: true, message: 'Meeting deleted successfully' };
     } catch (error) {
       console.error('Error deleting Google Meet event:', error.message);
       throw new Error('Failed to delete Google Meet session');
+    }
+  }
+
+  async testConnection() {
+    try {
+      // List a single event to confirm token is valid
+      const response = await this.calendar.calendarList.get({
+        calendarId: 'primary',
+      });
+      return {
+        success: true,
+        message: `Connected to Google Calendar (${response.data.summary || 'primary'})`,
+        user: {
+          email: response.data.summary || response.data.id,
+        },
+      };
+    } catch (error) {
+      console.error('Error testing Google Meet connection:', error.message);
+      throw new Error('Google Meet connection test failed: ' + error.message);
     }
   }
 }

@@ -1,11 +1,19 @@
 const ZoomService = require('./zoomService');
 const GoogleMeetService = require('./googleMeetService');
 const WebexService = require('./webexService');
+const TeamsService = require('./teamsService');
 
 /**
  * Telehealth Provider Manager
  * Manages different telehealth provider integrations
  */
+
+const ENV_CREDENTIALS = {
+  zoom:             { id: 'AC_ZM_CID',  secret: 'AC_ZM_CSK' },
+  google_meet:      { id: 'AC_GM_CID',  secret: 'AC_GM_CSK' },
+  webex:            { id: 'AC_WBX_CID', secret: 'AC_WBX_CSK' },
+  microsoft_teams:  { id: 'AC_MS_CID',  secret: 'AC_MS_CSK' },
+};
 
 class TelehealthProviderManager {
   constructor(pool) {
@@ -13,7 +21,8 @@ class TelehealthProviderManager {
     this.providers = {
       zoom: null,
       google_meet: null,
-      webex: null
+      webex: null,
+      microsoft_teams: null
     };
   }
 
@@ -39,6 +48,21 @@ class TelehealthProviderManager {
   }
 
   /**
+   * Get all enabled providers
+   */
+  async getEnabledProviders() {
+    try {
+      const result = await this.pool.query(
+        'SELECT * FROM telehealth_provider_settings WHERE is_enabled = true ORDER BY id'
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting enabled providers:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get the active/default provider
    */
   async getActiveProvider() {
@@ -59,6 +83,41 @@ class TelehealthProviderManager {
   }
 
   /**
+   * Resolve provider for a patient: use patient preference if the preferred
+   * provider is enabled, otherwise fall back to the default enabled provider.
+   */
+  async resolveProviderForPatient(patientId) {
+    const enabled = await this.getEnabledProviders();
+    if (enabled.length === 0) {
+      return null;
+    }
+
+    // If only one provider enabled, always use it regardless of preference
+    if (enabled.length === 1) {
+      return enabled[0].provider_type;
+    }
+
+    // Multiple providers enabled — check patient preference
+    if (patientId) {
+      try {
+        const result = await this.pool.query(
+          'SELECT telehealth_preference FROM patients WHERE id = $1',
+          [patientId]
+        );
+        const pref = result.rows[0]?.telehealth_preference;
+        if (pref && enabled.some(p => p.provider_type === pref)) {
+          return pref;
+        }
+      } catch (e) {
+        console.error('Error reading patient telehealth preference:', e.message);
+      }
+    }
+
+    // Fallback: first enabled provider
+    return enabled[0].provider_type;
+  }
+
+  /**
    * Initialize a provider service
    */
   async initializeProvider(providerType) {
@@ -68,18 +127,34 @@ class TelehealthProviderManager {
       throw new Error(`Provider ${providerType} is not configured or not enabled`);
     }
 
+    // Merge env var credentials so services can refresh tokens even when the
+    // DB row has NULL client_id / client_secret.
+    const envCreds = ENV_CREDENTIALS[providerType];
+    if (envCreds) {
+      if (!config.client_id && process.env[envCreds.id]) {
+        config.client_id = process.env[envCreds.id];
+      }
+      if (!config.client_secret && process.env[envCreds.secret]) {
+        config.client_secret = process.env[envCreds.secret];
+      }
+    }
+
     switch (providerType) {
       case 'zoom':
-        this.providers.zoom = new ZoomService(config);
+        this.providers.zoom = new ZoomService(config, this.pool);
         return this.providers.zoom;
 
       case 'google_meet':
-        this.providers.google_meet = new GoogleMeetService(config);
+        this.providers.google_meet = new GoogleMeetService(config, this.pool);
         return this.providers.google_meet;
 
       case 'webex':
-        this.providers.webex = new WebexService(config);
+        this.providers.webex = new WebexService(config, this.pool);
         return this.providers.webex;
+
+      case 'microsoft_teams':
+        this.providers.microsoft_teams = new TeamsService(config, this.pool);
+        return this.providers.microsoft_teams;
 
       default:
         throw new Error(`Unknown provider type: ${providerType}`);
@@ -97,26 +172,79 @@ class TelehealthProviderManager {
   }
 
   /**
+   * Validate that a provider has the required credentials configured
+   */
+  validateProviderCredentials(providerType, config) {
+    switch (providerType) {
+      case 'zoom': {
+        const hasJwt = config.api_key && config.api_secret;
+        const hasOAuth = config.client_id && config.client_secret;
+        if (!hasJwt && !hasOAuth) {
+          throw new Error(
+            'Zoom is enabled but API credentials are not configured. ' +
+            'Please add your Zoom API Key & Secret (or Client ID & Secret) in Admin Panel > Telehealth Settings.'
+          );
+        }
+        break;
+      }
+      case 'google_meet':
+        if (!config.client_id || !config.client_secret) {
+          throw new Error(
+            'Google Meet is enabled but API credentials are not configured. ' +
+            'Please add your Google Client ID & Secret in Admin Panel > Telehealth Settings.'
+          );
+        }
+        break;
+      case 'webex':
+        if (!config.client_id || !config.client_secret) {
+          if (!config.api_key) {
+            throw new Error(
+              'Webex is enabled but credentials are not configured. ' +
+              'Please connect Webex in Admin Panel > Telehealth Settings.'
+            );
+          }
+        }
+        break;
+      case 'microsoft_teams':
+        if (!config.client_id || !config.client_secret) {
+          throw new Error(
+            'Microsoft Teams is enabled but credentials are not configured. ' +
+            'Please connect Teams in Admin Panel > Telehealth Settings.'
+          );
+        }
+        break;
+    }
+  }
+
+  /**
    * Create a meeting using the specified or default provider
    */
   async createMeeting(sessionData, providerType = null) {
-    try {
-      // If no provider specified, use the active one
-      if (!providerType) {
-        const activeProvider = await this.getActiveProvider();
-        if (!activeProvider.is_enabled) {
-          // Fall back to default AureonCare meeting
-          return this.createDefaultMeeting(sessionData);
-        }
-        providerType = activeProvider.provider_type;
+    // If no provider specified, use the active one
+    if (!providerType) {
+      const activeProvider = await this.getActiveProvider();
+      if (!activeProvider.is_enabled) {
+        // No provider enabled - return clear error
+        throw new Error(
+          'No telehealth provider is enabled. ' +
+          'Please enable and configure Zoom, Google Meet, Teams, or Webex in Admin Panel > Telehealth Settings.'
+        );
       }
+      providerType = activeProvider.provider_type;
+    }
 
+    // Validate credentials before attempting to create the meeting
+    const config = await this.getProviderConfig(providerType);
+    if (config) {
+      this.validateProviderCredentials(providerType, config);
+    }
+
+    try {
       const provider = await this.getProvider(providerType);
       return await provider.createMeeting(sessionData);
     } catch (error) {
       console.error('Error creating telehealth meeting:', error);
-      // Fall back to default if provider fails
-      return this.createDefaultMeeting(sessionData);
+      throw error;
     }
   }
 

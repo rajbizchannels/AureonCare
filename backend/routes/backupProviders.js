@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 /**
  * Backup Provider Settings API
@@ -167,34 +169,21 @@ router.get('/config/status', async (req, res) => {
 
     const result = await pool.query(`
       SELECT provider_type, is_enabled,
-             (client_id IS NOT NULL AND client_id != '') as has_credentials,
-             (settings->>'access_token' IS NOT NULL) as has_token
+             (settings->>'access_token' IS NOT NULL AND settings->>'access_token' != '') AS has_token
       FROM backup_provider_settings
       WHERE provider_type IN ('google_drive', 'onedrive')
     `);
 
     const config = {
-      googleDrive: {
-        configured: false,
-        enabled: false
-      },
-      oneDrive: {
-        configured: false,
-        enabled: false
-      }
+      googleDrive: { configured: false, enabled: false },
+      oneDrive:    { configured: false, enabled: false }
     };
 
     result.rows.forEach(row => {
       if (row.provider_type === 'google_drive') {
-        config.googleDrive = {
-          configured: row.has_credentials && row.has_token,
-          enabled: row.is_enabled
-        };
+        config.googleDrive = { configured: row.has_token, enabled: row.is_enabled };
       } else if (row.provider_type === 'onedrive') {
-        config.oneDrive = {
-          configured: row.has_credentials && row.has_token,
-          enabled: row.is_enabled
-        };
+        config.oneDrive = { configured: row.has_token, enabled: row.is_enabled };
       }
     });
 

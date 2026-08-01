@@ -1,6 +1,10 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const WhatsAppService = require('../services/whatsappService');
+const TelehealthProviderManager = require('../services/telehealthProviders/index');
+const notificationService = require('../services/notificationService');
 
 // Get all appointments
 router.get('/', async (req, res) => {
@@ -129,25 +133,54 @@ router.post('/', async (req, res) => {
       if (providerCheck.rows.length === 0) {
         console.warn('Provider not found in providers table:', provider_id);
 
-        // Check if this ID exists in users table (indicates migration issue)
+        // Check if this ID exists in users table with a doctor/physician role
         const userCheck = await pool.query(
-          'SELECT id FROM users WHERE id::text = $1::text',
+          `SELECT id, first_name, last_name, specialty, email, phone, license_number, role, active_role
+           FROM users WHERE id::text = $1::text`,
           [provider_id]
         );
 
         if (userCheck.rows.length > 0) {
-          console.error('Provider ID exists in users table but not in providers table.');
-          console.error('This indicates a database schema issue. Please run: npm run migrate');
-          return res.status(500).json({
-            error: 'Database schema mismatch detected',
-            details: 'The provider reference exists in users table but not in providers table. Please contact administrator to run database migrations.',
-            code: 'SCHEMA_MISMATCH'
-          });
-        }
+          const user = userCheck.rows[0];
+          const doctorRoles = ['doctor', 'physician'];
+          const isDoctor = doctorRoles.includes(user.role) || doctorRoles.includes(user.active_role);
 
-        // Provider doesn't exist anywhere - set to null and allow appointment without provider
-        console.warn('Provider not found anywhere - Setting provider_id to NULL');
-        provider_id = null;
+          if (isDoctor) {
+            // Auto-sync: insert the doctor into the providers table
+            console.log('Auto-syncing doctor from users to providers table:', provider_id);
+            try {
+              await pool.query(
+                `INSERT INTO providers (id, first_name, last_name, specialization, email, phone, license_number)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 ON CONFLICT (id) DO NOTHING`,
+                [user.id, user.first_name, user.last_name, user.specialty || 'General Practice', user.email, user.phone, user.license_number]
+              );
+              console.log('Provider synced successfully:', provider_id);
+            } catch (syncError) {
+              console.error('Failed to sync provider:', syncError.message);
+              // Continue anyway — the INSERT into appointments may still work
+              // if the foreign key constraint is relaxed or the sync partially succeeded
+            }
+          } else {
+            // User exists but isn't a doctor — allow appointment but log the mismatch
+            console.warn('User exists but is not a doctor (role:', user.role, '). Attempting to use as provider anyway.');
+            try {
+              await pool.query(
+                `INSERT INTO providers (id, first_name, last_name, specialization, email, phone, license_number)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 ON CONFLICT (id) DO NOTHING`,
+                [user.id, user.first_name, user.last_name, user.specialty || null, user.email, user.phone, user.license_number]
+              );
+            } catch (syncError) {
+              console.error('Failed to sync user as provider:', syncError.message);
+              provider_id = null;
+            }
+          }
+        } else {
+          // Provider doesn't exist anywhere - set to null and allow appointment without provider
+          console.warn('Provider not found anywhere - Setting provider_id to NULL');
+          provider_id = null;
+        }
       } else {
         console.log('Provider verified:', providerCheck.rows[0]);
       }
@@ -157,26 +190,58 @@ router.post('/', async (req, res) => {
       provider_id = null;
     }
 
-    // Check for scheduling conflicts with the same doctor
-    if (provider_id && start_time) {
-      const conflictCheck = await pool.query(
-        `SELECT a.id,
-                CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
-                CONCAT(p.first_name, ' ', p.last_name) as patient
-         FROM appointments a
-         LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
-         LEFT JOIN patients p ON a.patient_id::text = p.id::text
-         WHERE a.provider_id::text = $1::text
-           AND a.start_time = $2
-           AND a.status NOT IN ('cancelled', 'completed')`,
-        [provider_id, start_time]
-      );
+    // Check for scheduling conflicts (overlapping time ranges)
+    if (start_time && end_time) {
+      // Check provider conflict
+      if (provider_id) {
+        const providerConflict = await pool.query(
+          `SELECT a.id,
+                  CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+                  CONCAT(p.first_name, ' ', p.last_name) as patient,
+                  a.start_time, a.end_time
+           FROM appointments a
+           LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+           LEFT JOIN patients p ON a.patient_id::text = p.id::text
+           WHERE a.provider_id::text = $1::text
+             AND a.status NOT IN ('cancelled', 'canceled', 'completed')
+             AND a.start_time < $3
+             AND a.end_time > $2`,
+          [provider_id, start_time, end_time]
+        );
 
-      if (conflictCheck.rows.length > 0) {
-        const conflict = conflictCheck.rows[0];
-        return res.status(409).json({
-          error: `Doctor ${conflict.doctor} already has an appointment with ${conflict.patient} at this time`
-        });
+        if (providerConflict.rows.length > 0) {
+          const conflict = providerConflict.rows[0];
+          return res.status(409).json({
+            error: `Provider ${conflict.doctor || 'selected'} is busy at the selected time (already has an appointment with ${conflict.patient || 'another patient'}).`,
+            conflictType: 'provider'
+          });
+        }
+      }
+
+      // Check patient conflict
+      if (patient_id) {
+        const patientConflict = await pool.query(
+          `SELECT a.id,
+                  CONCAT(p.first_name, ' ', p.last_name) as patient,
+                  CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+                  a.start_time, a.end_time
+           FROM appointments a
+           LEFT JOIN patients p ON a.patient_id::text = p.id::text
+           LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+           WHERE a.patient_id::text = $1::text
+             AND a.status NOT IN ('cancelled', 'canceled', 'completed')
+             AND a.start_time < $3
+             AND a.end_time > $2`,
+          [patient_id, start_time, end_time]
+        );
+
+        if (patientConflict.rows.length > 0) {
+          const conflict = patientConflict.rows[0];
+          return res.status(409).json({
+            error: `Patient ${conflict.patient || 'selected'} already has an appointment booked at the selected time${conflict.doctor ? ` (with ${conflict.doctor})` : ''}.`,
+            conflictType: 'patient'
+          });
+        }
       }
     }
 
@@ -202,7 +267,77 @@ router.post('/', async (req, res) => {
       [patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
        duration_minutes, reason, notes, status || 'scheduled']
     );
-    res.status(201).json(result.rows[0]);
+
+    const newAppointment = result.rows[0];
+
+    // Re-query with JOINs to include patient and doctor names (matches GET response format)
+    const fullResult = await pool.query(
+      `SELECT a.*,
+              CONCAT(p.first_name, ' ', p.last_name) as patient,
+              CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+              pr.first_name as provider_first_name,
+              pr.last_name as provider_last_name,
+              pr.specialization as provider_specialization
+       FROM appointments a
+       LEFT JOIN patients p ON a.patient_id::text = p.id::text
+       LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+       WHERE a.id = $1`,
+      [newAppointment.id]
+    );
+
+    let finalAppointment = fullResult.rows[0] || newAppointment;
+
+    // Auto-generate a meeting URL for Telehealth appointments
+    if ((appointment_type || '').toLowerCase() === 'telehealth') {
+      try {
+        const providerManager = new TelehealthProviderManager(pool);
+        const activeProvider = await providerManager.getActiveProvider();
+
+        let meetingResult;
+        if (activeProvider && activeProvider.is_enabled) {
+          meetingResult = await providerManager.createMeeting({
+            topic: `Telehealth Appointment`,
+            startTime: start_time,
+            duration: duration_minutes || 30,
+            recordingEnabled: false,
+          });
+        } else {
+          // No provider configured — generate a default AureonCare room link
+          meetingResult = providerManager.createDefaultMeeting({});
+        }
+
+        const meetingUrl = meetingResult.meetingUrl || meetingResult.meeting_url;
+        if (meetingUrl) {
+          await pool.query(
+            'UPDATE appointments SET meeting_url = $1 WHERE id = $2',
+            [meetingUrl, newAppointment.id]
+          );
+          // Re-fetch with updated meeting_url
+          const updatedResult = await pool.query(
+            `SELECT a.*,
+                    CONCAT(p.first_name, ' ', p.last_name) as patient,
+                    CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+                    pr.first_name as provider_first_name,
+                    pr.last_name as provider_last_name,
+                    pr.specialization as provider_specialization
+             FROM appointments a
+             LEFT JOIN patients p ON a.patient_id::text = p.id::text
+             LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+             WHERE a.id = $1`,
+            [newAppointment.id]
+          );
+          finalAppointment = updatedResult.rows[0] || finalAppointment;
+        }
+      } catch (telehealthError) {
+        // Non-fatal: log but do not fail the appointment creation
+        console.warn('Could not generate telehealth meeting URL:', telehealthError.message);
+      }
+    }
+
+    res.status(201).json(finalAppointment);
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'appointment.created', { appointment: finalAppointment }).catch(() => {});
   } catch (error) {
     console.error('Error creating appointment:', error);
 
@@ -221,6 +356,58 @@ router.post('/', async (req, res) => {
     }
 
     res.status(500).json({ error: 'Failed to create appointment', details: error.message });
+  }
+});
+
+// Update appointment status only (lightweight PATCH — avoids sending and
+// re-validating every field, which can trip the provider FK constraint when
+// a provider_id in an older appointment no longer exists in the providers table)
+router.patch('/:id/status', async (req, res) => {
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ error: 'status is required' });
+  }
+
+  try {
+    const pool = req.app.locals.pool;
+
+    const result = await pool.query(
+      `UPDATE appointments SET status = $1, updated_at = NOW() WHERE id::text = $2::text RETURNING *`,
+      [status, req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    // Return enriched row (same shape as GET /appointments) so callers
+    // can use patient_id / provider_id without a second fetch.
+    const fullResult = await pool.query(
+      `SELECT a.*,
+              CONCAT(p.first_name, ' ', p.last_name) as patient,
+              CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+              pr.first_name as provider_first_name,
+              pr.last_name  as provider_last_name,
+              pr.specialization as provider_specialization
+       FROM appointments a
+       LEFT JOIN patients  p  ON a.patient_id::text  = p.id::text
+       LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+       WHERE a.id = $1`,
+      [result.rows[0].id]
+    );
+
+    const updated = fullResult.rows[0] || result.rows[0];
+    res.json(updated);
+
+    // Send notification (non-blocking)
+    notificationService.dispatch(pool, 'appointment.status_changed', {
+      appointment: updated,
+      old_status: result.rows[0].status,
+    }).catch(() => {});
+  } catch (error) {
+    console.error('Error updating appointment status:', error);
+    res.status(500).json({ error: 'Failed to update appointment status', details: error.message });
   }
 });
 
@@ -246,26 +433,59 @@ router.put('/:id', async (req, res) => {
 
     const oldAppointment = oldAppointmentResult.rows[0];
 
-    // Check for scheduling conflicts with the same doctor (excluding current appointment)
-    const conflictCheck = await pool.query(
-      `SELECT a.id,
-              CONCAT(u.first_name, ' ', u.last_name) as doctor,
-              CONCAT(p.first_name, ' ', p.last_name) as patient
-       FROM appointments a
-       LEFT JOIN users u ON a.provider_id::text = u.id::text
-       LEFT JOIN patients p ON a.patient_id::text = p.id::text
-       WHERE a.provider_id::text = $1::text
-         AND a.start_time = $2
-         AND a.id::text != $3::text
-         AND a.status NOT IN ('cancelled', 'completed')`,
-      [provider_id, start_time, req.params.id]
-    );
+    // Check for scheduling conflicts (overlapping time ranges, excluding current appointment)
+    if (start_time && end_time) {
+      // Check provider conflict
+      if (provider_id) {
+        const providerConflict = await pool.query(
+          `SELECT a.id,
+                  CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+                  CONCAT(p.first_name, ' ', p.last_name) as patient
+           FROM appointments a
+           LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+           LEFT JOIN patients p ON a.patient_id::text = p.id::text
+           WHERE a.provider_id::text = $1::text
+             AND a.id::text != $4::text
+             AND a.status NOT IN ('cancelled', 'canceled', 'completed')
+             AND a.start_time < $3
+             AND a.end_time > $2`,
+          [provider_id, start_time, end_time, req.params.id]
+        );
 
-    if (conflictCheck.rows.length > 0) {
-      const conflict = conflictCheck.rows[0];
-      return res.status(409).json({
-        error: `Doctor ${conflict.doctor} already has an appointment with ${conflict.patient} at this time`
-      });
+        if (providerConflict.rows.length > 0) {
+          const conflict = providerConflict.rows[0];
+          return res.status(409).json({
+            error: `Provider ${conflict.doctor || 'selected'} is busy at the selected time (already has an appointment with ${conflict.patient || 'another patient'}).`,
+            conflictType: 'provider'
+          });
+        }
+      }
+
+      // Check patient conflict
+      if (patient_id) {
+        const patientConflict = await pool.query(
+          `SELECT a.id,
+                  CONCAT(p.first_name, ' ', p.last_name) as patient,
+                  CONCAT(pr.first_name, ' ', pr.last_name) as doctor
+           FROM appointments a
+           LEFT JOIN patients p ON a.patient_id::text = p.id::text
+           LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+           WHERE a.patient_id::text = $1::text
+             AND a.id::text != $4::text
+             AND a.status NOT IN ('cancelled', 'canceled', 'completed')
+             AND a.start_time < $3
+             AND a.end_time > $2`,
+          [patient_id, start_time, end_time, req.params.id]
+        );
+
+        if (patientConflict.rows.length > 0) {
+          const conflict = patientConflict.rows[0];
+          return res.status(409).json({
+            error: `Patient ${conflict.patient || 'selected'} already has an appointment booked at the selected time${conflict.doctor ? ` (with ${conflict.doctor})` : ''}.`,
+            conflictType: 'patient'
+          });
+        }
+      }
     }
 
     const result = await pool.query(
@@ -279,7 +499,22 @@ router.put('/:id', async (req, res) => {
        duration_minutes, reason, notes, status, req.params.id]
     );
 
-    const updatedAppointment = result.rows[0];
+    // Re-query with JOINs to include patient and doctor names (matches GET response format)
+    const fullResult = await pool.query(
+      `SELECT a.*,
+              CONCAT(p.first_name, ' ', p.last_name) as patient,
+              CONCAT(pr.first_name, ' ', pr.last_name) as doctor,
+              pr.first_name as provider_first_name,
+              pr.last_name as provider_last_name,
+              pr.specialization as provider_specialization
+       FROM appointments a
+       LEFT JOIN patients p ON a.patient_id::text = p.id::text
+       LEFT JOIN providers pr ON a.provider_id::text = pr.id::text
+       WHERE a.id = $1`,
+      [result.rows[0]?.id]
+    );
+
+    const updatedAppointment = fullResult.rows[0] || result.rows[0];
 
     // Send WhatsApp notification if appointment was rescheduled or cancelled
     try {
@@ -292,15 +527,21 @@ router.put('/:id', async (req, res) => {
         const wasCancelled = status === 'cancelled' || status === 'canceled';
 
         if (timeChanged || wasCancelled) {
-          // Get patient and provider details
+          // Get patient and provider details (fall back to users table if not in providers)
           const patientResult = await pool.query(
             'SELECT id, first_name, last_name, phone FROM patients WHERE id::text = $1::text',
             [patient_id]
           );
-          const providerResult = await pool.query(
+          let providerResult = await pool.query(
             'SELECT id, first_name, last_name FROM providers WHERE id::text = $1::text',
             [provider_id]
           );
+          if (providerResult.rows.length === 0) {
+            providerResult = await pool.query(
+              'SELECT id, first_name, last_name FROM users WHERE id::text = $1::text',
+              [provider_id]
+            );
+          }
 
           if (patientResult.rows.length > 0 && providerResult.rows.length > 0) {
             const patient = {
@@ -331,6 +572,12 @@ router.put('/:id', async (req, res) => {
     }
 
     res.json(updatedAppointment);
+
+    // Send notification (non-blocking)
+    const isCancelled = status === 'cancelled' || status === 'canceled';
+    notificationService.dispatch(pool, isCancelled ? 'appointment.cancelled' : 'appointment.updated', {
+      appointment: updatedAppointment,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error updating appointment:', error);
     res.status(500).json({ error: 'Failed to update appointment' });
@@ -356,15 +603,21 @@ router.delete('/:id', async (req, res) => {
       const whatsappPref = await WhatsAppService.isEnabledForPatient(pool, deletedAppointment.patient_id);
 
       if (whatsappPref.enabled) {
-        // Get patient and provider details
+        // Get patient and provider details (fall back to users table if not in providers)
         const patientResult = await pool.query(
           'SELECT id, first_name, last_name, phone FROM patients WHERE id::text = $1::text',
           [deletedAppointment.patient_id]
         );
-        const providerResult = await pool.query(
+        let providerResult = await pool.query(
           'SELECT id, first_name, last_name FROM providers WHERE id::text = $1::text',
           [deletedAppointment.provider_id]
         );
+        if (providerResult.rows.length === 0) {
+          providerResult = await pool.query(
+            'SELECT id, first_name, last_name FROM users WHERE id::text = $1::text',
+            [deletedAppointment.provider_id]
+          );
+        }
 
         if (patientResult.rows.length > 0 && providerResult.rows.length > 0) {
           const patient = {
@@ -393,6 +646,9 @@ router.delete('/:id', async (req, res) => {
     }
 
     res.json({ message: 'Appointment deleted successfully' });
+
+    // Send notification (non-blocking)
+    notificationService.dispatch(pool, 'appointment.cancelled', { appointment: deletedAppointment }).catch(() => {});
   } catch (error) {
     console.error('Error deleting appointment:', error);
     res.status(500).json({ error: 'Failed to delete appointment' });

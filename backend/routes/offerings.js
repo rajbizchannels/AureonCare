@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 // ==================== SERVICE CATEGORIES ====================
 
@@ -339,10 +341,17 @@ router.post('/', async (req, res) => {
     brochure_url,
     consent_form_required,
     consent_form_url,
+    consent_form_id,
     seo_title,
     seo_description,
     seo_keywords,
-    created_by
+    created_by,
+    // Accept camelCase keys from frontend
+    consentFormRequired,
+    consentFormUrl,
+    consentFormId,
+    categoryId,
+    durationMinutes
   } = req.body;
 
   if (!name) {
@@ -350,6 +359,12 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    const _category_id = category_id || categoryId;
+    const _duration_minutes = duration_minutes || durationMinutes;
+    const _consent_form_required = consent_form_required ?? consentFormRequired ?? false;
+    const _consent_form_url = consent_form_url || consentFormUrl || null;
+    const _consent_form_id = consent_form_id || consentFormId || null;
+
     const result = await pool.query(
       `INSERT INTO healthcare_offerings (
         name, description, category_id, duration_minutes,
@@ -359,19 +374,19 @@ router.post('/', async (req, res) => {
         min_age, max_age, gender_restriction,
         contraindications, prerequisites, allowed_provider_specializations,
         image_url, video_url, brochure_url,
-        consent_form_required, consent_form_url,
+        consent_form_required, consent_form_url, consent_form_id,
         seo_title, seo_description, seo_keywords, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
       RETURNING *`,
       [
-        name, description, category_id, duration_minutes,
+        name, description, _category_id, _duration_minutes,
         requires_preparation || false, preparation_instructions,
         is_active !== false, is_featured || false, available_online !== false, requires_referral || false,
         cpt_codes, icd_codes, hcpcs_codes,
         min_age, max_age, gender_restriction || 'any',
         contraindications, prerequisites, allowed_provider_specializations,
         image_url, video_url, brochure_url,
-        consent_form_required || false, consent_form_url,
+        _consent_form_required || false, _consent_form_url || _consent_form_id,
         seo_title, seo_description, seo_keywords, created_by
       ]
     );
@@ -383,11 +398,47 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Map camelCase keys from frontend to snake_case DB columns
+const CAMEL_TO_SNAKE = {
+  categoryId: 'category_id',
+  durationMinutes: 'duration_minutes',
+  requiresPreparation: 'requires_preparation',
+  preparationInstructions: 'preparation_instructions',
+  isActive: 'is_active',
+  isFeatured: 'is_featured',
+  availableOnline: 'available_online',
+  requiresReferral: 'requires_referral',
+  cptCodes: 'cpt_codes',
+  icdCodes: 'icd_codes',
+  hcpcsCodes: 'hcpcs_codes',
+  minAge: 'min_age',
+  maxAge: 'max_age',
+  genderRestriction: 'gender_restriction',
+  imageUrl: 'image_url',
+  videoUrl: 'video_url',
+  brochureUrl: 'brochure_url',
+  consentFormRequired: 'consent_form_required',
+  consentFormUrl: 'consent_form_url',
+  consentFormId: 'consent_form_url',
+  seoTitle: 'seo_title',
+  seoDescription: 'seo_description',
+  seoKeywords: 'seo_keywords',
+  createdBy: 'created_by',
+  allowedProviderSpecializations: 'allowed_provider_specializations'
+};
+
 // Update healthcare offering
 router.put('/:id', async (req, res) => {
   const pool = req.app.locals.pool;
   const { id } = req.params;
-  const updates = req.body;
+
+  // Normalize camelCase keys to snake_case
+  const updates = {};
+  for (const [key, value] of Object.entries(req.body)) {
+    const mapped = CAMEL_TO_SNAKE[key] || key;
+    // Don't overwrite a snake_case key already set by a later camelCase key
+    if (!(mapped in updates)) updates[mapped] = value;
+  }
 
   try {
     // Build dynamic update query
@@ -1291,6 +1342,75 @@ router.put('/promotions/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating promotion:', error);
     res.status(500).json({ error: 'Failed to update promotion' });
+  }
+});
+
+// ==================== OFFERING → FORM LINKS ====================
+
+const ENSURE_OFFERING_FORM_LINKS = `
+  CREATE TABLE IF NOT EXISTS offering_form_links (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    offering_id UUID NOT NULL REFERENCES healthcare_offerings(id) ON DELETE CASCADE,
+    form_template_id TEXT NOT NULL,
+    form_template_name VARCHAR(255),
+    trigger_on VARCHAR(50) DEFAULT 'order',
+    is_active BOOLEAN DEFAULT true,
+    created_by UUID,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(offering_id, form_template_id)
+  );
+`;
+
+// GET /api/offerings/:id/forms
+router.get('/:id/forms', async (req, res) => {
+  const pool = req.app.locals.pool;
+  try {
+    await pool.query(ENSURE_OFFERING_FORM_LINKS);
+    const result = await pool.query(
+      'SELECT * FROM offering_form_links WHERE offering_id = $1 AND is_active = true ORDER BY created_at',
+      [req.params.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching offering form links:', error);
+    res.status(500).json({ error: 'Failed to fetch offering forms' });
+  }
+});
+
+// POST /api/offerings/:id/forms
+router.post('/:id/forms', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { form_template_id, form_template_name, trigger_on } = req.body;
+  const actorId = req.headers['x-user-id'];
+  try {
+    await pool.query(ENSURE_OFFERING_FORM_LINKS);
+    const result = await pool.query(
+      `INSERT INTO offering_form_links (offering_id, form_template_id, form_template_name, trigger_on, created_by)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (offering_id, form_template_id) DO UPDATE SET is_active = true, form_template_name = EXCLUDED.form_template_name
+       RETURNING *`,
+      [req.params.id, form_template_id, form_template_name || null, trigger_on || 'order', actorId || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error linking form to offering:', error);
+    res.status(500).json({ error: 'Failed to link form to offering' });
+  }
+});
+
+// DELETE /api/offerings/:id/forms/:formTemplateId
+router.delete('/:id/forms/:formTemplateId', async (req, res) => {
+  const pool = req.app.locals.pool;
+  try {
+    await pool.query(ENSURE_OFFERING_FORM_LINKS);
+    await pool.query(
+      'DELETE FROM offering_form_links WHERE offering_id = $1 AND form_template_id = $2',
+      [req.params.id, req.params.formTemplateId]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error unlinking form from offering:', error);
+    res.status(500).json({ error: 'Failed to unlink form from offering' });
   }
 });
 

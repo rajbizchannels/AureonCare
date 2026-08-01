@@ -536,7 +536,20 @@ router.get('/booking-config/slug/:slug', async (req, res) => {
             return res.status(404).json({ error: 'Provider not found or booking not available' });
         }
 
-        res.json(result.rows[0]);
+        // The booking page is public, so it cannot read /api/clinic-settings to
+        // learn how to render prices. Carry the practice currency here — it is
+        // presentation only, and the rest of that settings record stays private.
+        let currency = 'USD';
+        try {
+            const org = await pool.query(
+                `SELECT settings ->> 'currency' AS currency FROM organization_settings LIMIT 1`
+            );
+            if (org.rows[0]?.currency) currency = org.rows[0].currency;
+        } catch (error) {
+            console.error('Could not read practice currency, defaulting to USD:', error.message);
+        }
+
+        res.json({ ...result.rows[0], currency });
     } catch (error) {
         console.error('Error fetching provider by slug:', error);
         res.status(500).json({ error: 'Failed to fetch provider' });
@@ -834,9 +847,12 @@ router.get('/slots/:providerId', async (req, res) => {
                 });
 
                 if (!hasConflict && !hasTimeOff) {
+                    // Format as local time strings to match system time
+                    const pad = (n) => String(n).padStart(2, '0');
+                    const fmtLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
                     slots.push({
-                        startTime: slotStart.toISOString(),
-                        endTime: slotEnd.toISOString(),
+                        startTime: fmtLocal(slotStart),
+                        endTime: fmtLocal(slotEnd),
                         available: true
                     });
                 }
@@ -1025,7 +1041,7 @@ router.post('/book', async (req, res) => {
             // Create new patient
             const newPatient = await client.query(
                 `INSERT INTO patients
-                 (first_name, last_name, email, phone, dob, status)
+                 (first_name, last_name, email, phone, date_of_birth, status)
                  VALUES ($1, $2, $3, $4, $5, 'Active')
                  RETURNING id`,
                 [

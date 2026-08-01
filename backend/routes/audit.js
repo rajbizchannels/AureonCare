@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 // Get pool from app.locals (shared pool from server.js)
 let pool;
@@ -106,7 +108,7 @@ const checkAuditTableExists = async (req, res, next) => {
  *   metadata: object (optional)
  * }
  */
-router.post('/', async (req, res) => {
+router.post('/', checkAuditTableExists, async (req, res) => {
   try {
     // Get pool from app.locals if not already set
     if (!pool) {

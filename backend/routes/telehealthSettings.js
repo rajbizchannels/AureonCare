@@ -1,5 +1,9 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+const axios = require('axios');
+const crypto = require('crypto');
 
 /**
  * Telehealth Provider Settings API
@@ -7,13 +11,20 @@ const router = express.Router();
  */
 
 // Get all telehealth provider settings
+// Returns status + connection info (never raw tokens)
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const result = await pool.query(`
-      SELECT * FROM telehealth_provider_settings
+      SELECT id, provider_type, is_enabled, client_id, api_key,
+             zoom_user_email, zoom_user_id, account_id,
+             token_expires_at, token_scope,
+             CASE WHEN access_token IS NOT NULL THEN true ELSE false END AS has_tokens,
+             CASE WHEN token_expires_at IS NOT NULL AND token_expires_at < $1 THEN true ELSE false END AS is_expired,
+             created_at, updated_at
+      FROM telehealth_provider_settings
       ORDER BY provider_type
-    `);
+    `, [Date.now()]);
 
     res.json(result.rows);
   } catch (error) {
@@ -176,6 +187,23 @@ router.patch('/:providerType/toggle', async (req, res) => {
   }
 });
 
+// Get all enabled providers (used by frontend for patient preference dropdown)
+router.get('/enabled/providers', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(`
+      SELECT provider_type, zoom_user_email
+      FROM telehealth_provider_settings
+      WHERE is_enabled = true
+      ORDER BY provider_type
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching enabled providers:', error);
+    res.status(500).json({ error: 'Failed to fetch enabled providers' });
+  }
+});
+
 // Get active/default provider
 router.get('/active/provider', async (req, res) => {
   try {
@@ -198,7 +226,7 @@ router.get('/active/provider', async (req, res) => {
   }
 });
 
-// Test provider connection
+// Test provider connection (validates credentials against provider API)
 router.post('/:providerType/test', async (req, res) => {
   try {
     const { providerType } = req.params;
@@ -206,10 +234,20 @@ router.post('/:providerType/test', async (req, res) => {
     const pool = req.app.locals.pool;
 
     const manager = new TelehealthProviderManager(pool);
-
-    // Try to initialize the provider
     const provider = await manager.getProvider(providerType);
 
+    // Use provider-specific test if available (e.g., ZoomService.testConnection)
+    if (typeof provider.testConnection === 'function') {
+      const result = await provider.testConnection();
+      return res.json({
+        success: true,
+        message: result.message || `${providerType} connection test successful`,
+        provider: providerType,
+        details: result.user || null
+      });
+    }
+
+    // Fallback: just confirm the provider can be initialized
     res.json({
       success: true,
       message: `${providerType} connection test successful`,
@@ -220,6 +258,183 @@ router.post('/:providerType/test', async (req, res) => {
     res.status(400).json({
       success: false,
       error: error.message
+    });
+  }
+});
+
+// Create an instant Zoom meeting (one-click launch)
+router.post('/:providerType/instant-meeting', async (req, res) => {
+  try {
+    const { providerType } = req.params;
+    const { topic, duration, patientName, recordingEnabled } = req.body;
+    const TelehealthProviderManager = require('../services/telehealthProviders');
+    const pool = req.app.locals.pool;
+
+    // Diagnostic: verify DB state before attempting to create meeting
+    try {
+      const dbCheck = await pool.query(
+        `SELECT provider_type, is_enabled,
+                access_token IS NOT NULL AS has_access_token,
+                refresh_token IS NOT NULL AS has_refresh_token,
+                client_id IS NOT NULL AS has_client_id,
+                client_secret IS NOT NULL AS has_client_secret,
+                token_expires_at,
+                token_scope
+         FROM telehealth_provider_settings WHERE provider_type = $1`,
+        [providerType]
+      );
+      if (dbCheck.rows.length === 0) {
+        console.error(`[instant-meeting] No DB row for ${providerType}. User must reconnect via OAuth.`);
+        return res.status(422).json({
+          error: `${providerType} is not connected. Please connect it in Admin Settings > Integrations.`
+        });
+      }
+      const row = dbCheck.rows[0];
+      console.log(`[instant-meeting] ${providerType} DB state:`, JSON.stringify(row));
+      if (!row.has_access_token) {
+        console.error(`[instant-meeting] ${providerType} row exists but access_token is NULL`);
+        return res.status(422).json({
+          error: `${providerType} access token is missing. Please disconnect and reconnect in Admin Settings.`
+        });
+      }
+    } catch (dbErr) {
+      console.error('[instant-meeting] DB check failed:', dbErr.message);
+    }
+
+    const manager = new TelehealthProviderManager(pool);
+    const provider = await manager.getProvider(providerType);
+
+    if (typeof provider.createInstantMeeting !== 'function') {
+      return res.status(400).json({
+        error: `${providerType} does not support instant meetings`
+      });
+    }
+
+    const result = await provider.createInstantMeeting({
+      topic: topic || 'AureonCare Telehealth Session',
+      duration: duration || 30,
+      patientName: patientName || 'Patient',
+      recordingEnabled: recordingEnabled || false
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error creating instant meeting:', error);
+    const isConfigError = error.message?.includes('not configured') || error.message?.includes('credentials');
+    res.status(isConfigError ? 422 : 500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /zoom/host-token?meetingId=<id>
+ *
+ * Returns data needed for the embedded Zoom Meeting SDK (Client View, CDN):
+ *   - zakToken   : ZAK token — grants host privileges in the SDK
+ *   - signature  : HMAC-JWT signed with SDK Key + SDK Secret
+ *   - sdkKey     : SDK Key (= AC_ZM_SDK_K, or falls back to AC_ZM_CID)
+ *   - password   : meeting password (fetched from Zoom API)
+ *
+ * For Zoom General Apps the OAuth Client ID/Secret ARE the SDK Key/Secret —
+ * no separate app or extra env vars are required.
+ */
+router.get('/zoom/host-token', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { meetingId } = req.query;
+
+    // Get stored admin OAuth access token + app credentials (client_id / client_secret)
+    const result = await pool.query(
+      `SELECT access_token, zoom_user_id, client_id, client_secret
+       FROM telehealth_provider_settings
+       WHERE provider_type = 'zoom' AND is_enabled = true LIMIT 1`
+    );
+
+    const row = result.rows[0];
+    if (!row || !row.access_token) {
+      return res.status(422).json({
+        error: 'Zoom is not connected. Please connect Zoom in Admin Settings.'
+      });
+    }
+
+    const { access_token } = row;
+    const authHeader = { Authorization: `Bearer ${access_token}` };
+
+    // Fetch ZAK token — required for the host role in the Meeting SDK.
+    // Try the v2 /users/me/zak endpoint first (works with user:read:zak scope),
+    // fall back to the legacy /users/me/token?type=zak path (admin scope).
+    let zakToken = null;
+    try {
+      const zakResponse = await axios.get(
+        'https://api.zoom.us/v2/users/me/zak',
+        { headers: authHeader }
+      );
+      zakToken = zakResponse.data.token;
+    } catch (_zakErr) {
+      // Fallback for older apps that have user:read:token:admin
+      const zakFallback = await axios.get(
+        'https://api.zoom.us/v2/users/me/token?type=zak',
+        { headers: authHeader }
+      );
+      zakToken = zakFallback.data.token;
+    }
+
+    // Resolve SDK Key / Secret.
+    // For Zoom General Apps the Client ID == SDK Key and Client Secret == SDK Secret.
+    // Priority: env override → database credentials (from Admin Panel).
+    const sdkKey    = process.env.AC_ZM_SDK_K    || process.env.AC_ZM_CID  || row.client_id;
+    const sdkSecret = process.env.AC_ZM_SDK_S || process.env.AC_ZM_CSK || row.client_secret;
+
+    if (!sdkKey || !sdkSecret) {
+      return res.status(422).json({
+        error: 'AC_ZM_CID / AC_ZM_CSK are not configured on the server.'
+      });
+    }
+
+    // Generate the Meeting SDK JWT signature (role 1 = host)
+    let signature = null;
+    if (meetingId) {
+      const b64url = (s) =>
+        Buffer.from(s).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      const iat = Math.round(Date.now() / 1000) - 30;
+      const exp = iat + 7200; // valid for 2 hours
+      const header  = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const payload = b64url(
+        JSON.stringify({ appKey: sdkKey, mn: String(meetingId), role: 1, iat, exp, tokenExp: exp })
+      );
+      const sigPart = crypto
+        .createHmac('sha256', sdkSecret)
+        .update(`${header}.${payload}`)
+        .digest('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+      signature = `${header}.${payload}.${sigPart}`;
+    }
+
+    // Fetch meeting password from Zoom API
+    let password = '';
+    if (meetingId) {
+      try {
+        const mtgResponse = await axios.get(
+          `https://api.zoom.us/v2/meetings/${meetingId}`,
+          { headers: authHeader }
+        );
+        password = mtgResponse.data.password || '';
+      } catch (mtgErr) {
+        console.warn('Could not fetch meeting password:', mtgErr.response?.data?.message || mtgErr.message);
+      }
+    }
+
+    res.json({ zakToken, signature, sdkKey, password });
+  } catch (error) {
+    console.error('Error fetching Zoom host token:', error.response?.data || error.message);
+    if (error.response?.status === 401) {
+      return res.status(401).json({
+        error: 'Zoom access token expired. Please reconnect Zoom in Admin Settings.'
+      });
+    }
+    res.status(500).json({
+      error: 'Failed to fetch Zoom host token: ' + (error.response?.data?.message || error.message)
     });
   }
 });

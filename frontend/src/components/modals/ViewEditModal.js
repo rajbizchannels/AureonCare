@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Pill } from 'lucide-react';
-import { formatDate, formatTime, formatCurrency } from '../../utils/formatters';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Save, Pill, Video, ExternalLink } from 'lucide-react';
+import { formatDate, formatTime, formatCurrency, toLocalDateTimeString, toLocalDateString } from '../../utils/formatters';
+import { isPhoneValid, validateOptionalPhone, validateOptionalEmail } from '../../utils/validators';
 import EPrescribeModal from './ePrescribeModal';
 import { useApp } from '../../context/AppContext';
 import ConfirmationModal from './ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import { isProvider, isPatient } from '../../utils/rolePermissions';
 
 const ViewEditModal = ({
   theme,
@@ -22,7 +24,8 @@ const ViewEditModal = ({
   setUsers,
   setUser,
   user,
-  t
+  t,
+  currency = 'USD',
 }) => {
   const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const [editData, setEditData] = useState(editingItem?.data || {});
@@ -40,6 +43,7 @@ const ViewEditModal = ({
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingInsurancePayers, setLoadingInsurancePayers] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [appointmentTypes, setAppointmentTypes] = useState([]);
 
   // Get setLanguage from AppContext for updating language preference
@@ -241,8 +245,8 @@ const ViewEditModal = ({
           const startDate = new Date(startTimeStr);
 
           if (!isNaN(startDate.getTime())) {
-            // Format date as YYYY-MM-DD
-            data.date = startDate.toISOString().split('T')[0];
+            // Format date as YYYY-MM-DD (use local date, not UTC)
+            data.date = toLocalDateString(startDate);
 
             // Format time as HH:MM in local timezone
             const hours = String(startDate.getHours()).padStart(2, '0');
@@ -293,6 +297,8 @@ const ViewEditModal = ({
           data.darkMode = data.preferences.darkMode !== undefined
             ? data.preferences.darkMode
             : true;
+          data.whatsappNumber = data.preferences.whatsappNumber ?? data.phone ?? '';
+          data.whatsappNotifications = data.preferences.whatsappNotifications ?? false;
         }
       }
 
@@ -301,7 +307,7 @@ const ViewEditModal = ({
   }, [editingItem]);
 
   // Handle close with audit logging
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     logModalClose('ViewEditModal', {
       module: 'General',
       metadata: {
@@ -310,7 +316,7 @@ const ViewEditModal = ({
       },
     });
     onClose();
-  };
+  }, [currentView, editingItem?.type, logModalClose, onClose]);
 
   // ESC key handler
   useEffect(() => {
@@ -360,7 +366,7 @@ const ViewEditModal = ({
         quantity: calculatedQuantity.toString()
       }));
     }
-  }, [editingPrescription?.frequency, editingPrescription?.duration]);
+  }, [editingPrescription]);
 
   // Handle ESC key to close prescription modal
   useEffect(() => {
@@ -401,7 +407,17 @@ const ViewEditModal = ({
   };
 
   const handleSubmit = () => {
-    // Show confirmation modal before saving
+    if (type === 'userProfile' || type === 'user') {
+      const errs = {};
+      const emailErr = validateOptionalEmail(editData.email);
+      if (emailErr) errs.email = emailErr;
+      const phoneErr = validateOptionalPhone(editData.phone);
+      if (phoneErr) errs.phone = phoneErr;
+      const waErr = validateOptionalPhone(editData.whatsappNumber);
+      if (waErr) errs.whatsappNumber = waErr;
+      if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+      setFieldErrors({});
+    }
     setShowConfirmation(true);
   };
 
@@ -419,8 +435,8 @@ const ViewEditModal = ({
           const startDate = new Date(startTime);
           const endDate = new Date(startDate.getTime() + (editData.duration || 30) * 60000);
 
-          appointmentData.start_time = startDate.toISOString().slice(0, 19).replace('T', ' ');
-          appointmentData.end_time = endDate.toISOString().slice(0, 19).replace('T', ' ');
+          appointmentData.start_time = toLocalDateTimeString(startDate);
+          appointmentData.end_time = toLocalDateTimeString(endDate);
           appointmentData.duration_minutes = editData.duration || 30;
           appointmentData.appointment_type = editData.type;
           appointmentData.patient_id = editData.patientId || editData.patient_id;
@@ -487,10 +503,13 @@ const ViewEditModal = ({
         const avatar = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
 
         // Package preferences into nested object
+        const whatsappNum = editData.whatsappNumber || '';
         const preferences = {
           emailNotifications: editData.emailNotifications !== undefined ? editData.emailNotifications : true,
           smsAlerts: editData.smsAlerts !== undefined ? editData.smsAlerts : true,
-          darkMode: editData.darkMode !== undefined ? editData.darkMode : true
+          darkMode: editData.darkMode !== undefined ? editData.darkMode : true,
+          whatsappNumber: whatsappNum,
+          whatsappNotifications: whatsappNum ? (editData.whatsappNotifications ?? false) : false,
         };
 
         const userData = {
@@ -525,11 +544,17 @@ const ViewEditModal = ({
         // Generate avatar from initials
         const avatar = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
 
+        const userWhatsappNum = editData.whatsappNumber || '';
         const userData = {
           ...editData,
           firstName,
           lastName,
-          avatar: avatar || editData.avatar
+          avatar: avatar || editData.avatar,
+          preferences: {
+            ...(editData.preferences || {}),
+            whatsappNumber: userWhatsappNum,
+            whatsappNotifications: userWhatsappNum ? (editData.whatsappNotifications ?? false) : false,
+          },
         };
         const updated = await api.updateUser(editData.id, userData);
         setUsers(prev => prev.map(u =>
@@ -741,6 +766,43 @@ const ViewEditModal = ({
                   />
                 )}
               </div>
+
+              {/* Meeting URL — visible to providers and patients for Telehealth appointments */}
+              {editData.meeting_url && (isProvider(user) || isPatient(user)) && (
+                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-cyan-50 border-cyan-200'}`}>
+                  <label className={`block text-sm font-semibold mb-2 ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-700'}`}>
+                    Telehealth Meeting Link
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      href={editData.meeting_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-lg text-sm font-medium transition-all shadow-sm"
+                    >
+                      <Video className="w-4 h-4" />
+                      Join Meeting
+                    </a>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(editData.meeting_url);
+                      }}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                      }`}
+                      title="Copy meeting link"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Copy Link
+                    </button>
+                    <span className={`text-xs break-all ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      {editData.meeting_url}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           ) : type === 'patient' ? (
             <div className="space-y-4">
@@ -1225,12 +1287,15 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.email || t.notApplicable || 'N/A'}</p>
                   ) : (
-                    <input
-                      type="email"
-                      value={editData.email || ''}
-                      onChange={(e) => setEditData({...editData, email: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                    />
+                    <>
+                      <input
+                        type="email"
+                        value={editData.email || ''}
+                        onChange={(e) => { setEditData({...editData, email: e.target.value}); setFieldErrors(p => ({...p, email: validateOptionalEmail(e.target.value) || undefined})); }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.email ? 'border-red-500' : ''}`}
+                      />
+                      {fieldErrors.email && <p className="mt-1 text-xs text-red-500">{fieldErrors.email}</p>}
+                    </>
                   )}
                 </div>
                 <div>
@@ -1238,12 +1303,16 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.phone || t.notApplicable || 'N/A'}</p>
                   ) : (
-                    <input
-                      type="tel"
-                      value={editData.phone || ''}
-                      onChange={(e) => setEditData({...editData, phone: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                    />
+                    <>
+                      <input
+                        type="tel"
+                        value={editData.phone || ''}
+                        onChange={(e) => { setEditData({...editData, phone: e.target.value}); setFieldErrors(p => ({...p, phone: validateOptionalPhone(e.target.value) || undefined})); }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.phone ? 'border-red-500' : ''}`}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                      {fieldErrors.phone && <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>}
+                    </>
                   )}
                 </div>
                 <div>
@@ -1336,6 +1405,66 @@ const ViewEditModal = ({
                       />
                     </button>
                   </div>
+                  {/* WhatsApp Number */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.whatsappNumber || 'WhatsApp Number'}
+                    </label>
+                    {isView ? (
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.whatsappNumber || (t.notApplicable || 'N/A')}</p>
+                    ) : (
+                      <>
+                        <input
+                          type="tel"
+                          value={editData.whatsappNumber || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditData({
+                              ...editData,
+                              whatsappNumber: val,
+                              whatsappNotifications: isPhoneValid(val) ? editData.whatsappNotifications : false,
+                            });
+                            setFieldErrors(p => ({...p, whatsappNumber: validateOptionalPhone(val) || undefined}));
+                          }}
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.whatsappNumber ? 'border-red-500' : ''}`}
+                          placeholder="+1 (555) 123-4567"
+                        />
+                        {fieldErrors.whatsappNumber && <p className="mt-1 text-xs text-red-500">{fieldErrors.whatsappNumber}</p>}
+                      </>
+                    )}
+                  </div>
+                  {/* WhatsApp Notifications toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.whatsappNotifications || 'WhatsApp Notifications'}</span>
+                      {!isPhoneValid(editData.whatsappNumber) && !isView && (
+                        <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                          {editData.whatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isView || !isPhoneValid(editData.whatsappNumber)}
+                      onClick={() => {
+                        if (!isPhoneValid(editData.whatsappNumber)) return;
+                        setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        isView || !isPhoneValid(editData.whatsappNumber)
+                          ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                          : (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber))
+                            ? 'bg-green-500 cursor-pointer'
+                            : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1382,12 +1511,15 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.email}</p>
                   ) : (
-                    <input
-                      type="email"
-                      value={editData.email || ''}
-                      onChange={(e) => setEditData({...editData, email: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                    />
+                    <>
+                      <input
+                        type="email"
+                        value={editData.email || ''}
+                        onChange={(e) => { setEditData({...editData, email: e.target.value}); setFieldErrors(p => ({...p, email: validateOptionalEmail(e.target.value) || undefined})); }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.email ? 'border-red-500' : ''}`}
+                      />
+                      {fieldErrors.email && <p className="mt-1 text-xs text-red-500">{fieldErrors.email}</p>}
+                    </>
                   )}
                 </div>
                 <div>
@@ -1395,12 +1527,16 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.phone || 'N/A'}</p>
                   ) : (
-                    <input
-                      type="tel"
-                      value={editData.phone || ''}
-                      onChange={(e) => setEditData({...editData, phone: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                    />
+                    <>
+                      <input
+                        type="tel"
+                        value={editData.phone || ''}
+                        onChange={(e) => { setEditData({...editData, phone: e.target.value}); setFieldErrors(p => ({...p, phone: validateOptionalPhone(e.target.value) || undefined})); }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.phone ? 'border-red-500' : ''}`}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                      {fieldErrors.phone && <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>}
+                    </>
                   )}
                 </div>
                 <div>
@@ -1475,6 +1611,63 @@ const ViewEditModal = ({
                     </select>
                   )}
                 </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.whatsappNumber || 'WhatsApp Number'}</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.whatsappNumber || (t.notApplicable || 'N/A')}</p>
+                  ) : (
+                    <>
+                      <input
+                        type="tel"
+                        value={editData.whatsappNumber || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditData({
+                            ...editData,
+                            whatsappNumber: val,
+                            whatsappNotifications: isPhoneValid(val) ? editData.whatsappNotifications : false,
+                          });
+                          setFieldErrors(p => ({...p, whatsappNumber: validateOptionalPhone(val) || undefined}));
+                        }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.whatsappNumber ? 'border-red-500' : ''}`}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                      {fieldErrors.whatsappNumber && <p className="mt-1 text-xs text-red-500">{fieldErrors.whatsappNumber}</p>}
+                    </>
+                  )}
+                </div>
+              </div>
+              {/* WhatsApp Notifications toggle for type=user */}
+              <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.whatsappNotifications || 'WhatsApp Notifications'}</span>
+                    {!isPhoneValid(editData.whatsappNumber) && !isView && (
+                      <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        {editData.whatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isView || !isPhoneValid(editData.whatsappNumber)}
+                    onClick={() => {
+                      if (!isPhoneValid(editData.whatsappNumber)) return;
+                      setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      isView || !isPhoneValid(editData.whatsappNumber)
+                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                        : (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber))
+                          ? 'bg-green-500 cursor-pointer'
+                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
               </div>
             </div>
           ) : type === 'claim' ? (
@@ -1515,7 +1708,7 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Amount</label>
                   {isView ? (
-                    <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(editData.amount)}</p>
+                    <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(editData.amount, currency)}</p>
                   ) : (
                     <input
                       type="number"

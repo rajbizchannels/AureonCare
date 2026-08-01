@@ -1,13 +1,23 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { google } = require('googleapis');
+const { Client } = require('@microsoft/microsoft-graph-client');
 
-// Configure multer for file uploads
+// Helper: get today's date string YYYY-MM-DD
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// Configure multer for file uploads with dated subdirectories
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/medical-records');
+    const dateStr = todayStr();
+    const uploadDir = path.join(__dirname, '../uploads/medical-records', dateStr);
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -15,9 +25,10 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Generate unique filename with timestamp
+    // Generate dated unique filename: YYYY-MM-DD-fieldname-uniqueSuffix.ext
+    const dateStr = todayStr();
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, `${dateStr}-${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
   }
 });
 
@@ -39,6 +50,86 @@ const upload = multer({
     }
   }
 });
+
+// Upload a file to Google Drive if the provider is configured and enabled
+async function uploadToGoogleDrive(pool, filePath, fileName, mimeType) {
+  try {
+    const result = await pool.query(
+      "SELECT settings FROM backup_provider_settings WHERE provider_type = 'google_drive' AND is_enabled = true"
+    );
+    if (result.rows.length === 0) return null;
+
+    const settings = typeof result.rows[0].settings === 'string'
+      ? JSON.parse(result.rows[0].settings)
+      : result.rows[0].settings;
+
+    const accessToken = settings && settings.access_token;
+    if (!accessToken) return null;
+
+    const auth = new google.auth.OAuth2();
+    auth.setCredentials({ access_token: accessToken });
+
+    const drive = google.drive({ version: 'v3', auth });
+
+    const fileStream = fs.createReadStream(filePath);
+    const file = await drive.files.create({
+      requestBody: { name: fileName },
+      media: { mimeType, body: fileStream },
+      fields: 'id, name, webViewLink'
+    });
+
+    console.log('Medical record uploaded to Google Drive:', file.data.id);
+    return {
+      provider: 'google_drive',
+      fileId: file.data.id,
+      fileName: file.data.name,
+      link: file.data.webViewLink
+    };
+  } catch (err) {
+    console.error('Google Drive upload failed (non-fatal):', err.message);
+    return null;
+  }
+}
+
+// Upload a file to OneDrive if the provider is configured and enabled
+async function uploadToOneDrive(pool, filePath, fileName) {
+  try {
+    const result = await pool.query(
+      "SELECT settings FROM backup_provider_settings WHERE provider_type = 'onedrive' AND is_enabled = true"
+    );
+    if (result.rows.length === 0) return null;
+
+    const settings = typeof result.rows[0].settings === 'string'
+      ? JSON.parse(result.rows[0].settings)
+      : result.rows[0].settings;
+
+    const accessToken = settings && settings.access_token;
+    if (!accessToken) return null;
+
+    const client = Client.init({
+      authProvider: (done) => {
+        done(null, accessToken);
+      }
+    });
+
+    const fileContent = fs.readFileSync(filePath);
+
+    const uploadedFile = await client
+      .api(`/me/drive/root:/AureonCare/MedicalRecords/${fileName}:/content`)
+      .put(fileContent);
+
+    console.log('Medical record uploaded to OneDrive:', uploadedFile.id);
+    return {
+      provider: 'onedrive',
+      fileId: uploadedFile.id,
+      fileName: uploadedFile.name,
+      link: uploadedFile.webUrl
+    };
+  } catch (err) {
+    console.error('OneDrive upload failed (non-fatal):', err.message);
+    return null;
+  }
+}
 
 // Get all medical records
 router.get('/', async (req, res) => {
@@ -262,14 +353,17 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Patient ID is required' });
     }
 
+    const uploadDate = todayStr();
+
     // Create file metadata
     const fileMetadata = {
       originalName: req.file.originalname,
       filename: req.file.filename,
-      path: `/uploads/medical-records/${req.file.filename}`,
+      path: `/uploads/medical-records/${uploadDate}/${req.file.filename}`,
       size: req.file.size,
       mimeType: req.file.mimetype,
       uploadedAt: new Date().toISOString(),
+      uploadDate,
       classification: classification || 'General'
     };
 
@@ -303,16 +397,19 @@ router.post('/with-file', upload.single('file'), async (req, res) => {
       classification
     } = req.body;
 
+    const uploadDate = todayStr();
+
     // Create file metadata if file was uploaded
     let attachments = [];
     if (req.file) {
       attachments.push({
         originalName: req.file.originalname,
         filename: req.file.filename,
-        path: `/uploads/medical-records/${req.file.filename}`,
+        path: `/uploads/medical-records/${uploadDate}/${req.file.filename}`,
         size: req.file.size,
         mimeType: req.file.mimetype,
         uploadedAt: new Date().toISOString(),
+        uploadDate,
         classification: classification || 'General'
       });
     }
@@ -335,7 +432,7 @@ router.post('/with-file', upload.single('file'), async (req, res) => {
       patientId,
       providerId,
       recordType || classification || 'General',
-      recordDate || new Date().toISOString().split('T')[0],
+      recordDate || uploadDate,
       title,
       description,
       diagnosis,
@@ -343,7 +440,28 @@ router.post('/with-file', upload.single('file'), async (req, res) => {
       JSON.stringify(attachments)
     ]);
 
-    res.status(201).json(result.rows[0]);
+    const record = result.rows[0];
+
+    // Attempt cloud uploads if providers are configured (non-blocking on failure)
+    if (req.file) {
+      const [gdResult, odResult] = await Promise.all([
+        uploadToGoogleDrive(pool, req.file.path, req.file.filename, req.file.mimetype),
+        uploadToOneDrive(pool, req.file.path, req.file.filename)
+      ]);
+
+      const cloudStorage = [gdResult, odResult].filter(Boolean);
+
+      if (cloudStorage.length > 0) {
+        const updatedAttachments = attachments.map(att => ({ ...att, cloudStorage }));
+        await pool.query(
+          'UPDATE medical_records SET attachments = $1 WHERE id = $2',
+          [JSON.stringify(updatedAttachments), record.id]
+        );
+        record.attachments = updatedAttachments;
+      }
+    }
+
+    res.status(201).json(record);
   } catch (error) {
     console.error('Error creating medical record with file:', error);
     // Clean up uploaded file on error

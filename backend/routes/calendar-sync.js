@@ -1,34 +1,122 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 const { google } = require('googleapis');
 
-// Google Calendar OAuth configuration
-const getOAuth2Client = () => {
-  return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/calendar-sync/callback'
+const JWT_SECRET = process.env.AC_TK_S;
+
+// ─── Configuration ───────────────────────────────────────────────────────────
+// AC_GG_CID / AC_GG_CSK  Google OAuth client id + secret (Calendar API enabled)
+// AC_GG_URI              OAuth redirect URI registered on that client
+// AC_FE_URL              frontend origin the callback returns the patient to
+const GOOGLE_CLIENT_ID = process.env.AC_GG_CID;
+const GOOGLE_CLIENT_SECRET = process.env.AC_GG_CSK;
+const GOOGLE_REDIRECT_URI =
+  process.env.AC_GG_URI ||
+  `${process.env.AC_BE_URL || 'http://localhost:3001'}/api/calendar-sync/callback`;
+const APP_URL = process.env.AC_FE_URL || 'http://localhost:3000';
+
+const isConfigured = () => Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+
+if (!isConfigured()) {
+  console.warn(
+    '[calendar-sync] AC_GG_CID / AC_GG_CSK are not set — Google Calendar sync is disabled'
   );
+}
+
+const getOAuth2Client = () =>
+  new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+
+/** 503 rather than a confusing 500 when the deployment has no Google client. */
+const requireGoogleConfig = (req, res, next) => {
+  if (!isConfigured()) {
+    return res.status(503).json({
+      error: 'Google Calendar sync is not configured on this server',
+      code: 'CALENDAR_SYNC_NOT_CONFIGURED'
+    });
+  }
+  next();
 };
 
-// Get Google Calendar authorization URL
-router.get('/auth-url', async (req, res) => {
+/**
+ * A patient record belongs to the caller when the caller *is* that patient, or
+ * when the caller is staff. In the current schema patients.id equals the linked
+ * users.id; patients.user_id is still honoured for rows created before that
+ * merge (migration 023).
+ */
+const STAFF_ROLES = new Set([
+  'admin', 'doctor', 'nurse', 'receptionist', 'staff', 'billing_manager', 'crm_manager'
+]);
+
+const authorizePatientAccess = async (req, res, next) => {
   try {
-    const { patientId } = req.query;
+    const patientId = req.params.patientId || req.body.patientId || req.query.patientId;
 
     if (!patientId) {
       return res.status(400).json({ error: 'Patient ID is required' });
     }
 
-    const oauth2Client = getOAuth2Client();
+    if (STAFF_ROLES.has(req.user.role)) {
+      req.patientId = patientId;
+      return next();
+    }
 
-    const authUrl = oauth2Client.generateAuthUrl({
+    if (String(patientId) === String(req.user.id)) {
+      req.patientId = patientId;
+      return next();
+    }
+
+    const pool = req.app.locals.pool;
+    const owned = await pool.query(
+      'SELECT 1 FROM patients WHERE id = $1 AND user_id = $2',
+      [patientId, req.user.id]
+    );
+
+    if (owned.rows.length === 0) {
+      return res.status(403).json({ error: 'Access denied for this patient record' });
+    }
+
+    req.patientId = patientId;
+    next();
+  } catch (error) {
+    console.error('Error authorizing patient access:', error);
+    res.status(500).json({ error: 'Authorization check failed' });
+  }
+};
+
+/**
+ * The OAuth `state` is a short-lived signed token rather than a bare patient id.
+ * Google hands `state` back to an unauthenticated callback, so without a
+ * signature anyone could complete the flow against someone else's patient
+ * record and bind their Google account to it.
+ */
+const signOAuthState = (patientId, userId) =>
+  jwt.sign({ patientId: String(patientId), uid: String(userId) }, JWT_SECRET, { expiresIn: '10m' });
+
+const verifyOAuthState = (state) => {
+  try {
+    return jwt.verify(state, JWT_SECRET);
+  } catch (err) {
+    return null;
+  }
+};
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
+
+// Get Google Calendar authorization URL
+router.get('/auth-url', authenticate, requireGoogleConfig, authorizePatientAccess, async (req, res) => {
+  try {
+    const authUrl = getOAuth2Client().generateAuthUrl({
       access_type: 'offline',
+      prompt: 'consent', // force a refresh_token on re-authorisation
       scope: [
         'https://www.googleapis.com/auth/calendar.events',
-        'https://www.googleapis.com/auth/calendar.readonly'
+        'https://www.googleapis.com/auth/calendar.readonly',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/userinfo.email'
       ],
-      state: patientId // Pass patientId as state to retrieve it in callback
+      state: signOAuthState(req.patientId, req.user.id)
     });
 
     res.json({ authUrl });
@@ -38,78 +126,93 @@ router.get('/auth-url', async (req, res) => {
   }
 });
 
-// OAuth callback handler
+/**
+ * OAuth callback. Deliberately *not* behind `authenticate`: Google redirects the
+ * browser here as a top-level navigation, which carries no Authorization header
+ * (this app holds its JWT in sessionStorage, not a cookie). The signed `state`
+ * is what authorises the exchange.
+ */
 router.get('/callback', async (req, res) => {
-  try {
-    const { code, state: patientId } = req.query;
+  const back = (params) => res.redirect(`${APP_URL}/?${new URLSearchParams(params).toString()}`);
 
-    if (!code || !patientId) {
-      return res.status(400).json({ error: 'Missing authorization code or patient ID' });
+  try {
+    if (!isConfigured()) {
+      return back({ calendar_error: 'not_configured' });
     }
+
+    const { code, state } = req.query;
+    if (!code || !state) {
+      return back({ calendar_error: 'missing_code' });
+    }
+
+    const claims = verifyOAuthState(state);
+    if (!claims) {
+      return back({ calendar_error: 'invalid_state' });
+    }
+    const patientId = claims.patientId;
 
     const oauth2Client = getOAuth2Client();
     const { tokens } = await oauth2Client.getToken(code);
 
-    // Get user info from Google
     oauth2Client.setCredentials(tokens);
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const userInfo = await oauth2.userinfo.get();
 
-    // Store tokens in social_auth table
     const pool = req.app.locals.pool;
-    await pool.query(`
+    await pool.query(
+      `
       INSERT INTO social_auth (
-        patient_id,
-        provider,
-        provider_user_id,
-        access_token,
-        refresh_token,
-        profile_data
+        user_id, patient_id, provider, provider_user_id,
+        access_token, refresh_token, token_expires_at, profile_data
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (provider, provider_user_id)
       DO UPDATE SET
-        patient_id = $1,
-        access_token = $4,
-        refresh_token = $5,
-        profile_data = $6,
-        updated_at = CURRENT_TIMESTAMP
-      RETURNING *
-    `, [
-      patientId,
-      'google_calendar',
-      userInfo.data.id,
-      tokens.access_token,
-      tokens.refresh_token,
-      JSON.stringify(userInfo.data)
-    ]);
+        user_id          = $1,
+        patient_id       = $1,
+        access_token     = $4,
+        -- Google omits refresh_token on re-consent; keep the stored one.
+        refresh_token    = COALESCE($5, social_auth.refresh_token),
+        token_expires_at = $6,
+        profile_data     = $7,
+        updated_at       = CURRENT_TIMESTAMP
+      `,
+      [
+        patientId,
+        'google_calendar',
+        userInfo.data.id,
+        tokens.access_token,
+        tokens.refresh_token || null,
+        tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+        JSON.stringify(userInfo.data)
+      ]
+    );
 
-    // Redirect to patient portal with success message
-    res.redirect(`/patient-portal?calendar_connected=true`);
+    back({ calendar_connected: 'true' });
   } catch (error) {
     console.error('Error in OAuth callback:', error);
-    res.redirect(`/patient-portal?calendar_error=true`);
+    back({ calendar_error: 'exchange_failed' });
   }
 });
 
 // Check if patient has Google Calendar connected
-router.get('/status/:patientId', async (req, res) => {
+router.get('/status/:patientId', authenticate, authorizePatientAccess, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { patientId } = req.params;
-
-    const result = await pool.query(`
-      SELECT id, provider, provider_user_id, profile_data, created_at
-      FROM social_auth
-      WHERE patient_id = $1 AND provider = 'google_calendar'
-    `, [patientId]);
+    const result = await pool.query(
+      `SELECT id, provider, provider_user_id, profile_data, created_at
+       FROM social_auth
+       WHERE patient_id = $1 AND provider = 'google_calendar'`,
+      [req.patientId]
+    );
 
     if (result.rows.length === 0) {
-      return res.json({ connected: false });
+      return res.json({ connected: false, configured: isConfigured() });
     }
 
     res.json({
       connected: true,
+      configured: isConfigured(),
       account: {
         email: result.rows[0].profile_data?.email,
         name: result.rows[0].profile_data?.name,
@@ -123,16 +226,15 @@ router.get('/status/:patientId', async (req, res) => {
 });
 
 // Disconnect Google Calendar
-router.delete('/disconnect/:patientId', async (req, res) => {
+router.delete('/disconnect/:patientId', authenticate, authorizePatientAccess, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { patientId } = req.params;
-
-    const result = await pool.query(`
-      DELETE FROM social_auth
-      WHERE patient_id = $1 AND provider = 'google_calendar'
-      RETURNING *
-    `, [patientId]);
+    const result = await pool.query(
+      `DELETE FROM social_auth
+       WHERE patient_id = $1 AND provider = 'google_calendar'
+       RETURNING id`,
+      [req.patientId]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'No calendar connection found' });
@@ -145,22 +247,23 @@ router.delete('/disconnect/:patientId', async (req, res) => {
   }
 });
 
-// Sync appointment to Google Calendar
-router.post('/sync-appointment', async (req, res) => {
+// Sync one appointment to Google Calendar
+router.post('/sync-appointment', authenticate, requireGoogleConfig, authorizePatientAccess, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { appointmentId, patientId } = req.body;
+    const { appointmentId } = req.body;
+    const patientId = req.patientId;
 
-    if (!appointmentId || !patientId) {
-      return res.status(400).json({ error: 'Appointment ID and Patient ID are required' });
+    if (!appointmentId) {
+      return res.status(400).json({ error: 'Appointment ID is required' });
     }
 
-    // Get calendar auth tokens
-    const authResult = await pool.query(`
-      SELECT access_token, refresh_token
-      FROM social_auth
-      WHERE patient_id = $1 AND provider = 'google_calendar'
-    `, [patientId]);
+    const authResult = await pool.query(
+      `SELECT access_token, refresh_token
+       FROM social_auth
+       WHERE patient_id = $1 AND provider = 'google_calendar'`,
+      [patientId]
+    );
 
     if (authResult.rows.length === 0) {
       return res.status(404).json({ error: 'Google Calendar not connected' });
@@ -168,13 +271,14 @@ router.post('/sync-appointment', async (req, res) => {
 
     const { access_token, refresh_token } = authResult.rows[0];
 
-    // Get appointment details
-    const appointmentResult = await pool.query(`
-      SELECT a.*, u.first_name as provider_first_name, u.last_name as provider_last_name
-      FROM appointments a
-      LEFT JOIN users u ON a.provider_id = u.id
-      WHERE a.id = $1 AND a.patient_id = $2
-    `, [appointmentId, patientId]);
+    // Scoped to the patient, so one patient can never sync another's appointment.
+    const appointmentResult = await pool.query(
+      `SELECT a.*, u.first_name AS provider_first_name, u.last_name AS provider_last_name
+       FROM appointments a
+       LEFT JOIN users u ON a.provider_id = u.id
+       WHERE a.id = $1 AND a.patient_id = $2`,
+      [appointmentId, patientId]
+    );
 
     if (appointmentResult.rows.length === 0) {
       return res.status(404).json({ error: 'Appointment not found' });
@@ -182,47 +286,45 @@ router.post('/sync-appointment', async (req, res) => {
 
     const appointment = appointmentResult.rows[0];
 
-    // Set up OAuth2 client with tokens
     const oauth2Client = getOAuth2Client();
-    oauth2Client.setCredentials({
-      access_token: access_token,
-      refresh_token: refresh_token
-    });
+    oauth2Client.setCredentials({ access_token, refresh_token });
 
-    // Create calendar event
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-    const event = {
-      summary: `Appointment with Dr. ${appointment.provider_first_name} ${appointment.provider_last_name}`,
-      description: appointment.reason || 'Medical appointment',
-      start: {
-        dateTime: appointment.start_time,
-        timeZone: appointment.timezone || 'America/New_York',
-      },
-      end: {
-        dateTime: appointment.end_time,
-        timeZone: appointment.timezone || 'America/New_York',
-      },
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'email', minutes: 24 * 60 }, // 1 day before
-          { method: 'popup', minutes: 30 },      // 30 minutes before
-        ],
-      },
-    };
+    const providerName = [appointment.provider_first_name, appointment.provider_last_name]
+      .filter(Boolean)
+      .join(' ');
 
     const calendarEvent = await calendar.events.insert({
       calendarId: 'primary',
-      resource: event,
+      requestBody: {
+        summary: providerName ? `Appointment with Dr. ${providerName}` : 'Medical appointment',
+        description: appointment.reason || 'Medical appointment',
+        start: {
+          dateTime: new Date(appointment.start_time).toISOString(),
+          timeZone: appointment.timezone || 'America/New_York'
+        },
+        end: {
+          dateTime: new Date(appointment.end_time).toISOString(),
+          timeZone: appointment.timezone || 'America/New_York'
+        },
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'email', minutes: 24 * 60 },
+            { method: 'popup', minutes: 30 }
+          ]
+        }
+      }
     });
 
-    // Store calendar event ID in appointment
-    await pool.query(`
-      UPDATE appointments
-      SET notes = COALESCE(notes, '') || E'\nGoogle Calendar Event ID: ${calendarEvent.data.id}'
-      WHERE id = $1
-    `, [appointmentId]);
+    // Parameterised — the event id must never be concatenated into SQL.
+    await pool.query(
+      `UPDATE appointments
+       SET notes = COALESCE(notes, '') || E'\nGoogle Calendar Event ID: ' || $2
+       WHERE id = $1`,
+      [appointmentId, calendarEvent.data.id]
+    );
 
     res.json({
       message: 'Appointment synced to Google Calendar successfully',
@@ -236,19 +338,22 @@ router.post('/sync-appointment', async (req, res) => {
 });
 
 // Enable/disable auto-sync for future appointments
-router.put('/auto-sync/:patientId', async (req, res) => {
+router.put('/auto-sync/:patientId', authenticate, authorizePatientAccess, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { patientId } = req.params;
     const { enabled } = req.body;
 
-    // Update patient preferences
-    const result = await pool.query(`
-      UPDATE patients
-      SET preferences = COALESCE(preferences, '{}'::jsonb) || jsonb_build_object('calendar_auto_sync', $1)
-      WHERE id = $2
-      RETURNING *
-    `, [enabled, patientId]);
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: '`enabled` must be a boolean' });
+    }
+
+    const result = await pool.query(
+      `UPDATE patients
+       SET preferences = COALESCE(preferences, '{}'::jsonb) || jsonb_build_object('calendar_auto_sync', $1::boolean)
+       WHERE id = $2
+       RETURNING id`,
+      [enabled, req.patientId]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Patient not found' });

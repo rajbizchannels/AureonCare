@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  User, Calendar, Activity, FileText, Pill, ArrowLeft,
-  Edit, Trash2, Plus, Clock, MapPin, Phone, Mail, Microscope, Printer
+  User, Calendar, Activity, FileText, Pill,
+  Edit, Trash2, Plus, Clock, MapPin, Phone, Mail, Microscope, Printer,
+  Heart, Ruler, Scale, Droplet, Users, Video, Loader2
 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
+import { isProvider, isPatient } from '../utils/rolePermissions';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
-import MedicationMultiSelect from '../components/forms/MedicationMultiSelect';
 import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
 import NewLabOrderForm from '../components/forms/NewLabOrderForm';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
+import PatientHealthMetricsForm from '../components/forms/PatientHealthMetricsForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
-import ViewEditModal from '../components/modals/ViewEditModal';
 import { useAudit } from '../hooks/useAudit';
 
 // Helper function to convert string to Title Case
@@ -26,7 +27,7 @@ const toTitleCase = (str) => {
     .join(' ');
 };
 
-const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack, initialTab = 'overview' }) => {
+const PatientHistoryView = ({ theme, api, addNotification, user, patient, initialTab = 'overview', embedded = false }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
 
@@ -66,8 +67,14 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
   // Patient edit state
   const [editingPatient, setEditingPatient] = useState(false);
 
+  // Health metrics edit state
+  const [showHealthMetricsForm, setShowHealthMetricsForm] = useState(false);
+
   // Lab order filter state
   const [labOrderStatusFilter, setLabOrderStatusFilter] = useState('all');
+
+  // Telehealth state
+  const [telehealthLoading, setTelehealthLoading] = useState(false);
 
   const { logViewAccess } = useAudit();
 
@@ -81,49 +88,27 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       module: 'EHR',
       patient_id: patient?.id,
     });
-  }, []);
+  }, [logViewAccess, patient?.id]);
 
-  useEffect(() => {
-    if (patient?.id) {
-      fetchPatientHistory();
-      fetchProviders();
-      fetchPatients();
-      fetchLaboratories();
-    }
-  }, [patient?.id]);
-
-  // Close all forms when tab changes
-  useEffect(() => {
-    setShowDiagnosisForm(false);
-    setShowPrescriptionForm(false);
-    setShowLabOrderForm(false);
-    setShowAppointmentForm(false);
-    setShowRecordUploadForm(false);
-    setEditingPatient(false);
-    setEditingDiagnosis(null);
-    setEditingPrescription(null);
-    setEditingLabOrder(null);
-  }, [activeTab]);
-
-  const fetchProviders = async () => {
+  const fetchProviders = useCallback(async () => {
     try {
       const data = await api.getProviders();
       setProviders(data);
     } catch (error) {
       console.error('Error fetching providers:', error);
     }
-  };
+  }, [api]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
     try {
       const data = await api.getPatients();
       setPatients(data);
     } catch (error) {
       console.error('Error fetching patients:', error);
     }
-  };
+  }, [api]);
 
-  const fetchLaboratories = async () => {
+  const fetchLaboratories = useCallback(async () => {
     try {
       const labs = await api.getLaboratories(true);
       setLaboratories(labs || []);
@@ -131,9 +116,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       console.error('Error fetching laboratories:', error);
       setLaboratories([]);
     }
-  };
+  }, [api]);
 
-  const fetchPatientHistory = async () => {
+  const fetchPatientHistory = useCallback(async () => {
     setLoading(true);
     try {
       const patientId = patient.id;
@@ -160,7 +145,30 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, patient, addNotification]);
+
+  useEffect(() => {
+    if (patient?.id) {
+      fetchPatientHistory();
+      fetchProviders();
+      fetchPatients();
+      fetchLaboratories();
+    }
+  }, [patient?.id, fetchPatientHistory, fetchProviders, fetchPatients, fetchLaboratories]);
+
+  // Close all forms when tab changes
+  useEffect(() => {
+    setShowDiagnosisForm(false);
+    setShowPrescriptionForm(false);
+    setShowLabOrderForm(false);
+    setShowAppointmentForm(false);
+    setShowRecordUploadForm(false);
+    setEditingPatient(false);
+    setShowHealthMetricsForm(false);
+    setEditingDiagnosis(null);
+    setEditingPrescription(null);
+    setEditingLabOrder(null);
+  }, [activeTab]);
 
   const handleDeleteDiagnosis = async () => {
     if (!deletingDiagnosis) return;
@@ -222,148 +230,341 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
     }
   };
 
-  const renderOverview = () => (
-    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-      <div className="max-w-4xl mx-auto space-y-6">
-      {/* Patient Header Card */}
-      <div className="p-8 rounded-xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
-              {patientData.first_name?.charAt(0)}{patientData.last_name?.charAt(0)}
+  const handleStartTelehealth = async (apt = null) => {
+    // Only providers and patients may launch telehealth sessions
+    if (!isProvider(user) && !isPatient(user)) {
+      addNotification('error', 'Only providers and patients can start telehealth sessions.');
+      return;
+    }
+
+    // If no appointment passed (header button), find the nearest upcoming Telehealth appointment
+    let targetApt = apt;
+    if (!targetApt) {
+      const upcoming = appointments
+        .filter(a => {
+          const s = (a.status || '').toLowerCase();
+          const t = (a.type || a.appointment_type || '').toLowerCase();
+          return t === 'telehealth' && s !== 'cancelled' && s !== 'canceled' && s !== 'completed';
+        })
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+      targetApt = upcoming[0] || null;
+    }
+
+    // If the appointment already has a pre-generated meeting URL, open it directly
+    if (targetApt?.meeting_url) {
+      window.open(targetApt.meeting_url, '_blank', 'noopener,noreferrer');
+      addNotification('success', 'Joining telehealth session...');
+      return;
+    }
+
+    setTelehealthLoading(true);
+
+    // Open a blank window synchronously to avoid popup blocker
+    // (browsers block window.open after async calls)
+    const meetingWindow = window.open('about:blank', '_blank');
+
+    try {
+      // Check if a telehealth provider is configured
+      const settings = await api.getTelehealthSettings();
+      const enabledProvider = settings?.find(p => p.is_enabled);
+
+      if (!enabledProvider) {
+        if (meetingWindow) meetingWindow.close();
+        addNotification('error', 'No telehealth provider configured. Please configure Zoom, Google Meet, or Webex in the Admin Panel.');
+        return;
+      }
+
+      // Create a telehealth session
+      const sessionData = {
+        appointmentId: targetApt?.id || null,
+        patientId: patient.id,
+        providerId: targetApt?.provider_id || user?.id,
+        startTime: new Date().toISOString(),
+        duration: targetApt?.duration_minutes || 30,
+        recordingEnabled: false
+      };
+
+      const newSession = await api.createTelehealthSession(sessionData);
+
+      // Navigate the pre-opened window to the meeting URL
+      const meetingUrl = newSession.meeting_url || newSession.meetingDetails?.meetingUrl;
+      if (meetingUrl && meetingWindow) {
+        meetingWindow.location.href = meetingUrl;
+        addNotification('success', `Telehealth session started with ${patientData.first_name} ${patientData.last_name}`);
+      } else {
+        if (meetingWindow) meetingWindow.close();
+        if (meetingUrl) {
+          // Fallback: try opening directly if the pre-opened window was blocked
+          window.open(meetingUrl, '_blank');
+          addNotification('success', `Telehealth session started with ${patientData.first_name} ${patientData.last_name}`);
+        } else {
+          addNotification('error', 'Session created but no meeting URL was returned.');
+        }
+      }
+    } catch (error) {
+      console.error('Error starting telehealth session:', error);
+      if (meetingWindow) meetingWindow.close();
+      addNotification('error', 'Failed to start telehealth session: ' + (error.message || 'Unknown error'));
+    } finally {
+      setTelehealthLoading(false);
+    }
+  };
+
+  const renderPatientChart = () => {
+    // Parse previous_medications if it's a string
+    let previousMeds = patientData.previous_medications || [];
+    if (typeof previousMeds === 'string') {
+      try {
+        previousMeds = JSON.parse(previousMeds);
+      } catch (e) {
+        previousMeds = [];
+      }
+    }
+
+    return (
+      <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Patient Header Card */}
+          <div className="p-6 rounded-xl">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                  {patientData.first_name?.charAt(0)}{patientData.last_name?.charAt(0)}
+                </div>
+                <div>
+                  <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {patientData.first_name} {patientData.last_name}
+                  </h3>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    MRN: {patientData.mrn || 'N/A'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowHealthMetricsForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+              >
+                <Edit className="w-4 h-4" />
+                Edit Patient Chart
+              </button>
             </div>
-            <div>
-              <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patientData.first_name} {patientData.last_name}
-              </h3>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                MRN: {patientData.mrn || 'N/A'}
+
+            {/* Personal Information */}
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <User className="w-5 h-5 text-blue-500" />
+              Personal Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.first_name || 'Not provided'}
+                </p>
+              </div>
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.last_name || 'Not provided'}
+                </p>
+              </div>
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.date_of_birth ? formatDate(patientData.date_of_birth) : patientData.dob ? formatDate(patientData.dob) : 'Not provided'}
+                </p>
+              </div>
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gender</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.gender || 'Not provided'}
+                </p>
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Phone className="w-5 h-5 text-green-500" />
+              Contact Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.email || 'Not provided'}
+                </p>
+              </div>
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.phone || 'Not provided'}
+                </p>
+              </div>
+              <div className="col-span-2">
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
+                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.address || 'Not provided'}
+                </p>
+              </div>
+              {patientData.country && (
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {patientData.country || 'Not provided'}
+                  </p>
+                </div>
+              )}
+              {patientData.language && (
+                <div>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language</p>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {patientData.language || 'Not provided'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Physical Measurements Card */}
+          <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Ruler className="w-5 h-5 text-blue-500" />
+              Physical Measurements
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Ruler className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</p>
+                </div>
+                <p className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.height || 'Not recorded'}
+                </p>
+              </div>
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Scale className={`w-4 h-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</p>
+                </div>
+                <p className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.weight || 'Not recorded'}
+                </p>
+              </div>
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Droplet className={`w-4 h-4 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Group</p>
+                </div>
+                <p className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {patientData.blood_type || 'Not recorded'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Social History Card */}
+          <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Users className="w-5 h-5 text-purple-500" />
+              Social History
+            </h4>
+            <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
+              <p className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'} whitespace-pre-wrap`}>
+                {patientData.social_history || 'No social history recorded. Add information about smoking status, alcohol use, occupation, and other lifestyle factors by Editing Physical info in Patient Chart .'}
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setEditingPatient(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
-          >
-            <Edit className="w-4 h-4" />
-            Edit Patient
-          </button>
-        </div>
 
-        {/* Personal Information */}
-        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Personal Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>First Name</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.first_name || 'Not provided'}
-            </p>
+          {/* Previous Medications Card */}
+          <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Pill className="w-5 h-5 text-orange-500" />
+              Previous Medications
+            </h4>
+            {previousMeds.length === 0 ? (
+              <div className={`p-4 rounded-lg text-center ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                <Pill className={`w-8 h-8 mx-auto mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  No previous medications recorded. Add past medications by editing Medical History in Patient Chart.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {previousMeds.map((med, index) => (
+                  <div
+                    key={med.ndc_code || index}
+                    className={`p-4 rounded-lg flex items-start gap-3 ${
+                      theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-orange-900/30' : 'bg-orange-100'}`}>
+                      <Pill className={`w-4 h-4 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {med.drug_name}
+                      </p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {med.strength && <span>{med.strength}</span>}
+                        {med.strength && med.dosage_form && <span> - </span>}
+                        {med.dosage_form && <span>{med.dosage_form}</span>}
+                      </p>
+                      {med.generic_name && (
+                        <p className={`text-xs italic ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                          {med.generic_name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Last Name</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.last_name || 'Not provided'}
-            </p>
-          </div>
-        </div>
 
-        {/* Contact Information */}
-        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Contact Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Email</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.email || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Phone</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.phone || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.address || 'Not provided'}
-            </p>
-          </div>
-          {patientData.country && (
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patientData.country || 'Not provided'}
-              </p>
+          {/* Additional Medical Information */}
+          <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Activity className="w-5 h-5 text-teal-500" />
+              Medical History
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Allergies
+                </p>
+                <p className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {patientData.allergies || 'None recorded'}
+                </p>
+              </div>
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Current Medications
+                </p>
+                <p className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {patientData.current_medications || 'None recorded'}
+                </p>
+              </div>
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Past Medical History
+                </p>
+                <p className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {patientData.past_history || 'None recorded'}
+                </p>
+              </div>
+              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Family History
+                </p>
+                <p className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {patientData.family_history || 'None recorded'}
+                </p>
+              </div>
             </div>
-          )}
-          {patientData.language && (
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Language</p>
-              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patientData.language || 'Not provided'}
-              </p>
-            </div>
-          )}
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Date of Birth</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.date_of_birth ? formatDate(patientData.date_of_birth) : patientData.dob ? formatDate(patientData.dob) : 'Not provided'}
-            </p>
           </div>
         </div>
       </div>
-
-      {/* Medical Information Card */}
-      <div className="p-6 rounded-xl">
-        <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Medical Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Height</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.height || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Weight</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.weight || 'Not provided'}
-            </p>
-          </div>
-          <div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Blood Type</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.blood_type || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Allergies</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.allergies || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Past Medical History</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.past_history || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Family History</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.family_history || 'Not provided'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Current Medications</p>
-            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {patientData.current_medications || 'Not provided'}
-            </p>
-          </div>
-        </div>
-      </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderRecords = () => (
     <div className="space-y-4">
@@ -1097,16 +1298,52 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                       {appt.reason}
                     </p>
                   )}
+                  {/* Meeting URL badge — visible to providers and patients */}
+                  {appt.meeting_url && (isProvider(user) || isPatient(user)) && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <a
+                        href={appt.meeting_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          theme === 'dark'
+                            ? 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30'
+                            : 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200'
+                        }`}
+                      >
+                        <Video className="w-3 h-3" />
+                        Join Meeting
+                      </a>
+                    </div>
+                  )}
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  appt.status === 'Completed'
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : appt.status === 'Cancelled'
-                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                }`}>
-                  {appt.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  {!['completed', 'cancelled', 'canceled'].includes((appt.status || '').toLowerCase()) &&
+                    (appt.type || appt.appointment_type || '').toLowerCase() === 'telehealth' &&
+                    (isProvider(user) || isPatient(user)) && (
+                    <button
+                      onClick={() => handleStartTelehealth(appt)}
+                      disabled={telehealthLoading}
+                      className={`p-2 rounded-lg transition-colors ${
+                        theme === 'dark'
+                          ? 'hover:bg-cyan-500/20 text-cyan-400'
+                          : 'hover:bg-cyan-100 text-cyan-600'
+                      } disabled:opacity-50`}
+                      title="Start Telehealth Session"
+                    >
+                      <Video className="w-4 h-4" />
+                    </button>
+                  )}
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    (appt.status || '').toLowerCase() === 'completed'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : ['cancelled', 'canceled'].includes((appt.status || '').toLowerCase())
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    {appt.status}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -1117,46 +1354,59 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className={`flex items-center justify-center ${embedded ? 'py-16' : 'min-h-screen'}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
+  // Embedded, the chart sits inside a row that already names the patient and
+  // supplies its own frame, so it drops the page chrome and the centring rail.
+  const frame = embedded ? '' : 'max-w-7xl mx-auto px-6';
+  const canStartTelehealth = isProvider(user) || isPatient(user);
+
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
-      {/* Header with Back Button */}
-      <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'dark'
-                  ? 'hover:bg-slate-700 text-slate-300'
-                  : 'hover:bg-gray-100 text-gray-600'
-              }`}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {patientData.first_name} {patientData.last_name}
-              </h1>
-              <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Patient History
-              </p>
+    <div className={embedded ? '' : `min-h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+      {(!embedded || canStartTelehealth) && (
+        <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+          <div className={`${frame} py-4`}>
+            <div className={`flex items-center ${embedded ? 'justify-end' : 'justify-between'}`}>
+              {!embedded && (
+                <div>
+                  <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {patientData.first_name} {patientData.last_name}
+                  </h1>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Patient History
+                  </p>
+                </div>
+              )}
+              {canStartTelehealth && (
+                <button
+                  onClick={() => handleStartTelehealth()}
+                  disabled={telehealthLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+                  title="Start Telehealth Session"
+                >
+                  {telehealthLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Video className="w-4 h-4" />
+                  )}
+                  {telehealthLoading ? 'Starting...' : 'Start Telehealth Session'}
+                </button>
+              )}
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tab Navigation */}
       <div className={`border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-1">
+        <div className={frame}>
+          <div className="flex gap-1 overflow-x-auto">
             {[
-              { id: 'overview', label: 'Overview', icon: User, count: null },
+              { id: 'overview', label: 'Patient Chart', icon: Heart, count: null },
               { id: 'diagnoses', label: 'Diagnoses', icon: Activity, count: diagnoses.length },
               { id: 'prescriptions', label: 'Prescriptions', icon: Pill, count: prescriptions.length },
               { id: 'labOrders', label: 'Lab Orders', icon: Microscope, count: labOrders.length },
@@ -1168,7 +1418,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 shrink-0 whitespace-nowrap transition-colors ${
                     activeTab === tab.id
                       ? theme === 'dark'
                         ? 'border-blue-500 text-blue-400'
@@ -1201,7 +1451,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
       </div>
 
       {/* Inline Forms Area - Between tabs and content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className={`${frame} py-6`}>
         {/* Appointment Form - shown when adding new appointment */}
         {showAppointmentForm && (
           <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
@@ -1241,40 +1491,19 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
           </div>
         )}
 
-        {/* Edit Patient Form - shown when editing patient from Overview tab */}
-        {editingPatient && (
+        {/* Health Metrics Form - shown when editing health metrics from Patient Chart tab */}
+        {activeTab === 'overview' && showHealthMetricsForm && (
           <div className={`mb-6 p-6 rounded-xl border-2 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-600' : 'bg-white border-gray-400'}`}>
-            <ViewEditModal
+            <PatientHealthMetricsForm
               theme={theme}
-              editingItem={{ type: 'patient', data: patientData }}
-              currentView='edit'
-              onClose={() => setEditingPatient(false)}
-              onSave={async (updatedData) => {
-                try {
-                  await api.updatePatient(patientData.id, updatedData);
-                  addNotification('success', 'Patient updated successfully');
-                  setEditingPatient(false);
-                  fetchPatientHistory();
-                } catch (error) {
-                  console.error('Error updating patient:', error);
-                  addNotification('error', 'Failed to update patient');
-                }
-              }}
-              patients={patients}
-              users={providers}
               api={api}
-              addNotification={addNotification}
-              setPatients={(updater) => {
-                // Update local patient data if needed
-                if (typeof updater === 'function') {
-                  const updated = updater(patients);
-                  setPatients(updated);
-                } else {
-                  setPatients(updater);
-                }
+              patient={patientData}
+              onClose={() => setShowHealthMetricsForm(false)}
+              onSuccess={() => {
+                setShowHealthMetricsForm(false);
+                fetchPatientHistory();
               }}
-              user={user}
-              t={{}}
+              addNotification={addNotification}
             />
           </div>
         )}
@@ -1359,7 +1588,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, onBack
         )}
 
         {/* Content Area - Based on Active Tab */}
-        {activeTab === 'overview' && renderOverview()}
+        {activeTab === 'overview' && renderPatientChart()}
         {activeTab === 'diagnoses' && renderDiagnoses()}
         {activeTab === 'prescriptions' && renderPrescriptions()}
         {activeTab === 'labOrders' && renderLabOrders()}

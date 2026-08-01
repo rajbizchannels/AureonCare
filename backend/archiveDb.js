@@ -15,11 +15,11 @@ const { Pool } = require('pg');
  */
 
 const archivePool = new Pool({
-  host: process.env.ARCHIVE_DB_HOST || process.env.DB_HOST || 'localhost',
-  port: process.env.ARCHIVE_DB_PORT || process.env.DB_PORT || 5432,
-  database: process.env.ARCHIVE_DB_NAME || (process.env.DB_NAME || 'aureoncare') + '_archive',
-  user: process.env.ARCHIVE_DB_USER || process.env.DB_USER || 'postgres',
-  password: process.env.ARCHIVE_DB_PASSWORD || process.env.DB_PASSWORD || 'AureonCare2024!',
+  host: process.env.AC_ARCH_H || process.env.AC_DB_H || 'localhost',
+  port: process.env.AC_ARCH_P || process.env.AC_DB_P || 5432,
+  database: process.env.AC_ARCH_N || (process.env.AC_DB_N || 'aureoncare') + '_archive',
+  user: process.env.AC_ARCH_U || process.env.AC_DB_U || 'postgres',
+  password: process.env.AC_ARCH_W || process.env.AC_DB_W || 'AureonCare2024!',
   max: 10, // Smaller pool size for archive database
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
@@ -32,15 +32,38 @@ archivePool.on('error', (err) => {
   // Don't exit process for archive DB errors - main DB should continue working
 });
 
-// Test connection and log status
-archivePool.query('SELECT NOW()', (err, res) => {
+// Test connection, ensure extensions, and log status
+archivePool.query('SELECT NOW()', async (err, res) => {
   if (err) {
     console.error('⚠️  Archive database connection failed:', err.message);
     console.error('   Archive functionality will be limited.');
   } else {
     console.log('✓ Archive database connected:', archivePool.options.database);
+
+    // Ensure required extensions are installed
+    try {
+      await archivePool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+      await archivePool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
+      console.log('✓ Archive database extensions enabled');
+    } catch (extErr) {
+      console.error('⚠️  Could not enable extensions:', extErr.message);
+    }
   }
 });
+
+/**
+ * Ensure required PostgreSQL extensions are enabled in archive database
+ */
+async function ensureExtensions() {
+  try {
+    await archivePool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+    await archivePool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
+    return true;
+  } catch (error) {
+    console.error('⚠️  Could not enable extensions:', error.message);
+    return false;
+  }
+}
 
 /**
  * Copy table structure from main database to archive database
@@ -50,6 +73,9 @@ archivePool.query('SELECT NOW()', (err, res) => {
 async function ensureTableStructure(mainPool, tableName) {
   const client = await archivePool.connect();
   try {
+    // Ensure required extensions are enabled
+    await ensureExtensions();
+
     // Check if table exists in main database first
     const mainClient = await mainPool.connect();
     try {
@@ -78,12 +104,18 @@ async function ensureTableStructure(mainPool, tableName) {
       const checkResult = await client.query(checkQuery, [tableName]);
 
       if (!checkResult.rows[0].exists) {
+        console.log(`[Archive DB] Creating table ${tableName} in archive database...`);
+
         // Get detailed column information including defaults and data types
         const columnsQuery = `
           SELECT
             column_name,
             CASE
-              WHEN data_type = 'ARRAY' THEN udt_name || '[]'
+              WHEN data_type = 'ARRAY' THEN
+                CASE
+                  WHEN udt_name LIKE '\\_%' THEN UPPER(SUBSTRING(udt_name FROM 2)) || '[]'
+                  ELSE udt_name || '[]'
+                END
               WHEN data_type = 'character varying' THEN 'VARCHAR(' || COALESCE(character_maximum_length::text, '255') || ')'
               WHEN data_type = 'character' THEN 'CHAR(' || character_maximum_length || ')'
               WHEN data_type = 'numeric' THEN 'NUMERIC' ||
@@ -94,7 +126,8 @@ async function ensureTableStructure(mainPool, tableName) {
               ELSE UPPER(data_type)
             END as full_type,
             is_nullable,
-            column_default
+            column_default,
+            data_type
           FROM information_schema.columns
           WHERE table_schema = 'public'
             AND table_name = $1
@@ -103,32 +136,129 @@ async function ensureTableStructure(mainPool, tableName) {
 
         const columnsResult = await mainClient.query(columnsQuery, [tableName]);
 
-        if (columnsResult.rows.length > 0) {
-          // Build CREATE TABLE statement
-          const columnDefs = columnsResult.rows.map(col => {
-            let def = `${col.column_name} ${col.full_type}`;
-
-            if (col.is_nullable === 'NO') {
-              def += ' NOT NULL';
-            }
-
-            if (col.column_default) {
-              def += ` DEFAULT ${col.column_default}`;
-            }
-
-            return def;
-          }).join(',\n  ');
-
-          const createStatement = `CREATE TABLE ${tableName} (\n  ${columnDefs}\n);`;
-
-          console.log(`[Archive DB] Creating table ${tableName} in archive database...`);
-          await client.query(createStatement);
-          console.log(`[Archive DB] ✓ Created table ${tableName}`);
-          return true;
-        } else {
+        if (columnsResult.rows.length === 0) {
           console.log(`⚠️  No columns found for table ${tableName}`);
           return false;
         }
+
+        // Build CREATE TABLE statement with columns
+        const columnDefs = columnsResult.rows.map(col => {
+          // Check if this is a SERIAL column (INTEGER with nextval default)
+          const isSerial = col.data_type === 'integer' &&
+                          col.column_default &&
+                          col.column_default.includes('nextval');
+
+          const isBigSerial = col.data_type === 'bigint' &&
+                             col.column_default &&
+                             col.column_default.includes('nextval');
+
+          // Use SERIAL type for auto-increment columns
+          let type = col.full_type;
+          let defaultValue = col.column_default;
+
+          if (isSerial) {
+            type = 'SERIAL';
+            defaultValue = null; // SERIAL includes auto-increment, no need for DEFAULT
+          } else if (isBigSerial) {
+            type = 'BIGSERIAL';
+            defaultValue = null;
+          } else if (defaultValue) {
+            // Filter out custom function calls that don't exist in archive DB
+            // Keep: uuid_generate_v4(), gen_random_uuid(), CURRENT_TIMESTAMP, literals
+            // Remove: generate_denial_number(), generate_posting_number(), etc.
+            const hasCustomFunction = defaultValue.match(/generate_\w+\(\)|set_\w+\(\)/i) &&
+                                     !defaultValue.includes('uuid_generate') &&
+                                     !defaultValue.includes('gen_random_uuid');
+
+            if (hasCustomFunction) {
+              console.log(`[Archive DB] Skipping custom function DEFAULT for ${col.column_name}: ${defaultValue}`);
+              defaultValue = null;
+            }
+          }
+
+          let def = `${col.column_name} ${type}`;
+
+          if (col.is_nullable === 'NO') {
+            def += ' NOT NULL';
+          }
+
+          if (defaultValue) {
+            def += ` DEFAULT ${defaultValue}`;
+          }
+
+          return def;
+        }).join(',\n  ');
+
+        // Get primary key constraint
+        const pkQuery = `
+          SELECT string_agg(a.attname, ', ' ORDER BY array_position(conkey, a.attnum)) as pk_columns
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+          WHERE t.relname = $1
+            AND c.contype = 'p'
+          GROUP BY c.conname;
+        `;
+
+        const pkResult = await mainClient.query(pkQuery, [tableName]);
+        let pkConstraint = '';
+        if (pkResult.rows.length > 0) {
+          pkConstraint = `,\n  PRIMARY KEY (${pkResult.rows[0].pk_columns})`;
+        }
+
+        // Get unique constraints (excluding primary key)
+        const uniqueQuery = `
+          SELECT c.conname, string_agg(a.attname, ', ' ORDER BY array_position(conkey, a.attnum)) as unique_columns
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+          WHERE t.relname = $1
+            AND c.contype = 'u'
+          GROUP BY c.conname;
+        `;
+
+        const uniqueResult = await mainClient.query(uniqueQuery, [tableName]);
+        let uniqueConstraints = '';
+        if (uniqueResult.rows.length > 0) {
+          uniqueConstraints = uniqueResult.rows.map(row =>
+            `,\n  UNIQUE (${row.unique_columns})`
+          ).join('');
+        }
+
+        // Create table with all constraints
+        const createStatement = `CREATE TABLE ${tableName} (\n  ${columnDefs}${pkConstraint}${uniqueConstraints}\n);`;
+
+        await client.query(createStatement);
+        console.log(`[Archive DB] ✓ Created table ${tableName} with constraints`);
+
+        // Create indexes (excluding primary key and unique constraint indexes)
+        const indexQuery = `
+          SELECT
+            i.relname as index_name,
+            string_agg(a.attname, ', ' ORDER BY array_position(ix.indkey, a.attnum)) as columns,
+            ix.indisunique
+          FROM pg_index ix
+          JOIN pg_class t ON t.oid = ix.indrelid
+          JOIN pg_class i ON i.oid = ix.indexrelid
+          JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
+          WHERE t.relname = $1
+            AND NOT ix.indisprimary
+            AND NOT ix.indisunique
+          GROUP BY i.relname, ix.indisunique;
+        `;
+
+        const indexResult = await mainClient.query(indexQuery, [tableName]);
+        for (const row of indexResult.rows) {
+          try {
+            const createIndexStmt = `CREATE INDEX ${row.index_name} ON ${tableName} (${row.columns});`;
+            await client.query(createIndexStmt);
+            console.log(`[Archive DB] ✓ Created index ${row.index_name}`);
+          } catch (idxErr) {
+            console.warn(`[Archive DB] Could not create index ${row.index_name}:`, idxErr.message);
+          }
+        }
+
+        return true;
       } else {
         // Table exists, verify column compatibility
         console.log(`[Archive DB] Table ${tableName} already exists in archive database`);
@@ -139,6 +269,7 @@ async function ensureTableStructure(mainPool, tableName) {
     }
   } catch (error) {
     console.error(`[Archive DB] Error ensuring table structure for ${tableName}:`, error.message);
+    console.error(`[Archive DB] Stack:`, error.stack);
     return false;
   } finally {
     client.release();
@@ -170,9 +301,35 @@ async function getTableRecordCount(tableName) {
   return parseInt(result.rows[0].count);
 }
 
+/**
+ * Get primary key columns for a table
+ * @param {string} tableName - Name of table
+ * @returns {string|null} Comma-separated list of primary key columns or null
+ */
+async function getPrimaryKeyColumns(tableName) {
+  try {
+    const query = `
+      SELECT string_agg(a.attname, ', ' ORDER BY array_position(conkey, a.attnum)) as pk_columns
+      FROM pg_constraint c
+      JOIN pg_class t ON t.oid = c.conrelid
+      JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+      WHERE t.relname = $1
+        AND c.contype = 'p'
+      GROUP BY c.conname;
+    `;
+    const result = await archivePool.query(query, [tableName]);
+    return result.rows[0]?.pk_columns || null;
+  } catch (error) {
+    console.error(`[Archive DB] Error getting primary key for ${tableName}:`, error.message);
+    return null;
+  }
+}
+
 module.exports = {
   archivePool,
   ensureTableStructure,
+  ensureExtensions,
   getArchiveTables,
-  getTableRecordCount
+  getTableRecordCount,
+  getPrimaryKeyColumns
 };

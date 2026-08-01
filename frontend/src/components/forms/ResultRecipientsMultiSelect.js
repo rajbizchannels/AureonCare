@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X } from 'lucide-react';
 
 /**
@@ -74,7 +74,7 @@ const ResultRecipientsMultiSelect = ({
   }, [doctor, staff, patient]);
 
   // Search recipients
-  const searchRecipients = (query) => {
+  const searchRecipients = useCallback((query) => {
     if (!query || query.length < 1) {
       setSearchResults(allRecipients);
       return;
@@ -88,12 +88,12 @@ const ResultRecipientsMultiSelect = ({
     );
 
     setSearchResults(filtered);
-  };
+  }, [allRecipients, value]);
 
   // Update search results when input changes
   useEffect(() => {
     searchRecipients(inputValue);
-  }, [inputValue, allRecipients, value]);
+  }, [inputValue, searchRecipients]);
 
   // Reset highlighted index when results change
   useEffect(() => {

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, X, FileText, Image, File } from 'lucide-react';
+import { Upload, X, FileText, Image, File, Calendar } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import { apiFetch } from '../../api/apiService';
 
 const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'light', providers = [] }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -10,6 +11,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
     description: '',
     classification: 'General',
     providerId: '',
+    recordDate: new Date().toISOString().split('T')[0],
     file: null
   });
   const [uploading, setUploading] = useState(false);
@@ -27,7 +29,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
         availableProviders: providers?.length || 0,
       },
     });
-  }, []);
+  }, [logFormView, patientId, providers?.length, startAction]);
 
   const classifications = [
     'General',
@@ -113,12 +115,12 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
       uploadFormData.append('title', formData.title);
       uploadFormData.append('description', formData.description);
       uploadFormData.append('classification', formData.classification);
-      uploadFormData.append('recordDate', new Date().toISOString().split('T')[0]);
+      uploadFormData.append('recordDate', formData.recordDate);
       if (formData.providerId) {
         uploadFormData.append('providerId', formData.providerId);
       }
 
-      const response = await fetch('/api/medical-records/with-file', {
+      const response = await apiFetch('/medical-records/with-file', {
         method: 'POST',
         body: uploadFormData
       });
@@ -149,6 +151,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
         description: '',
         classification: 'General',
         providerId: '',
+        recordDate: new Date().toISOString().split('T')[0],
         file: null
       });
       setPreview(null);
@@ -193,7 +196,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
         onClose={() => setShowConfirmation(false)}
         onConfirm={handleActualSubmit}
         title="Upload Medical Record"
-        message="Are you sure you want to upload this medical record?"
+        message={`Upload "${formData.title}" dated ${formData.recordDate}?`}
         type="confirm"
         confirmText="Upload"
         cancelText="Cancel"
@@ -282,6 +285,29 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
             }`}
             required
           />
+        </div>
+
+        {/* Record Date */}
+        <div>
+          <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              Record Date *
+            </span>
+          </label>
+          <input
+            type="date"
+            value={formData.recordDate}
+            max={new Date().toISOString().split('T')[0]}
+            onChange={(e) => setFormData({ ...formData, recordDate: e.target.value })}
+            className={`w-full px-4 py-2 border rounded-lg ${
+              theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            required
+          />
+          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+            Date the record was created or the event occurred
+          </p>
         </div>
 
         {/* Classification */}
