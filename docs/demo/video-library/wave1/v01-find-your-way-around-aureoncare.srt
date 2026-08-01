@@ -1,0 +1,55 @@
+1
+00:00:02,529 --> 00:00:07,529
+Find your way around AureonCare — App shell · search · help — Sign in, learn the three-pane layout, and find anything in two clicks.
+
+2
+00:00:08,066 --> 00:00:18,304
+Sign in with the email and password your practice administrator issued.
+
+3
+00:00:18,304 --> 00:00:21,314
+You land on your dashboard. Everything else hangs off the rail on the left.
+
+4
+00:00:21,314 --> 00:00:27,986
+Pane 1 is the workspace rail: Home, Scheduling, Patients, Clinical, Billing, Operations, Growth, Insights — and Settings at the bottom.
+
+5
+00:00:27,986 --> 00:00:34,802
+Pane 2 lists the modules inside the workspace you picked. Pane 3 is the work itself.
+
+6
+00:00:34,802 --> 00:00:43,539
+Scheduling ▸ Calendar. Directions in these videos always read workspace ▸ module.
+
+7
+00:00:43,539 --> 00:00:46,148
+Same move, different workspace: Patients ▸ Electronic Health Records.
+
+8
+00:00:46,148 --> 00:00:53,696
+Rather than clicking through, search. The magnifier is in the top bar.
+
+9
+00:00:53,696 --> 00:00:57,320
+One box covers patients, appointments, claims and tasks. Results are grouped by what they are.
+
+10
+00:00:57,320 --> 00:01:02,760
+Selecting a result takes you straight to that record.
+
+11
+00:01:02,760 --> 00:01:09,611
+The bell collects what needs you: denied claims, portal messages, posted payments.
+
+12
+00:01:09,611 --> 00:01:13,234
+Help opens the guides for whatever module you are standing in.
+
+13
+00:01:13,234 --> 00:01:21,562
+The whole workspace switches between dark and light to suit your room.
+
+14
+00:01:21,573 --> 00:01:27,573
+What you just did

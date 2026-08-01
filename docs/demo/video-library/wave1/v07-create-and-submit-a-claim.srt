@@ -1,0 +1,43 @@
+1
+00:00:02,619 --> 00:00:07,619
+Create and submit a claim — Billing ▸ Claims — Build a claim from a visit, code it, and send it to the clearinghouse.
+
+2
+00:00:12,848 --> 00:00:16,254
+Billing ▸ Claims is the money pipeline: every claim and where it has got to.
+
+3
+00:00:16,254 --> 00:00:24,650
+Status is the whole story — draft not sent, submitted waiting, paid settled, denied needs work.
+
+4
+00:00:24,650 --> 00:00:31,573
+Pick the patient and the claim inherits their insurance — no re-keying policy numbers.
+
+5
+00:00:31,573 --> 00:00:36,981
+Service date and charge come from the visit you are billing for.
+
+6
+00:00:36,981 --> 00:00:48,311
+Diagnosis codes are searched, not remembered — type the code or the words and pick from the list.
+
+7
+00:00:48,311 --> 00:01:00,431
+The procedure code is what you are billing; the diagnosis is why. Payers check that the two agree.
+
+8
+00:01:00,431 --> 00:01:07,848
+Created as a draft. Nothing has been sent yet — drafts are safe to fix.
+
+9
+00:01:07,848 --> 00:01:11,452
+Submit EDI 837 sends it to the clearinghouse in the format payers expect.
+
+10
+00:01:11,452 --> 00:01:15,460
+From here it comes back paid, or denied with a reason — and a denial goes straight to the Denials queue.
+
+11
+00:01:15,469 --> 00:01:21,469
+What you just did

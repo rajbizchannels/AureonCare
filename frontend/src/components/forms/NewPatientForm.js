@@ -4,7 +4,7 @@ import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { FORM_TEMPLATES } from '../../data/formTemplates';
 
-const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotification, t }) => {
+const NewPatientForm = ({ theme, api, patients = [], onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     firstName: '',
