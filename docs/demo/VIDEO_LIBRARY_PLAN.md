@@ -13,9 +13,10 @@ one row per video, with owner, status, the four production stages, dates and a
 formula-driven dashboard. This document is the reference; the workbook is the
 working copy — edit the workbook, not this file, as work progresses.
 
-**Status: Wave 1 is produced** — the eight videos below are recorded and sit in
-`video-library/wave1/`, each with subtitles, chapters, a thumbnail and upload
-metadata. They are awaiting SME review, then upload. Waves 2-4 are still plans.
+**Status: Wave 1 is produced** — the eight videos below are recorded, branded and
+narrated, and sit in `video-library/wave1/` with subtitles, chapters, a thumbnail
+and upload metadata. They run 1:31 to 2:09. They are awaiting SME review and a
+better narration voice, then upload. Waves 2-4 are still plans.
 
 The prep task (a shared recorder harness) is done too: `video-harness/` drives
 the real UI against a mocked API, so any video can be re-cut by re-running its
@@ -28,9 +29,10 @@ script rather than re-recording by hand.
 | Aspect | Convention |
 | --- | --- |
 | Length | 60–120 s. Hard cap 120 s — split rather than overrun |
-| Resolution | 1920×1080 at 30fps for YouTube; silent AAC track so narration can be added later without a re-encode |
+| Resolution | 1920×1080 at 30fps for YouTube, with a narrated AAC track mastered to -16 LUFS |
 | Structure | 5 s title card → 10 s "why this matters" → 60–90 s journey → 10 s recap card |
-| Voice | Second person, imperative: "Open Scheduling ▸ Calendar", not "the user can" |
+| Voice | Second person, imperative: "Open Scheduling ▸ Calendar", not "the user can". The caption text is also the narration line, so they can never drift |
+| Branding | Logo bumper in, branded outro out, logo in the caption bar throughout; palette sampled from the logo |
 | Data | Synthetic only, with the permanent "demo environment · synthetic data" watermark |
 | Personas | Reuse `DEMO_SCENARIOS.md`: Sarah Williams (patient), Dr. Anderson (provider), plus a front-desk and an admin persona |
 | Recap card | 3 bullets max — the steps, not the benefits |

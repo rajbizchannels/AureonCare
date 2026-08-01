@@ -48,8 +48,8 @@ module.exports = {
     d.chapter('The three-pane layout');
     await d.step('Step 2 — The three panes');
     await d.say(
-      '<b>Pane 1</b> is the workspace rail: Home, Scheduling, Patients, Clinical, Billing, Operations, Growth, Insights — and Settings at the bottom.',
-      4200
+      '<b>Pane 1</b> is the workspace rail: Home, Scheduling, Patients, Clinical, Billing and the rest, with Settings at the bottom.',
+      3600
     );
     await d.click(page.locator('nav[aria-label="Primary"]').getByRole('button', { name: 'Scheduling' }), { pause: 1400 });
     await d.say(
@@ -61,7 +61,6 @@ module.exports = {
 
     await d.click(page.locator('nav[aria-label="Primary"]').getByRole('button', { name: 'Patients' }), { pause: 1400 });
     await d.click(page.getByRole('button', { name: /^Electronic Health Records/ }).first(), { pause: 2000 });
-    await d.say('Same move, different workspace: Patients ▸ Electronic Health Records.', 2600);
 
     // ── universal search ────────────────────────────────────────────────
     d.chapter('Universal search');
@@ -80,7 +79,7 @@ module.exports = {
     } else {
       await page.keyboard.press('Escape');
     }
-    await d.say('Selecting a result takes you straight to that record.', 2600);
+    await d.say('Selecting a result takes you straight to that record.', 2200);
 
     // ── top bar tools ───────────────────────────────────────────────────
     d.chapter('Notifications, help and the assistant');
@@ -93,7 +92,7 @@ module.exports = {
     const help = page.locator('button[title="Help & Documentation"]');
     if (await d.exists(help)) {
       await d.click(help, { pause: 1800 });
-      await d.say('Help opens the guides for whatever module you are standing in.', 3000);
+      await d.say('Help opens the guides for the module you are standing in.', 2600);
       await page.keyboard.press('Escape');
       await page.waitForTimeout(600);
     }

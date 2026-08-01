@@ -7,9 +7,10 @@ been produced.
 
 ## Wave 1 — Getting Started (`wave1/`)
 
-Eight videos, one per journey, in watch order. Each is 1920×1080, 30fps, H.264,
-with a silent audio track, and carries a "demo environment · synthetic data"
-watermark in every frame.
+Eight videos, one per journey, in watch order. Each is 1920×1080, 30fps, H.264
+with a narrated audio track, opens on an AureonCare logo bumper, carries the
+logo in the caption bar throughout, and shows a "demo environment · synthetic
+data" watermark over the application itself.
 
 | # | Video | Module | Audience |
 | --- | --- | --- | --- |
@@ -56,11 +57,20 @@ cd frontend && HOST=localhost PORT=3000 BROWSER=none npm start   # terminal 1
 NODE_PATH=$(npm root -g) node docs/demo/video-harness/record.js v03   # terminal 2
 ```
 
-## What is not in these videos
+## Before publishing: the narration voice
 
-- **No voiceover.** Captions carry the teaching, and the burned-in text is what
-  the `.srt` mirrors. If narration is added later, the silent AAC track is
-  already in place, so the audio can be laid over without a re-encode.
+The videos are narrated, but by an offline speech synthesiser (espeak-ng with an
+mbrola voice) — the only engine reachable from the build environment. It is
+clear and correctly timed, but it sounds synthetic, and it is not what a
+customer should hear on a public channel.
+
+Replacing it does **not** mean re-recording anything. Each video's `.srt` is the
+script, in order. Record or commission those lines, drop them in
+`../video-harness/narration/<slug>/00.wav`, `01.wav`, … and re-run the video
+with `VOICE_ENGINE=files`. Timing, mixing, mastering, subtitles and chapters are
+all unchanged.
+
+## What is not in these videos
 - **No real data.** Every patient, clinician, claim and meeting link is
   synthetic, generated from `../video-harness/fixtures.js`.
 - **No live backend.** The recordings run against a mocked API, which is what

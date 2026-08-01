@@ -12,10 +12,12 @@ Part of the AureonCare Getting Started series.
 
 Chapters:
 0:00 Introduction
-0:26 Booking the visit
-0:56 After the booking
+0:12 The calendar
+0:32 Booking the visit
+1:11 After the booking
 
 Subtitles: upload v03-book-an-appointment.srt as the English track — do not rely on auto-captions.
+Narration: spoken track included (espeak/mb-us2).
 
 This video uses a demo environment with synthetic data. No real patient
 information appears in it.
@@ -36,8 +38,9 @@ AureonCare, medical appointment scheduling, clinic calendar software, appointmen
 | Thumbnail | v03-book-an-appointment.thumbnail.png |
 | Subtitles | v03-book-an-appointment.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:29 |
+| Duration | 2:04 |
 | Resolution | 1920x1080, 30fps, H.264 |
+| Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
 ## Facts for the description box
 
