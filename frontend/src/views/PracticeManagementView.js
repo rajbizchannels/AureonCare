@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2 } from 'lucide-react';
+import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2, RefreshCw } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { isProvider, isPatient } from '../utils/rolePermissions';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -50,6 +50,9 @@ const PracticeManagementView = ({
   // Telehealth state
   const [telehealthLoading, setTelehealthLoading] = useState(false);
 
+  // Appointment refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
   // Waitlist state
   const [waitlistEntries, setWaitlistEntries] = useState([]);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
@@ -64,6 +67,21 @@ const PracticeManagementView = ({
       module: 'Practice Management',
     });
   }, [logViewAccess]);
+
+  // Pull the appointment list again — the calendar and the list both read from
+  // the shared store, so one refresh serves either view.
+  const refreshAppointments = async () => {
+    setRefreshing(true);
+    try {
+      const data = await api.getAppointments();
+      setAppointments(data || []);
+    } catch (error) {
+      console.error('Error refreshing appointments:', error);
+      addNotification('alert', 'Failed to refresh appointments');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const loadWaitlist = async () => {
     setWaitlistLoading(true);
@@ -433,6 +451,22 @@ const PracticeManagementView = ({
                 {t.week || 'Week'}
               </button>
             </div>
+          )}
+
+          {appointmentViewType !== 'waitlist' && (
+            <button
+              onClick={refreshAppointments}
+              disabled={refreshing}
+              title={t.refresh || 'Refresh'}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-60 ${
+                theme === 'dark'
+                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {t.refresh || 'Refresh'}
+            </button>
           )}
 
           <button
