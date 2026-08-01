@@ -19,6 +19,7 @@ import { getModules } from './config/modules';
 import { hasAccess } from './config/planFeatures';
 import {
   getNavigation,
+  getPatientNavigation,
   filterNavigation,
   findNavLocation,
   defaultItemFor,
@@ -241,13 +242,20 @@ function App() {
   // view) falls back to that module's default tab instead of a stale one.
   const [navSelection, setNavSelection] = React.useState({ module: 'dashboard', tab: null });
 
-  const navigation = filterNavigation(getNavigation(t), hasModuleAccess);
+  // A patient's Home is the portal, not the practice dashboard, and their rail
+  // carries nothing else.
+  const isPatient = user?.role === 'patient';
+  const navigation = filterNavigation(
+    isPatient ? getPatientNavigation(t) : getNavigation(t),
+    hasModuleAccess
+  );
+  const activeModule = isPatient && currentModule === 'dashboard' ? 'patientPortal' : currentModule;
 
   // Appointments keep their sub-module in appointmentViewType (list/calendar/waitlist).
-  const moduleTab = navSelection.module === currentModule ? navSelection.tab : null;
-  const activeTab = currentModule === 'practiceManagement' ? appointmentViewType : moduleTab;
+  const moduleTab = navSelection.module === activeModule ? navSelection.tab : null;
+  const activeTab = activeModule === 'practiceManagement' ? appointmentViewType : moduleTab;
 
-  const navLocation = findNavLocation(navigation, currentModule, activeTab);
+  const navLocation = findNavLocation(navigation, activeModule, activeTab);
   const activeGroup = navLocation?.group || navigation[0];
   const activeItem = navLocation?.item;
 
@@ -324,7 +332,7 @@ function App() {
 
   // Render the appropriate view based on currentModule
   const renderModule = () => {
-    switch (currentModule) {
+    switch (activeModule) {
       case 'dashboard':
         return (
           <DashboardView
@@ -618,8 +626,8 @@ function App() {
           <React.Suspense fallback={null}>
             <PatientPortalView
               theme={theme}
-              activeTab={activeTab || 'profile'}
-              onTabChange={(tab) => selectModuleTab('patientPortal', tab)}
+              activeTab={isPatient ? undefined : activeTab || 'profile'}
+              onTabChange={isPatient ? undefined : (tab) => selectModuleTab('patientPortal', tab)}
               api={api}
               addNotification={addNotification}
               user={user}
@@ -1097,7 +1105,24 @@ function App() {
               'denial': 'rcm'
             };
 
-            const targetModule = moduleMap[result.result_type] || result.module || 'dashboard';
+            // A patient's results are their own records; every one of them
+            // opens inside the portal rather than a practice-side console.
+            const targetModule = isPatient
+              ? 'patientPortal'
+              : moduleMap[result.result_type] || result.module || 'dashboard';
+
+            if (isPatient) {
+              const portalTab = {
+                appointment: 'appointments',
+                diagnosis: 'diagnoses',
+                prescription: 'prescriptions',
+                lab_order: 'records',
+                patient: 'profile',
+              }[result.result_type] || 'profile';
+              setNavSelection({ module: 'patientPortal', tab: portalTab });
+              setCurrentModule('patientPortal');
+              return;
+            }
 
             console.log('Navigating to module:', targetModule, 'with result type:', result.result_type);
 
