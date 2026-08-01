@@ -41,6 +41,7 @@ const AppShell = ({
   navigation,
   activeGroup,
   activeItem,
+  activeTrail,
   onSelectGroup,
   onSelectItem,
   topBar,
@@ -63,6 +64,10 @@ const AppShell = ({
     writeFlag(SECONDARY_STORAGE_KEY, collapsed);
     setSecondaryCollapsed(collapsed);
   };
+
+  // The breadcrumb names every branch down to the active item; callers that
+  // don't track ancestry fall back to the item alone.
+  const trail = activeTrail?.length ? activeTrail : activeItem ? [activeItem] : [];
 
   // A group with a single destination has nothing to list in pane 2.
   const groupHasSubModules = groupItems(activeGroup).length > 1;
@@ -136,14 +141,26 @@ const AppShell = ({
                 dark ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-gray-200'
               }`}
             >
+              {/* Group, then every branch down to the open sub-module — a report
+                  reads Insights › Financial › Revenue Summary. */}
               <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 min-w-0">
                 <span className={`text-sm truncate ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
                   {activeGroup?.label}
                 </span>
-                <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 ${dark ? 'text-slate-600' : 'text-gray-300'}`} />
-                <span className={`text-sm font-semibold truncate ${dark ? 'text-white' : 'text-gray-900'}`}>
-                  {activeItem.label}
-                </span>
+                {trail.map((crumb, index) => (
+                  <React.Fragment key={crumb.id}>
+                    <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 ${dark ? 'text-slate-600' : 'text-gray-300'}`} />
+                    <span
+                      className={`text-sm truncate ${
+                        index === trail.length - 1
+                          ? `font-semibold ${dark ? 'text-white' : 'text-gray-900'}`
+                          : dark ? 'text-slate-500' : 'text-gray-400'
+                      }`}
+                    >
+                      {crumb.label}
+                    </span>
+                  </React.Fragment>
+                ))}
               </nav>
             </div>
           )}

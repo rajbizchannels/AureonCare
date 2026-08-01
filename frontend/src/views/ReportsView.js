@@ -1681,14 +1681,10 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Top Toolbar */}
         <div className={`flex items-center justify-between px-6 py-3 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+          {/* The shell's breadcrumb names the category and report, so only the
+              things it cannot know — a custom report's name, the empty state —
+              are labelled here. */}
           <div className="flex items-center gap-3">
-            {selectedReport && (
-              <>
-                <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{selectedCategory?.name}</span>
-                <ChevronRight className={`w-3 h-3 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
-                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedReport.name}</span>
-              </>
-            )}
             {customResult && !selectedReport && (
               <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{customConfig?.reportName}</span>
             )}
@@ -1790,10 +1786,6 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
           {/* Standard Report */}
           {selectedReport && (
             <div>
-              <div className="mb-5">
-                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedReport.name}</h2>
-                <p className={`text-sm mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{selectedReport.description}</p>
-              </div>
               <ReportContent
                 category={selectedCategory}
                 report={selectedReport}
