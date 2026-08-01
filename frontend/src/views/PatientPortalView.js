@@ -10,6 +10,8 @@ import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm
 import { useAudit } from '../hooks/useAudit';
 import { useShellTab } from '../hooks/useShellTab';
 import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
+import AddToCalendarButton from '../components/calendar/AddToCalendarButton';
+import { useCalendarSync } from '../components/calendar/useCalendarSync';
 
 const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange }) => {
   const { language, setLanguage, setTheme } = useApp();
@@ -18,6 +20,10 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   // forms, bookAppointment — listed in the shell's secondary pane when the
   // portal is rendered inside it.
   const [currentView, setCurrentView, tabsInShell] = useShellTab(shellTab, onTabChange, 'profile');
+
+  // Google Calendar status, read once and shared by the connect card and the
+  // per-appointment "Add to Google Calendar" buttons.
+  const calendarSync = useCalendarSync(user?.id);
 
   // Data states
   const [appointments, setAppointments] = useState([]);
@@ -967,11 +973,12 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   // Appointments View
   const renderAppointments = () => (
     <div className="space-y-6">
-      {/* Patients can push their appointments to their own Google Calendar */}
+      {/* Renders nothing unless the practice has Google Calendar configured */}
       <GoogleCalendarIntegration
         patientId={user?.id}
         theme={theme}
         addNotification={addNotification}
+        sync={calendarSync}
       />
 
       <div className="flex justify-between items-center">
@@ -1202,6 +1209,15 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                         </button>
                       )}
                     </div>
+                    {apt.status !== 'cancelled' && (
+                      <AddToCalendarButton
+                        appointmentId={apt.id}
+                        patientId={user?.id}
+                        connected={calendarSync.connected}
+                        theme={theme}
+                        addNotification={addNotification}
+                      />
+                    )}
                   </div>
                 </div>
               )}

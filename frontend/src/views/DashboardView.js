@@ -89,7 +89,7 @@ const DashboardView = ({
     { id: 'patient', label: t.addPatient, icon: FileText, color: 'purple', module: 'patients', action: 'create' },
     { id: 'diagnosis', label: t.newDiagnosis || 'New Diagnosis', icon: Activity, color: 'orange', module: 'ehr', action: 'create' },
     { id: 'task', label: t.newTask, icon: Check, color: 'green', module: null, action: null }, // All roles can create tasks
-    { id: 'claim', label: t.newClaim, icon: DollarSign, color: 'yellow', module: 'billing', action: 'create' }
+    { id: 'claim', label: t.newClaim, icon: DollarSign, color: 'yellow', module: 'claims', action: 'create' }
   ];
 
   // Filter quick actions based on user role permissions
