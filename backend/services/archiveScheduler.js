@@ -45,46 +45,49 @@ async function executeArchiveRule(rule) {
     let totalRecords = 0;
     let totalSizeBytes = 0;
 
-    // Get module definitions (simplified - in production, import from archive.js)
+    // Get module definitions aligned with production schema
     const ARCHIVE_MODULES = {
       'patient_management': {
-        tables: ['patients', 'patient_allergies', 'patient_portal_sessions', 'patient_pharmacies', 'patient_preferred_pharmacies']
+        tables: ['patients', 'patient_allergies', 'patient_portal_sessions', 'patient_pharmacies', 'patient_consent_forms', 'patient_offering_enrollments']
       },
       'appointments': {
-        tables: ['appointments', 'appointment_reminders', 'appointment_waitlist']
+        tables: ['appointments', 'appointment_reminders', 'appointment_waitlist', 'appointment_types', 'appointment_type_config', 'recurring_appointments', 'doctor_availability', 'doctor_time_off']
       },
       'medical_records': {
-        tables: ['medical_records', 'diagnosis', 'prescriptions', 'prescription_history']
+        tables: ['medical_records', 'diagnosis', 'diagnoses', 'prescriptions', 'prescription_history']
       },
       'claims_billing': {
-        tables: ['claims', 'payments', 'payment_postings', 'denials', 'preapprovals']
+        tables: ['claims', 'claim_submissions', 'payments', 'payment_postings', 'denials', 'preapprovals', 'billing_quotes', 'billing_quote_items', 'billing_invoices', 'billing_invoice_items', 'billing_coupons', 'billing_payments']
       },
       'healthcare_offerings': {
-        tables: ['healthcare_offerings', 'offering_packages', 'offering_pricing', 'offering_promotions', 'offering_reviews', 'package_offerings']
+        tables: ['healthcare_offerings', 'offering_packages', 'offering_pricing', 'offering_promotions', 'offering_reviews', 'package_offerings', 'offering_insurance_mappings']
       },
       'lab_pharmacy': {
-        tables: ['pharmacies', 'laboratories', 'medications', 'drug_interactions', 'medication_alternatives']
+        tables: ['pharmacies', 'laboratories', 'medications', 'drug_interactions', 'medication_alternatives', 'lab_orders', 'erx_message_queue']
       },
       'fhir_resources': {
-        tables: ['fhir_resources']
+        tables: ['fhir_resources', 'fhir_tracking', 'fhir_tracking_events', 'fhir_error_actions']
       },
       'notifications': {
-        tables: ['notifications']
+        tables: ['notifications', 'notification_preferences']
       },
       'tasks': {
         tables: ['tasks']
       },
       'telehealth': {
-        tables: ['telehealth_sessions']
+        tables: ['telehealth_sessions', 'telehealth_provider_settings']
       },
       'audit_logs': {
         tables: ['audit_logs']
       },
-      'lab_orders': {
-        tables: ['lab_orders']
-      },
       'intake_forms': {
-        tables: ['patient_intake_forms']
+        tables: ['patient_intake_forms', 'patient_intake_flows']
+      },
+      'providers': {
+        tables: ['providers', 'provider_booking_config', 'backup_provider_settings']
+      },
+      'campaigns': {
+        tables: ['campaigns', 'booking_analytics']
       }
     };
 
@@ -103,11 +106,6 @@ async function executeArchiveRule(rule) {
           let whereClause = '';
           let whereParams = [];
 
-          if (rule.retention_days) {
-            // Archive data older than retention_days
-            whereClause = `WHERE created_at < NOW() - INTERVAL '${rule.retention_days} days'`;
-          }
-
           // ALWAYS ensure table structure exists in archive database first
           const { ensureTableStructure } = require('../archiveDb');
           const tableReady = await ensureTableStructure(pool, tableName);
@@ -117,10 +115,54 @@ async function executeArchiveRule(rule) {
             continue;
           }
 
+          // Detect timestamp column for retention filtering
+          if (rule.retention_days) {
+            // Check which timestamp column this table has
+            const timestampCheckQuery = `
+              SELECT column_name
+              FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = $1
+                AND column_name IN ('created_at', 'added_date', 'date_created', 'timestamp', 'created', 'date_added')
+              ORDER BY
+                CASE column_name
+                  WHEN 'created_at' THEN 1
+                  WHEN 'added_date' THEN 2
+                  WHEN 'date_created' THEN 3
+                  WHEN 'timestamp' THEN 4
+                  WHEN 'created' THEN 5
+                  WHEN 'date_added' THEN 6
+                END
+              LIMIT 1;
+            `;
+
+            const timestampResult = await pool.query(timestampCheckQuery, [tableName]);
+
+            if (timestampResult.rows.length > 0) {
+              const timestampColumn = timestampResult.rows[0].column_name;
+              whereClause = `WHERE ${timestampColumn} < NOW() - INTERVAL '${rule.retention_days} days'`;
+              console.log(`[Archive Scheduler] Using ${timestampColumn} for retention filtering on ${tableName}`);
+            } else {
+              console.log(`[Archive Scheduler] ⚠️  No timestamp column found for ${tableName} - archiving all data`);
+            }
+          }
+
           // Get data from main database
           const selectQuery = `SELECT * FROM ${tableName} ${whereClause}`;
           const result = await pool.query(selectQuery, whereParams);
           const rows = result.rows;
+
+          console.log(`[Archive Scheduler] Found ${rows.length} rows to archive from ${tableName}`);
+
+          // Check if data already exists in archive database
+          const archiveCheckClient = await archivePool.connect();
+          try {
+            const existingCountResult = await archiveCheckClient.query(`SELECT COUNT(*) FROM ${tableName}`);
+            const existingCount = parseInt(existingCountResult.rows[0].count);
+            console.log(`[Archive Scheduler] Archive database already has ${existingCount} rows in ${tableName}`);
+          } finally {
+            archiveCheckClient.release();
+          }
 
           // Always add table to archived list, even if empty
           archivedTables.push(tableName);
@@ -130,6 +172,25 @@ async function executeArchiveRule(rule) {
             const rowSize = JSON.stringify(rows[0]).length;
             const tableSize = rowSize * rows.length;
             totalSizeBytes += tableSize;
+
+            // Get primary key columns for ON CONFLICT clause
+            const pkQuery = `
+              SELECT string_agg(a.attname, ', ' ORDER BY array_position(conkey, a.attnum)) as pk_columns
+              FROM pg_constraint c
+              JOIN pg_class t ON t.oid = c.conrelid
+              JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+              WHERE t.relname = $1
+                AND c.contype = 'p'
+              GROUP BY c.conname;
+            `;
+            const pkResult = await archivePool.query(pkQuery, [tableName]);
+            const pkColumns = pkResult.rows[0]?.pk_columns;
+
+            if (!pkColumns) {
+              console.warn(`[Archive Scheduler] ⚠️  Table ${tableName} has no primary key - duplicates may occur`);
+            } else {
+              console.log(`[Archive Scheduler] Using primary key (${pkColumns}) for deduplication`);
+            }
 
             // Insert data into archive database
             const archiveClient = await archivePool.connect();
@@ -154,10 +215,15 @@ async function executeArchiveRule(rule) {
                   const values = Object.values(row);
                   const placeholders = values.map((_, idx) => `$${idx + 1}`).join(', ');
 
+                  // Build ON CONFLICT clause with explicit target if primary key exists
+                  const onConflictClause = pkColumns
+                    ? `ON CONFLICT (${pkColumns}) DO NOTHING`
+                    : `ON CONFLICT DO NOTHING`;
+
                   const insertQuery = `
                     INSERT INTO ${tableName} (${columns.join(', ')})
                     VALUES (${placeholders})
-                    ON CONFLICT DO NOTHING
+                    ${onConflictClause}
                     RETURNING *
                   `;
 

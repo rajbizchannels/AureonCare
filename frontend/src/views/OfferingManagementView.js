@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import api from '../api/apiService';
+import { formatCurrency } from '../utils/formatters';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewHealthcareOfferingForm from '../components/forms/NewHealthcareOfferingForm';
 import { useAudit } from '../hooks/useAudit';
+import { useShellTab } from '../hooks/useShellTab';
+import { FORM_TEMPLATES } from '../data/formTemplates';
 import {
   Package,
   FolderTree,
@@ -29,12 +32,12 @@ import {
   BarChart3,
   ShoppingCart,
   Percent,
-  ArrowLeft
+  ClipboardList
 } from 'lucide-react';
 
-const OfferingManagementView = () => {
-  const { user, theme, setCurrentModule } = useApp();
-  const [activeTab, setActiveTab] = useState('offerings');
+const OfferingManagementView = ({ activeTab: shellTab, onTabChange }) => {
+  const { user, theme, currency } = useApp();
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'offerings');
   const [offerings, setOfferings] = useState([]);
   const [packages, setPackages] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -50,6 +53,11 @@ const OfferingManagementView = () => {
   const [formData, setFormData] = useState({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteInfo, setDeleteInfo] = useState({ id: null, type: null });
+  const [showFormsPanel, setShowFormsPanel] = useState(false);
+  const [selectedOfferingForForms, setSelectedOfferingForForms] = useState(null);
+  const [offeringLinkedForms, setOfferingLinkedForms] = useState([]);
+  const [availableFormTemplates, setAvailableFormTemplates] = useState([]);
+  const [loadingForms, setLoadingForms] = useState(false);
 
   const { logViewAccess } = useAudit();
 
@@ -57,13 +65,9 @@ const OfferingManagementView = () => {
     logViewAccess('OfferingManagementView', {
       module: 'Offerings',
     });
-  }, []);
+  }, [logViewAccess]);
 
-  useEffect(() => {
-    fetchData();
-  }, [activeTab, selectedCategory, showActiveOnly]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       if (activeTab === 'offerings') {
@@ -101,7 +105,11 @@ const OfferingManagementView = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, selectedCategory, showActiveOnly]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const openModal = (type, item = null) => {
     setModalType(type);
@@ -257,6 +265,60 @@ const OfferingManagementView = () => {
     }
   };
 
+  const openFormsPanel = async (offering) => {
+    setSelectedOfferingForForms(offering);
+    setShowFormsPanel(true);
+    setLoadingForms(true);
+    try {
+      const [linked, apiTemplates] = await Promise.all([
+        api.getOfferingLinkedForms(offering.id).catch(() => []),
+        api.getFormTemplates().catch(() => [])
+      ]);
+      setOfferingLinkedForms(linked);
+      // Merge DB templates with seed templates, deduplicating by slug/id
+      const apiIds = new Set(apiTemplates.map(t => t.slug || t.id));
+      const seedOnly = FORM_TEMPLATES.filter(t => !apiIds.has(t.id));
+      setAvailableFormTemplates([...apiTemplates, ...seedOnly]);
+    } catch (error) {
+      console.error('Error loading forms:', error);
+      setAvailableFormTemplates(FORM_TEMPLATES);
+    } finally {
+      setLoadingForms(false);
+    }
+  };
+
+  const closeFormsPanel = () => {
+    setShowFormsPanel(false);
+    setSelectedOfferingForForms(null);
+    setOfferingLinkedForms([]);
+    setAvailableFormTemplates([]);
+  };
+
+  const handleToggleFormLink = async (formTemplate) => {
+    // Use slug as the stable identifier (seed templates use slug as id)
+    const templateKey = formTemplate.id || formTemplate.slug;
+    const isLinked = offeringLinkedForms.some(f =>
+      f.form_template_id === templateKey || f.form_template_id === formTemplate.slug
+    );
+    try {
+      if (isLinked) {
+        await api.unlinkFormFromOffering(selectedOfferingForForms.id, templateKey);
+        setOfferingLinkedForms(prev => prev.filter(f =>
+          f.form_template_id !== templateKey && f.form_template_id !== formTemplate.slug
+        ));
+      } else {
+        const result = await api.linkFormToOffering(selectedOfferingForForms.id, {
+          form_template_id: templateKey,
+          form_template_name: formTemplate.name,
+          trigger_on: 'order'
+        });
+        setOfferingLinkedForms(prev => [...prev, result]);
+      }
+    } catch (error) {
+      console.error('Error toggling form link:', error);
+    }
+  };
+
   const filteredOfferings = offerings.filter(offering =>
     offering.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     offering.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -294,24 +356,8 @@ const OfferingManagementView = () => {
       />
 
       <div className={`p-6 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
-        {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <button
-            onClick={() => setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${
-              theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-200'
-            }`}
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <h1 className="text-3xl font-bold">Healthcare Offering Management</h1>
-        </div>
-        <p className="text-gray-500 ml-14">Manage your healthcare services, packages, and promotions</p>
-      </div>
-
-      {/* Tabs */}
+      {/* Tabs — the app shell's secondary pane replaces these when present */}
+      {!tabsInShell && (
       <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
         <nav className="flex space-x-8">
           {[
@@ -339,6 +385,7 @@ const OfferingManagementView = () => {
           })}
         </nav>
       </div>
+      )}
 
       {/* Inline Offering Form - shown when adding/editing offering */}
       {showModal && modalType === 'offering' && activeTab === 'offerings' && (
@@ -507,6 +554,18 @@ const OfferingManagementView = () => {
         <>
           {/* Offerings Tab */}
           {activeTab === 'offerings' && (
+            <>
+            {showFormsPanel && selectedOfferingForForms && (
+              <OfferingFormsPanel
+                offering={selectedOfferingForForms}
+                linkedForms={offeringLinkedForms}
+                availableTemplates={availableFormTemplates}
+                loading={loadingForms}
+                onToggle={handleToggleFormLink}
+                onClose={closeFormsPanel}
+                theme={theme}
+              />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredOfferings.map(offering => (
                 <OfferingCard
@@ -516,6 +575,8 @@ const OfferingManagementView = () => {
                   onEdit={() => openModal('offering', offering)}
                   onDelete={() => handleDeleteClick(offering.id, 'offering')}
                   onToggleStatus={() => toggleStatus(offering.id, 'offering', offering.is_active)}
+                  onManageForms={() => openFormsPanel(offering)}
+                  isFormsActive={showFormsPanel && selectedOfferingForForms?.id === offering.id}
                 />
               ))}
               {filteredOfferings.length === 0 && (
@@ -524,6 +585,7 @@ const OfferingManagementView = () => {
                 </div>
               )}
             </div>
+            </>
           )}
 
           {/* Packages Tab */}
@@ -590,7 +652,7 @@ const OfferingManagementView = () => {
 
           {/* Statistics Tab */}
           {activeTab === 'statistics' && statistics && (
-            <StatisticsView statistics={statistics} theme={theme} />
+            <StatisticsView statistics={statistics} theme={theme} currency={currency} />
           )}
         </>
       )}
@@ -600,10 +662,10 @@ const OfferingManagementView = () => {
 };
 
 // Offering Card Component
-const OfferingCard = ({ offering, theme, onEdit, onDelete, onToggleStatus }) => (
+const OfferingCard = ({ offering, theme, onEdit, onDelete, onToggleStatus, onManageForms, isFormsActive }) => (
   <div className={`rounded-lg border p-6 ${
     theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-  }`}>
+  } ${isFormsActive ? 'ring-2 ring-teal-500' : ''}`}>
     <div className="flex justify-between items-start mb-4">
       <div className="flex-1">
         <h3 className="text-lg font-semibold mb-1">{offering.name}</h3>
@@ -625,6 +687,13 @@ const OfferingCard = ({ offering, theme, onEdit, onDelete, onToggleStatus }) => 
         </div>
       </div>
       <div className="flex gap-2">
+        <button
+          onClick={onManageForms}
+          title="Manage triggered forms"
+          className={`${isFormsActive ? 'text-teal-500' : 'text-gray-400 hover:text-teal-500'}`}
+        >
+          <ClipboardList className="w-5 h-5" />
+        </button>
         <button onClick={onToggleStatus} className="text-gray-400 hover:text-gray-600">
           {offering.is_active ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
         </button>
@@ -858,7 +927,7 @@ const PromotionCard = ({ promotion, theme, onEdit, onToggleStatus }) => (
 );
 
 // Statistics View Component
-const StatisticsView = ({ statistics, theme }) => (
+const StatisticsView = ({ statistics, theme, currency }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <StatCard
@@ -884,7 +953,7 @@ const StatisticsView = ({ statistics, theme }) => (
       />
       <StatCard
         title="Total Revenue"
-        value={`$${parseFloat(statistics.overview.total_revenue || 0).toLocaleString()}`}
+        value={formatCurrency(parseFloat(statistics.overview.total_revenue || 0), currency)}
         icon={DollarSign}
         color="emerald"
         theme={theme}
@@ -1175,5 +1244,89 @@ const CheckboxField = ({ label, checked, onChange, theme }) => (
     </button>
   </div>
 );
+
+// Offering Forms Panel — assign form templates that auto-trigger on order
+const OfferingFormsPanel = ({ offering, linkedForms, availableTemplates, loading, onToggle, onClose, theme }) => {
+  const linkedIds = new Set(linkedForms.flatMap(f => [f.form_template_id, f.id].filter(Boolean)));
+
+  return (
+    <div className={`mb-6 rounded-xl shadow-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className={`p-5 border-b flex justify-between items-start ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div>
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-teal-500" />
+            Triggered Forms — {offering.name}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Selected forms will automatically be sent to the patient when they order this offering.
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="p-5">
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500" />
+          </div>
+        ) : availableTemplates.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">
+            No form templates found. Create templates in the Form Management module first.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {availableTemplates.map(template => {
+              const templateKey = template.id || template.slug;
+              const linked = linkedIds.has(templateKey) || linkedIds.has(template.slug);
+              return (
+                <button
+                  key={templateKey}
+                  onClick={() => onToggle(template)}
+                  className={`flex items-start gap-3 p-4 rounded-lg border text-left transition-colors ${
+                    linked
+                      ? theme === 'dark'
+                        ? 'bg-teal-900/40 border-teal-600 text-teal-300'
+                        : 'bg-teal-50 border-teal-400 text-teal-800'
+                      : theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 hover:border-gray-500'
+                      : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${
+                    linked
+                      ? 'bg-teal-500 border-teal-500'
+                      : theme === 'dark' ? 'border-gray-500' : 'border-gray-300'
+                  }`}>
+                    {linked && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{template.name}</p>
+                    {template.specialty && (
+                      <p className="text-xs text-gray-500 mt-0.5">{template.specialty}</p>
+                    )}
+                    {template.description && (
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">{template.description}</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && linkedForms.length > 0 && (
+          <p className="mt-4 text-xs text-gray-500">
+            {linkedForms.length} form{linkedForms.length !== 1 ? 's' : ''} will be triggered when a patient orders this offering.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default OfferingManagementView;

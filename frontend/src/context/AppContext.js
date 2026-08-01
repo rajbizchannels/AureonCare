@@ -1,9 +1,61 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import api from '../api/apiService';
 import { getTranslations } from '../config/translations';
 
 // Create the context
 const AppContext = createContext();
+
+const OAUTH_DEPARTURE_KEY = 'aureoncare.oauthDeparture';
+const OAUTH_DEPARTURE_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * Record that we are about to hand the browser to an external OAuth provider.
+ *
+ * Call this immediately before navigating away. The return trip is a fresh page
+ * load, which would otherwise be treated as a refresh and end the session — the
+ * user would come back from Google only to face the login page.
+ */
+export const markOAuthDeparture = () => {
+  try {
+    sessionStorage.setItem(OAUTH_DEPARTURE_KEY, String(Date.now()));
+  } catch (error) {
+    /* storage unavailable — the return trip will just ask for a fresh login */
+  }
+};
+
+/** True when this page load is the return leg of an OAuth round trip. */
+const isOAuthReturn = () => {
+  try {
+    const departedAt = Number(sessionStorage.getItem(OAUTH_DEPARTURE_KEY));
+    sessionStorage.removeItem(OAUTH_DEPARTURE_KEY);
+    return Boolean(departedAt) && Date.now() - departedAt < OAUTH_DEPARTURE_TTL_MS;
+  } catch (error) {
+    return false;
+  }
+};
+
+/**
+ * A page load always starts a fresh session.
+ *
+ * This module is evaluated once per page load, so clearing the stored session
+ * here means a browser refresh (or a restored tab) lands on the login page
+ * instead of resuming the previous session. The one exception is the return
+ * leg of an OAuth round trip, which is a page load the app itself initiated.
+ */
+const clearStoredSession = () => {
+  try {
+    sessionStorage.removeItem('isAuthenticated');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('portalSessionToken');
+  } catch (error) {
+    /* storage unavailable — nothing to clear */
+  }
+};
+
+if (!isOAuthReturn()) {
+  clearStoredSession();
+}
 
 // AppProvider component
 const AppProvider = ({ children }) => {
@@ -35,6 +87,7 @@ const AppProvider = ({ children }) => {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [appointmentViewType, setAppointmentViewType] = useState('list'); // 'list' or 'calendar'
   const [calendarViewType, setCalendarViewType] = useState('week'); // 'day' or 'week'
+  const [currency, setCurrency] = useState('USD');
 
   // Data state
   const [appointments, setAppointments] = useState([]);
@@ -45,22 +98,15 @@ const AppProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
 
-  // User state - requires both sessionStorage and localStorage
+  // User state - stored in sessionStorage (clears on tab close, not readable cross-tab)
   const [user, setUser] = useState(() => {
-    // Check session validity first (sessionStorage clears on tab close)
     try {
-      const isSessionValid = sessionStorage.getItem('isAuthenticated') === 'true';
-      if (!isSessionValid) {
-        // Clear stale localStorage data
-        localStorage.removeItem('user');
-        return null;
-      }
-
-      // Load user from localStorage only if session is valid
-      const storedUser = localStorage.getItem('user');
+      // One-time migration: remove stale 'user' entry left in localStorage by the old code
+      localStorage.removeItem('user');
+      const storedUser = sessionStorage.getItem('user');
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (error) {
-      console.error('Error loading user from localStorage:', error);
+      console.error('Error loading user from sessionStorage:', error);
       return null;
     }
   });
@@ -72,25 +118,24 @@ const AppProvider = ({ children }) => {
         sessionStorage.setItem('isAuthenticated', 'true');
       } else {
         sessionStorage.removeItem('isAuthenticated');
-        // Also clear user data on logout
-        sessionStorage.removeItem('sessionUser');
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('portalSessionToken');
       }
     } catch (error) {
       console.error('Error saving authentication status:', error);
     }
   }, [isAuthenticated]);
 
-  // Persist user data to localStorage whenever it changes
+  // Persist user data to sessionStorage whenever it changes
   useEffect(() => {
-    if (user) {
-      try {
-        localStorage.setItem('user', JSON.stringify(user));
-      } catch (error) {
-        console.error('Error saving user to localStorage:', error);
+    try {
+      if (user) {
+        sessionStorage.setItem('user', JSON.stringify(user));
+      } else {
+        sessionStorage.removeItem('user');
       }
-    } else {
-      // Clear localStorage when user logs out
-      localStorage.removeItem('user');
+    } catch (error) {
+      console.error('Error saving user to sessionStorage:', error);
     }
   }, [user]);
 
@@ -128,16 +173,11 @@ const AppProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Fetch all data on component mount
-  useEffect(() => {
-    fetchAllData();
-  }, []);
-
   /**
    * Fetches all data from the backend API
    * @param {boolean} includeUser - Whether to fetch user data (only after authentication)
    */
-  const fetchAllData = async (includeUser = false) => {
+  const fetchAllData = useCallback(async (includeUser = false) => {
     console.log('AppContext: fetchAllData called, includeUser:', includeUser);
     setLoading(true);
     setError(null);
@@ -161,36 +201,24 @@ const AppProvider = ({ children }) => {
       const results = await Promise.all(dataPromises);
       const [appointmentsData, patientsData, claimsData, paymentsData, notificationsData, tasksData, usersData, userData] = results;
 
-      // Auto-update past scheduled appointments to completed status
+      // Derive display status for past scheduled appointments locally.
+      // Doing N PUT/PATCH calls on every load is costly and error-prone
+      // (FK drift can cause 500s). Status persists via normal appointment
+      // workflows; here we only adjust the in-memory representation.
       const now = new Date();
-      const updatedAppointments = await Promise.all(
-        appointmentsData.map(async (apt) => {
-          // Check if appointment is in the past and status is scheduled
-          if (apt.start_time && (apt.status === 'scheduled' || !apt.status)) {
-            try {
-              const startTime = new Date(apt.start_time.replace(' ', 'T'));
-              if (startTime < now) {
-                // Update the appointment status to completed
-                const updatedApt = await api.updateAppointment(apt.id, { ...apt, status: 'completed' });
-
-                // Enrich the updated appointment with patient and provider names
-                const patient = patientsData?.find(p => p.id === updatedApt.patient_id);
-                const provider = usersData?.find(u => u.id === updatedApt.provider_id);
-
-                return {
-                  ...updatedApt,
-                  patient: patient ? (patient.name || `${patient.first_name} ${patient.last_name}`) : updatedApt.patient,
-                  doctor: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() : updatedApt.doctor,
-                  provider_name: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() : updatedApt.provider_name
-                };
-              }
-            } catch (error) {
-              console.error('Error parsing appointment time:', error);
+      const updatedAppointments = appointmentsData.map((apt) => {
+        if (apt.start_time && (apt.status === 'scheduled' || !apt.status)) {
+          try {
+            const startTime = new Date(apt.start_time.replace(' ', 'T'));
+            if (startTime < now) {
+              return { ...apt, status: 'completed' };
             }
+          } catch (error) {
+            console.error('Error parsing appointment time:', error);
           }
-          return apt;
-        })
-      );
+        }
+        return apt;
+      });
 
       setAppointments(updatedAppointments);
       setPatients(patientsData);
@@ -253,7 +281,24 @@ const AppProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Load practice data once the user is authenticated. Every API router sits
+  // behind `authenticate`, so fetching before sign-in only produced a wave of
+  // 401s on the login screen. Re-runs when `user` changes (fetchAllData is
+  // keyed on it), which is what refreshes data straight after login.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetchAllData();
+  }, [isAuthenticated, fetchAllData]);
+
+  // Load currency from clinic settings after authentication
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    api.getClinicSettings()
+      .then(s => { if (s?.currency) setCurrency(s.currency); })
+      .catch(() => {});
+  }, [isAuthenticated]);
 
   /**
    * Updates user preferences in the backend and local state
@@ -383,6 +428,8 @@ const AppProvider = ({ children }) => {
     setAppointmentViewType,
     calendarViewType,
     setCalendarViewType,
+    currency,
+    setCurrency,
 
     // Data state
     appointments,

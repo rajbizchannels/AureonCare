@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Eye, Edit, Trash2, CreditCard, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp, X, Receipt, FileText, Tag, Bell, ArrowRightLeft, Percent } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import NewPaymentForm from '../components/forms/NewPaymentForm';
 import NewClaimForm from '../components/forms/NewClaimForm';
@@ -7,11 +7,18 @@ import NewInsurancePayerForm from '../components/forms/NewInsurancePayerForm';
 import NewPreapprovalForm from '../components/forms/NewPreapprovalForm';
 import NewPaymentPostingForm from '../components/forms/NewPaymentPostingForm';
 import NewDenialForm from '../components/forms/NewDenialForm';
+import NewQuoteForm from '../components/forms/NewQuoteForm';
+import NewInvoiceForm from '../components/forms/NewInvoiceForm';
+import NewCouponForm from '../components/forms/NewCouponForm';
+import NewBillingPaymentForm from '../components/forms/NewBillingPaymentForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
+import { useShellTab } from '../hooks/useShellTab';
 
 const RCMView = ({
   theme,
+  activeTab: shellTab,
+  onTabChange,
   claims,
   patients,
   setShowForm,
@@ -21,9 +28,12 @@ const RCMView = ({
   addNotification,
   api,
   setCurrentModule,
-  t = {}
+  tasks,
+  setTasks,
+  t = {},
+  currency = 'USD',
 }) => {
-  const [activeTab, setActiveTab] = useState('claims');
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'claims');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [showInsurancePayerForm, setShowInsurancePayerForm] = useState(false);
@@ -34,6 +44,26 @@ const RCMView = ({
   const [viewingClaim, setViewingClaim] = useState(null);
   const [editingClaim, setEditingClaim] = useState(null);
   const [editingPayment, setEditingPayment] = useState(null);
+
+  // Billing state
+  const [billingSubTab, setBillingSubTab] = useState('quotes');
+  const [billingQuotes, setBillingQuotes] = useState([]);
+  const [billingInvoices, setBillingInvoices] = useState([]);
+  const [billingCoupons, setBillingCoupons] = useState([]);
+  const [billingPayments, setBillingPayments] = useState([]);
+  const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [showCouponForm, setShowCouponForm] = useState(false);
+  const [showBillingPaymentForm, setShowBillingPaymentForm] = useState(false);
+  const [editingQuote, setEditingQuote] = useState(null);
+  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [editingCoupon, setEditingCoupon] = useState(null);
+  const [editingBillingPayment, setEditingBillingPayment] = useState(null);
+  const [quoteSearch, setQuoteSearch] = useState('');
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [couponSearch, setCouponSearch] = useState('');
+  const [billingPaymentSearch, setBillingPaymentSearch] = useState('');
+  const [reminderSearch, setReminderSearch] = useState('');
 
   // Confirmation modal states
   const [confirmModal, setConfirmModal] = useState({
@@ -66,7 +96,7 @@ const RCMView = ({
     logViewAccess('RCMView', {
       module: 'RCM',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Close all forms when tab changes
   useEffect(() => {
@@ -76,26 +106,46 @@ const RCMView = ({
     setShowPaymentPostingForm(false);
     setShowDenialForm(false);
     setShowInsurancePayerForm(false);
+    setShowQuoteForm(false);
+    setShowInvoiceForm(false);
+    setShowCouponForm(false);
+    setShowBillingPaymentForm(false);
     setEditingPayer(null);
     setViewingClaim(null);
     setEditingClaim(null);
     setEditingPayment(null);
+    setEditingQuote(null);
+    setEditingInvoice(null);
+    setEditingCoupon(null);
+    setEditingBillingPayment(null);
   }, [activeTab]);
 
-  // Fetch all RCM data
+  // Close billing forms when billing sub-tab changes
   useEffect(() => {
-    fetchRCMData();
-  }, []);
+    setShowQuoteForm(false);
+    setShowInvoiceForm(false);
+    setShowCouponForm(false);
+    setShowBillingPaymentForm(false);
+    setEditingQuote(null);
+    setEditingInvoice(null);
+    setEditingCoupon(null);
+    setEditingBillingPayment(null);
+  }, [billingSubTab]);
 
-  const fetchRCMData = async () => {
+  // Fetch all RCM data
+  const fetchRCMData = useCallback(async () => {
     setLoading(true);
     try {
-      const [preapprovalsData, paymentsData, paymentPostingsData, denialsData, payersData] = await Promise.all([
+      const [preapprovalsData, paymentsData, paymentPostingsData, denialsData, payersData, quotesData, invoicesData, couponsData, billingPaymentsData] = await Promise.all([
         api.getPreapprovals().catch(() => []),
         api.getPayments().catch(() => []),
         api.getPaymentPostings().catch(() => []),
         api.getDenials().catch(() => []),
-        api.getInsurancePayers().catch(() => [])
+        api.getInsurancePayers().catch(() => []),
+        api.getBillingQuotes().catch(() => []),
+        api.getBillingInvoices().catch(() => []),
+        api.getBillingCoupons().catch(() => []),
+        api.getBillingPayments().catch(() => [])
       ]);
 
       setPreapprovals(preapprovalsData || []);
@@ -103,13 +153,17 @@ const RCMView = ({
       setPaymentPostings(paymentPostingsData || []);
       setDenials(denialsData || []);
       setInsurancePayers(payersData || []);
+      setBillingQuotes(quotesData || []);
+      setBillingInvoices(invoicesData || []);
+      setBillingCoupons(couponsData || []);
+      setBillingPayments(billingPaymentsData || []);
     } catch (error) {
       console.error('Error fetching RCM data:', error);
       addNotification('error', 'Failed to load RCM data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification]);
 
   // Filter functions
   const filteredClaims = claims.filter(claim => {
@@ -255,7 +309,7 @@ const RCMView = ({
                     <tr key={claim.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{claim.claim_number || 'N/A'}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{patientName}</td>
-                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(claim.amount)}</td>
+                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(claim.amount, currency)}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{claim.payer}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(claim.service_date || claim.serviceDate || claim.date)}</td>
                       <td className="px-6 py-4">
@@ -567,7 +621,7 @@ const RCMView = ({
                   return (
                     <tr key={payment.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{patientName}</td>
-                      <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount)}</td>
+                      <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount, currency)}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.payment_method || 'N/A'}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(payment.payment_date)}</td>
                       <td className="px-6 py-4">
@@ -849,7 +903,7 @@ const RCMView = ({
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.patient_name}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.claim_number || 'N/A'}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.insurance_payer_name || 'N/A'}</td>
-                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(posting.payment_amount)}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(posting.payment_amount, currency)}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(posting.posting_date)}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -984,7 +1038,7 @@ const RCMView = ({
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.patient_name}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.claim_number || 'N/A'}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.denial_category}</td>
-                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(denial.denial_amount)}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(denial.denial_amount, currency)}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(denial.appeal_deadline)}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -1046,30 +1100,590 @@ const RCMView = ({
     </div>
   );
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
-          <div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Revenue Cycle Management
-            </h2>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Manage claims, pre-authorizations, payments, and insurance payers
-            </p>
-          </div>
+  // Billing filter functions
+  const filteredBillingQuotes = billingQuotes.filter(q => {
+    if (!quoteSearch) return true;
+    const s = quoteSearch.toLowerCase();
+    return (
+      q.quoteNumber?.toLowerCase().includes(s) ||
+      q.patientName?.toLowerCase().includes(s) ||
+      q.status?.toLowerCase().includes(s)
+    );
+  });
+
+  const filteredBillingInvoices = billingInvoices.filter(i => {
+    if (!invoiceSearch) return true;
+    const s = invoiceSearch.toLowerCase();
+    return (
+      i.invoiceNumber?.toLowerCase().includes(s) ||
+      i.patientName?.toLowerCase().includes(s) ||
+      i.status?.toLowerCase().includes(s)
+    );
+  });
+
+  const filteredBillingCoupons = billingCoupons.filter(c => {
+    if (!couponSearch) return true;
+    const s = couponSearch.toLowerCase();
+    return (
+      c.code?.toLowerCase().includes(s) ||
+      c.name?.toLowerCase().includes(s) ||
+      c.discountType?.toLowerCase().includes(s)
+    );
+  });
+
+  const filteredBillingPayments = billingPayments.filter(p => {
+    if (!billingPaymentSearch) return true;
+    const s = billingPaymentSearch.toLowerCase();
+    return (
+      p.paymentNumber?.toLowerCase().includes(s) ||
+      p.patientName?.toLowerCase().includes(s) ||
+      p.invoiceNumber?.toLowerCase().includes(s) ||
+      p.paymentMethod?.toLowerCase().includes(s) ||
+      p.status?.toLowerCase().includes(s)
+    );
+  });
+
+  // Filter tasks that are billing reminders
+  const billingReminderTasks = (tasks || []).filter(task => {
+    const title = (task.title || '').toLowerCase();
+    if (!reminderSearch) return title.includes('payment reminder') || title.includes('invoice reminder') || title.includes('billing reminder');
+    const s = reminderSearch.toLowerCase();
+    return (title.includes('payment reminder') || title.includes('invoice reminder') || title.includes('billing reminder')) && (
+      task.title?.toLowerCase().includes(s) ||
+      task.status?.toLowerCase().includes(s) ||
+      task.priority?.toLowerCase().includes(s)
+    );
+  });
+
+  const statusBadge = (status) => {
+    const colors = {
+      draft: 'bg-gray-500/20 text-gray-400',
+      sent: 'bg-blue-500/20 text-blue-400',
+      accepted: 'bg-green-500/20 text-green-400',
+      declined: 'bg-red-500/20 text-red-400',
+      expired: 'bg-orange-500/20 text-orange-400',
+      converted: 'bg-purple-500/20 text-purple-400',
+      paid: 'bg-green-500/20 text-green-400',
+      partially_paid: 'bg-yellow-500/20 text-yellow-400',
+      overdue: 'bg-red-500/20 text-red-400',
+      cancelled: 'bg-gray-500/20 text-gray-400',
+      refunded: 'bg-orange-500/20 text-orange-400',
+      completed: 'bg-green-500/20 text-green-400',
+      pending: 'bg-yellow-500/20 text-yellow-400',
+      failed: 'bg-red-500/20 text-red-400',
+    };
+    return colors[status] || 'bg-gray-500/20 text-gray-400';
+  };
+
+  const renderBillingQuotes = () => (
+    <div>
+      <div className="mb-4">
+        <div className="relative">
+          <Search className={`absolute left-3 top-3 w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+          <input type="text" value={quoteSearch} onChange={(e) => setQuoteSearch(e.target.value)}
+            placeholder="Search quotes by number, patient, or status..."
+            className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} focus:ring-2 focus:ring-blue-500 focus:border-transparent`} />
         </div>
       </div>
 
-      {/* Tabs */}
+      {showQuoteForm && (
+        <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewQuoteForm theme={theme} api={api} patients={patients} editingQuote={editingQuote}
+            onClose={() => { setShowQuoteForm(false); setEditingQuote(null); }}
+            onSuccess={(quote) => {
+              setShowQuoteForm(false);
+              if (editingQuote) {
+                setBillingQuotes(billingQuotes.map(q => q.id === quote.id ? quote : q));
+                addNotification('success', 'Quote updated successfully');
+              } else {
+                setBillingQuotes([quote, ...billingQuotes]);
+                addNotification('success', 'Quote created successfully');
+              }
+              setEditingQuote(null);
+            }}
+            addNotification={addNotification} t={t} />
+        </div>
+      )}
+
+      <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+              <tr>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Quote #</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Patient</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Total</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Issue Date</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Expiry</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBillingQuotes.length === 0 ? (
+                <tr><td colSpan="7" className={`px-6 py-8 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{quoteSearch ? 'No quotes found matching your search' : 'No quotes yet'}</td></tr>
+              ) : filteredBillingQuotes.map((quote, idx) => (
+                <tr key={quote.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
+                  <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{quote.quoteNumber}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{quote.patientName || 'N/A'}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(quote.totalAmount, currency)}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(quote.issueDate)}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(quote.expiryDate)}</td>
+                  <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(quote.status)}`}>{quote.status?.replace('_', ' ')}</span></td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditingQuote(quote); setShowQuoteForm(true); }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Edit">
+                        <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                      </button>
+                      {(quote.status === 'accepted' || quote.status === 'sent') && (
+                        <button onClick={async () => {
+                          try {
+                            const invoice = await api.convertQuoteToInvoice(quote.id);
+                            setBillingInvoices([invoice, ...billingInvoices]);
+                            setBillingQuotes(billingQuotes.map(q => q.id === quote.id ? { ...q, status: 'converted' } : q));
+                            addNotification('success', 'Quote converted to invoice successfully');
+                          } catch (err) { addNotification('error', 'Failed to convert quote'); }
+                        }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Convert to Invoice">
+                          <ArrowRightLeft className={`w-4 h-4 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} />
+                        </button>
+                      )}
+                      <button onClick={() => {
+                        setConfirmModal({ isOpen: true, title: 'Delete Quote', message: 'Are you sure you want to delete this quote?', type: 'danger',
+                          onConfirm: async () => {
+                            try { await api.deleteBillingQuote(quote.id); setBillingQuotes(prev => prev.filter(q => q.id !== quote.id)); addNotification('success', 'Quote deleted'); } catch (err) { addNotification('error', 'Failed to delete quote'); }
+                            setConfirmModal({ ...confirmModal, isOpen: false });
+                          }
+                        });
+                      }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Delete">
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderBillingInvoices = () => (
+    <div>
+      <div className="mb-4">
+        <div className="relative">
+          <Search className={`absolute left-3 top-3 w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+          <input type="text" value={invoiceSearch} onChange={(e) => setInvoiceSearch(e.target.value)}
+            placeholder="Search invoices by number, patient, or status..."
+            className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} focus:ring-2 focus:ring-blue-500 focus:border-transparent`} />
+        </div>
+      </div>
+
+      {showInvoiceForm && (
+        <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewInvoiceForm theme={theme} api={api} patients={patients} editingInvoice={editingInvoice}
+            onClose={() => { setShowInvoiceForm(false); setEditingInvoice(null); }}
+            onSuccess={(invoice) => {
+              setShowInvoiceForm(false);
+              if (editingInvoice) {
+                setBillingInvoices(billingInvoices.map(i => i.id === invoice.id ? invoice : i));
+                addNotification('success', 'Invoice updated successfully');
+              } else {
+                setBillingInvoices([invoice, ...billingInvoices]);
+                addNotification('success', 'Invoice created successfully');
+              }
+              setEditingInvoice(null);
+            }}
+            addNotification={addNotification} t={t} />
+        </div>
+      )}
+
+      <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+              <tr>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Invoice #</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Patient</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Total</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Paid</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Balance</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBillingInvoices.length === 0 ? (
+                <tr><td colSpan="8" className={`px-6 py-8 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{invoiceSearch ? 'No invoices found matching your search' : 'No invoices yet'}</td></tr>
+              ) : filteredBillingInvoices.map((invoice, idx) => (
+                <tr key={invoice.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
+                  <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{invoice.invoiceNumber}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{invoice.patientName || 'N/A'}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(invoice.totalAmount, currency)}</td>
+                  <td className={`px-6 py-4 text-green-400`}>{formatCurrency(invoice.amountPaid, currency)}</td>
+                  <td className={`px-6 py-4 ${parseFloat(invoice.balanceDue) > 0 ? 'text-red-400' : 'text-green-400'}`}>{formatCurrency(invoice.balanceDue, currency)}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(invoice.dueDate)}</td>
+                  <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(invoice.status)}`}>{invoice.status?.replace('_', ' ')}</span></td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditingInvoice(invoice); setShowInvoiceForm(true); }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Edit">
+                        <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                      </button>
+                      <button onClick={() => {
+                        setConfirmModal({ isOpen: true, title: 'Delete Invoice', message: 'Are you sure you want to delete this invoice?', type: 'danger',
+                          onConfirm: async () => {
+                            try { await api.deleteBillingInvoice(invoice.id); setBillingInvoices(prev => prev.filter(i => i.id !== invoice.id)); addNotification('success', 'Invoice deleted'); } catch (err) { addNotification('error', 'Failed to delete invoice'); }
+                            setConfirmModal({ ...confirmModal, isOpen: false });
+                          }
+                        });
+                      }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Delete">
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderBillingCoupons = () => (
+    <div>
+      <div className="mb-4">
+        <div className="relative">
+          <Search className={`absolute left-3 top-3 w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+          <input type="text" value={couponSearch} onChange={(e) => setCouponSearch(e.target.value)}
+            placeholder="Search coupons by code, name, or type..."
+            className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} focus:ring-2 focus:ring-blue-500 focus:border-transparent`} />
+        </div>
+      </div>
+
+      {showCouponForm && (
+        <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewCouponForm theme={theme} api={api} editingCoupon={editingCoupon}
+            onClose={() => { setShowCouponForm(false); setEditingCoupon(null); }}
+            onSuccess={(coupon) => {
+              setShowCouponForm(false);
+              if (editingCoupon) {
+                setBillingCoupons(billingCoupons.map(c => c.id === coupon.id ? coupon : c));
+                addNotification('success', 'Coupon updated successfully');
+              } else {
+                setBillingCoupons([coupon, ...billingCoupons]);
+                addNotification('success', 'Coupon created successfully');
+              }
+              setEditingCoupon(null);
+            }}
+            addNotification={addNotification} t={t} />
+        </div>
+      )}
+
+      <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+              <tr>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Code</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Name</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Discount</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Usage</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Valid Period</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBillingCoupons.length === 0 ? (
+                <tr><td colSpan="7" className={`px-6 py-8 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{couponSearch ? 'No coupons found matching your search' : 'No coupons yet'}</td></tr>
+              ) : filteredBillingCoupons.map((coupon, idx) => (
+                <tr key={coupon.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
+                  <td className={`px-6 py-4 font-medium font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{coupon.code}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{coupon.name}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : formatCurrency(coupon.discountValue, currency)}
+                  </td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {coupon.usedCount || 0}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ' / unlimited'}
+                  </td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {coupon.startDate ? formatDate(coupon.startDate) : 'Any'} - {coupon.endDate ? formatDate(coupon.endDate) : 'No end'}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${coupon.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                      {coupon.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditingCoupon(coupon); setShowCouponForm(true); }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Edit">
+                        <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                      </button>
+                      <button onClick={() => {
+                        setConfirmModal({ isOpen: true, title: 'Delete Coupon', message: 'Are you sure you want to delete this coupon?', type: 'danger',
+                          onConfirm: async () => {
+                            try { await api.deleteBillingCoupon(coupon.id); setBillingCoupons(prev => prev.filter(c => c.id !== coupon.id)); addNotification('success', 'Coupon deleted'); } catch (err) { addNotification('error', 'Failed to delete coupon'); }
+                            setConfirmModal({ ...confirmModal, isOpen: false });
+                          }
+                        });
+                      }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Delete">
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderBillingPaymentsTab = () => (
+    <div>
+      <div className="mb-4">
+        <div className="relative">
+          <Search className={`absolute left-3 top-3 w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+          <input type="text" value={billingPaymentSearch} onChange={(e) => setBillingPaymentSearch(e.target.value)}
+            placeholder="Search payments by number, patient, invoice, or method..."
+            className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} focus:ring-2 focus:ring-blue-500 focus:border-transparent`} />
+        </div>
+      </div>
+
+      {showBillingPaymentForm && (
+        <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          <NewBillingPaymentForm theme={theme} api={api} patients={patients} editingPayment={editingBillingPayment}
+            onClose={() => { setShowBillingPaymentForm(false); setEditingBillingPayment(null); }}
+            onSuccess={(payment) => {
+              setShowBillingPaymentForm(false);
+              if (editingBillingPayment) {
+                setBillingPayments(billingPayments.map(p => p.id === payment.id ? payment : p));
+                addNotification('success', 'Payment updated successfully');
+              } else {
+                setBillingPayments([payment, ...billingPayments]);
+                addNotification('success', 'Payment recorded successfully');
+              }
+              setEditingBillingPayment(null);
+              fetchRCMData();
+            }}
+            addNotification={addNotification} t={t} />
+        </div>
+      )}
+
+      <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+              <tr>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Payment #</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Patient</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Invoice</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Amount</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Method</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Date</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBillingPayments.length === 0 ? (
+                <tr><td colSpan="8" className={`px-6 py-8 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{billingPaymentSearch ? 'No payments found matching your search' : 'No billing payments yet'}</td></tr>
+              ) : filteredBillingPayments.map((payment, idx) => (
+                <tr key={payment.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
+                  <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{payment.paymentNumber}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.patientName || 'N/A'}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.invoiceNumber || 'N/A'}</td>
+                  <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount, currency)}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.paymentMethod?.replace('_', ' ') || 'N/A'}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(payment.paymentDate)}</td>
+                  <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(payment.status)}`}>{payment.status}</span></td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditingBillingPayment(payment); setShowBillingPaymentForm(true); }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Edit">
+                        <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                      </button>
+                      <button onClick={() => {
+                        setConfirmModal({ isOpen: true, title: 'Delete Payment', message: 'Are you sure you want to delete this billing payment?', type: 'danger',
+                          onConfirm: async () => {
+                            try { await api.deleteBillingPayment(payment.id); setBillingPayments(prev => prev.filter(p => p.id !== payment.id)); addNotification('success', 'Payment deleted'); } catch (err) { addNotification('error', 'Failed to delete payment'); }
+                            setConfirmModal({ ...confirmModal, isOpen: false });
+                          }
+                        });
+                      }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Delete">
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderBillingReminders = () => (
+    <div>
+      <div className="mb-4">
+        <div className="relative">
+          <Search className={`absolute left-3 top-3 w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+          <input type="text" value={reminderSearch} onChange={(e) => setReminderSearch(e.target.value)}
+            placeholder="Search reminders by title, status, or priority..."
+            className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} focus:ring-2 focus:ring-blue-500 focus:border-transparent`} />
+        </div>
+      </div>
+
+      <div className={`mb-4 p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
+        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-blue-700'}`}>
+          Payment reminder tasks are automatically created when you check "Create Payment Reminder" on the Invoice form. You can also create them manually from the Tasks module.
+        </p>
+      </div>
+
+      <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+              <tr>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Title</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Priority</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Due Date</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Status</th>
+                <th className={`px-6 py-4 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {billingReminderTasks.length === 0 ? (
+                <tr><td colSpan="5" className={`px-6 py-8 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{reminderSearch ? 'No reminders found matching your search' : 'No billing reminder tasks yet'}</td></tr>
+              ) : billingReminderTasks.map((task, idx) => (
+                <tr key={task.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
+                  <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{task.title}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      task.priority === 'High' ? 'bg-red-500/20 text-red-400' :
+                      task.priority === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-gray-500/20 text-gray-400'
+                    }`}>{task.priority}</span>
+                  </td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(task.dueDate)}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      task.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
+                      task.status === 'In Progress' ? 'bg-blue-500/20 text-blue-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>{task.status}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      {task.status !== 'Completed' && (
+                        <button onClick={async () => {
+                          try {
+                            const updated = await api.updateTask(task.id, { ...task, status: 'Completed' });
+                            if (setTasks) setTasks(prev => prev.map(t => t.id === task.id ? updated : t));
+                            addNotification('success', 'Reminder marked as completed');
+                          } catch (err) { addNotification('error', 'Failed to update reminder'); }
+                        }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Mark Complete">
+                          <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        </button>
+                      )}
+                      <button onClick={() => {
+                        setConfirmModal({ isOpen: true, title: 'Delete Reminder', message: 'Are you sure you want to delete this reminder task?', type: 'danger',
+                          onConfirm: async () => {
+                            try { await api.deleteTask(task.id); if (setTasks) setTasks(prev => prev.filter(t => t.id !== task.id)); addNotification('success', 'Reminder deleted'); } catch (err) { addNotification('error', 'Failed to delete reminder'); }
+                            setConfirmModal({ ...confirmModal, isOpen: false });
+                          }
+                        });
+                      }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Delete">
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderBilling = () => (
+    <div>
+      {/* Billing Sub-Tabs */}
+      <div className={`flex gap-1 mb-4 p-1 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100'}`}>
+        {[
+          { id: 'quotes', label: 'Quotes', icon: FileText, count: billingQuotes.length },
+          { id: 'invoices', label: 'Invoices', icon: Receipt, count: billingInvoices.length },
+          { id: 'coupons', label: 'Coupons', icon: Tag, count: billingCoupons.length },
+          { id: 'billing-payments', label: 'Payments', icon: CreditCard, count: billingPayments.length },
+          { id: 'reminders', label: 'Reminders', icon: Bell, count: billingReminderTasks.length },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button key={tab.id} onClick={() => setBillingSubTab(tab.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                billingSubTab === tab.id
+                  ? `${theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'}`
+                  : `${theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`
+              }`}>
+              <Icon className="w-3.5 h-3.5" />
+              {tab.label}
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
+                billingSubTab === tab.id
+                  ? 'bg-white/20 text-white'
+                  : `${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`
+              }`}>{tab.count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Billing Add Button */}
+      <div className="flex justify-end mb-4">
+        {billingSubTab === 'quotes' && (
+          <button onClick={() => { setEditingQuote(null); setShowQuoteForm(!showQuoteForm); }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+            <Plus className="w-4 h-4" /> New Quote
+          </button>
+        )}
+        {billingSubTab === 'invoices' && (
+          <button onClick={() => { setEditingInvoice(null); setShowInvoiceForm(!showInvoiceForm); }}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors">
+            <Receipt className="w-4 h-4" /> New Invoice
+          </button>
+        )}
+        {billingSubTab === 'coupons' && (
+          <button onClick={() => { setEditingCoupon(null); setShowCouponForm(!showCouponForm); }}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors">
+            <Tag className="w-4 h-4" /> New Coupon
+          </button>
+        )}
+        {billingSubTab === 'billing-payments' && (
+          <button onClick={() => { setEditingBillingPayment(null); setShowBillingPaymentForm(!showBillingPaymentForm); }}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
+            <CreditCard className="w-4 h-4" /> Record Payment
+          </button>
+        )}
+      </div>
+
+      {/* Billing Sub-Tab Content */}
+      {billingSubTab === 'quotes' && renderBillingQuotes()}
+      {billingSubTab === 'invoices' && renderBillingInvoices()}
+      {billingSubTab === 'coupons' && renderBillingCoupons()}
+      {billingSubTab === 'billing-payments' && renderBillingPaymentsTab()}
+      {billingSubTab === 'reminders' && renderBillingReminders()}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+
+      {/* Tabs — hidden when the app shell's secondary pane already lists them */}
+      {!tabsInShell && (
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
           { id: 'claims', label: 'Claims', icon: DollarSign, count: claims.length },
@@ -1077,7 +1691,8 @@ const RCMView = ({
           { id: 'payments', label: 'Payments', icon: CreditCard, count: payments.length },
           { id: 'payment-postings', label: 'Payment Postings', icon: TrendingUp, count: paymentPostings.length },
           { id: 'denials', label: 'Denials', icon: AlertCircle, count: denials.length },
-          { id: 'payers', label: 'Insurance Payers', icon: Shield, count: insurancePayers.length }
+          { id: 'payers', label: 'Insurance Payers', icon: Shield, count: insurancePayers.length },
+          { id: 'billing', label: 'Billing', icon: Receipt, count: billingQuotes.length + billingInvoices.length }
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -1105,6 +1720,7 @@ const RCMView = ({
           );
         })}
       </div>
+      )}
 
       {/* Add Button for Active Tab */}
       <div className="flex justify-end">
@@ -1186,7 +1802,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Patient
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {patients.find(p => p.id === viewingClaim.patient_id) ?
                   `${patients.find(p => p.id === viewingClaim.patient_id).first_name} ${patients.find(p => p.id === viewingClaim.patient_id).last_name}` :
                   'Unknown Patient'}
@@ -1196,7 +1812,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Payer
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {viewingClaim.payer || 'N/A'}
               </div>
             </div>
@@ -1204,7 +1820,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Service Date
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {formatDate(viewingClaim.service_date)}
               </div>
             </div>
@@ -1212,15 +1828,15 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Amount
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
-                {formatCurrency(viewingClaim.amount)}
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
+                {formatCurrency(viewingClaim.amount, currency)}
               </div>
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Status
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   viewingClaim.status === 'Approved' ? 'bg-green-500/20 text-green-400' :
                   viewingClaim.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' :
@@ -1235,7 +1851,7 @@ const RCMView = ({
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Pre-approval
                 </label>
-                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                   {viewingClaim.preapproval_id}
                 </div>
               </div>
@@ -1245,7 +1861,7 @@ const RCMView = ({
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Notes
                 </label>
-                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                   {viewingClaim.notes}
                 </div>
               </div>
@@ -1411,6 +2027,7 @@ const RCMView = ({
         {activeTab === 'payment-postings' && renderPaymentPostings()}
         {activeTab === 'denials' && renderDenials()}
         {activeTab === 'payers' && renderInsurancePayers()}
+        {activeTab === 'billing' && renderBilling()}
       </div>
 
       {/* Confirmation Modal */}

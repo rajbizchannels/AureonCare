@@ -1,27 +1,22 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_SVC_URL || 'http://localhost:3001/api';
 
 console.log('API Service: Base URL configured as:', API_BASE_URL);
 
 /**
- * Get authentication headers from localStorage
- * @returns {Object} Headers object with authentication info
+ * Get authentication headers using the stored JWT.
+ * @returns {Object} Headers object with Authorization: Bearer <token>
  */
 const getAuthHeaders = () => {
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
+  const headers = { 'Content-Type': 'application/json' };
   try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user && user.id) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-role'] = user.role || 'patient';
+    const token = sessionStorage.getItem('token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
   } catch (error) {
-    console.error('Error parsing user from localStorage:', error);
+    console.error('Error reading token from sessionStorage:', error);
   }
-
   return headers;
 };
 
@@ -33,6 +28,12 @@ const getAuthHeaders = () => {
  */
 const authenticatedFetch = async (url, options = {}) => {
   const authHeaders = getAuthHeaders();
+
+  // Let the browser set Content-Type (with its multipart boundary) for uploads.
+  if (typeof FormData !== 'undefined' && options.body instanceof FormData) {
+    delete authHeaders['Content-Type'];
+  }
+
   const mergedOptions = {
     ...options,
     headers: {
@@ -43,13 +44,31 @@ const authenticatedFetch = async (url, options = {}) => {
   return fetch(url, mergedOptions);
 };
 
+/**
+ * Authenticated request to an API path, for callers outside this module.
+ *
+ * Views used to call `fetch('/api/…')` directly. That sends no Authorization
+ * header — every router behind `authenticate` answers 401 — and a relative path
+ * only resolves when the frontend and backend share an origin, which this
+ * deployment does not guarantee (AC_FE_URL and AC_BE_URL are configured
+ * separately). Pass the path *without* the /api prefix, e.g. apiFetch('/users').
+ *
+ * @param {string} path    path relative to the API base, leading slash included
+ * @param {Object} options standard fetch options; FormData bodies keep their
+ *                         own Content-Type
+ * @returns {Promise<Response>} the raw response, so callers keep their own
+ *                              status handling
+ */
+export const apiFetch = (path, options = {}) =>
+  authenticatedFetch(`${API_BASE_URL}${path}`, options);
+
 // API Service
 const api = {
   // Appointments
   getAppointments: async () => {
     console.log('API: Fetching appointments from:', `${API_BASE_URL}/appointments`);
     try {
-      const response = await fetch(`${API_BASE_URL}/appointments`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/appointments`);
       console.log('API: Appointments response status:', response.status);
       if (!response.ok) throw new Error(`Failed to fetch appointments: ${response.status}`);
       const data = await response.json();
@@ -61,7 +80,7 @@ const api = {
     }
   },
   createAppointment: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/appointments`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -75,7 +94,7 @@ const api = {
     return response.json();
   },
   updateAppointment: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/appointments/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointments/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -83,8 +102,17 @@ const api = {
     if (!response.ok) throw new Error('Failed to update appointment');
     return response.json();
   },
+  updateAppointmentStatus: async (id, status) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointments/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!response.ok) throw new Error('Failed to update appointment status');
+    return response.json();
+  },
   deleteAppointment: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/appointments/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointments/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete appointment');
@@ -93,17 +121,17 @@ const api = {
 
   // Patients
   getPatients: async () => {
-    const response = await fetch(`${API_BASE_URL}/patients`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/patients`);
     if (!response.ok) throw new Error('Failed to fetch patients');
     return response.json();
   },
   getPatient: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/patients/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/patients/${id}`);
     if (!response.ok) throw new Error('Failed to fetch patient');
     return response.json();
   },
   createPatient: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/patients`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patients`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -112,7 +140,7 @@ const api = {
     return response.json();
   },
   updatePatient: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patients/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -121,7 +149,7 @@ const api = {
     return response.json();
   },
   deletePatient: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patients/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete patient');
@@ -130,12 +158,12 @@ const api = {
 
   // Claims
   getClaims: async () => {
-    const response = await fetch(`${API_BASE_URL}/claims`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/claims`);
     if (!response.ok) throw new Error('Failed to fetch claims');
     return response.json();
   },
   createClaim: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/claims`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/claims`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -144,7 +172,7 @@ const api = {
     return response.json();
   },
   updateClaim: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/claims/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/claims/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -153,7 +181,7 @@ const api = {
     return response.json();
   },
   deleteClaim: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/claims/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/claims/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete claim');
@@ -164,22 +192,22 @@ const api = {
   getPreapprovals: async (patientId) => {
     const params = new URLSearchParams();
     if (patientId) params.append('patientId', patientId);
-    const response = await fetch(`${API_BASE_URL}/preapprovals?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/preapprovals?${params}`);
     if (!response.ok) throw new Error('Failed to fetch preapprovals');
     return response.json();
   },
   getPreapproval: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/preapprovals/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/preapprovals/${id}`);
     if (!response.ok) throw new Error('Failed to fetch preapproval');
     return response.json();
   },
   checkClearinghouseStatus: async () => {
-    const response = await fetch(`${API_BASE_URL}/preapprovals/check-clearinghouse/status`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/preapprovals/check-clearinghouse/status`);
     if (!response.ok) throw new Error('Failed to check clearinghouse status');
     return response.json();
   },
   createPreapproval: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/preapprovals`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/preapprovals`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -188,7 +216,7 @@ const api = {
     return response.json();
   },
   updatePreapproval: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/preapprovals/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/preapprovals/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -197,7 +225,7 @@ const api = {
     return response.json();
   },
   deletePreapproval: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/preapprovals/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/preapprovals/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete preapproval');
@@ -210,17 +238,17 @@ const api = {
     if (patientId) params.append('patientId', patientId);
     if (claimId) params.append('claimId', claimId);
     if (status) params.append('status', status);
-    const response = await fetch(`${API_BASE_URL}/payments?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/payments?${params}`);
     if (!response.ok) throw new Error('Failed to fetch payments');
     return response.json();
   },
   getPayment: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/payments/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/payments/${id}`);
     if (!response.ok) throw new Error('Failed to fetch payment');
     return response.json();
   },
   createPayment: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/payments`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -229,7 +257,7 @@ const api = {
     return response.json();
   },
   updatePayment: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/payments/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/payments/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -238,7 +266,7 @@ const api = {
     return response.json();
   },
   deletePayment: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/payments/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/payments/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete payment');
@@ -252,22 +280,22 @@ const api = {
     if (claimId) params.append('claimId', claimId);
     if (insurancePayerId) params.append('insurancePayerId', insurancePayerId);
     if (status) params.append('status', status);
-    const response = await fetch(`${API_BASE_URL}/payment-postings?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/payment-postings?${params}`);
     if (!response.ok) throw new Error('Failed to fetch payment postings');
     return response.json();
   },
   getPaymentPosting: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/payment-postings/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/payment-postings/${id}`);
     if (!response.ok) throw new Error('Failed to fetch payment posting');
     return response.json();
   },
   getPaymentPostingsByClaim: async (claimId) => {
-    const response = await fetch(`${API_BASE_URL}/payment-postings/claim/${claimId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/payment-postings/claim/${claimId}`);
     if (!response.ok) throw new Error('Failed to fetch payment postings for claim');
     return response.json();
   },
   createPaymentPosting: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/payment-postings`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/payment-postings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -276,7 +304,7 @@ const api = {
     return response.json();
   },
   updatePaymentPosting: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/payment-postings/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/payment-postings/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -285,7 +313,7 @@ const api = {
     return response.json();
   },
   deletePaymentPosting: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/payment-postings/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/payment-postings/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete payment posting');
@@ -301,27 +329,27 @@ const api = {
     if (status) params.append('status', status);
     if (appealStatus) params.append('appealStatus', appealStatus);
     if (priority) params.append('priority', priority);
-    const response = await fetch(`${API_BASE_URL}/denials?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/denials?${params}`);
     if (!response.ok) throw new Error('Failed to fetch denials');
     return response.json();
   },
   getDenial: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/denials/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/denials/${id}`);
     if (!response.ok) throw new Error('Failed to fetch denial');
     return response.json();
   },
   getDenialsByClaim: async (claimId) => {
-    const response = await fetch(`${API_BASE_URL}/denials/claim/${claimId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/denials/claim/${claimId}`);
     if (!response.ok) throw new Error('Failed to fetch denials for claim');
     return response.json();
   },
   getDenialDeadlineAlerts: async () => {
-    const response = await fetch(`${API_BASE_URL}/denials/alerts/deadline`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/denials/alerts/deadline`);
     if (!response.ok) throw new Error('Failed to fetch denial deadline alerts');
     return response.json();
   },
   createDenial: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/denials`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/denials`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -330,7 +358,7 @@ const api = {
     return response.json();
   },
   updateDenial: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/denials/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/denials/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -339,7 +367,7 @@ const api = {
     return response.json();
   },
   deleteDenial: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/denials/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/denials/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete denial');
@@ -351,7 +379,7 @@ const api = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/edi/835/upload`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/edi/835/upload`, {
       method: 'POST',
       body: formData
     });
@@ -362,7 +390,7 @@ const api = {
     return response.json();
   },
   generate835File: async (paymentPostingId) => {
-    const response = await fetch(`${API_BASE_URL}/edi/835/generate/${paymentPostingId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/edi/835/generate/${paymentPostingId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -370,7 +398,7 @@ const api = {
     return response.json();
   },
   generate837File: async (claimId, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}/edi/837/generate/${claimId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/edi/837/generate/${claimId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(options)
@@ -379,7 +407,7 @@ const api = {
     return response.json();
   },
   submit837ToClearinghouse: async (claimId, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}/edi/837/submit/${claimId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/edi/837/submit/${claimId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(options)
@@ -391,7 +419,7 @@ const api = {
     return response.json();
   },
   getClaimSubmissions: async (claimId) => {
-    const response = await fetch(`${API_BASE_URL}/edi/submissions/${claimId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/edi/submissions/${claimId}`);
     if (!response.ok) throw new Error('Failed to fetch claim submissions');
     return response.json();
   },
@@ -401,12 +429,12 @@ const api = {
     const url = userId
       ? `${API_BASE_URL}/notifications?userId=${userId}`
       : `${API_BASE_URL}/notifications`;
-    const response = await fetch(url);
+    const response = await authenticatedFetch(url);
     if (!response.ok) throw new Error('Failed to fetch notifications');
     return response.json();
   },
   createNotification: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/notifications`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/notifications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -415,14 +443,14 @@ const api = {
     return response.json();
   },
   deleteNotification: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/notifications/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete notification');
     return response.json();
   },
   clearAllNotifications: async () => {
-    const response = await fetch(`${API_BASE_URL}/notifications`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/notifications`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to clear notifications');
@@ -431,12 +459,12 @@ const api = {
 
   // Tasks
   getTasks: async () => {
-    const response = await fetch(`${API_BASE_URL}/tasks`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/tasks`);
     if (!response.ok) throw new Error('Failed to fetch tasks');
     return response.json();
   },
   createTask: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/tasks`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/tasks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -445,7 +473,7 @@ const api = {
     return response.json();
   },
   updateTask: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/tasks/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -454,7 +482,7 @@ const api = {
     return response.json();
   },
   deleteTask: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/tasks/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete task');
@@ -463,7 +491,7 @@ const api = {
 
   // Users
   getUser: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/users/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/users/${id}`);
     if (!response.ok) throw new Error('Failed to fetch user');
     return response.json();
   },
@@ -474,7 +502,8 @@ const api = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.error || 'Failed to update user');
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error((errorData.message || errorData.error || 'Failed to update user') + detail);
     }
     return response.json();
   },
@@ -490,7 +519,8 @@ const api = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.error || 'Failed to create user');
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error((errorData.message || errorData.error || 'Failed to create user') + detail);
     }
     return response.json();
   },
@@ -539,7 +569,7 @@ const api = {
 
   // Auth
   login: async (email, password) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -547,11 +577,10 @@ const api = {
     if (!response.ok) throw new Error('Failed to login');
     return response.json();
   },
-  changePassword: async (userId, currentPassword, newPassword) => {
-    const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+  changePassword: async (currentPassword, newPassword) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/change-password`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, currentPassword, newPassword })
+      body: JSON.stringify({ currentPassword, newPassword })
     });
     if (!response.ok) {
       const error = await response.json();
@@ -560,7 +589,7 @@ const api = {
     return response.json();
   },
   forgotPassword: async (email) => {
-    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
@@ -569,7 +598,7 @@ const api = {
     return response.json();
   },
   resetPassword: async (resetToken, newPassword) => {
-    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ resetToken, newPassword })
@@ -581,7 +610,7 @@ const api = {
     return response.json();
   },
   socialLogin: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
-    const response = await fetch(`${API_BASE_URL}/auth/social-login`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
@@ -589,29 +618,42 @@ const api = {
     if (!response.ok) throw new Error('Failed to login with social account');
     return response.json();
   },
+  socialRegister: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Registration failed');
+    return data;
+  },
 
   // Telehealth
   getTelehealthSessions: async () => {
-    const response = await fetch(`${API_BASE_URL}/telehealth`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth`);
     if (!response.ok) throw new Error('Failed to fetch telehealth sessions');
     return response.json();
   },
   getTelehealthSession: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/telehealth/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth/${id}`);
     if (!response.ok) throw new Error('Failed to fetch telehealth session');
     return response.json();
   },
   createTelehealthSession: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/telehealth`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error('Failed to create telehealth session');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to create telehealth session');
+    }
     return response.json();
   },
   updateTelehealthSession: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/telehealth/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -620,14 +662,14 @@ const api = {
     return response.json();
   },
   deleteTelehealthSession: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/telehealth/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete telehealth session');
     return response.json();
   },
   joinTelehealthSession: async (id, participantName, participantType) => {
-    const response = await fetch(`${API_BASE_URL}/telehealth/${id}/join`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth/${id}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ participantName, participantType })
@@ -641,17 +683,17 @@ const api = {
     const params = new URLSearchParams();
     if (resourceType) params.append('resourceType', resourceType);
     if (patientId) params.append('patientId', patientId);
-    const response = await fetch(`${API_BASE_URL}/fhir/resources?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/fhir/resources?${params}`);
     if (!response.ok) throw new Error('Failed to fetch FHIR resources');
     return response.json();
   },
   getFhirResource: async (resourceType, resourceId) => {
-    const response = await fetch(`${API_BASE_URL}/fhir/resources/${resourceType}/${resourceId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/fhir/resources/${resourceType}/${resourceId}`);
     if (!response.ok) throw new Error('Failed to fetch FHIR resource');
     return response.json();
   },
   createFhirResource: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/fhir/resources`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/fhir/resources`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -660,19 +702,19 @@ const api = {
     return response.json();
   },
   getFhirPatient: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/fhir/patient/${patientId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/fhir/patient/${patientId}`);
     if (!response.ok) throw new Error('Failed to fetch FHIR patient');
     return response.json();
   },
   syncPatientToFhir: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/fhir/sync/patient/${patientId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/fhir/sync/patient/${patientId}`, {
       method: 'POST'
     });
     if (!response.ok) throw new Error('Failed to sync patient to FHIR');
     return response.json();
   },
   getFhirBundle: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/fhir/bundle/${patientId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/fhir/bundle/${patientId}`);
     if (!response.ok) throw new Error('Failed to fetch FHIR bundle');
     return response.json();
   },
@@ -680,17 +722,17 @@ const api = {
   // Medical Records
   getMedicalRecords: async (patientId) => {
     const params = patientId ? `?patientId=${patientId}` : '';
-    const response = await fetch(`${API_BASE_URL}/medical-records${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records${params}`);
     if (!response.ok) throw new Error('Failed to fetch medical records');
     return response.json();
   },
   getMedicalRecord: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/medical-records/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/${id}`);
     if (!response.ok) throw new Error('Failed to fetch medical record');
     return response.json();
   },
   createMedicalRecord: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/medical-records`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -699,7 +741,7 @@ const api = {
     return response.json();
   },
   updateMedicalRecord: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/medical-records/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -708,7 +750,7 @@ const api = {
     return response.json();
   },
   deleteMedicalRecord: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/medical-records/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete medical record');
@@ -716,17 +758,27 @@ const api = {
   },
 
   // Patient Portal
+  // Returns the current portal session token from sessionStorage (set after login).
+  _getPortalAuthHeader: () => {
+    const token = sessionStorage.getItem('portalSessionToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  },
   patientPortalLogin: async (email, password, provider, providerId, accessToken) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/login`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, provider, providerId, accessToken })
     });
-    if (!response.ok) throw new Error('Failed to login to patient portal');
+    if (!response.ok) {
+      // Surface the server's reason — "portal not enabled" and "wrong password"
+      // are different problems and the patient can only act on one of them.
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || 'Failed to login to patient portal');
+    }
     return response.json();
   },
   registerPatientPortal: async (patientId, email, password) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/register`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patientId, email, password })
@@ -735,56 +787,63 @@ const api = {
     return response.json();
   },
   getPatientAppointments: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments`, {
+      headers: { ...api._getPortalAuthHeader() }
+    });
     if (!response.ok) throw new Error('Failed to fetch patient appointments');
     return response.json();
   },
   updatePatientAppointment: async (patientId, appointmentId, data) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to update appointment');
     return response.json();
   },
   deletePatientAppointment: async (patientId, appointmentId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
-      method: 'DELETE'
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
+      method: 'DELETE',
+      headers: { ...api._getPortalAuthHeader() }
     });
     if (!response.ok) throw new Error('Failed to delete appointment');
     return response.json();
   },
   getPatientProfile: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
+      headers: { ...api._getPortalAuthHeader() }
+    });
     if (!response.ok) throw new Error('Failed to fetch patient profile');
     return response.json();
   },
   updatePatientProfile: async (patientId, data) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to update patient profile');
     return response.json();
   },
   getPatientMedicalRecords: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/medical-records`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/medical-records`, {
+      headers: { ...api._getPortalAuthHeader() }
+    });
     if (!response.ok) throw new Error('Failed to fetch patient medical records');
     return response.json();
   },
   linkSocialToPatient: async (patientId, provider, providerId, accessToken, refreshToken, profileData) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/link-social`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/link-social`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
       body: JSON.stringify({ provider, providerId, accessToken, refreshToken, profileData })
     });
     if (!response.ok) throw new Error('Failed to link social account');
     return response.json();
   },
   patientPortalLogout: async (sessionToken) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/logout`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/logout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionToken })
@@ -798,24 +857,24 @@ const api = {
     const url = excludeSystem
       ? `${API_BASE_URL}/roles?exclude_system=true`
       : `${API_BASE_URL}/roles`;
-    const response = await fetch(url);
+    const response = await authenticatedFetch(url);
     if (!response.ok) throw new Error('Failed to fetch roles');
     return response.json();
   },
 
   // Permissions
   getPermissions: async () => {
-    const response = await fetch(`${API_BASE_URL}/permissions`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/permissions`);
     if (!response.ok) throw new Error('Failed to fetch permissions');
     return response.json();
   },
   getRolePermissions: async (role) => {
-    const response = await fetch(`${API_BASE_URL}/permissions/${role}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/permissions/${role}`);
     if (!response.ok) throw new Error('Failed to fetch role permissions');
     return response.json();
   },
   updatePermissions: async (permissions) => {
-    const response = await fetch(`${API_BASE_URL}/permissions`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/permissions`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(permissions)
@@ -824,7 +883,7 @@ const api = {
     return response.json();
   },
   updateRolePermissions: async (role, permissions) => {
-    const response = await fetch(`${API_BASE_URL}/permissions/${role}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/permissions/${role}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(permissions)
@@ -840,7 +899,7 @@ const api = {
     if (drugClass) params.append('drug_class', drugClass);
     if (genericOnly) params.append('generic_only', genericOnly);
     if (limit) params.append('limit', limit);
-    const response = await fetch(`${API_BASE_URL}/medications/search?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/medications/search?${params}`);
     if (!response.ok) throw new Error('Failed to search medications');
     return response.json();
   },
@@ -848,27 +907,27 @@ const api = {
     const params = new URLSearchParams();
     if (drugClass) params.append('drug_class', drugClass);
     if (controlledOnly) params.append('controlled_only', controlledOnly);
-    const response = await fetch(`${API_BASE_URL}/medications?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/medications?${params}`);
     if (!response.ok) throw new Error('Failed to fetch medications');
     return response.json();
   },
   getMedication: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/medications/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/medications/${id}`);
     if (!response.ok) throw new Error('Failed to fetch medication');
     return response.json();
   },
   getMedicationByNdc: async (ndcCode) => {
-    const response = await fetch(`${API_BASE_URL}/medications/ndc/${ndcCode}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/medications/ndc/${ndcCode}`);
     if (!response.ok) throw new Error('Failed to fetch medication');
     return response.json();
   },
   getMedicationAlternatives: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/medications/${id}/alternatives`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/medications/${id}/alternatives`);
     if (!response.ok) throw new Error('Failed to fetch medication alternatives');
     return response.json();
   },
   checkDrugInteractions: async (ndcCodes) => {
-    const response = await fetch(`${API_BASE_URL}/medications/check-interactions`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medications/check-interactions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ndcCodes })
@@ -877,12 +936,12 @@ const api = {
     return response.json();
   },
   getDrugClasses: async () => {
-    const response = await fetch(`${API_BASE_URL}/medications/drug-classes/list`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/medications/drug-classes/list`);
     if (!response.ok) throw new Error('Failed to fetch drug classes');
     return response.json();
   },
   createMedication: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/medications`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -891,7 +950,7 @@ const api = {
     return response.json();
   },
   updateMedication: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/medications/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medications/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -910,33 +969,33 @@ const api = {
     // Backend expects pharmacy_name, not name
     if (name) params.append('pharmacy_name', name);
     if (limit) params.append('limit', limit);
-    const response = await fetch(`${API_BASE_URL}/pharmacies/search?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies/search?${params}`);
     if (!response.ok) throw new Error('Failed to search pharmacies');
     return response.json();
   },
   getPharmacies: async () => {
-    const response = await fetch(`${API_BASE_URL}/pharmacies`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies`);
     if (!response.ok) throw new Error('Failed to fetch pharmacies');
     return response.json();
   },
   getPharmacy: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/pharmacies/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies/${id}`);
     if (!response.ok) throw new Error('Failed to fetch pharmacy');
     return response.json();
   },
   getPharmacyByNcpdp: async (ncpdpId) => {
-    const response = await fetch(`${API_BASE_URL}/pharmacies/ncpdp/${ncpdpId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies/ncpdp/${ncpdpId}`);
     if (!response.ok) throw new Error('Failed to fetch pharmacy');
     return response.json();
   },
   getPatientPreferredPharmacies: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`);
     if (!response.ok) throw new Error('Failed to fetch patient preferred pharmacies');
     return response.json();
   },
   getPatientPreferredPharmacy: async (patientId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`);
       if (!response.ok) throw new Error('Failed to fetch patient preferred pharmacies');
       const pharmacies = await response.json();
       return pharmacies && pharmacies.length > 0 ? pharmacies[0] : null;
@@ -946,7 +1005,7 @@ const api = {
     }
   },
   addPreferredPharmacy: async (patientId, pharmacyId, isPrimary) => {
-    const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pharmacyId, isPreferred: isPrimary })
@@ -955,14 +1014,14 @@ const api = {
     return response.json();
   },
   removePreferredPharmacy: async (patientId, pharmacyId) => {
-    const response = await fetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred/${pharmacyId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies/patient/${patientId}/preferred/${pharmacyId}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to remove preferred pharmacy');
     return response.json();
   },
   createPharmacy: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/pharmacies`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -971,7 +1030,7 @@ const api = {
     return response.json();
   },
   updatePharmacy: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/pharmacies/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -980,7 +1039,7 @@ const api = {
     return response.json();
   },
   deletePharmacy: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/pharmacies/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/pharmacies/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete pharmacy');
@@ -992,17 +1051,17 @@ const api = {
     const params = new URLSearchParams();
     if (isActive !== null) params.append('is_active', isActive);
     const queryString = params.toString();
-    const response = await fetch(`${API_BASE_URL}/laboratories${queryString ? `?${queryString}` : ''}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/laboratories${queryString ? `?${queryString}` : ''}`);
     if (!response.ok) throw new Error('Failed to fetch laboratories');
     return response.json();
   },
   getLaboratory: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/laboratories/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/laboratories/${id}`);
     if (!response.ok) throw new Error('Failed to fetch laboratory');
     return response.json();
   },
   createLaboratory: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/laboratories`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/laboratories`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1011,7 +1070,7 @@ const api = {
     return response.json();
   },
   updateLaboratory: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/laboratories/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/laboratories/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1020,7 +1079,7 @@ const api = {
     return response.json();
   },
   deleteLaboratory: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/laboratories/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/laboratories/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete laboratory');
@@ -1034,17 +1093,17 @@ const api = {
     if (providerId) params.append('provider_id', providerId);
     if (status) params.append('status', status);
     if (erxStatus) params.append('erx_status', erxStatus);
-    const response = await fetch(`${API_BASE_URL}/prescriptions?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions?${params}`);
     if (!response.ok) throw new Error('Failed to fetch prescriptions');
     return response.json();
   },
   getPrescription: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/${id}`);
     if (!response.ok) throw new Error('Failed to fetch prescription');
     return response.json();
   },
   createPrescription: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1053,7 +1112,7 @@ const api = {
     return response.json();
   },
   updatePrescription: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1062,21 +1121,21 @@ const api = {
     return response.json();
   },
   deletePrescription: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete prescription');
     return response.json();
   },
   sendErx: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}/send-erx`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/${id}/send-erx`, {
       method: 'POST'
     });
     if (!response.ok) throw new Error('Failed to send electronic prescription');
     return response.json();
   },
   cancelErx: async (id, reason) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}/cancel-erx`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/${id}/cancel-erx`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason })
@@ -1085,12 +1144,12 @@ const api = {
     return response.json();
   },
   getPrescriptionHistory: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}/history`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/${id}/history`);
     if (!response.ok) throw new Error('Failed to fetch prescription history');
     return response.json();
   },
   checkPrescriptionSafety: async (patientId, ndcCode) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/check-safety`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/check-safety`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patientId, ndcCode })
@@ -1099,17 +1158,17 @@ const api = {
     return response.json();
   },
   getPatientActivePrescriptions: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/patient/${patientId}/active`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/patient/${patientId}/active`);
     if (!response.ok) throw new Error('Failed to fetch patient active prescriptions');
     return response.json();
   },
   getPrescriptionsByDiagnosisId: async (diagnosisId) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/diagnosis/${diagnosisId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/diagnosis/${diagnosisId}`);
     if (!response.ok) throw new Error('Failed to fetch prescriptions for diagnosis');
     return response.json();
   },
   refillPrescription: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/prescriptions/${id}/refill`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/prescriptions/${id}/refill`, {
       method: 'POST'
     });
     if (!response.ok) throw new Error('Failed to refill prescription');
@@ -1118,7 +1177,7 @@ const api = {
 
   // Diagnoses
   getPatientDiagnoses: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/diagnosis/patient/${patientId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/diagnosis/patient/${patientId}`);
     if (!response.ok) throw new Error('Failed to fetch patient diagnoses');
     return response.json();
   },
@@ -1126,17 +1185,17 @@ const api = {
   // Healthcare Offerings
   // Service Categories
   getServiceCategories: async () => {
-    const response = await fetch(`${API_BASE_URL}/offerings/categories`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/categories`);
     if (!response.ok) throw new Error('Failed to fetch service categories');
     return response.json();
   },
   getServiceCategory: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/categories/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/categories/${id}`);
     if (!response.ok) throw new Error('Failed to fetch service category');
     return response.json();
   },
   createServiceCategory: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/categories`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/categories`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1145,7 +1204,7 @@ const api = {
     return response.json();
   },
   updateServiceCategory: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/categories/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/categories/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1154,7 +1213,7 @@ const api = {
     return response.json();
   },
   deleteServiceCategory: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/categories/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/categories/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete service category');
@@ -1169,17 +1228,17 @@ const api = {
         params.append(key, filters[key]);
       }
     });
-    const response = await fetch(`${API_BASE_URL}/offerings?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings?${params}`);
     if (!response.ok) throw new Error('Failed to fetch offerings');
     return response.json();
   },
   getOffering: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${id}`);
     if (!response.ok) throw new Error('Failed to fetch offering');
     return response.json();
   },
   createOffering: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1188,7 +1247,7 @@ const api = {
     return response.json();
   },
   updateOffering: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1197,21 +1256,44 @@ const api = {
     return response.json();
   },
   deleteOffering: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete offering');
     return response.json();
   },
 
+  // Offering Linked Forms
+  getOfferingLinkedForms: async (offeringId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${offeringId}/forms`);
+    if (!response.ok) throw new Error('Failed to fetch offering forms');
+    return response.json();
+  },
+  linkFormToOffering: async (offeringId, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${offeringId}/forms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to link form to offering');
+    return response.json();
+  },
+  unlinkFormFromOffering: async (offeringId, formTemplateId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${offeringId}/forms/${formTemplateId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to unlink form from offering');
+    return response.json();
+  },
+
   // Offering Pricing
   getOfferingPricing: async (offeringId) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/pricing`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${offeringId}/pricing`);
     if (!response.ok) throw new Error('Failed to fetch offering pricing');
     return response.json();
   },
   addOfferingPricing: async (offeringId, data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/pricing`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${offeringId}/pricing`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1220,7 +1302,7 @@ const api = {
     return response.json();
   },
   updateOfferingPricing: async (pricingId, data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/pricing/${pricingId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/pricing/${pricingId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1229,7 +1311,7 @@ const api = {
     return response.json();
   },
   deleteOfferingPricing: async (pricingId) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/pricing/${pricingId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/pricing/${pricingId}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete offering pricing');
@@ -1244,17 +1326,17 @@ const api = {
         params.append(key, filters[key]);
       }
     });
-    const response = await fetch(`${API_BASE_URL}/offerings/packages/all?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/packages/all?${params}`);
     if (!response.ok) throw new Error('Failed to fetch offering packages');
     return response.json();
   },
   getOfferingPackage: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/packages/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/packages/${id}`);
     if (!response.ok) throw new Error('Failed to fetch offering package');
     return response.json();
   },
   createOfferingPackage: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/packages`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/packages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1263,7 +1345,7 @@ const api = {
     return response.json();
   },
   updateOfferingPackage: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/packages/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/packages/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1272,7 +1354,7 @@ const api = {
     return response.json();
   },
   deleteOfferingPackage: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/packages/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/packages/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to delete offering package');
@@ -1281,12 +1363,12 @@ const api = {
 
   // Patient Enrollments
   getPatientEnrollments: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/enrollments/patient/${patientId}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/enrollments/patient/${patientId}`);
     if (!response.ok) throw new Error('Failed to fetch patient enrollments');
     return response.json();
   },
   createEnrollment: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/enrollments`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/enrollments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1295,7 +1377,7 @@ const api = {
     return response.json();
   },
   updateEnrollment: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/enrollments/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/enrollments/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1308,12 +1390,12 @@ const api = {
   getOfferingReviews: async (offeringId, isApproved) => {
     const params = new URLSearchParams();
     if (isApproved !== undefined) params.append('is_approved', isApproved);
-    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/reviews?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${offeringId}/reviews?${params}`);
     if (!response.ok) throw new Error('Failed to fetch offering reviews');
     return response.json();
   },
   createOfferingReview: async (offeringId, data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/${offeringId}/reviews`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/${offeringId}/reviews`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1322,7 +1404,7 @@ const api = {
     return response.json();
   },
   moderateReview: async (reviewId, data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/reviews/${reviewId}/moderate`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/reviews/${reviewId}/moderate`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1335,12 +1417,12 @@ const api = {
   getOfferingPromotions: async (isActive) => {
     const params = new URLSearchParams();
     if (isActive !== undefined) params.append('is_active', isActive);
-    const response = await fetch(`${API_BASE_URL}/offerings/promotions/all?${params}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/promotions/all?${params}`);
     if (!response.ok) throw new Error('Failed to fetch offering promotions');
     return response.json();
   },
   validatePromoCode: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/promotions/validate`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/promotions/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1352,7 +1434,7 @@ const api = {
     return response.json();
   },
   createOfferingPromotion: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/promotions`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/promotions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1361,7 +1443,7 @@ const api = {
     return response.json();
   },
   updateOfferingPromotion: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/offerings/promotions/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/promotions/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1372,14 +1454,14 @@ const api = {
 
   // Offering Statistics
   getOfferingStatistics: async () => {
-    const response = await fetch(`${API_BASE_URL}/offerings/statistics/overview`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/offerings/statistics/overview`);
     if (!response.ok) throw new Error('Failed to fetch offering statistics');
     return response.json();
   },
 
   // Appointment Types
   getAppointmentTypes: async () => {
-    const response = await fetch(`${API_BASE_URL}/appointment-types`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types`);
     if (!response.ok) throw new Error('Failed to fetch appointment types');
     return response.json();
   },
@@ -1389,7 +1471,7 @@ const api = {
     return response.json();
   },
   getAppointmentType: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/appointment-types/${id}`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/appointment-types/${id}`);
     if (!response.ok) throw new Error('Failed to fetch appointment type');
     return response.json();
   },
@@ -1484,7 +1566,10 @@ const api = {
   // Telehealth Settings
   getTelehealthSettings: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings`);
-    if (!response.ok) throw new Error('Failed to fetch telehealth settings');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to fetch telehealth settings');
+    }
     return response.json();
   },
   getTelehealthSetting: async (providerType) => {
@@ -1523,6 +1608,52 @@ const api = {
       const error = await response.json();
       throw new Error(error.error || 'Provider test failed');
     }
+    return response.json();
+  },
+
+  // Create an instant meeting for a given provider (one-click launch)
+  createInstantMeeting: async (providerType, { topic, duration, patientName, recordingEnabled } = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/${providerType}/instant-meeting`, {
+      method: 'POST',
+      body: JSON.stringify({ topic, duration, patientName, recordingEnabled })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to create instant meeting');
+    }
+    return response.json();
+  },
+
+  // Legacy alias for backwards compatibility
+  createInstantZoomMeeting: async (opts = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/zoom/instant-meeting`, {
+      method: 'POST',
+      body: JSON.stringify(opts)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to create instant Zoom meeting');
+    }
+    return response.json();
+  },
+
+  // Zoom — get ZAK + SDK credentials for embedded in-app meeting
+  getZoomHostToken: async (meetingId) => {
+    const qs = meetingId ? `?meetingId=${encodeURIComponent(meetingId)}` : '';
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/telehealth-settings/zoom/host-token${qs}`
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to fetch Zoom host token');
+    }
+    return response.json();
+  },
+
+  // Enabled telehealth providers (for patient preference dropdown)
+  getEnabledTelehealthProviders: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/telehealth-settings/enabled/providers`);
+    if (!response.ok) return [];
     return response.json();
   },
 
@@ -1573,6 +1704,39 @@ const api = {
   getVendorStatuses: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/vendor-integration-settings/status/all`);
     if (!response.ok) throw new Error('Failed to fetch vendor statuses');
+    return response.json();
+  },
+
+  // Stripe Integration Settings
+  getStripeSettings: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings`);
+    if (!response.ok) throw new Error('Failed to fetch Stripe settings');
+    return response.json();
+  },
+  saveStripeSettings: async (settings) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings`, {
+      method: 'POST',
+      body: JSON.stringify(settings)
+    });
+    if (!response.ok) throw new Error('Failed to save Stripe settings');
+    return response.json();
+  },
+  toggleStripeIntegration: async (isEnabled) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings/toggle`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_enabled: isEnabled })
+    });
+    if (!response.ok) throw new Error('Failed to toggle Stripe integration');
+    return response.json();
+  },
+  testStripeConnection: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings/test`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Stripe connection test failed');
+    }
     return response.json();
   },
 
@@ -2098,8 +2262,1054 @@ const api = {
     return response.json();
   },
 
+  // Billing Module - Quotes
+  getBillingQuotes: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.status) params.append('status', filters.status);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch quotes');
+    return response.json();
+  },
+  getBillingQuote: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch quote');
+    return response.json();
+  },
+  createBillingQuote: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create quote');
+    return response.json();
+  },
+  updateBillingQuote: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update quote');
+    return response.json();
+  },
+  deleteBillingQuote: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete quote');
+    return response.json();
+  },
+  convertQuoteToInvoice: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/quotes/${id}/convert`, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to convert quote to invoice');
+    return response.json();
+  },
+
+  // Billing Module - Invoices
+  getBillingInvoices: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.status) params.append('status', filters.status);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch invoices');
+    return response.json();
+  },
+  getBillingInvoice: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch invoice');
+    return response.json();
+  },
+  createBillingInvoice: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create invoice');
+    return response.json();
+  },
+  updateBillingInvoice: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update invoice');
+    return response.json();
+  },
+  deleteBillingInvoice: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete invoice');
+    return response.json();
+  },
+
+  // Billing Module - Coupons
+  getBillingCoupons: async (isActive) => {
+    const params = new URLSearchParams();
+    if (isActive !== undefined) params.append('is_active', isActive);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch coupons');
+    return response.json();
+  },
+  getBillingCoupon: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch coupon');
+    return response.json();
+  },
+  validateBillingCoupon: async (code, amount) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons/validate`, {
+      method: 'POST',
+      body: JSON.stringify({ code, amount })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Invalid coupon' }));
+      throw new Error(errorData.error || 'Invalid coupon');
+    }
+    return response.json();
+  },
+  createBillingCoupon: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create coupon' }));
+      throw new Error(errorData.error || 'Failed to create coupon');
+    }
+    return response.json();
+  },
+  updateBillingCoupon: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update coupon');
+    return response.json();
+  },
+  deleteBillingCoupon: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/coupons/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete coupon');
+    return response.json();
+  },
+
+  // Billing Module - Payments
+  getBillingPayments: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.invoice_id) params.append('invoice_id', filters.invoice_id);
+    if (filters.status) params.append('status', filters.status);
+    const queryString = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/payments${queryString ? `?${queryString}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch billing payments');
+    return response.json();
+  },
+  createBillingPayment: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/payments`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create billing payment');
+    return response.json();
+  },
+  updateBillingPayment: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/payments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update billing payment');
+    return response.json();
+  },
+  deleteBillingPayment: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/payments/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete billing payment');
+    return response.json();
+  },
+
+  // Billing Module - Summary
+  getBillingSummary: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/summary`);
+    if (!response.ok) throw new Error('Failed to fetch billing summary');
+    return response.json();
+  },
+
   // Add baseURL property for components that need it
-  baseURL: API_BASE_URL
+  baseURL: API_BASE_URL,
+
+  // ─── Reports API ───────────────────────────────────────────────────────────
+
+  // Operational Reports
+  getReportDailyAppointments: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/daily-appointments?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch daily appointments report');
+    return response.json();
+  },
+
+  getReportProviderUtilization: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/provider-utilization?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch provider utilization report');
+    return response.json();
+  },
+
+  getReportPatientVisits: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/patient-visits?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient visits report');
+    return response.json();
+  },
+
+  getReportNoShows: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/no-shows?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch no-show report');
+    return response.json();
+  },
+
+  getReportWaitTimes: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/operational/wait-times?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch wait times report');
+    return response.json();
+  },
+
+  // Financial Reports
+  getReportRevenue: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/revenue?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch revenue report');
+    return response.json();
+  },
+
+  getReportBillingSummary: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/billing-summary?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch billing summary report');
+    return response.json();
+  },
+
+  getReportOutstandingPayments: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/outstanding-payments?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch outstanding payments report');
+    return response.json();
+  },
+
+  getReportPaymentCollection: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/payment-collection?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch payment collection report');
+    return response.json();
+  },
+
+  getReportRefunds: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/financial/refunds?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch refund report');
+    return response.json();
+  },
+
+  // Insurance & Claims Reports
+  getReportClaimStatus: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/claim-status?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch claim status report');
+    return response.json();
+  },
+
+  getReportClaimRejections: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/claim-rejections?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch claim rejections report');
+    return response.json();
+  },
+
+  getReportDenialAnalysis: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/denial-analysis?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch denial analysis report');
+    return response.json();
+  },
+
+  getReportPayerPerformance: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/insurance/payer-performance?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch payer performance report');
+    return response.json();
+  },
+
+  // Patient Reports
+  getReportPatientDemographics: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/demographics?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient demographics report');
+    return response.json();
+  },
+
+  getReportPatientVisitHistory: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/visit-history?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient visit history report');
+    return response.json();
+  },
+
+  getReportPatientRetention: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/retention?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient retention report');
+    return response.json();
+  },
+
+  getReportPatientSatisfaction: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/patient/satisfaction?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch patient satisfaction report');
+    return response.json();
+  },
+
+  // Provider Reports
+  getReportProviderProductivity: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/productivity?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch provider productivity report');
+    return response.json();
+  },
+
+  getReportAppointmentVolumeByProvider: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/appointment-volume?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch appointment volume report');
+    return response.json();
+  },
+
+  getReportRevenueByProvider: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/revenue?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch revenue by provider report');
+    return response.json();
+  },
+
+  getReportTelehealthUsage: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/provider/telehealth-usage?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch telehealth usage report');
+    return response.json();
+  },
+
+  // Compliance Reports
+  getReportAuditLogs: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/audit-logs?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch audit logs report');
+    return response.json();
+  },
+
+  getReportAccessLogs: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/access-logs?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch access logs report');
+    return response.json();
+  },
+
+  getReportHIPAACompliance: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/hipaa?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch HIPAA compliance report');
+    return response.json();
+  },
+
+  getReportDataAccessHistory: async (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/compliance/data-access-history?${q}`);
+    if (!response.ok) throw new Error('Failed to fetch data access history report');
+    return response.json();
+  },
+
+  // Custom Report
+  generateCustomReport: async (config) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/reports/custom`, {
+      method: 'POST',
+      body: JSON.stringify(config)
+    });
+    if (!response.ok) throw new Error('Failed to generate custom report');
+    return response.json();
+  },
+
+  // ============================================================
+  // FORM MANAGEMENT MODULE
+  // ============================================================
+
+  // Form Categories
+  getFormCategories: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/categories`);
+    if (!response.ok) throw new Error('Failed to fetch form categories');
+    return response.json();
+  },
+  createFormCategory: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/categories`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create form category');
+    return response.json();
+  },
+
+  // Form Templates
+  getFormTemplates: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.category) params.append('category', filters.category);
+    if (filters.template_type) params.append('template_type', filters.template_type);
+    if (filters.specialty) params.append('specialty', filters.specialty);
+    if (filters.is_active !== undefined) params.append('is_active', filters.is_active);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.intake_flow_eligible !== undefined) params.append('intake_flow_eligible', filters.intake_flow_eligible);
+    if (filters.role) params.append('role', filters.role);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch form templates');
+    return response.json();
+  },
+  getFormTemplate: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch form template');
+    return response.json();
+  },
+  createFormTemplate: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to create form template' }));
+      throw new Error(err.error || 'Failed to create form template');
+    }
+    return response.json();
+  },
+  updateFormTemplate: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${id}`, {
+      method: 'PUT', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update form template');
+    return response.json();
+  },
+  deleteFormTemplate: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete form template');
+    return response.json();
+  },
+
+  // Template Versions
+  getFormTemplateVersions: async (templateId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/templates/${templateId}/versions`);
+    if (!response.ok) throw new Error('Failed to fetch template versions');
+    return response.json();
+  },
+  restoreFormTemplateVersion: async (templateId, versionId) => {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/form-management/templates/${templateId}/versions/${versionId}/restore`,
+      { method: 'POST' }
+    );
+    if (!response.ok) throw new Error('Failed to restore template version');
+    return response.json();
+  },
+
+  // Form Submissions
+  getFormSubmissions: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.template_id) params.append('template_id', filters.template_id);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.appointment_id) params.append('appointment_id', filters.appointment_id);
+    if (filters.intake_flow_id) params.append('intake_flow_id', filters.intake_flow_id);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch form submissions');
+    return response.json();
+  },
+  getFormSubmission: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch form submission');
+    return response.json();
+  },
+  createFormSubmission: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to create form submission' }));
+      throw new Error(err.error || 'Failed to create form submission');
+    }
+    return response.json();
+  },
+  updateFormSubmission: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${id}`, {
+      method: 'PUT', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update form submission');
+    return response.json();
+  },
+  deleteFormSubmission: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete form submission');
+    return response.json();
+  },
+
+  // eSignature
+  addFormSignature: async (submissionId, signatureData) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${submissionId}/sign`, {
+      method: 'POST', body: JSON.stringify(signatureData)
+    });
+    if (!response.ok) throw new Error('Failed to add signature');
+    return response.json();
+  },
+  getFormSignatures: async (submissionId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/submissions/${submissionId}/signatures`);
+    if (!response.ok) throw new Error('Failed to fetch signatures');
+    return response.json();
+  },
+
+  // Audit Logs
+  getFormAuditLogs: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.resource_type) params.append('resource_type', filters.resource_type);
+    if (filters.resource_id) params.append('resource_id', filters.resource_id);
+    if (filters.patient_id) params.append('patient_id', filters.patient_id);
+    if (filters.actor_id) params.append('actor_id', filters.actor_id);
+    if (filters.action) params.append('action', filters.action);
+    if (filters.limit) params.append('limit', filters.limit);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/audit-logs${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch form audit logs');
+    return response.json();
+  },
+
+  // Intake Flow Integration
+  getIntakeFlowFormTemplates: async (flowId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/intake-flows/${flowId}/templates`);
+    if (!response.ok) throw new Error('Failed to fetch flow templates');
+    return response.json();
+  },
+  assignFormTemplatesToFlow: async (flowId, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/intake-flows/${flowId}/templates`, {
+      method: 'POST', body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to assign templates to flow');
+    return response.json();
+  },
+
+  // Form Stats
+  getFormManagementStats: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/form-management/stats`);
+    if (!response.ok) throw new Error('Failed to fetch form stats');
+    return response.json();
+  },
+
+  // ─── Accounts Management ───────────────────────────────────────────────────
+
+  // Chart of Accounts
+  getAccounts: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch accounts');
+    return response.json();
+  },
+  getAccount: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch account');
+    return response.json();
+  },
+  createAccount: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create account'); }
+    return response.json();
+  },
+  updateAccount: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update account'); }
+    return response.json();
+  },
+  deleteAccount: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/${id}`, { method: 'DELETE' });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to delete account'); }
+    return response.json();
+  },
+  getAccountTransactions: async (id, params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/${id}/transactions${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch account transactions');
+    return response.json();
+  },
+
+  // Journal Entries
+  getJournalEntries: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch journal entries');
+    return response.json();
+  },
+  getJournalEntry: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch journal entry');
+    return response.json();
+  },
+  createJournalEntry: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create journal entry'); }
+    return response.json();
+  },
+  postJournalEntry: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries/${id}/post`, { method: 'POST' });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to post journal entry'); }
+    return response.json();
+  },
+  voidJournalEntry: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/journal/entries/${id}/void`, { method: 'POST' });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to void journal entry'); }
+    return response.json();
+  },
+
+  // Accounts Receivable
+  getAccountReceivables: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/receivables${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch receivables');
+    return response.json();
+  },
+  createAccountReceivable: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/receivables`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create AR record'); }
+    return response.json();
+  },
+  updateAccountReceivable: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/receivables/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update AR record'); }
+    return response.json();
+  },
+
+  // Accounts Payable
+  getAccountPayables: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/payables${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch payables');
+    return response.json();
+  },
+  createAccountPayable: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/payables`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create AP record'); }
+    return response.json();
+  },
+  updateAccountPayable: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/payables/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update AP record'); }
+    return response.json();
+  },
+
+  // Reconciliations
+  getReconciliations: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reconciliations${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch reconciliations');
+    return response.json();
+  },
+  createReconciliation: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reconciliations`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create reconciliation'); }
+    return response.json();
+  },
+  updateReconciliation: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reconciliations/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update reconciliation'); }
+    return response.json();
+  },
+
+  // Statements
+  getAccountStatements: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/statements${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch statements');
+    return response.json();
+  },
+  createAccountStatement: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/statements`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to create statement'); }
+    return response.json();
+  },
+  sendAccountStatement: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/statements/${id}/send`, { method: 'PUT' });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to send statement'); }
+    return response.json();
+  },
+
+  // Reports
+  getAccountsDashboard: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/dashboard`);
+    if (!response.ok) throw new Error('Failed to fetch accounts dashboard');
+    return response.json();
+  },
+  getTrialBalance: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/trial-balance${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch trial balance');
+    return response.json();
+  },
+  getIncomeStatement: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/income-statement${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch income statement');
+    return response.json();
+  },
+  getBalanceSheet: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/balance-sheet${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch balance sheet');
+    return response.json();
+  },
+  getARAgingReport: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/ar-aging`);
+    if (!response.ok) throw new Error('Failed to fetch AR aging report');
+    return response.json();
+  },
+  getAPAgingReport: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/ap-aging`);
+    if (!response.ok) throw new Error('Failed to fetch AP aging report');
+    return response.json();
+  },
+  createARAgingSnapshot: async (data = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/reports/ar-aging/snapshot`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) throw new Error('Failed to create aging snapshot');
+    return response.json();
+  },
+
+  // RBAC
+  getAccountPermissions: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/rbac/permissions`);
+    if (!response.ok) throw new Error('Failed to fetch account permissions');
+    return response.json();
+  },
+  updateAccountPermission: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/rbac/permissions`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed to update permission'); }
+    return response.json();
+  },
+
+  // Backup & Archive
+  getAccountBackups: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`);
+    if (!response.ok) throw new Error('Failed to fetch backups');
+    return response.json();
+  },
+  createAccountBackup: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Backup failed'); }
+    return response.json();
+  },
+  archiveAccountRecords: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/accounts/archive`, { method: 'POST', body: JSON.stringify(data) });
+    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Archive failed'); }
+    return response.json();
+  },
+
+  // ─── INVENTORY ────────────────────────────────────────────────────────────
+  getInventoryItems: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items${qs ? `?${qs}` : ''}`);
+    if (!r.ok) throw new Error('Failed to fetch inventory items');
+    return r.json();
+  },
+  getInventoryItem: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items/${id}`);
+    if (!r.ok) throw new Error('Failed to fetch inventory item');
+    return r.json();
+  },
+  createInventoryItem: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create item'); }
+    return r.json();
+  },
+  updateInventoryItem: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update item'); }
+    return r.json();
+  },
+  deleteInventoryItem: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/items/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete item'); }
+    return r.json();
+  },
+
+  getInventoryCategories: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories`);
+    if (!r.ok) throw new Error('Failed to fetch categories');
+    return r.json();
+  },
+  createInventoryCategory: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create category'); }
+    return r.json();
+  },
+  updateInventoryCategory: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update category'); }
+    return r.json();
+  },
+  deleteInventoryCategory: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/categories/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete category'); }
+    return r.json();
+  },
+
+  getInventorySuppliers: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers`);
+    if (!r.ok) throw new Error('Failed to fetch suppliers');
+    return r.json();
+  },
+  createInventorySupplier: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create supplier'); }
+    return r.json();
+  },
+  updateInventorySupplier: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update supplier'); }
+    return r.json();
+  },
+  deleteInventorySupplier: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/suppliers/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete supplier'); }
+    return r.json();
+  },
+
+  getInventoryMovements: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/movements${qs ? `?${qs}` : ''}`);
+    if (!r.ok) throw new Error('Failed to fetch movements');
+    return r.json();
+  },
+  createInventoryMovement: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/movements`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to record movement'); }
+    return r.json();
+  },
+
+  getInventoryOrders: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders${qs ? `?${qs}` : ''}`);
+    if (!r.ok) throw new Error('Failed to fetch purchase orders');
+    return r.json();
+  },
+  getInventoryOrder: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}`);
+    if (!r.ok) throw new Error('Failed to fetch purchase order');
+    return r.json();
+  },
+  createInventoryOrder: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to create order'); }
+    return r.json();
+  },
+  updateInventoryOrder: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update order'); }
+    return r.json();
+  },
+  receiveInventoryOrder: async (id, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}/receive`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to receive order'); }
+    return r.json();
+  },
+  deleteInventoryOrder: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/orders/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to delete order'); }
+    return r.json();
+  },
+
+  getInventorySummary: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/summary`);
+    if (!r.ok) throw new Error('Failed to fetch inventory summary');
+    return r.json();
+  },
+  getInventoryStockLevels: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/stock-levels`);
+    if (!r.ok) throw new Error('Failed to fetch stock levels');
+    return r.json();
+  },
+  getInventoryLowStock: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/low-stock`);
+    if (!r.ok) throw new Error('Failed to fetch low stock report');
+    return r.json();
+  },
+  getInventoryMovementHistory: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/movement-history`);
+    if (!r.ok) throw new Error('Failed to fetch movement history');
+    return r.json();
+  },
+  getInventoryValuation: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/valuation`);
+    if (!r.ok) throw new Error('Failed to fetch valuation');
+    return r.json();
+  },
+  getInventoryExpiryAlerts: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/reports/expiry-alerts`);
+    if (!r.ok) throw new Error('Failed to fetch expiry alerts');
+    return r.json();
+  },
+
+  getInventoryPermissions: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/rbac/permissions`);
+    if (!r.ok) throw new Error('Failed to fetch inventory permissions');
+    return r.json();
+  },
+  updateInventoryPermission: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/rbac/permissions`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update permission'); }
+    return r.json();
+  },
+  getInventoryBackups: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`);
+    if (!r.ok) throw new Error('Failed to fetch inventory backups');
+    return r.json();
+  },
+  createInventoryBackup: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`, { method: 'POST', body: JSON.stringify(data) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Backup failed'); }
+    return r.json();
+  },
+
+  // ── FHIR tracking ──────────────────────────────────────────────────────────
+  // Every /api/fhir-tracking route sits behind `authenticate`, so these must go
+  // through authenticatedFetch — a bare fetch/axios call gets a 401.
+  getFhirTracking: async (trackingNumber) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/${encodeURIComponent(trackingNumber)}`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking'); }
+    const data = await r.json();
+    return data.tracking;
+  },
+  getFhirTrackingForResource: async (resourceType, resourceId) => {
+    const r = await authenticatedFetch(
+      `${API_BASE_URL}/fhir-tracking/resource/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`
+    );
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking'); }
+    const data = await r.json();
+    return data.tracking;
+  },
+  getFhirTrackingErrors: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/errors/action-required`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking errors'); }
+    const data = await r.json();
+    return data.errors || [];
+  },
+  getPatientFhirTrackingSummary: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/patient/${encodeURIComponent(patientId)}/summary`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking summary'); }
+    return r.json();
+  },
+  resolveFhirTrackingError: async (trackingId, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/${encodeURIComponent(trackingId)}/resolve-error`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to resolve error'); }
+    return r.json();
+  },
+
+  // ── Google Calendar sync (patient-scoped) ──────────────────────────────────
+  // /api/calendar-sync is authenticated and authorises the caller against the
+  // patient in the path, so these calls must carry the Bearer token.
+  getCalendarSyncStatus: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/status/${encodeURIComponent(patientId)}`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to check calendar status'); }
+    return r.json();
+  },
+  getCalendarAuthUrl: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/auth-url?patientId=${encodeURIComponent(patientId)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to start Google Calendar authorization');
+    return data.authUrl;
+  },
+  disconnectCalendarSync: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/disconnect/${encodeURIComponent(patientId)}`, {
+      method: 'DELETE'
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to disconnect Google Calendar'); }
+    return r.json();
+  },
+  syncAppointmentToCalendar: async (appointmentId, patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/sync-appointment`, {
+      method: 'POST',
+      body: JSON.stringify({ appointmentId, patientId })
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to sync appointment'); }
+    return r.json();
+  },
+  setCalendarAutoSync: async (patientId, enabled) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/auto-sync/${encodeURIComponent(patientId)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled })
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update auto-sync'); }
+    return r.json();
+  },
+
+  // ── Public provider booking (/book/<slug>) ─────────────────────────────────
+  // These endpoints are open, but they still go through API_BASE_URL so the
+  // page works when the frontend and backend are on different origins.
+  getPublicBookingConfig: async (slug) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/booking-config/slug/${encodeURIComponent(slug)}`);
+    if (!r.ok) throw new Error('Provider not found or booking not available');
+    return r.json();
+  },
+  getPublicAppointmentTypes: async (providerId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/appointment-types/${encodeURIComponent(providerId)}`);
+    if (!r.ok) throw new Error('Failed to fetch appointment types');
+    return r.json();
+  },
+  getPublicAvailableDates: async (providerId, { startDate, endDate, appointmentTypeId }) => {
+    const query = new URLSearchParams({ startDate, endDate, appointmentTypeId }).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/available-dates/${encodeURIComponent(providerId)}?${query}`);
+    if (!r.ok) throw new Error('Failed to fetch available dates');
+    return r.json();
+  },
+  getPublicAvailableSlots: async (providerId, { date, appointmentTypeId }) => {
+    const query = new URLSearchParams({ date, appointmentTypeId }).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/slots/${encodeURIComponent(providerId)}?${query}`);
+    if (!r.ok) throw new Error('Failed to fetch available slots');
+    return r.json();
+  },
+  bookPublicAppointment: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/book`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to book appointment'); }
+    return r.json();
+  },
+
+  // Token lifecycle helpers — called by LoginPage (store) and App logout (clear)
+  storeToken: (token) => {
+    try {
+      sessionStorage.setItem('token', token);
+    } catch (e) {
+      console.error('Failed to store token:', e);
+    }
+  },
+  clearToken: () => {
+    try {
+      sessionStorage.removeItem('token');
+    } catch (e) {
+      console.error('Failed to clear token:', e);
+    }
+  }
 };
 
 export default api;

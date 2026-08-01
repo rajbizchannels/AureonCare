@@ -2,25 +2,20 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const { Pool } = require('pg');
 const redis = require('redis');
+const path = require('path');
+const fs = require('fs');
+
+// Use centralised Supabase-aware pool from db.js
+const pool = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'aureoncare',
-  user: process.env.DB_USER || 'postgres',
-  password: 'MedFlow2024!',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-  // Explicitly set search_path to ensure tables are found
-  options: '-c search_path=public',
-});
+// Trust the first proxy hop (Vercel / load balancer) so req.ip reflects the
+// real client address from X-Forwarded-For — required for correct per-IP rate
+// limiting on the auth endpoints.
+app.set('trust proxy', 1);
 
 // Make pool available to routes
 app.locals.pool = pool;
@@ -33,14 +28,14 @@ let redisClient = null;
 /*
 const redisConfig = {
   socket: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379,
+    host: process.env.AC_RD_H || 'localhost',
+    port: process.env.AC_RD_P || 6379,
     reconnectStrategy: () => false
   }
 };
 
-if (process.env.REDIS_PASSWORD) {
-  redisConfig.password = process.env.REDIS_PASSWORD;
+if (process.env.AC_RD_W) {
+  redisConfig.password = process.env.AC_RD_W;
 }
 
 redisClient = redis.createClient(redisConfig);
@@ -49,13 +44,75 @@ redisClient.on('connect', () => console.log('✓ Redis Connected'));
 */
 
 // Middleware
-app.use(helmet());
+// Use "credentialless" COEP so cross-origin Zoom SDK resources are not blocked,
+// while still enabling SharedArrayBuffer for the Meeting SDK's WASM AV layer.
+app.use(
+  helmet({
+    crossOriginEmbedderPolicy: { policy: 'credentialless' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        frameAncestors: ["'self'"],
+      },
+    },
+    frameguard: { action: 'sameorigin' },
+  })
+);
+// Support multiple allowed origins via a comma-separated FRONTEND_URL env var,
+// e.g. FRONTEND_URL=https://app.aureoncare.tech,http://localhost:3001
+const allowedOrigins = (process.env.FRONTEND_URL || 'https://app.aureoncare.tech,http://localhost:3001')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+  origin: (origin, callback) => {
+    // Allow server-to-server or same-origin requests (no Origin header)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
   credentials: true
 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Stripe webhook MUST be mounted before express.json() so it receives the raw body.
+// Stripe-Signature verification fails if the body has been JSON-parsed first.
+app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }), require('./routes/stripeWebhook'));
+
+// Body parsing — Vercel's @vercel/node runtime consumes the request stream
+// before Express middleware runs but does NOT set req.body, so express.json()
+// always reads an empty stream and throws SyntaxError for every request.
+// Fix: intercept the parse error inside the wrapper and inspect err.body —
+// the raw bytes body-parser actually received. Empty means Vercel ate the
+// stream (treat as empty body); non-empty means genuinely malformed JSON.
+app.use((req, res, next) => {
+  if (req.body !== undefined) return next();
+  express.json({ limit: '10mb' })(req, res, (err) => {
+    if (err && err instanceof SyntaxError && err.status === 400) {
+      let received = '';
+      if (typeof err.body === 'string') {
+        received = err.body.trim();
+      } else if (Buffer.isBuffer(err.body)) {
+        received = err.body.toString('utf8').trim();
+      } else if (err.body != null) {
+        received = String(err.body).trim();
+      }
+      if (!received) {
+        // Stream was empty — Vercel consumed it before we could read it.
+        // Treat as an empty body so routes handle missing fields normally.
+        req.body = {};
+        return next();
+      }
+      return next(err);
+    }
+    if (err) return next(err);
+    next();
+  });
+});
+app.use((req, res, next) => {
+  if (req.body !== undefined) return next();
+  express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+});
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -118,6 +175,7 @@ app.use('/api/telehealth-settings', require('./routes/telehealthSettings'));
 app.use('/api/vendor-integration-settings', require('./routes/vendorIntegrationSettings'));
 app.use('/api/integrations/oauth', require('./routes/integrationOAuth'));
 app.use('/api/backup-providers', require('./routes/backupProviders'));
+app.use('/api/stripe-settings', require('./routes/stripeSettings'));
 app.use('/api/clinic-settings', require('./routes/clinicSettings'));
 app.use('/api/notification-preferences', require('./routes/notificationPreferences'));
 app.use('/api/fhir', require('./routes/fhir'));
@@ -141,14 +199,45 @@ app.use('/api/backup', require('./routes/backup'));
 app.use('/api/archive', require('./routes/archive'));
 app.use('/api/archive-rules', require('./routes/archiveRules'));
 app.use('/api/audit', require('./routes/audit'));
+app.use('/api/billing', require('./routes/billing'));
+app.use('/api/accounts', require('./routes/accounts'));
+app.use('/api/inventory', require('./routes/inventory'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/form-management', require('./routes/form-management'));
+app.use('/api/licenses', require('./routes/licenses'));
 
-// Serve uploaded files
-app.use('/uploads', express.static('uploads'));
+// Serve uploaded files — requires a valid authenticated session.
+// express.static is intentionally NOT used here; unauthenticated access to
+// PHI documents (medical records, consent forms) would be a HIPAA violation.
+const { authenticate } = require('./middleware/auth');
+const UPLOADS_ROOT = path.resolve(__dirname, 'uploads');
+
+app.get('/uploads/*', authenticate, (req, res) => {
+  // Resolve the requested path and confirm it stays inside UPLOADS_ROOT
+  // to prevent directory traversal (e.g. ../../etc/passwd).
+  const requestedPath = path.resolve(UPLOADS_ROOT, req.params[0]);
+  if (!requestedPath.startsWith(UPLOADS_ROOT + path.sep) &&
+      requestedPath !== UPLOADS_ROOT) {
+    return res.status(400).json({ error: 'Invalid file path' });
+  }
+
+  if (!fs.existsSync(requestedPath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  res.sendFile(requestedPath);
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  // express.json() throws a SyntaxError for malformed request bodies.
+  // Return 400 so clients get a useful signal rather than a generic 500.
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
@@ -161,7 +250,7 @@ async function startServer() {
   console.log('========================================');
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Port: ${PORT}`);
-  console.log(`Database: ${process.env.DB_NAME || 'aureoncare'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}`);
+  console.log(`Database: ${process.env.AC_DB_N || 'aureoncare'}@${process.env.AC_DB_H || 'localhost'}:${process.env.AC_DB_P || 5432}`);
   console.log('========================================\n');
 
   try {
@@ -202,7 +291,7 @@ async function startServer() {
       console.log(`🚀 AureonCare Backend Server Running`);
       console.log(`=================================`);
       console.log(`🌐 URL: http://localhost:${PORT}`);
-      console.log(`🗄️  Database: ${process.env.DB_NAME}`);
+      console.log(`🗄️  Database: ${process.env.AC_DB_N}`);
       console.log(`⚡ Redis: ${redisConnected ? 'Connected' : 'Not available'}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`=================================\n`);
@@ -220,7 +309,7 @@ async function startServer() {
       console.error('   - Make sure PostgreSQL is running');
       console.error('   - Check database credentials in .env file');
       console.error('   - Verify database exists and is accessible');
-      console.error(`   - Connection string: ${process.env.DB_USER}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
+      console.error(`   - Connection string: ${process.env.AC_DB_U}@${process.env.AC_DB_H}:${process.env.AC_DB_P}/${process.env.AC_DB_N}`);
     }
 
     console.error('\nFull error stack:');
@@ -229,8 +318,6 @@ async function startServer() {
     process.exit(1);
   }
 }
-
-startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
@@ -241,3 +328,12 @@ process.on('SIGTERM', async () => {
   }
   process.exit(0);
 });
+
+// Export app for Vercel serverless deployment.
+// In local development, start the server normally.
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  startServer();
+  module.exports = app;
+}

@@ -9,84 +9,91 @@ router.use(requireAdmin);
 
 /**
  * Module definitions - logical groupings of tables for archiving
+ * Aligned with production schema (76 tables total)
  */
 const ARCHIVE_MODULES = {
   'patient_management': {
     name: 'Patient Management',
-    description: 'Patient records, allergies, portal sessions, and pharmacy preferences',
-    tables: ['patients', 'patient_allergies', 'patient_portal_sessions', 'patient_pharmacies', 'patient_preferred_pharmacies'],
+    description: 'Patient records, allergies, portal sessions, pharmacy preferences, consent forms, and enrollments',
+    tables: ['patients', 'patient_allergies', 'patient_portal_sessions', 'patient_pharmacies', 'patient_consent_forms', 'patient_offering_enrollments'],
     primaryKey: 'id'
   },
   'appointments': {
     name: 'Appointments',
-    description: 'Appointment scheduling, reminders, and waitlist',
-    tables: ['appointments', 'appointment_reminders', 'appointment_waitlist'],
+    description: 'Appointment scheduling, types, reminders, waitlist, recurring, and provider availability',
+    tables: ['appointments', 'appointment_reminders', 'appointment_waitlist', 'appointment_types', 'appointment_type_config', 'recurring_appointments', 'doctor_availability', 'doctor_time_off'],
     primaryKey: 'id'
   },
   'medical_records': {
     name: 'Medical Records',
     description: 'Medical records, diagnoses, prescriptions, and prescription history',
-    tables: ['medical_records', 'diagnosis', 'prescriptions', 'prescription_history'],
+    tables: ['medical_records', 'diagnosis', 'diagnoses', 'prescriptions', 'prescription_history'],
     primaryKey: 'id'
   },
   'claims_billing': {
-    name: 'Claims & Billing',
-    description: 'Insurance claims, payments, payment postings, denials, and pre-approvals',
-    tables: ['claims', 'payments', 'payment_postings', 'denials', 'preapprovals'],
+    name: 'Claims & Billing (RCM)',
+    description: 'Insurance claims, claim submissions, payments, denials, pre-approvals, quotes, invoices, coupons, and billing payments',
+    tables: ['claims', 'claim_submissions', 'payments', 'payment_postings', 'denials', 'preapprovals', 'billing_quotes', 'billing_quote_items', 'billing_invoices', 'billing_invoice_items', 'billing_coupons', 'billing_payments'],
     primaryKey: 'id'
   },
   'healthcare_offerings': {
     name: 'Healthcare Offerings',
-    description: 'Healthcare services, packages, pricing, promotions, and reviews',
-    tables: ['healthcare_offerings', 'offering_packages', 'offering_pricing', 'offering_promotions', 'offering_reviews', 'package_offerings'],
+    description: 'Healthcare services, packages, pricing, promotions, reviews, and insurance mappings',
+    tables: ['healthcare_offerings', 'offering_packages', 'offering_pricing', 'offering_promotions', 'offering_reviews', 'package_offerings', 'offering_insurance_mappings'],
     primaryKey: 'id'
   },
   'lab_pharmacy': {
     name: 'Lab & Pharmacy',
-    description: 'Pharmacies, laboratories, medications, drug interactions, and alternatives',
-    tables: ['pharmacies', 'laboratories', 'medications', 'drug_interactions', 'medication_alternatives'],
+    description: 'Pharmacies, laboratories, medications, drug interactions, alternatives, lab orders, and e-prescribe queue',
+    tables: ['pharmacies', 'laboratories', 'medications', 'drug_interactions', 'medication_alternatives', 'lab_orders', 'erx_message_queue'],
     primaryKey: 'id'
   },
   'fhir_resources': {
     name: 'FHIR Resources',
-    description: 'FHIR R4 resource data',
-    tables: ['fhir_resources'],
+    description: 'FHIR R4 resources, tracking, events, and error actions',
+    tables: ['fhir_resources', 'fhir_tracking', 'fhir_tracking_events', 'fhir_error_actions'],
     primaryKey: 'id'
   },
   'notifications': {
     name: 'Notifications',
-    description: 'System notifications',
-    tables: ['notifications'],
+    description: 'System notifications and user preferences',
+    tables: ['notifications', 'notification_preferences'],
     primaryKey: 'id'
   },
   'tasks': {
     name: 'Tasks',
-    description: 'Task management data',
+    description: 'Task management and assignments',
     tables: ['tasks'],
     primaryKey: 'id'
   },
   'telehealth': {
     name: 'Telehealth',
-    description: 'Telehealth session records',
-    tables: ['telehealth_sessions'],
+    description: 'Telehealth sessions and provider settings',
+    tables: ['telehealth_sessions', 'telehealth_provider_settings'],
     primaryKey: 'id'
   },
   'audit_logs': {
     name: 'Audit Logs',
-    description: 'System audit logs and form interaction tracking',
+    description: 'System audit logs and user activity tracking',
     tables: ['audit_logs'],
-    primaryKey: 'id'
-  },
-  'lab_orders': {
-    name: 'Lab Orders',
-    description: 'Laboratory test orders',
-    tables: ['lab_orders'],
     primaryKey: 'id'
   },
   'intake_forms': {
     name: 'Intake Forms',
-    description: 'Patient intake form submissions',
-    tables: ['patient_intake_forms'],
+    description: 'Patient intake forms and workflows',
+    tables: ['patient_intake_forms', 'patient_intake_flows'],
+    primaryKey: 'id'
+  },
+  'providers': {
+    name: 'Providers',
+    description: 'Healthcare provider records, booking configuration, and backup settings',
+    tables: ['providers', 'provider_booking_config', 'backup_provider_settings'],
+    primaryKey: 'id'
+  },
+  'campaigns': {
+    name: 'Marketing Campaigns',
+    description: 'Marketing campaigns and booking analytics',
+    tables: ['campaigns', 'booking_analytics'],
     primaryKey: 'id'
   }
 };
@@ -170,6 +177,11 @@ router.post('/create', async (req, res) => {
 
             console.log(`[Archive] Found ${rows.length} rows in ${tableName}`);
 
+            // Check if data already exists in archive database
+            const existingCountResult = await archiveClient.query(`SELECT COUNT(*) FROM ${tableName}`);
+            const existingCount = parseInt(existingCountResult.rows[0].count);
+            console.log(`[Archive] Archive database already has ${existingCount} rows in ${tableName}`);
+
             // Always add table to archived list, even if empty
             archivedTables.push(tableName);
 
@@ -178,6 +190,25 @@ router.post('/create', async (req, res) => {
               const rowSize = JSON.stringify(rows[0]).length;
               const tableSize = rowSize * rows.length;
               totalSizeBytes += tableSize;
+
+              // Get primary key columns for ON CONFLICT clause
+              const pkQuery = `
+                SELECT string_agg(a.attname, ', ' ORDER BY array_position(conkey, a.attnum)) as pk_columns
+                FROM pg_constraint c
+                JOIN pg_class t ON t.oid = c.conrelid
+                JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+                WHERE t.relname = $1
+                  AND c.contype = 'p'
+                GROUP BY c.conname;
+              `;
+              const pkResult = await archiveClient.query(pkQuery, [tableName]);
+              const pkColumns = pkResult.rows[0]?.pk_columns;
+
+              if (!pkColumns) {
+                console.warn(`[Archive] ⚠️  Table ${tableName} has no primary key - duplicates may occur`);
+              } else {
+                console.log(`[Archive] Using primary key (${pkColumns}) for deduplication`);
+              }
 
               console.log(`[Archive] Inserting ${rows.length} rows into archive database...`);
 
@@ -199,10 +230,15 @@ router.post('/create', async (req, res) => {
                   const values = Object.values(row);
                   const placeholders = values.map((_, idx) => `$${idx + 1}`).join(', ');
 
+                  // Build ON CONFLICT clause with explicit target if primary key exists
+                  const onConflictClause = pkColumns
+                    ? `ON CONFLICT (${pkColumns}) DO NOTHING`
+                    : `ON CONFLICT DO NOTHING`;
+
                   const insertQuery = `
                     INSERT INTO ${tableName} (${columns.join(', ')})
                     VALUES (${placeholders})
-                    ON CONFLICT DO NOTHING
+                    ${onConflictClause}
                     RETURNING *
                   `;
 
@@ -324,6 +360,7 @@ router.get('/list', async (req, res) => {
           archived_modules,
           archived_tables,
           record_counts,
+          metadata,
           archive_date,
           status,
           archived_by
@@ -342,6 +379,7 @@ router.get('/list', async (req, res) => {
           archived_modules,
           archived_tables,
           record_counts,
+          metadata,
           archive_date,
           status,
           archived_by

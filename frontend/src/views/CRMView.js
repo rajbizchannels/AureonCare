@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, MessageSquare, Phone, ArrowLeft, Calendar, Plus, Heart, Clock, Edit, FileText } from 'lucide-react';
+import { Mail, MessageSquare, Phone, Calendar, Plus, Heart, Clock, Edit, FileText } from 'lucide-react';
 import { useAudit } from '../hooks/useAudit';
 
 const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefreshKey, api, t }) => {
@@ -15,7 +15,7 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefre
     logViewAccess('CRMView', {
       module: 'CRM',
     });
-  }, []);
+  }, [logViewAccess]);
 
   // Fetch counts whenever we navigate to CRM view or when crmRefreshKey changes
   useEffect(() => {
@@ -52,16 +52,6 @@ const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefre
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-          title={t.backToDashboard || 'Back to Dashboard'}
-        >
-          <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-        </button>
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.patientCommunications || 'Patient Communications'}</h2>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div

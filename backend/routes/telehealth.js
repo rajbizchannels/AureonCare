@@ -1,7 +1,10 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const crypto = require('crypto');
 const TelehealthProviderManager = require('../services/telehealthProviders');
+const notificationService = require('../services/notificationService');
 
 // Get all telehealth sessions
 router.get('/', async (req, res) => {
@@ -91,7 +94,7 @@ router.post('/', async (req, res) => {
 
     // Get patient and provider details for meeting creation
     const patientResult = await pool.query(
-      'SELECT first_name, last_name FROM patients WHERE id = $1',
+      'SELECT first_name, last_name, telehealth_preference FROM patients WHERE id = $1',
       [patientId]
     );
     const providerResult = await pool.query(
@@ -102,8 +105,22 @@ router.post('/', async (req, res) => {
     const patient = patientResult.rows[0];
     const provider = providerResult.rows[0];
 
-    // Use TelehealthProviderManager to create meeting
+    if (!patient) {
+      return res.status(404).json({ error: 'Patient not found with id: ' + patientId });
+    }
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found with id: ' + providerId });
+    }
+
+    // Use TelehealthProviderManager to create meeting.
+    // Resolve provider: explicit request → patient preference → clinic default.
     const manager = new TelehealthProviderManager(pool);
+
+    let resolvedProvider = providerType;
+    if (!resolvedProvider) {
+      resolvedProvider = await manager.resolveProviderForPatient(patientId);
+    }
+
     const sessionData = {
       patientName: `${patient.first_name} ${patient.last_name}`,
       providerName: `${provider.first_name} ${provider.last_name}`,
@@ -113,7 +130,7 @@ router.post('/', async (req, res) => {
       recordingEnabled: recordingEnabled
     };
 
-    const meetingResult = await manager.createMeeting(sessionData, providerType);
+    const meetingResult = await manager.createMeeting(sessionData, resolvedProvider);
 
     // Store session in database
     const result = await pool.query(`
@@ -143,13 +160,25 @@ router.post('/', async (req, res) => {
       meetingResult.provider
     ]);
 
+    const session = result.rows[0];
     res.status(201).json({
-      ...result.rows[0],
+      ...session,
+      start_url: meetingResult.startUrl || null,
       meetingDetails: meetingResult
     });
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'telehealth.session_created', {
+      session,
+      patient_id: patientId,
+      provider_id: providerId,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error creating telehealth session:', error);
-    res.status(500).json({ error: 'Failed to create telehealth session: ' + error.message });
+    // Use 422 for configuration errors, 500 for server errors
+    const isConfigError = error.message?.includes('not configured') || error.message?.includes('credentials');
+    const statusCode = isConfigError ? 422 : 500;
+    res.status(statusCode).json({ error: error.message });
   }
 });
 

@@ -2,7 +2,7 @@
 -- This table tracks all user interactions with forms, modals, and views across the system
 
 CREATE TABLE IF NOT EXISTS audit_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- User and session information
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,

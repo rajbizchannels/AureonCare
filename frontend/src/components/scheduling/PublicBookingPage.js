@@ -1,8 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Mail, Phone, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, Clock, User, Mail, Phone, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, LogIn } from 'lucide-react';
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns';
 
-const PublicBookingPage = ({ providerSlug }) => {
+import api from '../../api/apiService';
+import { formatCurrency } from '../../utils/formatters';
+
+/**
+ * The page behind a provider's public booking link (/book/<slug>).
+ *
+ * Open to anyone with the link. A patient who signs in gets their details
+ * filled in and the appointment tied to their existing record; everyone else
+ * books as a guest.
+ */
+const PublicBookingPage = ({ providerSlug, patient = null, onSignIn }) => {
     const [step, setStep] = useState(1); // 1: Select Type, 2: Select Date/Time, 3: Enter Info, 4: Confirmation
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -32,106 +42,101 @@ const PublicBookingPage = ({ providerSlug }) => {
 
     const [bookedAppointment, setBookedAppointment] = useState(null);
 
+    // A signed-in patient does not retype what the practice already holds.
     useEffect(() => {
-        fetchProviderInfo();
-    }, [providerSlug]);
+        if (!patient) return;
+        setPatientInfo(prev => ({
+            ...prev,
+            firstName: patient.first_name || patient.firstName || prev.firstName,
+            lastName: patient.last_name || patient.lastName || prev.lastName,
+            email: patient.email || prev.email,
+            phone: patient.phone || prev.phone,
+            dob: patient.date_of_birth || patient.dob || prev.dob,
+        }));
+    }, [patient]);
 
-    useEffect(() => {
-        if (selectedType && provider) {
-            fetchAvailableDates();
-        }
-    }, [selectedType, currentWeek, provider]);
-
-    useEffect(() => {
-        if (selectedDate && selectedType) {
-            fetchAvailableSlots();
-        }
-    }, [selectedDate, selectedType]);
-
-    const fetchProviderInfo = async () => {
+    const fetchProviderInfo = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`/api/scheduling/booking-config/slug/${providerSlug}`);
-            if (!response.ok) throw new Error('Provider not found or booking not available');
-            const data = await response.json();
+            const data = await api.getPublicBookingConfig(providerSlug);
             setProvider(data);
-
-            // Fetch appointment types
-            const typesResponse = await fetch(`/api/scheduling/appointment-types/${data.provider_id}`);
-            if (!typesResponse.ok) throw new Error('Failed to fetch appointment types');
-            const types = await typesResponse.json();
-            setAppointmentTypes(types);
+            setAppointmentTypes(await api.getPublicAppointmentTypes(data.provider_id));
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    };
+    }, [providerSlug]);
 
-    const fetchAvailableDates = async () => {
+    const fetchAvailableDates = useCallback(async () => {
         try {
             const startDate = format(currentWeek, 'yyyy-MM-dd');
             const endDate = format(addWeeks(currentWeek, 2), 'yyyy-MM-dd');
 
-            const response = await fetch(
-                `/api/scheduling/available-dates/${provider.provider_id}?startDate=${startDate}&endDate=${endDate}&appointmentTypeId=${selectedType.id}`
-            );
-            if (!response.ok) throw new Error('Failed to fetch available dates');
-            const dates = await response.json();
+            const dates = await api.getPublicAvailableDates(provider.provider_id, {
+                startDate, endDate, appointmentTypeId: selectedType.id
+            });
             setAvailableDates(dates.map(d => parseISO(d)));
         } catch (err) {
             console.error('Error fetching available dates:', err);
         }
-    };
+    }, [currentWeek, provider, selectedType]);
 
-    const fetchAvailableSlots = async () => {
+    const fetchAvailableSlots = useCallback(async () => {
         setLoading(true);
         try {
             const dateStr = format(selectedDate, 'yyyy-MM-dd');
-            const response = await fetch(
-                `/api/scheduling/slots/${provider.provider_id}?date=${dateStr}&appointmentTypeId=${selectedType.id}`
-            );
-            if (!response.ok) throw new Error('Failed to fetch available slots');
-            const slots = await response.json();
+            const slots = await api.getPublicAvailableSlots(provider.provider_id, {
+                date: dateStr, appointmentTypeId: selectedType.id
+            });
             setAvailableSlots(slots);
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedDate, provider, selectedType]);
+
+    useEffect(() => {
+        fetchProviderInfo();
+    }, [fetchProviderInfo]);
+
+    useEffect(() => {
+        if (selectedType && provider) {
+            fetchAvailableDates();
+        }
+    }, [selectedType, currentWeek, provider, fetchAvailableDates]);
+
+    useEffect(() => {
+        if (selectedDate && selectedType) {
+            fetchAvailableSlots();
+        }
+    }, [selectedDate, selectedType, fetchAvailableSlots]);
 
     const handleBookAppointment = async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/scheduling/book', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    providerId: provider.provider_id,
-                    patientInfo: {
-                        firstName: patientInfo.firstName,
-                        lastName: patientInfo.lastName,
-                        email: patientInfo.email,
-                        phone: patientInfo.phone,
-                        dob: patientInfo.dob || null
-                    },
-                    startTime: selectedSlot.startTime,
-                    appointmentTypeId: selectedType.id,
-                    customFormData: {
-                        reason: patientInfo.reason
-                    }
-                })
+            // Deliberately no patient id: /api/scheduling/book is public, so it
+            // matches an existing record on email rather than trusting an id an
+            // anonymous caller could supply.
+            const data = await api.bookPublicAppointment({
+                providerId: provider.provider_id,
+                patientInfo: {
+                    firstName: patientInfo.firstName,
+                    lastName: patientInfo.lastName,
+                    email: patientInfo.email,
+                    phone: patientInfo.phone,
+                    dob: patientInfo.dob || null
+                },
+                startTime: selectedSlot.startTime,
+                appointmentTypeId: selectedType.id,
+                customFormData: {
+                    reason: patientInfo.reason
+                }
             });
 
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to book appointment');
-            }
-
-            const data = await response.json();
             setBookedAppointment(data.appointment);
             setSuccess(true);
             setStep(4);
@@ -270,12 +275,27 @@ const PublicBookingPage = ({ providerSlug }) => {
                         <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
                             {provider.first_name[0]}{provider.last_name[0]}
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                             <h1 className="text-2xl font-bold text-gray-900">
                                 Dr. {provider.first_name} {provider.last_name}
                             </h1>
                             <p className="text-gray-600">Book an appointment</p>
                         </div>
+
+                        {patient ? (
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-sm font-medium flex-shrink-0">
+                                <CheckCircle className="w-4 h-4" />
+                                Booking as {patient.first_name || patient.firstName}
+                            </div>
+                        ) : onSignIn ? (
+                            <button
+                                onClick={onSignIn}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 text-sm font-medium flex-shrink-0"
+                            >
+                                <LogIn className="w-4 h-4" />
+                                Existing patient? Sign in
+                            </button>
+                        ) : null}
                     </div>
 
                     {/* Progress Steps */}
@@ -336,7 +356,7 @@ const PublicBookingPage = ({ providerSlug }) => {
                                             {type.duration_minutes} min
                                         </span>
                                         {type.price > 0 && (
-                                            <span>${type.price}</span>
+                                            <span>{formatCurrency(type.price, provider?.currency)}</span>
                                         )}
                                     </div>
                                 </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Activity, Plus, Search, Calendar, User, Edit2, Trash2, Filter, AlertCircle } from 'lucide-react';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -35,14 +35,11 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
       module: 'EHR',
       patient_id: selectedPatient?.id,
     });
-  }, []);
+  }, [logViewAccess, selectedPatient?.id]);
 
-  // Load initial data
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  // Declared before the effect that depends on it — a `const` referenced from a
+  // dependency array is still in its temporal dead zone during that render.
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [diagnosesData, patientsData, providersData] = await Promise.all([
@@ -60,7 +57,12 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api, addNotification]);
+
+  // Load initial data
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Handle add new diagnosis
   const handleAddDiagnosis = (patient = null) => {
@@ -222,15 +224,7 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Patient Diagnoses
-            </h1>
-            <p className={`mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Manage patient diagnoses with ICD-10 and CPT codes
-            </p>
-          </div>
+        <div className="flex items-center justify-end mb-4">
           <button
             onClick={() => handleAddDiagnosis()}
             className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg hover:from-green-600 hover:to-teal-600 transition-all flex items-center gap-2 font-medium shadow-lg"

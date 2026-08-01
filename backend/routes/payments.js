@@ -1,5 +1,8 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+const notificationService = require('../services/notificationService');
 
 // Get all payments
 router.get('/', async (req, res) => {
@@ -114,7 +117,11 @@ router.post('/', async (req, res) => {
         notes
       ]
     );
-    res.status(201).json(result.rows[0]);
+    const payment = result.rows[0];
+    res.status(201).json(payment);
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'payment.received', { payment, patient_id }).catch(() => {});
   } catch (error) {
     console.error('Error creating payment:', error);
     res.status(500).json({ error: 'Failed to create payment' });

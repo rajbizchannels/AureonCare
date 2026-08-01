@@ -1,24 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, Plus, Trash2, Save, X } from 'lucide-react';
 
-// Helper function to get authentication headers
-const getAuthHeaders = () => {
-    const headers = {
-        'Content-Type': 'application/json'
-    };
+import { apiFetch } from '../../api/apiService';
 
-    try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (user && user.id) {
-            headers['x-user-id'] = user.id;
-            headers['x-user-role'] = user.role || 'patient';
-        }
-    } catch (error) {
-        console.error('Error parsing user from localStorage:', error);
-    }
-
-    return headers;
-};
 
 const DAYS_OF_WEEK = [
     { value: 0, label: 'Sunday' },
@@ -38,18 +22,13 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
     const [editedSchedules, setEditedSchedules] = useState([]);
     const [selectedDayForAdd, setSelectedDayForAdd] = useState(1); // Default to Monday
 
-    useEffect(() => {
-        if (providerId) {
-            fetchAvailability();
-        }
-    }, [providerId]);
-
-    const fetchAvailability = async () => {
+    // Declared before the effect that depends on it — a `const` referenced from
+    // a dependency array is still in its temporal dead zone during that render.
+    const fetchAvailability = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`/api/scheduling/availability/${providerId}`, {
-                headers: getAuthHeaders()
+            const response = await apiFetch(`/scheduling/availability/${providerId}`, {
             });
             if (!response.ok) throw new Error('Failed to fetch availability');
             const data = await response.json();
@@ -60,7 +39,13 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [providerId]);
+
+    useEffect(() => {
+        if (providerId) {
+            fetchAvailability();
+        }
+    }, [fetchAvailability, providerId]);
 
     const addNewSchedule = () => {
         setEditedSchedules([
@@ -101,9 +86,8 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                 isAvailable: s.isAvailable !== false
             }));
 
-            const response = await fetch('/api/scheduling/availability/bulk', {
+            const response = await apiFetch('/scheduling/availability/bulk', {
                 method: 'POST',
-                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     providerId,
                     schedules: schedulesToSave

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Clock, Inbox, Search } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit, Trash2, Inbox, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentTypeForm from '../components/forms/NewAppointmentTypeForm';
 import { useAudit } from '../hooks/useAudit';
@@ -9,7 +9,6 @@ const AppointmentTypesManagementView = ({
   api,
   setShowForm,
   setEditingAppointmentType,
-  setCurrentModule,
   addNotification,
   t = {}
 }) => {
@@ -27,13 +26,11 @@ const AppointmentTypesManagementView = ({
     logViewAccess('AppointmentTypesManagementView', {
       module: 'Admin',
     });
-  }, []);
+  }, [logViewAccess]);
 
-  useEffect(() => {
-    loadAppointmentTypes();
-  }, []);
-
-  const loadAppointmentTypes = async () => {
+  // Declared before the effect that depends on it — a `const` referenced from a
+  // dependency array is still in its temporal dead zone during that render.
+  const loadAppointmentTypes = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.getAppointmentTypes();
@@ -44,7 +41,11 @@ const AppointmentTypesManagementView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification]);
+
+  useEffect(() => {
+    loadAppointmentTypes();
+  }, [loadAppointmentTypes]);
 
   const handleDeleteClick = (id) => {
     setDeletingId(id);
@@ -104,20 +105,7 @@ const AppointmentTypesManagementView = ({
       />
 
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentModule && setCurrentModule('crm')}
-              className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-              title={t.backToCRM || 'Back to CRM'}
-            >
-              <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-            </button>
-            <Clock className="w-6 h-6 text-purple-400" />
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t.appointmentTypes || 'Appointment Types'}
-            </h2>
-          </div>
+        <div className="flex items-center justify-end">
           <button
             onClick={() => {
               setEditingAppointmentTypeLocal(null);

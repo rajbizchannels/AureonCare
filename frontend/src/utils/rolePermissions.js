@@ -14,6 +14,7 @@ export const rolePermissions = {
     telehealth: { view: true, create: true, edit: true, delete: true },
     crm: { view: true, create: true, edit: true, delete: true },
     rcm: { view: true, create: true, edit: true, delete: true },
+    accounts: { view: true, create: true, edit: true, delete: true },
     practiceManagement: { view: true, create: true, edit: true, delete: true },
     clinicalServices: { view: true, create: true, edit: true, delete: true },
     reports: { view: true, create: true, edit: true, delete: true },
@@ -31,6 +32,7 @@ export const rolePermissions = {
     telehealth: { view: true, create: true, edit: true, delete: false },
     crm: { view: true, create: false, edit: false, delete: false },
     rcm: { view: true, create: false, edit: false, delete: false },
+    accounts: { view: true, create: false, edit: false, delete: false },
     practiceManagement: { view: true, create: true, edit: true, delete: false },
     clinicalServices: { view: true, create: true, edit: true, delete: false },
     reports: { view: true, create: true, edit: false, delete: false },
@@ -65,6 +67,7 @@ export const rolePermissions = {
     telehealth: { view: true, create: true, edit: false, delete: false },
     crm: { view: false, create: false, edit: false, delete: false },
     rcm: { view: false, create: false, edit: false, delete: false },
+    accounts: { view: true, create: false, edit: false, delete: false },
     practiceManagement: { view: true, create: true, edit: true, delete: false },
     clinicalServices: { view: true, create: true, edit: false, delete: false },
     reports: { view: true, create: false, edit: false, delete: false },
@@ -82,6 +85,7 @@ export const rolePermissions = {
     telehealth: { view: true, create: false, edit: false, delete: false },
     crm: { view: true, create: true, edit: true, delete: false },
     rcm: { view: true, create: false, edit: false, delete: false },
+    accounts: { view: true, create: false, edit: false, delete: false },
     practiceManagement: { view: true, create: true, edit: true, delete: false },
     clinicalServices: { view: false, create: false, edit: false, delete: false },
     reports: { view: false, create: false, edit: false, delete: false },
@@ -99,6 +103,7 @@ export const rolePermissions = {
     telehealth: { view: false, create: false, edit: false, delete: false },
     crm: { view: false, create: false, edit: false, delete: false },
     rcm: { view: true, create: true, edit: true, delete: false },
+    accounts: { view: true, create: true, edit: true, delete: false },
     practiceManagement: { view: true, create: false, edit: false, delete: false },
     clinicalServices: { view: false, create: false, edit: false, delete: false },
     reports: { view: true, create: true, edit: false, delete: false },
@@ -133,6 +138,7 @@ export const rolePermissions = {
     telehealth: { view: true, create: true, edit: false, delete: false },
     crm: { view: true, create: true, edit: true, delete: false },
     rcm: { view: true, create: true, edit: true, delete: false },
+    accounts: { view: true, create: false, edit: false, delete: false },
     practiceManagement: { view: true, create: true, edit: true, delete: false },
     clinicalServices: { view: true, create: false, edit: false, delete: false },
     reports: { view: true, create: false, edit: false, delete: false },
@@ -151,11 +157,14 @@ export const modulePermissions = {
   providerManagement: 'patients', // Requires patients.view
   ehr: 'ehr', // Requires ehr.view
   telehealth: 'appointments', // Requires appointments.view
-  rcm: 'billing', // Requires billing.view
+  rcm: 'rcm', // Requires rcm.view
+  accounts: 'accounts', // Requires accounts.view
+  inventory: null, // No dedicated permission yet — open to all authenticated staff
   crm: 'crm', // Requires crm.view
   reports: 'reports', // Requires reports.view
   integrations: 'admin', // Requires admin permissions
   clinicalServices: 'ehr', // Requires ehr.view (includes FHIR, pharmacies, laboratories)
+  formManagement: 'ehr', // Requires ehr.view (providers, staff, and admins)
   patientPortal: null, // Patients can access their own portal
   adminPanel: 'admin', // Requires admin.users
   offeringManagement: 'admin' // Requires admin.settings
@@ -195,6 +204,14 @@ export const canAccessModule = (user, moduleId) => {
   // Patient portal is accessible to patients only
   if (moduleId === 'patientPortal') {
     return user.role === 'patient';
+  }
+
+  // Patients only ever get the portal and the dashboard. Their permission rows
+  // (ehr.view, appointments.view, …) describe access to *their own* data
+  // through the portal, not to the staff-facing consoles, so the shell must not
+  // offer those consoles in the navigation.
+  if (user.role === 'patient') {
+    return moduleId === 'dashboard';
   }
 
   // Admin panel is only for admin

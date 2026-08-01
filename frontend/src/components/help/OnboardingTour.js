@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, ArrowRight, ArrowLeft, Check } from 'lucide-react';
 
 const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
@@ -21,6 +21,13 @@ const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
       .catch(err => console.error('Failed to load onboarding tour:', err));
   }, [userRole]);
 
+  // Declared before the effect that depends on it — a `const` referenced from a
+  // dependency array is still in its temporal dead zone during that render.
+  const handleSkip = useCallback(() => {
+    setIsVisible(false);
+    if (onSkip) onSkip();
+  }, [onSkip]);
+
   // ESC key handler to close tour
   useEffect(() => {
     const handleEscape = (e) => {
@@ -30,7 +37,7 @@ const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isVisible]);
+  }, [isVisible, handleSkip]);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {
@@ -50,11 +57,6 @@ const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
     localStorage.setItem(`onboarding-${userRole}-completed`, 'true');
     setIsVisible(false);
     if (onComplete) onComplete();
-  };
-
-  const handleSkip = () => {
-    setIsVisible(false);
-    if (onSkip) onSkip();
   };
 
   if (!isVisible || tourSteps.length === 0) return null;

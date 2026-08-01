@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {

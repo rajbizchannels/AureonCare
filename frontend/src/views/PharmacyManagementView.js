@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Pill, Plus, Edit, Trash2, ArrowLeft, RefreshCw, Search } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Pill, Plus, Edit, Trash2, RefreshCw, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewPharmacyForm from '../components/forms/NewPharmacyForm';
 import { useAudit } from '../hooks/useAudit';
@@ -24,9 +24,9 @@ const PharmacyManagementView = ({
     logViewAccess('PharmacyManagementView', {
       module: 'EHR',
     });
-  }, []);
+  }, [logViewAccess]);
 
-  const loadPharmacies = async () => {
+  const loadPharmacies = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.getPharmacies();
@@ -37,11 +37,11 @@ const PharmacyManagementView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification]);
 
   useEffect(() => {
     loadPharmacies();
-  }, []);
+  }, [loadPharmacies]);
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
@@ -84,24 +84,7 @@ const PharmacyManagementView = ({
 
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
-              }`}
-              title="Back to Dashboard"
-            >
-              <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-            </button>
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-              <Pill className="w-5 h-5 text-white" />
-            </div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t.pharmacyManagement || 'Pharmacy Management'}
-            </h2>
-          </div>
+        <div className="flex items-center justify-end flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={loadPharmacies}

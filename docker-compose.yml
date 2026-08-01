@@ -1,0 +1,144 @@
+###############################################################################
+# AureonCare — On-Premises Docker Compose
+# Deploy: docker compose up -d
+# With Redis: docker compose --profile redis up -d
+###############################################################################
+
+version: "3.9"
+
+networks:
+  aureoncare-net:
+    driver: bridge
+    internal: false
+
+volumes:
+  pgdata:
+    driver: local
+  uploads-data:
+    driver: local
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aureoncare}
+      POSTGRES_USER: ${POSTGRES_USER:-aureoncare}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - aureoncare-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aureoncare} -d ${POSTGRES_DB:-aureoncare}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # Do not expose postgres port to host by default; access via internal network
+    # Uncomment below for local debugging only:
+    # ports:
+    #   - "5432:5432"
+
+  # ── Redis (optional — activate with --profile redis) ────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    profiles:
+      - redis
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-changeme_redis_password}
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    networks:
+      - aureoncare-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme_redis_password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend (Node.js / Express) ─────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Database — override with direct connection vars (ignoring AC_PG_URI for on-prem)
+      AC_DB_H: postgres
+      AC_DB_P: 5432
+      AC_DB_N: ${POSTGRES_DB:-aureoncare}
+      AC_DB_U: ${POSTGRES_USER:-aureoncare}
+      AC_DB_W: ${POSTGRES_PASSWORD}
+      AC_DB_S: "false"
+      # Redis (only meaningful when redis profile is active)
+      AC_USE_RD: ${AC_USE_RD:-false}
+      AC_RD_H: redis
+      AC_RD_P: 6379
+      AC_RD_W: ${REDIS_PASSWORD:-changeme_redis_password}
+      # File uploads
+      AC_UPL_DIR: /app/uploads
+      AC_LOG_DIR: /app/logs
+    volumes:
+      - uploads-data:/app/uploads
+    networks:
+      - aureoncare-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Do not expose backend port to host; nginx proxies all traffic
+    # Uncomment below for local debugging only:
+    # ports:
+    #   - "3000:3000"
+
+  # ── Frontend (React → Nginx) ────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - aureoncare-net
+
+  # ── Update Agent ────────────────────────────────────────────────────────────
+  update-agent:
+    build:
+      context: update-agent/
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      RELEASE_REGISTRY_URL: ${RELEASE_REGISTRY_URL:-https://api.github.com/repos/aureoncare/aureoncare/releases/latest}
+      CURRENT_VERSION: ${AUREONCARE_VERSION:-1.0.0}
+      CHECK_INTERVAL_HOURS: ${UPDATE_CHECK_INTERVAL_HOURS:-24}
+      AUREONCARE_API_URL: http://backend:3000
+      SUBSCRIPTION_KEY: ${SUBSCRIPTION_KEY:-}
+      NOTIFY_WEBHOOK_URL: ${NOTIFY_WEBHOOK_URL:-}
+      AUTO_APPLY: ${AUTO_APPLY:-false}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./update-status:/data
+    networks:
+      - aureoncare-net
+    depends_on:
+      - backend

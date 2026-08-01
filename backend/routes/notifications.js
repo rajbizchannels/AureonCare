@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 // Get all notifications (optionally filtered by user_id)
 router.get('/', async (req, res) => {
@@ -29,6 +31,10 @@ router.get('/', async (req, res) => {
 // Create new notification
 router.post('/', async (req, res) => {
   const { userId, type, message, read } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: 'message is required' });
+  }
 
   try {
     const pool = req.app.locals.pool;
