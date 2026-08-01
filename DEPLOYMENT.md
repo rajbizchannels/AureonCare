@@ -834,6 +834,9 @@ helm upgrade aureoncare helm/aureoncare/ \
 | `AC_MS_CSK` | No | — | Microsoft Teams Azure AD client secret |
 | `AC_WBX_CID` | No | — | Cisco Webex OAuth client ID |
 | `AC_WBX_CSK` | No | — | Cisco Webex OAuth client secret |
+| `AC_GG_CID` | No | — | Google Calendar OAuth client ID (patient calendar sync) |
+| `AC_GG_CSK` | No | — | Google Calendar OAuth client secret |
+| `AC_GG_URI` | No | `{AC_BE_URL}/api/calendar-sync/callback` | Google Calendar OAuth redirect URI |
 | `AC_GD_CSK` | No | — | Google Drive OAuth client secret |
 | `AC_OD_CSK` | No | — | OneDrive OAuth client secret |
 
