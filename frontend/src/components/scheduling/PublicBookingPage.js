@@ -3,6 +3,7 @@ import { Calendar, Clock, User, Mail, Phone, CheckCircle, AlertCircle, ChevronLe
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns';
 
 import api from '../../api/apiService';
+import { formatCurrency } from '../../utils/formatters';
 
 /**
  * The page behind a provider's public booking link (/book/<slug>).
@@ -355,7 +356,7 @@ const PublicBookingPage = ({ providerSlug, patient = null, onSignIn }) => {
                                             {type.duration_minutes} min
                                         </span>
                                         {type.price > 0 && (
-                                            <span>${type.price}</span>
+                                            <span>{formatCurrency(type.price, provider?.currency)}</span>
                                         )}
                                     </div>
                                 </button>

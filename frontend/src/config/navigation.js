@@ -1,4 +1,5 @@
 import {
+  Home,
   LayoutDashboard,
   CalendarDays,
   Calendar,
@@ -48,7 +49,6 @@ import {
   HardDrive,
   Archive,
   ScrollText,
-  CheckSquare,
 } from 'lucide-react';
 
 import { ADMIN_TABS } from '../constants/adminConstants';
@@ -79,7 +79,7 @@ export const getNavigation = (t = {}) => [
   {
     id: 'home',
     label: t.home || 'Home',
-    icon: LayoutDashboard,
+    icon: Home,
     color: 'from-cyan-500 to-blue-500',
     sections: [
       {
@@ -87,46 +87,15 @@ export const getNavigation = (t = {}) => [
         label: null,
         items: [
           {
-            // Home → Dashboard. The dashboard is the same view as before the
-            // shell, laid out for the content pane; its drill-downs hang off
-            // it as a nested branch instead of sitting beside it, so pane 2
-            // mirrors the fact that they open *from* the dashboard.
+            // Home holds one destination, so the shell drops its secondary pane
+            // and the dashboard fills the content area. Listing the dashboard's
+            // drill-downs here only repeated the cards already on the page.
             id: 'home.dashboard',
             label: t.dashboard || 'Dashboard',
             description: t.dashboardDescription || 'Today at a glance',
             icon: LayoutDashboard,
             module: 'dashboard',
             access: 'dashboard',
-            children: [
-              {
-                id: 'home.tasks',
-                label: t.myTasks || 'My Tasks',
-                icon: CheckSquare,
-                action: 'tasks',
-                access: 'dashboard',
-              },
-              {
-                id: 'home.patientsSnapshot',
-                label: t.patientsSnapshot || 'Patient Snapshot',
-                icon: Users,
-                action: 'patients',
-                access: 'ehr',
-              },
-              {
-                id: 'home.revenueSnapshot',
-                label: t.revenueSnapshot || 'Revenue Snapshot',
-                icon: DollarSign,
-                action: 'revenue',
-                access: 'rcm',
-              },
-              {
-                id: 'home.appointmentsSnapshot',
-                label: t.appointmentsSnapshot || 'Appointment Snapshot',
-                icon: Calendar,
-                action: 'appointments',
-                access: 'practiceManagement',
-              },
-            ],
           },
         ],
       },
@@ -830,7 +799,7 @@ export const getPatientNavigation = (t = {}) => [
   {
     id: 'home',
     label: t.home || 'Home',
-    icon: LayoutDashboard,
+    icon: Home,
     color: 'from-cyan-500 to-blue-500',
     sections: [
       {
