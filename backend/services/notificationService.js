@@ -512,4 +512,4 @@ const EVENTS = {
   },
 };
 
-module.exports = { dispatch };
+module.exports = { dispatch, sendEmail, buildEmailHtml };
