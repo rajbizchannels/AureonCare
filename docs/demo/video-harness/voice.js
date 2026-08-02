@@ -10,6 +10,8 @@
  * -------
  *   espeak  (default) offline espeak-ng, optionally through an mbrola voice.
  *           Always available, but audibly synthetic.
+ *   google  Google Cloud Text-to-Speech — the voice family Google Maps
+ *           navigation speaks with. Needs GOOGLE_TTS_API_KEY.
  *   files   pre-recorded audio: narration/<slug>/<NN>.wav, numbered in the order
  *           the lines are spoken. This is the path for a human or a commercial
  *           voice — drop the files in and re-run; no script changes.
@@ -29,6 +31,24 @@ const VOICE = process.env.VOICE_NAME || 'mb-us2';
 const RATE = process.env.VOICE_RATE || '160';
 const PITCH = process.env.VOICE_PITCH || '42';
 const CACHE_DIR = process.env.VOICE_CACHE || path.join(__dirname, '.voice-cache');
+
+/**
+ * Google Cloud Text-to-Speech settings.
+ *
+ * en-US-Neural2-D is the male US voice from the family Google Maps navigation
+ * speaks with: measured, mid-pitched, unhurried. It is not guaranteed to be
+ * byte-identical to the model Maps ships — Google does not publish that — but
+ * it is the same vendor, the same language and the same character, and unlike
+ * a cloned voice it is licensed for this use through Google Cloud.
+ *
+ * Alternatives worth trying: en-US-Studio-M (best for long narration),
+ * en-US-Wavenet-D (the older, most instantly recognisable male), en-US-Neural2-J.
+ */
+const GOOGLE_VOICE = process.env.GOOGLE_TTS_VOICE || 'en-US-Neural2-D';
+const GOOGLE_LANG = process.env.GOOGLE_TTS_LANG || 'en-US';
+/** Navigation instructions are read a touch under conversational pace. */
+const GOOGLE_RATE = Number(process.env.GOOGLE_TTS_RATE || 0.96);
+const GOOGLE_PITCH = Number(process.env.GOOGLE_TTS_PITCH || -1.0);
 const NARRATION_DIR = path.join(__dirname, 'narration');
 /** Room cleanup on supplied recordings; set VOICE_DEVERB=0 for already-treated audio. */
 const DEVERB_SUPPLIED = process.env.VOICE_DEVERB !== '0';
@@ -135,6 +155,49 @@ function master(inFile, outFile, { deverb = false } = {}) {
 }
 
 /**
+ * One line through Google Cloud Text-to-Speech.
+ *
+ * Called synchronously (via curl) because the director times a caption against
+ * the clip it has just made; going async here would ripple through every
+ * script for no gain. LINEAR16 comes back as a WAV, base64-encoded.
+ */
+function googleSynthesise(text, rawFile) {
+  const key = process.env.GOOGLE_TTS_API_KEY;
+  if (!key) {
+    throw new Error(
+      'GOOGLE_TTS_API_KEY is not set. Create a key with the Cloud '
+      + 'Text-to-Speech API enabled and export it before recording.'
+    );
+  }
+  const payloadFile = `${rawFile}.json`;
+  fs.writeFileSync(payloadFile, JSON.stringify({
+    input: { text },
+    voice: { languageCode: GOOGLE_LANG, name: GOOGLE_VOICE },
+    audioConfig: {
+      audioEncoding: 'LINEAR16',
+      sampleRateHertz: 48000,
+      speakingRate: GOOGLE_RATE,
+      pitch: GOOGLE_PITCH,
+    },
+  }));
+  try {
+    const out = execFileSync('curl', [
+      '-sS', '--max-time', '45', '-X', 'POST',
+      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${key}`,
+      '-H', 'Content-Type: application/json',
+      '--data-binary', `@${payloadFile}`,
+    ], { maxBuffer: 128 * 1024 * 1024 }).toString();
+    const body = JSON.parse(out);
+    if (!body.audioContent) {
+      throw new Error(body.error ? body.error.message : 'no audio in response');
+    }
+    fs.writeFileSync(rawFile, Buffer.from(body.audioContent, 'base64'));
+  } finally {
+    try { fs.unlinkSync(payloadFile); } catch (_) { /* already gone */ }
+  }
+}
+
+/**
  * Synthesise one narration line.
  * @returns {{file: string, duration: number, text: string}|null}
  */
@@ -158,18 +221,27 @@ function synthesise(html, { slug, index } = {}) {
     return { file: out, duration: durationOf(out), text };
   }
 
-  const key = crypto.createHash('sha1')
-    .update(`${ENGINE}|${VOICE}|${RATE}|${PITCH}|${text}`).digest('hex').slice(0, 16);
+  const signature = ENGINE === 'google'
+    ? `google|${GOOGLE_VOICE}|${GOOGLE_RATE}|${GOOGLE_PITCH}|${text}`
+    : `${ENGINE}|${VOICE}|${RATE}|${PITCH}|${text}`;
+  const key = crypto.createHash('sha1').update(signature).digest('hex').slice(0, 16);
   const out = path.join(CACHE_DIR, `${key}.wav`);
   if (!fs.existsSync(out)) {
     const raw = path.join(CACHE_DIR, `${key}.raw.wav`);
-    const args = ['-v', VOICE, '-s', RATE, '-w', raw, text];
-    // mbrola voices ignore -p, and passing it makes espeak-ng complain.
-    if (!VOICE.startsWith('mb-')) args.splice(4, 0, '-p', PITCH);
     try {
-      execFileSync('espeak-ng', args, { stdio: 'ignore' });
+      if (ENGINE === 'google') {
+        googleSynthesise(text, raw);
+      } else {
+        const args = ['-v', VOICE, '-s', RATE, '-w', raw, text];
+        // mbrola voices ignore -p, and passing it makes espeak-ng complain.
+        if (!VOICE.startsWith('mb-')) args.splice(4, 0, '-p', PITCH);
+        execFileSync('espeak-ng', args, { stdio: 'ignore' });
+      }
       master(raw, out);
     } catch (err) {
+      // A missing key or a quota refusal should stop the run, not quietly
+      // produce eight silent videos.
+      if (ENGINE === 'google') throw err;
       console.warn('   [voice] synthesis failed:', String(err.message).split('\n')[0]);
       return null;
     } finally {
@@ -229,4 +301,9 @@ function muxNarration(videoIn, clips, videoOut, { fps = 30, startAt = 0 } = {}) 
   return usable.length;
 }
 
-module.exports = { ENGINE, VOICE, speakable, synthesise, muxNarration, durationOf, master, DEREVERB };
+const activeVoice = () => (ENGINE === 'google' ? GOOGLE_VOICE : VOICE);
+
+module.exports = {
+  ENGINE, VOICE, GOOGLE_VOICE, activeVoice,
+  speakable, synthesise, muxNarration, durationOf, master, DEREVERB,
+};

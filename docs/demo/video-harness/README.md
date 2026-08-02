@@ -42,8 +42,43 @@ what YouTube normalises to.
 | `VOICE_ENGINE` | What it does |
 | --- | --- |
 | `espeak` (default) | Offline espeak-ng through an mbrola voice. Always available, and audibly synthetic |
+| `google` | Google Cloud Text-to-Speech — the voice family Google Maps navigation speaks with. Needs `GOOGLE_TTS_API_KEY` |
 | `files` | Pre-recorded audio from `narration/<slug>/<NN>.wav`, numbered in speaking order |
 | `none` | Silent track |
+
+### The Google Maps navigation voice
+
+```bash
+export GOOGLE_TTS_API_KEY=…            # a key with the Cloud Text-to-Speech API enabled
+VOICE_ENGINE=google NODE_PATH=$(npm root -g) \
+  node docs/demo/video-harness/record.js all
+```
+
+`en-US-Neural2-D` is the default: the male US voice from the family Maps
+navigation speaks with — measured, mid-pitched, unhurried. Google does not
+publish which model Maps ships, so this is the same vendor, language and
+character rather than a guaranteed byte-identical match; unlike a cloned voice
+it is licensed for this use through Google Cloud.
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `GOOGLE_TTS_VOICE` | `en-US-Neural2-D` | `en-US-Studio-M` is smoother for long narration; `en-US-Wavenet-D` is the older, most instantly recognisable male |
+| `GOOGLE_TTS_LANG` | `en-US` | |
+| `GOOGLE_TTS_RATE` | `0.96` | Navigation reads a touch under conversational pace |
+| `GOOGLE_TTS_PITCH` | `-1.0` | Semitones |
+
+To see every male US voice on the account:
+
+```bash
+curl -s "https://texttospeech.googleapis.com/v1/voices?languageCode=en-US&key=$GOOGLE_TTS_API_KEY" \
+  | grep -B2 '"MALE"' | grep '"name"'
+```
+
+Wave 1 is 100 lines, roughly 12,000 characters — comfortably inside the free
+monthly tier for Neural2 voices at the time of writing, and cents beyond it.
+Clips are cached by voice and text, so a re-run only pays for lines that
+changed. A missing or rejected key stops the run rather than quietly producing
+eight silent videos.
 
 **The default voice is a placeholder.** It is clear and correctly timed, but it
 sounds like a speech synthesiser and should not be what a customer hears.
@@ -66,11 +101,13 @@ it. `VOICE_DEVERB=0` turns it off for already-treated audio.
 Other knobs: `VOICE_NAME` (default `mb-us2`), `VOICE_RATE` (default 160 wpm),
 `VOICE_CACHE`.
 
-Voice *cloning* — synthesising these lines in the timbre of a short sample —
-is not possible from this environment: every model host (Hugging Face, GitHub
-release assets, the commercial TTS APIs) is blocked by the network policy. A
-sample can be cleaned up and used, but it cannot be turned into a hundred new
-lines here.
+Voice *cloning* — synthesising these lines in the timbre of a short sample — is
+not possible from this environment. Every cloning model host is blocked by the
+network policy: Hugging Face, GitHub release assets, Coqui and the commercial
+cloning APIs all fail at the proxy. Google Cloud Text-to-Speech is the exception
+that does answer, which is why the `google` engine above exists. A supplied
+sample can be cleaned up and used as-is, but it cannot be turned into a hundred
+new lines here.
 
 ## Recording
 
