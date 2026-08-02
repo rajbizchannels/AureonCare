@@ -12,14 +12,14 @@ Part of the AureonCare Getting Started series.
 
 Chapters:
 0:00 Introduction
-0:12 The patient list
-0:27 Creating the record
-0:45 Contact and insurance
-1:17 Saving and finding the record
-1:52 Recap
+0:14 The patient list
+0:31 Creating the record
+0:54 Contact and insurance
+1:31 Saving and finding the record
+2:13 Recap
 
 Subtitles: upload v02-register-a-new-patient.srt as the English track — do not rely on auto-captions.
-Narration: spoken track included (espeak/mb-us2).
+Narration: spoken track included (google / en-US-Neural2-D).
 
 This video uses a demo environment with synthetic data. No real patient
 information appears in it.
@@ -40,7 +40,7 @@ AureonCare, patient registration, add new patient, EHR tutorial, medical records
 | Thumbnail | v02-register-a-new-patient.thumbnail.png |
 | Subtitles | v02-register-a-new-patient.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:05 |
+| Duration | 2:25 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

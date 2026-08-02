@@ -1,39 +1,39 @@
 1
-00:00:03,158 --> 00:00:10,718
+00:00:04,660 --> 00:00:11,840
 What your patients see — Patient Portal — The portal from the patient’s side, so you can answer their questions with confidence.
 
 2
-00:00:11,261 --> 00:00:16,040
+00:00:12,425 --> 00:00:19,405
 This is not a staff preview. We are signed in as the patient — the portal is their whole app.
 
 3
-00:00:16,040 --> 00:00:28,129
+00:00:19,405 --> 00:00:32,551
 The Overview opens on what is next: their upcoming appointment and anything waiting for them.
 
 4
-00:00:28,129 --> 00:00:36,932
+00:00:32,551 --> 00:00:42,444
 Patients see their own history and what is booked — which is most of the calls your desk takes.
 
 5
-00:00:36,932 --> 00:00:44,750
+00:00:42,444 --> 00:00:51,825
 Diagnoses shows the problem list in plain terms, with the date each was made.
 
 6
-00:00:44,750 --> 00:00:52,976
+00:00:51,825 --> 00:01:00,840
 Prescriptions lists what is active, the dose, and how many refills remain.
 
 7
-00:00:52,976 --> 00:01:01,467
+00:01:00,840 --> 00:01:10,721
 Records is the visit notes you save in the chart. Write them knowing the patient will read them.
 
 8
-00:01:01,467 --> 00:01:11,285
+00:01:10,721 --> 00:01:22,144
 Forms Requested is where intake and consent forms land. Completed here, they arrive back on the chart.
 
 9
-00:01:11,388 --> 00:01:26,688
+00:01:24,110 --> 00:01:40,290
 What you just did
 
 10
-00:01:27,284 --> 00:01:36,284
+00:01:40,927 --> 00:01:49,927
 Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

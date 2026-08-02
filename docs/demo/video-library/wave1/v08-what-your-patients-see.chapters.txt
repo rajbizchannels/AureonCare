@@ -1,5 +1,5 @@
 0:00 Introduction
-0:11 The patient’s view
-0:24 Appointments
-0:58 Forms and booking
-1:27 Recap
+0:12 The patient’s view
+0:29 Appointments
+1:07 Forms and booking
+1:40 Recap
