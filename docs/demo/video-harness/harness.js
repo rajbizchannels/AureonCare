@@ -833,7 +833,7 @@ Chapters:
 ${chapterLines}
 
 Subtitles: upload ${spec.slug}.srt as the English track — do not rely on auto-captions.
-Narration: spoken track included (${voice.ENGINE}${voice.ENGINE === 'espeak' ? `/${voice.VOICE}` : ''}).
+Narration: spoken track included (${voice.ENGINE} / ${voice.activeVoice()}).
 
 This video uses a demo environment with synthetic data. No real patient
 information appears in it.
@@ -1001,7 +1001,7 @@ async function record(spec) {
       const startAt = d.videoStart || 0;
       const spoken = voice.muxNarration(webm, d.narration, mp4, { fps: FPS, startAt });
       fs.unlinkSync(webm);
-      if (spoken) console.log(`  ${spec.id} narration: ${spoken} lines (${voice.ENGINE}/${voice.VOICE})`);
+      if (spoken) console.log(`  ${spec.id} narration: ${spoken} lines (${voice.ENGINE}/${voice.activeVoice()})`);
 
       const duration = probeDuration(mp4);
       const shift = (rows) => rows.map((r) => ({
