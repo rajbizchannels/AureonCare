@@ -64,11 +64,16 @@ mbrola voice) — the only engine reachable from the build environment. It is
 clear and correctly timed, but it sounds synthetic, and it is not what a
 customer should hear on a public channel.
 
-Replacing it does **not** mean re-recording anything. Each video's `.srt` is the
-script, in order. Record or commission those lines, drop them in
-`../video-harness/narration/<slug>/00.wav`, `01.wav`, … and re-run the video
-with `VOICE_ENGINE=files`. Timing, mixing, mastering, subtitles and chapters are
-all unchanged.
+Replacing it does **not** mean re-recording anything. Every line of every video
+is already written out as a recording sheet at
+`../video-harness/narration/<slug>/SCRIPT.md` — the lines in order, the file
+name each belongs in, and how long the matching shot stays on screen. Record
+them, drop them in beside the sheet, and re-run with `VOICE_ENGINE=files`.
+Timing, mixing, mastering, subtitles and chapters are all unchanged.
+
+Wave 1 is 100 lines, about 14 minutes of speech. Room echo is removed
+automatically; `../video-harness/narration/README.md` has the details and a
+before/after sample.
 
 ## What is not in these videos
 - **No real data.** Every patient, clinician, claim and meeting link is
