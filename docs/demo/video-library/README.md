@@ -33,10 +33,16 @@ Each video ships with five files:
 
 ## Uploading
 
+Paste-ready copy for all eight — title, description, tags and chapters, split by
+the field each goes into in YouTube Studio — is in
+[`wave1/YOUTUBE_UPLOAD_COPY.md`](wave1/YOUTUBE_UPLOAD_COPY.md). Use that rather
+than the `.metadata.md` files for the description box: the metadata files are
+the production record and carry notes that should not be published.
+
 1. Create the playlist **AureonCare — Getting Started (Wave 1)** and add the
    videos in the numbered order above. The series is designed to be watched in
    sequence: video 1 teaches the navigation vocabulary the rest assume.
-2. For each video, follow the upload table in its `.metadata.md`. Upload the
+2. For each video, copy the blocks from `YOUTUBE_UPLOAD_COPY.md`. Upload the
    `.srt` rather than accepting auto-captions — auto-captions mangle the
    clinical vocabulary and the SRT is already exact.
 3. Paste the chapter list into the description. YouTube needs the first chapter
