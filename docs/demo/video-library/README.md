@@ -44,13 +44,36 @@ To produce the videos and thumbnails locally, run the recorder (see
 byte-for-consistently — scripts, harness, fixtures, brand assets — is in the
 repo; `.gitignore` keeps the output itself untracked.
 
+## Wave 2 — Revenue and Clinical (`wave2/`)
+
+Eight more, same format, for the modules that decide whether the clinic gets
+paid and whether clinicians stay in the system. These assume Wave 1: they give
+directions as "go to Billing, then Denials" without re-teaching the navigation.
+
+| # | Video | Module | Audience |
+| --- | --- | --- | --- |
+| 9 | Get a pre-authorization approved | Billing ▸ Pre-Authorizations | Billing |
+| 10 | Work a denial to resolution | Billing ▸ Denials | Billing |
+| 11 | Record a payment and post it | Billing ▸ Payments · Payment Postings | Billing |
+| 12 | Quote, invoice, get paid | Billing ▸ Quotes & Invoices | Front desk · billing |
+| 13 | Prescribe and send electronically | Patients ▸ Diagnoses ▸ e-Prescribe | Clinician |
+| 14 | Order a lab and file the result | Patients ▸ Patient History ▸ Lab Orders | Clinician |
+| 15 | Record a diagnosis | Patients ▸ Diagnoses | Clinician |
+| 16 | Set up appointment types and provider schedules | Scheduling ▸ Setup · Providers | Admin |
+
+Unlike Wave 1, this series is not meant to be watched end to end — take the ones
+that match the job. Upload copy is in
+[`wave2/YOUTUBE_UPLOAD_COPY.md`](wave2/YOUTUBE_UPLOAD_COPY.md).
+
 ## Uploading
 
-Paste-ready copy for all eight — title, description, tags and chapters, split by
-the field each goes into in YouTube Studio — is in
-[`wave1/YOUTUBE_UPLOAD_COPY.md`](wave1/YOUTUBE_UPLOAD_COPY.md). Use that rather
-than the `.metadata.md` files for the description box: the metadata files are
-the production record and carry notes that should not be published.
+Paste-ready copy — title, description, tags and chapters, split by the field
+each goes into in YouTube Studio — is in
+[`wave1/YOUTUBE_UPLOAD_COPY.md`](wave1/YOUTUBE_UPLOAD_COPY.md) and
+[`wave2/YOUTUBE_UPLOAD_COPY.md`](wave2/YOUTUBE_UPLOAD_COPY.md), each opening
+with the playlist title and description. Use those rather than the
+`.metadata.md` files for the description box: the metadata files are the
+production record and carry notes that should not be published.
 
 1. Create the playlist **AureonCare — Getting Started (Wave 1)** and add the
    videos in the numbered order above. The series is designed to be watched in
