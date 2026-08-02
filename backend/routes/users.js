@@ -226,6 +226,16 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     const pool = req.app.locals.pool;
     const bcrypt = require('bcryptjs');
 
+    // SEC-01: privilege fields (role, status) may only be changed by an admin.
+    // A non-admin editing their own record (isSelfOrAdmin) must not be able to
+    // escalate to 'admin' or flip account status — silently ignore those fields.
+    const isAdmin = req.user.role === 'admin';
+    const safeRole = isAdmin ? role : undefined;
+    const safeStatus = isAdmin ? status : undefined;
+    if (!isAdmin && (role !== undefined || status !== undefined)) {
+      console.log(`[DEBUG sec01-rbac] non-admin user ${req.user.id} attempted role/status change on ${req.params.id} (role=${role}, status=${status}) — ignored`);
+    }
+
     // Accept both camelCase and snake_case
     const finalFirstName = first_name || firstName;
     const finalLastName = last_name || lastName;
@@ -254,7 +264,7 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
 
     const currentUser = currentUserResult.rows[0];
     const oldRole = currentUser.role;
-    const newRole = role || oldRole;
+    const newRole = safeRole || oldRole;
 
     const result = await pool.query(
       `UPDATE users
@@ -280,14 +290,14 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
       [
         finalFirstName,
         finalLastName,
-        role,
+        safeRole,
         avatar,
         email,
         phone,
         license,
         specialty,
         preferences ? JSON.stringify(preferences) : null,
-        status,
+        safeStatus,
         language,
         country,
         timezone,
