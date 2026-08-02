@@ -40,7 +40,7 @@ AureonCare, pre-authorization, prior authorization, insurance approval, revenue 
 | Thumbnail | v09-get-a-pre-authorization-approved.thumbnail.png |
 | Subtitles | v09-get-a-pre-authorization-approved.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:13 |
+| Duration | 2:14 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

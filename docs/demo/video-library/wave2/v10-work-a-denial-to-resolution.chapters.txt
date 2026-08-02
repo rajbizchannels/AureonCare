@@ -1,0 +1,6 @@
+0:00 Introduction
+0:13 The denials queue
+0:35 Recording the denial
+0:51 The reason code
+1:36 Resolving it
+2:18 Recap
