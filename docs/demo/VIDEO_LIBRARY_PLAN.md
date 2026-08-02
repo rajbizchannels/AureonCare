@@ -13,10 +13,22 @@ one row per video, with owner, status, the four production stages, dates and a
 formula-driven dashboard. This document is the reference; the workbook is the
 working copy — edit the workbook, not this file, as work progresses.
 
-**Status: Wave 1 is produced** — the eight videos below are recorded, branded and
-narrated, and sit in `video-library/wave1/` with subtitles, chapters, a thumbnail
-and upload metadata. They run 1:31 to 2:09. They are awaiting SME review and a
-better narration voice, then upload. Waves 2-4 are still plans.
+**Status: Waves 1 and 2 are produced** — sixteen videos, recorded, branded and
+narrated in Google Cloud Text-to-Speech `en-US-Neural2-D`, in
+`video-library/wave1/` and `video-library/wave2/` with subtitles, chapters,
+thumbnails, per-video upload metadata and a paste-ready `YOUTUBE_UPLOAD_COPY.md`
+carrying the playlist copy for each wave. They await SME review, then upload.
+Waves 3-4 are still plans.
+
+The `.mp4` and `.thumbnail.png` files are build output and are not tracked in
+git — regenerate them with `video-harness/record.js`, or take them from the
+distributed downloads.
+
+**The 120-second cap below is not being met.** Wave 1 runs 1:46-2:25 and Wave 2
+runs 2:07-2:51. Narration is the reason: spoken at an unhurried pace a caption
+takes about twice as long to hear as to read, and the cap was written for silent
+screen capture. Either revise it or split the longer journeys — worth deciding
+before Wave 3 rather than discovering it again.
 
 The prep task (a shared recorder harness) is done too: `video-harness/` drives
 the real UI against a mocked API, so any video can be re-cut by re-running its
