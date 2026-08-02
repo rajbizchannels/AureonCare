@@ -15,6 +15,56 @@ lists from anywhere else.
 
 ---
 
+## The playlist
+
+Create this first — the per-video uploads all get added to it.
+
+### Playlist title `37 chars`
+
+```
+AureonCare — Getting Started (Wave 1)
+```
+
+### Playlist description
+
+```
+Everything a new AureonCare user needs in under twenty minutes. Eight short videos, one job each, in the order you will actually meet them: find your way around, register a patient, book them in, read your day, document the visit, run it virtually, bill it, and see what the patient sees.
+
+Watch them in order the first time. Video 1 teaches the navigation vocabulary the rest of the series assumes — later videos give directions in the form "go to Scheduling, then Calendar" without stopping to explain it. After that, treat them as reference and jump to whichever one matches the task in front of you.
+
+Where to start for your role:
+• Front desk — 1, 2, 3, then 8
+• Clinician — 1, 4, 5, 6
+• Billing — 1, 7
+• Practice manager / everyone — 1 and 4, then whichever apply
+
+The series:
+1. Find Your Way Around — the three-pane layout, universal search, notifications and help (2:21)
+2. Register a New Patient — creating the record, and which fields matter downstream (2:25)
+3. Book an Appointment — the calendar, appointment types, and what booking sets in motion (2:24)
+4. Read Your Day on the Dashboard — what each metric counts, and where to click next (1:46)
+5. Document a Visit — the chart timeline, measurements, history, and what the patient then sees (2:19)
+6. Run a Telehealth Visit — creating a session from an appointment through to joining the call (2:25)
+7. Create and Submit a Claim — the claims queue, ICD-10 and CPT coding, and EDI 837 submission (2:18)
+8. What Your Patients See — the portal from the patient's own account (1:52)
+
+Every video has chapters in its description and a proper English subtitle track, so you can skim to the step you need or follow along with sound off.
+
+These are recorded in a demo environment using synthetic data. Every patient, clinician, appointment, claim and meeting link is invented. No real patient information appears anywhere in this series.
+```
+
+Runtime across all eight is 17:50.
+
+### Playlist settings
+
+| Field | Value |
+| --- | --- |
+| Visibility | Unlisted until all eight videos are up, then Public |
+| Ordering | Manual, in the numbered order above — not "date added" |
+| Playlist thumbnail | Video 1's thumbnail (YouTube uses the first video by default) |
+
+---
+
 ## Settings identical for all eight
 
 Set these the same way on every upload:
