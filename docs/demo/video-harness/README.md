@@ -46,14 +46,31 @@ what YouTube normalises to.
 | `none` | Silent track |
 
 **The default voice is a placeholder.** It is clear and correctly timed, but it
-sounds like a speech synthesiser and should not be what a customer hears. To
-replace it, record or buy the lines, drop them in `narration/<slug>/00.wav`,
-`01.wav`, … and re-run with `VOICE_ENGINE=files`. The picture does not need to
-be re-recorded, and mastering, mixing and subtitles are unchanged. The exact
-lines are in each video's `.srt`, in order.
+sounds like a speech synthesiser and should not be what a customer hears.
+Replacing it with a human voice needs no re-recording of the picture: every line
+of every video is written out as a recording sheet by
+
+```bash
+node docs/demo/video-harness/narration-scripts.js
+```
+
+which produces `narration/<slug>/SCRIPT.md` — the lines in order, the file name
+each belongs in, and how long the matching shot stays on screen. Record them,
+drop them in, and re-run with `VOICE_ENGINE=files`. Wave 1 is 100 lines, about
+14 minutes of speech.
+
+Supplied recordings are de-reverbed before they are mixed, so an ordinary room
+is fine — see `narration/README.md` for the chain and the measurements behind
+it. `VOICE_DEVERB=0` turns it off for already-treated audio.
 
 Other knobs: `VOICE_NAME` (default `mb-us2`), `VOICE_RATE` (default 160 wpm),
 `VOICE_CACHE`.
+
+Voice *cloning* — synthesising these lines in the timbre of a short sample —
+is not possible from this environment: every model host (Hugging Face, GitHub
+release assets, the commercial TTS APIs) is blocked by the network policy. A
+sample can be cleaned up and used, but it cannot be turned into a hundred new
+lines here.
 
 ## Recording
 
