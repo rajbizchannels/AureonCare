@@ -140,6 +140,11 @@ Output lands in `docs/demo/video-library/wave1/`, five files per video:
 `ffmpeg-static` is required for the mp4: Playwright's bundled ffmpeg can only
 write VP8, so without a real ffmpeg you would be left with a `.webm`.
 
+The `.mp4` and `.thumbnail.png` are gitignored — they are build output and were
+costing ~110 MB of repository history per render. Produce them by running the
+recorder, and distribute them as downloads. The `.srt`, `.chapters.txt` and
+`.metadata.md` written alongside are text and stay tracked.
+
 ## Writing a new video script
 
 A script is a module with metadata plus `run(d, page)`:
