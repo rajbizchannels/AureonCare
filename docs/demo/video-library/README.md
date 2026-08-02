@@ -54,7 +54,10 @@ the production record and carry notes that should not be published.
 
 1. Create the playlist **AureonCare — Getting Started (Wave 1)** and add the
    videos in the numbered order above. The series is designed to be watched in
-   sequence: video 1 teaches the navigation vocabulary the rest assume.
+   sequence: video 1 teaches the navigation vocabulary the rest assume. The
+   playlist title and description are the first section of
+   [`wave1/YOUTUBE_UPLOAD_COPY.md`](wave1/YOUTUBE_UPLOAD_COPY.md); set the
+   ordering to manual rather than "date added".
 2. For each video, copy the blocks from `YOUTUBE_UPLOAD_COPY.md`. Upload the
    `.srt` rather than accepting auto-captions — auto-captions mangle the
    clinical vocabulary and the SRT is already exact.
