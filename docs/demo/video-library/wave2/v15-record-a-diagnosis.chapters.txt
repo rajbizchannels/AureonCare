@@ -1,0 +1,6 @@
+0:00 Introduction
+0:13 The diagnoses list
+0:33 Adding one
+0:44 Coding it
+1:05 Status and severity
+1:59 Recap

@@ -1,0 +1,43 @@
+1
+00:00:04,647 --> 00:00:12,927
+Record a diagnosis — Patients ▸ Diagnoses — Code it properly once, and the claim, the chart and the portal all agree.
+
+2
+00:00:18,144 --> 00:00:25,121
+Patients ▸ Diagnoses is every coded problem across the practice, not just one chart.
+
+3
+00:00:25,121 --> 00:00:40,386
+Filter by patient or by status to answer the questions that actually come up — who is active, what is chronic, what resolved.
+
+4
+00:00:40,386 --> 00:00:47,002
+Give it the name a clinician would say out loud.
+
+5
+00:00:47,002 --> 00:00:58,281
+Now the part that matters: search the ICD-10 code. Typing one from memory is how claims get denied.
+
+6
+00:00:58,281 --> 00:01:06,394
+Picking from the list guarantees the code and its description agree — payers check exactly that.
+
+7
+00:01:06,394 --> 00:01:12,653
+Severity is clinical judgement, and it travels with the diagnosis.
+
+8
+00:01:12,653 --> 00:01:32,292
+Active is happening now. Chronic is ongoing and managed. Resolved is over — and marking it so is what keeps the problem list honest.
+
+9
+00:01:32,292 --> 00:01:40,698
+Saved once, used everywhere — it justifies the claim, sits on the chart, and appears in the patient’s portal.
+
+10
+00:01:42,193 --> 00:01:58,603
+What you just did
+
+11
+00:01:59,233 --> 00:02:08,233
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.
