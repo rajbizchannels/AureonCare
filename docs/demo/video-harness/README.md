@@ -80,9 +80,12 @@ Clips are cached by voice and text, so a re-run only pays for lines that
 changed. A missing or rejected key stops the run rather than quietly producing
 eight silent videos.
 
-**The default voice is a placeholder.** It is clear and correctly timed, but it
-sounds like a speech synthesiser and should not be what a customer hears.
-Replacing it with a human voice needs no re-recording of the picture: every line
+Wave 1 as shipped is rendered with this engine — see
+`../video-library/README.md`. The `espeak` default is a placeholder: clear and
+correctly timed, but audibly a speech synthesiser, so it is for local iteration
+rather than anything a customer hears.
+
+Moving to a human voice needs no re-recording of the picture: every line
 of every video is written out as a recording sheet by
 
 ```bash
