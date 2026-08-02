@@ -1,63 +1,63 @@
 1
-00:00:03,406 --> 00:00:11,506
+00:00:03,150 --> 00:00:11,250
 Book an appointment — Scheduling ▸ Calendar — Create, find and change an appointment — and understand what the type controls.
 
 2
-00:00:16,735 --> 00:00:24,221
+00:00:16,434 --> 00:00:23,783
 Scheduling ▸ Calendar is the practice diary — every provider, every room.
 
 3
-00:00:24,221 --> 00:00:29,379
+00:00:23,783 --> 00:00:28,947
 Day view for working the desk hour by hour.
 
 4
-00:00:29,379 --> 00:00:35,202
+00:00:28,947 --> 00:00:34,589
 Week view for spotting the gaps worth filling.
 
 5
-00:00:35,202 --> 00:00:41,197
+00:00:34,589 --> 00:00:40,475
 Every booking answers four questions: who, what, with whom, and when.
 
 6
-00:00:41,197 --> 00:00:48,081
+00:00:40,475 --> 00:00:47,190
 Who. Start typing or pick from the register — the MRN disambiguates namesakes.
 
 7
-00:00:48,081 --> 00:00:54,825
+00:00:47,190 --> 00:00:53,784
 What. The appointment type sets the duration for you — change the type, not the clock.
 
 8
-00:00:54,825 --> 00:01:01,002
+00:00:53,784 --> 00:00:59,826
 With whom. Only providers who work that day are offered.
 
 9
-00:01:01,002 --> 00:01:07,634
+00:00:59,826 --> 00:01:06,521
 When. Pick the slot; the duration follows the type you chose.
 
 10
-00:01:07,634 --> 00:01:14,387
+00:01:06,521 --> 00:01:13,135
 A one-line reason is what the clinician reads before the patient walks in.
 
 11
-00:01:14,387 --> 00:01:22,676
+00:01:13,135 --> 00:01:21,210
 A confirmation step, so a mis-click never books a patient.
 
 12
-00:01:22,676 --> 00:01:30,771
+00:01:21,210 --> 00:01:29,052
 Booked. The slot fills on the calendar and the patient gets their reminder.
 
 13
-00:01:30,771 --> 00:01:35,582
+00:01:29,052 --> 00:01:33,694
 The List view is the same diary as a searchable table — where you change or cancel a booking.
 
 14
-00:01:35,582 --> 00:01:42,197
+00:01:33,694 --> 00:01:40,087
 Cancelling keeps the record and its reason. Deleting would erase the history — so cancel, do not delete.
 
 15
-00:01:42,600 --> 00:01:54,360
+00:01:40,208 --> 00:01:51,968
 What you just did
 
 16
-00:01:54,959 --> 00:02:00,649
+00:01:52,666 --> 00:02:01,666
 Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

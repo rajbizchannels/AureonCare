@@ -304,12 +304,23 @@ window.__demo = (() => {
         opacity: 0; transition: opacity .3s ease; pointer-events: none;
       }
       #demo-step.on { opacity: 1; }
+      #demo-brandbar {
+        position: fixed; left: 0; right: 0; top: 0; height: 6px; z-index: 2147483647;
+        background: linear-gradient(90deg, \${B.amber} 0%, \${B.amber} 22%, \${B.teal} 62%, \${B.tealLight} 100%);
+        pointer-events: none;
+      }
+      /* The mark rides in the always-on chip as well as the caption bar, so it
+         is on screen even while nobody is being told anything. */
       #demo-watermark {
         position: fixed; bottom: 116px; right: 24px; z-index: 2147483646;
+        display: flex; align-items: center; gap: 12px;
         font: 500 13px/1 system-ui, sans-serif; color: #94a3b8;
-        background: rgba(4,16,22,.75); border: 1px solid rgba(148,163,184,.3);
-        border-radius: 999px; padding: 8px 16px; pointer-events: none;
+        background: rgba(4,16,22,.82); border: 1px solid rgba(148,163,184,.3);
+        border-radius: 999px; padding: 9px 18px 9px 12px; pointer-events: none;
+        transition: opacity .3s ease;
       }
+      #demo-watermark img { height: 26px; }
+      #demo-watermark .sep { width: 1px; height: 18px; background: rgba(148,163,184,.35); }
       #demo-cursor {
         position: fixed; z-index: 2147483647; width: 30px; height: 30px; margin: -15px 0 0 -15px;
         border-radius: 50%; border: 3px solid \${B.tealLight}; background: rgba(45,212,191,.26);
@@ -358,8 +369,11 @@ window.__demo = (() => {
     };
     const cap = add('demo-caption');
     cap.innerHTML = '<img class="mark" src="' + B.logo + '" alt="AureonCare"><span class="txt"></span>';
+    add('demo-brandbar');
     const mark = add('demo-watermark');
-    mark.textContent = 'AureonCare demo environment · synthetic data, no real patients';
+    mark.innerHTML = '<img src="' + B.logo + '" alt="AureonCare">'
+      + '<span class="sep"></span>'
+      + '<span>demo environment · synthetic data, no real patients</span>';
     add('demo-step');
     add('demo-cursor');
   };
@@ -932,11 +946,13 @@ async function record(spec) {
       holdMs: 6000,
     });
     d.chapter('Recap');
+    // Held long enough for a YouTube end screen, which needs at least 5 seconds
+    // of still picture to sit on.
     await d.card({
       kicker: 'AureonCare',
       heading: 'Health | Efficiency | Growth',
       body: 'More in the Getting Started series — the next video is linked on screen.',
-      holdMs: 4200,
+      holdMs: 9000,
     });
     await sleep(700);
   } catch (err) {
