@@ -102,7 +102,7 @@ const patients = [
     email: 'sarah.williams@example.com', phone: '555-0123',
     date_of_birth: '1985-05-15', gender: 'Female', status: 'active',
     address: '123 Main Street', city: 'Portland', state: 'OR', zip: '97205',
-    insurance_provider: 'Blue Cross Blue Shield', insurance_policy_number: 'BCBS-12345678',
+    insurance_provider: 'Blue Cross Blue Shield', insurance_payer_id: 201, insurance_policy_number: 'BCBS-12345678',
     emergency_contact_name: 'John Williams', emergency_contact_phone: '555-0199',
     telehealth_preference: null, portal_enabled: true,
     created_at: at(-420, 9),
@@ -112,7 +112,7 @@ const patients = [
     email: 'jordan.ellis@example.com', phone: '555-0141',
     date_of_birth: '1986-04-12', gender: 'Non-binary', status: 'active',
     address: '88 Alder Court', city: 'Portland', state: 'OR', zip: '97210',
-    insurance_provider: 'Aetna', insurance_policy_number: 'AET-55512',
+    insurance_provider: 'Aetna', insurance_payer_id: 202, insurance_policy_number: 'AET-55512',
     portal_enabled: true, created_at: at(-210, 11),
   },
   {
@@ -120,7 +120,7 @@ const patients = [
     email: 'priya.n@example.com', phone: '555-0172',
     date_of_birth: '1979-11-03', gender: 'Female', status: 'active',
     address: '14 Cedar Lane', city: 'Beaverton', state: 'OR', zip: '97005',
-    insurance_provider: 'UnitedHealthcare', insurance_policy_number: 'UHC-90210',
+    insurance_provider: 'UnitedHealthcare', insurance_payer_id: 203, insurance_policy_number: 'UHC-90210',
     portal_enabled: true, created_at: at(-140, 14),
   },
   {
@@ -128,7 +128,7 @@ const patients = [
     email: 'marcus.boone@example.com', phone: '555-0188',
     date_of_birth: '1994-02-25', gender: 'Male', status: 'active',
     address: '9 Rivergate Ave', city: 'Portland', state: 'OR', zip: '97203',
-    insurance_provider: 'Cigna', insurance_policy_number: 'CIG-40881',
+    insurance_provider: 'Cigna', insurance_payer_id: 204, insurance_policy_number: 'CIG-40881',
     portal_enabled: true, created_at: at(-95, 10),
   },
   {
@@ -136,7 +136,7 @@ const patients = [
     email: 'aiko.tanaka@example.com', phone: '555-0164',
     date_of_birth: '1968-08-08', gender: 'Female', status: 'active',
     address: '220 Willow Park', city: 'Portland', state: 'OR', zip: '97209',
-    insurance_provider: 'Medicare', insurance_policy_number: 'MCR-77120',
+    insurance_provider: 'Medicare', insurance_payer_id: 205, insurance_policy_number: 'MCR-77120',
     portal_enabled: false, created_at: at(-60, 15),
   },
 ];
@@ -267,6 +267,63 @@ const medicalCodes = {
   ],
 };
 
+/* ── Wave 2: revenue cycle ────────────────────────────────────────────────── */
+
+/**
+ * Pre-authorizations. One of each state the queue can show, so V09 can point at
+ * a real Approved and a real Denied rather than describing them.
+ */
+const preapprovals = [
+  { id: 5001, preapproval_number: 'PA-2026-0031', patient_id: 103, provider_id: 3, insurance_payer_id: 203, payer_name: 'UnitedHealthcare', service_description: 'MRI lumbar spine without contrast', service_date: day(6), status: 'approved', authorization_number: 'AUTH-77321', approved_units: 1, estimated_cost: 1450, valid_from: day(-2), valid_to: day(88), diagnosis_codes: 'M54.5', procedure_codes: '72148', submitted_at: at(-6, 10) },
+  { id: 5002, preapproval_number: 'PA-2026-0034', patient_id: 104, provider_id: 2, insurance_payer_id: 204, payer_name: 'Cigna', service_description: 'Physical therapy, 12 sessions', service_date: day(9), status: 'pending', estimated_cost: 960, diagnosis_codes: 'M25.561', procedure_codes: '97110', submitted_at: at(-2, 14) },
+  { id: 5003, preapproval_number: 'PA-2026-0029', patient_id: 102, provider_id: 2, insurance_payer_id: 202, payer_name: 'Aetna', service_description: 'Sleep study, in-lab', service_date: day(-4), status: 'denied', denial_reason: 'Conservative treatment not documented', estimated_cost: 2100, diagnosis_codes: 'G47.33', procedure_codes: '95810', submitted_at: at(-14, 9) },
+];
+
+/**
+ * Denials. CLM-2026-0118 is the denied claim already in `claims`, so the denial
+ * queue and the claims queue tell the same story — V10 works that exact claim.
+ */
+const denials = [
+  { id: 5101, denial_number: 'DN-2026-0042', claim_id: 4003, claim_number: 'CLM-2026-0118', patient_id: 102, insurance_payer_id: 202, payer_name: 'Aetna', denial_date: day(-2), denied_amount: 210, reason_code: 'CO-16', reason_description: 'Claim/service lacks information', denial_category: 'Invalid/Missing Information', status: 'open', appeal_status: 'not_started', priority: 'high', notes: 'Rendering provider NPI missing on the original submission.' },
+  { id: 5102, denial_number: 'DN-2026-0038', claim_id: 4001, claim_number: 'CLM-2026-0091', patient_id: 105, insurance_payer_id: 205, payer_name: 'Medicare', denial_date: day(-16), denied_amount: 132, reason_code: 'CO-45', reason_description: 'Charge exceeds fee schedule/maximum allowable', denial_category: 'Non-Covered Service', status: 'resolved', appeal_status: 'won', priority: 'medium', resolved_date: day(-4) },
+];
+
+/** Payment postings — what turns a payer's remittance into a settled balance. */
+const paymentPostings = [
+  { id: 5201, posting_number: 'PP-2026-0088', claim_id: 4001, claim_number: 'CLM-2026-0104', patient_id: 103, insurance_payer_id: 203, payer_name: 'UnitedHealthcare', payment_method: 'Electronic Funds Transfer (EFT)', reference_number: 'EFT-88214', payment_date: day(-6), posted_date: day(-6), paid_amount: 144, adjustment_amount: 36, adjustment_code: 'CO', patient_responsibility: 0, status: 'posted', era_number: 'ERA-55120' },
+];
+
+const quotes = [
+  { id: 5301, quote_number: 'QT-2026-0014', patient_id: 105, status: 'sent', subtotal: 240, discount: 0, tax: 0, total: 240, valid_until: day(21), created_at: at(-3, 11), items: [{ description: 'Diabetes management programme', quantity: 1, unit_price: 240 }] },
+];
+
+const invoices = [
+  { id: 5401, invoice_number: 'INV-2026-0207', patient_id: 103, quote_id: null, status: 'paid', subtotal: 180, tax: 0, total: 180, amount_paid: 180, balance: 0, issue_date: day(-9), due_date: day(21), paid_date: day(-6) },
+  { id: 5402, invoice_number: 'INV-2026-0211', patient_id: 104, quote_id: null, status: 'sent', subtotal: 95, tax: 0, total: 95, amount_paid: 0, balance: 95, issue_date: day(-2), due_date: day(28) },
+];
+
+/* ── Wave 2: clinical network ─────────────────────────────────────────────── */
+
+const pharmacies = [
+  { id: 6001, name: 'Northside Pharmacy - Main St', ncpdp_id: '3812004', npi: '1902845761', address: '410 Main Street', city: 'Portland', state: 'OR', zip: '97205', phone: '555-0300', fax: '555-0301', is_active: true, accepts_eprescribe: true, is_24_hour: false },
+  { id: 6002, name: 'Riverbend Community Pharmacy', ncpdp_id: '3812119', npi: '1902845888', address: '77 Rivergate Ave', city: 'Portland', state: 'OR', zip: '97203', phone: '555-0310', is_active: true, accepts_eprescribe: true, is_24_hour: true },
+  { id: 6003, name: 'Beaverton Family Drug', ncpdp_id: '3812277', npi: '1902845999', address: '2 Cedar Lane', city: 'Beaverton', state: 'OR', zip: '97005', phone: '555-0320', is_active: true, accepts_eprescribe: true, is_24_hour: false },
+];
+
+const laboratories = [
+  { id: 6101, name: 'Labcorp - Portland Central', lab_code: 'LC-PDX-01', npi: '1104772210', address: '900 SW Harbor Blvd', city: 'Portland', state: 'OR', zip: '97201', phone: '555-0350', is_active: true, accepts_electronic_orders: true, specialties: 'Chemistry, Hematology, Microbiology', turnaround_time_hours: 24 },
+  { id: 6102, name: 'Quest Diagnostics - Beaverton', lab_code: 'QD-BVT-04', npi: '1104772399', address: '15 Cedar Lane', city: 'Beaverton', state: 'OR', zip: '97005', phone: '555-0360', is_active: true, accepts_electronic_orders: true, specialties: 'Chemistry, Pathology', turnaround_time_hours: 48 },
+];
+
+/**
+ * Lab orders. 7301 has already come back resulting with an abnormal A1c, which
+ * is what V14 reviews and files — the loop closes in the chart, not in email.
+ */
+const labOrders = [
+  { id: 7301, order_number: 'LAB-2026-0442', patient_id: 101, provider_id: 2, laboratory_id: 6101, laboratory_name: 'Labcorp - Portland Central', order_date: day(-4), collection_date: day(-3), status: 'resulted', priority: 'routine', diagnosis_codes: 'E11.9', tests: [{ code: '83036', name: 'Hemoglobin A1c' }, { code: '80061', name: 'Lipid panel' }], result_date: day(-1), results: [{ name: 'Hemoglobin A1c', value: '8.2', unit: '%', reference_range: '4.0-5.6', flag: 'abnormal' }, { name: 'Total cholesterol', value: '186', unit: 'mg/dL', reference_range: '<200', flag: 'normal' }] },
+  { id: 7302, order_number: 'LAB-2026-0451', patient_id: 104, provider_id: 2, laboratory_id: 6102, laboratory_name: 'Quest Diagnostics - Beaverton', order_date: day(-1), status: 'transmitted', priority: 'routine', diagnosis_codes: 'I10', tests: [{ code: '80053', name: 'Comprehensive metabolic panel' }] },
+];
+
 const formTemplates = [
   { id: 401, name: 'Telehealth consent', category_slug: 'consent', status: 'published', version: 3, updated_at: at(-30, 12) },
   { id: 402, name: 'Pre-visit health questionnaire', category_slug: 'clinical', status: 'published', version: 5, updated_at: at(-14, 9) },
@@ -291,4 +348,6 @@ module.exports = {
   tasks, notifications,
   telehealthProviders, telehealthSessions, MEET_LINKS,
   offerings, medicalCodes, formTemplates, dashboardStats,
+  preapprovals, denials, paymentPostings, quotes, invoices,
+  pharmacies, laboratories, labOrders,
 };

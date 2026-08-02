@@ -38,7 +38,13 @@ const BRAND = {
 
 const BASE_URL = process.env.DEMO_BASE_URL || 'http://localhost:3000';
 const API_BASE = process.env.DEMO_API_URL || 'http://localhost:3001/api';
-const OUT_DIR = process.env.OUT_DIR || path.join(__dirname, '..', 'video-library', 'wave1');
+/**
+ * Where a recording lands. Each wave gets its own directory, taken from the
+ * spec's `wave` field so a script cannot be filed under the wrong one; OUT_DIR
+ * overrides for one-off runs.
+ */
+const outDirFor = (spec) => process.env.OUT_DIR
+  || path.join(__dirname, '..', 'video-library', `wave${spec.wave || 1}`);
 const VIEWPORT = { width: 1920, height: 1080 };
 const FPS = 30;
 
@@ -79,8 +85,14 @@ function createStore() {
     'telehealth-settings': clone(F.telehealthProviders),
     offerings: clone(F.offerings),
     'form-templates': clone(F.formTemplates),
-    preapprovals: [],
-    denials: [],
+    preapprovals: clone(F.preapprovals),
+    denials: clone(F.denials),
+    'payment-postings': clone(F.paymentPostings),
+    quotes: clone(F.quotes),
+    invoices: clone(F.invoices),
+    pharmacies: clone(F.pharmacies),
+    laboratories: clone(F.laboratories),
+    'lab-orders': clone(F.labOrders),
     waitlist: [],
     campaigns: [],
     _nextId: 90000,
@@ -104,6 +116,10 @@ function filterByQuery(rows, url) {
 async function handleApi(route, store) {
   const request = route.request();
   const url = new URL(request.url());
+  // DEBUG_API=1 prints every call the app makes. Worth reaching for when a
+  // screen renders empty: it distinguishes "the mock returned nothing" from
+  // "the app never asked", which are very different bugs.
+  if (process.env.DEBUG_API) console.log('[api]', request.method(), url.pathname + url.search);
   const method = request.method();
   const p = url.pathname.replace(/^.*\/api/, '') || '/';
   const body = (() => {
@@ -226,6 +242,26 @@ async function handleApi(route, store) {
     return json({ success: true, claim, message: 'Claim accepted by clearinghouse' });
   }
 
+  // ── patient billing lives under /billing/* rather than at the top level ──
+  const billing = p.match(/^\/billing\/(quotes|invoices|coupons|payments)(\/.*)?$/);
+  if (billing) {
+    const map = { quotes: 'quotes', invoices: 'invoices', coupons: null, payments: 'payments' };
+    const key = map[billing[1]];
+    const rows = key ? store[key] : [];
+    if (method === 'GET' && !billing[2]) return json(filterByQuery(rows, url));
+    if (method === 'POST' && key) {
+      const numberField = billing[1] === 'quotes' ? 'quote_number' : 'invoice_number';
+      const prefix = billing[1] === 'quotes' ? 'QT' : 'INV';
+      const created = {
+        id: store._nextId++, created_at: new Date().toISOString(), ...body,
+        [numberField]: body[numberField] || `${prefix}-2026-0${store._nextId % 1000}`,
+        status: body.status || 'draft',
+      };
+      rows.unshift(created);
+      return json(created);
+    }
+  }
+
   // ── generic REST over the store ───────────────────────────────────────
   const segments = p.split('/').filter(Boolean);
   const resource = segments[0];
@@ -243,6 +279,21 @@ async function handleApi(route, store) {
         if (resource === 'claims') {
           created.claim_number = created.claim_number || `CLM-2026-0${store._nextId % 1000}`;
           created.status = created.status || 'draft';
+        }
+        // Wave 2 resources are identified on screen by their number, so a record
+        // created during a recording has to get one or the video shows a blank.
+        const NUMBERED = {
+          preapprovals: ['preapproval_number', 'PA', 'pending'],
+          denials: ['denial_number', 'DN', 'open'],
+          'payment-postings': ['posting_number', 'PP', 'posted'],
+          quotes: ['quote_number', 'QT', 'draft'],
+          invoices: ['invoice_number', 'INV', 'draft'],
+          'lab-orders': ['order_number', 'LAB', 'ordered'],
+        };
+        if (NUMBERED[resource]) {
+          const [field, prefix, fallbackStatus] = NUMBERED[resource];
+          created[field] = created[field] || `${prefix}-2026-0${store._nextId % 1000}`;
+          created.status = created.status || fallbackStatus;
         }
         rows.unshift(created);
         return json(created);
@@ -875,6 +926,7 @@ ${spec.tags.join(', ')}
  */
 async function record(spec) {
   const { chromium } = loadPlaywright();
+  const OUT_DIR = outDirFor(spec);
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
   const browser = await chromium.launch({
@@ -1031,4 +1083,4 @@ async function record(spec) {
   if (failure) throw failure;
 }
 
-module.exports = { record, sleep, Director, OUT_DIR, BASE_URL, API_BASE, ts };
+module.exports = { record, sleep, Director, outDirFor, BASE_URL, API_BASE, ts };
