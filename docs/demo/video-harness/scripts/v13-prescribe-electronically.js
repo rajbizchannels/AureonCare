@@ -1,6 +1,6 @@
 /**
  * V13 — Prescribe and send electronically.
- * The safety checks are the point; don't click past them.
+ * Prescribe against the diagnosis, check the chart, send to the pharmacy.
  */
 
 module.exports = {
@@ -11,23 +11,23 @@ module.exports = {
   thumbHeadline: 'Prescribe safely',
   moduleLabel: 'Patients ▸ Diagnoses ▸ e-Prescribe',
   audience: 'Clinician',
-  intro: 'Write a prescription, respect the safety checks, send it to the pharmacy.',
-  journey: 'Diagnosis → add a prescription → drug, dose, frequency, refills → allergy and interaction check → pharmacy → send',
+  intro: 'Write a prescription, check the chart, send it to the pharmacy.',
+  journey: 'Diagnosis → add a prescription → drug, dose, frequency, refills → check allergies and current meds → pharmacy → send',
   youtubeTitle: 'AureonCare: Prescribe and Send Electronically (e-Prescribing)',
   description:
     'Electronic prescribing in AureonCare. Covers writing a prescription against the '
     + 'diagnosis that justifies it, the dose, frequency, quantity and refill fields and what '
-    + 'each one controls, the allergy and interaction checks that fire before you can send, '
+    + 'each one controls, checking the chart for allergies and current medications before you send, '
     + 'choosing the patient’s pharmacy, and where the prescription shows up afterwards.\n\n'
     + 'Part of the AureonCare Getting Started series.',
   tags: [
     'AureonCare', 'e-prescribing', 'eprescribe', 'electronic prescription',
-    'drug interaction check', 'medication safety', 'clinician training',
+    'medication safety', 'prescription workflow', 'clinician training',
     'electronic health records', 'practice management software', 'pharmacy integration',
   ],
   recap: [
     'Prescribe from the diagnosis, so the medication has a documented reason',
-    'Allergy and interaction warnings are the feature — read them, do not dismiss them',
+    'Check the chart&rsquo;s allergy list and current medications before sending',
     'Pick the patient&rsquo;s pharmacy and send; it lands in their portal too',
   ],
 
@@ -42,7 +42,9 @@ module.exports = {
     await d.click(page.getByRole('button', { name: 'New Diagnosis' }), { pause: 2400 });
 
     const form = page.locator('form').last();
-    const patient = form.locator('select').filter({ hasText: /Sarah Williams/ }).first();
+    // The page also has an "All Patients" filter listing the same names, so
+    // match the form's own control by its placeholder option instead.
+    const patient = page.locator('select').filter({ hasText: 'Select a patient' }).first();
     if (await d.exists(patient, 6000)) {
       const options = await patient.locator('option').allTextContents();
       const sarah = options.find((o) => /Sarah/i.test(o));
@@ -100,15 +102,15 @@ module.exports = {
       4200
     );
 
-    d.chapter('The safety checks');
-    await d.step('Step 4 — Read the warnings');
+    d.chapter('Check the chart first');
+    await d.step('Step 4 — Check before you send');
     await d.say(
-      'Before this can be sent, AureonCare checks the drug against the patient&rsquo;s <b>allergies</b> and their <b>current medications</b>.',
-      4800
+      'Prescribing here does not absolve you of the check. Sarah has a documented <b>penicillin allergy</b> and is already on <b>Lisinopril</b>.',
+      5000
     );
     await d.say(
-      'These warnings are the whole point of prescribing inside the record instead of on a pad. Read them — do not click past them.',
-      5000
+      'Both are on her chart, one tab away. Read the allergy list and the current medications before you send — that is the habit this screen is for.',
+      5400
     );
 
     const instructions = page.locator('input[placeholder*="Take with food"], textarea[placeholder*="Take with food"]').first();

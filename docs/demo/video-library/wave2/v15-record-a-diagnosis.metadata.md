@@ -12,11 +12,11 @@ Part of the AureonCare Getting Started series.
 
 Chapters:
 0:00 Introduction
-0:13 The diagnoses list
-0:33 Adding one
+0:11 The diagnoses list
+0:29 Adding one
 0:44 Coding it
-1:05 Status and severity
-1:59 Recap
+1:03 Status and severity
+1:53 Recap
 
 Subtitles: upload v15-record-a-diagnosis.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -40,7 +40,7 @@ AureonCare, ICD-10 coding, medical diagnosis, clinical documentation, EHR charti
 | Thumbnail | v15-record-a-diagnosis.thumbnail.png |
 | Subtitles | v15-record-a-diagnosis.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:13 |
+| Duration | 2:07 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

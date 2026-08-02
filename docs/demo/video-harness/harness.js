@@ -194,6 +194,13 @@ async function handleApi(route, store) {
     return json(pool.filter((c) =>
       c.code.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)));
   }
+  // ── prescribing: the catalogue and the safety checks ──────────────────
+  if (p === '/medications/search') {
+    const q = (url.searchParams.get('query') || '').toLowerCase();
+    if (q.length < 2) return json([]);
+    return json(F.medications.filter((m) =>
+      `${m.name} ${m.generic_name} ${m.brand_name} ${m.ndc_code}`.toLowerCase().includes(q)));
+  }
   if (p === '/diagnosis/patient' || /^\/diagnosis\/patient\/\d+$/.test(p)) {
     const id = p.split('/').pop();
     return json(store.diagnosis.filter((d) => String(d.patient_id) === id));
