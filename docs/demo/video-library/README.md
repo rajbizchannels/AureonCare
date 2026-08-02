@@ -31,6 +31,19 @@ Each video ships with five files:
 - `.metadata.md` — title, description, tags, upload checklist
 - `.thumbnail.png` — 1280×720 custom thumbnail
 
+### The `.mp4` and `.thumbnail.png` files are not in this repository
+
+They are build output, roughly 110 MB per render, and carrying them in git meant
+a fresh copy of all eight on every re-render. They are distributed as downloads
+instead. The text alongside them — `.srt`, `.chapters.txt`, `.metadata.md` and
+`YOUTUBE_UPLOAD_COPY.md` — is tracked, because it diffs cleanly and is what you
+actually review.
+
+To produce the videos and thumbnails locally, run the recorder (see
+[Re-recording](#re-recording) below). Everything needed to regenerate them
+byte-for-consistently — scripts, harness, fixtures, brand assets — is in the
+repo; `.gitignore` keeps the output itself untracked.
+
 ## Uploading
 
 Paste-ready copy for all eight — title, description, tags and chapters, split by
