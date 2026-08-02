@@ -434,6 +434,11 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
           patients={patients}
           providers={providers}
           user={user}
+          // "New Diagnosis" from the module header opens the form with no
+          // patient attached. Without the dropdown there was no way to choose
+          // one, so the form could never be saved — and the prescribe action,
+          // which is guarded on patientId, silently refused to open.
+          allowPatientSelection={!selectedPatient}
           editDiagnosis={editingDiagnosis}
           onClose={() => {
             setShowDiagnosisForm(false);

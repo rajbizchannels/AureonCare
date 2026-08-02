@@ -319,9 +319,15 @@ const laboratories = [
  * Lab orders. 7301 has already come back resulting with an abnormal A1c, which
  * is what V14 reviews and files — the loop closes in the chart, not in email.
  */
+/**
+ * `test_codes` and `diagnosis_codes` must be arrays (or JSON-encoded strings).
+ * The chart does `JSON.parse` on them whenever they arrive as a string, so a
+ * bare 'E11.9' throws inside render and takes the whole view down through the
+ * error boundary — worth knowing before hand-editing these.
+ */
 const labOrders = [
-  { id: 7301, order_number: 'LAB-2026-0442', patient_id: 101, provider_id: 2, laboratory_id: 6101, laboratory_name: 'Labcorp - Portland Central', order_date: day(-4), collection_date: day(-3), status: 'resulted', priority: 'routine', diagnosis_codes: 'E11.9', tests: [{ code: '83036', name: 'Hemoglobin A1c' }, { code: '80061', name: 'Lipid panel' }], result_date: day(-1), results: [{ name: 'Hemoglobin A1c', value: '8.2', unit: '%', reference_range: '4.0-5.6', flag: 'abnormal' }, { name: 'Total cholesterol', value: '186', unit: 'mg/dL', reference_range: '<200', flag: 'normal' }] },
-  { id: 7302, order_number: 'LAB-2026-0451', patient_id: 104, provider_id: 2, laboratory_id: 6102, laboratory_name: 'Quest Diagnostics - Beaverton', order_date: day(-1), status: 'transmitted', priority: 'routine', diagnosis_codes: 'I10', tests: [{ code: '80053', name: 'Comprehensive metabolic panel' }] },
+  { id: 7301, order_number: 'LAB-2026-0442', patient_id: 101, provider_id: 2, laboratory_id: 6101, laboratory_name: 'Labcorp - Portland Central', order_date: day(-4), collection_date: day(-3), status: 'resulted', priority: 'routine', diagnosis_codes: ['E11.9'], test_codes: [{ code: '83036', name: 'Hemoglobin A1c' }, { code: '80061', name: 'Lipid panel' }], result_date: day(-1), results: [{ name: 'Hemoglobin A1c', value: '8.2', unit: '%', reference_range: '4.0-5.6', flag: 'abnormal' }, { name: 'Total cholesterol', value: '186', unit: 'mg/dL', reference_range: '<200', flag: 'normal' }] },
+  { id: 7302, order_number: 'LAB-2026-0451', patient_id: 104, provider_id: 2, laboratory_id: 6102, laboratory_name: 'Quest Diagnostics - Beaverton', order_date: day(-1), status: 'transmitted', priority: 'routine', diagnosis_codes: ['I10'], test_codes: [{ code: '80053', name: 'Comprehensive metabolic panel' }] },
 ];
 
 const formTemplates = [

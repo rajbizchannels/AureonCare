@@ -1,0 +1,35 @@
+1
+00:00:04,663 --> 00:00:14,373
+Prescribe and send electronically — Patients ▸ Diagnoses ▸ e-Prescribe — Write a prescription, respect the safety checks, send it to the pharmacy.
+
+2
+00:00:19,600 --> 00:00:39,176
+Prescribing starts from the diagnosis, not from a blank drug field — the medication should always have a documented reason.
+
+3
+00:00:39,176 --> 00:01:10,098
+Diagnosis coded. Now the treatment that follows from it.
+
+4
+00:01:10,098 --> 00:01:16,463
+Quantity and refills together decide how long the patient goes before they need you again.
+
+5
+00:01:16,463 --> 00:01:23,823
+Before this can be sent, AureonCare checks the drug against the patient’s allergies and their current medications.
+
+6
+00:01:23,823 --> 00:01:42,231
+These warnings are the whole point of prescribing inside the record instead of on a pad. Read them — do not click past them.
+
+7
+00:01:42,231 --> 00:01:50,311
+Sent electronically. It is on the chart, in the patient’s portal, and at the pharmacy before they have left the building.
+
+8
+00:01:51,917 --> 00:02:07,427
+What you just did
+
+9
+00:02:08,040 --> 00:02:17,040
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

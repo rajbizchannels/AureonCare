@@ -49,12 +49,14 @@ module.exports = {
     await d.click(page.getByRole('button', { name: 'New Diagnosis' }), { pause: 2400 });
 
     const form = page.locator('form').last();
-    const patient = form.locator('select').first();
-    if (await d.exists(patient)) {
+    // Pick the dropdown that actually lists patients rather than trusting
+    // position — the form also carries severity and status selects.
+    const patient = form.locator('select').filter({ hasText: /Sarah Williams/ }).first();
+    if (await d.exists(patient, 6000)) {
       const options = await patient.locator('option').allTextContents();
-      if (options.some((o) => /Sarah/i.test(o))) {
-        await d.select(patient, { label: options.find((o) => /Sarah/i.test(o)) });
-      }
+      const sarah = options.find((o) => /Sarah/i.test(o));
+      if (sarah) await d.select(patient, { label: sarah });
+      await d.say('Choose the patient this diagnosis belongs to.', 2800);
     }
 
     const name = form.locator('input[placeholder*="Essential Hypertension"]').first();
@@ -78,14 +80,13 @@ module.exports = {
 
     d.chapter('Status and severity');
     await d.step('Step 4 — Describe it properly');
-    const selects = form.locator('select');
-    const severity = selects.nth(await d.exists(patient) ? 1 : 0);
+    const severity = form.locator('select').filter({ hasText: 'Severe' }).first();
     if (await d.exists(severity)) {
       await d.select(severity, { label: 'Moderate' });
       await d.say('Severity is clinical judgement, and it travels with the diagnosis.', 3400);
     }
 
-    const status = selects.last();
+    const status = form.locator('select').filter({ hasText: 'Chronic' }).last();
     if (await d.exists(status)) {
       await d.select(status, { label: 'Chronic' });
       await d.say(

@@ -42,8 +42,8 @@ module.exports = {
     await d.click(page.getByRole('button', { name: 'New Diagnosis' }), { pause: 2400 });
 
     const form = page.locator('form').last();
-    const patient = form.locator('select').first();
-    if (await d.exists(patient)) {
+    const patient = form.locator('select').filter({ hasText: /Sarah Williams/ }).first();
+    if (await d.exists(patient, 6000)) {
       const options = await patient.locator('option').allTextContents();
       const sarah = options.find((o) => /Sarah/i.test(o));
       if (sarah) await d.select(patient, { label: sarah });
@@ -61,10 +61,16 @@ module.exports = {
     d.chapter('Writing the prescription');
     await d.step('Step 2 — Add a prescription');
     await d.scrollBy(300);
-    await d.maybeClick(page.getByTitle('Add a new prescription').first(), { pause: 2600 });
+    await d.click(page.getByTitle('Add a new prescription').first(), { pause: 2600 });
 
     const drug = page.locator('input[placeholder*="medication name"]').first();
-    if (await d.exists(drug, 6000)) {
+    // Hard failure rather than a silent skip: this video narrates the allergy
+    // and interaction checks, so a run where the modal never opened would be
+    // describing a screen the viewer cannot see.
+    if (!(await d.exists(drug, 8000))) {
+      throw new Error('e-Prescribe modal did not open — the prescribing steps would be narrated over the wrong screen');
+    }
+    {
       await d.type(drug, 'Metformin', { delay: 120 });
       await page.waitForTimeout(1400);
       await d.say(
