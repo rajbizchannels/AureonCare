@@ -1,0 +1,5 @@
+0:00 Introduction
+0:16 Appointment types
+0:43 Creating a type
+1:17 Provider schedules
+2:26 Recap

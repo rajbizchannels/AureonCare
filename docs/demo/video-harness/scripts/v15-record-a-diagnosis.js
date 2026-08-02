@@ -51,7 +51,9 @@ module.exports = {
     const form = page.locator('form').last();
     // Pick the dropdown that actually lists patients rather than trusting
     // position — the form also carries severity and status selects.
-    const patient = form.locator('select').filter({ hasText: /Sarah Williams/ }).first();
+    // The page also has an "All Patients" filter listing the same names, so
+    // match the form's own control by its placeholder option instead.
+    const patient = page.locator('select').filter({ hasText: 'Select a patient' }).first();
     if (await d.exists(patient, 6000)) {
       const options = await patient.locator('option').allTextContents();
       const sarah = options.find((o) => /Sarah/i.test(o));

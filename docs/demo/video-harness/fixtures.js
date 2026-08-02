@@ -304,6 +304,19 @@ const invoices = [
 
 /* ── Wave 2: clinical network ─────────────────────────────────────────────── */
 
+/**
+ * Prescribable medications. Sarah is already on Lisinopril and allergic to
+ * penicillin, so Metformin searches cleanly while Amoxicillin trips the allergy
+ * check — V13 needs both to be true on screen, not just narrated.
+ */
+const medications = [
+  { id: 6201, name: 'Metformin', generic_name: 'Metformin hydrochloride', brand_name: 'Glucophage', ndc_code: '00093-1048-01', strength: '500mg', dosage_form: 'Tablet', drug_class: 'Biguanide', is_generic: true, requires_prescription: true },
+  { id: 6202, name: 'Metformin ER', generic_name: 'Metformin hydrochloride ER', brand_name: 'Glucophage XR', ndc_code: '00093-7267-01', strength: '750mg', dosage_form: 'Extended-release tablet', drug_class: 'Biguanide', is_generic: true, requires_prescription: true },
+  { id: 6203, name: 'Lisinopril', generic_name: 'Lisinopril', brand_name: 'Zestril', ndc_code: '00093-1036-01', strength: '10mg', dosage_form: 'Tablet', drug_class: 'ACE inhibitor', is_generic: true, requires_prescription: true },
+  { id: 6204, name: 'Amoxicillin', generic_name: 'Amoxicillin', brand_name: 'Amoxil', ndc_code: '00093-4155-73', strength: '500mg', dosage_form: 'Capsule', drug_class: 'Penicillin antibiotic', is_generic: true, requires_prescription: true },
+  { id: 6205, name: 'Atorvastatin', generic_name: 'Atorvastatin calcium', brand_name: 'Lipitor', ndc_code: '00093-5056-01', strength: '20mg', dosage_form: 'Tablet', drug_class: 'Statin', is_generic: true, requires_prescription: true },
+];
+
 const pharmacies = [
   { id: 6001, name: 'Northside Pharmacy - Main St', ncpdp_id: '3812004', npi: '1902845761', address: '410 Main Street', city: 'Portland', state: 'OR', zip: '97205', phone: '555-0300', fax: '555-0301', is_active: true, accepts_eprescribe: true, is_24_hour: false },
   { id: 6002, name: 'Riverbend Community Pharmacy', ncpdp_id: '3812119', npi: '1902845888', address: '77 Rivergate Ave', city: 'Portland', state: 'OR', zip: '97203', phone: '555-0310', is_active: true, accepts_eprescribe: true, is_24_hour: true },
@@ -323,11 +336,12 @@ const laboratories = [
  * `test_codes` and `diagnosis_codes` must be arrays (or JSON-encoded strings).
  * The chart does `JSON.parse` on them whenever they arrive as a string, so a
  * bare 'E11.9' throws inside render and takes the whole view down through the
- * error boundary — worth knowing before hand-editing these.
+ * error boundary. Their items are also rendered directly as React children, so
+ * they must be plain code strings, not {code, name} objects.
  */
 const labOrders = [
-  { id: 7301, order_number: 'LAB-2026-0442', patient_id: 101, provider_id: 2, laboratory_id: 6101, laboratory_name: 'Labcorp - Portland Central', order_date: day(-4), collection_date: day(-3), status: 'resulted', priority: 'routine', diagnosis_codes: ['E11.9'], test_codes: [{ code: '83036', name: 'Hemoglobin A1c' }, { code: '80061', name: 'Lipid panel' }], result_date: day(-1), results: [{ name: 'Hemoglobin A1c', value: '8.2', unit: '%', reference_range: '4.0-5.6', flag: 'abnormal' }, { name: 'Total cholesterol', value: '186', unit: 'mg/dL', reference_range: '<200', flag: 'normal' }] },
-  { id: 7302, order_number: 'LAB-2026-0451', patient_id: 104, provider_id: 2, laboratory_id: 6102, laboratory_name: 'Quest Diagnostics - Beaverton', order_date: day(-1), status: 'transmitted', priority: 'routine', diagnosis_codes: ['I10'], test_codes: [{ code: '80053', name: 'Comprehensive metabolic panel' }] },
+  { id: 7301, order_number: 'LAB-2026-0442', patient_id: 101, provider_id: 2, laboratory_id: 6101, laboratory_name: 'Labcorp - Portland Central', order_date: day(-4), collection_date: day(-3), status: 'resulted', priority: 'routine', diagnosis_codes: ['E11.9'], test_codes: ['83036', '80061'], result_date: day(-1), results: [{ name: 'Hemoglobin A1c', value: '8.2', unit: '%', reference_range: '4.0-5.6', flag: 'abnormal' }, { name: 'Total cholesterol', value: '186', unit: 'mg/dL', reference_range: '<200', flag: 'normal' }] },
+  { id: 7302, order_number: 'LAB-2026-0451', patient_id: 104, provider_id: 2, laboratory_id: 6102, laboratory_name: 'Quest Diagnostics - Beaverton', order_date: day(-1), status: 'transmitted', priority: 'routine', diagnosis_codes: ['I10'], test_codes: ['80053'] },
 ];
 
 const formTemplates = [
@@ -355,5 +369,5 @@ module.exports = {
   telehealthProviders, telehealthSessions, MEET_LINKS,
   offerings, medicalCodes, formTemplates, dashboardStats,
   preapprovals, denials, paymentPostings, quotes, invoices,
-  pharmacies, laboratories, labOrders,
+  pharmacies, laboratories, labOrders, medications,
 };
