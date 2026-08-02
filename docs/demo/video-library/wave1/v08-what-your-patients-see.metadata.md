@@ -13,8 +13,9 @@ Part of the AureonCare Getting Started series.
 Chapters:
 0:00 Introduction
 0:11 The patient’s view
-0:25 Appointments
-0:59 Forms and booking
+0:24 Appointments
+0:58 Forms and booking
+1:27 Recap
 
 Subtitles: upload v08-what-your-patients-see.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (espeak/mb-us2).
@@ -38,7 +39,7 @@ AureonCare, patient portal, patient engagement, healthcare portal tutorial, pati
 | Thumbnail | v08-what-your-patients-see.thumbnail.png |
 | Subtitles | v08-what-your-patients-see.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:38 |
+| Duration | 1:39 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

@@ -1,4 +1,5 @@
 0:00 Introduction
-0:12 The calendar
-0:32 Booking the visit
-1:11 After the booking
+0:11 The calendar
+0:31 Booking the visit
+1:10 After the booking
+1:52 Recap
