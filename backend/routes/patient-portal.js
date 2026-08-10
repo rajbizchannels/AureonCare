@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
+const { validateSocialToken } = require('../utils/socialTokenValidator');
+const { authenticate } = require('../middleware/auth');
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -16,7 +18,6 @@ const loginIpLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    console.log(`[DEBUG login-throttle] IP limit hit: ip=${req.ip}`);
     res.status(429).json({ error: 'Too many login attempts from this device. Please try again later.' });
   },
 });
@@ -28,14 +29,13 @@ const loginIpLimiter = rateLimit({
 // would otherwise share a single 'unknown'-email bucket.
 const loginAccountLimiter = rateLimit({
   windowMs: LOGIN_WINDOW_MS,
-  max: 5,
+  max: 3,
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => (req.body?.email || 'unknown').toLowerCase(),
   skip: (req) => Boolean(req.body?.provider && req.body?.providerId),
   handler: (req, res) => {
-    console.log(`[DEBUG login-throttle] account lockout: email=${(req.body?.email || '').toLowerCase()}`);
     res.status(429).json({ error: 'Account temporarily locked due to too many failed attempts. Please try again in 15 minutes.' });
   },
 });
@@ -87,16 +87,33 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { email, password, provider, providerId, accessToken } = req.body;
-    console.log(`[DEBUG login-throttle] attempt: ip=${req.ip} email=${email || '(social)'} remaining=${res.getHeader('RateLimit-Remaining')}`);
 
     let patient;
 
     // Social login
     if (provider && providerId) {
-      // Check if social auth exists
+      // SEC-03: validate the access token server-side with the provider before
+      // trusting providerId. A providerId is a public identifier, not a secret;
+      // without this check anyone could forge a session by supplying a known id.
+      if (!accessToken) {
+        return res.status(400).json({ error: 'Provider access token is required' });
+      }
+      let verified;
+      try {
+        verified = await validateSocialToken(provider, accessToken);
+      } catch (validationErr) {
+        console.log(`[DEBUG sec03-social] portal social token validation failed: provider=${provider}`);
+        return res.status(401).json({ error: 'Social provider token validation failed. Please sign in again.' });
+      }
+      // Only trust the provider-verified canonical id, never the client-claimed providerId.
+      const canonicalProviderId = verified.providerId;
+      console.log(`[DEBUG sec03-social] portal social login verified: provider=${provider} canonicalId=${String(canonicalProviderId).slice(0, 8)}…`);
+
+      // Check if social auth exists — match the verified id (fall back to the
+      // client id for legacy rows created before token validation existed).
       const socialAuth = await pool.query(
-        'SELECT user_id FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
-        [provider, providerId]
+        'SELECT user_id FROM social_auth WHERE provider = $1 AND (provider_user_id = $2 OR provider_user_id = $3)',
+        [provider, canonicalProviderId, providerId]
       );
 
       if (socialAuth.rows.length > 0) {
@@ -170,10 +187,19 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
 });
 
 // Register/Enable patient portal
-router.post('/register', async (req, res) => {
+// SEC-02: requires a valid staff JWT. Previously unauthenticated, which let
+// anyone enable the portal and set a password for ANY patientId (account takeover).
+router.post('/register', authenticate, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { patientId, email, password } = req.body;
+
+    // Staff may enable any patient's portal; a patient may only enable their own.
+    if (req.user.role === 'patient' && String(req.user.id) !== String(patientId)) {
+      console.log(`[DEBUG sec02-register] blocked: patient ${req.user.id} tried to register portal for ${patientId}`);
+      return res.status(403).json({ error: 'You may only enable the portal for your own account' });
+    }
+    console.log(`[DEBUG sec02-register] caller=${req.user.id} role=${req.user.role} target=${patientId}`);
 
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);

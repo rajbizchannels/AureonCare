@@ -54,9 +54,10 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
     setResetSuccess('');
 
     try {
-      const response = await api.forgotPassword(email);
+      await api.forgotPassword(email);
       setResetSuccess('Password reset instructions sent! Check your email.');
-      setResetToken(response.resetToken); // In production, this would come from email
+      // SEC-04: the reset token is delivered only via email, never in the API
+      // response. The user pastes the token they received into the step-2 field.
       setStep(2);
     } catch (error) {
       setResetError(error.message || 'Failed to send reset email');
