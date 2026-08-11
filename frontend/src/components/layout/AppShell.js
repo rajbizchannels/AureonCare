@@ -119,10 +119,14 @@ const AppShell = ({
         {/* Panes 1 + 2 — persistent from lg up */}
         <div className="hidden lg:flex flex-shrink-0">{renderPanes({ compact: false })}</div>
 
-        {/* Panes 1 + 2 — drawer on small screens */}
+        {/* Panes 1 + 2 — drawer on small screens. The panes are translucent by
+            design where they sit over the app background; floating above the
+            content they need something solid behind them. */}
         {mobileNavOpen && (
           <div className="lg:hidden fixed inset-0 z-40 flex">
-            <div className="flex h-full shadow-2xl">{renderPanes({ compact: true })}</div>
+            <div className={`flex h-full shadow-2xl ${dark ? 'bg-slate-900' : 'bg-white'}`}>
+              {renderPanes({ compact: true })}
+            </div>
             <button
               className="flex-1 bg-black/50"
               aria-label="Close navigation"
