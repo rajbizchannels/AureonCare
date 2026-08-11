@@ -296,6 +296,32 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
         </div>
       </div>
 
+      {/* Diagnosis form — sits above the list so opening it pushes the
+          diagnoses down rather than hiding below them. */}
+      {showDiagnosisForm && (
+        <div className="mb-6">
+          <DiagnosisForm
+            theme={theme}
+            api={api}
+            patient={selectedPatient}
+            patients={patients}
+            providers={providers}
+            user={user}
+            editDiagnosis={editingDiagnosis}
+            // Reached from the module rather than from a patient's chart, so
+            // the form has to ask who this diagnosis is for.
+            allowPatientSelection={!selectedPatient}
+            onClose={() => {
+              setShowDiagnosisForm(false);
+              setSelectedPatient(null);
+              setEditingDiagnosis(null);
+            }}
+            onSuccess={handleFormSuccess}
+            addNotification={addNotification}
+          />
+        </div>
+      )}
+
       {/* Diagnoses List */}
       {filteredDiagnoses.length === 0 ? (
         <div className={`text-center py-12 rounded-lg border ${
@@ -423,26 +449,6 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Diagnosis Form Modal */}
-      {showDiagnosisForm && (
-        <DiagnosisForm
-          theme={theme}
-          api={api}
-          patient={selectedPatient}
-          patients={patients}
-          providers={providers}
-          user={user}
-          editDiagnosis={editingDiagnosis}
-          onClose={() => {
-            setShowDiagnosisForm(false);
-            setSelectedPatient(null);
-            setEditingDiagnosis(null);
-          }}
-          onSuccess={handleFormSuccess}
-          addNotification={addNotification}
-        />
       )}
 
       {/* Delete Confirmation Modal */}
