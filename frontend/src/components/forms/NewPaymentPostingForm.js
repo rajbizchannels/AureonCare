@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, X, Save, FileText } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, onClose, onSuccess, addNotification }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -223,15 +224,11 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
               Patient <span className="text-red-500">*</span>
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={formData.patientId}
               onChange={(e) => setFormData({ ...formData, patientId: e.target.value, claimId: '' })}
               required
-              className={`w-full px-4 py-3 rounded-lg border ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white focus:border-emerald-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500'
-              } focus:outline-none focus:ring-2 focus:ring-emerald-500/20`}
             >
               <option value="">Select patient...</option>
               {patients.map((patient) => (
@@ -239,23 +236,19 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
                   {patient.first_name} {patient.last_name} - {patient.date_of_birth}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           <div>
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
               Claim <span className="text-red-500">*</span>
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={formData.claimId}
               onChange={(e) => setFormData({ ...formData, claimId: e.target.value })}
               required
               disabled={!formData.patientId}
-              className={`w-full px-4 py-3 rounded-lg border ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white focus:border-emerald-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500'
-              } focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-50`}
             >
               <option value="">Select claim...</option>
               {filteredClaims.map((claim) => (
@@ -263,7 +256,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
                   {claim.claim_number} - ${claim.amount} - {claim.status}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
         </div>
 
@@ -272,14 +265,10 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
           <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
             Insurance Payer
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
             value={formData.insurance_payer_id}
             onChange={(e) => setFormData({ ...formData, insurance_payer_id: e.target.value })}
-            className={`w-full px-4 py-3 rounded-lg border ${
-              isDark
-                ? 'bg-gray-700 border-gray-600 text-white focus:border-emerald-500'
-                : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500'
-            } focus:outline-none focus:ring-2 focus:ring-emerald-500/20`}
           >
             <option value="">Select insurance payer...</option>
             {insurancePayers.map((payer) => (
@@ -287,7 +276,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
                 {payer.name} ({payer.payer_id})
               </option>
             ))}
-          </select>
+          </ThemedSelect>
         </div>
 
         {/* Payment Details */}
@@ -348,21 +337,17 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
           <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
             Payment Method
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
             value={formData.payment_method}
             onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-            className={`w-full px-4 py-3 rounded-lg border ${
-              isDark
-                ? 'bg-gray-700 border-gray-600 text-white focus:border-emerald-500'
-                : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500'
-            } focus:outline-none focus:ring-2 focus:ring-emerald-500/20`}
           >
             {paymentMethods.map((method) => (
               <option key={method.id} value={method.id}>
                 {method.name}
               </option>
             ))}
-          </select>
+          </ThemedSelect>
         </div>
 
         {/* Amount Details */}
@@ -522,7 +507,8 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
               Adjustment Code
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={formData.adjustment_code}
               onChange={(e) => {
                 const selected = adjustmentReasons.find(r => r.code === e.target.value);
@@ -532,11 +518,6 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
                   adjustment_reason: selected ? selected.description : ''
                 });
               }}
-              className={`w-full px-4 py-3 rounded-lg border ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white focus:border-emerald-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500'
-              } focus:outline-none focus:ring-2 focus:ring-emerald-500/20`}
             >
               <option value="">Select code...</option>
               {adjustmentReasons.map((reason) => (
@@ -544,7 +525,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
                   {reason.code} - {reason.description}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           <div>
