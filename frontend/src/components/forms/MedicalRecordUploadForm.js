@@ -3,6 +3,7 @@ import { Upload, X, FileText, Image, File, Calendar } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { apiFetch } from '../../api/apiService';
+import ThemedSelect from './ThemedSelect';
 
 const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'light', providers = [] }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -315,19 +316,17 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
           <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
             Classification
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
             value={formData.classification}
             onChange={(e) => setFormData({ ...formData, classification: e.target.value })}
-            className={`w-full px-4 py-2 border rounded-lg ${
-              theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-            }`}
           >
             {classifications.map((classification) => (
               <option key={classification} value={classification}>
                 {classification}
               </option>
             ))}
-          </select>
+          </ThemedSelect>
         </div>
 
         {/* Provider Selection */}
@@ -336,12 +335,10 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
             <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
               Provider (Optional)
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={formData.providerId}
               onChange={(e) => setFormData({ ...formData, providerId: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg ${
-                theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-              }`}
             >
               <option value="">Select a provider</option>
               {providers.map((provider) => (
@@ -349,7 +346,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
                   Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name}{provider.specialty || provider.specialization ? ` - ${provider.specialty || provider.specialization}` : ''}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
         )}
 

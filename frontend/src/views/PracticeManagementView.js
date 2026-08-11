@@ -6,6 +6,7 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import ViewEditModal from '../components/modals/ViewEditModal';
 import { useAudit } from '../hooks/useAudit';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 const PracticeManagementView = ({
   theme,
@@ -547,21 +548,17 @@ const PracticeManagementView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.status || 'Status'}
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                } focus:outline-none focus:ring-2 focus:ring-cyan-500`}
               >
                 <option value="all">{t.allStatuses || 'All Statuses'}</option>
                 <option value="confirmed">{t.confirmed || 'Confirmed'}</option>
                 <option value="pending">{t.pending || 'Pending'}</option>
                 <option value="cancelled">{t.cancelled || 'Cancelled'}</option>
                 <option value="completed">{t.completed || 'Completed'}</option>
-              </select>
+              </ThemedSelect>
             </div>
 
             {/* Appointment Type Filter */}
@@ -569,20 +566,16 @@ const PracticeManagementView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.type || 'Type'}
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                } focus:outline-none focus:ring-2 focus:ring-cyan-500`}
               >
                 <option value="all">{t.allTypes || 'All Types'}</option>
                 {appointmentTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
-              </select>
+              </ThemedSelect>
             </div>
           </div>
 
@@ -1038,14 +1031,10 @@ const PracticeManagementView = ({
             <label className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
               Status:
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={waitlistStatusFilter}
               onChange={(e) => setWaitlistStatusFilter(e.target.value)}
-              className={`px-3 py-2 rounded-lg border outline-none transition-colors ${
-                theme === 'dark'
-                  ? 'bg-slate-700 border-slate-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-900'
-              }`}
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -1053,7 +1042,7 @@ const PracticeManagementView = ({
               <option value="scheduled">Scheduled</option>
               <option value="cancelled">Cancelled</option>
               <option value="expired">Expired</option>
-            </select>
+            </ThemedSelect>
           </div>
 
           {/* Waitlist Entries */}

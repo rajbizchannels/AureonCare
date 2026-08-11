@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tag, Percent, X } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewCouponForm = ({ theme, api, onClose, onSuccess, addNotification, t, editingCoupon = null }) => {
   const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
@@ -276,14 +277,14 @@ const NewCouponForm = ({ theme, api, onClose, onSuccess, addNotification, t, edi
                 <Percent className="w-4 h-4 inline mr-1" />
                 {t.discountType || 'Discount Type'} <span className="text-red-400">*</span>
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={formData.discountType}
                 onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
-                className={inputClassName}
               >
                 <option value="percentage">{t.percentage || 'Percentage (%)'}</option>
                 <option value="fixed">{t.fixedAmount || 'Fixed Amount ($)'}</option>
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, Plus, Trash2, Save, X } from 'lucide-react';
 
 import { apiFetch } from '../../api/apiService';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 
 
 const DAYS_OF_WEEK = [
@@ -176,7 +177,9 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                                                 <div key={index} className="flex items-center gap-3">
                                                     {editMode ? (
                                                         <>
-                                                            <select
+                                                            <ThemedSelect
+                                                              theme={theme}
+                                                              className="text-sm"
                                                                 value={schedule.dayOfWeek || schedule.day_of_week}
                                                                 onChange={(e) => {
                                                                     const globalIndex = editedSchedules.findIndex(
@@ -185,18 +188,13 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                                                                     );
                                                                     updateSchedule(globalIndex, 'dayOfWeek', Number(e.target.value));
                                                                 }}
-                                                                className={`border rounded px-2 py-2 text-sm ${
-                                                                    theme === 'dark'
-                                                                        ? 'bg-slate-700 border-slate-600 text-white'
-                                                                        : 'bg-white border-gray-300 text-gray-900'
-                                                                }`}
                                                             >
                                                                 {DAYS_OF_WEEK.map(d => (
                                                                     <option key={d.value} value={d.value}>
                                                                         {d.label.substring(0, 3)}
                                                                     </option>
                                                                 ))}
-                                                            </select>
+                                                            </ThemedSelect>
                                                             <Clock className={`w-5 h-5 ${
                                                                 theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
                                                             }`} />
@@ -289,21 +287,17 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                     <div>
                         {editMode && (
                             <div className="flex items-center gap-3">
-                                <select
+                                <ThemedSelect
+                                  theme={theme}
                                     value={selectedDayForAdd}
                                     onChange={(e) => setSelectedDayForAdd(Number(e.target.value))}
-                                    className={`border rounded px-3 py-2 ${
-                                        theme === 'dark'
-                                            ? 'bg-slate-700 border-slate-600 text-white'
-                                            : 'bg-white border-gray-300 text-gray-900'
-                                    }`}
                                 >
                                     {DAYS_OF_WEEK.map(day => (
                                         <option key={day.value} value={day.value}>
                                             {day.label}
                                         </option>
                                     ))}
-                                </select>
+                                </ThemedSelect>
                                 <button
                                     onClick={addNewSchedule}
                                     className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${

@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from '../utils/formatters';
 import { useAudit } from '../hooks/useAudit';
 import { useApp } from '../context/AppContext';
 import { useShellTab } from '../hooks/useShellTab';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
 
@@ -108,9 +109,9 @@ const Input = ({ className = '', ...props }) => (
 );
 
 const Select = ({ className = '', children, ...props }) => (
-  <select className={`w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 ${className}`} {...props}>
+  <ThemedSelect className={`text-sm ${className}`} {...props}>
     {children}
-  </select>
+  </ThemedSelect>
 );
 
 const Textarea = ({ className = '', ...props }) => (

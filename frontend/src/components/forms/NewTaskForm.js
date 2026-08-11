@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckSquare, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -178,16 +179,16 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   {t.priority || 'Priority'}
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={formData.priority}
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                 >
                   <option value="Low">{t.low || 'Low'}</option>
                   <option value="Medium">{t.medium || 'Medium'}</option>
                   <option value="High">{t.high || 'High'}</option>
                   <option value="Urgent">{t.urgent || 'Urgent'}</option>
-                </select>
+                </ThemedSelect>
               </div>
 
               {/* Status */}
@@ -195,16 +196,16 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   {t.status || 'Status'}
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                 >
                   <option value="Pending">{t.pending || 'Pending'}</option>
                   <option value="In Progress">{t.inProgress || 'In Progress'}</option>
                   <option value="Completed">{t.completed || 'Completed'}</option>
                   <option value="On Hold">{t.onHold || 'On Hold'}</option>
-                </select>
+                </ThemedSelect>
               </div>
             </div>
 

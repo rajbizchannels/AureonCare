@@ -15,6 +15,7 @@ import PatientHealthMetricsForm from '../components/forms/PatientHealthMetricsFo
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
 import { useAudit } from '../hooks/useAudit';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 // Helper function to convert string to Title Case
 const toTitleCase = (str) => {
@@ -1001,21 +1002,17 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
               <label className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Filter by Status:
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={labOrderStatusFilter}
                 onChange={(e) => setLabOrderStatusFilter(e.target.value)}
-                className={`px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${
-                  theme === 'dark'
-                    ? 'bg-slate-800 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
                 <option value="sent_to_lab">Sent to Lab</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
-              </select>
+              </ThemedSelect>
             </div>
             <button
               onClick={() => {

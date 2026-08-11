@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileCheck, X, Save, Search, Plus, Trash2, Printer, AlertCircle, Shield } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -441,14 +442,10 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
           <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
             Patient *
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
             value={formData.patientId}
             onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-            className={`w-full px-4 py-2 rounded-lg border ${
-              theme === 'dark'
-                ? 'bg-slate-700 border-slate-600 text-white'
-                : 'bg-white border-gray-300 text-gray-900'
-            } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
             required
           >
             <option value="">Select a patient</option>
@@ -457,7 +454,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
                 {patient.first_name} {patient.last_name} - MRN: {patient.medical_record_number}
               </option>
             ))}
-          </select>
+          </ThemedSelect>
         </div>
 
         {/* Insurance Payer - Auto-populated from patient */}
@@ -499,15 +496,11 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
             <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
               Load from Existing Diagnosis (Optional)
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={selectedDiagnosisId}
               onChange={(e) => handleDiagnosisSelection(e.target.value)}
               disabled={loadingDiagnoses || diagnoses.length === 0}
-              className={`w-full px-4 py-2 rounded-lg border ${
-                theme === 'dark'
-                  ? 'bg-slate-700 border-slate-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-900'
-              } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
             >
               <option value="">
                 {loadingDiagnoses ? 'Loading diagnoses...' : diagnoses.length === 0 ? 'No diagnoses available' : 'Select a diagnosis to auto-fill'}
@@ -517,7 +510,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
                   {diagnosis.diagnosisName} - {diagnosis.diagnosedDate ? new Date(diagnosis.diagnosedDate).toLocaleDateString() : 'No date'}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
             {selectedDiagnosisId && (
               <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
                 ✓ Form fields have been auto-filled from diagnosis. You can still edit all fields below.

@@ -7,6 +7,7 @@ import { useApp } from '../../context/AppContext';
 import ConfirmationModal from './ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { isProvider, isPatient } from '../../utils/rolePermissions';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 
 const ViewEditModal = ({
   theme,
@@ -634,13 +635,13 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.patient}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.patientId || editData.patient_id}
                       onChange={(e) => {
                         const patient = patients.find(p => p.id.toString() === e.target.value);
                         setEditData({...editData, patientId: e.target.value, patient_id: e.target.value, patient: patient?.name || `${patient?.first_name} ${patient?.last_name}`});
                       }}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="">{t.selectPatient || 'Select Patient'}</option>
                       {patients.map(p => (
@@ -648,7 +649,7 @@ const ViewEditModal = ({
                           {p.name || `${p.first_name} ${p.last_name}` || `${p.firstName} ${p.lastName}`} {p.mrn ? `- ${p.mrn}` : ''}
                         </option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -656,13 +657,13 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.doctor || editData.provider_name || t.notApplicable || 'N/A'}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.providerId || editData.provider_id}
                       onChange={(e) => {
                         const provider = users?.find(u => u.id.toString() === e.target.value);
                         setEditData({...editData, providerId: e.target.value, provider_id: e.target.value, doctor: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}` : ''});
                       }}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="">{t.selectProvider || 'Select Provider'}</option>
                       {users?.filter(u => u.role === 'doctor' || u.role === 'physician' || u.role === 'provider' || u.role === 'admin').map(provider => (
@@ -670,7 +671,7 @@ const ViewEditModal = ({
                           {`${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() || provider.email}
                         </option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -704,10 +705,10 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.type}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.type}
                       onChange={(e) => setEditData({...editData, type: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="">{t.selectType || 'Select Type'}</option>
                       {appointmentTypes.map(type => (
@@ -715,7 +716,7 @@ const ViewEditModal = ({
                           {type.name}
                         </option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -740,16 +741,16 @@ const ViewEditModal = ({
                       {editData.status}
                     </span>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.status}
                       onChange={(e) => setEditData({...editData, status: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="Scheduled">{t.scheduled || 'Scheduled'}</option>
                       <option value="Confirmed">{t.confirmed || 'Confirmed'}</option>
                       <option value="Completed">{t.completed || 'Completed'}</option>
                       <option value="Cancelled">{t.cancelled || 'Cancelled'}</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
               </div>
@@ -855,16 +856,16 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.gender || t.notApplicable || 'N/A'}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.gender || ''}
                       onChange={(e) => setEditData({...editData, gender: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="">{t.select || 'Select'}</option>
                       <option value="Male">{t.male || 'Male'}</option>
                       <option value="Female">{t.female || 'Female'}</option>
                       <option value="Other">{t.other || 'Other'}</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -1081,10 +1082,10 @@ const ViewEditModal = ({
                             : t.notApplicable || 'N/A'}
                         </p>
                       ) : (
-                        <select
+                        <ThemedSelect
+                          theme={theme}
                           value={editData.insurance_payer_id || ''}
                           onChange={(e) => setEditData({...editData, insurance_payer_id: e.target.value})}
-                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                         >
                           <option value="">{t.selectInsurancePayer || 'Select Insurance Payer'}</option>
                           {insurancePayers.map((payer) => (
@@ -1092,7 +1093,7 @@ const ViewEditModal = ({
                               {payer.name} ({payer.payer_id})
                             </option>
                           ))}
-                        </select>
+                        </ThemedSelect>
                       )}
                     </div>
                   )}
@@ -1149,10 +1150,10 @@ const ViewEditModal = ({
                         <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                           {preferredPharmacies.length > 0 ? (t.changePreferredPharmacy || 'Change Preferred Pharmacy') : (t.selectPreferredPharmacy || 'Select Preferred Pharmacy')}
                         </label>
-                        <select
+                        <ThemedSelect
+                          theme={theme}
                           value={selectedPharmacyId}
                           onChange={(e) => setSelectedPharmacyId(e.target.value)}
-                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                         >
                           <option value="">{t.selectAPharmacy || 'Select a pharmacy...'}</option>
                           {pharmacies.map((pharmacy) => (
@@ -1160,7 +1161,7 @@ const ViewEditModal = ({
                               {pharmacy.pharmacyName || pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
                             </option>
                           ))}
-                        </select>
+                        </ThemedSelect>
                         <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                           {t.pharmacyWillBeSaved || 'Pharmacy will be saved with your other changes'}
                         </p>
@@ -1346,17 +1347,17 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.language || 'English'}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.language || 'English'}
                       onChange={(e) => setEditData({...editData, language: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="English">English</option>
                       <option value="Spanish">Español</option>
                       <option value="French">Français</option>
                       <option value="German">Deutsch</option>
                       <option value="Arabic">العربية</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
               </div>
@@ -1544,11 +1545,11 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.role}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.role || ''}
                       onChange={(e) => setEditData({...editData, role: e.target.value})}
                       disabled={loadingRoles}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingRoles ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {loadingRoles ? (
                         <option>Loading roles...</option>
@@ -1564,7 +1565,7 @@ const ViewEditModal = ({
                           ))}
                         </>
                       )}
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -1598,17 +1599,17 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.language || 'English'}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.language || 'English'}
                       onChange={(e) => setEditData({...editData, language: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="English">English</option>
                       <option value="Spanish">Spanish</option>
                       <option value="French">French</option>
                       <option value="German">German</option>
                       <option value="Arabic">Arabic</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -1688,17 +1689,17 @@ const ViewEditModal = ({
                       {editData.status}
                     </span>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.status}
                       onChange={(e) => setEditData({...editData, status: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="Pending">Pending</option>
                       <option value="Submitted">Submitted</option>
                       <option value="Approved">Approved</option>
                       <option value="Denied">Denied</option>
                       <option value="Paid">Paid</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -1820,15 +1821,15 @@ const ViewEditModal = ({
                       {editData.priority}
                     </span>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.priority || 'medium'}
                       onChange={(e) => setEditData({...editData, priority: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
                       <option value="high">High</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -1842,15 +1843,15 @@ const ViewEditModal = ({
                       {editData.status}
                     </span>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.status || 'pending'}
                       onChange={(e) => setEditData({...editData, status: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="pending">Pending</option>
                       <option value="in_progress">In Progress</option>
                       <option value="completed">Completed</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div className="col-span-2">
@@ -2288,15 +2289,15 @@ const ViewEditModal = ({
                     </div>
                     <div>
                       <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
-                      <select
+                      <ThemedSelect
+                        theme={theme}
                         value={editingPrescription.status || 'Active'}
                         onChange={(e) => setEditingPrescription({...editingPrescription, status: e.target.value})}
-                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                       >
                         <option value="Active">Active</option>
                         <option value="Completed">Completed</option>
                         <option value="Cancelled">Cancelled</option>
-                      </select>
+                      </ThemedSelect>
                     </div>
                   </div>
                   <div>
