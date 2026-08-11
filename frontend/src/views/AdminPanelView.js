@@ -458,6 +458,8 @@ const AdminPanelView = ({
   // User form inline state
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  // Only relevant while editing — a new user always needs a password.
+  const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [userFormData, setUserFormData] = useState({
     firstName: '',
     lastName: '',
@@ -2216,6 +2218,7 @@ const AdminPanelView = ({
       });
     }
     setUserFormErrors({});
+    setShowPasswordFields(false);
   }, [showUserForm, editingUser]);
 
   const validateUserForm = () => {
@@ -2311,6 +2314,7 @@ const AdminPanelView = ({
       confirmPassword: '',
     });
     setUserFormErrors({});
+    setShowPasswordFields(false);
   };
 
   // ==================== RENDER FUNCTIONS ====================
@@ -2860,7 +2864,24 @@ const AdminPanelView = ({
               </div>
             </div>
 
+            {/* Editing a user — a role or detail change is not a password
+                change, so the credential fields stay out of the way until an
+                admin asks for them. */}
+            {editingUser && !showPasswordFields && (
+              <button
+                type="button"
+                onClick={() => setShowPasswordFields(true)}
+                className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                  theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                }`}
+              >
+                <Lock className="w-4 h-4" />
+                {t.setNewPassword || 'Set a new password'}
+              </button>
+            )}
+
             {/* Password fields */}
+            {(!editingUser || showPasswordFields) && (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -2903,6 +2924,7 @@ const AdminPanelView = ({
                 </div>
               )}
             </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 pt-4">
