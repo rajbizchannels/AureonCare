@@ -188,14 +188,6 @@ export const getNavigation = (t = {}) => [
             module: 'ehr',
           },
           {
-            id: 'patients.diagnosis',
-            label: t.diagnoses || 'Diagnoses',
-            description: t.diagnosesDescription || 'Encounter diagnoses and coding',
-            icon: Activity,
-            module: 'patientDiagnosis',
-            access: 'ehr',
-          },
-          {
             id: 'patients.history',
             label: t.patientHistory || 'Patient History',
             description: t.patientHistoryDescription || 'Longitudinal chart timeline',
@@ -314,6 +306,16 @@ export const getNavigation = (t = {}) => [
             description: t.telehealthDescription || 'Virtual visits and sessions',
             icon: Video,
             module: 'telehealth',
+          },
+          {
+            // Coding an encounter is clinical work, not a way to look a patient
+            // up — under Patients it read as a step towards choosing one.
+            id: 'clinical.diagnosis',
+            label: t.diagnoses || 'Diagnoses',
+            description: t.diagnosesDescription || 'Encounter diagnoses and coding',
+            icon: Activity,
+            module: 'patientDiagnosis',
+            access: 'ehr',
           },
         ],
       },
