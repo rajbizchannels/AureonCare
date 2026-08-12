@@ -50,8 +50,38 @@ Provider adapters already exist for **Zoom**, **Google Meet**, **Webex** and **M
 - Provider *credentials setup* stays web-only (`telehealthSettings.js`) — the app consumes configured providers, it does not configure them.
 
 ### 2.4 Notifications
-- Push notifications (APNs / FCM) for appointment reminders, telehealth "provider is ready", new form requests, lab results, task assignment.
+- Push notifications (APNs / FCM) for appointment reminders, telehealth "provider is ready", **new secure message**, new form requests, lab results, task assignment.
 - In-app notification centre backed by `backend/routes/notifications.js` and per-user preferences from `notificationPreferences.js`.
+- Message pushes must deep-link to the thread, not the inbox — a notification that drops the reader on a list they then have to search is the most common way a messaging feature gets abandoned.
+
+### 2.5 Secure messaging
+Shipped in the web app (`backend/routes/messages.js`, `frontend/src/components/messaging/`).
+It is listed as a foundation rather than a feature because it is the only surface
+both audiences share, and it constrains the app's auth layer.
+
+- **One API, two credentials.** `middleware/messagingAuth.js` accepts either a staff
+  JWT or a patient portal session token and resolves both to a single actor. The
+  mobile client must send whichever it holds on the same `Authorization: Bearer`
+  header — there is no separate patient endpoint to target.
+- **The web UI is already built to reuse.** `SecureMessaging.js` takes a `mode`
+  (`staff` / `patient`) and is two-pane above `md`, single-pane below. The mobile
+  layout is the one it already collapses to, so the interaction model is settled:
+  thread list → conversation → back.
+- **Endpoints the app needs:** `GET /threads`, `GET /threads/:id/messages`,
+  `POST /threads/:id/messages`, `POST /threads/:id/read`, `GET /unread-count`
+  (tab badge), `POST /threads` (compose), `GET /care-team` (patient-safe recipient
+  list — patients must never receive the staff directory).
+- **Attachments** are base64 in the message body, capped at 5MB and 5 per message,
+  and download as an authenticated blob from `GET /attachments/:id`. On mobile this
+  is where camera capture pays off twice: a wound photo to the care team is the same
+  gesture as a record upload.
+- **Encrypted at rest, not end-to-end.** Bodies are AES-256-GCM encrypted server-side
+  and every read is audited. The app therefore holds no keys and needs no crypto of
+  its own — but it also cannot claim end-to-end encryption in store copy or UI. Say
+  "secure" and "encrypted", not "end-to-end encrypted".
+- **Real-time is polling** (30s threads / 15s messages) — `socket.io` is a dependency
+  but no server is wired up. On mobile, lean on push for freshness and poll only
+  while a thread is open, or battery cost will outrun the benefit.
 
 ---
 
@@ -71,6 +101,8 @@ Bottom tabs: **Home · Appointments · Records · Messages · More**
 | Prescriptions / medication list | `prescriptions.js`, `medications.js` | ✅ | ✅ |
 | Medical records — view & download | `GET /:patientId/medical-records` | ✅ | ✅ |
 | **Upload a record from camera or files** | `MedicalRecordUploadForm.js` | ✅ (camera is a mobile win) | ✅ |
+| **Message the care team — threads, replies, unread badge** | `routes/messages.js`, `SecureMessaging.js` | ✅ | ✅ |
+| Send a photo or document to the care team | `POST /threads/:id/messages` (attachments) | ✅ (camera) | ✅ |
 | Requested forms — fill & submit | `DynamicFormRenderer.js` | ✅ | ✅ |
 | **Signature capture** | `SignatureCapture.js` | ✅ (touch beats mouse) | ✅ |
 | Consent forms | `NewConsentFormForm.js` | ✅ | ✅ |
@@ -82,7 +114,12 @@ Bottom tabs: **Home · Appointments · Records · Messages · More**
 
 ## 4. Staff / provider mode — renders well on phone ✅
 
-Bottom tabs: **Today · Schedule · Patients · Telehealth · More**
+Bottom tabs: **Today · Schedule · Messages · Patients · More**
+
+Messages takes the fifth slot and Telehealth moves into Today, which already lists the
+day's sessions with a join button. The inbox is what clinicians open a mobile EHR for —
+it is the pattern Epic's In Basket and athenaOne both build their phone app around — and
+a session list reachable in one tap from Today loses nothing by not having a tab of its own.
 
 | Feature | Backing code | Phone | Tablet |
 |---|---|---|---|
@@ -95,6 +132,9 @@ Bottom tabs: **Today · Schedule · Patients · Telehealth · More**
 | Patient summary card (demographics, allergies, active meds, recent visits) | `EHRView.js` (read-only subset) | ✅ | ✅ |
 | Patient history timeline | `PatientHistoryView.js` | ✅ | ✅ |
 | **Telehealth session list + start / join** | `TelehealthView.js` | ✅ | ✅ |
+| **Message inbox — care-team and patient threads, unread badge** | `routes/messages.js`, `MessagesView.js` | ✅ | ✅ |
+| Compose to a colleague or patient (recipient search) | `GET /recipients` | ✅ | ✅ |
+| Triage a thread: priority, close / reopen, add a participant | `PATCH /threads/:id`, `POST /threads/:id/participants` | ✅ | ✅ |
 | Tasks — view, complete, create | `tasks.js`, `NewTaskForm.js` | ✅ | ✅ |
 | Notifications | `NotificationsPanel.js` | ✅ | ✅ |
 | Intake status at a glance | `PatientIntakeView.js` | ✅ read-only | ✅ full |
@@ -148,9 +188,15 @@ rebuilding them — this is the main thing keeping the mobile UI uncrowded.
 
 ## 7. Suggested delivery order
 
-1. **Foundations** — hosted-URL config, Google / Microsoft / email auth, theme system, secure storage, app shell.
-2. **Patient v1** — appointments, join telehealth, records, forms + signature, profile.
-3. **Staff v1** — today dashboard, agenda, patient summary, telehealth sessions, tasks.
-4. **Push notifications** across both modes.
-5. **Tablet layer** — encounter capture, e-prescribe, lab orders, reports.
-6. **Polish** — biometric unlock, offline read cache for today's schedule, camera capture for records.
+1. **Foundations** — hosted-URL config, Google / Microsoft / email auth (both credential
+   types on one header), theme system, secure storage, app shell.
+2. **Messaging, both modes** — thread list, conversation, compose, unread badge. Promoted
+   ahead of the tablet layer because it is the highest-traffic screen in every competitor's
+   phone app, the API and the interaction model are already built and tested, and it is the
+   one feature that gives the app a reason to be opened on a day with no appointment.
+3. **Patient v1** — appointments, join telehealth, records, forms + signature, profile.
+4. **Staff v1** — today dashboard, agenda, patient summary, telehealth sessions, tasks.
+5. **Push notifications** across both modes, deep-linked to the thread or record.
+6. **Tablet layer** — encounter capture, e-prescribe, lab orders, reports.
+7. **Polish** — biometric unlock, offline read cache for today's schedule and recent threads,
+   camera capture for records and message attachments.
