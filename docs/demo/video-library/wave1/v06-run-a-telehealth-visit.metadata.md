@@ -13,9 +13,9 @@ Part of the AureonCare Getting Started series.
 Chapters:
 0:00 Introduction
 0:13 The telehealth module
-0:33 Creating the session
-1:09 Joining the visit
-1:59 Recap
+0:32 Creating the session
+1:08 Joining the visit
+1:56 Recap
 
 Subtitles: upload v06-run-a-telehealth-visit.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -39,7 +39,7 @@ AureonCare, telehealth software, virtual visit, telemedicine tutorial, video con
 | Thumbnail | v06-run-a-telehealth-visit.thumbnail.png |
 | Subtitles | v06-run-a-telehealth-visit.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:25 |
+| Duration | 2:18 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

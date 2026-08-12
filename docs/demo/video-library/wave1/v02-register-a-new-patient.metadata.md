@@ -14,9 +14,9 @@ Chapters:
 0:00 Introduction
 0:14 The patient list
 0:31 Creating the record
-0:54 Contact and insurance
-1:31 Saving and finding the record
-2:13 Recap
+0:53 Contact and insurance
+1:30 Saving and finding the record
+2:12 Recap
 
 Subtitles: upload v02-register-a-new-patient.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).

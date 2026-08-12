@@ -1,5 +1,5 @@
 0:00 Introduction
 0:13 The telehealth module
-0:33 Creating the session
-1:09 Joining the visit
-1:59 Recap
+0:32 Creating the session
+1:08 Joining the visit
+1:56 Recap

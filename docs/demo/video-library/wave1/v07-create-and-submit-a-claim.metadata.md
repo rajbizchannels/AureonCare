@@ -15,8 +15,8 @@ Chapters:
 0:12 The claims queue
 0:31 Building the claim
 0:50 Coding it
-1:19 Submitting it
-2:06 Recap
+1:20 Submitting it
+2:07 Recap
 
 Subtitles: upload v07-create-and-submit-a-claim.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -40,7 +40,7 @@ AureonCare, medical billing, insurance claim submission, EDI 837, revenue cycle 
 | Thumbnail | v07-create-and-submit-a-claim.thumbnail.png |
 | Subtitles | v07-create-and-submit-a-claim.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:18 |
+| Duration | 2:20 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

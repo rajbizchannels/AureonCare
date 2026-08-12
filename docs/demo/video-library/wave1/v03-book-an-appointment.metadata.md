@@ -14,7 +14,7 @@ Chapters:
 0:00 Introduction
 0:13 The calendar
 0:36 Booking the visit
-1:22 After the booking
+1:21 After the booking
 2:11 Recap
 
 Subtitles: upload v03-book-an-appointment.srt as the English track — do not rely on auto-captions.
