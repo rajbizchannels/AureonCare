@@ -15,6 +15,7 @@ import {
   ClipboardCheck,
   History,
   UserCircle,
+  MessageSquare,
   HeartPulse,
   Video,
   Pill,
@@ -240,6 +241,16 @@ export const getNavigation = (t = {}) => [
         label: t.engagement || 'Engagement',
         items: [
           {
+            // Secure messaging spans care-team and patient conversations, so it
+            // sits in Engagement next to the portal rather than under Clinical:
+            // the thread list is the same inbox either way.
+            id: 'patients.messages',
+            label: t.messages || 'Messages',
+            description: t.messagesDescription || 'Secure conversations with colleagues and patients',
+            icon: MessageSquare,
+            module: 'messages',
+          },
+          {
             id: 'patients.portal',
             label: t.patientPortal || 'Patient Portal',
             description: t.patientPortalNavDescription || 'What the patient sees',
@@ -281,6 +292,13 @@ export const getNavigation = (t = {}) => [
                 icon: ClipboardList,
                 module: 'patientPortal',
                 tab: 'forms',
+              },
+              {
+                id: 'patients.portalMessages',
+                label: t.messages || 'Messages',
+                icon: MessageSquare,
+                module: 'patientPortal',
+                tab: 'messages',
               },
             ],
           },

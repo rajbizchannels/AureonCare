@@ -14,6 +14,7 @@ import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarInte
 import AddToCalendarButton from '../components/calendar/AddToCalendarButton';
 import { useCalendarSync } from '../components/calendar/useCalendarSync';
 import ThemedSelect from '../components/forms/ThemedSelect';
+import SecureMessaging from '../components/messaging/SecureMessaging';
 
 const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange }) => {
   const { language, setLanguage, setTheme } = useApp();
@@ -39,6 +40,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const [loadingAppointmentTypes, setLoadingAppointmentTypes] = useState(false);
   const [waitlistEntries, setWaitlistEntries] = useState([]);
   const [loadingWaitlist, setLoadingWaitlist] = useState(false);
+  // Drives the badge on the Messages tab. Polled rather than pushed — the
+  // deployment has no websocket server wired up yet.
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState(user || {});
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -106,6 +110,26 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       patient_id: user?.id,
     });
   }, [logViewAccess, user?.id]);
+
+  // Keep the Messages tab badge current. Failures stay silent: an unreachable
+  // count is not worth an error toast on a page showing five other things.
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const count = await api.getUnreadMessageCount();
+        if (!cancelled) setUnreadMessages(count);
+      } catch {
+        /* badge simply stays as-is */
+      }
+    };
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [api]);
 
   // Load featured offerings hide preference
   const loadFeaturedOfferingsPreference = () => {
@@ -3201,7 +3225,8 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
           { id: 'diagnoses', label: t.diagnosesTab || 'Diagnoses', icon: Activity, count: diagnoses.length },
           { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
           { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
-          { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => f.status === 'draft').length || null, highlight: pendingForms.filter(f => f.status === 'draft').length > 0 }
+          { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => f.status === 'draft').length || null, highlight: pendingForms.filter(f => f.status === 'draft').length > 0 },
+          { id: 'messages', label: t.messages || 'Messages', icon: MessageCircle, count: unreadMessages || null, highlight: unreadMessages > 0 }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -3238,6 +3263,19 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       {currentView === 'prescriptions' && renderPrescriptions()}
       {currentView === 'records' && renderMedicalRecords()}
       {currentView === 'forms' && renderForms()}
+      {currentView === 'messages' && (
+        <SecureMessaging
+          theme={theme}
+          api={api}
+          addNotification={addNotification}
+          user={user}
+          // Staff reach this view too, via the "what the patient sees" preview.
+          // Their credential resolves to a staff actor server-side, so the
+          // surface has to match — hardcoding 'patient' would label their own
+          // messages as someone else's.
+          mode={user?.role === 'patient' ? 'patient' : 'staff'}
+        />
+      )}
 
       {/* Prescription Details Modal */}
       {selectedPrescription && (
