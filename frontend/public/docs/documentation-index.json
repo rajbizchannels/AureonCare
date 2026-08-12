@@ -1,6 +1,6 @@
 {
-  "version": "1.2",
-  "lastUpdated": "2026-05-11",
+  "version": "1.3",
+  "lastUpdated": "2026-08-01",
   "sections": [
     {
       "id": "getting-started",
@@ -20,6 +20,26 @@
             "oauth"
           ],
           "content": "How to Access AureonCare:\n\n**Staff Portal Login:**\n1. Navigate to your AureonCare URL\n2. Enter your Email Address\n3. Enter your Password\n4. Click Sign In\n\n**Patient Portal Login:**\n1. Navigate to the Patient Portal URL\n2. Enter your registered Email Address\n3. Enter your Password\n4. Click Sign In\n\n**Social Login (OAuth):**\nClick one of the social login buttons:\n• Sign in with Google\n• Sign in with Microsoft\n• Sign in with Facebook\n\nThen authorize AureonCare to access your account.\n\n**Forgot Password:**\n1. Click 'Forgot Password' on login screen\n2. Enter your email address\n3. Check email for reset link (valid 1 hour)\n4. Click link and create new password\n5. Confirm new password\n6. Log in with new credentials\n\n**First-Time Login:**\nYou may be prompted to:\n• Change your temporary password\n• Set up your user profile\n• Upload profile picture (optional)\n• Set language preference\n• Review assigned roles\n\n**Security Best Practices:**\n• Never share your password\n• Log out when leaving workstation\n• Use unique password for AureonCare\n• Report suspicious activity\n• Keep contact information current",
+          "roles": [
+            "all"
+          ]
+        },
+        {
+          "id": "three-pane-navigation",
+          "title": "Navigating the Three-Pane Shell",
+          "path": "/docs/index.html#three-pane-navigation",
+          "url": "/docs/index.html#three-pane-navigation",
+          "keywords": [
+            "navigation",
+            "three pane",
+            "shell",
+            "workspace",
+            "menu",
+            "layout",
+            "breadcrumb"
+          ],
+          "summary": "Find your way around the three-pane workspace layout\n\nSelect a workspace group, pick a module, and work in the content pane.",
+          "content": "**The Three-Pane Shell**\n\nAureonCare is organised as a three-pane workspace:\n\n**Pane 1 - Workspace groups**\nHome, Scheduling, Patients, Clinical, Billing, Operations, Growth, Insights, Settings\n\n**Pane 2 - Modules**\nThe modules and sub-modules inside the workspace you selected\n\n**Pane 3 - Content**\nThe module view you are working in\n\nA breadcrumb trail above the content shows your position and lets you step back.\n\nHome holds a single destination, so the shell hides pane 2 and the dashboard fills the content area.\n\n**Where things live:**\n\n**Home** - Dashboard\n\n**Scheduling** - Calendar, Appointment list, Waitlist, Provider management, Appointment types\n\n**Patients** - EHR, Diagnosis, Patient history, Patient intake, Form templates, Form submissions, Form audit, Patient portal\n\n**Clinical** - Telehealth, Pharmacies, Laboratories, FHIR tracking\n\n**Billing** - Claims, Pre-approvals, Payments, Payment postings, Denials, Invoices, Insurance payers\n\n**Operations** - Accounting (chart of accounts, journal, receivables, payables, reconciliation, statements) and Inventory (items, stock, purchase orders, suppliers, categories)\n\n**Growth** - CRM, Campaigns, Offerings, Packages, Service categories, Promotions\n\n**Insights** - Reports, Custom report builder\n\n**Settings** - Clinic settings, Working hours, Appointment settings, Users, Roles, Plans, Integrations, Telehealth setup, Backup, Archive, Audit logs\n\n**What you can see:**\nA module appears only when it is included in your subscription tier AND permitted by your role. If a module is missing, check both.",
           "roles": [
             "all"
           ]
@@ -143,6 +163,26 @@
           "roles": [
             "admin",
             "practice_manager"
+          ]
+        },
+        {
+          "id": "public-booking-links",
+          "title": "Public Booking Links",
+          "path": "/docs/index.html#public-booking-links",
+          "url": "/docs/index.html#public-booking-links",
+          "keywords": [
+            "booking link",
+            "public booking",
+            "self scheduling",
+            "book online",
+            "slug",
+            "website"
+          ],
+          "summary": "Let patients book without an account\n\nShare a public link at /book/your-practice and bookings arrive in the normal queue.",
+          "content": "**Public Booking Links**\n\nEvery practice has a public booking page at:\nhttps://your-domain/book/practice-slug\n\n**Setting it up:**\n1. Go to Settings > Clinic Settings\n2. Find Public Booking Link\n3. Set the practice slug (the readable name in the URL)\n4. Toggle Enable public booking\n5. Choose which appointment types are bookable publicly\n6. Save\n\n**What patients see:**\n- Available appointment types with prices in the practice's configured currency\n- Open slots drawn from live provider availability\n- A short form for name, contact details, and reason for visit\n- Immediate booking confirmation by email\n\n**What happens next:**\nPublic bookings arrive in the normal appointment queue. If the contact details match an existing patient, the booking attaches to that record. Otherwise a provisional patient record is created for staff to complete at check-in.\n\n**Tips:**\n- Share the link on your website, in email signatures, and on reminder messages\n- The page is public by design - it exposes appointment types, availability, and prices, and nothing else\n- No patient data is readable from the booking page",
+          "roles": [
+            "admin",
+            "receptionist"
           ]
         }
       ]
@@ -332,6 +372,27 @@
             "admin",
             "doctor",
             "nurse"
+          ]
+        },
+        {
+          "id": "telehealth-providers",
+          "title": "Connecting Video Providers",
+          "path": "/docs/guides/telehealth.html",
+          "url": "/docs/guides/telehealth.html",
+          "keywords": [
+            "zoom",
+            "google meet",
+            "teams",
+            "webex",
+            "oauth",
+            "video provider",
+            "connect"
+          ],
+          "summary": "Connect Zoom, Google Meet, Teams, or Webex\n\nAuthorise once via OAuth; tokens refresh automatically and patients get their preferred platform.",
+          "content": "**Supported Video Providers**\n\nAureonCare connects to four video platforms:\n\n- **Zoom** - embedded SDK experience, Marketplace-compliant consent and recording indicators\n- **Google Meet** - meeting links on the practice Google account\n- **Microsoft Teams** - meeting links via Microsoft Graph\n- **Webex** - meeting links on the practice Webex account\n\n**Connecting a provider:**\n1. Go to Settings > Telehealth Setup\n2. Choose the provider\n3. Click Connect and complete the OAuth consent screen\n4. The connection is confirmed and tokens refresh automatically\n5. Toggle Enabled to make it available for scheduling\n\nMore than one provider can be enabled at once. If a connection lapses, Settings > Telehealth Setup shows a reconnect prompt.\n\n**Patient telehealth preference:**\nEach patient record carries a preferred video platform. When a telehealth appointment is booked, the system uses that preference if the provider is enabled, and falls back to the practice default otherwise. Set it on the patient record under Preferences.\n\n**Troubleshooting:**\n- Connection lapsed - reconnect from Settings > Telehealth Setup\n- Meeting link missing - confirm the provider is both connected and Enabled\n- Wrong platform used - check the patient's preference and that the platform is enabled",
+          "roles": [
+            "admin",
+            "doctor"
           ]
         }
       ]
@@ -737,6 +798,145 @@
       ]
     },
     {
+      "id": "forms",
+      "title": "Form Management",
+      "icon": "📋",
+      "articles": [
+        {
+          "id": "form-templates",
+          "title": "Building Form Templates",
+          "path": "/docs/guides/form-management.html",
+          "url": "/docs/guides/form-management.html",
+          "keywords": [
+            "form",
+            "template",
+            "builder",
+            "custom form",
+            "fields",
+            "intake"
+          ],
+          "summary": "Build and version custom forms from the template library\n\nAdd fields, mark them required, and publish for assignment to patients.",
+          "content": "**Building Form Templates**\n\nGo to Patients > Form Templates and click + New Template.\n\n**Steps:**\n1. Name the template and give it a description and category\n2. Add fields from the builder\n3. Mark required fields\n4. Save Template\n\n**Field types:**\n- Text / Text area - free-text answers\n- Number - numeric values\n- Date - dates of birth, onset dates\n- Dropdown - single choice from a list\n- Checkbox - multiple selections\n- Radio - single choice, all options visible\n- Signature - patient or provider sign-off\n- File upload - supporting documents\n\n**Versioning:**\nEditing a published template creates a new version. Submissions stay attached to the version that was live when the patient completed the form, so historical records never change.\n\n**Default intake forms:**\nToggle 'Assign on patient registration' and the form is assigned automatically to every new patient. They see it in the portal on first login.\n\n**Best practices:**\n- Keep intake forms short - completion drops sharply past 20 fields\n- Mark only genuinely mandatory fields as Required\n- Use dropdowns where you plan to report on the answers\n- Version templates rather than editing mid-cycle",
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "receptionist"
+          ]
+        },
+        {
+          "id": "form-submissions",
+          "title": "Reviewing Form Submissions",
+          "path": "/docs/guides/form-management.html",
+          "url": "/docs/guides/form-management.html",
+          "keywords": [
+            "form",
+            "submission",
+            "review",
+            "assigned",
+            "audit",
+            "patient forms"
+          ],
+          "summary": "Track and review forms patients have completed\n\nMonitor status from assigned through to reviewed, with a full audit trail.",
+          "content": "**Reviewing Form Submissions**\n\nGo to Patients > Form Submissions.\n\n**Statuses:**\n- Assigned - sent to the patient, not started\n- In Progress - patient has begun answering\n- Submitted - completed, awaiting review\n- Reviewed - a staff member has reviewed it\n- Declined - patient declined to complete\n\n**To review:**\n1. Click the submission\n2. Read the answers\n3. Click Mark Reviewed, or Request Changes to send it back with a note\n\n**Assigning a form manually:**\n1. Open the patient record\n2. Go to the Forms tab\n3. Click Assign Form\n4. Choose the template and a due date\n5. Click Assign\n\nThe patient is notified by email, and by WhatsApp if they have opted in.\n\n**Form audit trail:**\nPatients > Form Audit records every action - who created or edited a template, when a form was assigned, every save the patient made, who reviewed it, and any changes requested. The trail is immutable and exportable for compliance.",
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "receptionist"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "title": "Accounting & Inventory",
+      "icon": "📦",
+      "articles": [
+        {
+          "id": "accounting-overview",
+          "title": "Accounting Basics",
+          "path": "/docs/guides/accounting.html",
+          "url": "/docs/guides/accounting.html",
+          "keywords": [
+            "accounting",
+            "chart of accounts",
+            "journal",
+            "ledger",
+            "double entry",
+            "bookkeeping"
+          ],
+          "summary": "Double-entry bookkeeping built into the platform\n\nChart of accounts, journal entries, and automatic posting from payments and purchase orders.",
+          "content": "**Accounting**\n\nFound under Operations > Accounting.\n\n**Chart of Accounts**\nThe list of every account the practice books against.\n\nAccount types and their normal balance:\n- Asset (debit) - Cash, Accounts Receivable, Equipment, Inventory\n- Liability (credit) - Accounts Payable, Loans, Accrued Expenses\n- Equity (credit) - Owner's Capital, Retained Earnings\n- Revenue (credit) - Patient Revenue, Insurance Revenue\n- Expense (debit) - Salaries, Rent, Supplies, Utilities\n\nNumber accounts in blocks - 1000s assets, 2000s liabilities, 3000s equity, 4000s revenue, 5000s expenses. Reports group cleanly when you do.\n\n**Journal Entries**\n1. Go to Operations > Journal\n2. Click + New Journal Entry\n3. Set the date and description\n4. Add lines - account, debit or credit, memo\n5. Debits must equal credits\n6. Click Post Entry\n\n**Automatic entries** post when a payment is recorded, an invoice is issued, a purchase order is received, or a refund is processed. They link back to the source record.\n\n**Financial statements:**\nProfit & Loss, Balance Sheet, Cash Flow, Trial Balance, General Ledger - all exportable to PDF, Excel, and CSV.",
+          "roles": [
+            "admin",
+            "billing_manager"
+          ]
+        },
+        {
+          "id": "bank-reconciliation",
+          "title": "Bank Reconciliation",
+          "path": "/docs/guides/accounting.html",
+          "url": "/docs/guides/accounting.html",
+          "keywords": [
+            "reconciliation",
+            "bank",
+            "statement",
+            "reconcile",
+            "closing balance"
+          ],
+          "summary": "Match your books against the bank statement\n\nTick off transactions until the difference reaches zero, then lock the period.",
+          "content": "**Bank Reconciliation**\n\n1. Go to Operations > Reconciliation\n2. Select the bank account and statement period\n3. Enter the closing balance from your bank statement\n4. Tick each transaction that appears on the statement\n5. The difference must reach zero\n6. Click Complete Reconciliation\n\nReconciled transactions lock. Reopen the reconciliation to amend them.\n\n**Receivables and Payables**\n\nOperations > Receivables tracks money owed to the practice - patient balances, outstanding claims, and aging buckets (current, 31-60, 61-90, 90+ days). Drill through to the originating claim or invoice.\n\nOperations > Payables tracks money the practice owes. Bills raised from Inventory purchase orders appear automatically when stock is received. Record a payment against a bill and the journal entry posts for you.\n\n**Best practices:**\n- Reconcile bank accounts monthly, without exception\n- Review the trial balance before closing a period\n- Match payables to purchase orders before paying\n- Run P&L monthly against the prior period",
+          "roles": [
+            "admin",
+            "billing_manager"
+          ]
+        },
+        {
+          "id": "inventory-management",
+          "title": "Managing Inventory",
+          "path": "/docs/guides/inventory.html",
+          "url": "/docs/guides/inventory.html",
+          "keywords": [
+            "inventory",
+            "stock",
+            "items",
+            "reorder",
+            "supplies",
+            "consumables"
+          ],
+          "summary": "Track items, stock levels, and reorder points\n\nRecord movements, get low-stock alerts, and keep an auditable history.",
+          "content": "**Inventory Management**\n\nFound under Operations > Inventory.\n\n**Adding an item:**\n1. Go to Operations > Items\n2. Click + New Item\n3. Enter item name, SKU, category, unit of measure, unit cost\n4. Set the reorder point and reorder quantity\n5. Choose a preferred supplier\n6. Enable expiry tracking if the item carries expiry dates\n7. Save Item\n\n**Recording a stock movement:**\n1. Go to Operations > Stock\n2. Find the item and click Adjust Stock\n3. Choose the movement type:\n   - Receipt (increase) - stock arrives from a supplier\n   - Consumption (decrease) - item used during patient care\n   - Adjustment (either) - correcting a count discrepancy\n   - Transfer - shifting stock between locations\n   - Write-off (decrease) - damaged, expired, or lost stock\n4. Enter the quantity and a reason\n5. Save\n\nEvery movement is timestamped and attributed to the user who recorded it.\n\n**Low-stock alerts:**\nWhen stock falls to the reorder point, inventory managers are notified by email and WhatsApp. The item stays flagged on the overview until replenished.\n\n**Best practices:**\n- Set reorder points from actual usage, not guesswork\n- Count physical stock quarterly and reconcile\n- Record consumption at the point of use\n- Review expiring stock monthly",
+          "roles": [
+            "admin",
+            "nurse",
+            "receptionist"
+          ]
+        },
+        {
+          "id": "purchase-orders",
+          "title": "Purchase Orders & Suppliers",
+          "path": "/docs/guides/inventory.html",
+          "url": "/docs/guides/inventory.html",
+          "keywords": [
+            "purchase order",
+            "po",
+            "supplier",
+            "vendor",
+            "receiving",
+            "ordering"
+          ],
+          "summary": "Raise orders, receive stock, and manage suppliers\n\nReceiving stock updates levels and raises a bill in Accounts Payable automatically.",
+          "content": "**Purchase Orders**\n\n1. Go to Operations > Purchase Orders\n2. Click + New Purchase Order\n3. Select the supplier\n4. Add line items - item, quantity, unit cost\n5. Review the total\n6. Click Submit Order\n\n**Statuses:**\n- Draft - being prepared, not yet sent\n- Submitted - sent to the supplier\n- Confirmed - supplier acknowledged\n- Partially Received - some lines delivered\n- Received - all lines delivered\n- Cancelled - order withdrawn\n\n**Receiving stock:**\n1. Open the purchase order\n2. Click Receive Stock\n3. Enter the quantity received per line - partial receipts are supported\n4. Record batch numbers and expiry dates where tracked\n5. Click Confirm Receipt\n\nStock levels increase and a bill is raised in Accounts Payable automatically.\n\n**Suppliers**\n\nOperations > Suppliers holds your vendor list - contact details, address, delivery and payment terms, and the items they typically supply. Supplier performance (order volume, on-time delivery, average lead time) is shown on the record.\n\n**Categories**\n\nOperations > Categories groups items for reporting and reorder policy. Categories can nest, for example Consumables > Wound Care > Dressings.\n\n**Best practices:**\n- Match delivery notes against orders before confirming receipt\n- Don't order outside the purchase order system - the audit trail breaks",
+          "roles": [
+            "admin",
+            "billing_manager",
+            "receptionist"
+          ]
+        }
+      ]
+    },
+    {
       "id": "admin",
       "title": "Administration",
       "icon": "⚙️",
@@ -768,6 +968,47 @@
           "roles": [
             "admin"
           ]
+        },
+        {
+          "id": "subscription-plans",
+          "title": "Subscription Plans & Licensing",
+          "path": "/docs/index.html#subscription-plans",
+          "url": "/docs/index.html#subscription-plans",
+          "keywords": [
+            "plan",
+            "tier",
+            "subscription",
+            "license",
+            "license key",
+            "seats",
+            "upgrade",
+            "essentials",
+            "enterprise"
+          ],
+          "summary": "Understand tiers, seat limits, and license keys\n\nA module appears only when your plan includes it and your role permits it.",
+          "content": "**How access is determined**\n\nA module appears for a user only when BOTH conditions hold:\n1. The module is included in the practice's subscription tier\n2. The user's role permits access to it\n\nIf either check fails, the module does not appear in the navigation.\n\n**Tiers**\n\n**Practice Essentials** - Dashboard, Practice Management, Provider Management, EHR, Patient Portal, Clinical Services, Reports, Form Management, Accounting, Inventory, Administration\n\n**Clinical Pro** - Everything in Essentials, plus Telehealth, Revenue Cycle, CRM, and Healthcare Offerings\n\n**Enterprise** - Everything in Clinical Pro, plus Integrations\n\n**On-Premises / Customer Cloud** - Enterprise feature set, deployed on infrastructure you control\n\n**Viewing your plan:**\nSettings > Plans shows the current tier, seat limits, renewal date, and usage against each limit.\n\nSeat limits cover maximum providers, users, and patient records. Reaching a limit blocks new records of that type until seats are freed or the plan is upgraded.\n\n**Changing plans:**\nUpgrades take effect immediately. Downgrades take effect at the end of the billing period, and modules dropped by the new tier become unavailable then - the data is retained.\n\n**License keys (on-premises):**\n1. Go to Settings > Plans > License\n2. Paste the license key\n3. Click Activate\n\nThe system checks the license on startup and periodically after. An expired license restricts the platform to read-only until renewed - no data is deleted.",
+          "roles": [
+            "admin"
+          ]
+        },
+        {
+          "id": "notification-system",
+          "title": "Notification Settings",
+          "path": "/docs/index.html#notification-system",
+          "url": "/docs/index.html#notification-system",
+          "keywords": [
+            "notification",
+            "email",
+            "whatsapp",
+            "alerts",
+            "reminders",
+            "opt in"
+          ],
+          "summary": "Email and WhatsApp notifications across every module\n\nPatients opt in to WhatsApp; providers and admins use the number on record.",
+          "content": "**Notification Channels**\n\n- **In-app** - all users, no opt-in needed\n- **Email** - patients, providers, admins; no opt-in needed\n- **WhatsApp (patients)** - requires patient opt-in\n- **WhatsApp (providers/admins)** - sent to the number on record\n\nNotification delivery never blocks the underlying action. If an email or WhatsApp message fails, the failure is logged and the appointment, claim, or order still completes.\n\n**What triggers a notification:**\n- New appointment bookings, including public booking-link bookings\n- Appointment reminders, cancellations, and reschedules\n- Waitlist slot availability and booking confirmations\n- Telehealth session links and start reminders\n- Lab results available\n- Prescription refill requests\n- Form assignments and submission receipts\n- Claim status updates\n- Payment receipts and failures\n- Inventory low-stock and reorder alerts\n- Task assignments and system alerts\n\n**Patient WhatsApp opt-in:**\n1. Open the patient record\n2. Go to Preferences > Notification Preferences\n3. Toggle WhatsApp notifications\n4. Confirm the mobile number\n5. Save\n\nPatients can also manage this themselves in the Patient Portal.\n\n**Configuration:**\nAdministrators set the sending email account and WhatsApp credentials in Settings > Integrations. Admin contact details for system alerts come from the organisation settings.",
+          "roles": [
+            "admin"
+          ]
         }
       ]
     },
@@ -779,7 +1020,7 @@
         {
           "id": "login-issues",
           "title": "Login Problems",
-          "path": "/docs/troubleshooting/login.html",
+          "path": "/docs/troubleshooting/common-issues.html",
           "keywords": [
             "login",
             "password",
@@ -790,12 +1031,13 @@
           "content": "Solutions for common login and authentication issues",
           "roles": [
             "all"
-          ]
+          ],
+          "url": "/docs/troubleshooting/common-issues.html"
         },
         {
           "id": "performance",
           "title": "Performance Issues",
-          "path": "/docs/troubleshooting/performance.html",
+          "path": "/docs/troubleshooting/common-issues.html",
           "keywords": [
             "slow",
             "performance",
@@ -805,7 +1047,8 @@
           "content": "Troubleshooting slow performance and loading issues",
           "roles": [
             "all"
-          ]
+          ],
+          "url": "/docs/troubleshooting/common-issues.html"
         }
       ]
     }

@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken, isProviderIdMatch } = require('../utils/socialTokenValidator');
+const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -165,8 +166,30 @@ router.post('/forgot-password', async (req, res) => {
       [resetToken, resetTokenExpires, email]
     );
 
-    // TODO: send resetToken via email (e.g. SendGrid) — do NOT return it in the response.
-    // The token is stored in the database; the user must receive it through their email inbox.
+    // SEC-04: deliver the token out-of-band via email (Google SMTP relay) and
+    // NEVER return it in the API response. If SMTP is unconfigured the send is a
+    // no-op inside sendEmail; we still return the generic message either way so
+    // the endpoint never reveals whether the email exists.
+    const user = userResult.rows[0];
+    const firstName = user.first_name || 'there';
+    const frontendBase = (process.env.FRONTEND_URL || '').split(',')[0].trim();
+    const resetLink = frontendBase
+      ? `${frontendBase}/reset-password?token=${resetToken}`
+      : null;
+    const html = buildEmailHtml(
+      'Password Reset Request',
+      '#2563eb',
+      `Hi ${firstName},`,
+      'We received a request to reset your AureonCare password. Use the reset code below — it expires in 1 hour. If you did not request this, you can safely ignore this email.',
+      `<tr><td style="padding:8px 12px;font-weight:bold;color:#555;width:35%">Reset code</td>
+        <td style="padding:8px 12px;color:#111;font-family:monospace;font-size:15px;word-break:break-all">${resetToken}</td></tr>`,
+      resetLink
+        ? `Or click here to reset your password: <a href="${resetLink}">${resetLink}</a>`
+        : 'Enter this code in the password reset screen to choose a new password.'
+    );
+    console.log(`[DEBUG sec04-email] sending reset email to ${email} (token ${resetToken.slice(0, 6)}…)`);
+    await sendEmail(email, 'Reset your AureonCare password', html);
+
     res.json({
       message: 'If the email exists, a password reset link has been sent'
     });

@@ -15,6 +15,7 @@ import {
   ClipboardCheck,
   History,
   UserCircle,
+  MessageSquare,
   HeartPulse,
   Video,
   Pill,
@@ -188,14 +189,6 @@ export const getNavigation = (t = {}) => [
             module: 'ehr',
           },
           {
-            id: 'patients.diagnosis',
-            label: t.diagnoses || 'Diagnoses',
-            description: t.diagnosesDescription || 'Encounter diagnoses and coding',
-            icon: Activity,
-            module: 'patientDiagnosis',
-            access: 'ehr',
-          },
-          {
             id: 'patients.history',
             label: t.patientHistory || 'Patient History',
             description: t.patientHistoryDescription || 'Longitudinal chart timeline',
@@ -248,6 +241,16 @@ export const getNavigation = (t = {}) => [
         label: t.engagement || 'Engagement',
         items: [
           {
+            // Secure messaging spans care-team and patient conversations, so it
+            // sits in Engagement next to the portal rather than under Clinical:
+            // the thread list is the same inbox either way.
+            id: 'patients.messages',
+            label: t.messages || 'Messages',
+            description: t.messagesDescription || 'Secure conversations with colleagues and patients',
+            icon: MessageSquare,
+            module: 'messages',
+          },
+          {
             id: 'patients.portal',
             label: t.patientPortal || 'Patient Portal',
             description: t.patientPortalNavDescription || 'What the patient sees',
@@ -290,6 +293,13 @@ export const getNavigation = (t = {}) => [
                 module: 'patientPortal',
                 tab: 'forms',
               },
+              {
+                id: 'patients.portalMessages',
+                label: t.messages || 'Messages',
+                icon: MessageSquare,
+                module: 'patientPortal',
+                tab: 'messages',
+              },
             ],
           },
         ],
@@ -314,6 +324,16 @@ export const getNavigation = (t = {}) => [
             description: t.telehealthDescription || 'Virtual visits and sessions',
             icon: Video,
             module: 'telehealth',
+          },
+          {
+            // Coding an encounter is clinical work, not a way to look a patient
+            // up — under Patients it read as a step towards choosing one.
+            id: 'clinical.diagnosis',
+            label: t.diagnoses || 'Diagnoses',
+            description: t.diagnosesDescription || 'Encounter diagnoses and coding',
+            icon: Activity,
+            module: 'patientDiagnosis',
+            access: 'ehr',
           },
         ],
       },

@@ -3,6 +3,7 @@ import { Clock, CheckCircle, XCircle, Bell, User, Calendar, RefreshCw } from 'lu
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { formatDate } from '../utils/formatters';
 import { useAudit } from '../hooks/useAudit';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 const WaitlistManagementView = ({
   theme,
@@ -141,14 +142,10 @@ const WaitlistManagementView = ({
           <label className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
             Status:
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className={`px-3 py-2 rounded-lg border outline-none transition-colors ${
-              theme === 'dark'
-                ? 'bg-slate-700 border-slate-600 text-white'
-                : 'bg-white border-gray-300 text-gray-900'
-            }`}
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -156,7 +153,7 @@ const WaitlistManagementView = ({
             <option value="scheduled">Scheduled</option>
             <option value="cancelled">Cancelled</option>
             <option value="expired">Expired</option>
-          </select>
+          </ThemedSelect>
         </div>
 
         {/* Waitlist Entries */}
