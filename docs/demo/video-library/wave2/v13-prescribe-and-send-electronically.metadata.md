@@ -12,11 +12,11 @@ Part of the AureonCare Getting Started series.
 
 Chapters:
 0:00 Introduction
-0:14 Prescribing in context
+0:12 Prescribing in context
 0:42 Writing the prescription
-1:18 Check the chart first
-1:44 Sending it
-2:14 Recap
+1:16 Check the chart first
+1:41 Sending it
+2:08 Recap
 
 Subtitles: upload v13-prescribe-and-send-electronically.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -40,12 +40,12 @@ AureonCare, e-prescribing, eprescribe, electronic prescription, medication safet
 | Thumbnail | v13-prescribe-and-send-electronically.thumbnail.png |
 | Subtitles | v13-prescribe-and-send-electronically.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:27 |
+| Duration | 2:21 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
 ## Facts for the description box
 
-- Module: Patients ▸ Diagnoses ▸ e-Prescribe
+- Module: Clinical ▸ Diagnoses ▸ e-Prescribe
 - Audience: Clinician
 - Journey: Diagnosis → add a prescription → drug, dose, frequency, refills → check allergies and current meds → pharmacy → send

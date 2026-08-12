@@ -12,10 +12,10 @@ Part of the AureonCare Getting Started series.
 
 Chapters:
 0:00 Introduction
-0:13 Ordering from the chart
-0:43 Building the order
-1:36 Filing the result
-2:13 Recap
+0:15 Ordering from the chart
+0:48 Building the order
+1:42 Filing the result
+2:22 Recap
 
 Subtitles: upload v14-order-a-lab-and-file-the-result.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -39,7 +39,7 @@ AureonCare, lab orders, laboratory results, clinical workflow, lab integration, 
 | Thumbnail | v14-order-a-lab-and-file-the-result.thumbnail.png |
 | Subtitles | v14-order-a-lab-and-file-the-result.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:28 |
+| Duration | 2:36 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
