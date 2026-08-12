@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -284,12 +285,13 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Role *</label>
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:border-purple-500"
                   required
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
                   disabled={loadingRoles}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingRoles ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {loadingRoles ? (
                     <option>Loading roles...</option>
@@ -305,7 +307,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
                       ))}
                     </>
                   )}
-                </select>
+                </ThemedSelect>
               </div>
 
               <div>

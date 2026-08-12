@@ -13,6 +13,7 @@ import { apiFetch } from '../api/apiService';
 import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
 import AddToCalendarButton from '../components/calendar/AddToCalendarButton';
 import { useCalendarSync } from '../components/calendar/useCalendarSync';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange }) => {
   const { language, setLanguage, setTheme } = useApp();
@@ -1038,15 +1039,15 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                       <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                         {t.appointmentTypeRequired}
                       </label>
-                      <select
+                      <ThemedSelect
+                        theme={theme}
                         value={editAppointmentData.type}
                         onChange={(e) => setEditAppointmentData({...editAppointmentData, type: e.target.value})}
-                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                       >
                         {appointmentTypes.map(type => (
                           <option key={type.id} value={type.name}>{type.name}</option>
                         ))}
-                      </select>
+                      </ThemedSelect>
                     </div>
                   </div>
 
@@ -1065,11 +1066,11 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                           {providersError}
                         </div>
                       ) : (
-                        <select
+                        <ThemedSelect
+                          theme={theme}
                           value={editAppointmentData.providerId}
                           onChange={(e) => setEditAppointmentData({...editAppointmentData, providerId: e.target.value, time: ''})}
                           required
-                          className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                         >
                           <option value="">Select a provider</option>
                           {providers.map(provider => (
@@ -1077,7 +1078,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                               Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name} {(provider.specialization || provider.specialty) ? `- ${provider.specialization || provider.specialty}` : ''}
                             </option>
                           ))}
-                        </select>
+                        </ThemedSelect>
                       )}
                     </div>
                   )}
@@ -1093,11 +1094,11 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                           Loading available times...
                         </div>
                       ) : editAvailableSlots.length > 0 ? (
-                        <select
+                        <ThemedSelect
+                          theme={theme}
                           value={editAppointmentData.time}
                           onChange={(e) => setEditAppointmentData({...editAppointmentData, time: e.target.value})}
                           required
-                          className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                         >
                           <option value="">Select a time slot</option>
                           {editAvailableSlots.map((slot, index) => {
@@ -1114,7 +1115,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                               </option>
                             );
                           })}
-                        </select>
+                        </ThemedSelect>
                       ) : (
                         <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
                           No available time slots for this date. Please select a different date or provider.
@@ -1688,24 +1689,24 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
             </div>
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.languagePreference}</label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={profileData.language || 'English'}
                 onChange={(e) => setProfileData({...profileData, language: e.target.value})}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               >
                 <option value="English">English</option>
                 <option value="Spanish">Spanish</option>
                 <option value="French">French</option>
                 <option value="German">German</option>
                 <option value="Arabic">Arabic</option>
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={String(profileData.country || '')}
                 onChange={(e) => setProfileData({...profileData, country: e.target.value})}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               >
                 <option value="">Select Country</option>
                 <option value="US">United States</option>
@@ -1740,16 +1741,16 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                 <option value="SG">Singapore</option>
                 <option value="HK">Hong Kong</option>
                 <option value="KR">South Korea</option>
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                 {t.insurancePayer || 'Insurance Payer'}
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={profileData.insurance_payer_id || ''}
                 onChange={(e) => setProfileData({...profileData, insurance_payer_id: e.target.value})}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               >
                 <option value="">
                   {loadingPayers ? 'Loading insurance payers...' : (t.selectInsurancePayer || 'Select Insurance Payer')}
@@ -1759,7 +1760,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                     {payer.name} ({payer.payer_id})
                   </option>
                 ))}
-              </select>
+              </ThemedSelect>
             </div>
             <div className="col-span-2">
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.allergies}</label>
@@ -1811,10 +1812,10 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                 <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   {t.selectPharmacy || 'Select Pharmacy'}
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={selectedPharmacyId}
                   onChange={(e) => setSelectedPharmacyId(e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option value="">Select a pharmacy</option>
                   {pharmacies.map((pharmacy) => (
@@ -1822,7 +1823,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                       {pharmacy.pharmacyName || pharmacy.name || pharmacy.chainName} - {pharmacy.addressLine1 || pharmacy.address_line1}, {pharmacy.city}, {pharmacy.state}
                     </option>
                   ))}
-                </select>
+                </ThemedSelect>
               </div>
               {preferredPharmacies.length > 0 && (
                 <div className="mt-4">
@@ -2229,10 +2230,10 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {preferredPharmacies.length > 0 ? t.changePreferredPharmacy : t.selectPreferredPharmacy}
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={selectedPharmacyId}
                     onChange={(e) => setSelectedPharmacyId(e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                   >
                     <option value="">{t.selectPharmacyPrompt}</option>
                     {pharmacies.map((pharmacy) => (
@@ -2240,7 +2241,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                         {pharmacy.pharmacyName || pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
                 <button
                   onClick={handleAddPreferredPharmacy}
@@ -2692,11 +2693,11 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   {providersError}. Please refresh the page or contact support.
                 </div>
               ) : (
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={bookingData.providerId}
                   onChange={(e) => setBookingData({...bookingData, providerId: e.target.value, time: ''})}
                   required
-                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option value="">Select a provider</option>
                   {providers.map(provider => (
@@ -2704,7 +2705,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                       Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name} {(provider.specialization || provider.specialty) ? `- ${provider.specialization || provider.specialty}` : ''}
                     </option>
                   ))}
-                </select>
+                </ThemedSelect>
               )}
             </div>
           )}
@@ -2720,11 +2721,11 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   Loading available times...
                 </div>
               ) : availableSlots.length > 0 ? (
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={bookingData.time}
                   onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
                   required
-                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option value="">Select a time slot</option>
                   {availableSlots.map((slot, index) => {
@@ -2741,7 +2742,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                       </option>
                     );
                   })}
-                </select>
+                </ThemedSelect>
               ) : (
                 <div className="space-y-3">
                   <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
@@ -2767,15 +2768,15 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
               {t.appointmentTypeRequired}
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={bookingData.type}
               onChange={(e) => setBookingData({...bookingData, type: e.target.value})}
-              className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
             >
               {appointmentTypes.map(type => (
                 <option key={type.id} value={type.name}>{type.name}</option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
           <div>
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -3082,12 +3083,10 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     Provider
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={editRecordData.providerId}
                     onChange={(e) => setEditRecordData({ ...editRecordData, providerId: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg ${
-                      theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select a provider</option>
                     {providers.map((provider) => (
@@ -3095,7 +3094,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                         Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name}{(provider.specialty || provider.specialization) ? ` - ${provider.specialty || provider.specialization}` : ''}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
               )}
 
