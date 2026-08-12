@@ -128,7 +128,16 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
               style={{ aspectRatio: '1/1' }}
             />
           </div>
-          <p className={`mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Sign in to your account</p>
+          {/* App name must render as visible text and match the name configured
+              on the Google OAuth consent screen exactly. */}
+          <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            AureonCare
+          </h1>
+          <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Practice management and telehealth software for medical clinics — scheduling,
+            patient records, e-prescribing, billing, and video visits in one platform.
+          </p>
+          <p className={`mt-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Sign in to your account</p>
         </div>
 
         {loginError && (
@@ -269,6 +278,17 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
             >
               Privacy Policy &amp; HIPAA Notice
             </button>
+          </p>
+          {/* Real anchor links: these must be crawlable URLs, not JS-only modals,
+              so reviewers and crawlers can reach them without signing in. */}
+          <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+            <a href="/about.html" className="hover:text-cyan-500 transition-colors underline">
+              About AureonCare
+            </a>
+            <span className="mx-1">&bull;</span>
+            <a href="/privacy.html" className="hover:text-purple-500 transition-colors underline">
+              Privacy Policy (web)
+            </a>
           </p>
         </div>
       </div>
