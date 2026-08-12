@@ -131,7 +131,7 @@ in the system rather than working around it.
 | 12 | Quote, invoice, get paid | Billing ▸ Quotes & Invoices | Front desk, billing |
 | 13 | Prescribe and send electronically | Patient chart ▸ Prescriptions | Clinician |
 | 14 | Order a lab and file the result | Clinical ▸ Laboratories | Clinician |
-| 15 | Record a diagnosis | Patients ▸ Diagnoses | Clinician |
+| 15 | Record a diagnosis | Clinical ▸ Diagnoses *(produced)* | Clinician |
 | 16 | Set up appointment types and provider schedules | Scheduling ▸ Setup / Providers | Admin |
 
 **9. Get a pre-authorization approved** *(~2 min)* — new pre-auth against a
@@ -163,10 +163,12 @@ diagnosis → transmit to Labcorp → track status → result returns → review
 abnormal, file to the chart → notify the patient. *Teaches:* the ordering loop
 closes in the chart, not in email.
 
-**15. Record a diagnosis** *(~90 s)* — Patients ▸ Diagnoses → new diagnosis →
-ICD-10 search → status (active / resolved / chronic) → onset → link to the
-encounter → how it flows onto claims and the portal. *Teaches:* diagnosis quality
-drives claim acceptance.
+**15. Record a diagnosis** *(2:17 — produced, in `video-library/wave2/`)* —
+Clinical ▸ Diagnoses → New Diagnosis → patient picker → ICD-10 search →
+severity, status, onset → notes → save → how it flows onto claims and the
+portal. *Teaches:* diagnosis quality drives claim acceptance. Recorded after
+Diagnoses moved out of Patients and the standalone form gained its own patient
+picker; the video calls both changes out.
 
 **16. Set up appointment types and provider schedules** *(~2 min)* — appointment
 types with durations, colours and telehealth defaults → provider working hours →

@@ -875,7 +875,11 @@ ${spec.tags.join(', ')}
  */
 async function record(spec) {
   const { chromium } = loadPlaywright();
-  fs.mkdirSync(OUT_DIR, { recursive: true });
+  // A spec may name its wave; otherwise everything lands in the default folder.
+  const outDir = spec.wave && !process.env.OUT_DIR
+    ? path.join(__dirname, '..', 'video-library', spec.wave)
+    : OUT_DIR;
+  fs.mkdirSync(outDir, { recursive: true });
 
   const browser = await chromium.launch({
     args: ['--no-sandbox', '--disable-dev-shm-usage', '--force-device-scale-factor=1',
@@ -884,7 +888,7 @@ async function record(spec) {
   const context = await browser.newContext({
     viewport: VIEWPORT,
     deviceScaleFactor: 1,
-    recordVideo: { dir: OUT_DIR, size: VIEWPORT },
+    recordVideo: { dir: outDir, size: VIEWPORT },
   });
 
   const store = createStore();
@@ -961,7 +965,7 @@ async function record(spec) {
     // was actually on screen rather than making the next guess blind.
     if (failure) {
       try {
-        const debugDir = path.join(OUT_DIR, '_debug');
+        const debugDir = path.join(outDir, '_debug');
         fs.mkdirSync(debugDir, { recursive: true });
         await page.screenshot({ path: path.join(debugDir, `${spec.slug}.failure.png`) });
         const state = await page.evaluate(() => {
@@ -995,9 +999,9 @@ async function record(spec) {
       try { fs.unlinkSync(raw); } catch (_) { /* already gone */ }
     } else if (video) {
       const raw = await video.path();
-      const webm = path.join(OUT_DIR, `${spec.slug}.webm`);
+      const webm = path.join(outDir, `${spec.slug}.webm`);
       fs.renameSync(raw, webm);
-      const mp4 = path.join(OUT_DIR, `${spec.slug}.mp4`);
+      const mp4 = path.join(outDir, `${spec.slug}.mp4`);
       const startAt = d.videoStart || 0;
       const spoken = voice.muxNarration(webm, d.narration, mp4, { fps: FPS, startAt });
       fs.unlinkSync(webm);
@@ -1010,17 +1014,17 @@ async function record(spec) {
         ...(r.end === undefined ? {} : { end: Math.max(0, r.end - startAt) }),
       }));
       const chapters = normaliseChapters(shift(d.chapters), duration);
-      writeSrt(path.join(OUT_DIR, `${spec.slug}.srt`), shift(d.captions));
+      writeSrt(path.join(outDir, `${spec.slug}.srt`), shift(d.captions));
       fs.writeFileSync(
-        path.join(OUT_DIR, `${spec.slug}.chapters.txt`),
+        path.join(outDir, `${spec.slug}.chapters.txt`),
         chapters.map((c) => `${ts(c.start)} ${c.title}`).join('\n') + '\n',
         'utf8'
       );
-      writeMetadata(path.join(OUT_DIR, `${spec.slug}.metadata.md`), spec, chapters, duration);
+      writeMetadata(path.join(outDir, `${spec.slug}.metadata.md`), spec, chapters, duration);
 
       const tb = await chromium.launch({ args: ['--no-sandbox'] });
       const tctx = await tb.newContext({ viewport: { width: 1280, height: 720 } });
-      await renderThumbnail(tctx, spec, path.join(OUT_DIR, `${spec.slug}.thumbnail.png`));
+      await renderThumbnail(tctx, spec, path.join(outDir, `${spec.slug}.thumbnail.png`));
       await tctx.close();
       await tb.close();
 
