@@ -23,6 +23,7 @@ const { execFileSync } = require('child_process');
 
 const F = require('./fixtures');
 const voice = require('./voice');
+const W3 = require('./fixtures-wave3');
 
 /** Brand kit. Colours are sampled from the logo, not invented. */
 const BRAND = {
@@ -93,8 +94,18 @@ function createStore() {
     pharmacies: clone(F.pharmacies),
     laboratories: clone(F.laboratories),
     'lab-orders': clone(F.labOrders),
-    waitlist: [],
+    waitlist: clone(W3.waitlist),
     campaigns: [],
+    // Wave 3 screens
+    'intake-forms': clone(W3.intakeForms),
+    _intakeFlows: clone(W3.intakeFlows),
+    _consentForms: clone(W3.consentForms),
+    _formTemplates: clone(W3.formTemplates),
+    _formSubmissions: clone(W3.formSubmissions),
+    _offerings: clone(W3.offerings),
+    _packages: clone(W3.offeringPackages),
+    _promotions: clone(W3.offeringPromotions),
+    _categories: clone(W3.serviceCategories),
     _nextId: 90000,
     _user: clone(F.demoUser),
   };
@@ -267,6 +278,91 @@ async function handleApi(route, store) {
       rows.unshift(created);
       return json(created);
     }
+  }
+
+  // ── Wave 3: waitlist, intake, forms, catalogue, reports, booking ──────
+  if (p === '/waitlist/admin/all') return json(store.waitlist);
+  const wlNotify = p.match(/^\/waitlist\/admin\/notify-next/) || p.match(/^\/waitlist\/(\d+)\/notify$/);
+  if (wlNotify && method === 'POST') {
+    const next = store.waitlist.find((w) => w.status === 'active');
+    if (next) { next.status = 'notified'; next.notified_at = new Date().toISOString(); }
+    return json({ success: true, entry: next || null, message: 'Patient notified' });
+  }
+  const wlSched = p.match(/^\/waitlist\/(\d+)\/scheduled$/);
+  if (wlSched) {
+    const entry = store.waitlist.find((w) => String(w.id) === wlSched[1]);
+    if (entry) entry.status = 'scheduled';
+    return json(entry || { success: true });
+  }
+
+  if (p === '/intake-forms') return json(store['intake-forms']);
+  if (p === '/intake-forms/flows') return json(store._intakeFlows);
+  if (p === '/intake-forms/consents') return json(store._consentForms);
+
+  if (p === '/form-management/stats') return json(W3.formStats);
+  if (p === '/form-management/templates') {
+    if (method === 'POST') {
+      const created = { id: store._nextId++, version: 1, status: 'draft', submissions_count: 0, ...body };
+      store._formTemplates.unshift(created);
+      return json(created);
+    }
+    return json(store._formTemplates);
+  }
+  if (p === '/form-management/submissions') {
+    if (method === 'POST') return json({ id: store._nextId++, ...body });
+    return json(store._formSubmissions);
+  }
+  if (p.startsWith('/form-management/audit')) return json(W3.formAuditLogs);
+  if (/^\/form-management\/templates\/\d+\/versions$/.test(p)) return json([]);
+
+  if (p === '/offerings' && method === 'GET') return json(store._offerings);
+  if (p === '/offerings') {
+    if (method === 'POST') {
+      const created = { id: store._nextId++, is_active: true, ...body };
+      store._offerings.unshift(created);
+      return json(created);
+    }
+    return json(store._offerings);
+  }
+  if (p === '/offerings/categories') return json(store._categories);
+  if (p === '/offerings/packages/all') return json(store._packages);
+  if (p === '/offerings/promotions/all') return json(store._promotions);
+  if (p === '/offerings/statistics/overview') return json(W3.offeringStatistics);
+  if (p === '/offerings/packages' && method === 'POST') {
+    const created = { id: store._nextId++, is_active: true, ...body };
+    store._packages.unshift(created);
+    return json(created);
+  }
+  if (p === '/offerings/promotions' && method === 'POST') {
+    const created = { id: store._nextId++, is_active: true, status: 'active', usage_count: 0, ...body };
+    store._promotions.unshift(created);
+    return json(created);
+  }
+  if (/^\/offerings\/\d+\/forms$/.test(p)) return json([]);
+
+  if (p === '/reports/operational/no-shows') return json(W3.noShowReport);
+  if (p === '/reports/operational/daily-appointments') return json(W3.dailyAppointmentsReport);
+  if (p === '/reports/custom' && method === 'POST') return json(W3.customReportResult);
+  if (p.startsWith('/reports/')) return json({ summary: [], details: [] });
+
+  // Public booking: reached at /book/<slug>, before the auth gate.
+  if (p.startsWith('/scheduling/booking-config/slug/')) return json(W3.bookingConfig);
+  if (p.startsWith('/scheduling/appointment-types/')) return json(W3.bookingTypes);
+  // The page maps the dates array directly, and reads slot.start, so both come
+  // back as bare arrays rather than wrapped objects.
+  if (p.startsWith('/scheduling/available-dates/')) return json(W3.bookingDates);
+  if (p.startsWith('/scheduling/slots/')) {
+    const date = url.searchParams.get('date') || W3.bookingDates[0];
+    return json(W3.slotsForDate(date));
+  }
+  if (p === '/scheduling/book' && method === 'POST') {
+    return json({
+      success: true,
+      confirmationNumber: 'BK-2026-0413',
+      confirmation_number: 'BK-2026-0413',
+      appointment: { id: store._nextId++, ...body },
+      message: 'Appointment booked',
+    });
   }
 
   // ── generic REST over the store ───────────────────────────────────────
@@ -974,9 +1070,14 @@ async function record(spec) {
   });
 
   const d = new Director(page, t0, spec);
-  await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 90000 });
-  await page.waitForSelector(spec.showsLogin ? 'input[type="email"]' : 'nav[aria-label="Primary"]',
-    { timeout: 90000 });
+  // A spec may open somewhere other than the app root — the public booking
+  // page, for instance, is served at /book/<slug> ahead of the auth gate.
+  await page.goto(BASE_URL + (spec.startPath || ''), {
+    waitUntil: 'domcontentloaded', timeout: 90000,
+  });
+  const readySelector = spec.readySelector
+    || (spec.showsLogin ? 'input[type="email"]' : 'nav[aria-label="Primary"]');
+  await page.waitForSelector(readySelector, { timeout: 90000 });
   await sleep(1200);
 
   let failure = null;
