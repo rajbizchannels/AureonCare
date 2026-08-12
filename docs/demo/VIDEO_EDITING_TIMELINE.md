@@ -557,10 +557,10 @@ A1: Voiceover (primary audio)
   One Platform. One Patient Record. End-to-End Care.
 
   Learn More
-  www.aureoncare.com
+  www.aureoncare.tech
 
   Contact Sales
-  sales@aureoncare.com
+  sales@aureoncare.tech
   1-800-AUREONCARE
 
   [QR Code for Demo Booking]
@@ -925,8 +925,8 @@ After final export:
    11:20 - Security & Compliance
    12:00 - Summary
 
-   Learn more: www.aureoncare.com
-   Contact: sales@aureoncare.com
+   Learn more: www.aureoncare.tech
+   Contact: sales@aureoncare.tech
    ```
 5. **Visibility:** Unlisted (for controlled sharing)
 6. **Thumbnail:** Upload custom thumbnail with AureonCare logo
@@ -936,7 +936,7 @@ After final export:
 
 - **YouTube:** https://youtu.be/[VIDEO_ID]
 - **Vimeo:** https://vimeo.com/[VIDEO_ID]
-- **Self-hosted:** Embed on www.aureoncare.com/demo
+- **Self-hosted:** Embed on www.aureoncare.tech/demo
 
 ---
 

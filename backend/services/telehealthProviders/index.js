@@ -239,7 +239,7 @@ class TelehealthProviderManager {
     return {
       success: true,
       meetingId: roomId,
-      meetingUrl: `https://meet.aureoncare.com/${roomId}`,
+      meetingUrl: `https://meet.aureoncare.tech/${roomId}`,
       roomId: roomId,
       provider: 'aureoncare'
     };

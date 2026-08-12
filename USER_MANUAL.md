@@ -4579,7 +4579,7 @@ See **Section 2.7 Help & Documentation System** for complete details on using th
 
 If you need additional assistance beyond the help system:
 
-- Email: support@aureoncare.com
+- Email: support@aureoncare.tech
 - Phone: [Clinic phone number]
 - Live chat: Available during business hours
 - Support ticket system via Administration > Support
@@ -4900,9 +4900,9 @@ Provide the following information to get faster help:
 ## Appendix B: Contact Information
 
 **AureonCare Support:**
-- Email: support@aureoncare.com
-- Website: https://aureoncare.com
-- Documentation: https://docs.aureoncare.com
+- Email: support@aureoncare.tech
+- Website: https://aureoncare.tech
+- Documentation: https://docs.aureoncare.tech
 
 **Emergency Support:**
 - For medical emergencies: Call 911
