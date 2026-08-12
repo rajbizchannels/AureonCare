@@ -23,3 +23,9 @@ docs/demo/video-harness/.voice-cache/
 docs/demo/video-library/**/*.mp4
 docs/demo/video-library/**/*.webm
 docs/demo/video-library/**/*.thumbnail.png
+
+# Wave 3 was commissioned as downloads rather than repository content, so its
+# subtitles, chapters and metadata stay out too. Waves 1 and 2 still track
+# theirs. Delete this line to store Wave 3 the same way as the others; the
+# scripts in ../video-harness reproduce the files either way.
+docs/demo/video-library/wave3/
