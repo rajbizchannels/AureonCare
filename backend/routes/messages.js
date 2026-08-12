@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { resolveActor, requireStaffActor } = require('../middleware/messagingAuth');
 const { encrypt, decrypt, decryptToBuffer } = require('../utils/messageCrypto');
+const { fileAttachment, unfileMessage } = require('../services/messageDocumentFiling');
 
 /**
  * Secure messaging API.
@@ -138,6 +139,7 @@ const presentMessage = (row) => {
     deletedAt: row.deleted_at,
     attachments: (row.attachments || []).filter(Boolean),
     readBy: (row.read_by || []).filter(Boolean),
+    filings: (row.filings || []).filter(Boolean),
   };
 };
 
@@ -590,7 +592,20 @@ router.get('/threads/:threadId/messages', async (req, res) => {
              'kind', r.reader_kind, 'readerId', r.reader_id, 'readAt', r.read_at
            ))
            FROM message_read_receipts r WHERE r.message_id = m.id
-         ) AS read_by
+         ) AS read_by,
+         -- Where this message's documents were filed, re-derived rather than
+         -- cached, so the note survives a reload and disappears if the filing
+         -- is later undone.
+         (
+           SELECT json_agg(json_build_object('destination', d.destination, 'id', d.id))
+           FROM (
+             SELECT 'patient_records' AS destination, mr.id::text AS id
+               FROM medical_records mr WHERE mr.source_message_id = m.id
+             UNION ALL
+             SELECT 'forms_requested', fs.id::text
+               FROM form_submissions fs WHERE fs.source_message_id = m.id
+           ) d
+         ) AS filings
        FROM messages m
        LEFT JOIN users u     ON m.sender_kind = 'user'    AND u.id  = m.sender_id
        LEFT JOIN patients pt ON m.sender_kind = 'patient' AND pt.id = m.sender_id
@@ -653,6 +668,11 @@ router.post('/threads/:threadId/messages', async (req, res) => {
 
     const message = await insertMessage(client, { threadId, actor: req.actor, body });
 
+    // Where each attachment was filed, echoed back so the composer can confirm
+    // it in place ("Filed to Patient Records") rather than leaving the sender
+    // to go and check.
+    const filings = [];
+
     for (const att of attachments) {
       if (!att?.contentBase64 || !att?.fileName) continue;
       const raw = Buffer.from(att.contentBase64, 'base64');
@@ -664,14 +684,16 @@ router.post('/threads/:threadId/messages', async (req, res) => {
         });
       }
       const enc = encrypt(raw);
-      await client.query(
+      const fileName = String(att.fileName).slice(0, 255);
+      const stored = await client.query(
         `INSERT INTO message_attachments (
            message_id, file_name, mime_type, size_bytes,
            content_ciphertext, content_iv, content_tag, key_version
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         RETURNING id`,
         [
           message.id,
-          String(att.fileName).slice(0, 255),
+          fileName,
           att.mimeType || 'application/octet-stream',
           raw.length,
           enc.ciphertext,
@@ -679,6 +701,23 @@ router.post('/threads/:threadId/messages', async (req, res) => {
           enc.tag,
           enc.keyVersion,
         ]
+      );
+
+      // A document sent about a patient belongs in that patient's chart, not
+      // only in the conversation. Where exactly depends on the sender and, for
+      // staff, on the disposition they chose at send time.
+      filings.push(
+        await fileAttachment(client, {
+          attachmentId: stored.rows[0].id,
+          fileName,
+          mimeType: att.mimeType,
+          actor: req.actor,
+          thread,
+          messageId: message.id,
+          disposition: att.disposition,
+          documentAction: att.documentAction,
+          note: att.note,
+        })
       );
     }
 
@@ -698,18 +737,19 @@ router.post('/threads/:threadId/messages', async (req, res) => {
       resourceId: message.id,
       description: `Sent a secure message in "${thread.subject}"`,
       patientId: thread.patient_id,
-      metadata: { threadId, attachmentCount: attachments.length },
+      metadata: { threadId, attachmentCount: attachments.length, filings },
     });
 
-    res.status(201).json(
-      presentMessage({
+    res.status(201).json({
+      ...presentMessage({
         ...message,
         sender_name: req.actor.displayName,
         sender_role: req.actor.role,
         attachments: [],
         read_by: [],
-      })
-    );
+      }),
+      filings,
+    });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Error sending message:', error);
@@ -796,19 +836,39 @@ router.delete('/messages/:messageId', async (req, res) => {
     }
 
     const tombstone = encrypt('[message withdrawn]');
-    await pool.query(
-      `UPDATE messages
-          SET deleted_at = CURRENT_TIMESTAMP,
-              deleted_by_kind = $1,
-              deleted_by_id = $2,
-              body_ciphertext = $3,
-              body_iv = $4,
-              body_tag = $5,
-              key_version = $6
-        WHERE id = $7`,
-      [req.actor.kind, req.actor.id, tombstone.ciphertext, tombstone.iv, tombstone.tag, tombstone.keyVersion, messageId]
-    );
-    await pool.query('DELETE FROM message_attachments WHERE message_id = $1', [messageId]);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `UPDATE messages
+            SET deleted_at = CURRENT_TIMESTAMP,
+                deleted_by_kind = $1,
+                deleted_by_id = $2,
+                body_ciphertext = $3,
+                body_iv = $4,
+                body_tag = $5,
+                key_version = $6
+          WHERE id = $7`,
+        [req.actor.kind, req.actor.id, tombstone.ciphertext, tombstone.iv, tombstone.tag, tombstone.keyVersion, messageId]
+      );
+      // Drop the filings the withdrawal invalidates, then delete only the
+      // attachments nothing still depends on. A document already accepted into
+      // the chart keeps its bytes — the sender can withdraw their message, not
+      // a clinician's record.
+      const retained = await unfileMessage(client, messageId);
+      await client.query(
+        `DELETE FROM message_attachments
+          WHERE message_id = $1
+            AND NOT (id = ANY($2::uuid[]))`,
+        [messageId, retained]
+      );
+      await client.query('COMMIT');
+    } catch (txError) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw txError;
+    } finally {
+      client.release();
+    }
 
     await recordAudit(pool, req, {
       actionType: 'delete',

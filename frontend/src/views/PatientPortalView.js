@@ -276,7 +276,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     if (!user?.id) return;
     setLoadingForms(true);
     try {
-      const submissions = await api.getFormSubmissions({ patient_id: user.id });
+      const submissions = await api.getPatientFormRequests(user.id);
       setPendingForms(submissions || []);
     } catch (error) {
       console.error('Error fetching pending forms:', error);
@@ -2867,6 +2867,42 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     }
   };
 
+  /** Save a blob to the device under its original filename. */
+  const saveBlob = (blob, fileName) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'document';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadRequestedDocument = async (submission) => {
+    try {
+      const blob = await api.downloadRequestedDocument(submission.id, user.id);
+      saveBlob(blob, submission.document_name);
+    } catch (error) {
+      console.error('Error downloading requested document:', error);
+      addNotification('alert', error.message || 'Could not open the document');
+    }
+  };
+
+  const handleAcknowledgeDocument = async (submission) => {
+    try {
+      await api.acknowledgeRequestedDocument(submission.id, user.id);
+      addNotification(
+        'success',
+        submission.document_action === 'sign' ? 'Document signed' : 'Document confirmed'
+      );
+      await fetchPendingForms();
+    } catch (error) {
+      console.error('Error acknowledging document:', error);
+      addNotification('alert', error.message || 'Could not complete the request');
+    }
+  };
+
   const renderForms = () => {
     const draft = pendingForms.filter(f => f.status === 'draft');
     const submitted = pendingForms.filter(f => f.status !== 'draft');
@@ -2894,27 +2930,62 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   Forms Requested ({draft.length})
                 </h3>
                 <div className="space-y-3">
-                  {draft.map(submission => (
-                    <div key={submission.id} className={`flex items-center justify-between p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
-                          <ClipboardList className="w-5 h-5 text-teal-500" />
+                  {draft.map(submission => {
+                    // A request sent from a secure message carries a document
+                    // instead of a template — there are no fields to render, so
+                    // it is read and acknowledged rather than filled in.
+                    const isDocument = Boolean(submission.document_attachment_id);
+
+                    return (
+                      <div key={submission.id} className={`flex items-center justify-between p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                            {isDocument
+                              ? <FileText className="w-5 h-5 text-teal-500" />
+                              : <ClipboardList className="w-5 h-5 text-teal-500" />}
+                          </div>
+                          <div>
+                            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {submission.document_name || submission.template_name}
+                            </p>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                              Assigned {new Date(submission.created_at).toLocaleDateString()} ·{' '}
+                              {isDocument
+                                ? (submission.document_action === 'sign' ? 'Signature required' : 'Please read and confirm')
+                                : 'Action required'}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{submission.template_name}</p>
-                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                            Assigned {new Date(submission.created_at).toLocaleDateString()} · Action required
-                          </p>
-                        </div>
+
+                        {isDocument ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDownloadRequestedDocument(submission)}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                              }`}
+                            >
+                              <FileText className="w-4 h-4" /> Open
+                            </button>
+                            <button
+                              onClick={() => handleAcknowledgeDocument(submission)}
+                              className="flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                              {submission.document_action === 'sign' ? 'Sign' : 'Confirm'}
+                              <Check className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenForm(submission)}
+                            className="flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
+                          >
+                            Fill Now <ChevronRight className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handleOpenForm(submission)}
-                        className="flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Fill Now <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

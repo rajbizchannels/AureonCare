@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Paperclip, X, Lock, Users, Trash2, Download,
-  ArrowLeft, CheckCircle2, RotateCcw, AlertTriangle, Loader2, ShieldAlert
+  ArrowLeft, CheckCircle2, RotateCcw, AlertTriangle, Loader2, ShieldAlert,
+  FolderPlus, ClipboardList, MessageSquare, FileCheck
 } from 'lucide-react';
 import { formatDateTime } from '../../utils/formatters';
 
@@ -15,6 +16,24 @@ import { formatDateTime } from '../../utils/formatters';
 
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const MAX_ATTACHMENTS = 5;
+
+/**
+ * Where a staff-sent document is filed. Defaults to the chart, because a
+ * document sent about a patient almost always belongs in their record — the
+ * other two are the exceptions, not the norm.
+ */
+const FILING_OPTIONS = [
+  { id: 'records', label: 'Records', icon: FolderPlus, hint: 'File under Patient Records — visible in the chart and the portal' },
+  { id: 'form_request', label: 'Request', icon: ClipboardList, hint: 'File under Forms Requested — the patient must open and acknowledge it' },
+  { id: 'none', label: 'Chat', icon: MessageSquare, hint: 'Keep in this conversation only — not filed to the chart' },
+];
+
+/** Human-readable confirmation of where each attachment ended up. */
+const FILING_LABELS = {
+  patient_records: 'Filed to Patient Records',
+  forms_requested: 'Added to Forms Requested',
+  conversation: 'Kept in this conversation',
+};
 
 const readFileAsBase64 = (file) =>
   new Promise((resolve, reject) => {
@@ -90,6 +109,9 @@ const MessageThreadPanel = ({
           mimeType: file.type || 'application/octet-stream',
           sizeBytes: file.size,
           contentBase64: await readFileAsBase64(file),
+          // Staff choose per file; a patient's upload always goes to their
+          // records, so they are not asked.
+          disposition: 'records',
         });
       } catch (error) {
         addNotification('alert', error.message);
@@ -279,6 +301,18 @@ const MessageThreadPanel = ({
                           <span className="opacity-70 shrink-0">{formatBytes(attachment.sizeBytes)}</span>
                         </button>
                       ))}
+
+                      {/* Where the document went. Without this the sender has
+                          to open the chart to find out whether it filed. */}
+                      {message.filings?.filter((f) => f.destination !== 'conversation').map((filing, i) => (
+                        <p
+                          key={`${filing.destination}-${i}`}
+                          className={`flex items-center gap-1.5 text-xs ${mine ? 'text-white/80' : dark ? 'text-slate-400' : 'text-gray-500'}`}
+                        >
+                          <FileCheck className="w-3 h-3 shrink-0" />
+                          {FILING_LABELS[filing.destination]}
+                        </p>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -308,25 +342,63 @@ const MessageThreadPanel = ({
       ) : (
         <form onSubmit={handleSubmit} className={`border-t p-3 ${dark ? 'border-slate-700' : 'border-gray-300'}`}>
           {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2">
+            <div className="space-y-2 mb-2">
               {attachments.map((attachment, index) => (
-                <span
+                <div
                   key={`${attachment.fileName}-${index}`}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs ${dark ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+                  className={`flex items-center gap-2 flex-wrap px-2.5 py-2 rounded-lg text-xs ${dark ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
                 >
-                  <Paperclip className="w-3 h-3" />
-                  <span className="max-w-[10rem] truncate">{attachment.fileName}</span>
+                  <Paperclip className="w-3 h-3 shrink-0" />
+                  <span className="max-w-[12rem] truncate font-medium">{attachment.fileName}</span>
                   <span className="opacity-60">{formatBytes(attachment.sizeBytes)}</span>
+
+                  {/* Where this document is filed. Patients are not offered the
+                      choice — anything they send goes to their records for
+                      review, and Forms Requested is the practice's list. */}
+                  {canAdminister && thread.patientId && (
+                    <div className={`flex rounded-md overflow-hidden border ml-auto ${dark ? 'border-slate-600' : 'border-gray-300'}`}>
+                      {FILING_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          title={option.hint}
+                          onClick={() => setAttachments((c) =>
+                            c.map((a, i) => (i === index ? { ...a, disposition: option.id } : a))
+                          )}
+                          className={`flex items-center gap-1 px-2 py-1 transition-colors ${
+                            (attachment.disposition || 'records') === option.id
+                              ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
+                              : dark ? 'text-slate-400 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          <option.icon className="w-3 h-3" />
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setAttachments((c) => c.filter((_, i) => i !== index))}
                     aria-label={`Remove ${attachment.fileName}`}
-                    className="hover:text-red-500"
+                    className="hover:text-red-500 shrink-0"
                   >
                     <X className="w-3 h-3" />
                   </button>
-                </span>
+                </div>
               ))}
+
+              {canAdminister && !thread.patientId && (
+                <p className={`text-xs ${dark ? 'text-slate-500' : 'text-gray-500'}`}>
+                  This thread has no patient attached, so documents stay in the conversation.
+                </p>
+              )}
+              {!canAdminister && (
+                <p className={`text-xs ${dark ? 'text-slate-500' : 'text-gray-500'}`}>
+                  Documents you send are added to your records for your care team to review.
+                </p>
+              )}
             </div>
           )}
 
