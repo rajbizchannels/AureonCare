@@ -4,6 +4,7 @@ import LabCPTMultiSelect from './LabCPTMultiSelect';
 import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewLabOrderForm = ({
   theme,
@@ -428,15 +429,11 @@ const NewLabOrderForm = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Patient *
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     required
                     value={formData.patientId}
                     onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
                   >
                     <option value="">Select Patient</option>
                     {patients.map((p) => (
@@ -444,7 +441,7 @@ const NewLabOrderForm = ({
                         {p.first_name || p.firstName} {p.last_name || p.lastName} - MRN: {p.mrn || 'N/A'}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
               )}
 
@@ -478,14 +475,10 @@ const NewLabOrderForm = ({
                       Loading diagnoses...
                     </div>
                   ) : diagnoses.length > 0 ? (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={formData.linkedDiagnosisId}
                       onChange={(e) => handleDiagnosisChange(e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                        theme === 'dark'
-                          ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                          : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                      }`}
                     >
                       <option value="">No linked diagnosis</option>
                       {diagnoses.map((diagnosis) => (
@@ -493,7 +486,7 @@ const NewLabOrderForm = ({
                           {diagnosis.diagnosisName || diagnosis.diagnosisCode || 'Unnamed Diagnosis'} - {diagnosis.diagnosedDate ? new Date(diagnosis.diagnosedDate).toLocaleDateString() : 'N/A'}
                         </option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                   ) : (
                     <div className={`w-full px-3 py-2 border rounded-lg ${
                       theme === 'dark'
@@ -541,15 +534,11 @@ const NewLabOrderForm = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Laboratory *
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     required
                     value={formData.laboratoryId}
                     onChange={(e) => setFormData({ ...formData, laboratoryId: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
                   >
                     <option value="">Select Laboratory</option>
                     {laboratories.map((lab) => (
@@ -557,26 +546,22 @@ const NewLabOrderForm = ({
                         {lab.labName}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Priority
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={formData.priority}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
                   >
                     <option value="routine">Routine</option>
                     <option value="urgent">Urgent</option>
                     <option value="stat">STAT</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
 
@@ -586,19 +571,15 @@ const NewLabOrderForm = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Status *
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     required
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
                   >
                     <option value="one-time">One-Time</option>
                     <option value="recurring">Recurring</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div>
@@ -607,15 +588,11 @@ const NewLabOrderForm = ({
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                         Frequency *
                       </label>
-                      <select
+                      <ThemedSelect
+                        theme={theme}
                         required
                         value={formData.frequency}
                         onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
-                        className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                          theme === 'dark'
-                            ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                            : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                        }`}
                       >
                         <option value="">Select Frequency</option>
                         <option value="daily">Daily</option>
@@ -624,7 +601,7 @@ const NewLabOrderForm = ({
                         <option value="monthly">Monthly</option>
                         <option value="quarterly">Quarterly</option>
                         <option value="annually">Annually</option>
-                      </select>
+                      </ThemedSelect>
                     </>
                   ) : (
                     <>
@@ -655,19 +632,15 @@ const NewLabOrderForm = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Collection Class *
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     required
                     value={formData.class}
                     onChange={(e) => setFormData({ ...formData, class: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
                   >
                     <option value="clinic-collect">Clinic Collect</option>
                     <option value="lab-collect">Lab Collect</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Activity, Plus, Search, Calendar, User, Edit2, Trash2, Filter, AlertCircle } from 'lucide-react';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
+import ThemedSelect from '../components/forms/ThemedSelect';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
 
@@ -258,14 +259,10 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
 
           {/* Patient Filter */}
           <div>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={filterPatient}
               onChange={(e) => setFilterPatient(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                theme === 'dark'
-                  ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-              }`}
             >
               <option value="all">All Patients</option>
               {patients.map(patient => (
@@ -273,25 +270,21 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
                   {patient.first_name || patient.firstName} {patient.last_name || patient.lastName}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           {/* Status Filter */}
           <div>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                theme === 'dark'
-                  ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-              }`}
             >
               <option value="all">All Statuses</option>
               <option value="Active">Active</option>
               <option value="Resolved">Resolved</option>
               <option value="Chronic">Chronic</option>
-            </select>
+            </ThemedSelect>
           </div>
         </div>
       </div>

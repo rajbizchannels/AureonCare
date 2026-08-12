@@ -94,6 +94,7 @@ import {
   validateOptionalEmail,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 /**
  * ZoomSetupGuide — admin-only collapsible guide for configuring
@@ -2122,12 +2123,11 @@ const AdminPanelView = ({
           <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             Currency
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
+            focusClass="focus:ring-2 focus:ring-blue-500"
             value={clinicSettings.currency || 'USD'}
             onChange={(e) => updateClinicSetting('currency', e.target.value)}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-            }`}
           >
             {[
               { code: 'USD', label: 'USD – US Dollar ($)' },
@@ -2151,7 +2151,7 @@ const AdminPanelView = ({
               { code: 'BDT', label: 'BDT – Bangladeshi Taka (৳)' },
               { code: 'KES', label: 'KES – Kenyan Shilling (KSh)' },
             ].map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
-          </select>
+          </ThemedSelect>
         </div>
       </div>
 
@@ -2778,12 +2778,12 @@ const AdminPanelView = ({
                 </label>
                 <div className="relative">
                   <Globe className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10"
                     value={userFormData.country}
                     onChange={(e) => handleUserFormChange('country', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select</option>
                     <option value="US">US</option>
@@ -2792,7 +2792,7 @@ const AdminPanelView = ({
                     <option value="AU">Australia</option>
                     <option value="DE">Germany</option>
                     <option value="FR">France</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
 
@@ -2802,19 +2802,19 @@ const AdminPanelView = ({
                 </label>
                 <div className="relative">
                   <Clock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10"
                     value={userFormData.timezone}
                     onChange={(e) => handleUserFormChange('timezone', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select</option>
                     <option value="America/New_York">ET</option>
                     <option value="America/Chicago">CT</option>
                     <option value="America/Denver">MT</option>
                     <option value="America/Los_Angeles">PT</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
 
@@ -2824,12 +2824,12 @@ const AdminPanelView = ({
                 </label>
                 <div className="relative">
                   <Languages className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10"
                     value={userFormData.language}
                     onChange={(e) => handleUserFormChange('language', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select</option>
                     <option value="en">English</option>
@@ -2837,7 +2837,7 @@ const AdminPanelView = ({
                     <option value="fr">Français</option>
                     <option value="de">Deutsch</option>
                     <option value="ar">العربية</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
             </div>
@@ -2849,18 +2849,18 @@ const AdminPanelView = ({
               </label>
               <div className="relative">
                 <Shield className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10"
                   value={userFormData.role}
                   onChange={(e) => handleUserFormChange('role', e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                  }`}
                 >
                   <option value="admin">Admin</option>
                   <option value="doctor">Doctor</option>
                   <option value="staff">Staff</option>
                   <option value="patient">Patient</option>
-                </select>
+                </ThemedSelect>
               </div>
             </div>
 

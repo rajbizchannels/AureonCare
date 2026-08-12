@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, X, Save, Lock } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addNotification, editingPayment }) => {
   const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
@@ -274,35 +275,37 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Patient <span className="text-red-400">*</span>
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:border-green-500"
                   required
                   disabled={processing}
                   value={formData.patientId}
                   onChange={(e) => setFormData({...formData, patientId: e.target.value})}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-green-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
                   <option value="">Select Patient</option>
                   {patients.map(p => (
                     <option key={p.id} value={p.id}>{p.first_name} {p.last_name} - {p.mrn}</option>
                   ))}
-                </select>
+                </ThemedSelect>
               </div>
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Related Claim (Optional)
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:border-green-500"
                   disabled={processing}
                   value={formData.claimId}
                   onChange={(e) => setFormData({...formData, claimId: e.target.value})}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-green-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
                   <option value="">No claim</option>
                   {claims.filter(c => c.patient_id?.toString() === formData.patientId).map(c => (
                     <option key={c.id} value={c.id}>{c.claim_number} - ${c.amount}</option>
                   ))}
-                </select>
+                </ThemedSelect>
               </div>
             </div>
 

@@ -14,6 +14,7 @@ import SignatureCapture from '../components/forms/SignatureCapture';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { FORM_TEMPLATES, FORM_CATEGORIES } from '../data/formTemplates';
 import { useShellTab } from '../hooks/useShellTab';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 // ─── PDF Export ────────────────────────────────────────────────────────────
 const exportToPDF = async (template, submission, signatures) => {
@@ -504,11 +505,12 @@ const FormManagementView = ({
             <p className={`text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{selectedTemplate.description}</p>
           </div>
           <div className="flex gap-2">
-            <select value={submissionLanguage} onChange={e => setSubmissionLanguage(e.target.value)} className={inputCls}>
+            <ThemedSelect
+              theme={theme} value={submissionLanguage} onChange={e => setSubmissionLanguage(e.target.value)}>
               {(selectedTemplate.languages || ['en']).map(lang => (
                 <option key={lang} value={lang}>{lang === 'en' ? 'English' : lang === 'es' ? 'Español' : lang === 'fr' ? 'Français' : lang}</option>
               ))}
-            </select>
+            </ThemedSelect>
             <button onClick={() => handleExportPDF(selectedTemplate, null)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${dark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
               <Download className="w-4 h-4" /> Export PDF
             </button>
@@ -630,24 +632,27 @@ const FormManagementView = ({
             </div>
             <div>
               <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Category</label>
-              <select value={builderSettings.category_slug} onChange={e => setBuilderSettings(p => ({...p, category_slug: e.target.value}))} className={`${inputCls} w-full`}>
+              <ThemedSelect
+                theme={theme} value={builderSettings.category_slug} onChange={e => setBuilderSettings(p => ({...p, category_slug: e.target.value}))}>
                 {FORM_CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Template Type</label>
-              <select value={builderSettings.template_type} onChange={e => setBuilderSettings(p => ({...p, template_type: e.target.value}))} className={`${inputCls} w-full`}>
+              <ThemedSelect
+                theme={theme} value={builderSettings.template_type} onChange={e => setBuilderSettings(p => ({...p, template_type: e.target.value}))}>
                 {['onboarding','medical','consent','privacy','billing','scheduling','clinical','communication','legal','feedback','specialized','operational'].map(t => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Specialty</label>
-              <select value={builderSettings.specialty} onChange={e => setBuilderSettings(p => ({...p, specialty: e.target.value}))} className={`${inputCls} w-full`}>
+              <ThemedSelect
+                theme={theme} value={builderSettings.specialty} onChange={e => setBuilderSettings(p => ({...p, specialty: e.target.value}))}>
                 <option value="">General</option>
                 {['behavioral_health','dentistry','pediatrics','cardiology','orthopedics','oncology','dermatology'].map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Languages</label>
@@ -787,16 +792,18 @@ const FormManagementView = ({
           <input type="text" placeholder={activeTab === 'templates' ? 'Search templates...' : 'Search submissions...'} value={search} onChange={e => setSearch(e.target.value)} className={`${inputCls} w-full pl-9`} />
         </div>
         {activeTab === 'templates' && (
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className={inputCls}>
+          <ThemedSelect
+            theme={theme} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
             <option value="all">All Categories</option>
             {FORM_CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-          </select>
+          </ThemedSelect>
         )}
         {activeTab === 'submissions' && (
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={inputCls}>
+          <ThemedSelect
+            theme={theme} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="all">All Statuses</option>
             {['draft','submitted','reviewed','approved','rejected'].map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          </ThemedSelect>
         )}
         {activeTab === 'templates' && (
           <div className={`flex rounded-lg border overflow-hidden ${dark ? 'border-slate-600' : 'border-gray-200'}`}>
@@ -954,10 +961,12 @@ const FormManagementView = ({
             <div className="p-5 space-y-4">
               <div>
                 <label className={`block text-sm font-medium mb-1.5 ${dark ? 'text-slate-300' : 'text-gray-700'}`}>Select Patient <span className="text-red-400">*</span></label>
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:ring-2 focus:ring-blue-500"
+                  className="text-sm"
                   value={sendPatientId}
                   onChange={e => setSendPatientId(e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 ${dark ? 'bg-slate-700 border-slate-600 text-slate-100' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option value="">-- Select a patient --</option>
                   {(patients || []).map(p => (
@@ -965,7 +974,7 @@ const FormManagementView = ({
                       {p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim()} {p.mrn ? `(${p.mrn})` : ''}
                     </option>
                   ))}
-                </select>
+                </ThemedSelect>
               </div>
               <div className={`p-3 rounded-lg text-sm ${dark ? 'bg-blue-900/20 border border-blue-700/40 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-700'}`}>
                 <Send className="w-4 h-4 inline mr-1.5" />

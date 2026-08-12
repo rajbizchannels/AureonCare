@@ -4,6 +4,7 @@ import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { FORM_TEMPLATES } from '../../data/formTemplates';
+import ThemedSelect from './ThemedSelect';
 
 const CONSENT_FORM_OPTIONS = FORM_TEMPLATES.filter(t =>
   ['consent', 'privacy', 'legal'].includes(t.category_slug)
@@ -289,10 +290,10 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {t.serviceCategory || 'Service Category'}
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={formData.categoryId}
                     onChange={(e) => setFormData({...formData, categoryId: e.target.value})}
-                    className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                     disabled={loadingCategories}
                   >
                     <option value="">{loadingCategories ? t.loading || 'Loading...' : t.selectCategory || 'Select category'}</option>
@@ -301,7 +302,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                         {cat.name}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div>
@@ -402,15 +403,15 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {t.genderRestriction || 'Gender Restriction'}
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={formData.genderRestriction}
                     onChange={(e) => setFormData({...formData, genderRestriction: e.target.value})}
-                    className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                   >
                     <option value="any">{t.any || 'Any'}</option>
                     <option value="male">{t.male || 'Male'}</option>
                     <option value="female">{t.female || 'Female'}</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div className="md:col-span-3">
@@ -493,10 +494,10 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                     <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                       Select Consent Form Template
                     </label>
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={formData.consentFormId}
                       onChange={(e) => setFormData({ ...formData, consentFormId: e.target.value })}
-                      className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                     >
                       <option value="">— Select a consent form —</option>
                       {CONSENT_FORM_OPTIONS.map(tpl => (
@@ -504,7 +505,7 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                           {tpl.name}{tpl.subcategory ? ` (${tpl.subcategory})` : ''}
                         </option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                     {formData.consentFormId && (() => {
                       const selected = CONSENT_FORM_OPTIONS.find(t => t.id === formData.consentFormId);
                       return selected?.description ? (
