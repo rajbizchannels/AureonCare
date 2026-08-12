@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { google } = require('googleapis');
 const { Client } = require('@microsoft/microsoft-graph-client');
+const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('../utils/filedDocuments');
 
 // Helper: get today's date string YYYY-MM-DD
 function todayStr() {
@@ -170,6 +171,84 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Error fetching medical records:', error);
     res.status(500).json({ error: 'Failed to fetch medical records' });
+  }
+});
+
+/**
+ * GET /api/medical-records/:recordId/attachments/:attachmentId
+ *
+ * Serves a document that arrived through a secure message and was filed into
+ * the chart. Authorises on the record, not on the message thread — a clinician
+ * reading the chart is entitled to its documents regardless of who was in the
+ * conversation.
+ */
+router.get('/:recordId/attachments/:attachmentId', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { recordId, attachmentId } = req.params;
+
+    const recordResult = await pool.query('SELECT * FROM medical_records WHERE id = $1', [recordId]);
+    if (recordResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Record not found' });
+    }
+    const record = recordResult.rows[0];
+
+    // A patient signed in against a users row reaches this router with a staff
+    // JWT, so their own record is the only one they may open here.
+    if (req.user.role === 'patient' && String(record.patient_id) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (!recordReferencesAttachment(record, attachmentId)) {
+      return res.status(404).json({ error: 'Attachment is not part of this record' });
+    }
+
+    const attachment = await loadAttachment(pool, attachmentId);
+    if (!attachment) {
+      return res.status(404).json({ error: 'Attachment no longer available' });
+    }
+    if (!sendAttachment(res, attachment)) {
+      return res.status(500).json({ error: 'Document could not be decrypted' });
+    }
+  } catch (error) {
+    console.error('Error downloading filed document:', error);
+    res.status(500).json({ error: 'Failed to download document' });
+  }
+});
+
+/**
+ * POST /api/medical-records/:recordId/review
+ * Accept or reject a patient-supplied document into the chart.
+ * Body: { decision: 'accepted' | 'rejected', notes? }
+ */
+router.post('/:recordId/review', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { recordId } = req.params;
+    const { decision, notes } = req.body;
+
+    if (req.user.role === 'patient') {
+      return res.status(403).json({ error: 'Only practice staff can review documents' });
+    }
+    if (!['accepted', 'rejected'].includes(decision)) {
+      return res.status(400).json({ error: "decision must be 'accepted' or 'rejected'" });
+    }
+
+    const result = await pool.query(
+      `UPDATE medical_records
+          SET review_status = $1, reviewed_by = $2, reviewed_at = CURRENT_TIMESTAMP,
+              reviewer_notes = $3, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4 AND review_status = 'pending_review'
+        RETURNING *`,
+      [decision, req.user.id, notes || null, recordId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No document awaiting review with that id' });
+    }
+
+    res.json({ success: true, record: result.rows[0] });
+  } catch (error) {
+    console.error('Error reviewing document:', error);
+    res.status(500).json({ error: 'Failed to review document' });
   }
 });
 
