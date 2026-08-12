@@ -57,6 +57,14 @@ cd frontend && HOST=localhost PORT=3000 BROWSER=none npm start   # terminal 1
 NODE_PATH=$(npm root -g) node docs/demo/video-harness/record.js v03   # terminal 2
 ```
 
+## Wave 2 (`wave2/`)
+
+Being produced out of order, as the underlying screens change.
+
+| # | Video | Module | Audience | Length |
+| --- | --- | --- | --- | --- |
+| 15 | Record a diagnosis | Clinical ▸ Diagnoses | Clinician | 2:17 |
+
 ## Before publishing: the narration voice
 
 The videos are narrated, but by an offline speech synthesiser (espeak-ng with an
