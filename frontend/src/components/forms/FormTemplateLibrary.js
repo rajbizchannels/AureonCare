@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import ThemedSelect from './ThemedSelect';
 import {
   Search, Filter, Plus, CheckCircle, FileText, Shield, CreditCard,
   Calendar, Stethoscope, MessageSquare, Scale, Star, Users, Activity,
@@ -149,9 +150,10 @@ const FormTemplateLibrary = ({
             <Search className={`absolute left-3 top-2.5 w-4 h-4 ${dark ? 'text-slate-400' : 'text-gray-400'}`} />
             <input type="text" placeholder="Search templates..." value={search} onChange={e => setSearch(e.target.value)} className={`${inputCls} w-full pl-9`} />
           </div>
-          <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className={inputCls}>
+          <ThemedSelect
+            theme={theme} value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
             {categories.map(c => <option key={c} value={c}>{c === 'all' ? 'All Categories' : CATEGORY_LABELS[c] || c}</option>)}
-          </select>
+          </ThemedSelect>
         </div>
         <div className="space-y-1 max-h-80 overflow-y-auto">
           {filtered.map(template => {
@@ -214,21 +216,24 @@ const FormTemplateLibrary = ({
         <div className={`grid grid-cols-3 gap-3 p-4 rounded-xl border ${dark ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
           <div>
             <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Category</label>
-            <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className={`${inputCls} w-full`}>
+            <ThemedSelect
+              theme={theme} value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
               {categories.map(c => <option key={c} value={c}>{c === 'all' ? 'All Categories' : CATEGORY_LABELS[c] || c}</option>)}
-            </select>
+            </ThemedSelect>
           </div>
           <div>
             <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Type</label>
-            <select value={selectedType} onChange={e => setSelectedType(e.target.value)} className={`${inputCls} w-full`}>
+            <ThemedSelect
+              theme={theme} value={selectedType} onChange={e => setSelectedType(e.target.value)}>
               {types.map(t => <option key={t} value={t}>{t === 'all' ? 'All Types' : t}</option>)}
-            </select>
+            </ThemedSelect>
           </div>
           <div>
             <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Specialty</label>
-            <select value={selectedSpecialty} onChange={e => setSelectedSpecialty(e.target.value)} className={`${inputCls} w-full`}>
+            <ThemedSelect
+              theme={theme} value={selectedSpecialty} onChange={e => setSelectedSpecialty(e.target.value)}>
               {specialties.map(s => <option key={s} value={s}>{s === 'all' ? 'All Specialties' : s}</option>)}
-            </select>
+            </ThemedSelect>
           </div>
         </div>
       )}

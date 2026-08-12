@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useAudit } from '../hooks/useAudit';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 // ─────────────────────────────────────────────────────────────
 // SVG CHART COMPONENTS
@@ -637,20 +638,22 @@ const GraphBuilderModal = ({ onClose, onSave, theme, reportData, currentChart })
 
             <div>
               <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Label Field (X-axis)</label>
-              <select value={labelField} onChange={e => setLabelField(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={labelField} onChange={e => setLabelField(e.target.value)}>
                 <option value="">— select field —</option>
                 {fields.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
               <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Value Field (Y-axis)</label>
-              <select value={valueField} onChange={e => setValueField(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={valueField} onChange={e => setValueField(e.target.value)}>
                 <option value="">— select field —</option>
                 {fields.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
@@ -806,11 +809,12 @@ const CustomReportBuilderModal = ({ onClose, onRun, theme }) => {
               {statusOptions[dataSource]?.length > 0 && (
                 <div>
                   <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Status</label>
-                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                    className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                  <ThemedSelect
+                    theme={theme}
+                    className="text-sm" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                     <option value="">All</option>
                     {statusOptions[dataSource].map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  </ThemedSelect>
                 </div>
               )}
             </div>
@@ -820,30 +824,33 @@ const CustomReportBuilderModal = ({ onClose, onRun, theme }) => {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className={`block text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Sort By</label>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={sortBy} onChange={e => setSortBy(e.target.value)}>
                 <option value="">Default</option>
                 {selectedFields.map(f => <option key={f} value={f}>{f.replace(/_/g, ' ')}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Sort Order</label>
-              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
                 <option value="desc">Descending</option>
                 <option value="asc">Ascending</option>
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Max Rows</label>
-              <select value={limit} onChange={e => setLimit(parseInt(e.target.value))}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={limit} onChange={e => setLimit(parseInt(e.target.value))}>
                 <option value="50">50</option>
                 <option value="100">100</option>
                 <option value="200">200</option>
                 <option value="500">500</option>
                 <option value="1000">1000</option>
-              </select>
+              </ThemedSelect>
             </div>
           </div>
         </div>
@@ -1696,8 +1703,9 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
             {/* Date Range Selector */}
             {selectedReport && (
               <>
-                <select value={dateRange} onChange={e => { setDateRange(e.target.value); setCustomStartDate(''); setCustomEndDate(''); }}
-                  className={`px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                <ThemedSelect
+                  theme={theme}
+                  className="text-sm" value={dateRange} onChange={e => { setDateRange(e.target.value); setCustomStartDate(''); setCustomEndDate(''); }}>
                   <option value="7">Last 7 Days</option>
                   <option value="30">Last 30 Days</option>
                   <option value="90">Last 90 Days</option>
@@ -1705,7 +1713,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
                   <option value="365">Last Year</option>
                   <option value="all">All Time</option>
                   <option value="custom">Custom Range</option>
-                </select>
+                </ThemedSelect>
                 {dateRange === 'custom' && (
                   <>
                     <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)}

@@ -150,8 +150,13 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Rate limiting — a global backstop across the whole API, plus a strict
+// limiter on authentication endpoints (login, password reset, social login).
+const { apiLimiter, authLimiter } = require('./middleware/rateLimiters');
+app.use('/api', apiLimiter);
+
 // Import and use routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/appointment-types', require('./routes/appointment-types'));
@@ -164,6 +169,7 @@ app.use('/api/payment-postings', require('./routes/payment-postings'));
 app.use('/api/denials', require('./routes/denials'));
 app.use('/api/edi', require('./routes/edi'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/messages', require('./routes/messages'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/providers', require('./routes/providers'));

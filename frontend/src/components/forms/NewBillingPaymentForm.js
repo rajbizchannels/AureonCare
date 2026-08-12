@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, DollarSign, X } from 'lucide-react';
+import ThemedSelect from './ThemedSelect';
 
 const NewBillingPaymentForm = ({ theme, api, patients, onClose, onSuccess, addNotification, editingPayment, t }) => {
   const [invoices, setInvoices] = useState([]);
@@ -193,11 +194,11 @@ const NewBillingPaymentForm = ({ theme, api, patients, onClose, onSuccess, addNo
             <label className={labelClassName}>
               {t?.invoice || 'Invoice'}
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={formData.invoice_id}
               onChange={(e) => setFormData({ ...formData, invoice_id: e.target.value })}
               disabled={submitting || loadingInvoices}
-              className={inputClassName}
             >
               <option value="">
                 {loadingInvoices
@@ -210,7 +211,7 @@ const NewBillingPaymentForm = ({ theme, api, patients, onClose, onSuccess, addNo
                   {inv.balance_due != null ? ` - $${parseFloat(inv.balance_due).toFixed(2)} due` : ''}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           {/* Patient Selection */}
@@ -218,12 +219,12 @@ const NewBillingPaymentForm = ({ theme, api, patients, onClose, onSuccess, addNo
             <label className={labelClassName}>
               {t?.patient || 'Patient'} <span className="text-red-400">*</span>
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               required
               value={formData.patient_id}
               onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
               disabled={submitting}
-              className={inputClassName}
             >
               <option value="">{t?.selectPatient || 'Select Patient'}</option>
               {patients.map(p => (
@@ -231,7 +232,7 @@ const NewBillingPaymentForm = ({ theme, api, patients, onClose, onSuccess, addNo
                   {p.first_name} {p.last_name}{p.mrn ? ` - ${p.mrn}` : ''}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           {/* Amount */}
@@ -261,17 +262,17 @@ const NewBillingPaymentForm = ({ theme, api, patients, onClose, onSuccess, addNo
               <label className={labelClassName}>
                 {t?.paymentMethod || 'Payment Method'} <span className="text-red-400">*</span>
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 required
                 value={formData.payment_method}
                 onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
                 disabled={submitting}
-                className={inputClassName}
               >
                 {paymentMethods.map(method => (
                   <option key={method.id} value={method.id}>{method.name}</option>
                 ))}
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
@@ -294,17 +295,17 @@ const NewBillingPaymentForm = ({ theme, api, patients, onClose, onSuccess, addNo
             <label className={labelClassName}>
               {t?.status || 'Status'} <span className="text-red-400">*</span>
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               required
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               disabled={submitting}
-              className={inputClassName}
             >
               {statusOptions.map(opt => (
                 <option key={opt.id} value={opt.id}>{opt.name}</option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           {/* Transaction ID and Reference Number */}

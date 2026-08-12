@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus, Trash2 } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 
 const EPrescribeModal = ({
   theme,
@@ -1232,10 +1233,10 @@ const EPrescribeModal = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     Frequency *
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={currentDetails.frequency}
                     onChange={(e) => setCurrentDetails({ ...currentDetails, frequency: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   >
                     <option value="">Select frequency</option>
                     <option value="Once daily">Once daily</option>
@@ -1247,7 +1248,7 @@ const EPrescribeModal = ({
                     <option value="Every 8 hours">Every 8 hours</option>
                     <option value="Every 12 hours">Every 12 hours</option>
                     <option value="As needed">As needed (PRN)</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div>
@@ -1280,15 +1281,15 @@ const EPrescribeModal = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     Refills
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={currentDetails.refills}
                     onChange={(e) => setCurrentDetails({ ...currentDetails, refills: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   >
                     {[0, 1, 2, 3, 4, 5, 6, 11].map(n => (
                       <option key={n} value={n}>{n} {n === 11 ? '(1 year)' : ''}</option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div className="col-span-2">
@@ -1366,17 +1367,13 @@ const EPrescribeModal = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     Select Pharmacy (Optional)
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={selectedPharmacy?.id || ''}
                     onChange={(e) => {
                       const pharmacy = pharmacies.find(p => p.id === parseInt(e.target.value));
                       setSelectedPharmacy(pharmacy || null);
                     }}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-blue-500 ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-700 text-white'
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">No pharmacy selected (Print only)</option>
                     {pharmacies.map((pharmacy) => (
@@ -1388,7 +1385,7 @@ const EPrescribeModal = ({
                         {pharmacy.acceptsErx ? ' (eRx)' : ''}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
 
                   {/* Show selected pharmacy details */}
                   {selectedPharmacy && (
