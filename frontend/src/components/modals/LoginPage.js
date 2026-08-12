@@ -289,6 +289,10 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
             <a href="/privacy.html" className="hover:text-purple-500 transition-colors underline">
               Privacy Policy (web)
             </a>
+            <span className="mx-1">&bull;</span>
+            <a href="/terms.html" className="hover:text-cyan-500 transition-colors underline">
+              Terms (web)
+            </a>
           </p>
         </div>
       </div>
