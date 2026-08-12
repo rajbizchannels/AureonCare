@@ -12,6 +12,8 @@ export const translations = {
     integrations: 'Integrations',
     fhir: 'FHIR HL7',
     patientPortal: 'Patient Portal',
+    messages: 'Messages',
+    messagesDescription: 'Secure conversations with colleagues and patients',
     adminPanel: 'Admin Panel',
 
     // Dashboard
@@ -996,6 +998,8 @@ export const translations = {
     integrations: 'Integraciones',
     fhir: 'FHIR HL7',
     patientPortal: 'Portal del Paciente',
+    messages: 'Mensajes',
+    messagesDescription: 'Conversaciones seguras con colegas y pacientes',
     adminPanel: 'Panel de Administración',
 
     // Dashboard
@@ -1980,6 +1984,8 @@ export const translations = {
     integrations: 'Intégrations',
     fhir: 'FHIR HL7',
     patientPortal: 'Portail Patient',
+    messages: 'Messages',
+    messagesDescription: 'Conversations sécurisées avec vos collègues et patients',
     adminPanel: 'Panneau d\'Administration',
 
     // Dashboard
@@ -2964,6 +2970,8 @@ export const translations = {
     integrations: 'Integrationen',
     fhir: 'FHIR HL7',
     patientPortal: 'Patientenportal',
+    messages: 'Nachrichten',
+    messagesDescription: 'Sichere Konversationen mit Kollegen und Patienten',
     adminPanel: 'Admin-Panel',
 
     // Dashboard
@@ -3948,6 +3956,8 @@ export const translations = {
     integrations: 'التكاملات',
     fhir: 'FHIR HL7',
     patientPortal: 'بوابة المريض',
+    messages: 'الرسائل',
+    messagesDescription: 'محادثات آمنة مع الزملاء والمرضى',
     adminPanel: 'لوحة الإدارة',
 
     // Dashboard
