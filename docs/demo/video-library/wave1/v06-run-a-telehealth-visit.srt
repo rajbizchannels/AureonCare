@@ -1,47 +1,47 @@
 1
-00:00:04,678 --> 00:00:13,008
+00:00:04,702 --> 00:00:13,032
 Run a telehealth visit — Clinical ▸ Telehealth — Create a virtual visit from an appointment, attach a consent form, and join it.
 
 2
-00:00:18,643 --> 00:00:26,961
+00:00:18,509 --> 00:00:25,840
 Clinical ▸ Telehealth. The green banner names the connected platform — here, Google Meet.
 
 3
-00:00:26,961 --> 00:00:36,463
+00:00:25,840 --> 00:00:35,142
 Your administrator connects that account once. Clinicians never touch credentials.
 
 4
-00:00:36,463 --> 00:00:48,214
+00:00:35,142 --> 00:00:46,662
 A session is built from a booked appointment, so the patient, provider and time are already right.
 
 5
-00:00:48,214 --> 00:00:59,873
+00:00:46,662 --> 00:00:58,065
 Attach a consent form and it arrives in the patient’s portal before the call, not during it.
 
 6
-00:00:59,873 --> 00:01:09,768
+00:00:58,065 --> 00:01:08,120
 AureonCare confirms what it is about to do, then creates the meeting.
 
 7
-00:01:09,768 --> 00:01:21,374
+00:01:08,120 --> 00:01:19,488
 The visit now sits under Upcoming Sessions, tagged with the platform and carrying its join link.
 
 8
-00:01:21,374 --> 00:01:31,404
+00:01:19,488 --> 00:01:29,312
 Joining marks the session in progress, so the rest of the team can see you are in it.
 
 9
-00:01:31,404 --> 00:01:35,761
+00:01:29,312 --> 00:01:33,700
 The meeting room opens in a new tab: https://meet.google.com/rzn-hbfa-uwc
 
 10
-00:01:35,761 --> 00:01:43,356
+00:01:33,700 --> 00:01:41,268
 Need a call right now with no booking behind it? Instant creates a room immediately — use it for the unplanned.
 
 11
-00:01:44,983 --> 00:01:58,583
+00:01:42,769 --> 00:01:56,369
 What you just did
 
 12
-00:01:59,238 --> 00:02:08,238
+00:01:57,006 --> 00:02:06,006
 Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

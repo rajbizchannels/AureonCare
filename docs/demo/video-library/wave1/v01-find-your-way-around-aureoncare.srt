@@ -1,55 +1,55 @@
 1
-00:00:03,203 --> 00:00:12,363
+00:00:09,284 --> 00:00:18,444
 Find your way around AureonCare — App shell · search · help — Sign in, learn the three-pane layout, and find anything in two clicks.
 
 2
-00:00:12,965 --> 00:00:25,863
+00:00:19,068 --> 00:00:32,536
 Sign in with the email and password your practice administrator issued.
 
 3
-00:00:25,863 --> 00:00:30,439
+00:00:32,536 --> 00:00:38,209
 You land on your dashboard. Everything else hangs off the rail on the left.
 
 4
-00:00:30,439 --> 00:00:41,168
+00:00:38,209 --> 00:00:49,747
 Pane 1 is the workspace rail: Home, Scheduling, Patients, Clinical, Billing and the rest, with Settings at the bottom.
 
 5
-00:00:41,168 --> 00:00:50,588
+00:00:49,747 --> 00:01:00,462
 Pane 2 lists the modules inside the workspace you picked. Pane 3 is the work itself.
 
 6
-00:00:50,588 --> 00:01:02,085
+00:01:00,462 --> 00:01:12,641
 Scheduling ▸ Calendar. Directions in these videos always read workspace ▸ module.
 
 7
-00:01:02,085 --> 00:01:12,057
+00:01:12,641 --> 00:01:23,863
 Rather than clicking through, search. The magnifier is in the top bar.
 
 8
-00:01:12,057 --> 00:01:22,022
+00:01:23,863 --> 00:01:35,091
 One box covers patients, appointments, claims and tasks. Results are grouped by what they are.
 
 9
-00:01:22,022 --> 00:01:28,168
+00:01:35,091 --> 00:01:42,369
 Selecting a result takes you straight to that record.
 
 10
-00:01:28,168 --> 00:01:37,426
+00:01:42,369 --> 00:01:52,352
 The bell collects what needs you: denied claims, portal messages, posted payments.
 
 11
-00:01:37,426 --> 00:01:41,544
+00:01:52,352 --> 00:01:57,057
 Help opens the guides for the module you are standing in.
 
 12
-00:01:41,544 --> 00:01:51,571
+00:01:57,057 --> 00:02:08,006
 The whole workspace switches between dark and light to suit your room.
 
 13
-00:01:51,691 --> 00:02:08,391
+00:02:10,634 --> 00:02:27,334
 What you just did
 
 14
-00:02:09,059 --> 00:02:18,059
+00:02:27,950 --> 00:02:36,950
 Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

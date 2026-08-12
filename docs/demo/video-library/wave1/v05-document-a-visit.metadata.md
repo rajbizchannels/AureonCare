@@ -13,10 +13,10 @@ Part of the AureonCare Getting Started series.
 Chapters:
 0:00 Introduction
 0:12 Opening the chart
-0:33 Reading before you write
+0:32 Reading before you write
 1:02 Recording what you found
-1:32 Saving, and what the patient sees
-2:07 Recap
+1:31 Saving, and what the patient sees
+2:06 Recap
 
 Subtitles: upload v05-document-a-visit.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
