@@ -327,6 +327,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                 ) : (
                   <ThemedSelect
                     theme={theme}
+                    focusClass="focus:border-cyan-500"
                     required
                     value={formData.patientId}
                     onChange={(e) => setFormData({...formData, patientId: e.target.value})}
@@ -345,6 +346,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                 </label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:border-cyan-500"
                   required
                   value={formData.type}
                   onChange={(e) => setFormData({...formData, type: e.target.value})}
@@ -364,6 +366,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                 </label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:border-cyan-500"
                   value={formData.offeringId}
                   onChange={(e) => setFormData({...formData, offeringId: e.target.value})}
                 >
@@ -436,6 +439,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                 ) : (
                   <ThemedSelect
                     theme={theme}
+                    focusClass="focus:border-cyan-500"
                     value={formData.providerId}
                     onChange={(e) => setFormData({...formData, providerId: e.target.value})}
                   >

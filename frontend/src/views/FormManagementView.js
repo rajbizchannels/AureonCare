@@ -963,6 +963,7 @@ const FormManagementView = ({
                 <label className={`block text-sm font-medium mb-1.5 ${dark ? 'text-slate-300' : 'text-gray-700'}`}>Select Patient <span className="text-red-400">*</span></label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:ring-2 focus:ring-blue-500"
                   className="text-sm"
                   value={sendPatientId}
                   onChange={e => setSendPatientId(e.target.value)}

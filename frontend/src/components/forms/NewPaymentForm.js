@@ -277,6 +277,7 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
                 </label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:border-green-500"
                   required
                   disabled={processing}
                   value={formData.patientId}
@@ -295,6 +296,7 @@ const NewPaymentForm = ({ theme, api, patients, claims, onClose, onSuccess, addN
                 </label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:border-green-500"
                   disabled={processing}
                   value={formData.claimId}
                   onChange={(e) => setFormData({...formData, claimId: e.target.value})}

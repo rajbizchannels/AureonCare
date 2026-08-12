@@ -2125,6 +2125,7 @@ const AdminPanelView = ({
           </label>
           <ThemedSelect
             theme={theme}
+            focusClass="focus:ring-2 focus:ring-blue-500"
             value={clinicSettings.currency || 'USD'}
             onChange={(e) => updateClinicSetting('currency', e.target.value)}
           >
@@ -2779,6 +2780,7 @@ const AdminPanelView = ({
                   <Globe className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
                   <ThemedSelect
                     theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     className="pl-10"
                     value={userFormData.country}
                     onChange={(e) => handleUserFormChange('country', e.target.value)}
@@ -2802,6 +2804,7 @@ const AdminPanelView = ({
                   <Clock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
                   <ThemedSelect
                     theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     className="pl-10"
                     value={userFormData.timezone}
                     onChange={(e) => handleUserFormChange('timezone', e.target.value)}
@@ -2823,6 +2826,7 @@ const AdminPanelView = ({
                   <Languages className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
                   <ThemedSelect
                     theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     className="pl-10"
                     value={userFormData.language}
                     onChange={(e) => handleUserFormChange('language', e.target.value)}
@@ -2847,6 +2851,7 @@ const AdminPanelView = ({
                 <Shield className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   className="pl-10"
                   value={userFormData.role}
                   onChange={(e) => handleUserFormChange('role', e.target.value)}

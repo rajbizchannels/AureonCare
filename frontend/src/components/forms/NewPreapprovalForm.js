@@ -444,6 +444,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
           </label>
           <ThemedSelect
             theme={theme}
+            focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={formData.patientId}
             onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
             required
@@ -498,6 +499,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
             </label>
             <ThemedSelect
               theme={theme}
+              focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={selectedDiagnosisId}
               onChange={(e) => handleDiagnosisSelection(e.target.value)}
               disabled={loadingDiagnoses || diagnoses.length === 0}

@@ -154,6 +154,7 @@ const NewIntakeFlowForm = ({ theme, api, patients, editingFlow, onClose, onSucce
               </label>
               <ThemedSelect
                 theme={theme}
+                focusClass="focus:border-green-500"
                 required
                 disabled={processing}
                 value={formData.patient_id}
@@ -172,6 +173,7 @@ const NewIntakeFlowForm = ({ theme, api, patients, editingFlow, onClose, onSucce
               </label>
               <ThemedSelect
                 theme={theme}
+                focusClass="focus:border-green-500"
                 required
                 disabled={processing}
                 value={formData.flow_type}
@@ -238,6 +240,7 @@ const NewIntakeFlowForm = ({ theme, api, patients, editingFlow, onClose, onSucce
               </label>
               <ThemedSelect
                 theme={theme}
+                focusClass="focus:border-green-500"
                 required
                 disabled={processing}
                 value={formData.status}

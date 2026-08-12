@@ -226,6 +226,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
             </label>
             <ThemedSelect
               theme={theme}
+              focusClass="focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               value={formData.patientId}
               onChange={(e) => setFormData({ ...formData, patientId: e.target.value, claimId: '' })}
               required
@@ -245,6 +246,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
             </label>
             <ThemedSelect
               theme={theme}
+              focusClass="focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               value={formData.claimId}
               onChange={(e) => setFormData({ ...formData, claimId: e.target.value })}
               required
@@ -267,6 +269,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
           </label>
           <ThemedSelect
             theme={theme}
+            focusClass="focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
             value={formData.insurance_payer_id}
             onChange={(e) => setFormData({ ...formData, insurance_payer_id: e.target.value })}
           >
@@ -339,6 +342,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
           </label>
           <ThemedSelect
             theme={theme}
+            focusClass="focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
             value={formData.payment_method}
             onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
           >
@@ -509,6 +513,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
             </label>
             <ThemedSelect
               theme={theme}
+              focusClass="focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               value={formData.adjustment_code}
               onChange={(e) => {
                 const selected = adjustmentReasons.find(r => r.code === e.target.value);

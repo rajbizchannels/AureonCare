@@ -416,6 +416,7 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                 </label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:border-yellow-500"
                   required
                   value={formData.patientId}
                   onChange={(e) => setFormData({...formData, patientId: e.target.value})}
@@ -465,6 +466,7 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                 </label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:border-yellow-500"
                   value={formData.preapprovalId}
                   onChange={(e) => setFormData({...formData, preapprovalId: e.target.value})}
                   disabled={loadingPreapprovals || !formData.patientId}
@@ -529,6 +531,7 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                   </label>
                   <ThemedSelect
                     theme={theme}
+                    focusClass="focus:border-yellow-500"
                     onChange={(e) => {
                       const diagnosis = existingDiagnoses.find(d => d.diagnosisCode === e.target.value);
                       if (diagnosis) {

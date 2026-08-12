@@ -550,6 +550,7 @@ const PracticeManagementView = ({
               </label>
               <ThemedSelect
                 theme={theme}
+                focusClass="focus:ring-2 focus:ring-cyan-500"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -568,6 +569,7 @@ const PracticeManagementView = ({
               </label>
               <ThemedSelect
                 theme={theme}
+                focusClass="focus:ring-2 focus:ring-cyan-500"
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
               >

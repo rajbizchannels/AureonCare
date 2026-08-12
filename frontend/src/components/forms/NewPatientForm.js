@@ -260,6 +260,7 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                   </label>
                   <ThemedSelect
                     theme={theme}
+                    focusClass="focus:border-purple-500"
                     required
                     value={formData.gender}
                     onChange={(e) => setFormData({...formData, gender: e.target.value})}
@@ -371,6 +372,7 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                   </label>
                   <ThemedSelect
                     theme={theme}
+                    focusClass="focus:border-purple-500"
                     value={formData.insurancePayerId}
                     onChange={(e) => setFormData({...formData, insurancePayerId: e.target.value})}
                     disabled={loadingPayers}

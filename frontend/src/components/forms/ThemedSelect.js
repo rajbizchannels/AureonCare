@@ -17,22 +17,31 @@ import { ChevronDown } from 'lucide-react';
 // prop falls back to those, so the select still matches its neighbours.
 const PALETTE = {
   dark: {
-    box: 'bg-slate-800 border-slate-600 text-white focus:border-blue-500',
+    box: 'bg-slate-800 border-slate-600 text-white',
     chevron: 'text-slate-400',
   },
   light: {
-    box: 'bg-white border-gray-300 text-gray-900 focus:border-blue-500',
+    box: 'bg-white border-gray-300 text-gray-900',
     chevron: 'text-gray-500',
   },
   auto: {
     box: 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 '
-       + 'text-gray-900 dark:text-white focus:border-blue-500 '
+       + 'text-gray-900 dark:text-white '
        + '[color-scheme:light] dark:[color-scheme:dark]',
     chevron: 'text-gray-500 dark:text-slate-400',
   },
 };
 
-const ThemedSelect = ({ theme, className = '', children, disabled, ...props }) => {
+const ThemedSelect = ({
+  theme,
+  // Each form keeps its own focus accent — pass the same focus classes the
+  // form's text inputs use, so the two still read as one set of controls.
+  focusClass = 'focus:border-blue-500',
+  className = '',
+  children,
+  disabled,
+  ...props
+}) => {
   const mode = theme === 'dark' ? 'dark' : theme === 'light' ? 'light' : 'auto';
   const palette = PALETTE[mode];
 
@@ -48,7 +57,7 @@ const ThemedSelect = ({ theme, className = '', children, disabled, ...props }) =
         style={style}
         className={`w-full min-h-[42px] appearance-none border rounded-lg pl-3 pr-9 py-2 outline-none transition-colors ${
           palette.box
-        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
+        } ${focusClass} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
       >
         {children}
       </select>

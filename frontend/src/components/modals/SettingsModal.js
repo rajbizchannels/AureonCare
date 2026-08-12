@@ -355,7 +355,8 @@ const SettingsModal = ({
                       <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.autoLogout}</p>
                     </div>
                     <ThemedSelect
-                      theme={theme}>
+                      theme={theme}
+                      focusClass="focus:border-cyan-500">
                       <option value="15">{t.fifteenMinutes}</option>
                       <option value="30" defaultValue>{t.thirtyMinutes}</option>
                       <option value="60">{t.oneHour}</option>

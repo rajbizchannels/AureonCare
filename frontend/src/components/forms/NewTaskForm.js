@@ -181,6 +181,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
                 </label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:border-purple-500"
                   value={formData.priority}
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                 >
@@ -198,6 +199,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
                 </label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:border-purple-500"
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 >

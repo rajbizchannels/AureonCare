@@ -157,6 +157,7 @@ const NewConsentFormForm = ({ theme, api, patients, editingConsent, onClose, onS
               </label>
               <ThemedSelect
                 theme={theme}
+                focusClass="focus:border-purple-500"
                 required
                 disabled={processing}
                 value={formData.patient_id}
@@ -175,6 +176,7 @@ const NewConsentFormForm = ({ theme, api, patients, editingConsent, onClose, onS
               </label>
               <ThemedSelect
                 theme={theme}
+                focusClass="focus:border-purple-500"
                 required
                 disabled={processing}
                 value={formData.consent_type}
@@ -253,6 +255,7 @@ const NewConsentFormForm = ({ theme, api, patients, editingConsent, onClose, onS
               </label>
               <ThemedSelect
                 theme={theme}
+                focusClass="focus:border-purple-500"
                 required
                 disabled={processing}
                 value={formData.status}
