@@ -457,6 +457,84 @@ const api = {
     return response.json();
   },
 
+  // ── Secure messaging ──────────────────────────────────────────────────────
+  // The messaging API serves both audiences, so it accepts either credential:
+  // a staff JWT or a patient portal session token. Staff wins when both are
+  // present — a staff member previewing the portal is still acting as staff.
+  _messagingHeaders: (extra = {}) => {
+    const headers = { 'Content-Type': 'application/json', ...extra };
+    try {
+      const token = sessionStorage.getItem('token') || sessionStorage.getItem('portalSessionToken');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error('Error reading session token:', error);
+    }
+    return headers;
+  },
+  _messagingFetch: async (path, options = {}, errorMessage = 'Messaging request failed') => {
+    const response = await fetch(`${API_BASE_URL}/messages${path}`, {
+      ...options,
+      headers: api._messagingHeaders(options.headers)
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || errorMessage);
+    }
+    return response.json();
+  },
+
+  getMessageThreads: async (filters = {}) => {
+    const params = new URLSearchParams(
+      Object.entries(filters).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = params.toString() ? `?${params}` : '';
+    return api._messagingFetch(`/threads${query}`, {}, 'Failed to load message threads');
+  },
+  getUnreadMessageCount: async () => {
+    const { count } = await api._messagingFetch('/unread-count', {}, 'Failed to count unread messages');
+    return count;
+  },
+  getMessageThread: async (threadId) =>
+    api._messagingFetch(`/threads/${threadId}`, {}, 'Failed to load thread'),
+  getThreadMessages: async (threadId, { limit, offset } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (offset) params.set('offset', offset);
+    const query = params.toString() ? `?${params}` : '';
+    return api._messagingFetch(`/threads/${threadId}/messages${query}`, {}, 'Failed to load messages');
+  },
+  createMessageThread: async (data) =>
+    api._messagingFetch('/threads', { method: 'POST', body: JSON.stringify(data) }, 'Failed to start conversation'),
+  sendMessage: async (threadId, data) =>
+    api._messagingFetch(`/threads/${threadId}/messages`, { method: 'POST', body: JSON.stringify(data) }, 'Failed to send message'),
+  updateMessageThread: async (threadId, data) =>
+    api._messagingFetch(`/threads/${threadId}`, { method: 'PATCH', body: JSON.stringify(data) }, 'Failed to update conversation'),
+  markThreadRead: async (threadId) =>
+    api._messagingFetch(`/threads/${threadId}/read`, { method: 'POST' }, 'Failed to mark thread as read'),
+  withdrawMessage: async (messageId) =>
+    api._messagingFetch(`/messages/${messageId}`, { method: 'DELETE' }, 'Failed to withdraw message'),
+  addThreadParticipant: async (threadId, participant) =>
+    api._messagingFetch(`/threads/${threadId}/participants`, { method: 'POST', body: JSON.stringify(participant) }, 'Failed to add participant'),
+  removeThreadParticipant: async (threadId, participantRowId) =>
+    api._messagingFetch(`/threads/${threadId}/participants/${participantRowId}`, { method: 'DELETE' }, 'Failed to remove participant'),
+  getMessageRecipients: async (q = '') =>
+    api._messagingFetch(`/recipients?q=${encodeURIComponent(q)}`, {}, 'Failed to load recipients'),
+  /** Patient-safe recipient list — the caller's own care team, never the directory. */
+  getMessageCareTeam: async (patientId) =>
+    api._messagingFetch(
+      `/care-team${patientId ? `?patientId=${encodeURIComponent(patientId)}` : ''}`,
+      {},
+      'Failed to load your care team'
+    ),
+  /** Attachments are fetched as blobs, so this bypasses the JSON helper. */
+  downloadMessageAttachment: async (attachmentId) => {
+    const response = await fetch(`${API_BASE_URL}/messages/attachments/${attachmentId}`, {
+      headers: api._messagingHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to download attachment');
+    return response.blob();
+  },
+
   // Tasks
   getTasks: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/tasks`);

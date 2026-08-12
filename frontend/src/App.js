@@ -51,6 +51,7 @@ import LaboratoryManagementView from './views/LaboratoryManagementView';
 import ClinicalServicesView from './views/ClinicalServicesView';
 import WaitlistManagementView from './views/WaitlistManagementView';
 import FormManagementView from './views/FormManagementView';
+import MessagesView from './views/MessagesView';
 import AccountsView from './views/AccountsView';
 import InventoryView from './views/InventoryView';
 
@@ -590,6 +591,16 @@ function App() {
             patients={patients}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+          />
+        );
+      case 'messages':
+        return (
+          <MessagesView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            user={user}
+            t={t}
           />
         );
       case 'waitlist':
