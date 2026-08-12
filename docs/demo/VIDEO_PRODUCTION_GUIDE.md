@@ -29,7 +29,7 @@
 - [ ] Backend running on `localhost:3000`
 - [ ] Frontend running on `localhost:3001`
 - [ ] Demo database loaded with Sarah Williams data
-- [ ] Logged in as Dr. Anderson (dr.anderson@aureoncare.com)
+- [ ] Logged in as Dr. Anderson (dr.anderson@aureoncare.tech)
 - [ ] Browser in full-screen mode (F11)
 - [ ] Browser zoom at 100%
 - [ ] Hide browser bookmarks bar
@@ -422,8 +422,8 @@ Between segments, add smooth transitions:
    ```
    Thank You
 
-   Learn More: www.aureoncare.com
-   Contact: sales@aureoncare.com
+   Learn More: www.aureoncare.tech
+   Contact: sales@aureoncare.tech
    Phone: [Your Phone]
 
    [AureonCare Logo]

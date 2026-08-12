@@ -1008,9 +1008,9 @@
    Enterprise-wide deployment with training and support
 
 **Contact Information:**
-- Email: [sales@aureoncare.com]
+- Email: [sales@aureoncare.tech]
 - Phone: [Your Phone]
-- Website: [www.aureoncare.com]
+- Website: [www.aureoncare.tech]
 
 ### Closing
 

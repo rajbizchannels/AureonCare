@@ -75,13 +75,13 @@ After seeding, you can log in with these accounts:
 **Password for all accounts:** `password123`
 
 ### Admin
-- Email: `admin@aureoncare.com`
+- Email: `admin@aureoncare.tech`
 - Role: Administrator
 
 ### Doctors
-- Email: `dr.smith@aureoncare.com` (Family Medicine)
-- Email: `dr.johnson@aureoncare.com` (Cardiology)
-- Email: `dr.williams@aureoncare.com` (Pediatrics)
+- Email: `dr.smith@aureoncare.tech` (Family Medicine)
+- Email: `dr.johnson@aureoncare.tech` (Cardiology)
+- Email: `dr.williams@aureoncare.tech` (Pediatrics)
 
 ### Patients
 - Email: `john.doe@example.com`
@@ -90,7 +90,7 @@ After seeding, you can log in with these accounts:
 - Email: `alice.brown@example.com`
 
 ### Staff
-- Email: `staff@aureoncare.com`
+- Email: `staff@aureoncare.tech`
 
 ## 📊 Test Data Summary
 
