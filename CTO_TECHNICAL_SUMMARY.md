@@ -1444,16 +1444,16 @@ For successful deployment in your environment:
 ## Contact Information
 
 **Technical Inquiries:**
-Email: cto@aureoncare.com
-Architecture Questions: architecture@aureoncare.com
+Email: cto@aureoncare.tech
+Architecture Questions: architecture@aureoncare.tech
 
 **Security:**
-Security Team: security@aureoncare.com
-Vulnerability Reports: security-reports@aureoncare.com
+Security Team: security@aureoncare.tech
+Vulnerability Reports: security-reports@aureoncare.tech
 
 **DevOps:**
-Infrastructure: devops@aureoncare.com
-API Support: api-support@aureoncare.com
+Infrastructure: devops@aureoncare.tech
+API Support: api-support@aureoncare.tech
 
 ---
 

@@ -344,9 +344,9 @@ Comprehensive timeline for assembling the final video in DaVinci Resolve or simi
 
 | Role | Email | Purpose |
 |------|-------|---------|
-| Doctor | dr.anderson@aureoncare.com | Primary presenter account |
-| Admin | admin@aureoncare.com | Backup / admin functions |
-| Receptionist | frontdesk@aureoncare.com | Scheduling demo |
+| Doctor | dr.anderson@aureoncare.tech | Primary presenter account |
+| Admin | admin@aureoncare.tech | Backup / admin functions |
+| Receptionist | frontdesk@aureoncare.tech | Scheduling demo |
 | Patient | sarah.williams@email.com | Patient portal demo |
 
 ---
@@ -442,7 +442,7 @@ Comprehensive timeline for assembling the final video in DaVinci Resolve or simi
 
 ### Support
 - **GitHub Issues:** [AureonCare Issues](https://github.com/rajbizchannels/AureonCare/issues)
-- **Email:** support@aureoncare.com
+- **Email:** support@aureoncare.tech
 
 ### Demo Templates
 - Postman Collection: [Coming Soon]
@@ -457,7 +457,7 @@ We welcome feedback on this demo package!
 
 **How to provide feedback:**
 1. Open a GitHub issue with tag `demo-package`
-2. Email: demo-feedback@aureoncare.com
+2. Email: demo-feedback@aureoncare.tech
 3. Submit a pull request with improvements
 
 **Common feedback areas:**
@@ -509,12 +509,12 @@ You've got everything you need to deliver a compelling, professional demo that s
 
 **For demo support:**
 - Slack: #aureoncare-demo-support
-- Email: demo-team@aureoncare.com
+- Email: demo-team@aureoncare.tech
 - Phone: [Demo Support Hotline]
 
 **For technical issues:**
 - GitHub Issues: [AureonCare Issues](https://github.com/rajbizchannels/AureonCare/issues)
-- Email: support@aureoncare.com
+- Email: support@aureoncare.tech
 
 ---
 

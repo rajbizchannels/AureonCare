@@ -41,7 +41,7 @@ psql -U aureoncare_app -d aureoncare_demo -c "SELECT * FROM patients WHERE mrn =
 
 1. Open browser: `http://localhost:3001`
 2. Login with:
-   - **Email:** `dr.anderson@aureoncare.com`
+   - **Email:** `dr.anderson@aureoncare.tech`
    - **Password:** `Demo123!`
 3. Wait for dashboard to load completely
 
