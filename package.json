@@ -8,6 +8,7 @@
     "dev": "nodemon backend/server.js",
     "migrate": "node scripts/migrate.js",
     "migrate:preauth": "node backend/scripts/run-preapprovals-migration.js",
+    "migrate:messaging": "node backend/scripts/migrate-messaging.js",
     "seed": "node scripts/seed.js",
     "reset-db": "node backend/scripts/reset-and-seed.js"
   },

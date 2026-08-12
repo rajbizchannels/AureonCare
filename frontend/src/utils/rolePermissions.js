@@ -12,6 +12,7 @@ export const rolePermissions = {
     claims: { view: true, create: true, edit: true, delete: true },
     ehr: { view: true, create: true, edit: true, delete: true },
     telehealth: { view: true, create: true, edit: true, delete: true },
+    messages: { view: true, create: true, edit: true, delete: true },
     crm: { view: true, create: true, edit: true, delete: true },
     rcm: { view: true, create: true, edit: true, delete: true },
     accounts: { view: true, create: true, edit: true, delete: true },
@@ -30,6 +31,7 @@ export const rolePermissions = {
     claims: { view: true, create: true, edit: false, delete: false },
     ehr: { view: true, create: true, edit: true, delete: false },
     telehealth: { view: true, create: true, edit: true, delete: false },
+    messages: { view: true, create: true, edit: false, delete: false },
     crm: { view: true, create: false, edit: false, delete: false },
     rcm: { view: true, create: false, edit: false, delete: false },
     accounts: { view: true, create: false, edit: false, delete: false },
@@ -48,6 +50,7 @@ export const rolePermissions = {
     claims: { view: true, create: false, edit: false, delete: false },
     ehr: { view: true, create: false, edit: false, delete: false },
     telehealth: { view: true, create: false, edit: false, delete: false },
+    messages: { view: true, create: true, edit: false, delete: false },
     crm: { view: false, create: false, edit: false, delete: false },
     rcm: { view: true, create: false, edit: false, delete: false },
     practiceManagement: { view: true, create: false, edit: false, delete: false },
@@ -65,6 +68,7 @@ export const rolePermissions = {
     claims: { view: true, create: false, edit: false, delete: false },
     ehr: { view: true, create: true, edit: true, delete: false },
     telehealth: { view: true, create: true, edit: false, delete: false },
+    messages: { view: true, create: true, edit: false, delete: false },
     crm: { view: false, create: false, edit: false, delete: false },
     rcm: { view: false, create: false, edit: false, delete: false },
     accounts: { view: true, create: false, edit: false, delete: false },
@@ -83,6 +87,7 @@ export const rolePermissions = {
     claims: { view: true, create: false, edit: false, delete: false },
     ehr: { view: false, create: false, edit: false, delete: false },
     telehealth: { view: true, create: false, edit: false, delete: false },
+    messages: { view: true, create: true, edit: false, delete: false },
     crm: { view: true, create: true, edit: true, delete: false },
     rcm: { view: true, create: false, edit: false, delete: false },
     accounts: { view: true, create: false, edit: false, delete: false },
@@ -101,6 +106,7 @@ export const rolePermissions = {
     claims: { view: true, create: true, edit: true, delete: false },
     ehr: { view: false, create: false, edit: false, delete: false },
     telehealth: { view: false, create: false, edit: false, delete: false },
+    messages: { view: true, create: true, edit: false, delete: false },
     crm: { view: false, create: false, edit: false, delete: false },
     rcm: { view: true, create: true, edit: true, delete: false },
     accounts: { view: true, create: true, edit: true, delete: false },
@@ -119,6 +125,7 @@ export const rolePermissions = {
     claims: { view: false, create: false, edit: false, delete: false },
     ehr: { view: false, create: false, edit: false, delete: false },
     telehealth: { view: false, create: false, edit: false, delete: false },
+    messages: { view: true, create: true, edit: false, delete: false },
     crm: { view: true, create: true, edit: true, delete: true },
     rcm: { view: false, create: false, edit: false, delete: false },
     practiceManagement: { view: true, create: false, edit: false, delete: false },
@@ -136,6 +143,7 @@ export const rolePermissions = {
     claims: { view: true, create: true, edit: false, delete: false },
     ehr: { view: true, create: false, edit: false, delete: false },
     telehealth: { view: true, create: true, edit: false, delete: false },
+    messages: { view: true, create: true, edit: false, delete: false },
     crm: { view: true, create: true, edit: true, delete: false },
     rcm: { view: true, create: true, edit: true, delete: false },
     accounts: { view: true, create: false, edit: false, delete: false },
@@ -163,6 +171,7 @@ export const modulePermissions = {
   crm: 'crm', // Requires crm.view
   reports: 'reports', // Requires reports.view
   integrations: 'admin', // Requires admin permissions
+  messages: 'messages', // Requires messages.view
   clinicalServices: 'ehr', // Requires ehr.view (includes FHIR, pharmacies, laboratories)
   formManagement: 'ehr', // Requires ehr.view (providers, staff, and admins)
   patientPortal: null, // Patients can access their own portal

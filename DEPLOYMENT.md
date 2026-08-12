@@ -162,6 +162,7 @@ The minimum required variables for on-premises deployment are:
 |----------|-------------|
 | `AC_TK_S` | JWT signing secret — generate with `openssl rand -hex 32` |
 | `AC_EK` | Encryption key — generate with `openssl rand -hex 16` |
+| `AC_MSG_KEY` | Secure-messaging encryption key — generate with `openssl rand -hex 32`. Derived from `AC_TK_S` if unset, so set it explicitly: rotating `AC_TK_S` would otherwise make stored messages unreadable |
 | `AC_DB_W` | PostgreSQL password |
 | `POSTGRES_PASSWORD` | Must equal `AC_DB_W` |
 | `AC_CLN` | Clinic display name |
