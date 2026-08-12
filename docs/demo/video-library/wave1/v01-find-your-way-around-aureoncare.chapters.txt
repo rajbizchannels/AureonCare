@@ -1,6 +1,6 @@
 0:00 Introduction
-0:11 Signing in
-0:27 The three-pane layout
-0:56 Universal search
-1:19 Notifications, help and the assistant
-1:58 Recap
+0:12 Signing in
+0:30 The three-pane layout
+1:02 Universal search
+1:25 Notifications, help and the assistant
+2:08 Recap

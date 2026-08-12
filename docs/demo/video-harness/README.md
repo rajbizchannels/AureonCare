@@ -80,9 +80,12 @@ Clips are cached by voice and text, so a re-run only pays for lines that
 changed. A missing or rejected key stops the run rather than quietly producing
 eight silent videos.
 
-**The default voice is a placeholder.** It is clear and correctly timed, but it
-sounds like a speech synthesiser and should not be what a customer hears.
-Replacing it with a human voice needs no re-recording of the picture: every line
+Wave 1 as shipped is rendered with this engine — see
+`../video-library/README.md`. The `espeak` default is a placeholder: clear and
+correctly timed, but audibly a speech synthesiser, so it is for local iteration
+rather than anything a customer hears.
+
+Moving to a human voice needs no re-recording of the picture: every line
 of every video is written out as a recording sheet by
 
 ```bash
@@ -136,6 +139,11 @@ Output lands in `docs/demo/video-library/wave1/`, five files per video:
 
 `ffmpeg-static` is required for the mp4: Playwright's bundled ffmpeg can only
 write VP8, so without a real ffmpeg you would be left with a `.webm`.
+
+The `.mp4` and `.thumbnail.png` are gitignored — they are build output and were
+costing ~110 MB of repository history per render. Produce them by running the
+recorder, and distribute them as downloads. The `.srt`, `.chapters.txt` and
+`.metadata.md` written alongside are text and stay tracked.
 
 ## Writing a new video script
 

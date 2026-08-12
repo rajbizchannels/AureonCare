@@ -16,3 +16,10 @@ docs/google-verification/out/
 
 # Narration cache (regenerated on demand)
 docs/demo/video-harness/.voice-cache/
+
+# Rendered video output — distributed as downloads, not carried in the repo.
+# Regenerate with docs/demo/video-harness/record.js. The .srt, .chapters.txt
+# and .metadata.md beside them are text, diff cleanly, and stay tracked.
+docs/demo/video-library/**/*.mp4
+docs/demo/video-library/**/*.webm
+docs/demo/video-library/**/*.thumbnail.png

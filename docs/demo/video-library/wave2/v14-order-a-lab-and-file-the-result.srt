@@ -1,0 +1,55 @@
+1
+00:00:03,183 --> 00:00:13,373
+Order a lab and file the result — Patients ▸ Patient History ▸ Lab Orders — Order the panel, track it, and file the result where it belongs — the chart.
+
+2
+00:00:22,239 --> 00:00:32,256
+Lab orders belong on the chart. Order from here and the result comes back to the same record automatically.
+
+3
+00:00:32,256 --> 00:00:37,708
+The Lab Orders tab is every panel ordered for this patient and where each one has got to.
+
+4
+00:00:37,708 --> 00:00:50,308
+Status is the whole story — ordered, transmitted to the lab, then resulted and waiting for you.
+
+5
+00:00:50,308 --> 00:01:00,165
+Tests are picked by CPT code from the catalogue, so the lab and the claim describe the same thing.
+
+6
+00:01:00,165 --> 00:01:06,601
+Attach the diagnosis. A panel with no clinical indication is a panel the payer will not cover.
+
+7
+00:01:06,601 --> 00:01:23,075
+Routine comes back in a day or two. STAT means now, and it costs more — use it when it changes what you do today.
+
+8
+00:01:23,075 --> 00:01:32,030
+Collection instructions save the patient a wasted trip.
+
+9
+00:01:32,030 --> 00:01:36,803
+Sent to the laboratory electronically, with an order number to track it by.
+
+10
+00:01:36,803 --> 00:01:42,399
+When the result returns it lands on this tab as resulted, with abnormal values flagged.
+
+11
+00:01:42,399 --> 00:01:50,889
+Sarah’s A1c came back at 8.2 percent against a range topping out at 5.6 — flagged, and worth a conversation.
+
+12
+00:01:50,889 --> 00:01:58,349
+Review it, file it to the chart, and tell the patient. A result nobody acted on is the most expensive kind.
+
+13
+00:01:58,506 --> 00:02:12,846
+What you just did
+
+14
+00:02:13,509 --> 00:02:22,509
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.
