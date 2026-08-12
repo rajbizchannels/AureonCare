@@ -637,6 +637,7 @@ const ViewEditModal = ({
                   ) : (
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:border-cyan-500"
                       value={editData.patientId || editData.patient_id}
                       onChange={(e) => {
                         const patient = patients.find(p => p.id.toString() === e.target.value);
@@ -659,6 +660,7 @@ const ViewEditModal = ({
                   ) : (
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:border-cyan-500"
                       value={editData.providerId || editData.provider_id}
                       onChange={(e) => {
                         const provider = users?.find(u => u.id.toString() === e.target.value);
@@ -707,6 +709,7 @@ const ViewEditModal = ({
                   ) : (
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:border-cyan-500"
                       value={editData.type}
                       onChange={(e) => setEditData({...editData, type: e.target.value})}
                     >
@@ -743,6 +746,7 @@ const ViewEditModal = ({
                   ) : (
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:border-cyan-500"
                       value={editData.status}
                       onChange={(e) => setEditData({...editData, status: e.target.value})}
                     >
@@ -858,6 +862,7 @@ const ViewEditModal = ({
                   ) : (
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:border-purple-500"
                       value={editData.gender || ''}
                       onChange={(e) => setEditData({...editData, gender: e.target.value})}
                     >
@@ -1084,6 +1089,7 @@ const ViewEditModal = ({
                       ) : (
                         <ThemedSelect
                           theme={theme}
+                          focusClass="focus:border-purple-500"
                           value={editData.insurance_payer_id || ''}
                           onChange={(e) => setEditData({...editData, insurance_payer_id: e.target.value})}
                         >
@@ -1152,6 +1158,7 @@ const ViewEditModal = ({
                         </label>
                         <ThemedSelect
                           theme={theme}
+                          focusClass="focus:border-purple-500"
                           value={selectedPharmacyId}
                           onChange={(e) => setSelectedPharmacyId(e.target.value)}
                         >
@@ -1349,6 +1356,7 @@ const ViewEditModal = ({
                   ) : (
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:border-purple-500"
                       value={editData.language || 'English'}
                       onChange={(e) => setEditData({...editData, language: e.target.value})}
                     >
@@ -1547,6 +1555,7 @@ const ViewEditModal = ({
                   ) : (
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:border-purple-500"
                       value={editData.role || ''}
                       onChange={(e) => setEditData({...editData, role: e.target.value})}
                       disabled={loadingRoles}
@@ -1601,6 +1610,7 @@ const ViewEditModal = ({
                   ) : (
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:border-purple-500"
                       value={editData.language || 'English'}
                       onChange={(e) => setEditData({...editData, language: e.target.value})}
                     >
@@ -1691,6 +1701,7 @@ const ViewEditModal = ({
                   ) : (
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:border-yellow-500"
                       value={editData.status}
                       onChange={(e) => setEditData({...editData, status: e.target.value})}
                     >

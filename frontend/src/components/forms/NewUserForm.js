@@ -287,6 +287,7 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Role *</label>
                 <ThemedSelect
                   theme={theme}
+                  focusClass="focus:border-purple-500"
                   required
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value})}

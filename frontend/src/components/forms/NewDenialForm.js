@@ -258,6 +258,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
             </label>
             <ThemedSelect
               theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.patientId}
               onChange={(e) => setFormData({ ...formData, patientId: e.target.value, claimId: '' })}
               required
@@ -277,6 +278,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
             </label>
             <ThemedSelect
               theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.claimId}
               onChange={(e) => setFormData({ ...formData, claimId: e.target.value })}
               required
@@ -299,6 +301,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
           </label>
           <ThemedSelect
             theme={theme}
+            focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
             value={formData.insurance_payer_id}
             onChange={(e) => setFormData({ ...formData, insurance_payer_id: e.target.value })}
           >
@@ -380,6 +383,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
             </label>
             <ThemedSelect
               theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.denial_reason_code}
               onChange={(e) => {
                 const selected = denialReasonCodes.find(r => r.code === e.target.value);
@@ -405,6 +409,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
             </label>
             <ThemedSelect
               theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.denial_category}
               onChange={(e) => setFormData({ ...formData, denial_category: e.target.value })}
             >
@@ -459,6 +464,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
             </label>
             <ThemedSelect
               theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.priority}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
             >

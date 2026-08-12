@@ -107,7 +107,7 @@ const Input = ({ className = '', ...props }) => (
 );
 
 const Select = ({ className = '', children, ...props }) => (
-  <ThemedSelect className={`text-sm ${className}`} {...props}>
+  <ThemedSelect focusClass="focus:ring-2 focus:ring-orange-500" className={`text-sm ${className}`} {...props}>
     {children}
   </ThemedSelect>
 );

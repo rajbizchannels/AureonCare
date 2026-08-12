@@ -988,6 +988,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                     </label>
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:ring-2 focus:ring-purple-500"
                       value={ruleForm.scheduleType}
                       onChange={(e) => setRuleForm({ ...ruleForm, scheduleType: e.target.value })}
                     >
@@ -1024,6 +1025,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                     </label>
                     <ThemedSelect
                       theme={theme}
+                      focusClass="focus:ring-2 focus:ring-purple-500"
                       value={ruleForm.scheduleDayOfWeek}
                       onChange={(e) => setRuleForm({ ...ruleForm, scheduleDayOfWeek: parseInt(e.target.value) })}
                     >
