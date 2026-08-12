@@ -1,7 +1,7 @@
 0:00 Introduction
-0:11 Where the problem list lives
-0:28 Opening the form
-0:45 Coding it
-1:08 Severity, status and onset
-1:31 Saving, and where it goes
-2:04 Recap
+0:14 Where the problem list lives
+0:34 Opening the form
+0:56 Coding it
+1:22 Severity, status and onset
+1:44 Saving, and where it goes
+2:27 Recap
