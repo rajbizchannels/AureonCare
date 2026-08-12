@@ -17,19 +17,27 @@ async function runMigration() {
   console.log('========================================\n');
 
   try {
-    const migrationPath = path.join(__dirname, '..', 'migrations', '059_create_secure_messaging.sql');
-    const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+    // 060 references messages and message_attachments, so the order matters.
+    const migrations = [
+      '059_create_secure_messaging.sql',
+      '060_file_message_documents.sql',
+    ];
 
-    console.log('Executing migration...\n');
-    await pool.query(migrationSQL);
+    for (const name of migrations) {
+      console.log(`Executing ${name}...`);
+      await pool.query(fs.readFileSync(path.join(__dirname, '..', 'migrations', name), 'utf8'));
+    }
 
-    console.log('✓ Migration completed successfully!\n');
+    console.log('\n✓ Migration completed successfully!\n');
     console.log('Created tables:');
     console.log('  - message_threads');
     console.log('  - message_thread_participants');
     console.log('  - messages');
     console.log('  - message_attachments');
     console.log('  - message_read_receipts');
+    console.log('\nExtended tables:');
+    console.log('  - medical_records   (source, review_status, reviewed_by/at)');
+    console.log('  - form_submissions  (document-backed requests)');
 
     if (!process.env.AC_MSG_KEY) {
       console.log('\n⚠  AC_MSG_KEY is not set.');

@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { loadAttachment, sendAttachment } = require('../utils/filedDocuments');
 const router = express.Router();
 router.use(authenticate);
 
@@ -551,6 +552,96 @@ router.get('/submissions', async (req, res) => {
   } catch (error) {
     console.error('Error fetching form submissions:', error);
     res.status(500).json({ error: 'Failed to fetch form submissions' });
+  }
+});
+
+/**
+ * GET /api/form-management/submissions/:id/document
+ *
+ * Serves the document behind a document-backed request (one created from a
+ * secure message rather than a template). Authorises on the submission.
+ */
+router.get('/submissions/:id/document', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(
+      'SELECT id, patient_id, document_attachment_id FROM form_submissions WHERE id = $1',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+    const submission = result.rows[0];
+
+    if (req.user.role === 'patient' && String(submission.patient_id) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (!submission.document_attachment_id) {
+      return res.status(404).json({ error: 'This request is not backed by a document' });
+    }
+
+    const attachment = await loadAttachment(pool, submission.document_attachment_id);
+    if (!attachment) {
+      return res.status(404).json({ error: 'Document no longer available' });
+    }
+    if (!sendAttachment(res, attachment)) {
+      return res.status(500).json({ error: 'Document could not be decrypted' });
+    }
+  } catch (error) {
+    console.error('Error downloading request document:', error);
+    res.status(500).json({ error: 'Failed to download document' });
+  }
+});
+
+/**
+ * POST /api/form-management/submissions/:id/acknowledge
+ *
+ * Completes a document-backed request. Separate from the template submission
+ * path because there are no field values to record — the patient is confirming
+ * they have read the document, and (when document_action is 'sign') that they
+ * are signing it.
+ */
+router.post('/submissions/:id/acknowledge', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(
+      'SELECT * FROM form_submissions WHERE id = $1',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+    const submission = result.rows[0];
+
+    // Only the patient the request was addressed to can complete it.
+    if (String(submission.patient_id) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Only the patient can complete this request' });
+    }
+    if (!submission.document_attachment_id) {
+      return res.status(400).json({ error: 'This request is not backed by a document' });
+    }
+    if (submission.status !== 'draft') {
+      return res.json({ success: true, alreadyCompleted: true });
+    }
+
+    const updated = await pool.query(
+      `UPDATE form_submissions
+          SET status = 'submitted',
+              submitted_at = CURRENT_TIMESTAMP,
+              submitted_by = $1,
+              submitted_by_role = 'patient',
+              ip_address = $2,
+              user_agent = $3,
+              updated_at = NOW()
+        WHERE id = $4
+        RETURNING *`,
+      [req.user.id, req.ip, req.get('user-agent'), req.params.id]
+    );
+
+    res.json({ success: true, submission: updated.rows[0] });
+  } catch (error) {
+    console.error('Error acknowledging document request:', error);
+    res.status(500).json({ error: 'Failed to complete request' });
   }
 });
 

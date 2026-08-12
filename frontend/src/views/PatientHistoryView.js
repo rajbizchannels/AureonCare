@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   User, Calendar, Activity, FileText, Pill,
   Edit, Trash2, Plus, Clock, MapPin, Phone, Mail, Microscope, Printer,
-  Heart, Ruler, Scale, Droplet, Users, Video, Loader2
+  Heart, Ruler, Scale, Droplet, Users, Video, Loader2, Download
 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { isProvider, isPatient } from '../utils/rolePermissions';
@@ -170,6 +170,40 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
     setEditingPrescription(null);
     setEditingLabOrder(null);
   }, [activeTab]);
+
+  /** Open a document that arrived through a secure message and was filed here. */
+  const handleDownloadRecordDocument = async (record, attachment) => {
+    try {
+      const blob = await api.downloadRecordAttachment(
+        record.id,
+        attachment.messageAttachmentId,
+        record.patient_id
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.originalName || 'document';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      addNotification('error', error.message || 'Failed to download document');
+    }
+  };
+
+  /** Accept or reject a patient-supplied document into the chart. */
+  const handleReviewDocument = async (record, decision) => {
+    try {
+      await api.reviewPatientDocument(record.id, decision);
+      addNotification('success', decision === 'accepted' ? 'Document accepted into the chart' : 'Document rejected');
+      await fetchPatientHistory();
+    } catch (error) {
+      console.error('Error reviewing document:', error);
+      addNotification('error', error.message || 'Failed to review document');
+    }
+  };
 
   const handleDeleteDiagnosis = async () => {
     if (!deletingDiagnosis) return;
@@ -593,13 +627,79 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
               key={record.id}
               className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-300'}`}
             >
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start gap-3">
                 <div className="flex-1">
                   <h4 className={`font-semibold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {record.title || record.record_type}
                   </h4>
+
+                  {/* Provenance. A document the patient sent has not been
+                      verified by anyone here, and must not sit in the chart
+                      looking like clinic-authored content. */}
+                  {record.source === 'secure_message' && (
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
+                        From a secure message
+                      </span>
+                      {record.review_status === 'pending_review' && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600">
+                          Patient upload · awaiting review
+                        </span>
+                      )}
+                      {record.review_status === 'accepted' && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/15 text-green-600">
+                          Reviewed
+                        </span>
+                      )}
+                      {record.review_status === 'rejected' && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/15 text-red-500">
+                          Rejected
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {record.review_status === 'pending_review' && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleReviewDocument(record, 'accepted')}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleReviewDocument(record, 'rejected')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                        theme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* Documents that came in through a message live in the
+                  encrypted attachment store, so they download through the
+                  chart-scoped route rather than a /uploads path. */}
+              {record.source === 'secure_message' && Array.isArray(record.attachments) && (
+                <div className="mt-2 space-y-1">
+                  {record.attachments.filter((a) => a?.messageAttachmentId).map((attachment) => (
+                    <button
+                      key={attachment.messageAttachmentId}
+                      type="button"
+                      onClick={() => handleDownloadRecordDocument(record, attachment)}
+                      className={`flex items-center gap-2 text-sm hover:underline ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-600'}`}
+                    >
+                      <Download className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{attachment.originalName}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                 Date: {formatDate(record.record_date)}
               </p>

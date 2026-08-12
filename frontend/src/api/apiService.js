@@ -535,6 +535,94 @@ const api = {
     return response.blob();
   },
 
+  // ── Documents filed from secure messages ──────────────────────────────────
+  // A patient may be signed in two ways: with a portal session (portal login)
+  // or with a staff-issued JWT on a users row of role 'patient'. Only the
+  // former can reach /patient-portal/*, only the latter can reach the staff
+  // routers — so each call picks its path from the credential actually held.
+  _hasPortalSession: () => {
+    try {
+      return Boolean(sessionStorage.getItem('portalSessionToken') && !sessionStorage.getItem('token'));
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Forms Requested for the signed-in patient.
+   * /form-management is behind a staff JWT, so a portal session reads the
+   * mirrored portal route instead.
+   */
+  getPatientFormRequests: async (patientId) => {
+    if (api._hasPortalSession()) {
+      const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/form-requests`, {
+        headers: api._getPortalAuthHeader(),
+      });
+      if (!response.ok) throw new Error('Failed to load requested forms');
+      return response.json();
+    }
+    return api.getFormSubmissions({ patient_id: patientId });
+  },
+
+  /** Download a document that was filed into Patient Records from a message. */
+  downloadRecordAttachment: async (recordId, attachmentId, patientId) => {
+    const usePortal = api._hasPortalSession();
+    const url = usePortal
+      ? `${API_BASE_URL}/patient-portal/${patientId}/medical-records/${recordId}/attachments/${attachmentId}`
+      : `${API_BASE_URL}/medical-records/${recordId}/attachments/${attachmentId}`;
+    const response = await fetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to download document');
+    return response.blob();
+  },
+
+  /** Download the document behind a Forms Requested item. */
+  downloadRequestedDocument: async (submissionId, patientId) => {
+    const usePortal = api._hasPortalSession();
+    const url = usePortal
+      ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/document`
+      : `${API_BASE_URL}/form-management/submissions/${submissionId}/document`;
+    const response = await fetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to download document');
+    return response.blob();
+  },
+
+  /** Complete a document-backed request (read-and-confirm, or sign). */
+  acknowledgeRequestedDocument: async (submissionId, patientId) => {
+    const usePortal = api._hasPortalSession();
+    const url = usePortal
+      ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/acknowledge`
+      : `${API_BASE_URL}/form-management/submissions/${submissionId}/acknowledge`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: usePortal
+        ? { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() }
+        : getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || 'Failed to complete request');
+    }
+    return response.json();
+  },
+
+  /** Staff decision on a patient-supplied document awaiting review. */
+  reviewPatientDocument: async (recordId, decision, notes) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/${recordId}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, notes }),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || 'Failed to review document');
+    }
+    return response.json();
+  },
+
   // Tasks
   getTasks: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/tasks`);
