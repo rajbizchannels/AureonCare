@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Shield, Sun, Moon } from 'lucide-react';
+import { useState } from 'react';
+import { Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
 
