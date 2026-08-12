@@ -1,6 +1,6 @@
 0:00 Introduction
-0:11 The claims queue
-0:26 Building the claim
-0:42 Coding it
-1:08 Submitting it
-1:45 Recap
+0:12 The claims queue
+0:31 Building the claim
+0:50 Coding it
+1:19 Submitting it
+2:06 Recap

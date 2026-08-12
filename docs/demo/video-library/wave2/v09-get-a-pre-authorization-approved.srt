@@ -1,0 +1,51 @@
+1
+00:00:03,205 --> 00:00:11,595
+Get a pre-authorization approved — Billing ▸ Pre-Authorizations — Request approval before the service, and track it to a decision.
+
+2
+00:00:16,889 --> 00:00:22,447
+Billing ▸ Pre-Authorizations is where you ask a payer to agree before you deliver the service.
+
+3
+00:00:22,447 --> 00:00:29,776
+Every request sits here with its status — pending waiting on the payer, approved good to go, denied needs another route.
+
+4
+00:00:29,776 --> 00:00:40,958
+Get this wrong and the work is already done when the refusal arrives. That is why it lives before the visit.
+
+5
+00:00:40,958 --> 00:00:47,797
+Pick the patient — the request carries their insurance across automatically.
+
+6
+00:00:47,797 --> 00:00:57,713
+Describe the service in the payer’s language, not shorthand. A vague description is a slow decision.
+
+7
+00:00:57,713 --> 00:01:12,155
+The diagnosis is why the service is needed — searched from the code set, never typed from memory.
+
+8
+00:01:12,155 --> 00:01:22,326
+The estimated cost sets expectations for the patient as well as the payer.
+
+9
+00:01:22,326 --> 00:01:33,296
+This box is the one a reviewer reads. Say what you already tried — that is what turns pending into approved.
+
+10
+00:01:33,296 --> 00:01:37,571
+Submitted. It joins the queue as pending while the payer reviews it.
+
+11
+00:01:37,571 --> 00:01:44,017
+When it comes back approved you get an authorization number — that number goes on the claim, or the claim gets denied.
+
+12
+00:01:44,122 --> 00:01:59,232
+What you just did
+
+13
+00:01:59,834 --> 00:02:08,834
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

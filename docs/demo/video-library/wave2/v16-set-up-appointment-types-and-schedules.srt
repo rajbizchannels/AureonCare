@@ -1,0 +1,63 @@
+1
+00:00:04,512 --> 00:00:15,562
+Set up appointment types and provider schedules — Scheduling ▸ Appointment Types · Provider Scheduling — Fix the configuration and most scheduling complaints stop happening.
+
+2
+00:00:20,827 --> 00:00:27,649
+Scheduling ▸ Appointment Types is the configuration behind most scheduling complaints.
+
+3
+00:00:27,649 --> 00:00:35,748
+Each type carries a duration, a colour and rules. Book that type and the calendar blocks exactly that much time.
+
+4
+00:00:35,748 --> 00:00:49,399
+If visits routinely overrun, the type is wrong — fix it once here rather than dragging appointments every day.
+
+5
+00:00:49,399 --> 00:00:57,732
+Set the duration to how long the visit actually takes, not how long you wish it took.
+
+6
+00:00:57,732 --> 00:01:03,482
+The colour is not decoration — it is how a clinician reads a whole week at a glance.
+
+7
+00:01:03,482 --> 00:01:12,512
+And whether patients can book this type themselves online is decided right here.
+
+8
+00:01:12,512 --> 00:01:21,635
+Saved, and available on every booking screen from this moment.
+
+9
+00:01:21,635 --> 00:01:28,343
+Scheduling ▸ Provider Scheduling is the other half — when each clinician is actually available.
+
+10
+00:01:28,343 --> 00:01:39,558
+Types decide how long a visit takes. Working hours decide when it can happen. Both have to be right.
+
+11
+00:01:39,558 --> 00:01:46,363
+Set working hours per provider, and the calendar stops offering slots nobody is there to cover.
+
+12
+00:01:46,363 --> 00:01:53,335
+Time off goes in here too — booked leave removes the slots instead of leaving them to be cancelled later.
+
+13
+00:01:53,335 --> 00:01:59,889
+Set Clinic Hours sits above all of it as the practice-wide envelope no booking can escape.
+
+14
+00:01:59,889 --> 00:02:07,896
+Get these two screens right and the calendar largely runs itself. Get them wrong and you rebook by hand forever.
+
+15
+00:02:09,384 --> 00:02:25,664
+What you just did
+
+16
+00:02:26,257 --> 00:02:35,257
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

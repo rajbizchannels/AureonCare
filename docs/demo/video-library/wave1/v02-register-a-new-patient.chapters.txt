@@ -1,6 +1,6 @@
 0:00 Introduction
-0:12 The patient list
-0:27 Creating the record
-0:45 Contact and insurance
-1:17 Saving and finding the record
-1:52 Recap
+0:14 The patient list
+0:31 Creating the record
+0:54 Contact and insurance
+1:31 Saving and finding the record
+2:13 Recap

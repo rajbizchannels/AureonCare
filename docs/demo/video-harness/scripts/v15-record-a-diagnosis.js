@@ -11,7 +11,7 @@
 module.exports = {
   id: 'V15',
   slug: 'v15-record-a-diagnosis',
-  wave: 'wave2',
+  wave: 2,
   title: 'Record a diagnosis',
   thumbHeadline: 'Record a diagnosis',
   moduleLabel: 'Clinical ▸ Diagnoses',

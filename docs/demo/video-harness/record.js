@@ -24,9 +24,13 @@ function available() {
 async function main() {
   const arg = (process.argv[2] || 'all').toLowerCase();
   const files = available();
+  const waveOf = (f) => require(path.join(SCRIPT_DIR, f)).wave || 1;
+  const wave = arg.match(/^wave(\d+)$/);
   const targets = arg === 'all'
     ? files
-    : files.filter((f) => f.toLowerCase().startsWith(arg) || f.toLowerCase().includes(arg));
+    : wave
+      ? files.filter((f) => String(waveOf(f)) === wave[1])
+      : files.filter((f) => f.toLowerCase().startsWith(arg) || f.toLowerCase().includes(arg));
 
   if (!targets.length) {
     console.error(`No script matches "${arg}". Available:\n  ${files.join('\n  ')}`);
