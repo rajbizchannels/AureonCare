@@ -185,9 +185,37 @@ const allergies = [
   { id: 7001, patient_id: 101, allergen: 'Penicillin', reaction: 'Rash, itching', severity: 'Moderate', status: 'active', noted_at: at(-800, 12) },
 ];
 
+/**
+ * The diagnoses list reads camelCase (patientName, diagnosisName, diagnosedDate)
+ * while the chart and the claim form read the snake_case columns. The real API
+ * serves both shapes from one row, so the fixtures carry both — without them the
+ * list renders "Unknown Patient / Unnamed Diagnosis / Invalid Date".
+ */
 const diagnoses = [
-  { id: 8001, patient_id: 101, icd_code: 'E11.9', icd_10_code: 'E11.9', description: 'Type 2 diabetes mellitus without complications', diagnosis_name: 'Type 2 Diabetes Mellitus', status: 'active', diagnosis_date: day(-365), provider_id: 2, severity: 'moderate' },
-  { id: 8002, patient_id: 101, icd_code: 'I10', icd_10_code: 'I10', description: 'Essential (primary) hypertension', diagnosis_name: 'Essential Hypertension', status: 'active', diagnosis_date: day(-730), provider_id: 2, severity: 'mild' },
+  {
+    id: 8001, patient_id: 101, patientName: 'Sarah Williams',
+    icd_code: 'E11.9', icd_10_code: 'E11.9', diagnosisCode: 'E11.9',
+    diagnosis_name: 'Type 2 Diabetes Mellitus', diagnosisName: 'Type 2 Diabetes Mellitus',
+    description: 'Type 2 diabetes mellitus without complications',
+    status: 'active', severity: 'moderate',
+    diagnosis_date: day(-365), diagnosedDate: day(-365), provider_id: 2,
+  },
+  {
+    id: 8002, patient_id: 101, patientName: 'Sarah Williams',
+    icd_code: 'I10', icd_10_code: 'I10', diagnosisCode: 'I10',
+    diagnosis_name: 'Essential Hypertension', diagnosisName: 'Essential Hypertension',
+    description: 'Essential (primary) hypertension',
+    status: 'active', severity: 'mild',
+    diagnosis_date: day(-730), diagnosedDate: day(-730), provider_id: 2,
+  },
+  {
+    id: 8003, patient_id: 103, patientName: 'Priya Nandakumar',
+    icd_code: 'J06.9', icd_10_code: 'J06.9', diagnosisCode: 'J06.9',
+    diagnosis_name: 'Acute upper respiratory infection', diagnosisName: 'Acute upper respiratory infection',
+    description: 'Acute upper respiratory infection, unspecified',
+    status: 'resolved', severity: 'mild',
+    diagnosis_date: day(-45), diagnosedDate: day(-45), provider_id: 3,
+  },
 ];
 
 const prescriptions = [

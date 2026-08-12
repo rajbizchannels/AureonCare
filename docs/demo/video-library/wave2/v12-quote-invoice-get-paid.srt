@@ -1,55 +1,55 @@
 1
-00:00:04,606 --> 00:00:13,836
+00:00:04,668 --> 00:00:13,898
 Quote, invoice, get paid — Billing ▸ Quotes & Invoices — The self-pay path: price it up front, invoice it, take the money.
 
 2
-00:00:19,105 --> 00:00:27,743
+00:00:19,212 --> 00:00:28,082
 Billing ▸ Quotes & Invoices is the self-pay side — programmes, cosmetic work, anything no insurer is covering.
 
 3
-00:00:27,743 --> 00:00:35,676
+00:00:28,082 --> 00:00:36,079
 The tabs are the lifecycle: Quotes, then Invoices, then Payments, with coupons and reminders alongside.
 
 4
-00:00:35,676 --> 00:00:47,580
+00:00:36,079 --> 00:00:47,985
 Quote first. A price agreed before the work starts is the cheapest way to avoid an argument after it.
 
 5
-00:00:47,580 --> 00:00:52,364
+00:00:47,985 --> 00:00:52,929
 Pick the patient the quote is for.
 
 6
-00:00:52,364 --> 00:01:00,387
+00:00:52,929 --> 00:01:01,187
 Pull the line straight from the service catalogue and the price comes with it — no typing numbers from memory.
 
 7
-00:01:00,387 --> 00:01:06,602
+00:01:01,187 --> 00:01:07,541
 Everything is itemised, so the patient can see what each part costs.
 
 8
-00:01:06,602 --> 00:01:17,881
+00:01:07,541 --> 00:01:19,022
 Give it a valid-until date. A quote without an expiry is a price you have promised forever.
 
 9
-00:01:17,881 --> 00:01:27,677
+00:01:19,022 --> 00:01:29,143
 Say what is included. Most billing disputes are really scope disputes.
 
 10
-00:01:27,677 --> 00:01:33,511
+00:01:29,143 --> 00:01:34,935
 Saved and ready to send. Until the patient accepts, nobody is committed.
 
 11
-00:01:33,511 --> 00:01:40,693
+00:01:34,935 --> 00:01:42,184
 Once they accept, convert it to an invoice — same lines, same price, now a demand for payment.
 
 12
-00:01:40,693 --> 00:01:47,453
+00:01:42,184 --> 00:01:48,943
 The invoice is what gets paid, and the payment closes it. Accounting picks it up from there.
 
 13
-00:01:48,899 --> 00:02:04,629
+00:01:50,471 --> 00:02:06,201
 What you just did
 
 14
-00:02:05,214 --> 00:02:14,214
+00:02:07,361 --> 00:02:16,361
 Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

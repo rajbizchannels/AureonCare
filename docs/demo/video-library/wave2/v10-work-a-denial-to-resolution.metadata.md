@@ -13,10 +13,10 @@ Part of the AureonCare Getting Started series.
 Chapters:
 0:00 Introduction
 0:13 The denials queue
-0:35 Recording the denial
-0:51 The reason code
-1:36 Resolving it
-2:18 Recap
+0:36 Recording the denial
+0:53 The reason code
+1:40 Resolving it
+2:23 Recap
 
 Subtitles: upload v10-work-a-denial-to-resolution.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -40,7 +40,7 @@ AureonCare, claim denial, denial management, insurance appeal, CARC codes, reven
 | Thumbnail | v10-work-a-denial-to-resolution.thumbnail.png |
 | Subtitles | v10-work-a-denial-to-resolution.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:37 |
+| Duration | 2:44 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

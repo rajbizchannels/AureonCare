@@ -12,10 +12,10 @@ Part of the AureonCare Getting Started series.
 
 Chapters:
 0:00 Introduction
-0:13 Taking the payment
-0:50 Posting it to the claim
-1:28 Allocating it
-2:32 Recap
+0:14 Taking the payment
+0:51 Posting it to the claim
+1:29 Allocating it
+2:34 Recap
 
 Subtitles: upload v11-record-a-payment-and-post-it.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -39,7 +39,7 @@ AureonCare, payment posting, medical billing, accounts receivable, ERA remittanc
 | Thumbnail | v11-record-a-payment-and-post-it.thumbnail.png |
 | Subtitles | v11-record-a-payment-and-post-it.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:51 |
+| Duration | 2:54 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

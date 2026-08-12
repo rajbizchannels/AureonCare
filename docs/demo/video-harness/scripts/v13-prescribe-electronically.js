@@ -9,7 +9,7 @@ module.exports = {
   slug: 'v13-prescribe-and-send-electronically',
   title: 'Prescribe and send electronically',
   thumbHeadline: 'Prescribe safely',
-  moduleLabel: 'Patients ▸ Diagnoses ▸ e-Prescribe',
+  moduleLabel: 'Clinical ▸ Diagnoses ▸ e-Prescribe',
   audience: 'Clinician',
   intro: 'Write a prescription, check the chart, send it to the pharmacy.',
   journey: 'Diagnosis → add a prescription → drug, dose, frequency, refills → check allergies and current meds → pharmacy → send',
@@ -34,9 +34,9 @@ module.exports = {
   async run(d, page) {
     d.chapter('Prescribing in context');
     await d.step('Step 1 — Start from the diagnosis');
-    await d.nav('Patients', 'Diagnoses');
+    await d.nav('Clinical', 'Diagnoses');
     await d.say(
-      'Prescribing starts from the <b>diagnosis</b>, not from a blank drug field — the medication should always have a documented reason.',
+      'Prescribing starts from the <b>diagnosis</b> — now under Clinical — not from a blank drug field: the medication should always have a documented reason.',
       4800
     );
     await d.click(page.getByRole('button', { name: 'New Diagnosis' }), { pause: 2400 });

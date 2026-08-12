@@ -1,5 +1,5 @@
 0:00 Introduction
-0:13 Ordering from the chart
-0:43 Building the order
-1:36 Filing the result
-2:13 Recap
+0:15 Ordering from the chart
+0:48 Building the order
+1:42 Filing the result
+2:22 Recap

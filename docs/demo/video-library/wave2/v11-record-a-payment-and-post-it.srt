@@ -1,55 +1,55 @@
 1
-00:00:04,448 --> 00:00:13,488
+00:00:04,618 --> 00:00:13,658
 Record a payment and post it — Billing ▸ Payments · Payment Postings — Take the money, then post it against the claim so the balance is true.
 
 2
-00:00:18,807 --> 00:00:26,617
+00:00:19,022 --> 00:00:27,297
 Billing ▸ Payments is money arriving — a card at the desk, a cheque in the post, an insurance transfer.
 
 3
-00:00:26,617 --> 00:00:40,218
+00:00:27,297 --> 00:00:41,220
 Recording it here says the money exists. It does not yet say which claim it settles.
 
 4
-00:00:40,218 --> 00:00:55,074
+00:00:41,220 --> 00:00:56,478
 A patient co-payment: small, immediate, and tied to a visit rather than a remittance.
 
 5
-00:00:55,074 --> 00:01:02,180
+00:00:56,478 --> 00:01:03,790
 Billing ▸ Payment Postings is the other half: attaching money to the claim it actually pays.
 
 6
-00:01:02,180 --> 00:01:14,485
+00:01:03,790 --> 00:01:16,080
 This is the step people skip. Skip it and the claim still reads unpaid, and your receivables report is wrong.
 
 7
-00:01:14,485 --> 00:01:21,168
+00:01:16,080 --> 00:01:22,200
 Choose the claim, and the payer and expected amount come with it.
 
 8
-00:01:21,168 --> 00:01:30,093
+00:01:22,200 --> 00:01:31,242
 Insurance money usually arrives as an electronic transfer with a remittance advice.
 
 9
-00:01:30,093 --> 00:01:42,121
+00:01:31,242 --> 00:01:43,444
 The payer paid 144 of a 180 charge. The remaining 36 is not simply unpaid — it has to be explained.
 
 10
-00:01:42,121 --> 00:01:51,469
+00:01:43,444 --> 00:01:52,824
 CO is a contractual obligation — the discount you agreed with this payer. You write it off; you never bill the patient for it.
 
 11
-00:01:51,469 --> 00:02:06,320
+00:01:52,824 --> 00:02:08,019
 Code it PR instead and it becomes patient responsibility, and the patient gets an invoice. The code decides who pays.
 
 12
-00:02:06,320 --> 00:02:13,754
+00:02:08,019 --> 00:02:15,648
 Posted. The claim balance clears, and receivables now reflect what the clinic is genuinely owed.
 
 13
-00:02:15,375 --> 00:02:31,795
+00:02:17,286 --> 00:02:33,706
 What you just did
 
 14
-00:02:32,406 --> 00:02:41,406
+00:02:34,312 --> 00:02:43,312
 Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

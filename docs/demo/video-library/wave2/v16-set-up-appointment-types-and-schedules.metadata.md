@@ -14,8 +14,8 @@ Chapters:
 0:00 Introduction
 0:16 Appointment types
 0:43 Creating a type
-1:17 Provider schedules
-2:26 Recap
+1:18 Provider schedules
+2:28 Recap
 
 Subtitles: upload v16-set-up-appointment-types-and-schedules.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -39,7 +39,7 @@ AureonCare, appointment types, provider scheduling, clinic configuration, medica
 | Thumbnail | v16-set-up-appointment-types-and-schedules.thumbnail.png |
 | Subtitles | v16-set-up-appointment-types-and-schedules.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 2:39 |
+| Duration | 2:41 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
