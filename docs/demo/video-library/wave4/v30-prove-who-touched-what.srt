@@ -1,0 +1,51 @@
+1
+00:00:03,294 --> 00:00:11,744
+Prove who touched what — Settings ▸ Audit Logs — Every view, every edit, every failed attempt — with a name and a timestamp on it.
+
+2
+00:00:17,087 --> 00:00:23,942
+Settings ▸ Audit Logs is every action taken in the system: who, what, when, and from where.
+
+3
+00:00:23,942 --> 00:00:30,169
+Note the first row. A view is logged — opening a chart leaves a trace, not only changing it.
+
+4
+00:00:30,169 --> 00:00:39,677
+That is the requirement most systems miss, and the one an auditor asks about first.
+
+5
+00:00:39,677 --> 00:00:48,829
+Filter by action — views, creates, updates, deletes — and the list narrows to just those.
+
+6
+00:00:48,829 --> 00:00:57,750
+Add a user, a module or a date range and you are down to the handful that matter.
+
+7
+00:00:57,750 --> 00:01:03,894
+The detail gives the exact timestamp, the user and their email, the resource, and the module.
+
+8
+00:01:03,894 --> 00:01:12,998
+On an update it also lists the changed fields — so you can answer what changed, not only that something did.
+
+9
+00:01:12,998 --> 00:01:23,462
+Failed actions are logged as well. A refused export tells you the controls worked — and that someone tried.
+
+10
+00:01:23,462 --> 00:01:31,067
+Export takes the filtered list, not the whole table — so an audit request gets exactly what it asked for.
+
+11
+00:01:31,067 --> 00:01:38,870
+Filter, read, export. That is the whole workflow, and it is the one you want to have practised before you need it.
+
+12
+00:01:40,241 --> 00:01:54,411
+What you just did
+
+13
+00:01:55,010 --> 00:02:04,010
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

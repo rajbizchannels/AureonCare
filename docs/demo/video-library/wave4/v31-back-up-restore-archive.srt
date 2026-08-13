@@ -1,0 +1,67 @@
+1
+00:00:03,130 --> 00:00:12,100
+Back up, restore, archive — Settings ▸ System — Backup is for disaster. Archive is for age. They are not the same job.
+
+2
+00:00:17,388 --> 00:00:23,446
+Settings ▸ Backup & Restore takes a full copy of the clinic’s data — three places to put it.
+
+3
+00:00:23,446 --> 00:00:30,395
+Local downloads a file to this machine. Google Drive and OneDrive push it to the cloud account you connected.
+
+4
+00:00:30,395 --> 00:00:40,932
+A cloud destination that has not been connected cannot be used — the button says so rather than failing later.
+
+5
+00:00:40,932 --> 00:00:52,035
+The backup is every table: patients, appointments, clinical records, claims, settings.
+
+6
+00:00:52,035 --> 00:00:58,745
+Accounting and Inventory also take their own module backups — useful before a big change to just one of them.
+
+7
+00:00:58,745 --> 00:01:06,587
+Restore reads a backup file back in. Read the warning: this replaces current data, and it cannot be undone.
+
+8
+00:01:06,587 --> 00:01:17,866
+Which is why a restore is a decision made deliberately, on a quiet system, not a thing tried during clinic.
+
+9
+00:01:17,866 --> 00:01:27,061
+Archive solves the opposite problem. Backup is for losing data; archive is for data you must keep but no longer work with.
+
+10
+00:01:27,061 --> 00:01:34,357
+Old appointments, closed claims, audit history — out of the working tables, still fully retrievable.
+
+11
+00:01:34,357 --> 00:01:42,599
+And read the note: restoring an archive merges. Duplicates are detected and skipped, so nothing is lost.
+
+12
+00:01:42,599 --> 00:01:50,781
+Automatic archive rules run on a schedule — closed claims after twenty-four months, audit logs after twenty-four.
+
+13
+00:01:50,781 --> 00:02:02,609
+Set the retention your regulator asks for once, and nobody has to remember it again.
+
+14
+00:02:02,609 --> 00:02:13,833
+You can browse an archive without restoring it — table by table, row by row.
+
+15
+00:02:13,833 --> 00:02:23,347
+So: back up for disaster, archive for age. Two problems, two tools — and both of them scheduled, not remembered.
+
+16
+00:02:24,829 --> 00:02:41,169
+What you just did
+
+17
+00:02:41,746 --> 00:02:50,746
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.
