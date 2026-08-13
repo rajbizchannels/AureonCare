@@ -175,6 +175,49 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * GET /api/medical-records/pending-review
+ *
+ * Documents patients have sent through secure messages that no one has
+ * verified yet. Declared before /:id — a single-segment path would otherwise
+ * be captured by that route and read as a record id.
+ */
+router.get('/pending-review', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
+
+    if (req.user.role === 'patient') {
+      return res.status(403).json({ error: 'Staff access required' });
+    }
+
+    const result = await pool.query(
+      `SELECT mr.id, mr.patient_id, mr.title, mr.description, mr.record_date,
+              mr.attachments, mr.created_at, mr.source_message_id,
+              COALESCE(NULLIF(TRIM(CONCAT(p.first_name, ' ', p.last_name)), ''), p.email) AS patient_name,
+              p.mrn AS patient_mrn
+         FROM medical_records mr
+         LEFT JOIN patients p ON p.id = mr.patient_id
+        WHERE mr.review_status = 'pending_review'
+        ORDER BY mr.created_at ASC
+        LIMIT $1`,
+      [limit]
+    );
+
+    // Oldest first: a document waiting three days matters more than one that
+    // arrived this morning, and the queue is a to-do list, not a feed.
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error loading pending document reviews:', error);
+    if (error.code === '42703') {
+      // review_status arrives with migration 060; an un-migrated install
+      // should see an empty queue, not a 500 on the dashboard.
+      return res.json([]);
+    }
+    res.status(500).json({ error: 'Failed to load documents awaiting review' });
+  }
+});
+
+/**
  * GET /api/medical-records/:recordId/attachments/:attachmentId
  *
  * Serves a document that arrived through a secure message and was filed into
