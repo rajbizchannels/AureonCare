@@ -43,13 +43,22 @@ const resolveStaffActor = async (pool, token) => {
   if (result.rows.length === 0) return null;
 
   const u = result.rows[0];
-  return {
-    kind: 'user',
-    id: u.id,
-    email: u.email,
-    role: u.role,
-    displayName: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email,
-  };
+  const displayName = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email;
+
+  // A patient can hold either credential: a portal session, or a JWT against a
+  // users row whose role is 'patient' (the staff login path). Migration 023
+  // merged the two id spaces — "a patient IS a user, so they share the same
+  // id" — so the same person must resolve to the same actor either way.
+  //
+  // Without this they resolve as kind 'user', which silently breaks
+  // everything: thread membership is recorded as kind 'patient', so their
+  // inbox matches nothing, /care-team falls through to a staff lookup, and
+  // requireStaffActor would let them read the practice directory.
+  if (u.role === 'patient') {
+    return { kind: 'patient', id: u.id, email: u.email, role: 'patient', displayName };
+  }
+
+  return { kind: 'user', id: u.id, email: u.email, role: u.role, displayName };
 };
 
 const resolvePatientActor = async (pool, token) => {

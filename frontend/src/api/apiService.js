@@ -609,6 +609,14 @@ const api = {
     return response.json();
   },
 
+  /** Patient-supplied documents no one has verified yet, oldest first. */
+  getPendingDocumentReviews: async (limit) => {
+    const query = limit ? `?limit=${limit}` : '';
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/pending-review${query}`);
+    if (!response.ok) throw new Error('Failed to load documents awaiting review');
+    return response.json();
+  },
+
   /** Staff decision on a patient-supplied document awaiting review. */
   reviewPatientDocument: async (recordId, decision, notes) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/${recordId}/review`, {

@@ -1167,14 +1167,22 @@ router.get('/recipients', requireStaffActor, async (req, res) => {
 router.get('/care-team', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const patientId = req.actor.kind === 'patient' ? req.actor.id : req.query.patientId;
+    const requested = req.query.patientId;
 
-    if (!patientId) {
-      return res.status(400).json({ error: 'A patient id is required' });
-    }
     // Staff may look up any patient's care team; a patient only ever their own.
-    if (req.actor.kind === 'patient' && String(patientId) !== String(req.actor.id)) {
-      return res.status(403).json({ error: 'Access denied' });
+    // The rejection is explicit rather than silently substituting their own id
+    // — answering a question the caller did not ask is its own kind of bug.
+    let patientId;
+    if (req.actor.kind === 'patient') {
+      if (requested && String(requested) !== String(req.actor.id)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      patientId = req.actor.id;
+    } else {
+      patientId = requested;
+      if (!patientId) {
+        return res.status(400).json({ error: 'A patient id is required' });
+      }
     }
 
     const result = await pool.query(
