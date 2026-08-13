@@ -1204,13 +1204,27 @@ class Director {
     await sleep(pause);
   }
 
+  /**
+   * Scroll the content pane. The wheel alone is not enough: the app scrolls an
+   * inner `overflow-y-auto` container, so a wheel event lands wherever the
+   * cursor happens to be — and an open native select swallows it entirely. Roll
+   * the wheel for the look of it, then make sure the container actually moved.
+   */
   async scrollBy(pixels, steps = 14) {
     const step = Math.round(pixels / steps);
     for (let i = 0; i < steps; i += 1) {
       await this.page.mouse.wheel(0, step);
       await sleep(85);
     }
-    await sleep(450);
+    await this.page.evaluate((wanted) => {
+      const panes = Array.from(document.querySelectorAll('div'))
+        .filter((el) => el.scrollHeight > el.clientHeight + 40 && el.clientHeight > 200);
+      const pane = panes[panes.length - 1];
+      if (!pane) return;
+      const target = Math.min(pane.scrollTop + wanted, pane.scrollHeight - pane.clientHeight);
+      if (target > pane.scrollTop + 8) pane.scrollTo({ top: target, behavior: 'smooth' });
+    }, pixels).catch(() => {});
+    await sleep(650);
   }
 
   /** The input that follows a label containing `text` (forms have no htmlFor). */

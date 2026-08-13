@@ -235,23 +235,31 @@ const offeringStatistics = {
 
 /* ── reports ─────────────────────────────────────────────────────────────── */
 
+/**
+ * GET /reports/operational/no-shows. The shape is the backend's, not the daily
+ * appointment report's: summary rows carry no_shows / total_appointments /
+ * no_show_rate, and the detail rows are the cancelled and missed appointments
+ * themselves, keyed as the SQL aliases them.
+ */
 const noShowReport = {
   summary: [
-    { date: day(-4), total: 18, completed: 16, cancelled: 1, no_shows: 1 },
-    { date: day(-3), total: 21, completed: 20, cancelled: 1, no_shows: 0 },
-    { date: day(-2), total: 17, completed: 14, cancelled: 1, no_shows: 2 },
-    { date: day(-1), total: 22, completed: 20, cancelled: 1, no_shows: 1 },
-    { date: day(0), total: 19, completed: 17, cancelled: 0, no_shows: 2 },
+    { date: day(-6), no_shows: 3, total_appointments: 20, no_show_rate: '15.0' },
+    { date: day(-5), no_shows: 1, total_appointments: 18, no_show_rate: '5.6' },
+    { date: day(-4), no_shows: 1, total_appointments: 18, no_show_rate: '5.6' },
+    { date: day(-3), no_shows: 0, total_appointments: 21, no_show_rate: '0.0' },
+    { date: day(-2), no_shows: 2, total_appointments: 17, no_show_rate: '11.8' },
+    { date: day(-1), no_shows: 1, total_appointments: 22, no_show_rate: '4.5' },
+    { date: day(0), no_shows: 2, total_appointments: 19, no_show_rate: '10.5' },
   ],
   details: [
-    { date: day(-12), patient: 'Marcus Boone', provider: 'Dr. Michael Anderson', type: 'Medication check', outcome: 'No-show' },
-    { date: day(-9), patient: 'Jordan Ellis', provider: 'Dr. Dana Okafor', type: 'Follow-up', outcome: 'No-show' },
-    { date: day(-5), patient: 'Aiko Tanaka', provider: 'Dr. Dana Okafor', type: 'Annual physical', outcome: 'Cancelled late' },
-    { date: day(-3), patient: 'Priya Nandakumar', provider: 'Dr. Michael Anderson', type: 'Telehealth consult', outcome: 'No-show' },
+    { start_time: at(0, 9, 30), patient_name: 'Marcus Boone', provider_name: 'Michael Anderson', type: 'Medication check', status: 'no-show', patient_phone: '555-0188', reason: 'Quarterly medication review' },
+    { start_time: at(0, 14, 0), patient_name: 'Jordan Ellis', provider_name: 'Dana Okafor', type: 'Follow-up', status: 'no-show', patient_phone: '555-0141', reason: 'Post-operative check' },
+    { start_time: at(-1, 11, 0), patient_name: 'Aiko Tanaka', provider_name: 'Dana Okafor', type: 'Annual physical', status: 'cancelled', patient_phone: '555-0164', reason: 'Annual physical' },
+    { start_time: at(-2, 10, 30), patient_name: 'Priya Nandakumar', provider_name: 'Michael Anderson', type: 'Telehealth consult', status: 'no-show', patient_phone: '555-0172', reason: 'Medication review' },
+    { start_time: at(-2, 15, 30), patient_name: 'Marcus Boone', provider_name: 'Michael Anderson', type: 'Follow-up', status: 'no-show', patient_phone: '555-0188', reason: 'Blood pressure review' },
+    { start_time: at(-4, 9, 0), patient_name: 'Sarah Williams', provider_name: 'Michael Anderson', type: 'Follow-up', status: 'cancelled', patient_phone: '555-0123', reason: 'Diabetes follow-up' },
+    { start_time: at(-6, 13, 30), patient_name: 'Marcus Boone', provider_name: 'Dana Okafor', type: 'Follow-up', status: 'no-show', patient_phone: '555-0188', reason: 'Medication check' },
   ],
-  totalScheduled: 396,
-  totalNoShows: 18,
-  noShowRate: '4.5%',
 };
 
 const dailyAppointmentsReport = {

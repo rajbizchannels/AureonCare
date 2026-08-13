@@ -181,12 +181,26 @@ function googleSynthesise(text, rawFile) {
     },
   }));
   try {
-    const out = execFileSync('curl', [
-      '-sS', '--max-time', '45', '-X', 'POST',
-      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${key}`,
-      '-H', 'Content-Type: application/json',
-      '--data-binary', `@${payloadFile}`,
-    ], { maxBuffer: 128 * 1024 * 1024 }).toString();
+    let out;
+    // The key travels in the query string, so it lands in the message of any
+    // execFileSync error — and those get written into the _debug files. Retry
+    // the transient failures, and never let the raw error escape with the key
+    // still in it.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        out = execFileSync('curl', [
+          '-sS', '--max-time', '45', '-X', 'POST',
+          `https://texttospeech.googleapis.com/v1/text:synthesize?key=${key}`,
+          '-H', 'Content-Type: application/json',
+          '--data-binary', `@${payloadFile}`,
+        ], { maxBuffer: 128 * 1024 * 1024 }).toString();
+        break;
+      } catch (err) {
+        const safe = String(err.message).split('key=')[0].trim();
+        if (attempt >= 3) throw new Error(`text-to-speech request failed after ${attempt} attempts (${safe})`);
+        execFileSync('sleep', [String(attempt * 2)]);
+      }
+    }
     const body = JSON.parse(out);
     if (!body.audioContent) {
       throw new Error(body.error ? body.error.message : 'no audio in response');
