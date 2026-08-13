@@ -33,7 +33,7 @@ AureonCare, appointment types, provider scheduling, clinic configuration, medica
 | --- | --- |
 | Visibility | Unlisted until the playlist is complete, then Public |
 | Category | Science & Technology |
-| Playlist | AureonCare — Getting Started (Wave 1) |
+| Playlist | AureonCare — Revenue and Clinical (Wave 2) |
 | Language | English |
 | Audience | Not made for kids |
 | Thumbnail | v16-set-up-appointment-types-and-schedules.thumbnail.png |

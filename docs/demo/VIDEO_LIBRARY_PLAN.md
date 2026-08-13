@@ -13,12 +13,15 @@ one row per video, with owner, status, the four production stages, dates and a
 formula-driven dashboard. This document is the reference; the workbook is the
 working copy — edit the workbook, not this file, as work progresses.
 
-**Status: Waves 1 and 2 are produced** — sixteen videos, recorded, branded and
-narrated in Google Cloud Text-to-Speech `en-US-Neural2-D`, in
-`video-library/wave1/` and `video-library/wave2/` with subtitles, chapters,
-thumbnails, per-video upload metadata and a paste-ready `YOUTUBE_UPLOAD_COPY.md`
-carrying the playlist copy for each wave. They await SME review, then upload.
-Waves 3-4 are still plans.
+**Status: all four waves are produced** — thirty-two videos, recorded, branded
+and narrated in Google Cloud Text-to-Speech `en-US-Neural2-D`, in
+`video-library/wave1/` through `wave4/` with subtitles, chapters, thumbnails,
+per-video upload metadata and a paste-ready `YOUTUBE_UPLOAD_COPY.md` carrying
+the playlist copy for each wave. They await SME review, then upload.
+
+Waves 3 and 4 were commissioned as downloads rather than repository content, so
+their rendered output is gitignored; the scripts in `video-harness/scripts/`
+reproduce them exactly.
 
 The `.mp4` and `.thumbnail.png` files are build output and are not tracked in
 git — regenerate them with `video-harness/record.js`, or take them from the

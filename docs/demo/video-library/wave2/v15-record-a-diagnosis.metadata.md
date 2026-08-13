@@ -35,7 +35,7 @@ AureonCare, ICD-10 coding, medical diagnosis software, problem list, clinical do
 | --- | --- |
 | Visibility | Unlisted until the playlist is complete, then Public |
 | Category | Science & Technology |
-| Playlist | AureonCare — Getting Started (Wave 1) |
+| Playlist | AureonCare — Revenue and Clinical (Wave 2) |
 | Language | English |
 | Audience | Not made for kids |
 | Thumbnail | v15-record-a-diagnosis.thumbnail.png |

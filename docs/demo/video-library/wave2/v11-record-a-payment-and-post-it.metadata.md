@@ -33,7 +33,7 @@ AureonCare, payment posting, medical billing, accounts receivable, ERA remittanc
 | --- | --- |
 | Visibility | Unlisted until the playlist is complete, then Public |
 | Category | Science & Technology |
-| Playlist | AureonCare — Getting Started (Wave 1) |
+| Playlist | AureonCare — Revenue and Clinical (Wave 2) |
 | Language | English |
 | Audience | Not made for kids |
 | Thumbnail | v11-record-a-payment-and-post-it.thumbnail.png |

@@ -1,0 +1,55 @@
+1
+00:00:03,159 --> 00:00:13,219
+Add users and control what they can see — Settings ▸ Access Control — Two gates decide what a person sees: the plan you are on, and the role you gave them.
+
+2
+00:00:18,553 --> 00:00:31,801
+Settings ▸ User Management is everyone with a sign-in, and the role each of them carries.
+
+3
+00:00:31,801 --> 00:00:40,819
+A new user needs a name, a work email and a role — the role is the part that decides what they see.
+
+4
+00:00:40,819 --> 00:00:55,938
+Give the narrowest role that still lets them do the job. Widening one later is easy; unwinding an over-wide one is not.
+
+5
+00:00:55,938 --> 00:01:05,777
+They sign in with that once and set their own — you are not the keeper of anybody’s password.
+
+6
+00:01:05,777 --> 00:01:13,036
+Roles & Permissions is the whole matrix on one screen: View, Create, Edit, Delete, per module.
+
+7
+00:01:13,036 --> 00:01:18,074
+Admin is protected — it always keeps everything, so you can never lock yourself out.
+
+8
+00:01:18,074 --> 00:01:26,516
+A doctor can view and create claims but not delete them. Staff never reach Settings or Backup at all.
+
+9
+00:01:26,516 --> 00:01:33,213
+Accounting and Inventory go finer still: per resource, and with approve and export as their own permissions.
+
+10
+00:01:33,213 --> 00:01:44,278
+That is how a billing manager can approve a payable while nobody else can — and why exports are worth guarding.
+
+11
+00:01:44,278 --> 00:01:50,553
+There is a second gate: your plan. Modules outside it are hidden from everyone, whatever their role.
+
+12
+00:01:50,553 --> 00:01:57,678
+So "why can’t I see this" has exactly two answers — the plan does not include it, or the role does not allow it.
+
+13
+00:01:58,050 --> 00:02:15,470
+What you just did
+
+14
+00:02:16,331 --> 00:02:25,331
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

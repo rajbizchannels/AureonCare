@@ -1,0 +1,59 @@
+1
+00:00:03,191 --> 00:00:11,991
+Configure your clinic — Settings ▸ Practice — The settings everything else inherits — identity, hours, and the rules scheduling follows.
+
+2
+00:00:17,301 --> 00:00:22,908
+Settings ▸ Clinic Settings is the clinic’s identity — and almost every other screen reads from it.
+
+3
+00:00:22,908 --> 00:00:31,986
+The name, address and phone print on invoices and statements, and show on the public booking page.
+
+4
+00:00:31,986 --> 00:00:39,732
+Tax ID and NPI are what claims are submitted under — a claim with the wrong NPI comes straight back.
+
+5
+00:00:39,732 --> 00:00:55,461
+Currency is set once here and every price, quote and invoice in the system follows it.
+
+6
+00:00:55,461 --> 00:01:00,892
+Working Hours is the outer boundary of the whole calendar: nothing can be booked outside it.
+
+7
+00:01:00,892 --> 00:01:11,614
+Each day has its own open and close, and its own switch — late clinic on Thursday, half day Saturday, closed Sunday.
+
+8
+00:01:11,614 --> 00:01:28,408
+A day switched off is greyed out. Providers can still be given narrower hours of their own inside this.
+
+9
+00:01:28,408 --> 00:01:31,862
+Appointment Settings is where the calendar gets its shape.
+
+10
+00:01:31,862 --> 00:01:40,041
+Default duration is the length a new appointment starts at. Slot interval is the grid the day is cut into.
+
+11
+00:01:40,041 --> 00:01:46,889
+Maximum advance booking caps how far ahead a patient can book — set it to the horizon you can actually staff.
+
+12
+00:01:46,889 --> 00:01:57,674
+And the cancellation deadline is the cut-off the patient sees when they try to cancel late.
+
+13
+00:01:57,674 --> 00:02:03,312
+Three screens, ten minutes — and the calendar, the booking page and the claims all behave.
+
+14
+00:02:03,404 --> 00:02:16,424
+What you just did
+
+15
+00:02:17,051 --> 00:02:26,051
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.
