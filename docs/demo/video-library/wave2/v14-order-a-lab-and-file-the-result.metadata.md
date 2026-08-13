@@ -33,7 +33,7 @@ AureonCare, lab orders, laboratory results, clinical workflow, lab integration, 
 | --- | --- |
 | Visibility | Unlisted until the playlist is complete, then Public |
 | Category | Science & Technology |
-| Playlist | AureonCare — Getting Started (Wave 1) |
+| Playlist | AureonCare — Revenue and Clinical (Wave 2) |
 | Language | English |
 | Audience | Not made for kids |
 | Thumbnail | v14-order-a-lab-and-file-the-result.thumbnail.png |

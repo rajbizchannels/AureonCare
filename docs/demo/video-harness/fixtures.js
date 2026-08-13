@@ -32,7 +32,9 @@ const clinic = {
   city: 'Portland',
   state: 'OR',
   zip: '97201',
-  phone: '555-0100',
+  // Full ten digits: Clinic Settings validates this field, and a short stub
+  // paints a red "invalid phone number" error into the recording.
+  phone: '(503) 555-0100',
   email: 'front-desk@demo-clinic.example',
   website: 'https://demo-clinic.example',
   timezone: 'America/Los_Angeles',
@@ -83,6 +85,13 @@ const users = [
     title: 'Front Desk', status: 'active',
   },
 ];
+
+// The admin User Management list reads camelCase (`firstName`/`lastName`),
+// while every other screen reads snake_case. Carry both rather than pick one.
+for (const u of users) {
+  u.firstName = u.first_name;
+  u.lastName = u.last_name;
+}
 
 const providers = users
   .filter((u) => ['doctor', 'nurse'].includes(u.role))

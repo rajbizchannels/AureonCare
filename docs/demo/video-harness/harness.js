@@ -24,6 +24,7 @@ const { execFileSync } = require('child_process');
 const F = require('./fixtures');
 const voice = require('./voice');
 const W3 = require('./fixtures-wave3');
+const W4 = require('./fixtures-wave4');
 
 /** Brand kit. Colours are sampled from the logo, not invented. */
 const BRAND = {
@@ -35,6 +36,14 @@ const BRAND = {
   logo: 'data:image/png;base64,' + fs.readFileSync(
     path.join(__dirname, 'brand', 'aureoncare-logo-wide.png')
   ).toString('base64'),
+};
+
+/** Playlist each wave uploads into. Named here so metadata cannot drift. */
+const PLAYLISTS = {
+  1: 'AureonCare — Getting Started (Wave 1)',
+  2: 'AureonCare — Revenue and Clinical (Wave 2)',
+  3: 'AureonCare — Patient Engagement and Growth (Wave 3)',
+  4: 'AureonCare — Administration and Back Office (Wave 4)',
 };
 
 const BASE_URL = process.env.DEMO_BASE_URL || 'http://localhost:3000';
@@ -106,9 +115,40 @@ function createStore() {
     _packages: clone(W3.offeringPackages),
     _promotions: clone(W3.offeringPromotions),
     _categories: clone(W3.serviceCategories),
+    // Wave 4 screens — administration, back office and interoperability.
+    _auditLogs: clone(W4.auditLogs),
+    _archives: clone(W4.archiveRecords),
+    _archiveRules: clone(W4.archiveRules),
+    _invItems: clone(W4.inventoryItems),
+    _invCategories: clone(W4.inventoryCategories),
+    _invSuppliers: clone(W4.inventorySuppliers),
+    _invMovements: clone(W4.inventoryMovements),
+    _invOrders: clone(W4.inventoryOrders),
+    _accounts: clone(W4.accounts),
+    _journalEntries: clone(W4.journalEntries),
+    _receivables: clone(W4.receivables),
+    _payables: clone(W4.payables),
+    _reconciliations: clone(W4.reconciliations),
+    _statements: clone(W4.statements),
+    _fhirResources: clone(W4.fhirResources),
+    _fhirErrors: clone(W4.fhirTrackingErrors),
+    _vendors: clone(W4.vendorIntegrations),
+    _acctPermissions: clone(W4.accountPermissions),
+    _invPermissions: clone(W4.inventoryPermissions),
     _nextId: 90000,
     _user: clone(F.demoUser),
   };
+}
+
+/**
+ * The two RBAC matrices send the whole permission row back on a toggle, so the
+ * mock replaces the matching row rather than patching a single flag.
+ */
+function upsertPermission(rows, body) {
+  const idx = rows.findIndex((r) => r.roleName === body.roleName && r.resource === body.resource);
+  const updated = { ...(idx >= 0 ? rows[idx] : {}), ...body };
+  if (idx >= 0) rows[idx] = updated; else rows.push(updated);
+  return updated;
 }
 
 const PATIENT_KEYS = ['patient_id', 'patientId', 'patient'];
@@ -143,16 +183,47 @@ async function handleApi(route, store) {
   if (p === '/auth/login') return json({ token: 'demo.jwt.token', user: store._user });
   if (p.startsWith('/audit') && method === 'POST') return json({ id: 1 });
   if (p === '/clinic-settings' || p === '/clinic-settings/info') return json(F.clinic);
+  // The admin panel keys working hours by day name and reads open/close/enabled;
+  // an array of day_of_week rows renders as "0 1 2 …" with empty times.
   if (p === '/clinic-settings/working-hours') {
-    return json([0, 1, 2, 3, 4, 5, 6].map((d) => ({
-      day_of_week: d, is_open: d >= 1 && d <= 5, open_time: '08:00', close_time: '17:00',
-    })));
+    if (method !== 'GET') return json({ success: true });
+    return json({
+      monday: { open: '08:00', close: '17:00', enabled: true },
+      tuesday: { open: '08:00', close: '17:00', enabled: true },
+      wednesday: { open: '08:00', close: '17:00', enabled: true },
+      thursday: { open: '08:00', close: '19:00', enabled: true },
+      friday: { open: '08:00', close: '16:00', enabled: true },
+      saturday: { open: '09:00', close: '13:00', enabled: true },
+      sunday: { open: '09:00', close: '13:00', enabled: false },
+    });
   }
   if (p === '/clinic-settings/appointment-settings') {
-    return json({ slot_duration_minutes: 15, buffer_minutes: 5, booking_window_days: 60 });
+    if (method !== 'GET') return json({ success: true });
+    return json({
+      defaultDuration: 30,
+      slotInterval: 15,
+      maxAdvanceBooking: 60,
+      cancellationDeadline: 24,
+    });
   }
-  if (p === '/stripe-settings') return json({ publishable_key: '', sandbox_mode: true });
-  if (p === '/vendor-integration-settings') return json([]);
+  if (p === '/stripe-settings') return json(W4.stripeSettings);
+  if (p === '/vendor-integration-settings') return json(store._vendors);
+  const vendorToggle = p.match(/^\/vendor-integration-settings\/([^/]+)\/toggle$/);
+  if (vendorToggle) {
+    const row = store._vendors.find((v) => v.vendor_type === vendorToggle[1]);
+    if (row) row.is_enabled = body.isEnabled ?? body.is_enabled ?? !row.is_enabled;
+    return json(row || {});
+  }
+  const vendorSave = p.match(/^\/vendor-integration-settings\/([^/]+)$/);
+  if (vendorSave && method === 'POST') {
+    let row = store._vendors.find((v) => v.vendor_type === vendorSave[1]);
+    if (!row) {
+      row = { id: store._nextId++, vendor_type: vendorSave[1], is_enabled: false };
+      store._vendors.push(row);
+    }
+    Object.assign(row, body);
+    return json(row);
+  }
 
   // ── universal search ──────────────────────────────────────────────────
   if (/^\/users\/\d+$/.test(p) && method === 'GET') {
@@ -363,6 +434,346 @@ async function handleApi(route, store) {
       appointment: { id: store._nextId++, ...body },
       message: 'Appointment booked',
     });
+  }
+
+  // ── Wave 4: audit, archive, backup, inventory, accounting, FHIR ───────
+
+  // Audit. The tab expects a { data, pagination } envelope, and filters
+  // server-side — so the mock filters too, otherwise the video shows a
+  // filter being applied and nothing changing.
+  if (p === '/audit' && method === 'GET') {
+    let rows = store._auditLogs;
+    const eq = (field, param) => {
+      const v = url.searchParams.get(param || field);
+      if (v) rows = rows.filter((r) => String(r[field] || '').toLowerCase() === v.toLowerCase());
+    };
+    eq('action_type'); eq('resource_type'); eq('module'); eq('status');
+    const email = url.searchParams.get('user_email');
+    if (email) rows = rows.filter((r) => (r.user_email || '').toLowerCase().includes(email.toLowerCase()));
+    const name = url.searchParams.get('resource_name');
+    if (name) rows = rows.filter((r) => (r.resource_name || '').toLowerCase().includes(name.toLowerCase()));
+    return json({ data: rows, pagination: { ...W4.auditPagination, total: rows.length } });
+  }
+  if (p === '/audit/stats/summary') return json(W4.auditStats);
+  if (p === '/audit/stats/top-users') return json([]);
+  if (p === '/audit/export/csv') {
+    return route.fulfill({ status: 200, contentType: 'text/csv', body: 'timestamp,user,action\n' });
+  }
+
+  // Archive. Every response is wrapped in its own key.
+  if (p === '/archive/list') return json({ archives: store._archives });
+  if (p === '/archive/modules') return json({ modules: W4.archiveModules });
+  if (p === '/archive/stats/summary') return json({ stats: W4.archiveStats });
+  if (p === '/archive-rules' && method === 'GET') return json({ rules: store._archiveRules });
+  if (p === '/archive/create' && method === 'POST') {
+    const created = {
+      id: store._nextId++,
+      archive_name: body.archiveName || body.archive_name || 'New archive',
+      description: body.description || '',
+      status: 'active',
+      archive_date: new Date().toISOString(),
+      record_count: 1840,
+      size_bytes: 24117248,
+      modules: body.modules || body.selectedModules || [],
+      metadata: { recordCounts: { appointments: 1840 } },
+    };
+    store._archives.unshift(created);
+    return json({ success: true, archive: created });
+  }
+  if (/^\/archive\/\d+\/browse$/.test(p)) {
+    const table = url.searchParams.get('table');
+    if (!table) {
+      return json({
+        tables: [
+          { name: 'appointments', count: 4120 },
+          { name: 'claims', count: 2310 },
+        ],
+      });
+    }
+    return json({
+      table,
+      data: store.appointments.slice(0, 5).map((a) => ({
+        id: a.id, patient_id: a.patient_id, appointment_type: a.appointment_type, status: a.status,
+      })),
+    });
+  }
+
+  // Backup.
+  if (p === '/backup/config') return json(W4.backupConfig);
+  // The Backup tab loads /backup/config first and then overwrites it with
+  // /backup-providers/config/status, so the second one is what shows on screen.
+  if (p === '/backup-providers/config/status') {
+    return json({
+      googleDrive: { configured: true, connected: true, account: W4.backupConfig.googleDrive.account },
+      oneDrive: { configured: false, connected: false },
+    });
+  }
+  if (p === '/backup/generate') return json({ backup: { generated_at: new Date().toISOString(), tables: 42 } });
+  if (p === '/backup/google-drive' && method === 'POST') {
+    return json({ success: true, fileId: 'demo-drive-file', message: 'Backup uploaded to Google Drive' });
+  }
+  if (p === '/accounts/backup') return json(W4.backupHistory);
+  if (p === '/inventory/backup') return json(W4.backupHistory);
+
+  // Inventory.
+  if (p === '/inventory/reports/summary') return json(W4.inventorySummary);
+  if (p === '/inventory/rbac/permissions') {
+    if (method === 'PUT') return json(upsertPermission(store._invPermissions, body));
+    return json(store._invPermissions);
+  }
+  if (p === '/inventory/categories') {
+    if (method === 'POST') {
+      const created = { id: store._nextId++, is_active: true, ...body };
+      store._invCategories.push(created);
+      return json(created);
+    }
+    return json(store._invCategories);
+  }
+  if (p === '/inventory/suppliers') {
+    if (method === 'POST') {
+      const created = { id: store._nextId++, status: 'active', supplier_number: `SUP-0${store._nextId % 100}`, ...body };
+      store._invSuppliers.push(created);
+      return json(created);
+    }
+    return json(store._invSuppliers);
+  }
+  if (p === '/inventory/items') {
+    if (method === 'POST') {
+      const created = {
+        id: store._nextId++,
+        item_number: `ITM-0${store._nextId % 1000}`,
+        current_stock: Number(body.current_stock || body.opening_stock || 0),
+        status: 'active',
+        ...body,
+      };
+      store._invItems.unshift(created);
+      return json(created);
+    }
+    return json(store._invItems);
+  }
+  const invItem = p.match(/^\/inventory\/items\/(\d+)$/);
+  if (invItem) {
+    const idx = store._invItems.findIndex((i) => String(i.id) === invItem[1]);
+    if (method === 'GET') return json(store._invItems[idx] || {});
+    if (method === 'PUT') {
+      store._invItems[idx] = { ...store._invItems[idx], ...body };
+      return json(store._invItems[idx]);
+    }
+    if (method === 'DELETE') {
+      const [removed] = store._invItems.splice(idx, 1);
+      return json({ success: true, item: removed });
+    }
+  }
+  if (p === '/inventory/movements') {
+    if (method === 'POST') {
+      const item = store._invItems.find((i) => String(i.id) === String(body.item_id));
+      const qty = Number(body.quantity || 0);
+      if (item) {
+        if (body.movement_type === 'out') item.current_stock -= qty;
+        else if (body.movement_type === 'in') item.current_stock += qty;
+        else item.current_stock = qty;
+      }
+      const created = {
+        id: store._nextId++,
+        movement_number: `MV-2026-0${store._nextId % 1000}`,
+        item_name: item ? item.name : '',
+        item_sku: item ? item.sku : '',
+        unit_of_measure: item ? item.unit_of_measure : '',
+        movement_date: new Date().toISOString(),
+        performed_by_name: `${F.demoUser.first_name} ${F.demoUser.last_name}`,
+        ...body,
+      };
+      store._invMovements.unshift(created);
+      return json(created);
+    }
+    return json(store._invMovements);
+  }
+  const invReceive = p.match(/^\/inventory\/orders\/(\d+)\/receive$/);
+  if (invReceive && method === 'POST') {
+    const order = store._invOrders.find((o) => String(o.id) === invReceive[1]);
+    if (order) {
+      order.status = 'received';
+      order.received_date = new Date().toISOString();
+      // Receiving is what makes the stock number move — the whole point of
+      // the purchase-order journey, so the mock has to actually do it.
+      for (const line of order.items || []) {
+        const item = store._invItems.find((i) => String(i.id) === String(line.item_id));
+        if (item) item.current_stock += Number(line.quantity || 0);
+      }
+    }
+    return json(order || { success: true });
+  }
+  const invOrder = p.match(/^\/inventory\/orders\/(\d+)$/);
+  if (invOrder) {
+    const idx = store._invOrders.findIndex((o) => String(o.id) === invOrder[1]);
+    if (method === 'GET') return json(store._invOrders[idx] || {});
+    if (method === 'PUT') {
+      store._invOrders[idx] = { ...store._invOrders[idx], ...body };
+      return json(store._invOrders[idx]);
+    }
+    if (method === 'DELETE') {
+      const [removed] = store._invOrders.splice(idx, 1);
+      return json({ success: true, order: removed });
+    }
+  }
+  if (p === '/inventory/orders') {
+    if (method === 'POST') {
+      const supplier = store._invSuppliers.find((s) => String(s.id) === String(body.supplier_id));
+      const lines = (body.items || []).map((line) => {
+        const item = store._invItems.find((i) => String(i.id) === String(line.item_id));
+        const unitCost = Number(line.unit_cost ?? (item ? item.unit_cost : 0));
+        return {
+          ...line,
+          item_name: item ? item.name : line.item_name,
+          unit_cost: unitCost,
+          line_total: unitCost * Number(line.quantity || 0),
+        };
+      });
+      const created = {
+        id: store._nextId++,
+        po_number: `PO-2026-0${store._nextId % 1000}`,
+        supplier_name: supplier ? supplier.name : '',
+        status: 'pending',
+        order_date: new Date().toISOString(),
+        total_amount: lines.reduce((s, l) => s + l.line_total, 0),
+        ...body,
+        items: lines,
+      };
+      store._invOrders.unshift(created);
+      return json(created);
+    }
+    return json(store._invOrders);
+  }
+  if (p.startsWith('/inventory/reports/')) return json([]);
+
+  // Accounting. Note the order: the more specific /accounts/* paths have to
+  // be matched before the bare /accounts collection.
+  if (p === '/accounts/reports/dashboard') return json(W4.accountsDashboard);
+  if (p === '/accounts/rbac/permissions') {
+    if (method === 'PUT') return json(upsertPermission(store._acctPermissions, body));
+    return json(store._acctPermissions);
+  }
+  const jePost = p.match(/^\/accounts\/journal\/entries\/(\d+)\/(post|void)$/);
+  if (jePost && method === 'POST') {
+    const entry = store._journalEntries.find((e) => String(e.id) === jePost[1]);
+    if (entry) entry.status = jePost[2] === 'post' ? 'posted' : 'voided';
+    return json(entry || { success: true });
+  }
+  if (p === '/accounts/journal/entries') {
+    if (method === 'POST') {
+      const created = {
+        id: store._nextId++,
+        entryNumber: `JE-2026-0${store._nextId % 1000}`,
+        entryDate: new Date().toISOString().slice(0, 10),
+        entryType: 'manual',
+        status: 'draft',
+        totalDebit: Number(body.totalDebit || 0),
+        totalCredit: Number(body.totalCredit || 0),
+        ...body,
+      };
+      store._journalEntries.unshift(created);
+      return json(created);
+    }
+    return json(store._journalEntries);
+  }
+  const stmtSend = p.match(/^\/accounts\/statements\/(\d+)\/send$/);
+  if (stmtSend) {
+    const stmt = store._statements.find((s) => String(s.id) === stmtSend[1]);
+    if (stmt) { stmt.status = 'sent'; stmt.sent_at = new Date().toISOString(); }
+    return json(stmt || { success: true });
+  }
+  const ACCOUNT_SUBS = {
+    receivables: ['_receivables', 'arNumber', 'AR'],
+    payables: ['_payables', 'apNumber', 'AP'],
+    reconciliations: ['_reconciliations', 'reconciliationNumber', 'REC'],
+    statements: ['_statements', 'statementNumber', 'ST'],
+  };
+  const acctSub = p.match(/^\/accounts\/(receivables|payables|reconciliations|statements)(?:\/(\d+))?$/);
+  if (acctSub) {
+    const [key, numberField, prefix] = ACCOUNT_SUBS[acctSub[1]];
+    const rows = store[key];
+    if (method === 'GET' && !acctSub[2]) return json(rows);
+    if (method === 'POST') {
+      const created = {
+        id: store._nextId++,
+        [numberField]: `${prefix}-2026-0${store._nextId % 1000}`,
+        status: body.status || (acctSub[1] === 'statements' ? 'draft' : 'open'),
+        ...body,
+      };
+      rows.unshift(created);
+      return json(created);
+    }
+    if (method === 'PUT' && acctSub[2]) {
+      const row = rows.find((r) => String(r.id) === acctSub[2]);
+      Object.assign(row || {}, body);
+      return json(row || { success: true });
+    }
+  }
+  const acctOne = p.match(/^\/accounts\/(\d+)$/);
+  if (acctOne) {
+    const acct = store._accounts.find((a) => String(a.id) === acctOne[1]);
+    if (method === 'PUT') { Object.assign(acct || {}, body); return json(acct || {}); }
+    if (method === 'DELETE') {
+      store._accounts = store._accounts.filter((a) => String(a.id) !== acctOne[1]);
+      return json({ success: true });
+    }
+    return json(acct || {});
+  }
+  if (p === '/accounts') {
+    if (method === 'POST') {
+      const created = { id: store._nextId++, isActive: true, currentBalance: 0, ...body };
+      store._accounts.push(created);
+      return json(created);
+    }
+    return json(store._accounts);
+  }
+  if (p.startsWith('/accounts/reports/')) return json({});
+
+  // FHIR.
+  if (p === '/fhir/resources' && method === 'GET') {
+    const type = url.searchParams.get('resourceType');
+    const patientId = url.searchParams.get('patientId');
+    let rows = store._fhirResources;
+    if (type) rows = rows.filter((r) => r.resource_type === type);
+    if (patientId) rows = rows.filter((r) => String(r.patient_id) === patientId);
+    return json(rows);
+  }
+  const fhirSync = p.match(/^\/fhir\/sync\/patient\/(\d+)$/);
+  if (fhirSync && method === 'POST') {
+    const patientId = Number(fhirSync[1]);
+    const existing = store._fhirResources.find(
+      (r) => r.resource_type === 'Patient' && r.patient_id === patientId
+    );
+    if (existing) existing.last_updated = new Date().toISOString();
+    else {
+      store._fhirResources.unshift({
+        id: store._nextId++, resource_type: 'Patient', resource_id: `Patient/${patientId}`,
+        patient_id: patientId, last_updated: new Date().toISOString(), fhir_version: 'R4',
+        resource_data: { resourceType: 'Patient', id: String(patientId) },
+      });
+    }
+    return json({ success: true, message: 'Patient synced' });
+  }
+  const fhirBundle = p.match(/^\/fhir\/bundle\/(\d+)$/);
+  if (fhirBundle) {
+    const patientId = Number(fhirBundle[1]);
+    return json({
+      resourceType: 'Bundle',
+      type: 'collection',
+      entry: store._fhirResources
+        .filter((r) => r.patient_id === patientId)
+        .map((r) => ({ resource: r.resource_data })),
+    });
+  }
+  if (p === '/fhir-tracking/errors/action-required') return json({ errors: store._fhirErrors });
+  const fhirResolve = p.match(/^\/fhir-tracking\/(\d+)\/resolve-error$/);
+  if (fhirResolve && method === 'POST') {
+    store._fhirErrors = store._fhirErrors.filter((e) => String(e.id) !== fhirResolve[1]);
+    return json({ success: true, message: 'Error resolved' });
+  }
+  const fhirTrack = p.match(/^\/fhir-tracking\/([^/]+)$/);
+  if (fhirTrack) {
+    return json({ tracking: W4.fhirTrackingRecords[decodeURIComponent(fhirTrack[1])] || null });
   }
 
   // ── generic REST over the store ───────────────────────────────────────
@@ -1002,7 +1413,7 @@ ${spec.tags.join(', ')}
 | --- | --- |
 | Visibility | Unlisted until the playlist is complete, then Public |
 | Category | Science & Technology |
-| Playlist | AureonCare — Getting Started (Wave 1) |
+| Playlist | ${PLAYLISTS[spec.wave || 1]} |
 | Language | English |
 | Audience | Not made for kids |
 | Thumbnail | ${spec.slug}.thumbnail.png |
@@ -1068,6 +1479,10 @@ async function record(spec) {
   page.on('console', (m) => {
     if (m.type() === 'error') console.warn('   [page]', m.text().slice(0, 120));
   });
+  // Some confirm-and-go actions (receiving a purchase order, restoring an
+  // archive) gate on window.confirm, which Playwright dismisses by default and
+  // would silently stall the journey mid-recording.
+  page.on('dialog', (dialog) => dialog.accept().catch(() => {}));
 
   const d = new Director(page, t0, spec);
   // A spec may open somewhere other than the app root — the public booking
