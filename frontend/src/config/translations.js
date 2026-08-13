@@ -14,6 +14,7 @@ export const translations = {
     patientPortal: 'Patient Portal',
     messages: 'Messages',
     messagesDescription: 'Secure conversations with colleagues and patients',
+    documentsAwaitingReview: 'Patient uploads awaiting review',
     adminPanel: 'Admin Panel',
 
     // Dashboard
@@ -1000,6 +1001,7 @@ export const translations = {
     patientPortal: 'Portal del Paciente',
     messages: 'Mensajes',
     messagesDescription: 'Conversaciones seguras con colegas y pacientes',
+    documentsAwaitingReview: 'Cargas de pacientes pendientes de revisión',
     adminPanel: 'Panel de Administración',
 
     // Dashboard
@@ -1986,6 +1988,7 @@ export const translations = {
     patientPortal: 'Portail Patient',
     messages: 'Messages',
     messagesDescription: 'Conversations sécurisées avec vos collègues et patients',
+    documentsAwaitingReview: 'Documents patients en attente de vérification',
     adminPanel: 'Panneau d\'Administration',
 
     // Dashboard
@@ -2972,6 +2975,7 @@ export const translations = {
     patientPortal: 'Patientenportal',
     messages: 'Nachrichten',
     messagesDescription: 'Sichere Konversationen mit Kollegen und Patienten',
+    documentsAwaitingReview: 'Patienten-Uploads zur Prüfung',
     adminPanel: 'Admin-Panel',
 
     // Dashboard
@@ -3958,6 +3962,7 @@ export const translations = {
     patientPortal: 'بوابة المريض',
     messages: 'الرسائل',
     messagesDescription: 'محادثات آمنة مع الزملاء والمرضى',
+    documentsAwaitingReview: 'مستندات المرضى بانتظار المراجعة',
     adminPanel: 'لوحة الإدارة',
 
     // Dashboard

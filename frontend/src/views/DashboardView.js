@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check, FileText, Activity, ChevronDown, Zap } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check, FileText, Activity, ChevronDown, Zap, FileWarning, Download, X, Loader2 } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
 import { formatTime, formatDate, formatCurrency, getCurrencySymbol, toLocalDateString } from '../utils/formatters';
@@ -45,6 +45,9 @@ const DashboardView = ({
   const [showEPrescribeModal, setShowEPrescribeModal] = useState(false);
   const [prescribePatient, setPrescribePatient] = useState(null);
   const [prescribeDiagnosis, setPrescribeDiagnosis] = useState(null);
+  // Documents patients sent through secure messages that nobody has verified.
+  const [pendingDocuments, setPendingDocuments] = useState([]);
+  const [reviewingId, setReviewingId] = useState(null);
 
   // Load clinic name from database dynamically
   const { logViewAccess } = useAudit();
@@ -54,6 +57,72 @@ const DashboardView = ({
       module: 'Dashboard',
     });
   }, [logViewAccess]);
+
+  // Patients only ever see their own portal, and the endpoint refuses them
+  // anyway — don't ask on their behalf.
+  const canReviewDocuments = user?.role && user.role !== 'patient';
+
+  const loadPendingDocuments = useCallback(async () => {
+    if (!canReviewDocuments) return;
+    try {
+      setPendingDocuments(await api.getPendingDocumentReviews(10));
+    } catch (error) {
+      // The queue is one panel on a busy page; a failure here should not
+      // raise a toast over everything else the dashboard is showing.
+      console.error('Error loading documents awaiting review:', error);
+    }
+  }, [api, canReviewDocuments]);
+
+  useEffect(() => {
+    loadPendingDocuments();
+  }, [loadPendingDocuments]);
+
+  const handleReviewDocument = async (record, decision) => {
+    setReviewingId(record.id);
+    try {
+      await api.reviewPatientDocument(record.id, decision);
+      addNotification(
+        'success',
+        decision === 'accepted'
+          ? `Accepted "${record.title}" into ${record.patient_name}'s chart`
+          : `Rejected "${record.title}"`
+      );
+      // Drop it locally rather than refetching — the row is gone either way,
+      // and the queue should not flicker while the request settles.
+      setPendingDocuments((current) => current.filter((d) => d.id !== record.id));
+    } catch (error) {
+      console.error('Error reviewing document:', error);
+      addNotification('alert', error.message || 'Failed to review document');
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const handleOpenPendingDocument = async (record) => {
+    const attachment = (record.attachments || []).find((a) => a?.messageAttachmentId);
+    if (!attachment) {
+      addNotification('alert', 'This record has no document attached');
+      return;
+    }
+    try {
+      const blob = await api.downloadRecordAttachment(
+        record.id,
+        attachment.messageAttachmentId,
+        record.patient_id
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.originalName || record.title || 'document';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error opening document:', error);
+      addNotification('alert', error.message || 'Failed to open document');
+    }
+  };
 
   // Load clinic name from localStorage
   useEffect(() => {
@@ -526,6 +595,98 @@ const DashboardView = ({
         </div>
 
       </div>
+
+      {/* ── Patient uploads awaiting review ────────────────────────────────
+          Rendered only when the queue is non-empty: an "all clear" panel
+          would take a block of the dashboard to say nothing. */}
+      {canReviewDocuments && pendingDocuments.length > 0 && (
+        <div
+          className={`rounded-xl border p-6 ${
+            theme === 'dark'
+              ? 'bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-amber-500/30'
+              : 'bg-gradient-to-br from-amber-50/60 to-white border-amber-300/60'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-amber-500/15">
+                <FileWarning className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {t.documentsAwaitingReview || 'Patient uploads awaiting review'}
+                </h3>
+                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Sent by patients through secure messaging — not yet verified into the chart
+                </p>
+              </div>
+            </div>
+            <span className="shrink-0 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600">
+              {pendingDocuments.length}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {pendingDocuments.map((record) => (
+              <div
+                key={record.id}
+                className={`flex items-center justify-between gap-3 flex-wrap p-3 rounded-lg ${
+                  theme === 'dark' ? 'bg-slate-800/40' : 'bg-white/70'
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className={`font-medium text-sm truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {record.title}
+                  </p>
+                  <p className={`text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {record.patient_name}
+                    {record.patient_mrn ? ` · ${record.patient_mrn}` : ''} · {formatDate(record.created_at)}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPendingDocument(record)}
+                    title="Open the document"
+                    className={`p-2 rounded-lg transition-colors ${
+                      theme === 'dark' ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+
+                  {/* Reading the document before accepting it is the whole
+                      point of the queue, so Open sits first and the decision
+                      buttons are deliberately not one-click-adjacent. */}
+                  <button
+                    type="button"
+                    disabled={reviewingId === record.id}
+                    onClick={() => handleReviewDocument(record, 'accepted')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50"
+                  >
+                    {reviewingId === record.id
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <Check className="w-3.5 h-3.5" />}
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    disabled={reviewingId === record.id}
+                    onClick={() => handleReviewDocument(record, 'rejected')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50 ${
+                      theme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ePrescribe Modal */}
       {showEPrescribeModal && prescribePatient && (
