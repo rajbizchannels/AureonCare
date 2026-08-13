@@ -1,0 +1,51 @@
+1
+00:00:04,743 --> 00:00:13,273
+Work a denial to resolution — Billing ▸ Denials — Read the reason code, fix the cause, and appeal — money you already earned.
+
+2
+00:00:18,680 --> 00:00:27,426
+Billing ▸ Denials is where refused claims land. Every row here is work you have already done and not been paid for.
+
+3
+00:00:27,426 --> 00:00:41,271
+Treat it as a worklist, not an archive. Denials have filing deadlines — an untouched queue quietly becomes written-off revenue.
+
+4
+00:00:41,271 --> 00:00:45,801
+Start from the patient, then the claim that was refused.
+
+5
+00:00:45,801 --> 00:00:54,304
+Picking the claim pulls its payer and amount across — the denial stays tied to the claim it came from.
+
+6
+00:00:54,304 --> 00:01:03,282
+The reason code is the payer telling you exactly what is wrong. CO-16 means the claim is missing information.
+
+7
+00:01:03,282 --> 00:01:18,445
+Learn the common ones and the fix is obvious: CO-16 add what is missing, CO-45 the charge exceeded the fee schedule, CO-18 it is a duplicate.
+
+8
+00:01:18,445 --> 00:01:32,740
+Priority is what makes the queue sort itself — high-value and near-deadline first.
+
+9
+00:01:32,740 --> 00:01:44,282
+Write what you actually did. The next person to touch this — or you in three weeks — needs the trail.
+
+10
+00:01:44,282 --> 00:01:51,573
+Recorded, and it joins the queue as open with an appeal status of not started.
+
+11
+00:01:51,573 --> 00:02:01,023
+Fix the cause, resubmit, and move it to resolved. A denial worked is revenue recovered; a denial ignored is revenue lost.
+
+12
+00:02:03,184 --> 00:02:23,094
+What you just did
+
+13
+00:02:23,711 --> 00:02:32,711
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

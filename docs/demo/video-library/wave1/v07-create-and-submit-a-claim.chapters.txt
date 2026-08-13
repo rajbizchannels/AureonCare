@@ -1,0 +1,6 @@
+0:00 Introduction
+0:12 The claims queue
+0:31 Building the claim
+0:50 Coding it
+1:20 Submitting it
+2:07 Recap
