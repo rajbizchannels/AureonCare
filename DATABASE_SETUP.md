@@ -110,7 +110,7 @@ curl http://localhost:3001/api/appointments
 After initialization, you can log in with:
 
 ### Admin Portal:
-- Email: `admin@aureoncare.com`
+- Email: `admin@aureoncare.tech`
 - Password: (check seed-test-data.sql for default password)
 
 ### Patient Portal:

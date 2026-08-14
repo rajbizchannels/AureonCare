@@ -38,6 +38,8 @@ async function validateGoogle(accessToken) {
   return {
     providerId: data.sub,
     email: data.email || null,
+    // Google returns email_verified as a boolean (sometimes the string "true").
+    emailVerified: data.email_verified === true || data.email_verified === 'true',
     firstName: data.given_name || '',
     lastName: data.family_name || ''
   };
@@ -59,6 +61,11 @@ async function validateMicrosoft(accessToken) {
     // old format can match via the isMicrosoftMatch helper below.
     providerId: data.id,
     email: data.mail || data.userPrincipalName || null,
+    // Graph does not expose an email-verified flag. Organizational mailboxes
+    // (data.mail) are directory-managed and treated as verified; a bare
+    // userPrincipalName (no mail) is not guaranteed to be a deliverable/verified
+    // address, so it is not treated as verified for account-linking purposes.
+    emailVerified: Boolean(data.mail),
     firstName: data.givenName || '',
     lastName: data.surname || ''
   };
@@ -79,6 +86,9 @@ async function validateFacebook(accessToken) {
   return {
     providerId: data.id,
     email: data.email || null,
+    // Facebook only returns an email once the user has confirmed it, so a
+    // present email is a verified email.
+    emailVerified: Boolean(data.email),
     firstName: data.first_name || '',
     lastName: data.last_name || ''
   };

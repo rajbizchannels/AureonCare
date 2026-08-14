@@ -1,0 +1,59 @@
+1
+00:00:04,715 --> 00:00:15,615
+Connect pharmacy, lab and payment partners — Settings ▸ Integrations — Credentials in, sandbox first, then switch it on — and watch where each one surfaces.
+
+2
+00:00:21,135 --> 00:00:27,929
+Settings ▸ Integrations is every outside partner the clinic talks to, in one place.
+
+3
+00:00:27,929 --> 00:00:34,989
+Surescripts for prescribing, Labcorp for lab orders, Optum for claims, Stripe for payments.
+
+4
+00:00:34,989 --> 00:00:45,174
+Each one shows its state plainly: Not Configured, or Active. There is no in-between.
+
+5
+00:00:45,174 --> 00:00:59,821
+Every partner asks for the same shape of thing: an ID, a secret, and the URL to talk to.
+
+6
+00:00:59,821 --> 00:01:09,076
+The secret is write-only. Once saved it is never shown again, not even to you.
+
+7
+00:01:09,076 --> 00:01:17,133
+Sandbox mode points at the partner’s test system: real messages, real errors, no real prescriptions.
+
+8
+00:01:17,133 --> 00:01:28,879
+Prove the wiring in sandbox, then clear this box. Going live should be a decision, not an accident.
+
+9
+00:01:28,879 --> 00:01:37,007
+Saved credentials turn the toggle live. Before that it reads Configure integration first and does nothing.
+
+10
+00:01:37,007 --> 00:01:47,155
+That order is the whole rule of this screen: configure, then enable.
+
+11
+00:01:47,155 --> 00:01:57,015
+Surescripts is what sends a prescription to the pharmacy the patient chose.
+
+12
+00:01:57,015 --> 00:02:05,859
+Labcorp is what carries a lab order out and the result back. Optum carries the claims, Stripe the card payments.
+
+13
+00:02:05,859 --> 00:02:12,513
+Four integrations, four places they show up — and one screen that decides whether they are on.
+
+14
+00:02:14,097 --> 00:02:29,487
+What you just did
+
+15
+00:02:30,153 --> 00:02:39,153
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.
