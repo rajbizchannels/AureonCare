@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforceUserQuota, enforceProviderQuota } = require('../middleware/planEnforcement');
+const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 
 // All user routes require a valid JWT
 router.use(authenticate);
@@ -93,7 +94,12 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
     // Hash password if provided
     let passwordHash = null;
     if (password) {
-      passwordHash = await bcrypt.hash(password, 10);
+      // SEC-12: enforce policy + hash at the shared cost factor
+      const pwCheck = validatePassword(password);
+      if (!pwCheck.valid) {
+        return res.status(400).json({ error: pwCheck.message });
+      }
+      passwordHash = await bcrypt.hash(password, BCRYPT_COST);
     }
 
     // Explicitly generate UUID for id
@@ -249,7 +255,12 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     // Hash password if provided
     let passwordHash = null;
     if (password) {
-      passwordHash = await bcrypt.hash(password, 10);
+      // SEC-12: enforce policy + hash at the shared cost factor
+      const pwCheck = validatePassword(password);
+      if (!pwCheck.valid) {
+        return res.status(400).json({ error: pwCheck.message });
+      }
+      passwordHash = await bcrypt.hash(password, BCRYPT_COST);
     }
 
     // Get current user data to check for role changes
