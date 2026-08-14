@@ -5,6 +5,12 @@ const crypto = require('crypto');
 const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken, isProviderIdMatch } = require('../utils/socialTokenValidator');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+
+// SEC-17: a fixed dummy bcrypt hash (of a random string) used to run a real compare
+// when an account is missing or has no password, so the response time does not reveal
+// whether the email exists. Cost factor matches the policy so timing lines up.
+const DUMMY_PASSWORD_HASH = '$2a$12$C6UzMDM.H6dfI/f/IKcEeO3z8kU0m9Yb0aH3mHqz9uJm8lTgqQG0K';
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -42,31 +48,25 @@ router.post('/login', async (req, res) => {
       [email]
     );
 
-    if (result.rows.length === 0) {
+    const user = result.rows[0];
+
+    // SEC-17: always run a bcrypt compare — against the real hash when the account
+    // exists and has a password, otherwise against a fixed dummy hash — so response
+    // timing and the error message are identical whether or not the email is known.
+    const hashToCompare = user && user.password_hash ? user.password_hash : DUMMY_PASSWORD_HASH;
+    const isMatch = await bcrypt.compare(password, hashToCompare);
+
+    if (!user || !user.password_hash || !isMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const user = result.rows[0];
-
-    // Check if user is blocked
+    // Only after the credentials are proven correct do we reveal account-state
+    // details — so these messages can never be used to enumerate valid accounts.
     if (user.status === 'blocked') {
       return res.status(403).json({ error: 'Your account has been blocked. Please contact an administrator.' });
     }
-
-    // Check if user is pending
     if (user.status === 'pending') {
       return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
-    }
-
-    // Check if password_hash exists
-    if (!user.password_hash) {
-      return res.status(401).json({ error: 'Password not set for this account' });
-    }
-
-    // Compare password
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     // Don't send password_hash back to client
@@ -96,8 +96,10 @@ router.post('/change-password', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    // SEC-12: enforce the shared password policy (length + complexity)
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) {
+      return res.status(400).json({ error: pwCheck.message });
     }
 
     const pool = req.app.locals.pool;
@@ -120,7 +122,7 @@ router.post('/change-password', authenticate, async (req, res) => {
       }
     }
 
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
 
     // SEC-09: bump token_version so every JWT issued before this change is rejected,
     // then mint a fresh token for the caller's current session so they are not logged
@@ -243,8 +245,10 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Reset token and new password are required' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    // SEC-12: enforce the shared password policy (length + complexity)
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) {
+      return res.status(400).json({ error: pwCheck.message });
     }
 
     const pool = req.app.locals.pool;
@@ -262,8 +266,7 @@ router.post('/reset-password', async (req, res) => {
     const user = userResult.rows[0];
 
     // Hash new password
-    const saltRounds = 10;
-    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
 
     // Update password and clear reset token.
     // SEC-18: a reset is a credential-recovery event — assume the old credentials are

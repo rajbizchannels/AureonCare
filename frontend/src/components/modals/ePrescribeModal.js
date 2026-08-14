@@ -146,14 +146,7 @@ const EPrescribeModal = ({
 
   // Debug: Log render state
   useEffect(() => {
-    console.log('[ePrescribe] ===== RENDER STATE =====');
-    console.log('[ePrescribe] currentMedication:', currentMedication ? {
-      id: currentMedication.id,
-      drugName: currentMedication.drugName || currentMedication.drug_name,
-      ndcCode: currentMedication.ndcCode || currentMedication.ndc_code
-    } : 'NULL');
-    console.log('[ePrescribe] addedMedications count:', addedMedications.length);
-    console.log('[ePrescribe] ======================');
+    // SEC-14: removed render-state logging of medication details/counts.
   }, [currentMedication, addedMedications]);
 
   // Search medications - wrapped in useCallback to prevent unnecessary re-renders
@@ -294,7 +287,7 @@ const EPrescribeModal = ({
   const handleSelectMedication = useCallback((medication) => {
     console.log('[ePrescribe] ========================================');
     console.log('[ePrescribe] handleSelectMedication called');
-    console.log('[ePrescribe] Medication received:', medication);
+    // SEC-14: removed logging of the medication object.
 
     // Validate medication object
     if (!medication) {
@@ -341,11 +334,11 @@ const EPrescribeModal = ({
         setSafetyCheckLoading(true);
         try {
           const ndcCode = medication.ndcCode || medication.ndc_code;
-          console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
+          // SEC-14: removed logging of NDC + patient ID.
 
           // Use api service for safety check
           const safetyData = await api.checkPrescriptionSafety(patient.id, ndcCode);
-          console.log('[ePrescribe] Safety data received:', safetyData);
+          // SEC-14: removed logging of safety-check result data.
           setSafetyWarnings(safetyData.warnings || []);
         } catch (error) {
           console.error('[ePrescribe] Error in safety check:', error);
@@ -430,7 +423,7 @@ const EPrescribeModal = ({
       return;
     }
 
-    console.log('[ePrescribe] Loading pharmacies for patient:', patient.id);
+    // SEC-14: removed logging of patient ID.
     setPharmaciesLoading(true);
     try {
       // Load ALL pharmacies from the pharmacy table
