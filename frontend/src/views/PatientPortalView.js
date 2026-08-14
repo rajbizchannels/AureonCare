@@ -16,7 +16,7 @@ import { useCalendarSync } from '../components/calendar/useCalendarSync';
 import ThemedSelect from '../components/forms/ThemedSelect';
 import SecureMessaging from '../components/messaging/SecureMessaging';
 
-const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange }) => {
+const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange, requestedTab = null }) => {
   const { language, setLanguage, setTheme } = useApp();
   const t = getTranslations(language);
   // profile (overview), appointments, diagnoses, prescriptions, records,
@@ -110,6 +110,14 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       patient_id: user?.id,
     });
   }, [logViewAccess, user?.id]);
+
+  // Open a tab the shell asked for — the header's Messages icon, today. Keyed
+  // on the nonce rather than the tab name so asking for the same tab twice
+  // still reopens it after the patient has navigated away.
+  useEffect(() => {
+    if (requestedTab?.tab) setCurrentView(requestedTab.tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedTab?.nonce]);
 
   // Keep the Messages tab badge current. Failures stay silent: an unreachable
   // count is not worth an error toast on a page showing five other things.

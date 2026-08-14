@@ -239,6 +239,37 @@ function App() {
     }
   }, [currentModule, showForm]);
 
+  // ── Unread messages badge ─────────────────────────────────────────────────
+  // Polled, since no websocket server is wired up. Sixty seconds is slower
+  // than the messaging view's own refresh: the badge only has to be roughly
+  // right, and whoever is actually reading a thread already sees it live.
+  const [unreadMessages, setUnreadMessages] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      setUnreadMessages(0);
+      return undefined;
+    }
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const count = await api.getUnreadMessageCount();
+        if (!cancelled) setUnreadMessages(count);
+      } catch {
+        // A stale badge is not worth a toast on every screen in the app.
+      }
+    };
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+    // currentModule is a dependency so the badge re-checks on navigation:
+    // leaving the messages view should clear it straight away rather than
+    // leave a stale count sitting there for the rest of the minute.
+  }, [isAuthenticated, currentModule]);
+
   // ── App-shell navigation ──────────────────────────────────────────────────
   // The shell tracks which sub-module (tab) of a module is on screen. It is
   // stored together with the module it belongs to so that navigating straight
@@ -266,6 +297,23 @@ function App() {
 
   // Selects a sub-module tab from inside a view, keeping the shell in sync.
   const selectModuleTab = (moduleId, tab) => setNavSelection({ module: moduleId, tab });
+
+  // A patient's portal owns its own tab state — the shell does not drive it,
+  // because their nav group holds a single destination. So asking it to open a
+  // particular tab from outside (the header's Messages icon) is a request it
+  // watches, carrying a nonce so clicking twice re-opens rather than no-ops.
+  const [portalTabRequest, setPortalTabRequest] = React.useState(null);
+
+  const canMessage = isPatient || hasModuleAccess('messages');
+
+  const goToMessages = () => {
+    if (isPatient) {
+      handleSelectNavItem({ module: 'patientPortal' });
+      setPortalTabRequest({ tab: 'messages', nonce: Date.now() });
+    } else {
+      handleSelectNavItem({ module: 'messages' });
+    }
+  };
 
   const handleSelectNavItem = (item) => {
     // Grouping-only branches (a report category, say) have nowhere to go —
@@ -620,6 +668,8 @@ function App() {
               theme={theme}
               activeTab={isPatient ? undefined : activeTab || 'profile'}
               onTabChange={isPatient ? undefined : (tab) => selectModuleTab('patientPortal', tab)}
+              // Only meaningful for patients, whose portal owns its own tabs.
+              requestedTab={isPatient ? portalTabRequest : null}
               api={api}
               addNotification={addNotification}
               user={user}
@@ -839,8 +889,10 @@ function App() {
         topBar={{
           user,
           notificationCount: notifications.length,
+          messageCount: canMessage ? unreadMessages : 0,
           onLogoClick: () => handleSelectNavItem({ module: user?.role === 'patient' ? 'patientPortal' : 'dashboard' }),
           onSearch: () => setShowSearch(!showSearch),
+          onMessages: canMessage ? goToMessages : null,
           onNotifications: () => setShowNotifications(!showNotifications),
           onHelp: () => setShowHelpDrawer(!showHelpDrawer),
           onAssistant: () => setShowAIAssistant(!showAIAssistant),
