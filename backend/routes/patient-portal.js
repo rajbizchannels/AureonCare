@@ -6,11 +6,7 @@ const rateLimit = require('express-rate-limit');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { authenticate } = require('../middleware/auth');
-const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
-
-// SEC-17: dummy hash to run a constant-time compare when a portal account is
-// missing, so login timing/response does not reveal whether an email is enrolled.
-const DUMMY_PASSWORD_HASH = '$2a$12$C6UzMDM.H6dfI/f/IKcEeO3z8kU0m9Yb0aH3mHqz9uJm8lTgqQG0K';
+const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('../utils/filedDocuments');
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -134,11 +130,15 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
       }
     } else {
       // Traditional login
+      // Match either address: patients.email is what the portal registers, but a
+      // record created through the staff EHR may only carry the email on the
+      // linked users row, and the patient signs in with the address they know.
       const result = await pool.query(`
         SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
         FROM patients p
         LEFT JOIN users u ON p.id = u.id
-        WHERE p.email = $1 AND p.portal_enabled = true
+        WHERE (LOWER(p.email) = LOWER($1) OR LOWER(u.email) = LOWER($1))
+          AND p.portal_enabled = true
       `, [email]);
 
       const candidate = result.rows[0];
@@ -169,12 +169,15 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
     `, [patient.id, sessionTokenHash, req.ip, req.get('user-agent'), expiresAt]);
 
-    // Return patient data without sensitive info
+    // Return patient data without sensitive info.
+    // `role` is stated explicitly: the patients table has no role column, and
+    // the frontend keys navigation and access checks off user.role — without it
+    // a portal session looks role-less and falls through to the staff shell.
     const { portal_password_hash, ...patientData } = patient;
 
     res.json({
       message: 'Login successful',
-      patient: patientData,
+      patient: { ...patientData, role: 'patient' },
       sessionToken,
       expiresAt
     });
@@ -224,7 +227,7 @@ router.post('/register', authenticate, async (req, res) => {
 
     res.json({
       message: 'Patient portal enabled successfully',
-      patient: patientData
+      patient: { ...patientData, role: 'patient' }
     });
   } catch (error) {
     console.error('Error registering patient portal:', error);
@@ -485,6 +488,114 @@ router.get('/:patientId/medical-records', async (req, res) => {
   } catch (error) {
     console.error('Error fetching medical records:', error);
     res.status(500).json({ error: 'Failed to fetch medical records' });
+  }
+});
+
+/**
+ * Documents that arrived through a secure message.
+ *
+ * A patient signed in with a portal session has no staff JWT, so they cannot
+ * reach /medical-records or /form-management. These mirror those routes for
+ * the portal, scoped by the :patientId the session is already bound to (see
+ * the router.param above), which is the whole authorisation check.
+ */
+router.get('/:patientId/medical-records/:recordId/attachments/:attachmentId', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { patientId, recordId, attachmentId } = req.params;
+
+    const recordResult = await pool.query(
+      'SELECT * FROM medical_records WHERE id = $1 AND patient_id = $2',
+      [recordId, patientId]
+    );
+    if (recordResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Record not found' });
+    }
+    if (!recordReferencesAttachment(recordResult.rows[0], attachmentId)) {
+      return res.status(404).json({ error: 'Attachment is not part of this record' });
+    }
+
+    const attachment = await loadAttachment(pool, attachmentId);
+    if (!attachment) {
+      return res.status(404).json({ error: 'Attachment no longer available' });
+    }
+    if (!sendAttachment(res, attachment)) {
+      return res.status(500).json({ error: 'Document could not be decrypted' });
+    }
+  } catch (error) {
+    console.error('Error downloading portal document:', error);
+    res.status(500).json({ error: 'Failed to download document' });
+  }
+});
+
+/** Forms Requested, for a portal session. */
+router.get('/:patientId/form-requests', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const result = await pool.query(
+      `SELECT id, template_id, template_name, status, source,
+              document_attachment_id, document_name, document_action,
+              created_at, submitted_at
+         FROM form_submissions
+        WHERE patient_id = $1
+        ORDER BY created_at DESC`,
+      [req.params.patientId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching portal form requests:', error);
+    res.status(500).json({ error: 'Failed to load requested forms' });
+  }
+});
+
+router.get('/:patientId/form-requests/:submissionId/document', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { patientId, submissionId } = req.params;
+
+    const result = await pool.query(
+      'SELECT document_attachment_id FROM form_submissions WHERE id = $1 AND patient_id = $2',
+      [submissionId, patientId]
+    );
+    if (result.rows.length === 0 || !result.rows[0].document_attachment_id) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    const attachment = await loadAttachment(pool, result.rows[0].document_attachment_id);
+    if (!attachment) {
+      return res.status(404).json({ error: 'Document no longer available' });
+    }
+    if (!sendAttachment(res, attachment)) {
+      return res.status(500).json({ error: 'Document could not be decrypted' });
+    }
+  } catch (error) {
+    console.error('Error downloading requested document:', error);
+    res.status(500).json({ error: 'Failed to download document' });
+  }
+});
+
+router.post('/:patientId/form-requests/:submissionId/acknowledge', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { patientId, submissionId } = req.params;
+
+    const result = await pool.query(
+      `UPDATE form_submissions
+          SET status = 'submitted', submitted_at = CURRENT_TIMESTAMP,
+              submitted_by = $1, submitted_by_role = 'patient',
+              ip_address = $2, user_agent = $3, updated_at = NOW()
+        WHERE id = $4 AND patient_id = $1 AND status = 'draft'
+          AND document_attachment_id IS NOT NULL
+        RETURNING *`,
+      [patientId, req.ip, req.get('user-agent'), submissionId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No open document request with that id' });
+    }
+    res.json({ success: true, submission: result.rows[0] });
+  } catch (error) {
+    console.error('Error acknowledging requested document:', error);
+    res.status(500).json({ error: 'Failed to complete request' });
   }
 });
 

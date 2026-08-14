@@ -3,6 +3,7 @@ import { Activity, X, Save, Calendar, FileText, Pill, Microscope, Plus, Trash2, 
 import { FORM_TEMPLATES } from '../../data/formTemplates';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import LabCPTMultiSelect from './LabCPTMultiSelect';
+import ThemedSelect from './ThemedSelect';
 import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import EPrescribeModal from '../modals/ePrescribeModal';
@@ -323,7 +324,7 @@ const DiagnosisForm = ({
       }
 
       // Find patient name from patients array or use provided patient
-      const selectedPatient = patients.find(p => p.id === formData.patientId) || patient;
+      const selectedPatient = patients.find(p => String(p.id) === String(formData.patientId)) || patient;
       const patientName = selectedPatient ? `${selectedPatient.first_name || selectedPatient.firstName || ''} ${selectedPatient.last_name || selectedPatient.lastName || ''}`.trim() : 'patient';
       const action = editDiagnosis ? 'updated' : 'created';
       await addNotification('diagnosis', `Diagnosis ${action} for ${patientName}`);
@@ -554,14 +555,10 @@ const DiagnosisForm = ({
                   Patient {allowPatientSelection && <span className="text-red-500">*</span>}
                 </label>
                 {allowPatientSelection ? (
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={formData.patientId}
                     onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                     required
                   >
                     <option value="">Select a patient...</option>
@@ -574,7 +571,7 @@ const DiagnosisForm = ({
                         </option>
                       );
                     })}
-                  </select>
+                  </ThemedSelect>
                 ) : (
                   <div className={`w-full px-3 py-2 border rounded-lg ${
                     theme === 'dark'
@@ -582,7 +579,7 @@ const DiagnosisForm = ({
                       : 'bg-gray-50 border-gray-300 text-gray-700'
                   }`}>
                     {(() => {
-                      const selectedPatient = patients.find(p => p.id === formData.patientId) || patient;
+                      const selectedPatient = patients.find(p => String(p.id) === String(formData.patientId)) || patient;
                       if (selectedPatient) {
                         const patientName = `${selectedPatient.first_name || selectedPatient.firstName || ''} ${selectedPatient.last_name || selectedPatient.lastName || ''}`.trim();
                         const mrn = selectedPatient.mrn || 'N/A';
@@ -651,7 +648,7 @@ const DiagnosisForm = ({
                   <EPrescribeModal
                     theme={theme}
                     api={api}
-                    patient={patients.find(p => p.id === formData.patientId) || patient}
+                    patient={patients.find(p => String(p.id) === String(formData.patientId)) || patient}
                     provider={user}
                     initialMedication={preSelectedMedication}
                     inline={true}
@@ -742,7 +739,9 @@ const DiagnosisForm = ({
                               }`}>
                                 Laboratory *
                               </label>
-                              <select
+                              <ThemedSelect
+                                theme={theme}
+                                className="text-sm"
                                 required
                                 value={labOrder.laboratoryId}
                                 onChange={(e) => {
@@ -750,11 +749,6 @@ const DiagnosisForm = ({
                                   updated[index].laboratoryId = e.target.value;
                                   setFormData({ ...formData, labOrders: updated });
                                 }}
-                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
-                                  theme === 'dark'
-                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                                }`}
                               >
                                 <option value="">Select Laboratory</option>
                                 {laboratories.map((lab) => (
@@ -762,7 +756,7 @@ const DiagnosisForm = ({
                                     {lab.labName}
                                   </option>
                                 ))}
-                              </select>
+                              </ThemedSelect>
                             </div>
 
                             {/* Priority */}
@@ -772,23 +766,20 @@ const DiagnosisForm = ({
                               }`}>
                                 Priority
                               </label>
-                              <select
+                              <ThemedSelect
+                                theme={theme}
+                                className="text-sm"
                                 value={labOrder.priority || 'routine'}
                                 onChange={(e) => {
                                   const updated = [...formData.labOrders];
                                   updated[index].priority = e.target.value;
                                   setFormData({ ...formData, labOrders: updated });
                                 }}
-                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
-                                  theme === 'dark'
-                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                                }`}
                               >
                                 <option value="routine">Routine</option>
                                 <option value="urgent">Urgent</option>
                                 <option value="stat">STAT</option>
-                              </select>
+                              </ThemedSelect>
                             </div>
 
                             {/* Status */}
@@ -798,7 +789,9 @@ const DiagnosisForm = ({
                               }`}>
                                 Status *
                               </label>
-                              <select
+                              <ThemedSelect
+                                theme={theme}
+                                className="text-sm"
                                 required
                                 value={labOrder.status || 'one-time'}
                                 onChange={(e) => {
@@ -806,15 +799,10 @@ const DiagnosisForm = ({
                                   updated[index].status = e.target.value;
                                   setFormData({ ...formData, labOrders: updated });
                                 }}
-                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
-                                  theme === 'dark'
-                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                                }`}
                               >
                                 <option value="one-time">One-Time</option>
                                 <option value="recurring">Recurring</option>
-                              </select>
+                              </ThemedSelect>
                             </div>
 
                             {/* Conditional Date or Frequency based on Status */}
@@ -826,7 +814,9 @@ const DiagnosisForm = ({
                                   }`}>
                                     Frequency *
                                   </label>
-                                  <select
+                                  <ThemedSelect
+                                    theme={theme}
+                                    className="text-sm"
                                     required
                                     value={labOrder.frequency || ''}
                                     onChange={(e) => {
@@ -834,11 +824,6 @@ const DiagnosisForm = ({
                                       updated[index].frequency = e.target.value;
                                       setFormData({ ...formData, labOrders: updated });
                                     }}
-                                    className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
-                                      theme === 'dark'
-                                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                                    }`}
                                   >
                                     <option value="">Select Frequency</option>
                                     <option value="daily">Daily</option>
@@ -847,7 +832,7 @@ const DiagnosisForm = ({
                                     <option value="monthly">Monthly</option>
                                     <option value="quarterly">Quarterly</option>
                                     <option value="annually">Annually</option>
-                                  </select>
+                                  </ThemedSelect>
                                 </>
                               ) : (
                                 <>
@@ -883,7 +868,9 @@ const DiagnosisForm = ({
                               }`}>
                                 Collection Class *
                               </label>
-                              <select
+                              <ThemedSelect
+                                theme={theme}
+                                className="text-sm"
                                 required
                                 value={labOrder.class || 'clinic-collect'}
                                 onChange={(e) => {
@@ -891,15 +878,10 @@ const DiagnosisForm = ({
                                   updated[index].class = e.target.value;
                                   setFormData({ ...formData, labOrders: updated });
                                 }}
-                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
-                                  theme === 'dark'
-                                    ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                                }`}
                               >
                                 <option value="clinic-collect">Clinic Collect</option>
                                 <option value="lab-collect">Lab Collect</option>
-                              </select>
+                              </ThemedSelect>
                             </div>
 
                             {/* Result Recipients */}
@@ -917,7 +899,7 @@ const DiagnosisForm = ({
                                 required={true}
                                 doctor={user}
                                 staff={providers.filter(p => p.role === 'staff')}
-                                patient={patient || (formData.patientId && patients.find(p => p.id === formData.patientId))}
+                                patient={patient || (formData.patientId && patients.find(p => String(p.id) === String(formData.patientId)))}
                               />
                             </div>
                           </div>
@@ -1069,19 +1051,15 @@ const DiagnosisForm = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Severity
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={formData.severity}
                     onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
                   >
                     <option value="Mild">Mild</option>
                     <option value="Moderate">Moderate</option>
                     <option value="Severe">Severe</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 {/* Status */}
@@ -1089,19 +1067,15 @@ const DiagnosisForm = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Status
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
                   >
                     <option value="Active">Active</option>
                     <option value="Resolved">Resolved</option>
                     <option value="Chronic">Chronic</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Tag, X } from 'lucide-react';
+import ThemedSelect from './ThemedSelect';
 
 const emptyLineItem = () => ({
   id: Date.now() + Math.random(),
@@ -313,11 +314,11 @@ const NewQuoteForm = ({ theme, api, patients, onClose, onSuccess, addNotificatio
             <label className={labelClass}>
               {t?.patient || 'Patient'} <span className="text-red-400">*</span>
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               required
               value={formData.patientId}
               onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-              className={inputClass}
               disabled={submitting}
             >
               <option value="">{t?.selectPatient || 'Select Patient'}</option>
@@ -326,7 +327,7 @@ const NewQuoteForm = ({ theme, api, patients, onClose, onSuccess, addNotificatio
                   {p.first_name} {p.last_name} - {p.mrn}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           {/* Line Items */}
@@ -378,11 +379,11 @@ const NewQuoteForm = ({ theme, api, patients, onClose, onSuccess, addNotificatio
                       <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                         {t?.linkDiagnosis || 'Link Diagnosis'}
                       </label>
-                      <select
+                      <ThemedSelect
+                        theme={theme}
                         value={item.diagnosisId}
                         onChange={(e) => handleDiagnosisSelect(item.id, e.target.value)}
                         disabled={submitting || loadingDiagnoses}
-                        className={inputClass}
                       >
                         <option value="">
                           {loadingDiagnoses
@@ -394,17 +395,17 @@ const NewQuoteForm = ({ theme, api, patients, onClose, onSuccess, addNotificatio
                             {d.diagnosisCode || d.code} - {d.diagnosisName || d.name}
                           </option>
                         ))}
-                      </select>
+                      </ThemedSelect>
                     </div>
                     <div>
                       <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                         {t?.linkOffering || 'Link Offering'}
                       </label>
-                      <select
+                      <ThemedSelect
+                        theme={theme}
                         value={item.offeringId}
                         onChange={(e) => handleOfferingSelect(item.id, e.target.value)}
                         disabled={submitting || loadingOfferings}
-                        className={inputClass}
                       >
                         <option value="">
                           {loadingOfferings
@@ -416,7 +417,7 @@ const NewQuoteForm = ({ theme, api, patients, onClose, onSuccess, addNotificatio
                             {o.name}{o.price != null ? ` - $${parseFloat(o.price).toFixed(2)}` : ''}
                           </option>
                         ))}
-                      </select>
+                      </ThemedSelect>
                     </div>
                   </div>
 

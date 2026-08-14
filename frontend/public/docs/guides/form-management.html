@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Form Management - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📋 Form Management</h1>
+                    <p>Custom forms, patient intake, and submission tracking</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.3</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Form Management</h1>
+            <p>Found under <strong>Patients → Forms</strong>. Build custom forms, assign them to patients, and track every submission with a full audit trail.</p>
+
+            <h2>Building a Form Template</h2>
+            <ol>
+                <li>Go to <strong>Patients → Form Templates</strong></li>
+                <li>Click <strong>+ New Template</strong></li>
+                <li>Give the template a name, description, and category</li>
+                <li>Add fields from the builder</li>
+                <li>Mark fields <strong>Required</strong> where an answer is mandatory</li>
+                <li>Click <strong>Save Template</strong></li>
+            </ol>
+
+            <h3>Field Types</h3>
+            <table>
+                <tr><th>Field Type</th><th>Use For</th></tr>
+                <tr><td>Text / Text area</td><td>Free-text answers</td></tr>
+                <tr><td>Number</td><td>Numeric values</td></tr>
+                <tr><td>Date</td><td>Dates of birth, onset dates</td></tr>
+                <tr><td>Dropdown</td><td>Single choice from a list</td></tr>
+                <tr><td>Checkbox</td><td>Multiple selections</td></tr>
+                <tr><td>Radio</td><td>Single choice, all options visible</td></tr>
+                <tr><td>Signature</td><td>Patient or provider sign-off</td></tr>
+                <tr><td>File upload</td><td>Supporting documents</td></tr>
+            </table>
+
+            <h3>Template Library</h3>
+            <p>AureonCare ships with starter templates for common intake scenarios — new patient registration, medical history, consent, and insurance details. Copy one and adapt it rather than starting from scratch.</p>
+
+            <h3>Versioning</h3>
+            <p>Editing a published template creates a new version. Submissions stay attached to the version that was live when the patient completed the form, so <strong>historical records never change retroactively</strong>.</p>
+
+            <h2>Default Intake Forms</h2>
+            <p>Mark a template as a default intake form and it is assigned automatically when a new patient registers.</p>
+            <ol>
+                <li>Open the template</li>
+                <li>Toggle <strong>Assign on patient registration</strong></li>
+                <li>Save</li>
+            </ol>
+            <p>The patient sees the form in their portal on first login. Staff see its status on the patient record.</p>
+
+            <h2>Assigning Forms Manually</h2>
+            <ol>
+                <li>Open the patient's record</li>
+                <li>Go to the <strong>Forms</strong> tab</li>
+                <li>Click <strong>Assign Form</strong></li>
+                <li>Choose the template and a due date</li>
+                <li>Click <strong>Assign</strong></li>
+            </ol>
+            <p>The patient is notified by email, and by WhatsApp if they have opted in.</p>
+
+            <h2>Reviewing Submissions</h2>
+            <p>Go to <strong>Patients → Form Submissions</strong>.</p>
+
+            <h3>Submission Statuses</h3>
+            <ul>
+                <li><strong>Assigned</strong> — Sent to the patient, not started</li>
+                <li><strong>In Progress</strong> — Patient has begun answering</li>
+                <li><strong>Submitted</strong> — Completed and awaiting review</li>
+                <li><strong>Reviewed</strong> — A staff member has reviewed it</li>
+                <li><strong>Declined</strong> — Patient declined to complete</li>
+            </ul>
+
+            <h3>To Review a Submission</h3>
+            <ol>
+                <li>Click the submission</li>
+                <li>Read the answers</li>
+                <li>Click <strong>Mark Reviewed</strong>, or <strong>Request Changes</strong> to send it back with a note</li>
+            </ol>
+
+            <h2>Form Audit Trail</h2>
+            <p><strong>Patients → Form Audit</strong> records every action taken on every form:</p>
+            <ul>
+                <li>Who created or edited a template, and when</li>
+                <li>When a form was assigned and to whom</li>
+                <li>Every save the patient made while completing it</li>
+                <li>Who reviewed the submission</li>
+                <li>Any changes requested</li>
+            </ul>
+            <p>The audit trail is immutable and exportable for compliance reporting.</p>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>✓ Keep intake forms short — completion rates drop sharply past 20 fields</li>
+                <li>✓ Mark only genuinely mandatory fields as Required</li>
+                <li>✓ Use dropdowns instead of free text where you plan to report on the answers</li>
+                <li>✓ Review submissions within 24 hours of receipt</li>
+                <li>✓ Version templates rather than editing them in place mid-cycle</li>
+                <li>✗ Don't collect data you have no workflow for</li>
+                <li>✗ Don't duplicate fields the patient record already stores</li>
+            </ul>
+
+            <h2>Common Questions</h2>
+            <h3>Q: Can a patient save a partially completed form?</h3>
+            <p><strong>A:</strong> Yes. Progress saves automatically and the status shows as In Progress until they submit.</p>
+
+            <h3>Q: What happens to submissions if I edit a template?</h3>
+            <p><strong>A:</strong> Nothing. Editing creates a new version; existing submissions stay bound to the version the patient completed.</p>
+
+            <h3>Q: Can I assign the same form more than once?</h3>
+            <p><strong>A:</strong> Yes — useful for forms that need periodic renewal, such as annual consent.</p>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="../index.html#patient-registration">Patient Registration</a></li>
+                <li><a href="user-management.html">User Management</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.3 - Form Management</p>
+    </footer>
+</body>
+</html>

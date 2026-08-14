@@ -8,11 +8,25 @@ import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
 import { useAudit } from '../hooks/useAudit';
+import { useShellTab } from '../hooks/useShellTab';
+import { apiFetch } from '../api/apiService';
+import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
+import AddToCalendarButton from '../components/calendar/AddToCalendarButton';
+import { useCalendarSync } from '../components/calendar/useCalendarSync';
+import ThemedSelect from '../components/forms/ThemedSelect';
+import SecureMessaging from '../components/messaging/SecureMessaging';
 
-const PatientPortalView = ({ theme, api, addNotification, user }) => {
+const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange }) => {
   const { language, setLanguage, setTheme } = useApp();
   const t = getTranslations(language);
-  const [currentView, setCurrentView] = useState('profile'); // profile (overview), appointments, diagnoses, prescriptions, records, bookAppointment
+  // profile (overview), appointments, diagnoses, prescriptions, records,
+  // forms, bookAppointment — listed in the shell's secondary pane when the
+  // portal is rendered inside it.
+  const [currentView, setCurrentView, tabsInShell] = useShellTab(shellTab, onTabChange, 'profile');
+
+  // Google Calendar status, read once and shared by the connect card and the
+  // per-appointment "Add to Google Calendar" buttons.
+  const calendarSync = useCalendarSync(user?.id);
 
   // Data states
   const [appointments, setAppointments] = useState([]);
@@ -26,6 +40,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [loadingAppointmentTypes, setLoadingAppointmentTypes] = useState(false);
   const [waitlistEntries, setWaitlistEntries] = useState([]);
   const [loadingWaitlist, setLoadingWaitlist] = useState(false);
+  // Drives the badge on the Messages tab. Polled rather than pushed — the
+  // deployment has no websocket server wired up yet.
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState(user || {});
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -78,6 +95,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   const [loadingEditSlots, setLoadingEditSlots] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
   const [appointmentToCancel, setAppointmentToCancel] = useState(null);
+  const [waitlistConfirmation, setWaitlistConfirmation] = useState(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
@@ -92,6 +110,26 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       patient_id: user?.id,
     });
   }, [logViewAccess, user?.id]);
+
+  // Keep the Messages tab badge current. Failures stay silent: an unreachable
+  // count is not worth an error toast on a page showing five other things.
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const count = await api.getUnreadMessageCount();
+        if (!cancelled) setUnreadMessages(count);
+      } catch {
+        /* badge simply stays as-is */
+      }
+    };
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [api]);
 
   // Load featured offerings hide preference
   const loadFeaturedOfferingsPreference = () => {
@@ -237,7 +275,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     if (!user?.id) return;
     setLoadingForms(true);
     try {
-      const submissions = await api.getFormSubmissions({ patient_id: user.id });
+      const submissions = await api.getPatientFormRequests(user.id);
       setPendingForms(submissions || []);
     } catch (error) {
       console.error('Error fetching pending forms:', error);
@@ -405,7 +443,17 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         reason: bookingData.reason
       });
 
-      addNotification('success', result.message || 'Added to waitlist successfully!');
+      const provider = providers.find(p => String(p.id) === String(bookingData.providerId));
+      const providerName = provider
+        ? `Dr. ${provider.first_name} ${provider.last_name}`
+        : 'your provider';
+
+      setWaitlistConfirmation({
+        providerName,
+        date: bookingData.date,
+        appointmentType: bookingData.type,
+        message: result.message,
+      });
       fetchWaitlist();
 
       // Optionally reset form
@@ -436,7 +484,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
     setLoadingSlots(true);
     try {
-      const response = await fetch(`/api/scheduling/slots/${providerId}?date=${date}`);
+      const response = await apiFetch(`/scheduling/slots/${providerId}?date=${date}`);
       if (response.ok) {
         const slots = await response.json();
         setAvailableSlots(slots);
@@ -469,7 +517,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
 
     setLoadingEditSlots(true);
     try {
-      const response = await fetch(`/api/scheduling/slots/${providerId}?date=${date}`);
+      const response = await apiFetch(`/scheduling/slots/${providerId}?date=${date}`);
       if (response.ok) {
         const slots = await response.json();
         setEditAvailableSlots(slots);
@@ -684,7 +732,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     if (!recordToDelete) return;
 
     try {
-      const response = await fetch(`/api/patient-portal/${user.id}/medical-records/${recordToDelete.id}`, {
+      const response = await apiFetch(`/patient-portal/${user.id}/medical-records/${recordToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -710,7 +758,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     if (!editingRecord) return;
 
     try {
-      const response = await fetch(`/api/patient-portal/${user.id}/medical-records/${editingRecord.id}`, {
+      const response = await apiFetch(`/patient-portal/${user.id}/medical-records/${editingRecord.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -740,7 +788,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     if (!appointmentToCancel) return;
 
     try {
-      const response = await fetch(`/api/scheduling/cancel/${appointmentToCancel.id}`, {
+      const response = await apiFetch(`/scheduling/cancel/${appointmentToCancel.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -949,6 +997,14 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   // Appointments View
   const renderAppointments = () => (
     <div className="space-y-6">
+      {/* Renders nothing unless the practice has Google Calendar configured */}
+      <GoogleCalendarIntegration
+        patientId={user?.id}
+        theme={theme}
+        addNotification={addNotification}
+        sync={calendarSync}
+      />
+
       <div className="flex justify-between items-center">
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           {t.myAppointments}
@@ -994,15 +1050,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                         {t.appointmentTypeRequired}
                       </label>
-                      <select
+                      <ThemedSelect
+                        theme={theme}
                         value={editAppointmentData.type}
                         onChange={(e) => setEditAppointmentData({...editAppointmentData, type: e.target.value})}
-                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                       >
                         {appointmentTypes.map(type => (
                           <option key={type.id} value={type.name}>{type.name}</option>
                         ))}
-                      </select>
+                      </ThemedSelect>
                     </div>
                   </div>
 
@@ -1021,11 +1077,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                           {providersError}
                         </div>
                       ) : (
-                        <select
+                        <ThemedSelect
+                          theme={theme}
                           value={editAppointmentData.providerId}
                           onChange={(e) => setEditAppointmentData({...editAppointmentData, providerId: e.target.value, time: ''})}
                           required
-                          className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                         >
                           <option value="">Select a provider</option>
                           {providers.map(provider => (
@@ -1033,7 +1089,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                               Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name} {(provider.specialization || provider.specialty) ? `- ${provider.specialization || provider.specialty}` : ''}
                             </option>
                           ))}
-                        </select>
+                        </ThemedSelect>
                       )}
                     </div>
                   )}
@@ -1049,11 +1105,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                           Loading available times...
                         </div>
                       ) : editAvailableSlots.length > 0 ? (
-                        <select
+                        <ThemedSelect
+                          theme={theme}
                           value={editAppointmentData.time}
                           onChange={(e) => setEditAppointmentData({...editAppointmentData, time: e.target.value})}
                           required
-                          className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                         >
                           <option value="">Select a time slot</option>
                           {editAvailableSlots.map((slot, index) => {
@@ -1070,7 +1126,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                               </option>
                             );
                           })}
-                        </select>
+                        </ThemedSelect>
                       ) : (
                         <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
                           No available time slots for this date. Please select a different date or provider.
@@ -1177,6 +1233,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                         </button>
                       )}
                     </div>
+                    {apt.status !== 'cancelled' && (
+                      <AddToCalendarButton
+                        appointmentId={apt.id}
+                        patientId={user?.id}
+                        connected={calendarSync.connected}
+                        theme={theme}
+                        addNotification={addNotification}
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -1635,24 +1700,24 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             </div>
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.languagePreference}</label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={profileData.language || 'English'}
                 onChange={(e) => setProfileData({...profileData, language: e.target.value})}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               >
                 <option value="English">English</option>
                 <option value="Spanish">Spanish</option>
                 <option value="French">French</option>
                 <option value="German">German</option>
                 <option value="Arabic">Arabic</option>
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Country</label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={String(profileData.country || '')}
                 onChange={(e) => setProfileData({...profileData, country: e.target.value})}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               >
                 <option value="">Select Country</option>
                 <option value="US">United States</option>
@@ -1687,16 +1752,16 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 <option value="SG">Singapore</option>
                 <option value="HK">Hong Kong</option>
                 <option value="KR">South Korea</option>
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                 {t.insurancePayer || 'Insurance Payer'}
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={profileData.insurance_payer_id || ''}
                 onChange={(e) => setProfileData({...profileData, insurance_payer_id: e.target.value})}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               >
                 <option value="">
                   {loadingPayers ? 'Loading insurance payers...' : (t.selectInsurancePayer || 'Select Insurance Payer')}
@@ -1706,7 +1771,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                     {payer.name} ({payer.payer_id})
                   </option>
                 ))}
-              </select>
+              </ThemedSelect>
             </div>
             <div className="col-span-2">
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.allergies}</label>
@@ -1758,10 +1823,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                 <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   {t.selectPharmacy || 'Select Pharmacy'}
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={selectedPharmacyId}
                   onChange={(e) => setSelectedPharmacyId(e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option value="">Select a pharmacy</option>
                   {pharmacies.map((pharmacy) => (
@@ -1769,7 +1834,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       {pharmacy.pharmacyName || pharmacy.name || pharmacy.chainName} - {pharmacy.addressLine1 || pharmacy.address_line1}, {pharmacy.city}, {pharmacy.state}
                     </option>
                   ))}
-                </select>
+                </ThemedSelect>
               </div>
               {preferredPharmacies.length > 0 && (
                 <div className="mt-4">
@@ -2176,10 +2241,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {preferredPharmacies.length > 0 ? t.changePreferredPharmacy : t.selectPreferredPharmacy}
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={selectedPharmacyId}
                     onChange={(e) => setSelectedPharmacyId(e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                   >
                     <option value="">{t.selectPharmacyPrompt}</option>
                     {pharmacies.map((pharmacy) => (
@@ -2187,7 +2252,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                         {pharmacy.pharmacyName || pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
                 <button
                   onClick={handleAddPreferredPharmacy}
@@ -2639,11 +2704,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   {providersError}. Please refresh the page or contact support.
                 </div>
               ) : (
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={bookingData.providerId}
                   onChange={(e) => setBookingData({...bookingData, providerId: e.target.value, time: ''})}
                   required
-                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option value="">Select a provider</option>
                   {providers.map(provider => (
@@ -2651,7 +2716,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name} {(provider.specialization || provider.specialty) ? `- ${provider.specialization || provider.specialty}` : ''}
                     </option>
                   ))}
-                </select>
+                </ThemedSelect>
               )}
             </div>
           )}
@@ -2667,11 +2732,11 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   Loading available times...
                 </div>
               ) : availableSlots.length > 0 ? (
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={bookingData.time}
                   onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
                   required
-                  className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option value="">Select a time slot</option>
                   {availableSlots.map((slot, index) => {
@@ -2688,7 +2753,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                       </option>
                     );
                   })}
-                </select>
+                </ThemedSelect>
               ) : (
                 <div className="space-y-3">
                   <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
@@ -2714,15 +2779,15 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
               {t.appointmentTypeRequired}
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={bookingData.type}
               onChange={(e) => setBookingData({...bookingData, type: e.target.value})}
-              className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
             >
               {appointmentTypes.map(type => (
                 <option key={type.id} value={type.name}>{type.name}</option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
           <div>
             <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -2789,6 +2854,42 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
     }
   };
 
+  /** Save a blob to the device under its original filename. */
+  const saveBlob = (blob, fileName) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'document';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadRequestedDocument = async (submission) => {
+    try {
+      const blob = await api.downloadRequestedDocument(submission.id, user.id);
+      saveBlob(blob, submission.document_name);
+    } catch (error) {
+      console.error('Error downloading requested document:', error);
+      addNotification('alert', error.message || 'Could not open the document');
+    }
+  };
+
+  const handleAcknowledgeDocument = async (submission) => {
+    try {
+      await api.acknowledgeRequestedDocument(submission.id, user.id);
+      addNotification(
+        'success',
+        submission.document_action === 'sign' ? 'Document signed' : 'Document confirmed'
+      );
+      await fetchPendingForms();
+    } catch (error) {
+      console.error('Error acknowledging document:', error);
+      addNotification('alert', error.message || 'Could not complete the request');
+    }
+  };
+
   const renderForms = () => {
     const draft = pendingForms.filter(f => f.status === 'draft');
     const submitted = pendingForms.filter(f => f.status !== 'draft');
@@ -2816,27 +2917,62 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   Forms Requested ({draft.length})
                 </h3>
                 <div className="space-y-3">
-                  {draft.map(submission => (
-                    <div key={submission.id} className={`flex items-center justify-between p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
-                          <ClipboardList className="w-5 h-5 text-teal-500" />
+                  {draft.map(submission => {
+                    // A request sent from a secure message carries a document
+                    // instead of a template — there are no fields to render, so
+                    // it is read and acknowledged rather than filled in.
+                    const isDocument = Boolean(submission.document_attachment_id);
+
+                    return (
+                      <div key={submission.id} className={`flex items-center justify-between p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                            {isDocument
+                              ? <FileText className="w-5 h-5 text-teal-500" />
+                              : <ClipboardList className="w-5 h-5 text-teal-500" />}
+                          </div>
+                          <div>
+                            <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {submission.document_name || submission.template_name}
+                            </p>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                              Assigned {new Date(submission.created_at).toLocaleDateString()} ·{' '}
+                              {isDocument
+                                ? (submission.document_action === 'sign' ? 'Signature required' : 'Please read and confirm')
+                                : 'Action required'}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{submission.template_name}</p>
-                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                            Assigned {new Date(submission.created_at).toLocaleDateString()} · Action required
-                          </p>
-                        </div>
+
+                        {isDocument ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDownloadRequestedDocument(submission)}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                              }`}
+                            >
+                              <FileText className="w-4 h-4" /> Open
+                            </button>
+                            <button
+                              onClick={() => handleAcknowledgeDocument(submission)}
+                              className="flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                              {submission.document_action === 'sign' ? 'Sign' : 'Confirm'}
+                              <Check className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenForm(submission)}
+                            className="flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
+                          >
+                            Fill Now <ChevronRight className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handleOpenForm(submission)}
-                        className="flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Fill Now <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -2931,6 +3067,21 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
   // Main Portal Layout
   return (
     <>
+      {/* Waitlist Confirmation */}
+      <ConfirmationModal
+        theme={theme}
+        isOpen={!!waitlistConfirmation}
+        onClose={() => setWaitlistConfirmation(null)}
+        onConfirm={() => setWaitlistConfirmation(null)}
+        title={t.addedToWaitlist || "You're on the waitlist"}
+        message={waitlistConfirmation
+          ? `We'll contact you if a ${waitlistConfirmation.appointmentType || 'appointment'} slot opens with ${waitlistConfirmation.providerName} on ${formatDate(waitlistConfirmation.date)}. Your request is listed under Waitlist Requests below.`
+          : ''}
+        type="success"
+        confirmText={t.gotIt || 'Got it'}
+        showCancel={false}
+      />
+
       {/* Delete Appointment Confirmation Modal */}
       <ConfirmationModal
         theme={theme}
@@ -3014,12 +3165,10 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                   <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     Provider
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={editRecordData.providerId}
                     onChange={(e) => setEditRecordData({ ...editRecordData, providerId: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg ${
-                      theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select a provider</option>
                     {providers.map((provider) => (
@@ -3027,7 +3176,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
                         Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name}{(provider.specialty || provider.specialization) ? ` - ${provider.specialty || provider.specialization}` : ''}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
               )}
 
@@ -3124,16 +3273,9 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
         showCancel={false}
       />
       <div className="space-y-6">
-      <div>
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t.patientPortal}
-        </h2>
-        <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-          {t.patientPortalDescription}
-        </p>
-      </div>
 
-      {/* Navigation Tabs */}
+      {/* Navigation Tabs — the app shell's secondary pane replaces these */}
+      {!tabsInShell && (
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
           { id: 'profile', label: t.overviewTab || 'Overview', icon: User, count: null },
@@ -3141,7 +3283,8 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           { id: 'diagnoses', label: t.diagnosesTab || 'Diagnoses', icon: Activity, count: diagnoses.length },
           { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
           { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
-          { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => f.status === 'draft').length || null, highlight: pendingForms.filter(f => f.status === 'draft').length > 0 }
+          { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => f.status === 'draft').length || null, highlight: pendingForms.filter(f => f.status === 'draft').length > 0 },
+          { id: 'messages', label: t.messages || 'Messages', icon: MessageCircle, count: unreadMessages || null, highlight: unreadMessages > 0 }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -3168,6 +3311,7 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
           </button>
         ))}
       </div>
+      )}
 
       {/* Content */}
       {currentView === 'profile' && renderProfile()}
@@ -3177,6 +3321,19 @@ const PatientPortalView = ({ theme, api, addNotification, user }) => {
       {currentView === 'prescriptions' && renderPrescriptions()}
       {currentView === 'records' && renderMedicalRecords()}
       {currentView === 'forms' && renderForms()}
+      {currentView === 'messages' && (
+        <SecureMessaging
+          theme={theme}
+          api={api}
+          addNotification={addNotification}
+          user={user}
+          // Staff reach this view too, via the "what the patient sees" preview.
+          // Their credential resolves to a staff actor server-side, so the
+          // surface has to match — hardcoding 'patient' would label their own
+          // messages as someone else's.
+          mode={user?.role === 'patient' ? 'patient' : 'staff'}
+        />
+      )}
 
       {/* Prescription Details Modal */}
       {selectedPrescription && (

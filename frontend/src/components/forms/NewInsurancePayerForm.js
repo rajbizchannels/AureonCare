@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification, t, editPayer = null }) => {
   const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
@@ -202,16 +203,16 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {t.payerType || 'Payer Type'} <span className="text-red-400">*</span>
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     required
                     value={formData.payerType}
                     onChange={(e) => setFormData({...formData, payerType: e.target.value})}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                   >
                     <option value="insurance">{t.insurance || 'Insurance'}</option>
                     <option value="government">{t.government || 'Government'}</option>
                     <option value="self-pay">{t.selfPay || 'Self-Pay'}</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div>
@@ -366,15 +367,15 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {t.claimSubmissionMethod || 'Claim Submission Method'}
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={formData.claimSubmissionMethod}
                     onChange={(e) => setFormData({...formData, claimSubmissionMethod: e.target.value})}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                   >
                     <option value="electronic">{t.electronic || 'Electronic'}</option>
                     <option value="paper">{t.paper || 'Paper'}</option>
                     <option value="portal">{t.portal || 'Portal'}</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div>

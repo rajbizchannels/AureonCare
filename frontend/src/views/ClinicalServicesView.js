@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pill, Microscope, Plus, Edit, Trash2, ArrowLeft, RefreshCw, Search, Activity, Database, Download, Upload, User, FileText, AlertCircle, Check } from 'lucide-react';
+import { Pill, Microscope, Plus, Edit, Trash2, RefreshCw, Search, Activity, Database, Download, Upload, User, FileText, AlertCircle, Check } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewPharmacyForm from '../components/forms/NewPharmacyForm';
 import NewLaboratoryForm from '../components/forms/NewLaboratoryForm';
@@ -762,24 +762,7 @@ const ClinicalServicesView = ({
 
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
-              }`}
-              title="Back to Dashboard"
-            >
-              <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-            </button>
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t.clinicalServices || 'Clinical Services'}
-            </h2>
-          </div>
+        <div className="flex items-center justify-end flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {

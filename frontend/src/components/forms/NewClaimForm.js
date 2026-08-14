@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, X, Save, Bot, Search, Plus, Trash2, Shield } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
@@ -413,17 +414,18 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.patient || 'Patient'} <span className="text-red-400">*</span>
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:border-yellow-500"
                   required
                   value={formData.patientId}
                   onChange={(e) => setFormData({...formData, patientId: e.target.value})}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
                   <option value="">{t.selectPatient || 'Select Patient'}</option>
                   {patients.map(p => (
                     <option key={p.id} value={p.id}>{p.first_name} {p.last_name} - {p.mrn}</option>
                   ))}
-                </select>
+                </ThemedSelect>
               </div>
 
               <div>
@@ -462,11 +464,12 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.preauthorization || 'Pre-Authorization (Prior Authorization)'}
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:border-yellow-500"
                   value={formData.preapprovalId}
                   onChange={(e) => setFormData({...formData, preapprovalId: e.target.value})}
                   disabled={loadingPreapprovals || !formData.patientId}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingPreapprovals ? 'opacity-50' : ''}`}
                 >
                   <option value="">
                     {!formData.patientId ? 'Select patient first' : loadingPreapprovals ? 'Loading...' : (preapprovals.length === 0 ? 'No pre-authorizations available' : 'None (optional)')}
@@ -476,7 +479,7 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                       {pa.preapproval_number} - {pa.requested_service} ({pa.status})
                     </option>
                   ))}
-                </select>
+                </ThemedSelect>
                 {preapprovals.length > 0 && formData.preapprovalId && (
                   <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
                     ✓ This claim will be linked to the selected pre-authorization
@@ -526,7 +529,9 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                   <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {t.selectFromExistingDiagnoses || 'Select from existing diagnoses (also loads related CPT codes)'}
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:border-yellow-500"
                     onChange={(e) => {
                       const diagnosis = existingDiagnoses.find(d => d.diagnosisCode === e.target.value);
                       if (diagnosis) {
@@ -538,7 +543,6 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                         e.target.value = '';
                       }
                     }}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     disabled={loadingDiagnoses}
                   >
                     <option value="">{loadingDiagnoses ? 'Loading...' : (t.selectDiagnosis || 'Select a previous diagnosis')}</option>
@@ -547,7 +551,7 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                         {d.diagnosisCode} - {d.diagnosisName}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
               )}
 
