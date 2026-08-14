@@ -280,6 +280,9 @@ router.post('/social-login', async (req, res) => {
     const firstName = verified.firstName || clientFirstName || '';
     const lastName = verified.lastName || clientLastName || '';
     const canonicalProviderId = verified.providerId;
+    // SEC-07: true only when the PROVIDER itself vouches for the email. Used to
+    // decide whether this social identity may attach to a pre-existing account.
+    const providerEmailVerified = verified.emailVerified === true && Boolean(verified.email);
 
     if (!email) {
       return res.status(400).json({ error: 'Could not determine email from social provider' });
@@ -332,6 +335,17 @@ router.post('/social-login', async (req, res) => {
       );
 
       if (existingUserResult.rows.length > 0) {
+        // SEC-07: a matching-email account may only be auto-linked when the
+        // provider verified the email. Otherwise an attacker who sets an
+        // unverified provider email to a victim's address could seize their
+        // account. Require explicit, authenticated linking instead.
+        if (!providerEmailVerified) {
+          console.log(`[DEBUG sec07-link] refused auto-link: unverified provider email for ${email} (${provider})`);
+          return res.status(409).json({
+            error: 'An account with this email already exists. Please sign in with your password, then link your social account from settings.'
+          });
+        }
+
         // User exists — link social auth
         user = existingUserResult.rows[0];
 
@@ -480,6 +494,9 @@ router.post('/social-register', async (req, res) => {
     const firstName = verified.firstName || clientFirstName || '';
     const lastName = verified.lastName || clientLastName || '';
     const canonicalProviderId = verified.providerId;
+    // SEC-07: true only when the PROVIDER itself vouches for the email. Used to
+    // decide whether this social identity may attach to a pre-existing account.
+    const providerEmailVerified = verified.emailVerified === true && Boolean(verified.email);
 
     if (!email) {
       return res.status(400).json({ error: 'Could not determine email from social provider' });
@@ -593,14 +610,26 @@ router.post('/link-social-account', authenticate, async (req, res) => {
     const userId = req.user.id;
     const { provider, providerId, accessToken, refreshToken, profileData } = req.body;
 
-    if (!provider || !providerId) {
-      return res.status(400).json({ error: 'Provider and provider ID are required' });
+    if (!provider || !accessToken) {
+      return res.status(400).json({ error: 'Provider and access token are required' });
     }
+
+    // SEC-08: validate the access token with the provider and link ONLY the
+    // provider-verified canonical id. Previously the client-supplied providerId
+    // was stored unverified, letting a user claim someone else's social identity.
+    let verified;
+    try {
+      verified = await validateSocialToken(provider, accessToken);
+    } catch (validationErr) {
+      console.log(`[DEBUG sec08-link] token validation failed on link for user ${userId} (${provider})`);
+      return res.status(401).json({ error: 'Social provider token validation failed. Please try again.' });
+    }
+    const canonicalProviderId = verified.providerId;
 
     // Check if this social account is already linked to another user
     const existingSocialAuth = await pool.query(
       'SELECT * FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
-      [provider, providerId]
+      [provider, canonicalProviderId]
     );
 
     if (existingSocialAuth.rows.length > 0 && String(existingSocialAuth.rows[0].user_id) !== String(userId)) {
@@ -619,7 +648,7 @@ router.post('/link-social-account', authenticate, async (req, res) => {
         refresh_token = $5,
         profile_data = $6,
         updated_at = CURRENT_TIMESTAMP
-    `, [userId, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
+    `, [userId, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
     res.json({ message: 'Social account linked successfully' });
 
