@@ -1,9 +1,44 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const { authenticate } = require('../middleware/auth');
 const router = express.Router();
-router.use(authenticate);
 const crypto = require('crypto');
 const axios = require('axios');
+
+const JWT_SECRET = process.env.AC_TK_S;
+
+/**
+ * `authenticate` is applied per-route rather than to the whole router, because
+ * the OAuth callback must stay open: the provider sends the browser there as a
+ * top-level navigation with no Authorization header, so a blanket gate answers
+ * Google/Zoom/Teams with {"error":"Authentication required"} and the connection
+ * can never complete. The callback authorises on its signed `state` instead.
+ */
+router.use((req, res, next) => {
+  if (/\/callback$/.test(req.path)) return next();
+  return authenticate(req, res, next);
+});
+
+/**
+ * OAuth state: a signed, short-lived token rather than a server-side entry.
+ *
+ * It has to survive the round trip to the provider, and on serverless the
+ * callback may land on a different instance than the one that started the
+ * flow — an in-memory map loses the state and every connection fails with
+ * "Invalid or expired state". Signing it keeps the CSRF guarantee without
+ * shared storage.
+ */
+const signOAuthState = (providerType, userId) =>
+  jwt.sign({ providerType, uid: String(userId) }, JWT_SECRET, { expiresIn: '10m' });
+
+const verifyOAuthState = (state, providerType) => {
+  try {
+    const claims = jwt.verify(state, JWT_SECRET);
+    return claims.providerType === providerType ? claims : null;
+  } catch (err) {
+    return null;
+  }
+};
 
 /**
  * Integration OAuth Flow Management
@@ -18,7 +53,6 @@ const axios = require('axios');
  */
 
 // Store OAuth states temporarily (in production, use Redis or database)
-const oauthStates = new Map();
 
 /**
  * Build the frontend URL for post-OAuth redirects.
@@ -311,20 +345,8 @@ router.get('/:providerType/initiate', async (req, res) => {
       );
     }
 
-    // Generate CSRF state
-    const state = crypto.randomBytes(32).toString('hex');
+    const state = signOAuthState(providerType, req.user.id);
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
-
-    oauthStates.set(state, {
-      providerType,
-      timestamp: Date.now(),
-      expiresAt: Date.now() + 10 * 60 * 1000,
-    });
-
-    // Clean up expired states
-    for (const [key, value] of oauthStates.entries()) {
-      if (value.expiresAt < Date.now()) oauthStates.delete(key);
-    }
 
     // Build authorization URL
     const authUrl = new URL(config.authUrl);
@@ -360,12 +382,10 @@ router.get('/:providerType/callback', async (req, res) => {
       return sendOAuthResult(res, false, providerType, 'Invalid callback — missing code or state.');
     }
 
-    // Verify state
-    const storedState = oauthStates.get(state);
-    if (!storedState || storedState.providerType !== providerType) {
+    // The signed state is what authorises this unauthenticated callback.
+    if (!verifyOAuthState(state, providerType)) {
       return sendOAuthResult(res, false, providerType, 'Invalid or expired state. Please try again.');
     }
-    oauthStates.delete(state);
 
     const config = OAUTH_CONFIGS[providerType];
     const pool = req.app.locals.pool;

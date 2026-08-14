@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useAudit } from '../hooks/useAudit';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 // ─────────────────────────────────────────────────────────────
 // SVG CHART COMPONENTS
@@ -342,7 +343,7 @@ const ReportChart = ({ type = 'bar', data = [], theme, onDataClick, valueFormatt
 // REPORT CATEGORIES CONFIG
 // ─────────────────────────────────────────────────────────────
 
-const REPORT_CATEGORIES = [
+export const REPORT_CATEGORIES = [
   {
     id: 'operational',
     name: 'Operational',
@@ -637,20 +638,22 @@ const GraphBuilderModal = ({ onClose, onSave, theme, reportData, currentChart })
 
             <div>
               <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Label Field (X-axis)</label>
-              <select value={labelField} onChange={e => setLabelField(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={labelField} onChange={e => setLabelField(e.target.value)}>
                 <option value="">— select field —</option>
                 {fields.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
               <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Value Field (Y-axis)</label>
-              <select value={valueField} onChange={e => setValueField(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={valueField} onChange={e => setValueField(e.target.value)}>
                 <option value="">— select field —</option>
                 {fields.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
@@ -806,11 +809,12 @@ const CustomReportBuilderModal = ({ onClose, onRun, theme }) => {
               {statusOptions[dataSource]?.length > 0 && (
                 <div>
                   <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Status</label>
-                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                    className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                  <ThemedSelect
+                    theme={theme}
+                    className="text-sm" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                     <option value="">All</option>
                     {statusOptions[dataSource].map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  </ThemedSelect>
                 </div>
               )}
             </div>
@@ -820,30 +824,33 @@ const CustomReportBuilderModal = ({ onClose, onRun, theme }) => {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className={`block text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Sort By</label>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={sortBy} onChange={e => setSortBy(e.target.value)}>
                 <option value="">Default</option>
                 {selectedFields.map(f => <option key={f} value={f}>{f.replace(/_/g, ' ')}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Sort Order</label>
-              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
                 <option value="desc">Descending</option>
                 <option value="asc">Ascending</option>
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Max Rows</label>
-              <select value={limit} onChange={e => setLimit(parseInt(e.target.value))}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={limit} onChange={e => setLimit(parseInt(e.target.value))}>
                 <option value="50">50</option>
                 <option value="100">100</option>
                 <option value="200">200</option>
                 <option value="500">500</option>
                 <option value="1000">1000</option>
-              </select>
+              </ThemedSelect>
             </div>
           </div>
         </div>
@@ -1018,7 +1025,11 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
     }
     // Defaults per report
     const rd = report.id;
-    if (rd === 'daily-appointments' || rd === 'no-shows') return makeChartData(summary.slice(0, 30).reverse(), 'date', 'total');
+    if (rd === 'daily-appointments') return makeChartData(summary.slice(0, 30).reverse(), 'date', 'total');
+    // The no-show summary has no `total` column — it returns no_shows,
+    // total_appointments and no_show_rate — so charting `total` plotted an
+    // empty series. The point of the report is the no-show trend.
+    if (rd === 'no-shows') return makeChartData(summary.slice(0, 30).reverse(), 'date', 'no_shows');
     if (rd === 'provider-utilization' || rd === 'productivity') return makeChartData(summary, 'provider_name', 'total_appointments');
     if (rd === 'patient-visits' || rd === 'visit-history') return makeChartData(summary.slice(0, 10), 'patient_name', 'total_visits');
     if (rd === 'wait-times') return makeChartData(summary, 'provider_name', 'avg_wait_minutes');
@@ -1081,6 +1092,20 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
         { label: 'Completed', value: completed, icon: CheckCircle, color: 'green' },
         { label: 'No-Shows', value: noShows, icon: AlertTriangle, color: 'red' },
         { label: 'Completion Rate', value: `${rate}%`, icon: TrendingUp, color: 'purple' },
+      ];
+    }
+    if (rd === 'no-shows') {
+      const scheduled = summary.reduce((s, r) => s + (parseInt(r.total_appointments) || 0), 0);
+      const noShows = summary.reduce((s, r) => s + (parseInt(r.no_shows) || 0), 0);
+      const rate = scheduled > 0 ? (noShows / scheduled * 100).toFixed(1) : '0.0';
+      const lateCancellations = details.filter(
+        (r) => String(r.status || '').toLowerCase().startsWith('cancel')
+      ).length;
+      return [
+        { label: 'Scheduled', value: scheduled, icon: Calendar, color: 'blue' },
+        { label: 'No-Shows', value: noShows, icon: AlertTriangle, color: 'red' },
+        { label: 'No-Show Rate', value: `${rate}%`, icon: TrendingUp, color: 'purple' },
+        { label: 'Late Cancellations', value: lateCancellations, icon: XCircle, color: 'orange' },
       ];
     }
     if (rd === 'provider-utilization' || rd === 'productivity') {
@@ -1424,7 +1449,11 @@ const CustomReportResultView = ({ result, config, theme, onBack, currency = 'USD
 // MAIN REPORTS VIEW COMPONENT
 // ─────────────────────────────────────────────────────────────
 
-const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api, currency = 'USD' }) => {
+const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api, currency = 'USD', activeTab: shellTab, onTabChange }) => {
+  // The app shell lists the report catalogue in its secondary pane and passes
+  // the selection down as "<categoryId>:<reportId>" (or "custom"). Rendered
+  // outside the shell the view keeps its own sidebar.
+  const tabsInShell = typeof onTabChange === 'function';
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [reportData, setReportData] = useState(null);
@@ -1478,14 +1507,33 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
     }
   }, [selectedReport, selectedCategory, dateRange, customStartDate, customEndDate]);
 
-  const selectReport = (cat, rep) => {
+  const selectReport = useCallback((cat, rep) => {
     setSelectedCategory(cat);
     setSelectedReport(rep);
     setReportData(null);
     setError(null);
     setChartConfig({});
     setCustomResult(null);
-  };
+  }, []);
+
+  // Mirror the shell's pane-2 selection into the view's own state.
+  useEffect(() => {
+    if (!tabsInShell) return;
+
+    if (shellTab === 'custom') {
+      setSelectedReport(null);
+      setSelectedCategory(null);
+      setShowCustomBuilder(true);
+      return;
+    }
+
+    const [catId, repId] = String(shellTab || '').split(':');
+    const cat = REPORT_CATEGORIES.find(c => c.id === catId);
+    const rep = cat?.reports.find(r => r.id === repId);
+    if (!cat || !rep) return;
+    if (selectedReport?.id === rep.id && selectedCategory?.id === cat.id) return;
+    selectReport(cat, rep);
+  }, [tabsInShell, shellTab, selectReport, selectedReport, selectedCategory]);
 
   const toggleCategory = (catId) => {
     setExpandedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
@@ -1589,16 +1637,13 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
 
   return (
     <div className="flex h-full gap-0">
-      {/* Sidebar */}
+      {/* Sidebar — replaced by the app shell's secondary pane when present */}
+      {!tabsInShell && (
       <div className={`w-64 shrink-0 border-r flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-200'}`}
         style={{ minHeight: 'calc(100vh - 120px)' }}>
         {/* Sidebar Header */}
         <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-2 mb-3">
-            <button onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-              className={`p-1.5 rounded-lg ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-200'}`}>
-              <ArrowLeft className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
-            </button>
             <h2 className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Reports</h2>
           </div>
           <button onClick={() => setShowCustomBuilder(true)}
@@ -1655,19 +1700,16 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
           })}
         </div>
       </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Top Toolbar */}
         <div className={`flex items-center justify-between px-6 py-3 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+          {/* The shell's breadcrumb names the category and report, so only the
+              things it cannot know — a custom report's name, the empty state —
+              are labelled here. */}
           <div className="flex items-center gap-3">
-            {selectedReport && (
-              <>
-                <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{selectedCategory?.name}</span>
-                <ChevronRight className={`w-3 h-3 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
-                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedReport.name}</span>
-              </>
-            )}
             {customResult && !selectedReport && (
               <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{customConfig?.reportName}</span>
             )}
@@ -1679,8 +1721,9 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
             {/* Date Range Selector */}
             {selectedReport && (
               <>
-                <select value={dateRange} onChange={e => { setDateRange(e.target.value); setCustomStartDate(''); setCustomEndDate(''); }}
-                  className={`px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                <ThemedSelect
+                  theme={theme}
+                  className="text-sm" value={dateRange} onChange={e => { setDateRange(e.target.value); setCustomStartDate(''); setCustomEndDate(''); }}>
                   <option value="7">Last 7 Days</option>
                   <option value="30">Last 30 Days</option>
                   <option value="90">Last 90 Days</option>
@@ -1688,7 +1731,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
                   <option value="365">Last Year</option>
                   <option value="all">All Time</option>
                   <option value="custom">Custom Range</option>
-                </select>
+                </ThemedSelect>
                 {dateRange === 'custom' && (
                   <>
                     <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)}
@@ -1769,10 +1812,6 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
           {/* Standard Report */}
           {selectedReport && (
             <div>
-              <div className="mb-5">
-                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedReport.name}</h2>
-                <p className={`text-sm mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{selectedReport.description}</p>
-              </div>
               <ReportContent
                 category={selectedCategory}
                 report={selectedReport}

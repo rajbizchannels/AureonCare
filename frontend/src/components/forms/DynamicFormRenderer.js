@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { ChevronDown, Info, AlertCircle } from 'lucide-react';
 import SignatureCapture from './SignatureCapture';
+import ThemedSelect from './ThemedSelect';
 
 // ============================================================================
 // DYNAMIC FORM RENDERER
@@ -178,22 +179,21 @@ const DynamicFormRenderer = ({
         )}
 
         {field.type === 'select' && (
-          <div className="relative">
-            <select
-              value={value}
-              onChange={e => handleChange(field.id, e.target.value)}
-              disabled={readOnly}
-              className={`${baseInput} appearance-none pr-8 ${error ? 'border-red-500' : ''}`}
-            >
-              <option value="">{field.placeholder || 'Select...'}</option>
-              {(field.options || []).map(opt => (
-                <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
-                  {typeof opt === 'string' ? opt : opt.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className={`absolute right-2 top-2.5 w-4 h-4 pointer-events-none ${dark ? 'text-slate-400' : 'text-gray-400'}`} />
-          </div>
+          /* ThemedSelect draws its own chevron. */
+          <ThemedSelect
+            theme={theme}
+            className={`${error ? 'border-red-500' : ''}`}
+            value={value}
+            onChange={e => handleChange(field.id, e.target.value)}
+            disabled={readOnly}
+          >
+            <option value="">{field.placeholder || 'Select...'}</option>
+            {(field.options || []).map(opt => (
+              <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
+                {typeof opt === 'string' ? opt : opt.label}
+              </option>
+            ))}
+          </ThemedSelect>
         )}
 
         {field.type === 'radio' && (

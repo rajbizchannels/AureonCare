@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+
+import { apiFetch } from '../../api/apiService';
 import {
   Archive,
   Download,
@@ -27,6 +29,7 @@ import {
 } from 'lucide-react';
 import Toggle from '../Toggle';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 
 /**
  * ArchiveManagementTab - Comprehensive archive management for AdminPanel
@@ -39,19 +42,6 @@ import ConfirmationModal from '../modals/ConfirmationModal';
  * - Archive statistics
  */
 
-// API Base URL
-const API_BASE_URL = process.env.REACT_APP_SVC_URL || 'http://localhost:3000/api';
-
-const getAuthHeaders = () => {
-  const headers = { 'Content-Type': 'application/json' };
-  try {
-    const token = sessionStorage.getItem('token');
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-  } catch (e) {
-    console.error('Error reading token:', e);
-  }
-  return headers;
-};
 
 const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   const [archives, setArchives] = useState([]);
@@ -111,9 +101,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
     setLoading(true);
     try {
       // Don't filter by status - get ALL archives
-      const response = await fetch(`${API_BASE_URL}/archive/list?status=`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await apiFetch(`/archive/list?status=`);
 
       if (!response.ok) {
         throw new Error('Failed to load archives');
@@ -132,9 +120,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   // Load available modules
   const loadModules = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/archive/modules`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await apiFetch(`/archive/modules`);
 
       if (!response.ok) {
         throw new Error('Failed to load modules');
@@ -151,9 +137,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   // Load statistics
   const loadStats = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/archive/stats/summary`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await apiFetch(`/archive/stats/summary`);
 
       if (!response.ok) {
         throw new Error('Failed to load stats');
@@ -169,9 +153,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   // Load archive rules
   const loadArchiveRules = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/archive-rules`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await apiFetch(`/archive-rules`);
 
       if (!response.ok) {
         throw new Error('Failed to load archive rules');
@@ -227,9 +209,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
 
     setCreating(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/archive/create`, {
+      const response = await apiFetch(`/archive/create`, {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           archiveName,
           description: archiveDescription,
@@ -288,9 +269,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
       onConfirm: async () => {
         setRestoring(true);
         try {
-          const response = await fetch(`${API_BASE_URL}/archive/${archiveId}/restore`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
+          const response = await apiFetch(`/archive/${archiveId}/restore`, {
+            method: 'POST'
           });
 
           if (!response.ok) {
@@ -324,9 +304,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
       type: 'warning',
       onConfirm: async () => {
         try {
-          const response = await fetch(`${API_BASE_URL}/archive/${archiveId}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders(),
+          const response = await apiFetch(`/archive/${archiveId}`, {
+            method: 'DELETE'
           });
 
           if (!response.ok) {
@@ -353,9 +332,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
     setSelectedTable(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/archive/${archiveId}/browse`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await apiFetch(`/archive/${archiveId}/browse`);
 
       if (!response.ok) {
         const error = await response.json();
@@ -379,9 +356,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
     setSelectedTable(tableName);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/archive/${archiveId}/browse?table=${tableName}&limit=100`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await apiFetch(`/archive/${archiveId}/browse?table=${tableName}&limit=100`);
 
       if (!response.ok) {
         const error = await response.json();
@@ -467,13 +442,10 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
     }
 
     try {
-      const url = editingRule
-        ? `${API_BASE_URL}/archive-rules/${editingRule.id}`
-        : `${API_BASE_URL}/archive-rules`;
+      const path = editingRule ? `/archive-rules/${editingRule.id}` : '/archive-rules';
 
-      const response = await fetch(url, {
+      const response = await apiFetch(path, {
         method: editingRule ? 'PUT' : 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify(ruleForm),
       });
 
@@ -504,9 +476,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
       type: 'warning',
       onConfirm: async () => {
         try {
-          const response = await fetch(`${API_BASE_URL}/archive-rules/${ruleId}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders(),
+          const response = await apiFetch(`/archive-rules/${ruleId}`, {
+            method: 'DELETE'
           });
 
           if (!response.ok) {
@@ -527,9 +498,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
   // Handle toggle rule enabled/disabled
   const handleToggleRule = async (ruleId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/archive-rules/${ruleId}/toggle`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
+      const response = await apiFetch(`/archive-rules/${ruleId}/toggle`, {
+        method: 'POST'
       });
 
       if (!response.ok) {
@@ -554,9 +524,8 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
       type: 'info',
       onConfirm: async () => {
         try {
-          const response = await fetch(`${API_BASE_URL}/archive-rules/${ruleId}/trigger`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
+          const response = await apiFetch(`/archive-rules/${ruleId}/trigger`, {
+            method: 'POST'
           });
 
           if (!response.ok) {
@@ -1017,20 +986,17 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                     <label className="block text-sm font-medium mb-2">
                       Schedule Type *
                     </label>
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:ring-2 focus:ring-purple-500"
                       value={ruleForm.scheduleType}
                       onChange={(e) => setRuleForm({ ...ruleForm, scheduleType: e.target.value })}
-                      className={`w-full px-4 py-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600'
-                          : 'bg-white border-gray-300'
-                      } border focus:ring-2 focus:ring-purple-500`}
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
                       <option value="monthly">Monthly</option>
                       <option value="custom">Custom (Cron)</option>
-                    </select>
+                    </ThemedSelect>
                   </div>
 
                   {/* Schedule Time */}
@@ -1057,14 +1023,11 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                     <label className="block text-sm font-medium mb-2">
                       Day of Week *
                     </label>
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:ring-2 focus:ring-purple-500"
                       value={ruleForm.scheduleDayOfWeek}
                       onChange={(e) => setRuleForm({ ...ruleForm, scheduleDayOfWeek: parseInt(e.target.value) })}
-                      className={`w-full px-4 py-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600'
-                          : 'bg-white border-gray-300'
-                      } border focus:ring-2 focus:ring-purple-500`}
                     >
                       <option value="0">Sunday</option>
                       <option value="1">Monday</option>
@@ -1073,7 +1036,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                       <option value="4">Thursday</option>
                       <option value="5">Friday</option>
                       <option value="6">Saturday</option>
-                    </select>
+                    </ThemedSelect>
                   </div>
                 )}
 

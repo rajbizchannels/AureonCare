@@ -28,6 +28,12 @@ const getAuthHeaders = () => {
  */
 const authenticatedFetch = async (url, options = {}) => {
   const authHeaders = getAuthHeaders();
+
+  // Let the browser set Content-Type (with its multipart boundary) for uploads.
+  if (typeof FormData !== 'undefined' && options.body instanceof FormData) {
+    delete authHeaders['Content-Type'];
+  }
+
   const mergedOptions = {
     ...options,
     headers: {
@@ -37,6 +43,24 @@ const authenticatedFetch = async (url, options = {}) => {
   };
   return fetch(url, mergedOptions);
 };
+
+/**
+ * Authenticated request to an API path, for callers outside this module.
+ *
+ * Views used to call `fetch('/api/…')` directly. That sends no Authorization
+ * header — every router behind `authenticate` answers 401 — and a relative path
+ * only resolves when the frontend and backend share an origin, which this
+ * deployment does not guarantee (AC_FE_URL and AC_BE_URL are configured
+ * separately). Pass the path *without* the /api prefix, e.g. apiFetch('/users').
+ *
+ * @param {string} path    path relative to the API base, leading slash included
+ * @param {Object} options standard fetch options; FormData bodies keep their
+ *                         own Content-Type
+ * @returns {Promise<Response>} the raw response, so callers keep their own
+ *                              status handling
+ */
+export const apiFetch = (path, options = {}) =>
+  authenticatedFetch(`${API_BASE_URL}${path}`, options);
 
 // API Service
 const api = {
@@ -405,7 +429,7 @@ const api = {
     const url = userId
       ? `${API_BASE_URL}/notifications?userId=${userId}`
       : `${API_BASE_URL}/notifications`;
-    const response = await fetch(url);
+    const response = await authenticatedFetch(url);
     if (!response.ok) throw new Error('Failed to fetch notifications');
     return response.json();
   },
@@ -430,6 +454,180 @@ const api = {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to clear notifications');
+    return response.json();
+  },
+
+  // ── Secure messaging ──────────────────────────────────────────────────────
+  // The messaging API serves both audiences, so it accepts either credential:
+  // a staff JWT or a patient portal session token. Staff wins when both are
+  // present — a staff member previewing the portal is still acting as staff.
+  _messagingHeaders: (extra = {}) => {
+    const headers = { 'Content-Type': 'application/json', ...extra };
+    try {
+      const token = sessionStorage.getItem('token') || sessionStorage.getItem('portalSessionToken');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error('Error reading session token:', error);
+    }
+    return headers;
+  },
+  _messagingFetch: async (path, options = {}, errorMessage = 'Messaging request failed') => {
+    const response = await fetch(`${API_BASE_URL}/messages${path}`, {
+      ...options,
+      headers: api._messagingHeaders(options.headers)
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || errorMessage);
+    }
+    return response.json();
+  },
+
+  getMessageThreads: async (filters = {}) => {
+    const params = new URLSearchParams(
+      Object.entries(filters).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = params.toString() ? `?${params}` : '';
+    return api._messagingFetch(`/threads${query}`, {}, 'Failed to load message threads');
+  },
+  getUnreadMessageCount: async () => {
+    const { count } = await api._messagingFetch('/unread-count', {}, 'Failed to count unread messages');
+    return count;
+  },
+  getMessageThread: async (threadId) =>
+    api._messagingFetch(`/threads/${threadId}`, {}, 'Failed to load thread'),
+  getThreadMessages: async (threadId, { limit, offset } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (offset) params.set('offset', offset);
+    const query = params.toString() ? `?${params}` : '';
+    return api._messagingFetch(`/threads/${threadId}/messages${query}`, {}, 'Failed to load messages');
+  },
+  createMessageThread: async (data) =>
+    api._messagingFetch('/threads', { method: 'POST', body: JSON.stringify(data) }, 'Failed to start conversation'),
+  sendMessage: async (threadId, data) =>
+    api._messagingFetch(`/threads/${threadId}/messages`, { method: 'POST', body: JSON.stringify(data) }, 'Failed to send message'),
+  updateMessageThread: async (threadId, data) =>
+    api._messagingFetch(`/threads/${threadId}`, { method: 'PATCH', body: JSON.stringify(data) }, 'Failed to update conversation'),
+  markThreadRead: async (threadId) =>
+    api._messagingFetch(`/threads/${threadId}/read`, { method: 'POST' }, 'Failed to mark thread as read'),
+  withdrawMessage: async (messageId) =>
+    api._messagingFetch(`/messages/${messageId}`, { method: 'DELETE' }, 'Failed to withdraw message'),
+  addThreadParticipant: async (threadId, participant) =>
+    api._messagingFetch(`/threads/${threadId}/participants`, { method: 'POST', body: JSON.stringify(participant) }, 'Failed to add participant'),
+  removeThreadParticipant: async (threadId, participantRowId) =>
+    api._messagingFetch(`/threads/${threadId}/participants/${participantRowId}`, { method: 'DELETE' }, 'Failed to remove participant'),
+  getMessageRecipients: async (q = '') =>
+    api._messagingFetch(`/recipients?q=${encodeURIComponent(q)}`, {}, 'Failed to load recipients'),
+  /** Patient-safe recipient list — the caller's own care team, never the directory. */
+  getMessageCareTeam: async (patientId) =>
+    api._messagingFetch(
+      `/care-team${patientId ? `?patientId=${encodeURIComponent(patientId)}` : ''}`,
+      {},
+      'Failed to load your care team'
+    ),
+  /** Attachments are fetched as blobs, so this bypasses the JSON helper. */
+  downloadMessageAttachment: async (attachmentId) => {
+    const response = await fetch(`${API_BASE_URL}/messages/attachments/${attachmentId}`, {
+      headers: api._messagingHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to download attachment');
+    return response.blob();
+  },
+
+  // ── Documents filed from secure messages ──────────────────────────────────
+  // A patient may be signed in two ways: with a portal session (portal login)
+  // or with a staff-issued JWT on a users row of role 'patient'. Only the
+  // former can reach /patient-portal/*, only the latter can reach the staff
+  // routers — so each call picks its path from the credential actually held.
+  _hasPortalSession: () => {
+    try {
+      return Boolean(sessionStorage.getItem('portalSessionToken') && !sessionStorage.getItem('token'));
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Forms Requested for the signed-in patient.
+   * /form-management is behind a staff JWT, so a portal session reads the
+   * mirrored portal route instead.
+   */
+  getPatientFormRequests: async (patientId) => {
+    if (api._hasPortalSession()) {
+      const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/form-requests`, {
+        headers: api._getPortalAuthHeader(),
+      });
+      if (!response.ok) throw new Error('Failed to load requested forms');
+      return response.json();
+    }
+    return api.getFormSubmissions({ patient_id: patientId });
+  },
+
+  /** Download a document that was filed into Patient Records from a message. */
+  downloadRecordAttachment: async (recordId, attachmentId, patientId) => {
+    const usePortal = api._hasPortalSession();
+    const url = usePortal
+      ? `${API_BASE_URL}/patient-portal/${patientId}/medical-records/${recordId}/attachments/${attachmentId}`
+      : `${API_BASE_URL}/medical-records/${recordId}/attachments/${attachmentId}`;
+    const response = await fetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to download document');
+    return response.blob();
+  },
+
+  /** Download the document behind a Forms Requested item. */
+  downloadRequestedDocument: async (submissionId, patientId) => {
+    const usePortal = api._hasPortalSession();
+    const url = usePortal
+      ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/document`
+      : `${API_BASE_URL}/form-management/submissions/${submissionId}/document`;
+    const response = await fetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to download document');
+    return response.blob();
+  },
+
+  /** Complete a document-backed request (read-and-confirm, or sign). */
+  acknowledgeRequestedDocument: async (submissionId, patientId) => {
+    const usePortal = api._hasPortalSession();
+    const url = usePortal
+      ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/acknowledge`
+      : `${API_BASE_URL}/form-management/submissions/${submissionId}/acknowledge`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: usePortal
+        ? { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() }
+        : getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || 'Failed to complete request');
+    }
+    return response.json();
+  },
+
+  /** Patient-supplied documents no one has verified yet, oldest first. */
+  getPendingDocumentReviews: async (limit) => {
+    const query = limit ? `?limit=${limit}` : '';
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/pending-review${query}`);
+    if (!response.ok) throw new Error('Failed to load documents awaiting review');
+    return response.json();
+  },
+
+  /** Staff decision on a patient-supplied document awaiting review. */
+  reviewPatientDocument: async (recordId, decision, notes) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/${recordId}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, notes }),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || 'Failed to review document');
+    }
     return response.json();
   },
 
@@ -747,16 +945,21 @@ const api = {
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
   patientPortalLogin: async (email, password, provider, providerId, accessToken) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/login`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, provider, providerId, accessToken })
     });
-    if (!response.ok) throw new Error('Failed to login to patient portal');
+    if (!response.ok) {
+      // Surface the server's reason — "portal not enabled" and "wrong password"
+      // are different problems and the patient can only act on one of them.
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || 'Failed to login to patient portal');
+    }
     return response.json();
   },
   registerPatientPortal: async (patientId, email, password) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/register`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patientId, email, password })
@@ -765,14 +968,14 @@ const api = {
     return response.json();
   },
   getPatientAppointments: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments`, {
       headers: { ...api._getPortalAuthHeader() }
     });
     if (!response.ok) throw new Error('Failed to fetch patient appointments');
     return response.json();
   },
   updatePatientAppointment: async (patientId, appointmentId, data) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
       body: JSON.stringify(data)
@@ -781,7 +984,7 @@ const api = {
     return response.json();
   },
   deletePatientAppointment: async (patientId, appointmentId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/appointments/${appointmentId}`, {
       method: 'DELETE',
       headers: { ...api._getPortalAuthHeader() }
     });
@@ -789,14 +992,14 @@ const api = {
     return response.json();
   },
   getPatientProfile: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
       headers: { ...api._getPortalAuthHeader() }
     });
     if (!response.ok) throw new Error('Failed to fetch patient profile');
     return response.json();
   },
   updatePatientProfile: async (patientId, data) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
       body: JSON.stringify(data)
@@ -805,14 +1008,14 @@ const api = {
     return response.json();
   },
   getPatientMedicalRecords: async (patientId) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/medical-records`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/medical-records`, {
       headers: { ...api._getPortalAuthHeader() }
     });
     if (!response.ok) throw new Error('Failed to fetch patient medical records');
     return response.json();
   },
   linkSocialToPatient: async (patientId, provider, providerId, accessToken, refreshToken, profileData) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/link-social`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/link-social`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
       body: JSON.stringify({ provider, providerId, accessToken, refreshToken, profileData })
@@ -821,7 +1024,7 @@ const api = {
     return response.json();
   },
   patientPortalLogout: async (sessionToken) => {
-    const response = await fetch(`${API_BASE_URL}/patient-portal/logout`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/logout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionToken })
@@ -835,7 +1038,7 @@ const api = {
     const url = excludeSystem
       ? `${API_BASE_URL}/roles?exclude_system=true`
       : `${API_BASE_URL}/roles`;
-    const response = await fetch(url);
+    const response = await authenticatedFetch(url);
     if (!response.ok) throw new Error('Failed to fetch roles');
     return response.json();
   },
@@ -3161,6 +3364,115 @@ const api = {
   createInventoryBackup: async (data) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`, { method: 'POST', body: JSON.stringify(data) });
     if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Backup failed'); }
+    return r.json();
+  },
+
+  // ── FHIR tracking ──────────────────────────────────────────────────────────
+  // Every /api/fhir-tracking route sits behind `authenticate`, so these must go
+  // through authenticatedFetch — a bare fetch/axios call gets a 401.
+  getFhirTracking: async (trackingNumber) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/${encodeURIComponent(trackingNumber)}`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking'); }
+    const data = await r.json();
+    return data.tracking;
+  },
+  getFhirTrackingForResource: async (resourceType, resourceId) => {
+    const r = await authenticatedFetch(
+      `${API_BASE_URL}/fhir-tracking/resource/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`
+    );
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking'); }
+    const data = await r.json();
+    return data.tracking;
+  },
+  getFhirTrackingErrors: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/errors/action-required`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking errors'); }
+    const data = await r.json();
+    return data.errors || [];
+  },
+  getPatientFhirTrackingSummary: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/patient/${encodeURIComponent(patientId)}/summary`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to fetch tracking summary'); }
+    return r.json();
+  },
+  resolveFhirTrackingError: async (trackingId, data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/fhir-tracking/${encodeURIComponent(trackingId)}/resolve-error`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to resolve error'); }
+    return r.json();
+  },
+
+  // ── Google Calendar sync (patient-scoped) ──────────────────────────────────
+  // /api/calendar-sync is authenticated and authorises the caller against the
+  // patient in the path, so these calls must carry the Bearer token.
+  getCalendarSyncStatus: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/status/${encodeURIComponent(patientId)}`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to check calendar status'); }
+    return r.json();
+  },
+  getCalendarAuthUrl: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/auth-url?patientId=${encodeURIComponent(patientId)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to start Google Calendar authorization');
+    return data.authUrl;
+  },
+  disconnectCalendarSync: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/disconnect/${encodeURIComponent(patientId)}`, {
+      method: 'DELETE'
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to disconnect Google Calendar'); }
+    return r.json();
+  },
+  syncAppointmentToCalendar: async (appointmentId, patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/sync-appointment`, {
+      method: 'POST',
+      body: JSON.stringify({ appointmentId, patientId })
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to sync appointment'); }
+    return r.json();
+  },
+  setCalendarAutoSync: async (patientId, enabled) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/calendar-sync/auto-sync/${encodeURIComponent(patientId)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled })
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to update auto-sync'); }
+    return r.json();
+  },
+
+  // ── Public provider booking (/book/<slug>) ─────────────────────────────────
+  // These endpoints are open, but they still go through API_BASE_URL so the
+  // page works when the frontend and backend are on different origins.
+  getPublicBookingConfig: async (slug) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/booking-config/slug/${encodeURIComponent(slug)}`);
+    if (!r.ok) throw new Error('Provider not found or booking not available');
+    return r.json();
+  },
+  getPublicAppointmentTypes: async (providerId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/appointment-types/${encodeURIComponent(providerId)}`);
+    if (!r.ok) throw new Error('Failed to fetch appointment types');
+    return r.json();
+  },
+  getPublicAvailableDates: async (providerId, { startDate, endDate, appointmentTypeId }) => {
+    const query = new URLSearchParams({ startDate, endDate, appointmentTypeId }).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/available-dates/${encodeURIComponent(providerId)}?${query}`);
+    if (!r.ok) throw new Error('Failed to fetch available dates');
+    return r.json();
+  },
+  getPublicAvailableSlots: async (providerId, { date, appointmentTypeId }) => {
+    const query = new URLSearchParams({ date, appointmentTypeId }).toString();
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/slots/${encodeURIComponent(providerId)}?${query}`);
+    if (!r.ok) throw new Error('Failed to fetch available slots');
+    return r.json();
+  },
+  bookPublicAppointment: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/book`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to book appointment'); }
     return r.json();
   },
 

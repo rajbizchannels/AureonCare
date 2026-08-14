@@ -6,11 +6,13 @@ import {
   CheckCircle, XCircle, Clock,
   ToggleLeft, ToggleRight, Send, Printer, X, Check,
   Save, ArrowUpRight, ArrowDownRight,
-  Wallet, Activity, Layers, ArrowLeft
+  Wallet, Activity, Layers
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useAudit } from '../hooks/useAudit';
 import { useApp } from '../context/AppContext';
+import { useShellTab } from '../hooks/useShellTab';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
 
@@ -107,9 +109,9 @@ const Input = ({ className = '', ...props }) => (
 );
 
 const Select = ({ className = '', children, ...props }) => (
-  <select className={`w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 ${className}`} {...props}>
+  <ThemedSelect focusClass="focus:ring-2 focus:ring-emerald-500" className={`text-sm ${className}`} {...props}>
     {children}
-  </select>
+  </ThemedSelect>
 );
 
 const Textarea = ({ className = '', ...props }) => (
@@ -595,12 +597,12 @@ const TABS = [
   { id: 'statements', label: 'Statements',     icon: Receipt },
 ];
 
-export default function AccountsView({ theme, api, user, addNotification, setCurrentModule, currency = 'USD' }) {
+export default function AccountsView({ theme, api, user, addNotification, setCurrentModule, currency = 'USD', activeTab: shellTab, onTabChange }) {
   // Stable ref so addNotification never triggers fetchData recreation
   const notifyRef = useRef(addNotification);
   useEffect(() => { notifyRef.current = addNotification; }, [addNotification]);
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'overview');
   const [loading, setLoading] = useState(false);
 
   // Data
@@ -1213,24 +1215,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
     <div className={`flex flex-col h-full ${theme === 'dark' ? 'bg-slate-950' : 'bg-gray-50'}`}>
       {/* Header */}
       <div className={`border-b px-6 py-4 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-              className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            >
-              <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-            </button>
-            <div>
-              <h2 className={`text-2xl font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                <BookOpen className="text-emerald-500" size={24} />
-                Accounts Management
-              </h2>
-              <p className={`text-sm mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                Chart of accounts · journal entries · AR/AP · reconciliation
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center justify-end">
           <button
             onClick={() => fetchData(activeTab)}
             disabled={loading}
@@ -1245,7 +1230,8 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
           </button>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — the app shell's secondary pane replaces these when present */}
+        {!tabsInShell && (
         <div className={`flex items-center gap-1 p-1 rounded-xl mt-4 w-fit ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-200'}`}>
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -1260,6 +1246,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             </button>
           ))}
         </div>
+        )}
       </div>
 
       {/* Content */}
