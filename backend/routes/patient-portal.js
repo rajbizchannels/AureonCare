@@ -141,21 +141,21 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
           AND p.portal_enabled = true
       `, [email]);
 
-      if (result.rows.length === 0) {
-        // Distinguish "no portal access" from "wrong password" without saying
-        // whether the address exists.
-        return res.status(401).json({
-          error: 'No portal access for this email. Ask the practice to enable your patient portal.'
-        });
-      }
+      const candidate = result.rows[0];
 
-      patient = result.rows[0];
+      // SEC-17: always run a compare (dummy hash when the account/portal is absent)
+      // and return one uniform error, so timing and message never disclose whether
+      // an email is enrolled in the portal.
+      const hashToCompare = candidate && candidate.portal_password_hash
+        ? candidate.portal_password_hash
+        : DUMMY_PASSWORD_HASH;
+      const validPassword = await bcrypt.compare(password, hashToCompare);
 
-      // Verify password
-      const validPassword = await bcrypt.compare(password, patient.portal_password_hash || '');
-      if (!validPassword) {
+      if (!candidate || !candidate.portal_password_hash || !validPassword) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
+
+      patient = candidate;
     }
 
     // Create session token — return the raw token to the client but persist only
@@ -202,8 +202,14 @@ router.post('/register', authenticate, async (req, res) => {
     }
     console.log(`[DEBUG sec02-register] caller=${req.user.id} role=${req.user.role} target=${patientId}`);
 
+    // SEC-12: enforce the shared password policy before enabling the portal
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.valid) {
+      return res.status(400).json({ error: pwCheck.message });
+    }
+
     // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
 
     // Enable portal and set password
     const result = await pool.query(`
@@ -691,8 +697,34 @@ router.post('/:patientId/link-social', async (req, res) => {
     const { patientId } = req.params;
     const { provider, providerId, accessToken, refreshToken, profileData } = req.body;
 
+    // SEC-08: validate the token with the provider and store ONLY the verified
+    // canonical id, never the client-claimed providerId. (The :patientId param
+    // guard already bound this request to the caller's portal session.)
+    if (!provider || !accessToken) {
+      return res.status(400).json({ error: 'Provider and access token are required' });
+    }
+    let verified;
+    try {
+      verified = await validateSocialToken(provider, accessToken);
+    } catch (validationErr) {
+      console.log(`[DEBUG sec08-link] portal link token validation failed: patient=${patientId} provider=${provider}`);
+      return res.status(401).json({ error: 'Social provider token validation failed. Please try again.' });
+    }
+    const canonicalProviderId = verified.providerId;
+
+    // If this social identity is already linked to a different patient, refuse.
+    const existing = await pool.query(
+      'SELECT patient_id FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
+      [provider, canonicalProviderId]
+    );
+    if (existing.rows.length > 0 && String(existing.rows[0].patient_id) !== String(patientId)) {
+      return res.status(409).json({ error: 'This social account is already linked to another user' });
+    }
+
+    // patient.id === user.id in the current schema, so populate both columns.
     const result = await pool.query(`
       INSERT INTO social_auth (
+        user_id,
         patient_id,
         provider,
         provider_user_id,
@@ -700,16 +732,17 @@ router.post('/:patientId/link-social', async (req, res) => {
         refresh_token,
         profile_data
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $1, $2, $3, $4, $5, $6)
       ON CONFLICT (provider, provider_user_id)
       DO UPDATE SET
+        user_id = $1,
         patient_id = $1,
         access_token = $4,
         refresh_token = $5,
         profile_data = $6,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *
-    `, [patientId, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
+    `, [patientId, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
     res.json({
       message: 'Social account linked successfully',

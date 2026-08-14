@@ -170,8 +170,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     setLoadingProviders(true);
     setProvidersError(null);
     try {
-      console.log('Fetching providers for patient portal...');
-      console.log('User data:', { id: user?.id, role: user?.role });
+      // SEC-14: removed user id/role logging.
 
       if (!user || !user.id) {
         throw new Error('User not authenticated');
@@ -302,27 +301,18 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       // The user object from patient portal login is the patient record itself
       const patientId = user.id;
 
-      console.log('Fetching patient data for ID:', patientId);
+      // SEC-14: removed patient ID logging.
 
       // Fetch appointments, medical records, diagnoses, prescriptions, and full profile for the patient
       const [appts, records, diags, presc, profile] = await Promise.all([
         api.getAppointments().then(all => {
-          console.log('All appointments:', all);
-          console.log('Looking for appointments with patient_id:', patientId);
-
+          // SEC-14: do not log patient appointment records to the console.
           // Filter appointments by patient_id
           const filtered = all.filter(a => {
             const appointmentPatientId = a.patient_id?.toString();
             const userPatientId = patientId?.toString();
-            const matches = appointmentPatientId === userPatientId;
-
-            console.log(`Checking appointment ${a.id}: patient_id=${appointmentPatientId} vs user.id=${userPatientId} - ${matches ? 'MATCH ✓' : 'no match'}`);
-
-            return matches;
+            return appointmentPatientId === userPatientId;
           });
-
-          console.log('Filtered appointments for patient:', filtered);
-          console.log(`Total: ${filtered.length} appointments found`);
           return filtered;
         }),
         api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
@@ -618,11 +608,8 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
         status: 'Scheduled'
       };
 
-      console.log('Booking appointment with data:', appointmentData);
-      console.log('User object:', user);
-
+      // SEC-14: no PHI (appointment/user objects) to the console.
       const result = await api.createAppointment(appointmentData);
-      console.log('Appointment created successfully:', result);
 
       addNotification('success', t.appointmentBookedSuccessfully);
 
@@ -2289,7 +2276,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
 
   // Print prescription handler
   const handlePrintPrescription = (rx) => {
-    console.log('[PatientPortal] Printing prescription:', rx);
+    // SEC-14: removed prescription (PHI) logging.
 
     // Create a print-friendly HTML document
     const printWindow = window.open('', '_blank');

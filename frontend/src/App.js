@@ -827,41 +827,137 @@ function App() {
         </div>
       )}
 
-      {/* ── Three-pane app shell ──────────────────────────────────────────── */}
-      <AppShell
-        theme={theme}
-        navigation={navigation}
-        activeGroup={activeGroup}
-        activeItem={activeItem}
-        activeTrail={activeTrail}
-        onSelectGroup={handleSelectNavGroup}
-        onSelectItem={handleSelectNavItem}
-        topBar={{
-          user,
-          notificationCount: notifications.length,
-          onLogoClick: () => handleSelectNavItem({ module: user?.role === 'patient' ? 'patientPortal' : 'dashboard' }),
-          onSearch: () => setShowSearch(!showSearch),
-          onNotifications: () => setShowNotifications(!showNotifications),
-          onHelp: () => setShowHelpDrawer(!showHelpDrawer),
-          onAssistant: () => setShowAIAssistant(!showAIAssistant),
-          onSettings: () => handleSetShowForm('settings'),
-          onProfile: () => {
-            // Patients manage their profile from the portal's profile tab
-            if (user?.role !== 'patient') handleSetShowForm('userProfile');
-          },
-          onLogout: () => {
-            api.clearToken();
-            setIsAuthenticated(false);
-            setUser(null);
-          },
-          onToggleTheme: async () => {
-            const newTheme = theme === 'dark' ? 'light' : 'dark';
-            setTheme(newTheme);
-            await updateUserPreferences({ darkMode: newTheme === 'dark' });
-            await addNotification('success', `Switched to ${newTheme} mode`);
-          },
-        }}
-      >
+      {/* Header */}
+      <header className={`backdrop-blur-md border-b sticky top-0 z-50 ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800/50' : 'bg-white/50 border-gray-200/50'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <button
+              onClick={() => {
+                // Route to patient portal if user is a patient, otherwise dashboard
+                if (user?.role === 'patient') {
+                  setCurrentModule('patientPortal');
+                } else {
+                  setCurrentModule('dashboard');
+                }
+              }}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <img
+                src="/assets/aureoncare-logo-wide.png"
+                alt="AureonCare Logo"
+                className="h-10 w-auto object-contain"
+                style={{ aspectRatio: '3/1' }}
+              />
+            </button>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowSearch(!showSearch)}
+                className={`p-2 rounded-lg transition-colors relative ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                title="Search"
+              >
+                <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+              </button>
+
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={`p-2 rounded-lg transition-colors relative ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                title="Notifications"
+              >
+                <Bell className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setShowHelpDrawer(!showHelpDrawer)}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                title="Help & Documentation"
+              >
+                <HelpCircle className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+              </button>
+
+              <button
+                onClick={() => setShowAIAssistant(!showAIAssistant)}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                title="AI Assistant"
+              >
+                <Bot className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+              </button>
+
+              {/* Settings button - hidden for patients as they have settings in their profile tab */}
+              {user?.role !== 'patient' && (
+                <button
+                  onClick={() => handleSetShowForm('settings')}
+                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                  title="Settings"
+                >
+                  <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
+                </button>
+              )}
+
+              {/* Theme Toggle */}
+              <button
+                onClick={async () => {
+                  const newTheme = theme === 'dark' ? 'light' : 'dark';
+                  setTheme(newTheme);
+                  await updateUserPreferences({ darkMode: newTheme === 'dark' });
+                  await addNotification('success', `Switched to ${newTheme} mode`);
+                }}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+                title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-5 h-5 text-slate-400" />
+                ) : (
+                  <Moon className="w-5 h-5 text-gray-600" />
+                )}
+              </button>
+
+              {/* User Menu */}
+              <button
+                onClick={() => {
+                  // Only open profile modal for non-patient users
+                  // Patients use the profile tab in patient portal
+                  if (user?.role !== 'patient') {
+                    handleSetShowForm('userProfile');
+                  }
+                }}
+                className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${user?.role === 'patient' ? 'cursor-default' : 'hover:bg-slate-800'}`}
+                title={`${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''} (${user?.role || 'user'})`}
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                  {getUserInitials()}
+                </div>
+                <div className="text-left">
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{`${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''}`.trim() || 'User'}</p>
+                  <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.role || 'user'}</p>
+                </div>
+              </button>
+
+              <button
+                onClick={async () => {
+                  // SEC-16: revoke the session on the server first, then clear local state.
+                  await api.logout();
+                  api.clearToken();
+                  setIsAuthenticated(false);
+                  setUser(null);
+                }}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-gray-600'}`}
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Forms - appointment, patient, task, claim, diagnosis are now handled in their respective views */}
         {/* Only forms not handled by specific views are rendered here */}
 
