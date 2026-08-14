@@ -6,6 +6,11 @@ const rateLimit = require('express-rate-limit');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { authenticate } = require('../middleware/auth');
+const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+
+// SEC-17: dummy hash to run a constant-time compare when a portal account is
+// missing, so login timing/response does not reveal whether an email is enrolled.
+const DUMMY_PASSWORD_HASH = '$2a$12$C6UzMDM.H6dfI/f/IKcEeO3z8kU0m9Yb0aH3mHqz9uJm8lTgqQG0K';
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -136,17 +141,21 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
         WHERE p.email = $1 AND p.portal_enabled = true
       `, [email]);
 
-      if (result.rows.length === 0) {
-        return res.status(401).json({ error: 'Invalid credentials or portal not enabled' });
-      }
+      const candidate = result.rows[0];
 
-      patient = result.rows[0];
+      // SEC-17: always run a compare (dummy hash when the account/portal is absent)
+      // and return one uniform error, so timing and message never disclose whether
+      // an email is enrolled in the portal.
+      const hashToCompare = candidate && candidate.portal_password_hash
+        ? candidate.portal_password_hash
+        : DUMMY_PASSWORD_HASH;
+      const validPassword = await bcrypt.compare(password, hashToCompare);
 
-      // Verify password
-      const validPassword = await bcrypt.compare(password, patient.portal_password_hash || '');
-      if (!validPassword) {
+      if (!candidate || !candidate.portal_password_hash || !validPassword) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
+
+      patient = candidate;
     }
 
     // Create session token — return the raw token to the client but persist only
@@ -190,8 +199,14 @@ router.post('/register', authenticate, async (req, res) => {
     }
     console.log(`[DEBUG sec02-register] caller=${req.user.id} role=${req.user.role} target=${patientId}`);
 
+    // SEC-12: enforce the shared password policy before enabling the portal
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.valid) {
+      return res.status(400).json({ error: pwCheck.message });
+    }
+
     // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
 
     // Enable portal and set password
     const result = await pool.query(`
