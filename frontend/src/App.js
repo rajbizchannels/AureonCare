@@ -780,7 +780,9 @@ function App() {
               </button>
 
               <button
-                onClick={() => {
+                onClick={async () => {
+                  // SEC-16: revoke the session on the server first, then clear local state.
+                  await api.logout();
                   api.clearToken();
                   setIsAuthenticated(false);
                   setUser(null);

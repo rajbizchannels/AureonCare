@@ -122,15 +122,50 @@ router.post('/change-password', authenticate, async (req, res) => {
 
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-    await pool.query(
-      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+    // SEC-09: bump token_version so every JWT issued before this change is rejected,
+    // then mint a fresh token for the caller's current session so they are not logged
+    // out of the tab they just changed their password in. Other sessions are revoked.
+    const updateResult = await pool.query(
+      'UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2 RETURNING token_version',
       [newPasswordHash, userId]
     );
 
-    res.json({ message: 'Password changed successfully' });
+    // SEC-18: also revoke any active patient-portal sessions for this account.
+    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [userId]);
+
+    const token = signToken({
+      id: userId,
+      role: req.user.role,
+      email: req.user.email,
+      token_version: updateResult.rows[0].token_version
+    });
+
+    res.json({ message: 'Password changed successfully', token });
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Logout — server-side revocation (SEC-16). Bumping token_version invalidates every
+// clinician JWT currently held for this account (this device and any other), and we
+// clear any portal sessions too. The client still discards its local token, but this
+// guarantees a stolen/old token cannot be replayed after logout.
+router.post('/logout', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const userId = req.user.id;
+
+    await pool.query(
+      'UPDATE users SET token_version = token_version + 1, updated_at = NOW() WHERE id = $1',
+      [userId]
+    );
+    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [userId]);
+
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Error during logout:', error);
+    res.status(500).json({ error: 'Failed to logout' });
   }
 });
 
@@ -230,11 +265,16 @@ router.post('/reset-password', async (req, res) => {
     const saltRounds = 10;
     const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password and clear reset token
+    // Update password and clear reset token.
+    // SEC-18: a reset is a credential-recovery event — assume the old credentials are
+    // compromised and revoke every outstanding session. Bumping token_version kills all
+    // existing JWTs and we delete the account's portal sessions. The user must sign in
+    // fresh, so (unlike change-password) we do NOT reissue a token here.
     await pool.query(
-      'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, token_version = token_version + 1, updated_at = NOW() WHERE id = $2',
       [newPasswordHash, user.id]
     );
+    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [user.id]);
 
     res.json({ message: 'Password reset successfully' });
   } catch (error) {

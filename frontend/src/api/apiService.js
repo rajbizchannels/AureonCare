@@ -562,7 +562,14 @@ const api = {
       const error = await response.json();
       throw new Error(error.error || 'Failed to change password');
     }
-    return response.json();
+    const data = await response.json();
+    // SEC-09: the server bumps token_version on a password change, invalidating the
+    // token this tab is currently using. It returns a fresh token for this session —
+    // store it so the current tab keeps working while other sessions are revoked.
+    if (data && data.token) {
+      api.storeToken(data.token);
+    }
+    return data;
   },
   forgotPassword: async (email) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/forgot-password`, {
@@ -3168,8 +3175,28 @@ const api = {
   clearToken: () => {
     try {
       sessionStorage.removeItem('token');
+      sessionStorage.removeItem('portalSessionToken');
     } catch (e) {
       console.error('Failed to clear token:', e);
+    }
+  },
+  // SEC-16: revoke the session server-side before dropping local state. Bumps the
+  // account's token_version (invalidating this and any other clinician JWT) and clears
+  // portal sessions. Best-effort: local logout still proceeds if the request fails.
+  logout: async () => {
+    try {
+      await authenticatedFetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' });
+    } catch (e) {
+      console.error('Server-side logout failed (clearing local session anyway):', e);
+    }
+    // If a portal session token is present, revoke it server-side too.
+    try {
+      const portalToken = sessionStorage.getItem('portalSessionToken');
+      if (portalToken) {
+        await api.patientPortalLogout(portalToken);
+      }
+    } catch (e) {
+      console.error('Portal logout failed (clearing local session anyway):', e);
     }
   }
 };
