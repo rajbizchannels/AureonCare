@@ -1,16 +1,12 @@
-import React, { useState } from 'react';
-import { Shield, Sun, Moon } from 'lucide-react';
+import { useState } from 'react';
+import { Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
-import PrivacyPolicyPage from './PrivacyPolicyPage';
-import TermsOfServicePage from './TermsOfServicePage';
 
 const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
-  const [showToS, setShowToS] = useState(false);
 
   const { instance } = useMsal();
 
@@ -131,7 +127,26 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
               style={{ aspectRatio: '1/1' }}
             />
           </div>
-          <p className={`mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Sign in to your account</p>
+          {/* App name renders as visible text and matches the name configured on
+              the Google OAuth consent screen exactly. The lines beneath it are the
+              statement of purpose: this sign-in screen is the app's home page, so
+              it has to say what the product actually is. */}
+          <h1 className={`text-3xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            AureonCare
+          </h1>
+          <p className={`mt-2 text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+            Practice management &amp; telehealth for medical clinics
+          </p>
+          <p className={`mt-1.5 text-xs leading-relaxed ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+            Appointment scheduling, patient records, e-prescribing, billing,
+            and secure video visits — in one platform.
+          </p>
+
+          <div className={`my-6 h-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`} />
+
+          <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+            Sign in to your account
+          </p>
         </div>
 
         {loginError && (
@@ -256,39 +271,23 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
             {theme === 'dark' ? <Sun className="w-4 h-4 inline mr-1" /> : <Moon className="w-4 h-4 inline mr-1" />}
             {theme === 'dark' ? 'Light' : 'Dark'} Mode
           </button>
+          {/* Real anchor links, not JS-only modals, so reviewers and crawlers can
+              reach these pages without signing in. */}
           <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-            <button
-              type="button"
-              onClick={() => setShowToS(true)}
-              className="hover:text-cyan-500 transition-colors underline"
-            >
+            <a href="/about.html" className="hover:text-cyan-500 transition-colors underline">
+              About
+            </a>
+            <span className="mx-1.5">&bull;</span>
+            <a href="/privacy.html" className="hover:text-purple-500 transition-colors underline">
+              Privacy Policy
+            </a>
+            <span className="mx-1.5">&bull;</span>
+            <a href="/terms.html" className="hover:text-cyan-500 transition-colors underline">
               Terms of Service
-            </button>
-            <span className="mx-1">&bull;</span>
-            <button
-              type="button"
-              onClick={() => setShowPrivacyPolicy(true)}
-              className="hover:text-purple-500 transition-colors underline"
-            >
-              Privacy Policy &amp; HIPAA Notice
-            </button>
+            </a>
           </p>
         </div>
       </div>
-
-      {showToS && (
-        <TermsOfServicePage
-          theme={theme}
-          onClose={() => setShowToS(false)}
-        />
-      )}
-
-      {showPrivacyPolicy && (
-        <PrivacyPolicyPage
-          theme={theme}
-          onClose={() => setShowPrivacyPolicy(false)}
-        />
-      )}
     </div>
   );
 };

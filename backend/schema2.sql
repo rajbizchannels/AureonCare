@@ -305,7 +305,7 @@ VALUES (
   'admin',
   'Central Medical Group',
   'SC',
-  'sarah.chen@aureoncare.com',
+  'sarah.chen@aureoncare.tech',
   '(555) 123-4567',
   'MD-123456',
   'Internal Medicine',
@@ -321,7 +321,7 @@ VALUES (
   'Sarah',
   'Chen',
   'Family Medicine',
-  'dr.chen@aureoncare.com',
+  'dr.chen@aureoncare.tech',
   '+1-555-0100',
   'MD-123456'
 )

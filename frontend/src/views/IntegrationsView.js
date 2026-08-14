@@ -62,7 +62,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
       });
 
       // Initialize all telehealth provider types (even if not in database)
-      ['zoom', 'google-meet', 'webex'].forEach(providerType => {
+      ['zoom', 'google_meet', 'webex'].forEach(providerType => {
         const provider = telehealthSettings.find(p => p.provider_type === providerType);
         const key = `telehealth_${providerType}`;
         allIntegrations[key] = {
@@ -162,7 +162,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
   const getProviderDisplayName = (providerType) => {
     const names = {
       'zoom': 'Zoom',
-      'google-meet': 'Google Meet',
+      'google_meet': 'Google Meet',
       'webex': 'Webex'
     };
     return names[providerType] || providerType;
@@ -946,7 +946,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
           </h3>
 
           <div className="space-y-3">
-            {['zoom', 'google-meet', 'webex'].map(providerType => {
+            {['zoom', 'google_meet', 'webex'].map(providerType => {
               const provider = telehealthProviders.find(p => p.provider_type === providerType);
               return renderIntegrationCard(
                 provider || { provider_type: providerType },
