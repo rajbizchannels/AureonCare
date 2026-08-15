@@ -9,7 +9,10 @@ export const microsoftOAuthConfig = {
   auth: {
     clientId: process.env.REACT_APP_MS_CID || 'YOUR_MICROSOFT_CLIENT_ID',
     authority: 'https://login.microsoftonline.com/common',
-    redirectUri: process.env.REACT_APP_REDIRECT_URI || window.location.origin,
+    // Accept either env-var name — .env.example historically documented
+    // REACT_APP_AUTH_URI while the code read REACT_APP_REDIRECT_URI. Support both so
+    // a build configured under either name works; falls back to the current origin.
+    redirectUri: process.env.REACT_APP_REDIRECT_URI || process.env.REACT_APP_AUTH_URI || window.location.origin,
     // After a redirect-based login, navigate to the redirectUri root rather
     // than back to the page that triggered the login request. Keeps the SPA
     // from landing back on the Register page after OAuth completes.

@@ -333,10 +333,10 @@ router.post('/social-login', async (req, res) => {
 
     // SEC-19: match ONLY on the provider-verified canonical id — never the
     // client-supplied providerId, which an attacker could set to a victim's id.
-    // For not-yet-migrated Microsoft rows still keyed by the MSAL homeAccountId
-    // ("<oid>.<tenantId>"), we additionally match rows whose id begins with the
-    // verified OID — still derived solely from verified data. Migration 060
-    // normalizes these rows so this fallback becomes a no-op over time.
+    // For not-yet-migrated Microsoft work/school rows still keyed by the MSAL
+    // homeAccountId ("<oid>.<tenantId>"), we additionally match rows whose id begins
+    // with the verified OID — still derived solely from verified data. Rows in other
+    // legacy formats are recovered by the verified-email re-link just below.
     const socialAuthResult = await pool.query(
       `SELECT * FROM social_auth
        WHERE provider = $1
@@ -345,13 +345,39 @@ router.post('/social-login', async (req, res) => {
       [provider, canonicalProviderId]
     );
 
+    let socialRows = socialAuthResult.rows;
+
+    // SEC-19 safe re-link: the lookup above intentionally ignores the client-supplied
+    // providerId. That can miss a legacy row for an EXISTING user whose provider_user_id
+    // was stored in a non-canonical format — notably Microsoft personal (MSA) accounts,
+    // whose MSAL homeAccountId is a pairwise id unrelated to the Graph OID. To restore
+    // those logins WITHOUT trusting client input, adopt an existing row only when the
+    // PROVIDER-VERIFIED email (from the validated token, never the client) matches the
+    // account the row is linked to, then re-key it to the canonical id so it self-heals.
+    if (socialRows.length === 0 && verified.email) {
+      const relink = await pool.query(
+        `SELECT sa.* FROM social_auth sa
+         JOIN users u ON u.id = sa.user_id
+         WHERE sa.provider = $1 AND LOWER(u.email) = LOWER($2)`,
+        [provider, verified.email]
+      );
+      if (relink.rows.length > 0) {
+        await pool.query(
+          'UPDATE social_auth SET provider_user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [canonicalProviderId, relink.rows[0].id]
+        );
+        socialRows = relink.rows;
+        console.log(`[DEBUG sec19-relink] re-keyed legacy ${provider} social_auth to canonical id via verified email`);
+      }
+    }
+
     let user;
     let isNewUser = false;
 
-    if (socialAuthResult.rows.length > 0) {
+    if (socialRows.length > 0) {
       // Existing social auth — user_id is the canonical identifier (= patients.id = users.id).
       // Migration 058 ensures all rows have user_id populated, so a single direct lookup suffices.
-      const userId = socialAuthResult.rows[0].user_id;
+      const userId = socialRows[0].user_id;
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
 
       if (userResult.rows.length === 0) {
@@ -375,7 +401,7 @@ router.post('/social-login', async (req, res) => {
         UPDATE social_auth
         SET access_token = $1, refresh_token = $2, profile_data = $3, updated_at = CURRENT_TIMESTAMP
         WHERE id = $4
-      `, [accessToken, refreshToken, JSON.stringify(profileData), socialAuthResult.rows[0].id]);
+      `, [accessToken, refreshToken, JSON.stringify(profileData), socialRows[0].id]);
 
     } else {
       // No existing social auth — check if user exists by email
