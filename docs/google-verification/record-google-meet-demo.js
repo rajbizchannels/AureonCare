@@ -336,6 +336,62 @@ window.__demo.ensure();
 `;
 
 /**
+ * Real screenshots of Google's consent flow, played full-frame at the consent
+ * step. They exist because Google's screens cannot be reproduced by this script
+ * and must not be reconstructed — a stand-in consent screen is not evidence.
+ * Capture them from a real OAuth run and drop them in `consent-stills/`; they
+ * play in filename order, so number them in flow order.
+ *
+ * Each one is shown whole and letterboxed, never cropped or overlaid, so the
+ * URL bar and every requested scope stay readable.
+ */
+const STILLS_DIR = process.env.CONSENT_STILLS_DIR || path.join(__dirname, 'consent-stills');
+const STILL_DWELL_MS = Number(process.env.STILL_DWELL_MS || 7000);
+
+function consentStills() {
+  if (!fs.existsSync(STILLS_DIR)) return [];
+  return fs
+    .readdirSync(STILLS_DIR)
+    .filter((f) => /\.(png|jpe?g)$/i.test(f))
+    .sort()
+    .map((f) => path.join(STILLS_DIR, f));
+}
+
+/**
+ * Play the captured consent screens over the app, one at a time.
+ *
+ * Drawn above the caption bar and the watermark rather than beneath them: these
+ * are Google's screens, and anything laid over them is what the verification
+ * review means by the scopes being obscured.
+ */
+async function showConsentStills(d, page, stills) {
+  for (const file of stills) {
+    const mime = /\.png$/i.test(file) ? 'image/png' : 'image/jpeg';
+    const dataUri = `data:${mime};base64,${fs.readFileSync(file).toString('base64')}`;
+    await page.evaluate((src) => {
+      let layer = document.getElementById('demo-still');
+      if (!layer) {
+        layer = document.createElement('div');
+        layer.id = 'demo-still';
+        layer.style.cssText =
+          'position:fixed;inset:0;background:#000;display:flex;align-items:center;' +
+          'justify-content:center;z-index:2147483647';
+        layer.innerHTML =
+          '<img style="max-width:100%;max-height:100%;object-fit:contain" alt="">';
+        document.body.appendChild(layer);
+      }
+      layer.querySelector('img').src = src;
+    }, dataUri);
+    await sleep(STILL_DWELL_MS);
+  }
+  await page.evaluate(() => {
+    const layer = document.getElementById('demo-still');
+    if (layer) layer.remove();
+  });
+  await sleep(600);
+}
+
+/**
  * What the live run learned about Google's consent popup, so main() can splice
  * its video into the right place and the README can quote the real URL.
  *   openedAtMs — ms after the main recording started, i.e. where to cut
@@ -548,7 +604,19 @@ async function settingsScreen(d, page) {
     pause: 1500,
   });
 
-  if (MODE === 'mock') {
+  const stills = consentStills();
+  if (MODE === 'mock' && stills.length) {
+    await d.say(
+      'AureonCare redirects to <b>accounts.google.com</b>. What follows is captured from a real authorization on this OAuth client.',
+      5200
+    );
+    await d.clearCaption();
+    await showConsentStills(d, page, stills);
+    await d.say(
+      'Consent granted on Google&rsquo;s screens. Back in AureonCare, the account is connected.',
+      3600
+    );
+  } else if (MODE === 'mock') {
     await d.say(
       'AureonCare now redirects to <b>accounts.google.com</b>. Google&rsquo;s own consent screen appears there and asks the administrator to grant ' +
         '<b>.../auth/calendar</b> and <b>.../auth/calendar.events</b>. It is Google&rsquo;s screen, so it is not reproduced in this recording.',

@@ -13,6 +13,7 @@ video can be re-cut whenever the UI changes.
 | `aureoncare-google-meet-demo.mp4` | The recording (1280×720, ~3 min, no audio) |
 | `record-google-meet-demo.js` | Playwright script that drives the app and records it |
 | `demo-fixtures.js` | Synthetic clinic/patient/appointment data used by the recording |
+| `consent-stills/` | Screenshots of Google's real consent flow, played at the consent step |
 | `out/` | Scratch output of the last run (git-ignored) |
 
 ## What the video shows
@@ -44,6 +45,11 @@ The committed recording runs in **mock mode**: the frontend is served locally
 and every `/api` call is answered from `demo-fixtures.js`, so no backend,
 database, real patient data or Google account is involved. Two consequences:
 
+- **Google's consent screen is not reproduced.** The one way to get it into the
+  mock recording is to drop real captures of it into `consent-stills/`, which
+  the recorder then plays full-frame at the consent step — see the README there,
+  including the collapsed-scopes trap that gets submissions rejected. Failing
+  that:
 - **Google's consent screen is not in the mock recording.** It is Google's own
   screen and is deliberately not simulated — a reconstructed consent screen is
   not evidence, and submitting one would misrepresent the flow under review. At
