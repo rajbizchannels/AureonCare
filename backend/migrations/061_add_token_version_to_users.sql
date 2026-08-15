@@ -1,4 +1,5 @@
--- Migration 059: Add token_version to users (SEC-09 / SEC-16 / SEC-18)
+-- Migration 061: Add token_version to users (SEC-09 / SEC-16 / SEC-18)
+-- (Renumbered from 059 to avoid a collision with 059_create_secure_messaging.sql.)
 -- Stateless JWTs previously stayed valid for their full 24h lifetime even after a
 -- password change, reset, or logout. We add a monotonically increasing token_version
 -- that is embedded in each JWT (claim "tv") and re-checked in the auth middleware.
