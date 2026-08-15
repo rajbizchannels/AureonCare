@@ -44,12 +44,13 @@ The committed recording runs in **mock mode**: the frontend is served locally
 and every `/api` call is answered from `demo-fixtures.js`, so no backend,
 database, real patient data or Google account is involved. Two consequences:
 
-- **Google's consent screen is not in the recording.** It is Google's own
-  screen and is deliberately not simulated — at that point the video states
-  that AureonCare redirects to `accounts.google.com` and names the scopes being
-  requested. Google's reviewers normally want to *see* the consent screen with
-  the client id visible in the URL bar. Record that segment against a real
-  deployment (see live mode below) or capture it separately and append it.
+- **Google's consent screen is not in the mock recording.** It is Google's own
+  screen and is deliberately not simulated — a reconstructed consent screen is
+  not evidence, and submitting one would misrepresent the flow under review. At
+  that point the mock video states that AureonCare redirects to
+  `accounts.google.com` and names the scopes. **A submission that has to show
+  the consent screen must be recorded in live mode** (below), which captures
+  Google's real screen.
 - The clinic, patients and OAuth client id on screen are invented. The video
   carries a permanent "demo environment · synthetic data" watermark so it is
   never mistaken for a recording of live clinical data.
@@ -88,6 +89,32 @@ In live mode the script pauses at the consent step for up to three minutes so a
 human can complete Google's sign-in and grant the scopes; it continues as soon
 as the provider card reports *Connected*. Use a test clinic and a test Google
 account — the run creates a real calendar event.
+
+### What live mode does about the scopes
+
+Google's review asks for the consent screen "with all requested scopes fully
+expanded and readable". The script:
+
+- records the consent popup as its own video and **splices it into the finished
+  mp4 at the moment it opened**, so the reviewer sees one continuous flow rather
+  than a cut;
+- clicks **Show all services** — and any per-scope disclosure Google leaves
+  collapsed — before holding still on the expanded list. Raise the dwell with
+  `CONSENT_DWELL_MS=12000` if the scopes need longer on screen;
+- **never draws the caption bar or watermark over Google's screen.** The overlay
+  is attached to our own page only. Anything painted over the consent screen is
+  what the review means by "obscured".
+
+Two things the script cannot do for you:
+
+- **Grant consent.** A human clicks Allow. The script only expands and waits.
+- **Show the browser address bar.** Playwright records the page viewport, so the
+  `client_id` in the consent URL is not visible in the frame. The recording
+  prints the full authorization URL on the AureonCare page immediately
+  afterwards instead. If the reviewer specifically asks to see the client id in
+  the URL bar, capture that segment with a desktop screen recorder against a
+  normal browser window and splice it in — `spliceConsent()` in the script does
+  exactly that join if you point it at the two files.
 
 Useful overrides: `DEMO_API_URL` (defaults to `http://localhost:3001/api`, must
 match `REACT_APP_SVC_URL` for the route mocks to match), `OUT_DIR`,
