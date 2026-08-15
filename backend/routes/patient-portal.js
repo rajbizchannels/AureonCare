@@ -110,11 +110,16 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
       const canonicalProviderId = verified.providerId;
       console.log(`[DEBUG sec03-social] portal social login verified: provider=${provider} canonicalId=${String(canonicalProviderId).slice(0, 8)}…`);
 
-      // Check if social auth exists — match the verified id (fall back to the
-      // client id for legacy rows created before token validation existed).
+      // SEC-19: match only on the provider-verified canonical id (never the
+      // client-supplied providerId). The Microsoft OID-prefix fallback matches
+      // not-yet-migrated homeAccountId rows using verified data alone; migration
+      // 060 normalizes those rows.
       const socialAuth = await pool.query(
-        'SELECT user_id FROM social_auth WHERE provider = $1 AND (provider_user_id = $2 OR provider_user_id = $3)',
-        [provider, canonicalProviderId, providerId]
+        `SELECT user_id FROM social_auth
+         WHERE provider = $1
+           AND (provider_user_id = $2
+                OR ($1 = 'microsoft' AND provider_user_id LIKE $2 || '.%'))`,
+        [provider, canonicalProviderId]
       );
 
       if (socialAuth.rows.length > 0) {
