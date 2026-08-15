@@ -112,15 +112,34 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
 
       // SEC-19: match only on the provider-verified canonical id (never the
       // client-supplied providerId). The Microsoft OID-prefix fallback matches
-      // not-yet-migrated homeAccountId rows using verified data alone; migration
-      // 060 normalizes those rows.
-      const socialAuth = await pool.query(
+      // not-yet-migrated homeAccountId rows using verified data alone.
+      let socialAuth = await pool.query(
         `SELECT user_id FROM social_auth
          WHERE provider = $1
            AND (provider_user_id = $2
                 OR ($1 = 'microsoft' AND provider_user_id LIKE $2 || '.%'))`,
         [provider, canonicalProviderId]
       );
+
+      // SEC-19 safe re-link: recover an existing link stored under a non-canonical id
+      // (e.g. Microsoft personal-account homeAccountId) using the provider-VERIFIED
+      // email only — never client input — then re-key it to the canonical id.
+      if (socialAuth.rows.length === 0 && verified.email) {
+        const relink = await pool.query(
+          `SELECT sa.id, sa.user_id FROM social_auth sa
+           JOIN patients p ON p.id = sa.patient_id
+           WHERE sa.provider = $1 AND LOWER(p.email) = LOWER($2)`,
+          [provider, verified.email]
+        );
+        if (relink.rows.length > 0) {
+          await pool.query(
+            'UPDATE social_auth SET provider_user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [canonicalProviderId, relink.rows[0].id]
+          );
+          socialAuth = { rows: [{ user_id: relink.rows[0].user_id }] };
+          console.log('[DEBUG sec19-relink] portal: re-keyed legacy social_auth to canonical id via verified email');
+        }
+      }
 
       if (socialAuth.rows.length > 0) {
         const patientResult = await pool.query(`
