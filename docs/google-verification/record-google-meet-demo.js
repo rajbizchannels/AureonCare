@@ -50,6 +50,9 @@ const OUT_DIR = process.env.OUT_DIR || path.join(__dirname, 'out');
 const OUT_NAME = 'aureoncare-google-meet-demo';
 const VIEWPORT = { width: 1280, height: 720 };
 
+/** Wall clock at which the main page's video started, for the consent splice. */
+let RECORDING_STARTED_AT = Date.now();
+
 const LOGIN_EMAIL = process.env.DEMO_EMAIL || F.demoUser.email;
 const LOGIN_PASSWORD = process.env.DEMO_PASSWORD || 'demo-password';
 
@@ -332,6 +335,69 @@ window.__demo = (() => {
 window.__demo.ensure();
 `;
 
+/**
+ * What the live run learned about Google's consent popup, so main() can splice
+ * its video into the right place and the README can quote the real URL.
+ *   openedAtMs — ms after the main recording started, i.e. where to cut
+ *   video      — path to the popup's own recording
+ *   url        — the real authorization URL, client id and scopes included
+ */
+const consentCapture = { openedAtMs: null, video: null, url: null };
+
+/**
+ * Record Google's consent screen with every requested scope on show.
+ *
+ * Google's reviewers ask for the scopes "fully expanded and readable", so this
+ * opens the disclosure Google collapses by default ("Show all services", and
+ * the per-scope carets underneath it) and then holds still long enough to read
+ * them. Nothing is clicked that would grant consent — a human does that.
+ *
+ * Deliberately never injects the caption/watermark overlay: this is Google's
+ * screen, and covering any part of it is exactly what the review flags.
+ */
+async function recordConsent(page) {
+  const popup = await page.context().waitForEvent('page', { timeout: 60000 }).catch(() => null);
+  if (!popup) {
+    console.warn('  No OAuth popup appeared — is this really live mode?');
+    return;
+  }
+  consentCapture.openedAtMs = Date.now() - RECORDING_STARTED_AT;
+  await popup.waitForLoadState('domcontentloaded').catch(() => {});
+  await sleep(2500);
+  consentCapture.url = popup.url();
+  console.log('  Consent popup:', consentCapture.url.slice(0, 120));
+
+  // Google localises and reshuffles this screen, so try several affordances and
+  // treat every one of them as optional.
+  const expanders = [
+    /Show all services/i,
+    /^Show all$/i,
+    /See all/i,
+    /Select all/i,
+  ];
+  for (const name of expanders) {
+    const control = popup.getByRole('button', { name }).first();
+    if (await control.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await control.click({ timeout: 5000 }).catch(() => {});
+      await sleep(1800);
+    }
+  }
+  // Then any collapsed scope rows Google renders as expandable disclosures.
+  const carets = popup.locator('[aria-expanded="false"]');
+  const count = await carets.count().catch(() => 0);
+  for (let i = 0; i < Math.min(count, 8); i += 1) {
+    await carets.nth(i).click({ timeout: 3000 }).catch(() => {});
+    await sleep(900);
+  }
+
+  // Hold on the fully expanded screen so a reviewer can read every scope.
+  await sleep(Number(process.env.CONSENT_DWELL_MS || 9000));
+
+  // The human grants consent; the popup closes itself when Google redirects.
+  await popup.waitForEvent('close', { timeout: 180000 }).catch(() => {});
+  consentCapture.video = await popup.video()?.path().catch(() => null);
+}
+
 /** Keeps the OAuth popup out of the recording in mock mode. */
 const STUB_WINDOW_OPEN = `
 window.__demoOpenedUrls = [];
@@ -498,14 +564,29 @@ async function settingsScreen(d, page) {
       );
     }
   } else {
+    // Live mode: Google's own consent screen opens in a popup and is recorded
+    // as its own video, which recordConsent() captures and main() splices into
+    // this recording at the moment it opened.
     await d.say(
-      'Google&rsquo;s consent screen opens in a popup. Grant the requested Calendar scopes to continue.',
-      3000
+      'Google&rsquo;s consent screen opens next. Grant the requested Calendar scopes to continue.',
+      2600
     );
+    await d.clearCaption();
+    await recordConsent(page);
     await page.waitForFunction(
       () => document.body.innerText.includes('Connected'),
       { timeout: 180000 }
     ).catch(() => {});
+    const authUrl = consentCapture.url;
+    if (authUrl) {
+      await d.say(
+        'The authorization request, with the OAuth client id and both requested scopes:' +
+          '<br><span style="font-size:13px;color:#cbd5e1;word-break:break-all">' +
+          authUrl.replace(/&/g, '&amp;') +
+          '</span>',
+        7000
+      );
+    }
   }
 
   await page.waitForFunction(
@@ -676,9 +757,13 @@ async function main() {
     await context.route('**/api/**', (route) => handleApiRoute(route, state));
     await context.addInitScript(STUB_WINDOW_OPEN);
   }
-  await context.addInitScript(OVERLAY_SCRIPT);
 
   const page = await context.newPage();
+  // The overlay is added to our own page only, never to the context: a context
+  // init script would also run on Google's consent popup, painting our caption
+  // bar and watermark over the very scopes the review needs to read.
+  await page.addInitScript(OVERLAY_SCRIPT);
+  RECORDING_STARTED_AT = Date.now();
   page.on('console', (msg) => {
     if (msg.type() === 'error') console.warn('  [page error]', msg.text().slice(0, 160));
   });
@@ -705,9 +790,61 @@ async function main() {
       const webm = path.join(OUT_DIR, `${OUT_NAME}.webm`);
       fs.renameSync(raw, webm);
       console.log('Recorded', webm);
-      convertToMp4(webm, path.join(OUT_DIR, `${OUT_NAME}.mp4`));
+      const mp4 = path.join(OUT_DIR, `${OUT_NAME}.mp4`);
+      if (consentCapture.video && fs.existsSync(consentCapture.video)) {
+        const consentWebm = path.join(OUT_DIR, `${OUT_NAME}-consent.webm`);
+        fs.renameSync(consentCapture.video, consentWebm);
+        console.log('Consent screen recorded', consentWebm);
+        if (!spliceConsent(webm, consentWebm, consentCapture.openedAtMs / 1000, mp4)) {
+          convertToMp4(webm, mp4);
+          console.log('Splice failed — the consent screen is in', consentWebm, 'to append by hand.');
+        }
+      } else {
+        convertToMp4(webm, mp4);
+      }
     }
   }
+}
+
+/**
+ * Cut the app recording at the moment the consent popup opened and drop the
+ * consent recording into the gap, so the reviewer sees one continuous flow:
+ * the administrator clicks Connect, Google's screen appears with the scopes on
+ * it, and the app comes back connected.
+ *
+ * @returns {boolean} whether an mp4 was produced.
+ */
+function spliceConsent(mainWebm, consentWebm, atSeconds, outMp4) {
+  const bin = [process.env.FFMPEG_PATH, findStaticFfmpeg(), 'ffmpeg'].filter(Boolean);
+  const cut = Math.max(atSeconds, 0.5).toFixed(2);
+  // Every segment is normalised to the same size, rate and pixel format first;
+  // concat refuses to join streams that disagree on any of them.
+  const fit = `scale=${VIEWPORT.width}:${VIEWPORT.height}:force_original_aspect_ratio=decrease,`
+    + `pad=${VIEWPORT.width}:${VIEWPORT.height}:(ow-iw)/2:(oh-ih)/2:color=black,fps=30,format=yuv420p,setsar=1`;
+  const filter = [
+    '[0:v]split=2[pre][post]',
+    `[pre]trim=start=0:end=${cut},setpts=PTS-STARTPTS,${fit}[a]`,
+    `[1:v]${fit}[b]`,
+    `[post]trim=start=${cut},setpts=PTS-STARTPTS,${fit}[c]`,
+    '[a][b][c]concat=n=3:v=1:a=0[out]',
+  ].join(';');
+
+  for (const ffmpeg of bin) {
+    try {
+      execFileSync(
+        ffmpeg,
+        ['-y', '-i', mainWebm, '-i', consentWebm, '-filter_complex', filter,
+          '-map', '[out]', '-c:v', 'libx264', '-preset', 'slow', '-crf', '23',
+          '-pix_fmt', 'yuv420p', '-movflags', '+faststart', outMp4],
+        { stdio: 'ignore' }
+      );
+      console.log('Spliced consent screen in at', cut, 's →', outMp4);
+      return true;
+    } catch (_) {
+      /* try the next candidate */
+    }
+  }
+  return false;
 }
 
 /**
@@ -747,7 +884,13 @@ function findStaticFfmpeg() {
   return null;
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Exposed so the consent splice can be exercised on its own; the file still
+// runs as a script when invoked directly.
+module.exports = { spliceConsent, recordConsent, consentCapture };
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
