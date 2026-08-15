@@ -187,7 +187,7 @@ async function handleApiRoute(route, state) {
         '&response_type=code&access_type=offline&prompt=consent' +
         '&scope=' +
         encodeURIComponent(
-          'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events'
+          'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/meetings.space.created'
         );
       return json({ authUrl });
     }
@@ -382,7 +382,9 @@ async function showConsentStills(d, page, stills) {
       }
       layer.querySelector('img').src = src;
     }, dataUri);
-    await sleep(STILL_DWELL_MS);
+    // The expanded scope panel is dense and is the screen the review is about,
+    // so it holds longer than the screens a reviewer only has to glance at.
+    await sleep(/scopes/i.test(file) ? Math.round(STILL_DWELL_MS * 1.6) : STILL_DWELL_MS);
   }
   await page.evaluate(() => {
     const layer = document.getElementById('demo-still');
@@ -619,7 +621,7 @@ async function settingsScreen(d, page) {
   } else if (MODE === 'mock') {
     await d.say(
       'AureonCare now redirects to <b>accounts.google.com</b>. Google&rsquo;s own consent screen appears there and asks the administrator to grant ' +
-        '<b>.../auth/calendar</b> and <b>.../auth/calendar.events</b>. It is Google&rsquo;s screen, so it is not reproduced in this recording.',
+        '<b>.../auth/calendar</b> and <b>.../auth/meetings.space.created</b>. It is Google&rsquo;s screen, so it is not reproduced in this recording.',
       6500
     );
     const opened = await page.evaluate(() => (window.__demoOpenedUrls || [])[0] || '');
@@ -726,7 +728,7 @@ async function configurationScreen(d, page) {
 async function telehealthScreen(d, page) {
   await d.titleCard(
     'Screen 3 of 3',
-    'Telehealth — how the Calendar scopes are used',
+    'Telehealth — how the granted scopes are used',
     'Creating a visit calls calendar.events.insert with conferenceData, which returns the Google Meet link that clinician and patient join.'
   );
 
@@ -765,7 +767,7 @@ async function telehealthScreen(d, page) {
 
   await sleep(1500);
   await d.say(
-    'Google returns a calendar event with a Meet link. AureonCare stores the link on the visit — <b>this is the only thing the Calendar scopes are used for</b>.',
+    'Google returns a calendar event with a Meet link. AureonCare stores the link on the visit — <b>this is the only thing the granted scopes are used for</b>.',
     4200
   );
   await d.scrollBy(300);
@@ -800,7 +802,7 @@ async function telehealthScreen(d, page) {
   await d.titleCard(
     'Summary',
     'Requested scopes and what they are for',
-    'calendar and calendar.events are used solely to create, update and cancel the calendar event that carries the Google Meet link for a telehealth visit. AureonCare does not read unrelated calendar entries, and Google tokens stay on the server.',
+    'calendar is used solely to create, update and cancel the calendar event that carries the Google Meet link for a telehealth visit, and meetings.space.created covers the Meet conference created for that visit. AureonCare does not read unrelated calendar entries, and Google tokens stay on the server.',
     7000
   );
 }
