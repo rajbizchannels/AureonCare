@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Bot, HelpCircle, LogOut, Menu, Moon, Search, Settings, Sun } from 'lucide-react';
+import { Bell, Bot, HelpCircle, LogOut, Menu, MessageSquare, Moon, Search, Settings, Sun } from 'lucide-react';
 
 /**
  * The app-shell top bar. Spans all three panes and owns the global actions
@@ -9,9 +9,11 @@ const TopBar = ({
   theme,
   user,
   notificationCount = 0,
+  messageCount = 0,
   onLogoClick,
   onToggleMobileNav,
   onSearch,
+  onMessages,
   onNotifications,
   onHelp,
   onAssistant,
@@ -68,6 +70,28 @@ const TopBar = ({
         <button onClick={onSearch} className={iconButton} title="Search">
           <Search className="w-5 h-5" />
         </button>
+
+        {/* Unlike the notification dot, this carries a number: an inbox is
+            something you work through, so how many are waiting is the whole
+            point. Past 9 it reads "9+" — the exact figure stops mattering and
+            a wide pill would push the row around. */}
+        {onMessages && (
+          <button
+            onClick={onMessages}
+            className={`${iconButton} relative`}
+            title={messageCount > 0 ? `Messages (${messageCount} unread)` : 'Messages'}
+            aria-label={messageCount > 0 ? `Messages, ${messageCount} unread` : 'Messages'}
+          >
+            <MessageSquare className="w-5 h-5" />
+            {messageCount > 0 && (
+              <span className={`absolute -top-0.5 -right-0.5 min-w-[1.15rem] h-[1.15rem] px-1 flex items-center justify-center rounded-full text-[0.65rem] font-semibold leading-none text-white bg-gradient-to-r from-cyan-500 to-blue-500 ring-2 ${
+                dark ? 'ring-slate-900' : 'ring-white'
+              }`}>
+                {messageCount > 9 ? '9+' : messageCount}
+              </span>
+            )}
+          </button>
+        )}
 
         <button onClick={onNotifications} className={`${iconButton} relative`} title="Notifications">
           <Bell className="w-5 h-5" />
