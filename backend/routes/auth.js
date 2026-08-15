@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { signToken, authenticate } = require('../middleware/auth');
-const { validateSocialToken, isProviderIdMatch } = require('../utils/socialTokenValidator');
+const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 
@@ -331,11 +331,18 @@ router.post('/social-login', async (req, res) => {
       return res.status(400).json({ error: 'Could not determine email from social provider' });
     }
 
-    // Check if social auth already exists — try canonical (Graph id) first, then
-    // the client-supplied id (handles Microsoft MSAL homeAccountId migration)
+    // SEC-19: match ONLY on the provider-verified canonical id — never the
+    // client-supplied providerId, which an attacker could set to a victim's id.
+    // For not-yet-migrated Microsoft rows still keyed by the MSAL homeAccountId
+    // ("<oid>.<tenantId>"), we additionally match rows whose id begins with the
+    // verified OID — still derived solely from verified data. Migration 060
+    // normalizes these rows so this fallback becomes a no-op over time.
     const socialAuthResult = await pool.query(
-      'SELECT * FROM social_auth WHERE provider = $1 AND (provider_user_id = $2 OR provider_user_id = $3)',
-      [provider, canonicalProviderId, providerId]
+      `SELECT * FROM social_auth
+       WHERE provider = $1
+         AND (provider_user_id = $2
+              OR ($1 = 'microsoft' AND provider_user_id LIKE $2 || '.%'))`,
+      [provider, canonicalProviderId]
     );
 
     let user;
@@ -545,10 +552,14 @@ router.post('/social-register', async (req, res) => {
       return res.status(400).json({ error: 'Could not determine email from social provider' });
     }
 
-    // If this social account is already linked, tell the user to sign in instead
+    // SEC-19: match only on the provider-verified canonical id (plus the verified
+    // OID-prefix fallback for un-migrated Microsoft rows). Never the client id.
     const existingSocial = await pool.query(
-      'SELECT id FROM social_auth WHERE provider = $1 AND (provider_user_id = $2 OR provider_user_id = $3)',
-      [provider, canonicalProviderId, providerId]
+      `SELECT id FROM social_auth
+       WHERE provider = $1
+         AND (provider_user_id = $2
+              OR ($1 = 'microsoft' AND provider_user_id LIKE $2 || '.%'))`,
+      [provider, canonicalProviderId]
     );
     if (existingSocial.rows.length > 0) {
       return res.status(409).json({ error: 'An account already exists for this social profile. Please sign in instead.' });
