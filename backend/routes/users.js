@@ -408,21 +408,47 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
 
 // Delete user — admin only
 router.delete('/:id', authorize('admin'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  const client = await pool.connect();
   try {
-    const pool = req.app.locals.pool;
-    const result = await pool.query(
+    const userId = req.params.id;
+    await client.query('BEGIN');
+
+    // social_auth has no FK to users, so it does not cascade on user deletion.
+    // Explicitly remove the account's linked social identities (rows carry the
+    // user id in BOTH user_id and patient_id) so no orphaned link survives — an
+    // orphan would also keep the UNIQUE(provider, provider_user_id) slot occupied
+    // and block that identity from linking to a new account later.
+    await client.query(
+      'DELETE FROM social_auth WHERE user_id::text = $1::text OR patient_id::text = $1::text',
+      [userId]
+    );
+
+    // Portal sessions are keyed by patient_id (= user id) and likewise do not
+    // cascade; drop them so a deleted account leaves no usable session behind.
+    await client.query(
+      'DELETE FROM patient_portal_sessions WHERE patient_id::text = $1::text',
+      [userId]
+    );
+
+    const result = await client.query(
       'DELETE FROM users WHERE id::text = $1::text RETURNING *',
-      [req.params.id]
+      [userId]
     );
 
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'User not found' });
     }
 
+    await client.query('COMMIT');
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error deleting user:', error);
     res.status(500).json({ error: 'Failed to delete user' });
+  } finally {
+    client.release();
   }
 });
 
