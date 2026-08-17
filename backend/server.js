@@ -102,6 +102,27 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Microsoft publisher domain verification.
+//
+// Entra ID fetches this file over HTTPS to confirm we own the domain. It is
+// served from the backend rather than as a static asset in frontend/public,
+// because the build pipeline does not reliably carry a dot-directory through
+// to the deployed output — /.well-known/... returned 404 when it lived there.
+//
+// Set AC_MS_APP_IDS to the Application (client) IDs to associate, comma
+// separated. One file covers every app registration on the domain.
+app.get('/.well-known/microsoft-identity-association.json', (req, res) => {
+  const appIds = (process.env.AC_MS_APP_IDS || '')
+    .split(',')
+    .map(id => id.trim())
+    .filter(Boolean);
+
+  // Microsoft requires this exact content type; res.json sets it for us.
+  res.json({
+    associatedApplications: appIds.map(applicationId => ({ applicationId })),
+  });
+});
+
 // API routes
 app.get('/api/test', (req, res) => {
   res.json({ 
