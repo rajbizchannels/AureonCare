@@ -2143,8 +2143,11 @@ const api = {
       method: 'POST'
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to backup to Google Drive' }));
-      throw new Error(errorData.error || 'Failed to backup to Google Drive. Please ensure Google Drive is connected.');
+      const errorData = await response.json().catch(() => ({}));
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error(
+        (errorData.error || 'Failed to backup to Google Drive. Please ensure Google Drive is connected.') + detail
+      );
     }
     return response.json();
   },
@@ -3190,12 +3193,20 @@ const api = {
   // Backup & Archive
   getAccountBackups: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`);
-    if (!response.ok) throw new Error('Failed to fetch backups');
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Failed to fetch backups') + detail);
+    }
     return response.json();
   },
   createAccountBackup: async (data) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`, { method: 'POST', body: JSON.stringify(data) });
-    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Backup failed'); }
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Backup failed') + detail);
+    }
     return response.json();
   },
   archiveAccountRecords: async (data) => {
