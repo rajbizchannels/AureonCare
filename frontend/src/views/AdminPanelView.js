@@ -16,7 +16,7 @@
  * - Implement React Query for better API state management
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
   Settings,
@@ -63,6 +63,7 @@ import {
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import CredentialModal from '../components/modals/CredentialModal';
+import BackupDestinationModal from '../components/modals/BackupDestinationModal';
 import { useAudit } from '../hooks/useAudit';
 import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
@@ -335,6 +336,10 @@ const AdminPanelView = ({
     oneDrive: false,
   });
   const [restoreLoading, setRestoreLoading] = useState(false);
+  // Cloud destinations that are actually connected. Drives whether a backup
+  // uploads straight away or asks the admin to choose.
+  const [cloudProviders, setCloudProviders] = useState([]);
+  const [destinationModal, setDestinationModal] = useState({ isOpen: false, mode: 'backup', title: '' });
   const [backupConfig, setBackupConfig] = useState({
     googleDrive: { configured: false },
     oneDrive: { configured: false },
@@ -1792,6 +1797,97 @@ const AdminPanelView = ({
       await addNotification('alert', 'Failed to create local backup');
     } finally {
       setBackupLoading((prev) => ({ ...prev, local: false }));
+    }
+  }, [api, addNotification]);
+
+  /**
+   * Load which cloud destinations are connected, so the backup and restore
+   * actions know whether there is a choice to offer.
+   */
+  const loadCloudProviders = useCallback(async () => {
+    try {
+      setCloudProviders(await api.getCloudBackupProviders());
+    } catch (error) {
+      console.error('Error loading cloud backup destinations:', error);
+      setCloudProviders([]);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    loadCloudProviders();
+  }, [loadCloudProviders]);
+
+  /**
+   * Upload a full system backup to a chosen provider.
+   */
+  const runCloudBackup = useCallback(async (provider) => {
+    const label = cloudProviders.find(p => p.provider === provider)?.label || provider;
+    const key = provider === 'google_drive' ? 'googleDrive' : 'oneDrive';
+    try {
+      setBackupLoading((prev) => ({ ...prev, [key]: true }));
+      await addNotification('info', `Starting ${label} backup...`);
+      await api.backupToCloud(provider);
+      setLastBackup((prev) => ({ ...prev, [key]: new Date().toISOString() }));
+      setBackupSuccessModal({
+        isOpen: true,
+        type: label,
+        message: `Your complete system backup has been uploaded to ${label}.`,
+      });
+    } catch (error) {
+      console.error(`Error backing up to ${provider}:`, error);
+      await addNotification('alert', error.message || `Failed to backup to ${label}`);
+    } finally {
+      setBackupLoading((prev) => ({ ...prev, [key]: false }));
+    }
+  }, [api, addNotification, cloudProviders]);
+
+  /**
+   * Resolve where a backup should be copied to.
+   *
+   * Asks only when there is a real choice: with both providers connected the
+   * admin picks, with one it is used without interrupting them, and with none
+   * the backup stays local. Resolves to a provider id, or null for local only,
+   * or 'cancel' if the admin dismissed the dialog.
+   */
+  const destinationResolver = useRef(null);
+
+  const pickCloudDestination = useCallback((title) => new Promise((resolve) => {
+    if (cloudProviders.length === 0) { resolve(null); return; }
+    if (cloudProviders.length === 1) { resolve(cloudProviders[0].provider); return; }
+    destinationResolver.current = resolve;
+    setDestinationModal({ isOpen: true, mode: 'backup', title });
+  }), [cloudProviders]);
+
+  const closeDestinationModal = useCallback((choice) => {
+    setDestinationModal({ isOpen: false, mode: 'backup', title: '' });
+    const resolve = destinationResolver.current;
+    destinationResolver.current = null;
+    if (resolve) resolve(choice);
+  }, []);
+
+  /**
+   * Restore straight from a backup held on a connected provider.
+   */
+  const handleRestoreFromCloud = useCallback(() => {
+    if (cloudProviders.length === 0) {
+      addNotification('alert', 'No cloud destination is connected. Connect Google Drive or OneDrive first.');
+      return;
+    }
+    setDestinationModal({ isOpen: true, mode: 'restore', title: 'Restore from' });
+  }, [cloudProviders, addNotification]);
+
+  const runCloudRestore = useCallback(async (provider, fileId) => {
+    setDestinationModal({ isOpen: false, mode: 'backup', title: '' });
+    try {
+      setRestoreLoading(true);
+      await addNotification('info', 'Starting data restore...');
+      const result = await api.restoreFromCloudBackup(provider, fileId);
+      setRestoreSuccessModal({ isOpen: true, details: result });
+    } catch (error) {
+      console.error('Error restoring from cloud backup:', error);
+      await addNotification('alert', error.message || 'Failed to restore backup');
+    } finally {
+      setRestoreLoading(false);
     }
   }, [api, addNotification]);
 
@@ -4594,6 +4690,26 @@ const AdminPanelView = ({
             </p>
           </div>
 
+          {cloudProviders.length > 0 && (
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={handleRestoreFromCloud}
+                disabled={restoreLoading}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 ${
+                  theme === 'dark'
+                    ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                    : 'bg-cyan-500 hover:bg-cyan-600 text-white'
+                }`}
+              >
+                Restore from {cloudProviders.length === 1 ? cloudProviders[0].label : 'cloud backup'}
+              </button>
+              <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                Or upload a backup file from this computer:
+              </p>
+            </div>
+          )}
+
           <input
             type="file"
             accept=".json"
@@ -4641,14 +4757,25 @@ const AdminPanelView = ({
               onClick={async () => {
                 setAcctBackupLoading(true);
                 try {
+                  const destination = await pickCloudDestination(`Where should the ${b.label} backup go?`);
+                  if (destination === 'cancel') { setAcctBackupLoading(false); return; }
                   addNotification('info', `Starting ${b.label} backup…`);
-                  const result = await api.createAccountBackup({ backupType: b.type });
+                  const result = await api.createAccountBackup({
+                    backupType: b.type,
+                    destination: destination || undefined,
+                  });
                   setAcctBackups(prev => [result, ...prev]);
                   const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a'); a.href = url; a.download = result.fileName; a.click();
                   URL.revokeObjectURL(url);
-                  addNotification('success', `Backup complete: ${result.recordCount} records`);
+                  if (result.cloudError) {
+                    addNotification('alert', `Saved locally, but the upload failed: ${result.cloudError}`);
+                  } else {
+                    addNotification('success', result.cloud
+                      ? `Backup complete: ${result.recordCount} records, copied to ${result.cloud.label}`
+                      : `Backup complete: ${result.recordCount} records`);
+                  }
                 } catch (err) {
                   addNotification('error', err.message || 'Accounts backup failed');
                 } finally { setAcctBackupLoading(false); }
@@ -4721,14 +4848,25 @@ const AdminPanelView = ({
               onClick={async () => {
                 setInvBackupLoading(true);
                 try {
+                  const destination = await pickCloudDestination(`Where should the ${b.label} backup go?`);
+                  if (destination === 'cancel') { setInvBackupLoading(false); return; }
                   addNotification('info', `Starting ${b.label} backup…`);
-                  const result = await api.createInventoryBackup({ backupType: b.type });
+                  const result = await api.createInventoryBackup({
+                    backupType: b.type,
+                    destination: destination || undefined,
+                  });
                   setInvBackups(prev => [result, ...prev]);
                   const blob = new Blob([JSON.stringify(result.data || result, null, 2)], { type: 'application/json' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a'); a.href = url; a.download = result.fileName || `inventory_backup_${b.type}.json`; a.click();
                   URL.revokeObjectURL(url);
-                  addNotification('success', `Backup complete: ${result.totalRecords || '?'} records`);
+                  if (result.cloudError) {
+                    addNotification('alert', `Saved locally, but the upload failed: ${result.cloudError}`);
+                  } else {
+                    addNotification('success', result.cloud
+                      ? `Backup complete: ${result.totalRecords || '?'} records, copied to ${result.cloud.label}`
+                      : `Backup complete: ${result.totalRecords || '?'} records`);
+                  }
                 } catch (err) {
                   addNotification('error', err.message || 'Inventory backup failed');
                 } finally { setInvBackupLoading(false); }
@@ -4889,6 +5027,28 @@ const AdminPanelView = ({
       />
 
       {/* Credential Modal */}
+      <BackupDestinationModal
+        isOpen={destinationModal.isOpen}
+        mode={destinationModal.mode}
+        title={destinationModal.title}
+        providers={cloudProviders}
+        theme={theme}
+        allowLocal
+        busy={restoreLoading}
+        listBackups={(provider) => api.listCloudBackups(provider)}
+        onSelect={(provider) => {
+          // A pending picker means some caller is awaiting the choice; without
+          // one this is the standalone system backup.
+          if (destinationResolver.current) closeDestinationModal(provider === 'local' ? null : provider);
+          else { setDestinationModal({ isOpen: false, mode: 'backup', title: '' }); runCloudBackup(provider); }
+        }}
+        onSelectBackup={runCloudRestore}
+        onClose={() => {
+          if (destinationResolver.current) closeDestinationModal('cancel');
+          else setDestinationModal({ isOpen: false, mode: 'backup', title: '' });
+        }}
+      />
+
       <CredentialModal
         isOpen={showCredentialModal}
         onClose={() => {
