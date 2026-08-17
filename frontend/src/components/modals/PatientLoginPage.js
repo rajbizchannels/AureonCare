@@ -37,6 +37,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
       const response = await api.patientPortalLogin(email, password);
 
       // Patient portal login returns { patient, sessionToken, expiresAt }
+      sessionStorage.setItem('portalSessionToken', response.sessionToken);
       setUser(response.patient);
       setIsAuthenticated(true);
 
@@ -78,6 +79,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
         );
 
         // Patient portal login returns { patient, sessionToken, expiresAt }
+        sessionStorage.setItem('portalSessionToken', response.sessionToken);
         setUser(response.patient);
         setIsAuthenticated(true);
 
@@ -127,6 +129,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
       );
 
       // Patient portal login returns { patient, sessionToken, expiresAt }
+      sessionStorage.setItem('portalSessionToken', response.sessionToken);
       setUser(response.patient);
       setIsAuthenticated(true);
 

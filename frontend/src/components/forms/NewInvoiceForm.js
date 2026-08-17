@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Tag, Bell, X } from 'lucide-react';
+import ThemedSelect from './ThemedSelect';
 
 const NewInvoiceForm = ({ theme, api, patients, onClose, onSuccess, addNotification, editingInvoice, t }) => {
   const [loading, setLoading] = useState(false);
@@ -340,12 +341,12 @@ const NewInvoiceForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
               <label className={labelClass}>
                 {t?.patient || 'Patient'} <span className="text-red-400">*</span>
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 required
                 disabled={loading}
                 value={patientId}
                 onChange={(e) => setPatientId(e.target.value)}
-                className={inputClass}
               >
                 <option value="">{t?.selectPatient || 'Select Patient'}</option>
                 {patients.map(p => (
@@ -353,7 +354,7 @@ const NewInvoiceForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                     {p.first_name} {p.last_name} - {p.mrn}
                   </option>
                 ))}
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
@@ -376,15 +377,15 @@ const NewInvoiceForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
             <label className={labelClass}>
               {t?.status || 'Status'}
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               disabled={loading}
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className={inputClass}
             >
               <option value="draft">{t?.draft || 'Draft'}</option>
               <option value="sent">{t?.sent || 'Sent'}</option>
-            </select>
+            </ThemedSelect>
           </div>
 
           {/* Line Items */}
@@ -506,11 +507,11 @@ const NewInvoiceForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                       <label className={labelClass}>
                         {t?.linkDiagnosis || 'Link Diagnosis'}
                       </label>
-                      <select
+                      <ThemedSelect
+                        theme={theme}
                         disabled={loading || loadingDiagnoses}
                         value={item.diagnosisId}
                         onChange={(e) => handleDiagnosisSelect(item.id, e.target.value)}
-                        className={inputClass}
                       >
                         <option value="">
                           {loadingDiagnoses ? (t?.loading || 'Loading...') : (t?.noneDiagnosis || 'None')}
@@ -520,17 +521,17 @@ const NewInvoiceForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                             {d.diagnosisCode || d.diagnosis_code || ''} - {d.diagnosisName || d.diagnosis_name || ''}
                           </option>
                         ))}
-                      </select>
+                      </ThemedSelect>
                     </div>
                     <div>
                       <label className={labelClass}>
                         {t?.linkOffering || 'Link Offering'}
                       </label>
-                      <select
+                      <ThemedSelect
+                        theme={theme}
                         disabled={loading || loadingOfferings}
                         value={item.offeringId}
                         onChange={(e) => handleOfferingSelect(item.id, e.target.value)}
-                        className={inputClass}
                       >
                         <option value="">
                           {loadingOfferings ? (t?.loading || 'Loading...') : (t?.noneOffering || 'None')}
@@ -540,7 +541,7 @@ const NewInvoiceForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                             {o.name}{o.price != null ? ` - $${parseFloat(o.price).toFixed(2)}` : (o.base_price != null ? ` - $${parseFloat(o.base_price).toFixed(2)}` : '')}
                           </option>
                         ))}
-                      </select>
+                      </ThemedSelect>
                     </div>
                   </div>
                 </div>
@@ -714,16 +715,16 @@ const NewInvoiceForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                     <label className={labelClass}>
                       {t?.priority || 'Priority'}
                     </label>
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       disabled={loading}
                       value={reminderPriority}
                       onChange={(e) => setReminderPriority(e.target.value)}
-                      className={inputClass}
                     >
                       <option value="High">{t?.high || 'High'}</option>
                       <option value="Medium">{t?.medium || 'Medium'}</option>
                       <option value="Low">{t?.low || 'Low'}</option>
-                    </select>
+                    </ThemedSelect>
                   </div>
                 </div>
               </div>

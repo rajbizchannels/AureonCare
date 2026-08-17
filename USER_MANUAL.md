@@ -1,6 +1,6 @@
 # AureonCare User Manual
 
-**Version 1.2 - Updated February 2026**
+**Version 1.3 - Updated August 2026**
 **Modern Healthcare Practice Management System**
 
 ---
@@ -30,6 +30,10 @@
 21. [Troubleshooting & FAQs](#21-troubleshooting--faqs)
 22. [Best Practices](#22-best-practices)
 23. [Glossary](#23-glossary)
+24. [Form Management](#24-form-management)
+25. [Accounting](#25-accounting)
+26. [Inventory Management](#26-inventory-management)
+27. [Subscription Plans & Licensing](#27-subscription-plans--licensing)
 
 ---
 
@@ -41,14 +45,18 @@ AureonCare is a comprehensive, enterprise-grade medical practice management plat
 
 **Key Capabilities:**
 - Electronic Health Records (EHR) management
-- Appointment scheduling and practice management
+- Appointment scheduling, waitlist, and public self-booking links
 - Revenue Cycle Management (RCM) with claims and billing
-- Telehealth video consultations
+- Double-entry accounting and inventory management
+- Custom form building with automated patient intake
+- Telehealth video consultations across Zoom, Google Meet, Teams, and Webex
 - Patient portal for self-service
 - Laboratory and pharmacy management
+- Email and WhatsApp notifications across every module
 - FHIR HL7 compliant for interoperability
 - Multi-language support (8 languages)
 - HIPAA-ready security and compliance
+- Cloud, customer-cloud, and on-premises deployment
 
 ### 1.2 Who Should Use This Manual
 
@@ -84,7 +92,101 @@ This manual is designed for:
 - 💡 **Tip** - Helpful suggestions and best practices
 - ✅ **Note** - Additional information
 
-### 1.5 What's New in Version 1.2 (January 2026)
+### 1.5 What's New in Version 1.3 (August 2026)
+
+**Major New Features:**
+
+🆕 **Three-Pane Application Shell**
+- The platform is reorganised around a three-pane workspace layout
+- **Pane 1 — Workspace groups:** Home, Scheduling, Patients, Clinical, Billing, Operations, Growth, Insights, Settings
+- **Pane 2 — Modules:** the modules and sub-modules inside the active group
+- **Pane 3 — Content:** the module view itself
+- Breadcrumb trail shows your position across all three panes
+- Every module from earlier versions is still reachable — nothing was removed
+- Home collapses to a single pane so the dashboard fills the content area
+- See Section 2.4 for the full navigation map
+
+🆕 **Accounting Module** (Operations)
+- Double-entry accounting built into the platform
+- Chart of Accounts, Journal Entries, Receivables, Payables
+- Bank reconciliation and financial statements
+- Ties directly to Revenue Cycle payments and Inventory purchase orders
+- See Section 25
+
+🆕 **Inventory Management** (Operations)
+- Track items, stock levels, and reorder points
+- Purchase orders and supplier management
+- Item categories and stock movement history
+- Low-stock alerts routed through the notification system
+- See Section 26
+
+🆕 **Form Management** (Patients)
+- Build and version custom forms from a template library
+- Default intake forms trigger automatically on patient registration
+- Patients complete assigned forms in the Patient Portal
+- Submission tracking with a full form audit trail
+- See Section 24
+
+🆕 **Expanded Telehealth Providers**
+- Zoom, Google Meet, Microsoft Teams, and Webex are all supported
+- Per-patient telehealth preference is honoured when scheduling
+- OAuth connection and token refresh handled per provider in Settings → Integrations
+- Zoom Marketplace compliance: consent dialogs, recording indicator, Active Apps Notifier
+
+🆕 **Public Booking Links**
+- Share a public self-scheduling link at `/book/<practice-slug>`
+- Patients book without an account; no login required
+- Prices display in the practice's configured currency
+- Bookings flow into the normal appointment queue
+
+🆕 **Centralised Notification System**
+- Email (SMTP) and WhatsApp notifications across all modules
+- Notifies patients, providers, and admins on the events that matter
+- Patients opt in to WhatsApp; providers and admins use the number on record
+- Notification failures never block the underlying action
+
+🆕 **Stripe Payment Integration**
+- Card payments processed through Stripe
+- Webhook handler keeps payment status in sync automatically
+- Stripe credentials configured in Settings → Integrations
+
+🆕 **Subscription Tiers & License Keys**
+- Four tiers: **Practice Essentials**, **Clinical Pro**, **Enterprise**, **On-Premises**
+- Module access is gated by tier *and* by role — both must permit access
+- License key generation, activation, and revocation for on-premises deployments
+- Seat limits on providers, users, and patients
+- See Section 27
+
+🆕 **Rebuilt Reports Module**
+- Reports reorganised into categories under Insights
+- Custom report builder for ad-hoc queries
+- Consistent export to PDF, Excel, and CSV
+
+🆕 **Security Hardening**
+- JWT-based authentication issued at login and verified on every API call
+- All user, clinical, and admin endpoints require authentication
+- Session state moved from `localStorage` to `sessionStorage`
+- Patient portal: rate limiting and account lockout on repeated failed logins
+- Portal session tokens hashed at rest and bound to the patient
+- Social login tokens validated server-side before an account is created
+- Clickjacking protections added
+
+🆕 **Patient Portal Enhancements**
+- The portal is now the patient's Home workspace
+- Assigned forms appear directly in the portal
+- Dated patient record uploads with cloud storage sync
+- Appointment, diagnosis, prescription, and record views reorganised
+
+🆕 **FHIR Tracking & Calendar Sync**
+- FHIR resource tracking restored under Clinical
+- Provider calendar synchronisation re-enabled
+
+🆕 **Deployment Options**
+- Docker and Helm charts for self-hosted installs
+- CI/CD pipelines and an automated update agent
+- Supports cloud, customer-cloud, and on-premises deployment
+
+### 1.6 What's New in Version 1.2 (January 2026)
 
 **Major New Features:**
 
@@ -181,7 +283,7 @@ This manual is designed for:
 - Contextual help based on current module
 - Quick access via Help icon in header or ?help=true URL parameter
 
-### 1.6 What's New in Version 1.1 (December 2025)
+### 1.7 What's New in Version 1.1 (December 2025)
 
 **Previous Enhancements:**
 
@@ -288,10 +390,24 @@ AureonCare supports social login options:
 
 ### 2.4 Understanding the Interface
 
-**Main Navigation:**
-- **Top Menu Bar** - Access to main modules
-- **Left Sidebar** - Quick navigation to key features
+**🆕 UPDATED IN V1.3:** AureonCare uses a three-pane application shell.
+
+**The Three Panes:**
+
+| Pane | Name | What it holds |
+|------|------|---------------|
+| **1** | Primary navigation | Workspace groups — Home, Scheduling, Patients, Clinical, Billing, Operations, Growth, Insights, Settings |
+| **2** | Secondary navigation | The modules and sub-modules inside the workspace you selected |
+| **3** | Content | The module view you are working in |
+
+Select a workspace in pane 1, pick a module in pane 2, and it opens in pane 3. A breadcrumb trail above the content shows your position and lets you step back.
+
+✅ **Note:** Home holds a single destination, so the shell hides pane 2 and the dashboard fills the content area.
+
+**Header Controls:**
+- **Universal Search** - Search every module (Ctrl+K / Cmd+K)
 - **Notifications Icon** - View system notifications
+- **Help Icon (?)** - Open the help drawer
 - **User Profile Icon** - Access settings and logout
 - **Theme Toggle** - Switch between light and dark mode
 - **Language Selector** - Change interface language
@@ -303,16 +419,53 @@ AureonCare supports social login options:
 - **Upcoming Appointments** - Today's schedule
 - **Pending Tasks** - Action items requiring attention
 
-### 2.5 Navigation Basics
+Dashboard cards drill down into detail views nested under Home.
 
-**Accessing Modules:**
-1. Click on the module name in the top menu (e.g., Patients, Appointments)
-2. Or use the left sidebar for quick access
-3. Use the search bar to find specific records
+### 2.5 Navigation Map
 
-**Breadcrumb Navigation:**
-- Shows your current location in the system
-- Click any breadcrumb to navigate back
+Every module in AureonCare lives in exactly one workspace group. Use this map to find what you need.
+
+**🏠 Home**
+- Dashboard — today at a glance
+
+**📅 Scheduling**
+- *Calendar:* Calendar view (day/week/month), Appointment list, Waitlist
+- *Providers:* Provider management
+- *Setup:* Appointment types
+
+**👥 Patients**
+- *Records:* EHR, Diagnosis, Patient history
+- *Forms:* Patient intake, Form templates, Form submissions, Form audit
+- *Engagement:* Patient portal — appointments, diagnoses, prescriptions, records, forms
+
+**🩺 Clinical**
+- *Care:* Telehealth
+- *Network:* Pharmacies, Laboratories
+- *FHIR:* FHIR tracking
+
+**💰 Billing**
+- *Revenue Cycle:* Claims, Pre-approvals, Payments, Payment postings, Denials
+- *Patient Billing:* Invoices
+- *Setup:* Insurance payers
+
+**⚙️ Operations**
+- *Accounting:* Overview, Chart of accounts, Journal, Receivables, Payables, Reconciliation, Statements
+- *Inventory:* Overview, Items, Stock, Purchase orders, Suppliers, Categories
+
+**📈 Growth**
+- *CRM:* Overview, Campaigns
+- *Catalog:* Offerings, Packages, Service categories, Promotions, Catalog stats
+
+**📊 Insights**
+- Reports (by category)
+- Custom report builder
+
+**🔧 Settings**
+- *Practice:* Clinic settings, Working hours, Appointment settings
+- *Access:* Users, Roles, Plans
+- *System:* Integrations, Telehealth setup, Backup, Archive, Audit logs
+
+💡 **Tip:** What you see depends on your subscription tier *and* your role. A module must be included in your plan **and** permitted by your role before it appears. See Section 27.
 
 **Common Actions:**
 - **View** - Click on a record to see details
@@ -1939,16 +2092,44 @@ The problem list provides a summary of active conditions:
 
 ## 11. Telehealth Video Consultations
 
+Found under **Clinical → Telehealth**.
+
+### 11.0 Supported Video Providers
+
+**🆕 UPDATED IN V1.3:** AureonCare connects to four video platforms.
+
+| Provider | Connection | Notes |
+|----------|-----------|-------|
+| **Zoom** | OAuth | Embedded SDK experience; Marketplace-compliant consent and recording indicators |
+| **Google Meet** | OAuth | Meeting links generated on the practice Google account |
+| **Microsoft Teams** | OAuth | Meeting links generated via Microsoft Graph |
+| **Webex** | OAuth | Meeting links generated on the practice Webex account |
+
+**Connecting a Provider:**
+
+1. Go to **Settings → Telehealth Setup**
+2. Choose the provider
+3. Click **Connect** and complete the OAuth consent screen
+4. The connection is confirmed and tokens refresh automatically
+5. Toggle **Enabled** to make the provider available for scheduling
+
+✅ **Note:** More than one provider can be enabled at once. Access tokens refresh in the background; if a connection lapses, Settings → Telehealth Setup shows a reconnect prompt.
+
+**Patient Telehealth Preference:**
+
+Each patient record carries a preferred video platform. When a telehealth appointment is booked, the system uses that preference if the provider is enabled, and falls back to the practice default otherwise. Set it on the patient record under **Preferences**.
+
 ### 11.1 Scheduling Telehealth Appointments
 
 **Creating a Telehealth Appointment:**
 
-1. Navigate to **Appointments** > **New Appointment**
+1. Navigate to **Scheduling → Calendar** and start a new appointment
 2. Select **Telehealth Consultation** as appointment type
 3. Fill in appointment details (patient, provider, date, time)
-4. Click **Schedule Appointment**
-5. System automatically creates virtual meeting room
-6. Patient receives email with meeting link
+4. Confirm or change the video platform — it defaults to the patient's preference
+5. Click **Schedule Appointment**
+6. System automatically creates the virtual meeting room
+7. Patient receives the meeting link by email, and by WhatsApp if they have opted in
 
 ### 11.2 Starting a Telehealth Session
 
@@ -2872,11 +3053,54 @@ The Patient Portal is a secure online platform where patients can:
 - View and manage appointments
 - Access medical records
 - View prescriptions
+- Complete assigned forms
 - Communicate with providers
 - Manage personal information
 - Browse healthcare offerings
 
-### 16.2 Patient Portal Setup
+**🆕 UPDATED IN V1.3:** When a patient signs in, the portal *is* their Home workspace — they land directly on it rather than navigating to it. Portal sections appear in the second pane: Appointments, Diagnoses, Prescriptions, Records, and Forms.
+
+**Portal Security (V1.3):**
+- Session tokens are hashed at rest and bound to the specific patient
+- Repeated failed logins trigger rate limiting and temporary account lockout
+- Sessions are held in `sessionStorage` and clear when the browser closes
+- Social login tokens are validated server-side before any account is created
+
+### 16.2 Public Booking Links
+
+**🆕 NEW IN V1.3:** Let patients book without an account.
+
+Every practice has a public booking page at:
+
+```
+https://<your-domain>/book/<practice-slug>
+```
+
+**Setting It Up:**
+
+1. Go to **Settings → Clinic Settings**
+2. Find **Public Booking Link**
+3. Set the practice slug (the readable name in the URL)
+4. Toggle **Enable public booking**
+5. Choose which appointment types are bookable publicly
+6. Click **Save**
+
+**What Patients See:**
+
+- Available appointment types with prices in the practice's configured currency
+- Open slots drawn from live provider availability
+- A short form for name, contact details, and reason for visit
+- Immediate booking confirmation by email
+
+**What Happens Next:**
+
+Public bookings arrive in the normal appointment queue. If the contact details match an existing patient, the booking attaches to that record; otherwise a provisional patient record is created for staff to complete at check-in.
+
+💡 **Tip:** Share the booking link on your website, in email signatures, and on appointment reminder messages.
+
+⚠️ **Warning:** The booking page is public by design. It exposes appointment types, availability, and prices — nothing else. No patient data is readable from it.
+
+### 16.3 Patient Portal Setup
 
 **Enabling Portal for a Patient:**
 
@@ -2888,7 +3112,7 @@ The Patient Portal is a secure online platform where patients can:
    - Temporary password or registration link
    - Instructions for first-time login
 
-### 16.3 Patient Portal Features (Patient View)
+### 16.4 Patient Portal Features (Patient View)
 
 **After Logging Into Patient Portal:**
 
@@ -3024,7 +3248,7 @@ The Patient Portal is a secure online platform where patients can:
 
 ⚠️ **Note:** Do not use messaging for urgent issues. Call clinic or go to emergency room for emergencies.
 
-### 16.4 Patient Portal Best Practices
+### 16.5 Patient Portal Best Practices
 
 **For Patients:**
 - ✅ Keep contact information up to date
@@ -3202,18 +3426,50 @@ Based on role permissions:
 
 ### 18.1 Notifications System
 
+**🆕 UPDATED IN V1.3:** Notifications are now centralised across every module and delivered by email and WhatsApp in addition to in-app alerts.
+
+**Delivery Channels:**
+
+| Channel | Recipients | Opt-in Required |
+|---------|-----------|-----------------|
+| **In-app** | All users | No |
+| **Email** | Patients, providers, admins | No |
+| **WhatsApp** | Patients | Yes — patient must opt in |
+| **WhatsApp** | Providers, admins | No — sent to the number on record |
+
+✅ **Note:** Notification delivery never blocks the underlying action. If an email or WhatsApp message fails, the failure is logged and the appointment, claim, or order still completes.
+
 **Types of Notifications:**
 
 AureonCare sends automatic notifications for:
-- New appointment bookings
+- New appointment bookings, including public booking-link bookings
 - Appointment reminders
-- Appointment cancellations
+- Appointment cancellations and reschedules
+- Waitlist slot availability and booking confirmations
+- Telehealth session links and start reminders
 - Lab results available
 - Prescription refill requests
+- Form assignments and submission receipts
 - Patient portal messages
 - Claim status updates
+- Payment receipts and failures
+- Inventory low-stock and reorder alerts
 - Task assignments
 - System alerts
+
+**Patient WhatsApp Opt-In:**
+
+1. Open the patient record
+2. Go to **Preferences → Notification Preferences**
+3. Toggle **WhatsApp notifications**
+4. Confirm the mobile number
+5. Click **Save**
+
+Patients can also manage this themselves in the Patient Portal.
+
+**Configuring Notification Delivery:**
+
+Administrators set the sending email account and WhatsApp credentials in **Settings → Integrations**. Admin contact details for system alerts are taken from the organisation settings.
 
 ### 18.2 Viewing Notifications
 
@@ -4880,6 +5136,466 @@ Provide the following information to get faster help:
 
 ---
 
+## 24. Form Management
+
+**🆕 NEW IN V1.3** — Found under **Patients → Forms**
+
+Form Management lets you build custom forms, assign them to patients, and track every submission with a full audit trail.
+
+### 24.1 Form Templates
+
+**Creating a Template:**
+
+1. Go to **Patients → Form Templates**
+2. Click **+ New Template**
+3. Give the template a name, description, and category
+4. Add fields from the builder:
+
+| Field Type | Use For |
+|------------|---------|
+| Text / Text area | Free-text answers |
+| Number | Numeric values |
+| Date | Dates of birth, onset dates |
+| Dropdown | Single choice from a list |
+| Checkbox | Multiple selections |
+| Radio | Single choice, all options visible |
+| Signature | Patient or provider sign-off |
+| File upload | Supporting documents |
+
+5. Mark fields **Required** where an answer is mandatory
+6. Click **Save Template**
+
+**Template Library:**
+
+AureonCare ships with starter templates for common intake scenarios — new patient registration, medical history, consent, and insurance details. Copy one and adapt it rather than starting from scratch.
+
+**Versioning:**
+
+Editing a published template creates a new version. Submissions stay attached to the version that was live when the patient completed the form, so historical records never change retroactively.
+
+### 24.2 Default Intake Forms
+
+Mark a template as a **default intake form** and it is assigned automatically when a new patient registers.
+
+1. Open the template
+2. Toggle **Assign on patient registration**
+3. Save
+
+The patient sees the form in their portal on first login. Staff see its status on the patient record.
+
+### 24.3 Assigning Forms Manually
+
+1. Open the patient's record
+2. Go to the **Forms** tab
+3. Click **Assign Form**
+4. Choose the template and a due date
+5. Click **Assign**
+
+The patient is notified by email (and WhatsApp, if opted in) that a form is waiting.
+
+### 24.4 Form Submissions
+
+Go to **Patients → Form Submissions** to review completed forms.
+
+**Submission Statuses:**
+
+- 📋 **Assigned** — Sent to the patient, not started
+- ✏️ **In Progress** — Patient has begun answering
+- ✅ **Submitted** — Completed and awaiting review
+- 👁️ **Reviewed** — A staff member has reviewed it
+- ❌ **Declined** — Patient declined to complete
+
+**Reviewing a Submission:**
+
+1. Click the submission
+2. Read the answers
+3. Click **Mark Reviewed**, or **Request Changes** to send it back with a note
+
+### 24.5 Form Audit Trail
+
+**Patients → Form Audit** records every action taken on every form:
+
+- Who created or edited a template, and when
+- When a form was assigned and to whom
+- Every save the patient made while completing it
+- Who reviewed the submission
+- Any changes requested
+
+The audit trail is immutable and exportable for compliance reporting.
+
+### 24.6 Best Practices
+
+- ✅ Keep intake forms short — completion rates drop sharply past 20 fields
+- ✅ Mark only genuinely mandatory fields as Required
+- ✅ Use dropdowns instead of free text where you plan to report on the answers
+- ✅ Review submissions within 24 hours of receipt
+- ✅ Version templates rather than editing them in place mid-cycle
+- ❌ Don't collect data you have no workflow for
+- ❌ Don't duplicate fields the patient record already stores
+
+---
+
+## 25. Accounting
+
+**🆕 NEW IN V1.3** — Found under **Operations → Accounting**
+
+The Accounting module provides double-entry bookkeeping for the practice, linked to Revenue Cycle payments and Inventory purchase orders.
+
+### 25.1 Accounting Overview
+
+The overview dashboard shows:
+
+- Cash position across all bank accounts
+- Outstanding receivables and payables
+- Revenue and expenses for the current period
+- Unreconciled transaction count
+- Period-over-period comparison
+
+### 25.2 Chart of Accounts
+
+The Chart of Accounts is the list of every account the practice books against.
+
+**Account Types:**
+
+| Type | Normal Balance | Examples |
+|------|----------------|----------|
+| **Asset** | Debit | Cash, Accounts Receivable, Equipment, Inventory |
+| **Liability** | Credit | Accounts Payable, Loans, Accrued Expenses |
+| **Equity** | Credit | Owner's Capital, Retained Earnings |
+| **Revenue** | Credit | Patient Revenue, Insurance Revenue, Product Sales |
+| **Expense** | Debit | Salaries, Rent, Supplies, Utilities |
+
+**Adding an Account:**
+
+1. Go to **Operations → Chart of Accounts**
+2. Click **+ New Account**
+3. Enter the account number, name, and type
+4. Optionally nest it under a parent account
+5. Click **Save**
+
+💡 **Tip:** Number accounts in blocks — 1000s for assets, 2000s liabilities, 3000s equity, 4000s revenue, 5000s expenses. Reports group cleanly when you do.
+
+### 25.3 Journal Entries
+
+**Creating an Entry:**
+
+1. Go to **Operations → Journal**
+2. Click **+ New Journal Entry**
+3. Set the entry date and a description
+4. Add lines — each line takes an account, a debit or a credit, and an optional memo
+5. Confirm total debits equal total credits
+6. Click **Post Entry**
+
+⚠️ **Warning:** An entry will not post unless debits and credits balance exactly.
+
+**Automatic Entries:**
+
+The system posts journal entries for you when:
+
+- A patient or insurance payment is recorded in Revenue Cycle
+- An invoice is issued
+- A purchase order is received into Inventory
+- A refund is processed
+
+Automatic entries are marked with a system flag and link back to the source record.
+
+### 25.4 Accounts Receivable
+
+**Operations → Receivables** tracks money owed to the practice.
+
+- Outstanding patient balances
+- Outstanding insurance claims
+- Aging buckets: current, 31–60, 61–90, 90+ days
+- Drill through to the originating claim or invoice
+
+Receivables reconcile against the A/R figures in Revenue Cycle reporting.
+
+### 25.5 Accounts Payable
+
+**Operations → Payables** tracks money the practice owes.
+
+**Recording a Bill:**
+
+1. Go to **Operations → Payables**
+2. Click **+ New Bill**
+3. Select the supplier
+4. Enter the bill number, date, due date, and amount
+5. Assign it to an expense account
+6. Click **Save**
+
+**Paying a Bill:**
+
+1. Open the bill
+2. Click **Record Payment**
+3. Enter the amount, date, and payment method
+4. Click **Save** — the journal entry posts automatically
+
+Bills raised from Inventory purchase orders appear here automatically when stock is received.
+
+### 25.6 Bank Reconciliation
+
+1. Go to **Operations → Reconciliation**
+2. Select the bank account and statement period
+3. Enter the closing balance from your bank statement
+4. Tick each transaction that appears on the statement
+5. The difference must reach zero
+6. Click **Complete Reconciliation**
+
+✅ **Note:** Reconciled transactions lock. Reopen the reconciliation to amend them.
+
+### 25.7 Financial Statements
+
+**Operations → Statements** generates:
+
+| Statement | Shows |
+|-----------|-------|
+| **Profit & Loss** | Revenue less expenses over a period |
+| **Balance Sheet** | Assets, liabilities, and equity at a point in time |
+| **Cash Flow** | Cash movement across operating, investing, financing |
+| **Trial Balance** | All account balances, proving debits equal credits |
+| **General Ledger** | Every transaction, by account |
+
+All statements export to PDF, Excel, and CSV.
+
+### 25.8 Best Practices
+
+- ✅ Reconcile bank accounts monthly, without exception
+- ✅ Review the trial balance before closing a period
+- ✅ Post journal entries with descriptions a colleague would understand
+- ✅ Match payables to purchase orders before paying
+- ✅ Run P&L monthly and compare against the prior period
+- ❌ Don't edit reconciled transactions without reopening the reconciliation
+- ❌ Don't post to a suspense account and forget about it
+
+---
+
+## 26. Inventory Management
+
+**🆕 NEW IN V1.3** — Found under **Operations → Inventory**
+
+Track consumables, medications, and equipment — from purchase order through to consumption.
+
+### 26.1 Inventory Overview
+
+The overview shows:
+
+- Total inventory value
+- Items at or below reorder point
+- Out-of-stock items
+- Open purchase orders
+- Recent stock movements
+- Expiring stock (where expiry dates are tracked)
+
+### 26.2 Items
+
+**Adding an Item:**
+
+1. Go to **Operations → Items**
+2. Click **+ New Item**
+3. Enter the item details:
+
+| Field | Description |
+|-------|-------------|
+| **Item Name** | What the item is called (required) |
+| **SKU / Code** | Your internal identifier |
+| **Category** | Groups the item for reporting |
+| **Unit of Measure** | Each, box, vial, ml, etc. |
+| **Unit Cost** | What you pay per unit |
+| **Reorder Point** | Stock level that triggers a low-stock alert |
+| **Reorder Quantity** | How much to order when restocking |
+| **Preferred Supplier** | Default supplier for purchase orders |
+| **Track Expiry** | Whether the item carries expiry dates |
+| **Storage Location** | Where it is kept |
+
+4. Click **Save Item**
+
+### 26.3 Stock Levels
+
+**Operations → Stock** shows current quantity on hand for every item.
+
+**Recording a Stock Movement:**
+
+1. Go to **Operations → Stock**
+2. Find the item
+3. Click **Adjust Stock**
+4. Choose the movement type:
+
+| Type | Effect | Used When |
+|------|--------|-----------|
+| **Receipt** | Increase | Stock arrives from a supplier |
+| **Consumption** | Decrease | Item used during patient care |
+| **Adjustment** | Either | Correcting a count discrepancy |
+| **Transfer** | Moves | Shifting stock between locations |
+| **Write-off** | Decrease | Damaged, expired, or lost stock |
+
+5. Enter the quantity and a reason
+6. Click **Save**
+
+Every movement is timestamped and attributed to the user who recorded it.
+
+**Low-Stock Alerts:**
+
+When stock falls to the reorder point, the system raises a notification to inventory managers by email and WhatsApp. The item is flagged on the overview until stock is replenished.
+
+### 26.4 Purchase Orders
+
+**Raising a Purchase Order:**
+
+1. Go to **Operations → Purchase Orders**
+2. Click **+ New Purchase Order**
+3. Select the supplier
+4. Add line items — item, quantity, and unit cost
+5. Review the order total
+6. Click **Submit Order**
+
+**Purchase Order Statuses:**
+
+- 📝 **Draft** — Being prepared, not yet sent
+- 📤 **Submitted** — Sent to the supplier
+- ✅ **Confirmed** — Supplier acknowledged
+- 📦 **Partially Received** — Some lines delivered
+- ✔️ **Received** — All lines delivered
+- ❌ **Cancelled** — Order withdrawn
+
+**Receiving Stock:**
+
+1. Open the purchase order
+2. Click **Receive Stock**
+3. Enter the quantity received per line — partial receipts are supported
+4. Record batch numbers and expiry dates where the item tracks them
+5. Click **Confirm Receipt**
+
+Stock levels increase, and a bill is raised in Accounts Payable automatically.
+
+### 26.5 Suppliers
+
+**Operations → Suppliers** holds your vendor list.
+
+**Supplier Record:**
+- Supplier name and account number
+- Contact person, phone, email
+- Address and delivery terms
+- Payment terms (e.g. Net 30)
+- Items typically supplied
+- Notes
+
+Supplier performance — order volume, on-time delivery, average lead time — is visible on the supplier record.
+
+### 26.6 Categories
+
+**Operations → Categories** groups items for reporting and reorder policy. Categories can nest, for example *Consumables → Wound Care → Dressings*.
+
+### 26.7 Best Practices
+
+- ✅ Set realistic reorder points based on actual usage, not guesswork
+- ✅ Count physical stock quarterly and reconcile against the system
+- ✅ Record consumption at the point of use, not at the end of the week
+- ✅ Review expiring stock monthly
+- ✅ Match delivery notes against purchase orders before confirming receipt
+- ❌ Don't let write-offs accumulate unexplained
+- ❌ Don't order outside the purchase order system — the audit trail breaks
+
+---
+
+## 27. Subscription Plans & Licensing
+
+**🆕 NEW IN V1.3** — Found under **Settings → Plans**
+
+### 27.1 How Access is Determined
+
+A module appears for a user only when **both** conditions hold:
+
+1. The module is included in the practice's **subscription tier**
+2. The user's **role** permits access to it
+
+If either check fails, the module does not appear in the navigation.
+
+### 27.2 Subscription Tiers
+
+| Module | Practice Essentials | Clinical Pro | Enterprise | On-Premises |
+|--------|:---:|:---:|:---:|:---:|
+| Dashboard | ✅ | ✅ | ✅ | ✅ |
+| Practice Management | ✅ | ✅ | ✅ | ✅ |
+| Provider Management | ✅ | ✅ | ✅ | ✅ |
+| EHR | ✅ | ✅ | ✅ | ✅ |
+| Patient Portal | ✅ | ✅ | ✅ | ✅ |
+| Clinical Services | ✅ | ✅ | ✅ | ✅ |
+| Reports | ✅ | ✅ | ✅ | ✅ |
+| Form Management | ✅ | ✅ | ✅ | ✅ |
+| Accounting | ✅ | ✅ | ✅ | ✅ |
+| Inventory | ✅ | ✅ | ✅ | ✅ |
+| Administration | ✅ | ✅ | ✅ | ✅ |
+| Telehealth | — | ✅ | ✅ | ✅ |
+| Revenue Cycle (RCM) | — | ✅ | ✅ | ✅ |
+| CRM | — | ✅ | ✅ | ✅ |
+| Healthcare Offerings | — | ✅ | ✅ | ✅ |
+| Integrations | — | — | ✅ | ✅ |
+
+**Tier Summary:**
+
+- **Practice Essentials** — Core clinical and operational tools for a single practice
+- **Clinical Pro** — Adds telehealth, revenue cycle, CRM, and offerings
+- **Enterprise** — Adds third-party integrations
+- **On-Premises / Customer Cloud** — Enterprise feature set, deployed on infrastructure you control
+
+### 27.3 Viewing Your Plan
+
+1. Go to **Settings → Plans**
+2. The current tier, seat limits, and renewal date are shown
+3. Usage against each limit is displayed alongside
+
+**Seat Limits:**
+- Maximum providers
+- Maximum users
+- Maximum patient records
+
+⚠️ **Warning:** Reaching a seat limit blocks new records of that type until seats are freed or the plan is upgraded.
+
+### 27.4 Changing Your Plan
+
+1. Go to **Settings → Plans**
+2. Click **Change Plan**
+3. Select the new tier
+4. Review what is gained or lost
+5. Confirm
+
+Upgrades take effect immediately. Downgrades take effect at the end of the current billing period, and modules dropped by the new tier become unavailable at that point — the data is retained.
+
+### 27.5 License Keys (On-Premises)
+
+On-premises and customer-cloud deployments are activated with a license key.
+
+**Activating a License:**
+
+1. Go to **Settings → Plans → License**
+2. Paste the license key
+3. Click **Activate**
+4. The tier, seat limits, and validity period are applied
+
+**License Properties:**
+- Plan tier
+- Maximum providers, users, and patients
+- Valid-from and valid-until dates
+- Activation status
+
+**Validity:**
+
+The system checks the license on startup and periodically thereafter. An expired license restricts the platform to read-only access until renewed — no data is deleted.
+
+Administrators can generate, activate, and revoke license keys from the same screen where the deployment permits it.
+
+### 27.6 Deployment Options
+
+| Deployment | Description |
+|------------|-------------|
+| **AureonCare Cloud** | Fully managed, hosted by AureonCare |
+| **Customer Cloud** | Deployed into your own cloud account via Docker or Helm |
+| **On-Premises** | Deployed on your own servers, license-key activated |
+
+Self-hosted deployments ship with Docker images, Helm charts, CI/CD pipeline templates, and an update agent that applies releases on a schedule you control.
+
+---
+
 ## Appendix A: Keyboard Shortcuts
 
 **Global Shortcuts:**
@@ -4937,6 +5653,23 @@ Provide the following information to get faster help:
 ---
 
 ## Document Version History
+
+**Version 1.3** - August 2026 - Major Update with:
+- Three-pane application shell (workspace groups → modules → content)
+- Accounting module: chart of accounts, journal, receivables, payables, reconciliation, statements
+- Inventory module: items, stock, purchase orders, suppliers, categories
+- Form Management: templates, automated intake, submissions, audit trail
+- Telehealth expanded to Zoom, Google Meet, Microsoft Teams, and Webex
+- Per-patient telehealth platform preference
+- Public booking links for patient self-scheduling
+- Centralised email and WhatsApp notifications across all modules
+- Stripe payment integration with webhook synchronisation
+- Subscription tiers (Essentials, Clinical Pro, Enterprise, On-Premises) and license keys
+- Rebuilt Reports module with a custom report builder
+- Security hardening: JWT authentication, portal rate limiting and lockout, hashed session tokens
+- Patient Portal as the patient Home workspace, with assigned forms and dated record uploads
+- FHIR tracking and calendar sync restored
+- Docker, Helm, and CI/CD deployment tooling
 
 **Version 1.2** - January-February 2026 - Major Update with:
 - Universal Search across all 14 modules

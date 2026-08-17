@@ -1,7 +1,31 @@
 node_modules
 frontend/build
 /backend/uploads/medical-records
+
+# Environment files — never commit secrets
+backend/.env
+frontend/.env
+
 ~$ER_MANUAL.docx
 assets/aureoncare-logo.png
 AureonCare_Executive_Presentation.pptx
 AureonCare_Executive_Presentation1.pptx
+
+# Google verification demo recording scratch output
+docs/google-verification/out/
+
+# Narration cache (regenerated on demand)
+docs/demo/video-harness/.voice-cache/
+
+# Rendered video output — distributed as downloads, not carried in the repo.
+# Regenerate with docs/demo/video-harness/record.js. The .srt, .chapters.txt
+# and .metadata.md beside them are text, diff cleanly, and stay tracked.
+docs/demo/video-library/**/*.mp4
+docs/demo/video-library/**/*.webm
+docs/demo/video-library/**/*.thumbnail.png
+
+# Wave 3 was commissioned as downloads rather than repository content, so its
+# subtitles, chapters and metadata stay out too. Waves 1 and 2 still track
+# theirs. Delete this line to store Wave 3 the same way as the others; the
+# scripts in ../video-harness reproduce the files either way.
+docs/demo/video-library/wave3/

@@ -8,6 +8,13 @@ const TeamsService = require('./teamsService');
  * Manages different telehealth provider integrations
  */
 
+const ENV_CREDENTIALS = {
+  zoom:             { id: 'AC_ZM_CID',  secret: 'AC_ZM_CSK' },
+  google_meet:      { id: 'AC_GM_CID',  secret: 'AC_GM_CSK' },
+  webex:            { id: 'AC_WBX_CID', secret: 'AC_WBX_CSK' },
+  microsoft_teams:  { id: 'AC_MS_CID',  secret: 'AC_MS_CSK' },
+};
+
 class TelehealthProviderManager {
   constructor(pool) {
     this.pool = pool;
@@ -118,6 +125,18 @@ class TelehealthProviderManager {
 
     if (!config) {
       throw new Error(`Provider ${providerType} is not configured or not enabled`);
+    }
+
+    // Merge env var credentials so services can refresh tokens even when the
+    // DB row has NULL client_id / client_secret.
+    const envCreds = ENV_CREDENTIALS[providerType];
+    if (envCreds) {
+      if (!config.client_id && process.env[envCreds.id]) {
+        config.client_id = process.env[envCreds.id];
+      }
+      if (!config.client_secret && process.env[envCreds.secret]) {
+        config.client_secret = process.env[envCreds.secret];
+      }
     }
 
     switch (providerType) {

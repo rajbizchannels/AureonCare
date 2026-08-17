@@ -1,0 +1,51 @@
+1
+00:00:04,495 --> 00:00:12,265
+Document a visit — Patients ▸ Patient History — Read the chart, record what you found, and know what the patient will see.
+
+2
+00:00:17,563 --> 00:00:28,085
+Patients ▸ Patient History is the longitudinal chart — every visit, not just today’s.
+
+3
+00:00:28,085 --> 00:00:34,867
+Opening a patient gives you the whole record on one set of tabs.
+
+4
+00:00:34,867 --> 00:00:48,372
+The Patient Chart tab carries demographics, medical history and allergies — read the allergies first, always.
+
+5
+00:00:48,372 --> 00:00:57,809
+Diagnoses is the active problem list — what this patient is being treated for.
+
+6
+00:00:57,809 --> 00:01:08,139
+Records holds the notes from previous visits, newest first.
+
+7
+00:01:08,139 --> 00:01:16,359
+Edit Patient Chart is where today’s findings go, grouped into tabs.
+
+8
+00:01:16,359 --> 00:01:24,867
+Physical takes the measurements you just did — they chart over time automatically.
+
+9
+00:01:24,867 --> 00:01:35,968
+Allergies and history live here. What you add is what every other clinician sees at the next visit.
+
+10
+00:01:35,968 --> 00:01:42,251
+Saved to the chart — one record, visible to the whole care team immediately.
+
+11
+00:01:42,251 --> 00:01:50,114
+And to the patient: records, diagnoses and prescriptions appear in their portal, so write for both readers.
+
+12
+00:01:51,889 --> 00:02:06,429
+What you just did
+
+13
+00:02:07,025 --> 00:02:16,025
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

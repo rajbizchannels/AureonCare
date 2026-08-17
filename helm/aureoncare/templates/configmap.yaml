@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aureoncare.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aureoncare.labels" . | nindent 4 }}
+data:
+  # ── Application ────────────────────────────────────────────────────────────
+  NODE_ENV: {{ .Values.env.NODE_ENV | default "production" | quote }}
+  PORT: {{ .Values.backend.port | toString | quote }}
+
+  # ── Clinic ────────────────────────────────────────────────────────────────
+  AC_CLN: {{ .Values.env.AC_CLN | default "AureonCare Clinic" | quote }}
+
+  # ── Logging ───────────────────────────────────────────────────────────────
+  AC_LOG_LVL: {{ .Values.env.AC_LOG_LVL | default "info" | quote }}
+  AC_LOG_DIR: "/app/logs"
+
+  # ── File Uploads ──────────────────────────────────────────────────────────
+  AC_UPL_DIR: {{ .Values.env.AC_UPL_DIR | default "/app/uploads" | quote }}
+  AC_UPL_MAX: {{ .Values.env.AC_UPL_MAX | default "10485760" | quote }}
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  AC_USE_RD: {{ .Values.env.AC_USE_RD | default "false" | quote }}
+  {{- if .Values.redis.enabled }}
+  AC_RD_H: {{ include "aureoncare.redisHost" . | quote }}
+  AC_RD_P: "6379"
+  {{- end }}
+
+  # ── JWT ───────────────────────────────────────────────────────────────────
+  AC_TK_E: {{ .Values.env.AC_TK_E | default "24h" | quote }}
+
+  # ── Database (non-secret connection info) ─────────────────────────────────
+  AC_DB_S: {{ .Values.env.AC_DB_S | default "false" | quote }}
+  {{- if .Values.postgresql.enabled }}
+  AC_DB_H: {{ include "aureoncare.postgresHost" . | quote }}
+  AC_DB_P: "5432"
+  AC_DB_N: {{ .Values.postgresql.auth.database | quote }}
+  AC_DB_U: {{ .Values.postgresql.auth.username | quote }}
+  {{- end }}
+
+  # ── URLs ──────────────────────────────────────────────────────────────────
+  {{- if .Values.ingress.enabled }}
+  {{- $scheme := ternary "https" "http" .Values.ingress.tls }}
+  AC_BE_URL: {{ printf "%s://%s" $scheme .Values.ingress.host | quote }}
+  AC_FE_URL: {{ printf "%s://%s" $scheme .Values.ingress.host | quote }}
+  REACT_APP_SVC_URL: {{ printf "%s://%s/api" $scheme .Values.ingress.host | quote }}
+  REACT_APP_AUTH_URI: {{ printf "%s://%s" $scheme .Values.ingress.host | quote }}
+  {{- end }}

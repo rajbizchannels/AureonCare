@@ -12,8 +12,17 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
   const parseMarkdown = (text) => {
     if (!text) return '';
 
+    // SEC-13: escape HTML first so raw markup in the article source can never be
+    // interpreted as HTML. Only the safe tags we emit below (<strong>, <br />) survive.
+    let parsed = String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
     // Convert **text** to <strong>text</strong>
-    let parsed = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    parsed = parsed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
     // Convert line breaks to <br> for proper display
     parsed = parsed.replace(/\n/g, '<br />');

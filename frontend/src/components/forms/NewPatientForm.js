@@ -3,8 +3,9 @@ import { Users, X, Save, ClipboardList, ChevronDown, ChevronUp } from 'lucide-re
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { FORM_TEMPLATES } from '../../data/formTemplates';
+import ThemedSelect from './ThemedSelect';
 
-const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotification, t }) => {
+const NewPatientForm = ({ theme, api, patients = [], onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -257,18 +258,19 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {t.gender || 'Gender'} <span className="text-red-400">*</span>
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:border-purple-500"
                     required
                     value={formData.gender}
                     onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                   >
                     <option value="">{t.selectGender || 'Select Gender'}</option>
                     <option value="Male">{t.male || 'Male'}</option>
                     <option value="Female">{t.female || 'Female'}</option>
                     <option value="Other">{t.other || 'Other'}</option>
                     <option value="Prefer not to say">{t.preferNotToSay || 'Prefer not to say'}</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
             </div>
@@ -368,11 +370,12 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {t.insurancePayer || 'Insurance Payer'}
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:border-purple-500"
                     value={formData.insurancePayerId}
                     onChange={(e) => setFormData({...formData, insurancePayerId: e.target.value})}
                     disabled={loadingPayers}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                   >
                     <option value="">{loadingPayers ? 'Loading insurance payers...' : (t.selectInsurancePayer || 'Select Insurance Payer')}</option>
                     {insurancePayers.map(payer => (
@@ -380,7 +383,7 @@ const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotificat
                         {payer.name} ({payer.payer_id})
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div>

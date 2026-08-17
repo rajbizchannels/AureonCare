@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Save } from 'lucide-react';
+import { ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Save } from 'lucide-react';
 import api from '../api/apiService';
 import { useAudit } from '../hooks/useAudit';
 
@@ -62,7 +62,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
       });
 
       // Initialize all telehealth provider types (even if not in database)
-      ['zoom', 'google-meet', 'webex'].forEach(providerType => {
+      ['zoom', 'google_meet', 'webex'].forEach(providerType => {
         const provider = telehealthSettings.find(p => p.provider_type === providerType);
         const key = `telehealth_${providerType}`;
         allIntegrations[key] = {
@@ -162,7 +162,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
   const getProviderDisplayName = (providerType) => {
     const names = {
       'zoom': 'Zoom',
-      'google-meet': 'Google Meet',
+      'google_meet': 'Google Meet',
       'webex': 'Webex'
     };
     return names[providerType] || providerType;
@@ -697,13 +697,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title={t?.backToDashboard || 'Back to Dashboard'}
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {t?.apiAndIntegrations || 'API & Integrations'}
           </h2>
@@ -719,13 +712,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title={t?.backToDashboard || 'Back to Dashboard'}
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {t?.apiAndIntegrations || 'API & Integrations'}
           </h2>
@@ -739,18 +725,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-          className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-          title={t?.backToDashboard || 'Back to Dashboard'}
-        >
-          <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-        </button>
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {t?.apiAndIntegrations || 'API & Integrations'}
-        </h2>
-      </div>
 
       {/* Stripe Integration - full width */}
       <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
@@ -972,7 +946,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
           </h3>
 
           <div className="space-y-3">
-            {['zoom', 'google-meet', 'webex'].map(providerType => {
+            {['zoom', 'google_meet', 'webex'].map(providerType => {
               const provider = telehealthProviders.find(p => p.provider_type === providerType);
               return renderIntegrationCard(
                 provider || { provider_type: providerType },

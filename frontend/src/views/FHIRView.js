@@ -2,8 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Database, RefreshCw, Download, Upload, Check, AlertCircle, FileText, User, Activity, ArrowLeft } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 import { useAudit } from '../hooks/useAudit';
+import { useShellTab } from '../hooks/useShellTab';
+import FHIRTracking from '../components/fhir/FHIRTracking';
+import FHIRTrackingDashboard from '../components/fhir/FHIRTrackingDashboard';
 
-const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule }) => {
+const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule, activeTab: shellTab, onTabChange }) => {
+  // resources | tracking — the shell's secondary pane lists both.
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'resources');
+  // Tracking number opened from the worklist, if any.
+  const [openTracking, setOpenTracking] = useState(null);
   const [fhirResources, setFhirResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -91,26 +98,9 @@ const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule }) =
     ? fhirResources
     : fhirResources.filter(r => r.resource_type === selectedResourceType);
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
-          <div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              FHIR HL7 Integration
-            </h2>
-            <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Fast Healthcare Interoperability Resources (FHIR R4)
-            </p>
-          </div>
-        </div>
+  const header = (
+    <div className="flex items-center justify-end">
+      {activeTab === 'resources' && (
         <button
           onClick={fetchFhirResources}
           disabled={loading}
@@ -119,7 +109,55 @@ const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule }) =
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
+      )}
+    </div>
+  );
+
+  const tabStrip = !tabsInShell && (
+    <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+      {[{ id: 'resources', label: 'Resources' }, { id: 'tracking', label: 'Tracking' }].map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={`px-4 py-3 font-medium transition-colors ${
+            activeTab === tab.id
+              ? `border-b-2 ${theme === 'dark' ? 'border-cyan-500 text-cyan-400' : 'border-blue-600 text-blue-600'}`
+              : theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (activeTab === 'tracking') {
+    return (
+      <div className="space-y-6">
+        {header}
+        {tabStrip}
+        {openTracking ? (
+          <div className="space-y-4">
+            <button
+              onClick={() => setOpenTracking(null)}
+              className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-900'}`}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to worklist
+            </button>
+            <FHIRTracking trackingNumber={openTracking} theme={theme} />
+          </div>
+        ) : (
+          <FHIRTrackingDashboard theme={theme} onViewTracking={setOpenTracking} />
+        )}
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {header}
+      {tabStrip}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

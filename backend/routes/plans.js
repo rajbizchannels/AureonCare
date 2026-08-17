@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 // Get all subscription plans
 router.get('/', async (req, res) => {
@@ -129,18 +131,29 @@ router.put('/current', async (req, res) => {
   }
 });
 
-// Get plan features and limits
+// Get plan features and limits (includes provider seats)
 router.get('/features', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 
     const result = await pool.query(`
       SELECT
+        sp.name                    AS plan_name,
+        sp.display_name            AS plan_display_name,
         sp.features,
         sp.max_users,
         sp.max_patients,
-        (SELECT COUNT(*) FROM users WHERE status = 'active') as current_users,
-        (SELECT COUNT(*) FROM patients WHERE status = 'Active') as current_patients
+        sp.max_providers,
+        sp.base_price_per_provider,
+        os.provider_seats_purchased,
+        os.is_trial,
+        os.trial_end_date,
+        os.plan_end_date,
+        os.auto_renew,
+        os.enforcement_enabled,
+        (SELECT COUNT(*) FROM users  WHERE status = 'active' AND role <> 'patient') AS current_users,
+        (SELECT COUNT(*) FROM users  WHERE status = 'active' AND role = 'doctor')   AS current_providers,
+        (SELECT COUNT(*) FROM patients WHERE status = 'Active')                     AS current_patients
       FROM organization_settings os
       JOIN subscription_plans sp ON os.current_plan_id = sp.id
       LIMIT 1
@@ -150,27 +163,78 @@ router.get('/features', async (req, res) => {
       return res.status(404).json({ error: 'No plan configured' });
     }
 
-    const data = result.rows[0];
-    const features = data.features || {};
+    const d = result.rows[0];
+    const effectiveProviderLimit =
+      d.max_providers === -1 ? -1
+        : d.max_providers + (d.provider_seats_purchased || 0);
 
     res.json({
-      features,
+      plan: {
+        name:        d.plan_name,
+        displayName: d.plan_display_name,
+        isTrial:     d.is_trial,
+        trialEndDate: d.trial_end_date,
+        endDate:     d.plan_end_date,
+        autoRenew:   d.auto_renew,
+        enforcementEnabled: d.enforcement_enabled,
+      },
+      features: d.features || {},
       limits: {
         users: {
-          max: data.max_users,
-          current: parseInt(data.current_users),
-          unlimited: data.max_users === -1
+          max:       d.max_users,
+          current:   parseInt(d.current_users, 10),
+          unlimited: d.max_users === -1,
         },
         patients: {
-          max: data.max_patients,
-          current: parseInt(data.current_patients),
-          unlimited: data.max_patients === -1
-        }
-      }
+          max:       d.max_patients,
+          current:   parseInt(d.current_patients, 10),
+          unlimited: d.max_patients === -1,
+        },
+        providers: {
+          included:  d.max_providers,
+          purchased: d.provider_seats_purchased || 0,
+          effective: effectiveProviderLimit,
+          current:   parseInt(d.current_providers, 10),
+          unlimited: d.max_providers === -1,
+          additionalSeatPrice: d.base_price_per_provider,
+        },
+      },
     });
   } catch (error) {
     console.error('Error fetching plan features:', error);
     res.status(500).json({ error: 'Failed to fetch plan features' });
+  }
+});
+
+// Purchase additional provider seats
+router.post('/provider-seats', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { additionalSeats } = req.body;
+
+    if (!additionalSeats || additionalSeats < 1) {
+      return res.status(400).json({ error: 'additionalSeats must be a positive integer' });
+    }
+
+    const result = await pool.query(`
+      UPDATE organization_settings
+      SET provider_seats_purchased = provider_seats_purchased + $1,
+          updated_at = NOW()
+      WHERE id = (SELECT id FROM organization_settings LIMIT 1)
+      RETURNING provider_seats_purchased
+    `, [parseInt(additionalSeats, 10)]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Organization settings not found' });
+    }
+
+    res.json({
+      message: `${additionalSeats} provider seat(s) added.`,
+      totalPurchasedSeats: result.rows[0].provider_seats_purchased,
+    });
+  } catch (error) {
+    console.error('Error adding provider seats:', error);
+    res.status(500).json({ error: 'Failed to add provider seats' });
   }
 });
 

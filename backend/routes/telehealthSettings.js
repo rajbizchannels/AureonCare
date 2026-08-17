@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const axios = require('axios');
 const crypto = require('crypto');
 
@@ -267,6 +269,37 @@ router.post('/:providerType/instant-meeting', async (req, res) => {
     const { topic, duration, patientName, recordingEnabled } = req.body;
     const TelehealthProviderManager = require('../services/telehealthProviders');
     const pool = req.app.locals.pool;
+
+    // Diagnostic: verify DB state before attempting to create meeting
+    try {
+      const dbCheck = await pool.query(
+        `SELECT provider_type, is_enabled,
+                access_token IS NOT NULL AS has_access_token,
+                refresh_token IS NOT NULL AS has_refresh_token,
+                client_id IS NOT NULL AS has_client_id,
+                client_secret IS NOT NULL AS has_client_secret,
+                token_expires_at,
+                token_scope
+         FROM telehealth_provider_settings WHERE provider_type = $1`,
+        [providerType]
+      );
+      if (dbCheck.rows.length === 0) {
+        console.error(`[instant-meeting] No DB row for ${providerType}. User must reconnect via OAuth.`);
+        return res.status(422).json({
+          error: `${providerType} is not connected. Please connect it in Admin Settings > Integrations.`
+        });
+      }
+      const row = dbCheck.rows[0];
+      console.log(`[instant-meeting] ${providerType} DB state:`, JSON.stringify(row));
+      if (!row.has_access_token) {
+        console.error(`[instant-meeting] ${providerType} row exists but access_token is NULL`);
+        return res.status(422).json({
+          error: `${providerType} access token is missing. Please disconnect and reconnect in Admin Settings.`
+        });
+      }
+    } catch (dbErr) {
+      console.error('[instant-meeting] DB check failed:', dbErr.message);
+    }
 
     const manager = new TelehealthProviderManager(pool);
     const provider = await manager.getProvider(providerType);

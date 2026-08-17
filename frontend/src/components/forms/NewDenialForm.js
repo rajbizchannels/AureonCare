@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, X, Save, Flag } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose, onSuccess, addNotification }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -255,15 +256,12 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
               Patient <span className="text-red-500">*</span>
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.patientId}
               onChange={(e) => setFormData({ ...formData, patientId: e.target.value, claimId: '' })}
               required
-              className={`w-full px-4 py-3 rounded-lg border ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white focus:border-red-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-red-500'
-              } focus:outline-none focus:ring-2 focus:ring-red-500/20`}
             >
               <option value="">Select patient...</option>
               {patients.map((patient) => (
@@ -271,23 +269,20 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
                   {patient.first_name} {patient.last_name} - {patient.date_of_birth}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           <div>
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
               Claim <span className="text-red-500">*</span>
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.claimId}
               onChange={(e) => setFormData({ ...formData, claimId: e.target.value })}
               required
               disabled={!formData.patientId}
-              className={`w-full px-4 py-3 rounded-lg border ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white focus:border-red-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-red-500'
-              } focus:outline-none focus:ring-2 focus:ring-red-500/20 disabled:opacity-50`}
             >
               <option value="">Select claim...</option>
               {filteredClaims.map((claim) => (
@@ -295,7 +290,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
                   {claim.claim_number} - ${claim.amount} - {claim.status}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
         </div>
 
@@ -304,14 +299,11 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
           <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
             Insurance Payer
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
+            focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
             value={formData.insurance_payer_id}
             onChange={(e) => setFormData({ ...formData, insurance_payer_id: e.target.value })}
-            className={`w-full px-4 py-3 rounded-lg border ${
-              isDark
-                ? 'bg-gray-700 border-gray-600 text-white focus:border-red-500'
-                : 'bg-white border-gray-300 text-gray-900 focus:border-red-500'
-            } focus:outline-none focus:ring-2 focus:ring-red-500/20`}
           >
             <option value="">Select insurance payer...</option>
             {insurancePayers.map((payer) => (
@@ -319,7 +311,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
                 {payer.name} ({payer.payer_id})
               </option>
             ))}
-          </select>
+          </ThemedSelect>
         </div>
 
         {/* Denial Details */}
@@ -389,7 +381,9 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
               Denial Reason Code
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.denial_reason_code}
               onChange={(e) => {
                 const selected = denialReasonCodes.find(r => r.code === e.target.value);
@@ -399,11 +393,6 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
                   denial_reason_description: selected ? selected.description : formData.denial_reason_description
                 });
               }}
-              className={`w-full px-4 py-3 rounded-lg border ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white focus:border-red-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-red-500'
-              } focus:outline-none focus:ring-2 focus:ring-red-500/20`}
             >
               <option value="">Select reason code...</option>
               {denialReasonCodes.map((reason) => (
@@ -411,28 +400,25 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
                   {reason.code} - {reason.description}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           <div>
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
               Denial Category
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.denial_category}
               onChange={(e) => setFormData({ ...formData, denial_category: e.target.value })}
-              className={`w-full px-4 py-3 rounded-lg border ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white focus:border-red-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-red-500'
-              } focus:outline-none focus:ring-2 focus:ring-red-500/20`}
             >
               {denialCategories.map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
         </div>
 
@@ -476,21 +462,18 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
               Priority
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
+              focusClass="focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
               value={formData.priority}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-              className={`w-full px-4 py-3 rounded-lg border ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white focus:border-red-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-red-500'
-              } focus:outline-none focus:ring-2 focus:ring-red-500/20`}
             >
               {priorities.map((priority) => (
                 <option key={priority.id} value={priority.id}>
                   {priority.name}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
         </div>
 

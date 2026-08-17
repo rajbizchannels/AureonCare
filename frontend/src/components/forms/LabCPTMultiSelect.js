@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 
 /**
@@ -30,13 +30,19 @@ const LabCPTMultiSelect = ({
   const searchTimeoutRef = useRef(null);
 
   // Get the search term (last term after last comma)
-  const getSearchTerm = () => {
+  const getSearchTerm = useCallback(() => {
     const parts = inputValue.split(',');
     return parts[parts.length - 1].trim();
-  };
+  }, [inputValue]);
 
-  // Search for lab CPT codes
-  const searchCodes = async (query) => {
+  // The selected set only matters as a list of codes to exclude, and a parent
+  // that rebuilds `value` on every render must not restart the debounce.
+  const selectedKey = value.map(v => v.code).join(',');
+
+  // Search for lab CPT codes. Declared with useCallback ABOVE the effect that
+  // lists it: a const referenced from a dependency array is still in its
+  // temporal dead zone if it is declared below.
+  const searchCodes = useCallback(async (query) => {
     if (!query || query.length < 2) {
       setSearchResults([]);
       return;
@@ -44,15 +50,14 @@ const LabCPTMultiSelect = ({
 
     setIsLoading(true);
     try {
-      // Search CPT codes in 80000-89999 range (lab procedures)
-      const response = await fetch(
-        `${api.baseURL || 'http://localhost:3001/api'}/medical-codes/search?query=${encodeURIComponent(query)}&type=cpt`
-      );
-      const data = await response.json();
+      // Search CPT codes in 80000-89999 range (lab procedures). Goes through
+      // apiService so the request carries the bearer token — /api/medical-codes
+      // is authenticated, and a bare fetch just gets a 401.
+      const data = await api.searchMedicalCodes(query, 'cpt');
 
       // Filter for lab CPT codes (80000-89999) and exclude already selected
-      const selectedCodes = value.map(v => v.code.toUpperCase());
-      const filtered = data
+      const selectedCodes = selectedKey ? selectedKey.toUpperCase().split(',') : [];
+      const filtered = (Array.isArray(data) ? data : [])
         .filter(item => {
           const codeNum = parseInt(item.code);
           return codeNum >= 80000 && codeNum <= 89999 && !selectedCodes.includes(item.code.toUpperCase());
@@ -79,7 +84,7 @@ const LabCPTMultiSelect = ({
         { code: '85027', description: 'Blood count; complete (CBC) with differential', type: 'CPT' }
       ];
 
-      const selectedCodes = value.map(v => v.code.toUpperCase());
+      const selectedCodes = selectedKey ? selectedKey.toUpperCase().split(',') : [];
       const search = query.toLowerCase();
       const filtered = commonLabCPTCodes.filter(item =>
         !selectedCodes.includes(item.code.toUpperCase()) &&
@@ -90,7 +95,7 @@ const LabCPTMultiSelect = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api, selectedKey]);
 
   // Debounced search
   useEffect(() => {
@@ -106,7 +111,9 @@ const LabCPTMultiSelect = ({
         setIsDropdownOpen(true);
       }, 300);
     } else {
-      setSearchResults([]);
+      // Only write state when there is something to clear — an unconditional
+      // set installs a new array reference and re-runs this effect forever.
+      setSearchResults(prev => (prev.length ? [] : prev));
       setIsDropdownOpen(false);
     }
 
@@ -115,7 +122,7 @@ const LabCPTMultiSelect = ({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [getSearchTerm, inputValue, searchCodes]);
+  }, [getSearchTerm, searchCodes]);
 
   // Reset highlighted index when results change
   useEffect(() => {
