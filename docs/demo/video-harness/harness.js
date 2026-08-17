@@ -46,6 +46,8 @@ const PLAYLISTS = {
   4: 'AureonCare — Administration and Back Office (Wave 4)',
 };
 
+const MARKETING_PLAYLIST = 'AureonCare — See It Work';
+
 const BASE_URL = process.env.DEMO_BASE_URL || 'http://localhost:3000';
 const API_BASE = process.env.DEMO_API_URL || 'http://localhost:3001/api';
 /**
@@ -54,7 +56,10 @@ const API_BASE = process.env.DEMO_API_URL || 'http://localhost:3001/api';
  * overrides for one-off runs.
  */
 const outDirFor = (spec) => process.env.OUT_DIR
-  || path.join(__dirname, '..', 'video-library', `wave${spec.wave || 1}`);
+  || path.join(
+    __dirname, '..', 'video-library',
+    spec.marketing ? 'marketing' : `wave${spec.wave || 1}`
+  );
 const VIEWPORT = { width: 1920, height: 1080 };
 const FPS = 30;
 
@@ -809,6 +814,23 @@ async function handleApi(route, store) {
           created[field] = created[field] || `${prefix}-2026-0${store._nextId % 1000}`;
           created.status = created.status || fallbackStatus;
         }
+        // Tables render joined display names, which a real backend returns and a
+        // form only ever posts ids for. Without these the row a recording just
+        // created reads "N/A" in every column but the amount.
+        if (resource === 'payment-postings') {
+          const pt = store.patients.find((p) => String(p.id) === String(created.patient_id));
+          const cl = store.claims.find((c) => String(c.id) === String(created.claim_id));
+          if (pt) created.patient_name = `${pt.first_name} ${pt.last_name}`;
+          if (cl) {
+            created.claim_number = cl.claim_number;
+            // A claim carries its payer as insurance_provider when it came from
+            // the fixtures and as payer_id when a recording just created it.
+            const payer = (store['insurance-payers'] || [])
+              .find((ip) => String(ip.id) === String(cl.payer_id));
+            created.insurance_payer_name = created.insurance_payer_name
+              || cl.insurance_provider || (payer && payer.name);
+          }
+        }
         rows.unshift(created);
         return json(created);
       }
@@ -1010,6 +1032,16 @@ class Director {
     this.narration = [];  // { start, file, duration, text }
     this._open = null;
     this._line = 0;
+    // Multiplies the mechanical dwell — cursor travel and post-action pauses —
+    // without touching narration, which is floored by its own audio length. A
+    // training viewer is following along and needs the beat; a marketing viewer
+    // is deciding whether to keep watching.
+    this.pace = spec.pace || 1;
+  }
+
+  /** Mechanical dwell, scaled by the spec's pace. */
+  _dwell(ms) {
+    return sleep(Math.round(ms * this.pace));
   }
 
   /**
@@ -1120,18 +1152,18 @@ class Director {
 
   async click(locator, { pause = 900 } = {}) {
     await locator.scrollIntoViewIfNeeded().catch(() => {});
-    await sleep(320);
+    await this._dwell(320);
     const box = await locator.boundingBox();
     if (box) {
       const x = box.x + box.width / 2;
       const y = box.y + box.height / 2;
       await this.page.evaluate(([px, py]) => window.__demo.moveCursor(px, py), [x, y]);
-      await sleep(560);
+      await this._dwell(560);
       await this.page.mouse.move(x, y);
       await this.page.evaluate(() => window.__demo.pressCursor());
     }
     await locator.click({ timeout: 15000 });
-    await sleep(pause);
+    await this._dwell(pause);
   }
 
   async type(locator, text, { delay = 45, pause = 400 } = {}) {
@@ -1142,12 +1174,12 @@ class Director {
         ([px, py]) => window.__demo.moveCursor(px, py),
         [box.x + box.width / 2, box.y + box.height / 2]
       );
-      await sleep(380);
+      await this._dwell(380);
     }
     await locator.click();
     await locator.fill('');
     await locator.type(text, { delay });
-    await sleep(pause);
+    await this._dwell(pause);
   }
 
   /**
@@ -1183,11 +1215,11 @@ class Director {
         ([px, py]) => window.__demo.moveCursor(px, py),
         [box.x + box.width / 2, box.y + box.height / 2]
       );
-      await sleep(380);
+      await this._dwell(380);
     }
     await locator.click();
     await locator.fill(value);
-    await sleep(pause);
+    await this._dwell(pause);
   }
 
   async select(locator, value, { pause = 700 } = {}) {
@@ -1198,10 +1230,10 @@ class Director {
         ([px, py]) => window.__demo.moveCursor(px, py),
         [box.x + box.width / 2, box.y + box.height / 2]
       );
-      await sleep(380);
+      await this._dwell(380);
     }
     await locator.selectOption(value);
-    await sleep(pause);
+    await this._dwell(pause);
   }
 
   /**
@@ -1224,7 +1256,7 @@ class Director {
       const target = Math.min(pane.scrollTop + wanted, pane.scrollHeight - pane.clientHeight);
       if (target > pane.scrollTop + 8) pane.scrollTo({ top: target, behavior: 'smooth' });
     }, pixels).catch(() => {});
-    await sleep(650);
+    await this._dwell(650);
   }
 
   /** The input that follows a label containing `text` (forms have no htmlFor). */
@@ -1427,7 +1459,7 @@ ${spec.tags.join(', ')}
 | --- | --- |
 | Visibility | Unlisted until the playlist is complete, then Public |
 | Category | Science & Technology |
-| Playlist | ${PLAYLISTS[spec.wave || 1]} |
+| Playlist | ${spec.marketing ? MARKETING_PLAYLIST : PLAYLISTS[spec.wave || 1]} |
 | Language | English |
 | Audience | Not made for kids |
 | Thumbnail | ${spec.slug}.thumbnail.png |
@@ -1516,34 +1548,44 @@ async function record(spec) {
       throw { __probeDone: true };
     }
     d.videoStart = d.now();
-    await d.bumper();
-    await d.card({
-      kicker: 'AureonCare training',
-      heading: spec.title,
-      sub: spec.moduleLabel,
-      body: spec.intro,
-      holdMs: 5000,
-    });
-    d.chapters.unshift({ start: 0, title: 'Introduction' });
-    await spec.run(d, page, { store, fixtures: F, sleep });
-    await d.clearCaption();
-    await d.step('');
-    await d.card({
-      kicker: 'Recap',
-      heading: 'What you just did',
-      bullets: spec.recap,
-      holdMs: 6000,
-    });
-    d.chapter('Recap');
-    // Held long enough for a YouTube end screen, which needs at least 5 seconds
-    // of still picture to sit on.
-    await d.card({
-      kicker: 'AureonCare',
-      heading: 'Health | Efficiency | Growth',
-      body: 'More in the Getting Started series — the next video is linked on screen.',
-      holdMs: 9000,
-    });
-    await sleep(700);
+    if (spec.marketing) {
+      // A marketing cut owns its own open and close. The training chrome — logo
+      // bumper, title card, recap — costs about twenty seconds before anything
+      // happens on screen, which is most of a short video's attention budget.
+      await spec.run(d, page, { store, fixtures: F, sleep });
+      await d.clearCaption();
+      await d.step('');
+      await sleep(700);
+    } else {
+      await d.bumper();
+      await d.card({
+        kicker: 'AureonCare training',
+        heading: spec.title,
+        sub: spec.moduleLabel,
+        body: spec.intro,
+        holdMs: 5000,
+      });
+      d.chapters.unshift({ start: 0, title: 'Introduction' });
+      await spec.run(d, page, { store, fixtures: F, sleep });
+      await d.clearCaption();
+      await d.step('');
+      await d.card({
+        kicker: 'Recap',
+        heading: 'What you just did',
+        bullets: spec.recap,
+        holdMs: 6000,
+      });
+      d.chapter('Recap');
+      // Held long enough for a YouTube end screen, which needs at least 5 seconds
+      // of still picture to sit on.
+      await d.card({
+        kicker: 'AureonCare',
+        heading: 'Health | Efficiency | Growth',
+        body: 'More in the Getting Started series — the next video is linked on screen.',
+        holdMs: 9000,
+      });
+      await sleep(700);
+    }
   } catch (err) {
     failure = err && err.__probeDone ? null : err;
     // A failed step is almost always a DOM guess gone stale, so capture what

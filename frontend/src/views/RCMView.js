@@ -1969,7 +1969,10 @@ const RCMView = ({
             onClose={() => setShowPaymentPostingForm(false)}
             onSuccess={(newPosting) => {
               setShowPaymentPostingForm(false);
-              setPaymentPostings([...paymentPostings, newPosting]);
+              // Guarded: an undefined entry here reaches the table's filter and
+              // takes the whole view down with it. fetchRCMData refreshes the
+              // list regardless, so skipping the optimistic append is safe.
+              if (newPosting) setPaymentPostings([...paymentPostings, newPosting]);
               fetchRCMData(); // Refresh data
               addNotification('success', 'Payment posting created successfully');
             }}
@@ -1989,7 +1992,7 @@ const RCMView = ({
             onClose={() => setShowDenialForm(false)}
             onSuccess={(newDenial) => {
               setShowDenialForm(false);
-              setDenials([...denials, newDenial]);
+              if (newDenial) setDenials([...denials, newDenial]);
               fetchRCMData(); // Refresh data
               addNotification('success', 'Denial created successfully');
             }}
