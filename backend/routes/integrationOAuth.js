@@ -361,6 +361,15 @@ router.get('/:providerType/initiate', async (req, res) => {
       authUrl.searchParams.append('prompt', 'consent');
     }
 
+    // Microsoft reuses an existing consent grant unless re-consent is forced,
+    // and issues a token carrying only the scopes consented to at that time.
+    // Adding a permission in Azure does not retroactively widen a grant, so
+    // without this a disconnect/reconnect returns a token still missing the
+    // new scope and the provider's scope check keeps failing.
+    if (['microsoft_teams', 'onedrive'].includes(providerType)) {
+      authUrl.searchParams.append('prompt', 'consent');
+    }
+
     res.json({ authUrl: authUrl.toString(), state });
   } catch (error) {
     console.error('Error initiating OAuth flow:', error);
