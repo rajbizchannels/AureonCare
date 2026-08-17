@@ -340,6 +340,90 @@ touching tenant data" property you asked for. **A** is cheaper if instance-per-c
 
 ---
 
+---
+
+## 10. Per-tenant feature/patch rollout under Model D
+
+The golden rule: **one codebase, one deployed version for everyone; per-tenant differences come
+from flags + config, never from divergent code.** A release moves along **two independent tracks**:
+
+- **Track 1 — App code (stateless):** built once, deployed once to the shared app tier. Every
+  tenant runs the same binary. New behavior ships **dark** (feature-flag off).
+- **Track 2 — Schema migrations (per-tenant DDL):** a deploy *job* fans out across every tenant
+  schema + the `template`. This is the only thing that is genuinely "per tenant."
+
+Per-tenant *rollout* then happens by **flipping flags/config per tenant**, not by redeploying.
+
+### The canonical release sequence (expand → deploy dark → enable per tenant → contract)
+
+```
+1. EXPAND (DB, backward-compatible)
+   Migration job loops control.tenants + template, applies the ADDITIVE change
+   (add nullable column/table, backfill in batches). Old code still works.
+   Per-tenant tracking in tenant_<id>.schema_migrations → idempotent & resumable.
+
+2. DEPLOY CODE (dark)
+   Ship the new app version to the shared tier. New code paths gated behind a
+   feature flag defaulting OFF. Because the schema already expanded, new code that
+   reads the new column is safe; the flag keeps behavior identical until enabled.
+
+3. ENABLE PER TENANT (ring rollout) ← this is "per-tenant rollout"
+   Flip the flag per tenant in waves: canary → ring 1 → ring 2 → GA.
+   Flag/threshold state lives in control.tenants / per-tenant config_override.
+   Monitor each wave; hold or roll a tenant back by flipping its flag OFF — no deploy.
+
+4. CONTRACT (a LATER release)
+   Once all tenants are enabled and stable, a subsequent migration drops the old
+   column/table. Never in the same release that introduced the feature.
+```
+
+### The migration fan-out runner (Track 2 mechanics)
+- Runs as a **deploy step / job, off the request path** — never during a web request.
+- Enumerates `control.tenants` (+ `template`) and, **per schema**, applies only the migrations
+  missing from that schema's `schema_migrations` table → **idempotent, resumable**.
+- **Failure isolation:** each tenant migrates in its own transaction; if tenant B fails, A and C
+  still complete. B is flagged in `control.tenants.migration_status`, retried, and simply stays on
+  the old (still-compatible) behavior until fixed — the fleet is not blocked.
+- **Concurrency:** sequential for small N; bounded concurrency (e.g. 10 at a time) or sharded
+  workers for larger N. `template` is migrated too, so **newly provisioned tenants start current**.
+- **Lock safety:** use non-blocking patterns on tenant PHI tables — `ADD COLUMN` nullable then
+  batched backfill, `CREATE INDEX CONCURRENTLY` — so a migration never long-locks a live clinic.
+
+### Per-tenant version pinning (lagging or leading tenants)
+- `control.tenants` carries `app_version` / `schema_version` per tenant. A regulated clinic can be
+  **pinned** to validate a release before adopting it; a canary can lead.
+- Because **expand/contract keeps old and new schema/code compatible across the pinned range**, one
+  shared code tier serves a mix of tenant schema versions simultaneously. The runner only advances
+  tenants eligible for the target version.
+
+### Rollback (fast, and usually per-tenant)
+- **Feature rollback:** flip the tenant's flag OFF — instant, no deploy, no data change.
+- **Code rollback:** redeploy the previous app artifact for everyone — safe because expand
+  migrations are non-destructive (old code ignores the new column).
+- **Schema rollback:** rarely needed (expand is additive; contract is deferred until certain).
+
+### Config & customization safety (the ServiceNow property, restated operationally)
+- Migrations only ever touch **structure** and **`control.config_baseline`** (shipped defaults).
+  A tenant's `config_override` rows are **never in a migration payload**, so a patch cannot
+  overwrite tenant customizations. Effective config = `COALESCE(override, baseline)` — a new
+  default lands in `baseline`; the tenant's override persists untouched.
+
+### One-tenant patch / hotfix
+- **Config or data fix for a single clinic:** run a scoped script against that **one schema**, or
+  flip its flag — trivial because the tenant is a schema boundary.
+- **Code hotfix for one clinic:** do **not** fork code per tenant (that destroys the single-codebase
+  benefit). Gate it behind a flag and enable it for that one tenant (a "ring of one").
+
+### What to build to support this (extends §9 steps)
+- **S5 (migration fan-out runner)** already covers Track 2 — add `migration_status` + per-tenant
+  version columns and bounded concurrency.
+- **New: feature-flag service** keyed by tenant (a `control.feature_flags(tenant_id, flag, state)`
+  table + a cached `isEnabled(tenantId, flag)` helper) to drive Track 1's per-tenant enablement.
+- **New: rollout orchestration** — a small runbook/CLI to advance rings, hold, and roll back by
+  tenant, plus per-tenant deploy/health dashboards.
+
+---
+
 *Prepared for review. §0/§8 choose the model; §9 details the enterprise "isolate + update-safely"
-pattern. On sign-off of the model + Q1–Q4, Phase 0/1 (or S1/S2 for model D) can start behind the
-cross-tenant test.*
+pattern; §10 details per-tenant feature/patch rollout under Model D. On sign-off of the model +
+Q1–Q4, Phase 0/1 (or S1/S2 for model D) can start behind the cross-tenant test.*
