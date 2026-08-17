@@ -197,7 +197,7 @@ bypass role). Config is data, so app updates don't touch tenant data.
 **Cons:** RLS footguns (superuser/BYPASSRLS ignore policies; every connection must `SET` the tenant
 GUC). Shared blast radius remains. Per-tenant restore/residency still harder than silo.
 
-### D — Schema-per-tenant (BRIDGE) — *the model your ServiceNow/Okta/Microsoft question points at*
+### D — Schema-per-tenant (BRIDGE) — *the model that best delivers the ServiceNow/Okta/Microsoft **properties** on our stack (not their literal substrate — see §9)*
 One Postgres cluster; a shared **control-plane** schema plus **one schema per tenant**
 (`tenant_<uuid>`) holding all PHI/config tables. Connections set `search_path` to the tenant.
 **Pros:** Strong isolation at the schema boundary (no cross-tenant `WHERE` to forget), yet one
@@ -215,23 +215,31 @@ small tenants, analytics-heavy, willing to trust RLS → **C**.
 
 ## 9. The enterprise pattern: isolate tenants, update the app without touching their data
 
-This is exactly how **ServiceNow, Okta, and Microsoft (Entra/M365)** operate. The unifying
-principle is **separate the *application* (code + baseline schema + default config) from the
-*tenant* (their data + their configuration overrides)**, then evolve the app under strict
-compatibility rules so a rollout never rewrites tenant state.
+**Important accuracy note:** ServiceNow, Okta, and Microsoft do **not** all run schema-per-tenant
+(D) — they use *different* isolation substrates. What they share is not the substrate but the set
+of **invariants** below that decouple app releases from tenant state. The unifying principle is
+**separate the *application* (code + baseline schema + default config) from the *tenant* (their
+data + configuration overrides)**, then evolve the app under strict compatibility rules so a
+rollout never rewrites tenant state.
 
-**How the three do it:**
-- **ServiceNow** — effectively *instance-per-customer* (silo). One codebase/version ships to all
-  instances. Customer customizations are stored as **metadata records in the DB**, not code. On
-  upgrade, a **three-way merge / "skip list"** updates the baseline while **preserving records the
-  customer changed** — app moves forward, customizations survive. "Update Sets" move config
-  between instances as data.
-- **Okta** — *pooled* multi-tenant with strong logical isolation; each org is a subdomain/boundary.
-  Config is data; the shared platform is updated continuously **without touching tenant config**
-  because schema changes are backward-compatible and configuration is never in code.
-- **Microsoft Entra/M365** — tenant is a **first-class security boundary** (tenant id in every
-  token, data partitioned per tenant); a mix of pooled and DB-per-tenant. Updates roll out via
-  **rings/flights** (progressive exposure), and tenants can be pinned to a version.
+**What each actually uses (substrate) vs. what's transferable (invariants):**
+- **ServiceNow** — **instance-per-customer (silo, ≈ Model A):** each customer gets a dedicated app
+  node + dedicated database; famously *single-tenant instances*, not shared multi-tenancy. The
+  transferable part is its **metadata/config-as-data + upgrade three-way-merge** ("skip list",
+  "Update Sets") that moves the baseline forward while preserving customer customizations.
+- **Okta** — **pooled multi-tenant (≈ Model C):** shared platform, logical isolation by org/tenant
+  id (subdomain boundary). Transferable part: config is data and schema changes are
+  backward-compatible, so the shared platform updates continuously without touching tenant config.
+- **Microsoft** — **mixed:** Entra ID (Azure AD) is **pooled** (tenant = logical security boundary,
+  tenant id in every token); Dynamics 365 is **database-per-tenant**; M365/Exchange distribute
+  tenants across databases. Transferable part: **ring/flight** progressive rollout and per-tenant
+  version pinning.
+
+So **Model D is our recommended way to get these vendors' *properties* (isolation + release-safe
+config/data) on a single Postgres cluster — it is not a literal copy of any of their
+architectures.** If the goal is to match ServiceNow specifically, that's **Model A**; to match
+Okta/Entra, that's **Model C**. The five invariants below are what all of them rely on, and they
+apply to A, C, and D alike.
 
 **The five invariants that make "push an update without impacting tenant data" true** — adopt all
 five regardless of A/C/D:
