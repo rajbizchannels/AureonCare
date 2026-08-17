@@ -1,0 +1,180 @@
+###############################################################################
+# AureonCare Helm Chart — Default Values
+# Override with: helm install aureoncare helm/aureoncare/ -f my-values.yaml
+###############################################################################
+
+replicaCount:
+  backend: 2
+  frontend: 2
+
+image:
+  registry: ghcr.io
+  repository: aureoncare
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Image pull secrets (for private registries)
+imagePullSecrets: []
+
+# Override resource name prefix
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# ─── Backend ──────────────────────────────────────────────────────────────────
+backend:
+  port: 3000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  # Extra environment variables to inject into the backend pod
+  extraEnv: []
+  # - name: MY_VAR
+  #   value: "my-value"
+
+# ─── Frontend ─────────────────────────────────────────────────────────────────
+frontend:
+  port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ─── PostgreSQL (Bitnami subchart) ────────────────────────────────────────────
+# Set enabled: false to use an external managed database (RDS, Cloud SQL, etc.)
+postgresql:
+  enabled: true
+  auth:
+    database: aureoncare
+    username: aureoncare
+    # REQUIRED: set a strong password before deploying
+    password: ""
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+# ─── Redis (Bitnami subchart) ─────────────────────────────────────────────────
+# Disabled by default; enable when AC_USE_RD=true
+redis:
+  enabled: false
+  auth:
+    enabled: true
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      size: 4Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+
+# ─── Ingress ──────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  # annotations:
+  #   nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  host: aureoncare.example.com
+  tls: false
+  tlsSecret: ""
+
+# ─── Update Agent ─────────────────────────────────────────────────────────────
+updateAgent:
+  enabled: true
+  releaseRegistryUrl: https://api.github.com/repos/aureoncare/aureoncare/releases/latest
+  checkIntervalHours: 24
+  autoApply: false
+  notifyWebhookUrl: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ─── Uploads Persistence ──────────────────────────────────────────────────────
+uploads:
+  persistence:
+    size: 10Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+
+# ─── Horizontal Pod Autoscaler ────────────────────────────────────────────────
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ─── Application Environment Variables ───────────────────────────────────────
+# Non-sensitive vars go here (rendered into ConfigMap).
+# Sensitive vars go under env.secrets (rendered into a K8s Secret).
+#
+# All AC_ vars: https://github.com/aureoncare/aureoncare/blob/main/backend/.env.example
+env:
+  # Application
+  NODE_ENV: production
+  AC_CLN: "AureonCare Clinic"         # Clinic display name
+  AC_LOG_LVL: info                    # Log level: debug, info, warn, error
+  AC_UPL_DIR: /app/uploads            # Upload directory inside container
+  AC_UPL_MAX: "10485760"              # Max upload size in bytes (10 MB)
+  AC_USE_RD: "false"                  # Set "true" to enable Redis session store
+  AC_TK_E: 24h                        # JWT token expiry duration
+  AC_DB_S: "false"                    # Set "true" when using Supabase TLS pooler
+
+  # ── Sensitive values — set these via --set or an external secrets manager ──
+  # The following are rendered into a Kubernetes Secret (base64-encoded).
+  # In production, prefer ExternalSecrets Operator or Vault Agent Injector.
+
+  # REQUIRED: JWT signing secret (min 32 random characters)
+  AC_TK_S: ""
+  # REQUIRED: Field-level encryption key (exactly 32 random characters)
+  AC_EK: ""
+  # REQUIRED (choose one):
+  #   AC_PG_URI  — full PostgreSQL connection URI (takes precedence)
+  #   AC_DB_W    — password when using individual AC_DB_* vars
+  AC_PG_URI: ""
+  AC_DB_W: ""
+
+  # Optional integrations
+  AC_SG_KEY: ""          # SendGrid API key for transactional email
+  AC_ZM_CID: ""          # Zoom OAuth client ID
+  AC_ZM_CSK: ""          # Zoom OAuth client secret
+  AC_GM_CID: ""          # Google Meet OAuth client ID
+  AC_GM_CSK: ""          # Google Meet OAuth client secret
+  AC_MS_CID: ""          # Microsoft Teams / Azure AD client ID
+  AC_MS_CSK: ""          # Microsoft Teams / Azure AD client secret
+  AC_GD_CSK: ""          # Google Drive OAuth client secret
+  AC_OD_CSK: ""          # OneDrive / Azure AD client secret
+  AC_WBX_CID: ""         # Cisco Webex OAuth client ID
+  AC_WBX_CSK: ""         # Cisco Webex OAuth client secret
+  AC_SB_SK: ""           # Supabase secret key (only if using Supabase)
+
+  # Subscription key for the update agent
+  SUBSCRIPTION_KEY: ""

@@ -1,6 +1,9 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
+const { enforcePatientQuota } = require('../middleware/planEnforcement');
 
 // Get all patients
 router.get('/', async (req, res) => {
@@ -37,8 +40,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new patient
-router.post('/', async (req, res) => {
+// Create new patient  (patient quota check runs first)
+router.post('/', enforcePatientQuota, async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
     address, city, state, zip, insurance, insurance_id, insurance_payer_id,
@@ -60,8 +63,13 @@ router.post('/', async (req, res) => {
     // IMPORTANT: With new schema, patient.id = user.id
     // So we must create the user FIRST to get the ID
 
-    // Create corresponding user account with patient role if email is provided
-    if (email && createUserAccount !== false) {
+    // Auto-create a linked user account when all required fields are present.
+    // Skip silently when first_name or last_name is missing — inserting an
+    // unnamed user row is the root cause of phantom unnamed patient accounts
+    // showing up in GET /api/users.
+    const hasName = first_name && first_name.trim() && last_name && last_name.trim();
+
+    if (email && hasName && createUserAccount !== false) {
       // Check if user with this email already exists
       const existingUser = await client.query(
         'SELECT id FROM users WHERE email = $1',
@@ -69,25 +77,22 @@ router.post('/', async (req, res) => {
       );
 
       if (existingUser.rows.length > 0) {
-        // Use existing user ID
         userId = existingUser.rows[0].id;
       } else {
-        // Create user with patient role
         const bcrypt = require('bcryptjs');
-        // Generate a temporary password (user should reset via patient portal)
+        const { BCRYPT_COST } = require('../utils/passwordPolicy');
         tempPassword = Math.random().toString(36).slice(-8);
-        const passwordHash = await bcrypt.hash(tempPassword, 10);
+        const passwordHash = await bcrypt.hash(tempPassword, BCRYPT_COST);
 
         const userResult = await client.query(
           `INSERT INTO users
            (id, email, password_hash, first_name, last_name, role, phone, status, created_at, updated_at)
            VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', $5, 'active', NOW(), NOW())
            RETURNING id`,
-          [email, passwordHash, first_name, last_name, phone]
+          [email, passwordHash, first_name.trim(), last_name.trim(), phone]
         );
 
         userId = userResult.rows[0].id;
-        console.log(`Created user account for patient ${first_name} ${last_name} with temporary password: ${tempPassword}`);
       }
     }
 

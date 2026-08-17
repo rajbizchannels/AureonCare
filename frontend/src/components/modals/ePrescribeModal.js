@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus, Trash2 } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 
 const EPrescribeModal = ({
   theme,
@@ -146,14 +147,7 @@ const EPrescribeModal = ({
 
   // Debug: Log render state
   useEffect(() => {
-    console.log('[ePrescribe] ===== RENDER STATE =====');
-    console.log('[ePrescribe] currentMedication:', currentMedication ? {
-      id: currentMedication.id,
-      drugName: currentMedication.drugName || currentMedication.drug_name,
-      ndcCode: currentMedication.ndcCode || currentMedication.ndc_code
-    } : 'NULL');
-    console.log('[ePrescribe] addedMedications count:', addedMedications.length);
-    console.log('[ePrescribe] ======================');
+    // SEC-14: removed render-state logging of medication details/counts.
   }, [currentMedication, addedMedications]);
 
   // Search medications - wrapped in useCallback to prevent unnecessary re-renders
@@ -294,7 +288,7 @@ const EPrescribeModal = ({
   const handleSelectMedication = useCallback((medication) => {
     console.log('[ePrescribe] ========================================');
     console.log('[ePrescribe] handleSelectMedication called');
-    console.log('[ePrescribe] Medication received:', medication);
+    // SEC-14: removed logging of the medication object.
 
     // Validate medication object
     if (!medication) {
@@ -341,11 +335,11 @@ const EPrescribeModal = ({
         setSafetyCheckLoading(true);
         try {
           const ndcCode = medication.ndcCode || medication.ndc_code;
-          console.log('[ePrescribe] Checking safety with NDC:', ndcCode, 'Patient ID:', patient.id);
+          // SEC-14: removed logging of NDC + patient ID.
 
           // Use api service for safety check
           const safetyData = await api.checkPrescriptionSafety(patient.id, ndcCode);
-          console.log('[ePrescribe] Safety data received:', safetyData);
+          // SEC-14: removed logging of safety-check result data.
           setSafetyWarnings(safetyData.warnings || []);
         } catch (error) {
           console.error('[ePrescribe] Error in safety check:', error);
@@ -430,7 +424,7 @@ const EPrescribeModal = ({
       return;
     }
 
-    console.log('[ePrescribe] Loading pharmacies for patient:', patient.id);
+    // SEC-14: removed logging of patient ID.
     setPharmaciesLoading(true);
     try {
       // Load ALL pharmacies from the pharmacy table
@@ -1232,10 +1226,10 @@ const EPrescribeModal = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     Frequency *
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={currentDetails.frequency}
                     onChange={(e) => setCurrentDetails({ ...currentDetails, frequency: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   >
                     <option value="">Select frequency</option>
                     <option value="Once daily">Once daily</option>
@@ -1247,7 +1241,7 @@ const EPrescribeModal = ({
                     <option value="Every 8 hours">Every 8 hours</option>
                     <option value="Every 12 hours">Every 12 hours</option>
                     <option value="As needed">As needed (PRN)</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div>
@@ -1280,15 +1274,15 @@ const EPrescribeModal = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     Refills
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={currentDetails.refills}
                     onChange={(e) => setCurrentDetails({ ...currentDetails, refills: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
                   >
                     {[0, 1, 2, 3, 4, 5, 6, 11].map(n => (
                       <option key={n} value={n}>{n} {n === 11 ? '(1 year)' : ''}</option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 </div>
 
                 <div className="col-span-2">
@@ -1366,17 +1360,13 @@ const EPrescribeModal = ({
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     Select Pharmacy (Optional)
                   </label>
-                  <select
+                  <ThemedSelect
+                    theme={theme}
                     value={selectedPharmacy?.id || ''}
                     onChange={(e) => {
                       const pharmacy = pharmacies.find(p => p.id === parseInt(e.target.value));
                       setSelectedPharmacy(pharmacy || null);
                     }}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-blue-500 ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-700 text-white'
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">No pharmacy selected (Print only)</option>
                     {pharmacies.map((pharmacy) => (
@@ -1388,7 +1378,7 @@ const EPrescribeModal = ({
                         {pharmacy.acceptsErx ? ' (eRx)' : ''}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
 
                   {/* Show selected pharmacy details */}
                   {selectedPharmacy && (

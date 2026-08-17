@@ -1,24 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, Plus, Trash2, Save, X } from 'lucide-react';
 
-// Helper function to get authentication headers
-const getAuthHeaders = () => {
-    const headers = {
-        'Content-Type': 'application/json'
-    };
+import { apiFetch } from '../../api/apiService';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 
-    try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (user && user.id) {
-            headers['x-user-id'] = user.id;
-            headers['x-user-role'] = user.role || 'patient';
-        }
-    } catch (error) {
-        console.error('Error parsing user from localStorage:', error);
-    }
-
-    return headers;
-};
 
 const DAYS_OF_WEEK = [
     { value: 0, label: 'Sunday' },
@@ -38,18 +23,13 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
     const [editedSchedules, setEditedSchedules] = useState([]);
     const [selectedDayForAdd, setSelectedDayForAdd] = useState(1); // Default to Monday
 
-    useEffect(() => {
-        if (providerId) {
-            fetchAvailability();
-        }
-    }, [fetchAvailability, providerId]);
-
-    const fetchAvailability = async () => {
+    // Declared before the effect that depends on it — a `const` referenced from
+    // a dependency array is still in its temporal dead zone during that render.
+    const fetchAvailability = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`/api/scheduling/availability/${providerId}`, {
-                headers: getAuthHeaders()
+            const response = await apiFetch(`/scheduling/availability/${providerId}`, {
             });
             if (!response.ok) throw new Error('Failed to fetch availability');
             const data = await response.json();
@@ -60,7 +40,13 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [providerId]);
+
+    useEffect(() => {
+        if (providerId) {
+            fetchAvailability();
+        }
+    }, [fetchAvailability, providerId]);
 
     const addNewSchedule = () => {
         setEditedSchedules([
@@ -101,9 +87,8 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                 isAvailable: s.isAvailable !== false
             }));
 
-            const response = await fetch('/api/scheduling/availability/bulk', {
+            const response = await apiFetch('/scheduling/availability/bulk', {
                 method: 'POST',
-                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     providerId,
                     schedules: schedulesToSave
@@ -192,7 +177,9 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                                                 <div key={index} className="flex items-center gap-3">
                                                     {editMode ? (
                                                         <>
-                                                            <select
+                                                            <ThemedSelect
+                                                              theme={theme}
+                                                              className="text-sm"
                                                                 value={schedule.dayOfWeek || schedule.day_of_week}
                                                                 onChange={(e) => {
                                                                     const globalIndex = editedSchedules.findIndex(
@@ -201,18 +188,13 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                                                                     );
                                                                     updateSchedule(globalIndex, 'dayOfWeek', Number(e.target.value));
                                                                 }}
-                                                                className={`border rounded px-2 py-2 text-sm ${
-                                                                    theme === 'dark'
-                                                                        ? 'bg-slate-700 border-slate-600 text-white'
-                                                                        : 'bg-white border-gray-300 text-gray-900'
-                                                                }`}
                                                             >
                                                                 {DAYS_OF_WEEK.map(d => (
                                                                     <option key={d.value} value={d.value}>
                                                                         {d.label.substring(0, 3)}
                                                                     </option>
                                                                 ))}
-                                                            </select>
+                                                            </ThemedSelect>
                                                             <Clock className={`w-5 h-5 ${
                                                                 theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
                                                             }`} />
@@ -305,21 +287,17 @@ const DoctorAvailabilityManager = ({ providerId, theme = 'dark', onClose }) => {
                     <div>
                         {editMode && (
                             <div className="flex items-center gap-3">
-                                <select
+                                <ThemedSelect
+                                  theme={theme}
                                     value={selectedDayForAdd}
                                     onChange={(e) => setSelectedDayForAdd(Number(e.target.value))}
-                                    className={`border rounded px-3 py-2 ${
-                                        theme === 'dark'
-                                            ? 'bg-slate-700 border-slate-600 text-white'
-                                            : 'bg-white border-gray-300 text-gray-900'
-                                    }`}
                                 >
                                     {DAYS_OF_WEEK.map(day => (
                                         <option key={day.value} value={day.value}>
                                             {day.label}
                                         </option>
                                     ))}
-                                </select>
+                                </ThemedSelect>
                                 <button
                                     onClick={addNewSchedule}
                                     className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${

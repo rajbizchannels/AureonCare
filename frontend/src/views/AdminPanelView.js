@@ -31,7 +31,6 @@ import {
   Lock,
   Unlock,
   CheckCircle,
-  ArrowLeft,
   CreditCard,
   Check,
   Video,
@@ -69,6 +68,8 @@ import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import { useClinicSettings } from '../hooks/useClinicSettings';
+import { apiFetch } from '../api/apiService';
+import { useShellTab } from '../hooks/useShellTab';
 import {
   USER_ROLES,
   USER_STATUS,
@@ -93,6 +94,7 @@ import {
   validateOptionalEmail,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 /**
  * ZoomSetupGuide — admin-only collapsible guide for configuring
@@ -115,7 +117,7 @@ const PlatformSetupGuide = ({ theme }) => {
 
   React.useEffect(() => {
     ['zoom', 'google_meet', 'webex', 'microsoft_teams'].forEach((p) => {
-      fetch(`/api/integrations/oauth/${p}/redirect-url`)
+      apiFetch(`/integrations/oauth/${p}/redirect-url`)
         .then(r => r.json())
         .then(data => setRedirectUrls(prev => ({ ...prev, [p]: data.redirectUrl || '' })))
         .catch(() => {});
@@ -296,6 +298,8 @@ TEAMS_CLIENT_SECRET=`}
  */
 const AdminPanelView = ({
   theme,
+  activeTab: shellTab,
+  onTabChange,
   users,
   setUsers,
   setShowForm,
@@ -311,7 +315,7 @@ const AdminPanelView = ({
   const { setPlanTier, updateUserPreferences, planTier, user } = useApp();
 
   // ==================== STATE ====================
-  const [activeTab, setActiveTab] = useState(ADMIN_TABS.CLINIC);
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, ADMIN_TABS.CLINIC);
 
   // Use custom hook for clinic settings (with built-in validation)
   const {
@@ -455,6 +459,8 @@ const AdminPanelView = ({
   // User form inline state
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  // Only relevant while editing — a new user always needs a password.
+  const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [userFormData, setUserFormData] = useState({
     firstName: '',
     lastName: '',
@@ -1164,7 +1170,7 @@ const AdminPanelView = ({
 
     try {
       // Save credentials
-      const saveResponse = await fetch(`/api/integrations/oauth/${providerType}/credentials`, {
+      const saveResponse = await apiFetch(`/integrations/oauth/${providerType}/credentials`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials)
@@ -1205,7 +1211,7 @@ const AdminPanelView = ({
 
         await addNotification('info', `Starting ${displayName} OneClick Integration...`);
 
-        const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+        const response = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -1256,7 +1262,7 @@ const AdminPanelView = ({
    */
   const fetchBackupConfigStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/backup-providers/config/status');
+      const response = await apiFetch('/backup-providers/config/status');
       if (response.ok) {
         const status = await response.json();
         setBackupConfig({
@@ -1288,7 +1294,7 @@ const AdminPanelView = ({
       }
 
       try {
-        const statusResponse = await fetch(`/api/integrations/oauth/${providerType}/status`);
+        const statusResponse = await apiFetch(`/integrations/oauth/${providerType}/status`);
         if (statusResponse.ok) {
           const status = await statusResponse.json();
           if (status.hasTokens) {
@@ -1311,7 +1317,7 @@ const AdminPanelView = ({
     async (providerType, providerName, credentialType = 'oauth') => {
       try {
         // Fetch existing credentials
-        const response = await fetch(`/api/integrations/oauth/${providerType}/credentials`);
+        const response = await apiFetch(`/integrations/oauth/${providerType}/credentials`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -1320,7 +1326,7 @@ const AdminPanelView = ({
 
         // Helper: initiate OAuth popup and poll for completion
         const initiateOAuthPopup = async () => {
-          const oauthResponse = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+          const oauthResponse = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
           const oauthData = await oauthResponse.json();
 
           if (!oauthResponse.ok) {
@@ -1385,7 +1391,7 @@ const AdminPanelView = ({
    * Helper: open OAuth popup and poll for completion
    */
   const openOAuthPopup = useCallback(async (providerType, displayName) => {
-    const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+    const response = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -1466,7 +1472,7 @@ const AdminPanelView = ({
     const displayName = providerNames[providerType] || providerType;
 
     try {
-      const response = await fetch(`/api/integrations/oauth/${providerType}`, { method: 'DELETE' });
+      const response = await apiFetch(`/integrations/oauth/${providerType}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to disconnect');
 
       setTelehealthStatus((prev) => ({
@@ -1852,7 +1858,7 @@ const AdminPanelView = ({
   const handleConfigureCloudBackup = useCallback(async (providerType) => {
     const displayName = providerType === 'google_drive' ? 'Google Drive' : 'OneDrive';
     try {
-      const response = await fetch(`/api/integrations/oauth/${providerType}/initiate`);
+      const response = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `Failed to start ${displayName} sign-in`);
 
@@ -2117,12 +2123,11 @@ const AdminPanelView = ({
           <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             Currency
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
+            focusClass="focus:ring-2 focus:ring-blue-500"
             value={clinicSettings.currency || 'USD'}
             onChange={(e) => updateClinicSetting('currency', e.target.value)}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-            }`}
           >
             {[
               { code: 'USD', label: 'USD – US Dollar ($)' },
@@ -2146,7 +2151,7 @@ const AdminPanelView = ({
               { code: 'BDT', label: 'BDT – Bangladeshi Taka (৳)' },
               { code: 'KES', label: 'KES – Kenyan Shilling (KSh)' },
             ].map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
-          </select>
+          </ThemedSelect>
         </div>
       </div>
 
@@ -2213,6 +2218,7 @@ const AdminPanelView = ({
       });
     }
     setUserFormErrors({});
+    setShowPasswordFields(false);
   }, [showUserForm, editingUser]);
 
   const validateUserForm = () => {
@@ -2308,6 +2314,7 @@ const AdminPanelView = ({
       confirmPassword: '',
     });
     setUserFormErrors({});
+    setShowPasswordFields(false);
   };
 
   // ==================== RENDER FUNCTIONS ====================
@@ -2771,12 +2778,12 @@ const AdminPanelView = ({
                 </label>
                 <div className="relative">
                   <Globe className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10"
                     value={userFormData.country}
                     onChange={(e) => handleUserFormChange('country', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select</option>
                     <option value="US">US</option>
@@ -2785,7 +2792,7 @@ const AdminPanelView = ({
                     <option value="AU">Australia</option>
                     <option value="DE">Germany</option>
                     <option value="FR">France</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
 
@@ -2795,19 +2802,19 @@ const AdminPanelView = ({
                 </label>
                 <div className="relative">
                   <Clock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10"
                     value={userFormData.timezone}
                     onChange={(e) => handleUserFormChange('timezone', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select</option>
                     <option value="America/New_York">ET</option>
                     <option value="America/Chicago">CT</option>
                     <option value="America/Denver">MT</option>
                     <option value="America/Los_Angeles">PT</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
 
@@ -2817,12 +2824,12 @@ const AdminPanelView = ({
                 </label>
                 <div className="relative">
                   <Languages className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10"
                     value={userFormData.language}
                     onChange={(e) => handleUserFormChange('language', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select</option>
                     <option value="en">English</option>
@@ -2830,7 +2837,7 @@ const AdminPanelView = ({
                     <option value="fr">Français</option>
                     <option value="de">Deutsch</option>
                     <option value="ar">العربية</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
             </div>
@@ -2842,22 +2849,39 @@ const AdminPanelView = ({
               </label>
               <div className="relative">
                 <Shield className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10"
                   value={userFormData.role}
                   onChange={(e) => handleUserFormChange('role', e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                  }`}
                 >
                   <option value="admin">Admin</option>
                   <option value="doctor">Doctor</option>
                   <option value="staff">Staff</option>
                   <option value="patient">Patient</option>
-                </select>
+                </ThemedSelect>
               </div>
             </div>
 
+            {/* Editing a user — a role or detail change is not a password
+                change, so the credential fields stay out of the way until an
+                admin asks for them. */}
+            {editingUser && !showPasswordFields && (
+              <button
+                type="button"
+                onClick={() => setShowPasswordFields(true)}
+                className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                  theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                }`}
+              >
+                <Lock className="w-4 h-4" />
+                {t.setNewPassword || 'Set a new password'}
+              </button>
+            )}
+
             {/* Password fields */}
+            {(!editingUser || showPasswordFields) && (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -2900,6 +2924,7 @@ const AdminPanelView = ({
                 </div>
               )}
             </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 pt-4">
@@ -4742,32 +4767,9 @@ const AdminPanelView = ({
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
-              }`}
-              title={t.backToDashboard || 'Back to Dashboard'}
-              aria-label="Back to Dashboard"
-            >
-              <ArrowLeft
-                className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}
-              />
-            </button>
-            <div>
-              <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t.adminPanel || 'Admin Panel'}
-              </h1>
-              <p className={`mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                {t.manageClinicSettingsUsers || 'Manage clinic settings and users'}
-              </p>
-            </div>
-          </div>
-        </div>
 
-        {/* Tabs */}
+        {/* Tabs — the app shell's secondary pane replaces these when present */}
+        {!tabsInShell && (
         <div className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <div className="flex space-x-8 overflow-x-auto">
             {tabs.map((tab) => {
@@ -4794,6 +4796,7 @@ const AdminPanelView = ({
             })}
           </div>
         </div>
+        )}
 
         {/* Tab Content */}
         <div>
@@ -4931,6 +4934,10 @@ const AdminPanelView = ({
 
 AdminPanelView.propTypes = {
   theme: PropTypes.oneOf(['light', 'dark']).isRequired,
+  // Sub-module tab driven by the app shell's secondary pane (optional —
+  // the view manages its own tabs when rendered outside the shell).
+  activeTab: PropTypes.string,
+  onTabChange: PropTypes.func,
   users: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,

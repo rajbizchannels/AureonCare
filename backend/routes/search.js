@@ -1,5 +1,8 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
+const { resolveViewPermissions } = require('../utils/searchAccess');
 const router = express.Router();
+router.use(authenticate);
 
 /**
  * Universal search endpoint that searches across all modules
@@ -30,9 +33,25 @@ router.get('/', async (req, res) => {
       }
     };
 
+    // ── Access scoping ───────────────────────────────────────────────────────
+    // A patient searches only their own chart. Everything below this point is
+    // the staff index, which spans every patient in the practice.
+    if (req.user.role === 'patient') {
+      const own = await patientScopedSearch(pool, safeSearch, req.user.id, searchQuery, searchLimit);
+      return res.json(decorate(own, searchLimit));
+    }
+
+    // Staff see only the modules their role is permitted to view. `null` means
+    // the result type is open to every authenticated staff member.
+    const canView = await resolveViewPermissions(pool, req.user.role);
+    const pushIf = (permissionModule, queryFn, label) => {
+      if (permissionModule === null || canView.has(permissionModule)) {
+        searchPromises.push(safeSearch(queryFn, label));
+      }
+    };
+
     // Search Patients
-    searchPromises.push(
-      safeSearch(
+    pushIf('patients',
         () => pool.query(`
           SELECT
             id,
@@ -59,12 +78,10 @@ router.get('/', async (req, res) => {
           LIMIT $3
         `, [`%${searchQuery}%`, searchQuery, searchLimit]),
         'Patients'
-      )
     );
 
     // Search Appointments
-    searchPromises.push(
-      safeSearch(
+    pushIf('appointments',
         () => pool.query(`
           SELECT
             a.id,
@@ -93,12 +110,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Appointments'
-      )
     );
 
     // Search Providers (specialization not specialty, no npi)
-    searchPromises.push(
-      safeSearch(
+    pushIf('patients',
         () => pool.query(`
           SELECT
             id,
@@ -120,12 +135,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Providers'
-      )
     );
 
     // Search Claims (amount not total_charge, service_date not date_of_service)
-    searchPromises.push(
-      safeSearch(
+    pushIf('claims',
         () => pool.query(`
           SELECT
             c.id,
@@ -148,12 +161,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Claims'
-      )
     );
 
     // Search Payments
-    searchPromises.push(
-      safeSearch(
+    pushIf('rcm',
         () => pool.query(`
           SELECT
             pay.id,
@@ -173,12 +184,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Payments'
-      )
     );
 
     // Search Prescriptions
-    searchPromises.push(
-      safeSearch(
+    pushIf('ehr',
         () => pool.query(`
           SELECT
             pr.id,
@@ -205,12 +214,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Prescriptions'
-      )
     );
 
     // Search Lab Orders (order_number, order_type, status, collection_date)
-    searchPromises.push(
-      safeSearch(
+    pushIf('ehr',
         () => pool.query(`
           SELECT
             lo.id,
@@ -231,12 +238,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Lab Orders'
-      )
     );
 
     // Search Diagnosis (diagnosis_code, diagnosis_name, diagnosed_date)
-    searchPromises.push(
-      safeSearch(
+    pushIf('ehr',
         () => pool.query(`
           SELECT
             d.id,
@@ -264,12 +269,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Diagnosis'
-      )
     );
 
     // Search Tasks (users.name not username)
-    searchPromises.push(
-      safeSearch(
+    pushIf(null,
         () => pool.query(`
           SELECT
             t.id,
@@ -292,12 +295,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Tasks'
-      )
     );
 
     // Search Healthcare Offerings (duration_minutes, no price, no specialization)
-    searchPromises.push(
-      safeSearch(
+    pushIf('clinicalServices',
         () => pool.query(`
           SELECT
             o.id,
@@ -314,12 +315,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Healthcare Offerings'
-      )
     );
 
     // Search Campaigns
-    searchPromises.push(
-      safeSearch(
+    pushIf('crm',
         () => pool.query(`
           SELECT
             c.id,
@@ -339,12 +338,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Campaigns'
-      )
     );
 
     // Search Preapprovals (requested_service not service_type, created_at not request_date)
-    searchPromises.push(
-      safeSearch(
+    pushIf('rcm',
         () => pool.query(`
           SELECT
             pa.id,
@@ -367,12 +364,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Preapprovals'
-      )
     );
 
     // Search Denials (denial_reason_code, denial_reason_description)
-    searchPromises.push(
-      safeSearch(
+    pushIf('rcm',
         () => pool.query(`
           SELECT
             d.id,
@@ -392,12 +387,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Denials'
-      )
     );
 
     // Search Billing Quotes
-    searchPromises.push(
-      safeSearch(
+    pushIf('rcm',
         () => pool.query(`
           SELECT
             q.id,
@@ -421,12 +414,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Billing Quotes'
-      )
     );
 
     // Search Billing Invoices
-    searchPromises.push(
-      safeSearch(
+    pushIf('rcm',
         () => pool.query(`
           SELECT
             i.id,
@@ -450,12 +441,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Billing Invoices'
-      )
     );
 
     // Search Billing Coupons
-    searchPromises.push(
-      safeSearch(
+    pushIf('rcm',
         () => pool.query(`
           SELECT
             c.id,
@@ -476,12 +465,10 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Billing Coupons'
-      )
     );
 
     // Search Billing Payments
-    searchPromises.push(
-      safeSearch(
+    pushIf('rcm',
         () => pool.query(`
           SELECT
             bp.id,
@@ -507,7 +494,6 @@ router.get('/', async (req, res) => {
           LIMIT $2
         `, [`%${searchQuery}%`, searchLimit]),
         'Billing Payments'
-      )
     );
 
     // Execute all searches in parallel
@@ -516,21 +502,103 @@ router.get('/', async (req, res) => {
     // Combine all results
     const allResults = results.flatMap(result => result.rows || []);
 
-    // Sort by relevance and limit
-    const sortedResults = allResults
-      .slice(0, searchLimit)
-      .map(result => ({
-        ...result,
-        display_name: getDisplayName(result),
-        display_subtitle: getDisplaySubtitle(result)
-      }));
-
-    res.json(sortedResults);
+    res.json(decorate(allResults, searchLimit));
   } catch (error) {
     console.error('Search error:', error);
     res.status(500).json({ error: 'Failed to perform search', details: error.message });
   }
 });
+
+/** Trim to the requested limit and attach the display strings the UI shows. */
+function decorate(rows, searchLimit) {
+  return rows.slice(0, searchLimit).map(result => ({
+    ...result,
+    display_name: getDisplayName(result),
+    display_subtitle: getDisplaySubtitle(result)
+  }));
+}
+
+/**
+ * Search restricted to one patient's own chart.
+ *
+ * Patients hold view permissions on ehr/appointments/claims so they can read
+ * *their own* data through the portal; running the staff index for them would
+ * expose the whole practice. This path never widens beyond `patientId`, and
+ * omits the staff-only result types (providers, campaigns, offerings, tasks,
+ * billing documents) entirely.
+ */
+async function patientScopedSearch(pool, safeSearch, patientId, searchQuery, searchLimit) {
+  const like = `%${searchQuery}%`;
+  const promises = [];
+
+  // Own demographics
+  promises.push(safeSearch(() => pool.query(`
+    SELECT id, first_name, last_name, mrn, email, phone, date_of_birth,
+           'patient' as result_type, 'patientPortal' as module
+    FROM patients
+    WHERE id = $1
+      AND (LOWER(first_name || ' ' || last_name) LIKE LOWER($2)
+        OR LOWER(COALESCE(mrn, '')) LIKE LOWER($2)
+        OR LOWER(COALESCE(email, '')) LIKE LOWER($2))
+    LIMIT $3
+  `, [patientId, like, searchLimit]), 'Patient self'));
+
+  // Own appointments
+  promises.push(safeSearch(() => pool.query(`
+    SELECT a.id, a.start_time, a.end_time, a.status, a.appointment_type, a.reason,
+           a.patient_id, p.first_name as patient_first_name, p.last_name as patient_last_name,
+           'appointment' as result_type, 'patientPortal' as module
+    FROM appointments a
+    LEFT JOIN patients p ON a.patient_id = p.id
+    WHERE a.patient_id = $1
+      AND (LOWER(COALESCE(a.appointment_type, '')) LIKE LOWER($2)
+        OR LOWER(COALESCE(a.reason, '')) LIKE LOWER($2)
+        OR LOWER(COALESCE(a.status, '')) LIKE LOWER($2))
+    ORDER BY a.start_time DESC
+    LIMIT $3
+  `, [patientId, like, searchLimit]), 'Patient appointments'));
+
+  // Own prescriptions
+  promises.push(safeSearch(() => pool.query(`
+    SELECT pr.id, pr.medication_name, pr.dosage, pr.frequency, pr.status, pr.patient_id,
+           'prescription' as result_type, 'patientPortal' as module
+    FROM prescriptions pr
+    WHERE pr.patient_id = $1
+      AND (LOWER(COALESCE(pr.medication_name, '')) LIKE LOWER($2)
+        OR LOWER(COALESCE(pr.dosage, '')) LIKE LOWER($2)
+        OR LOWER(COALESCE(pr.status, '')) LIKE LOWER($2))
+    ORDER BY pr.created_at DESC
+    LIMIT $3
+  `, [patientId, like, searchLimit]), 'Patient prescriptions'));
+
+  // Own diagnoses
+  promises.push(safeSearch(() => pool.query(`
+    SELECT d.id, d.diagnosis_code, d.diagnosis_name, d.status, d.patient_id,
+           'diagnosis' as result_type, 'patientPortal' as module
+    FROM diagnosis d
+    WHERE d.patient_id = $1
+      AND (LOWER(COALESCE(d.diagnosis_name, '')) LIKE LOWER($2)
+        OR LOWER(COALESCE(d.diagnosis_code, '')) LIKE LOWER($2))
+    ORDER BY d.created_at DESC
+    LIMIT $3
+  `, [patientId, like, searchLimit]), 'Patient diagnoses'));
+
+  // Own lab orders
+  promises.push(safeSearch(() => pool.query(`
+    SELECT lo.id, lo.order_number, lo.order_type, lo.status, lo.patient_id,
+           'lab_order' as result_type, 'patientPortal' as module
+    FROM lab_orders lo
+    WHERE lo.patient_id = $1
+      AND (LOWER(COALESCE(lo.order_number, '')) LIKE LOWER($2)
+        OR LOWER(COALESCE(lo.order_type, '')) LIKE LOWER($2)
+        OR LOWER(COALESCE(lo.status, '')) LIKE LOWER($2))
+    ORDER BY lo.created_at DESC
+    LIMIT $3
+  `, [patientId, like, searchLimit]), 'Patient lab orders'));
+
+  const results = await Promise.all(promises);
+  return results.flatMap(result => result.rows || []);
+}
 
 /**
  * Helper function to get display name for a search result

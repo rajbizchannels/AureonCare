@@ -1,0 +1,102 @@
+###############################################################################
+# AureonCare Helm — Hosted on Customer Cloud Override Values
+# Usage: helm upgrade --install aureoncare helm/aureoncare/ \
+#          -f helm/aureoncare/values.yaml \
+#          -f helm/aureoncare/values.customer-cloud.yaml \
+#          --set env.AC_TK_S=<secret> \
+#          --set env.AC_EK=<secret> \
+#          --set postgresql.auth.password=<db-password>
+#
+# For customer cloud: customer manages their own AWS EKS / Azure AKS / GCP GKE
+# cluster. They may use the bundled PostgreSQL or point to their managed DB.
+###############################################################################
+
+replicaCount:
+  backend: 2
+  frontend: 2
+
+image:
+  pullPolicy: IfNotPresent
+
+backend:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1500m
+      memory: 1.5Gi
+
+frontend:
+  resources:
+    requests:
+      cpu: 150m
+      memory: 192Mi
+    limits:
+      cpu: 750m
+      memory: 384Mi
+
+# Use in-cluster PostgreSQL by default; set enabled: false and provide
+# env.AC_PG_URI to use customer's managed database (RDS, Azure DB, Cloud SQL)
+postgresql:
+  enabled: true
+  auth:
+    database: aureoncare
+    username: aureoncare
+    # REQUIRED: set via --set postgresql.auth.password=<strong-password>
+    password: ""
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+
+redis:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  # Customer sets their own hostname
+  host: aureoncare.customer-domain.com
+  tls: true
+  tlsSecret: aureoncare-customer-tls
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Update agent checks for new releases and notifies the customer
+# Customer can review release notes and approve updates on their schedule
+updateAgent:
+  enabled: true
+  releaseRegistryUrl: https://api.github.com/repos/aureoncare/aureoncare/releases/latest
+  checkIntervalHours: 24
+  # autoApply: false — customer must review and approve updates
+  autoApply: false
+  # Set notifyWebhookUrl to receive Slack/Teams/email notifications on new releases
+  notifyWebhookUrl: ""
+
+uploads:
+  persistence:
+    size: 20Gi
+    accessMode: ReadWriteOnce
+
+env:
+  NODE_ENV: production
+  AC_LOG_LVL: info
+  AC_USE_RD: "false"
+  AC_TK_E: 24h

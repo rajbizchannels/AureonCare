@@ -1,0 +1,106 @@
+###############################################################################
+# AureonCare — ArgoCD Application Manifest (SaaS Fleet)
+#
+# Deploy: kubectl apply -f deployment/saas/argocd-app.yaml
+#
+# Prerequisites:
+#   - ArgoCD installed in the argocd namespace
+#   - Target namespace "aureoncare-saas" exists:
+#       kubectl create namespace aureoncare-saas
+#   - Secret "aureoncare-saas-secrets" pre-populated in aureoncare-saas ns with:
+#       AC_TK_S, AC_EK, AC_PG_URI, AC_SG_KEY (via Vault/ESO/SOPS)
+#   - Repository registered with ArgoCD:
+#       argocd repo add https://github.com/aureoncare/aureoncare --username <user> --password <token>
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aureoncare-saas
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: aureoncare
+    app.kubernetes.io/component: saas
+    environment: production
+  annotations:
+    # Notify via Slack when sync status changes (requires argocd-notifications)
+    notifications.argoproj.io/subscribe.on-deployed.slack: aureoncare-ops
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: aureoncare-ops
+  finalizers:
+    # Ensures ArgoCD cleans up resources when this Application is deleted
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/aureoncare/aureoncare
+    targetRevision: HEAD
+    path: helm/aureoncare
+
+    helm:
+      releaseName: aureoncare
+
+      # Layer the SaaS overrides on top of the base values
+      valueFiles:
+        - values.yaml
+        - values.saas.yaml
+
+      # Runtime overrides — values that differ per cluster or are injected at
+      # deploy time. Sensitive values are NOT set here; they come from the
+      # pre-existing Kubernetes Secret via secretRef in the Helm templates.
+      values: |
+        image:
+          tag: latest
+
+        ingress:
+          host: app.aureoncare.com
+          tls: true
+          tlsSecret: aureoncare-tls
+          annotations:
+            cert-manager.io/cluster-issuer: "letsencrypt-prod"
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+        # postgresql.enabled: false — using external RDS (set via values.saas.yaml)
+        # Secrets are provided by External Secrets Operator mounted into the
+        # aureoncare-saas-secrets K8s Secret in the target namespace.
+
+  destination:
+    # Deploy to the same cluster ArgoCD runs in
+    server: https://kubernetes.default.svc
+    namespace: aureoncare-saas
+
+  syncPolicy:
+    automated:
+      # Automatically prune resources removed from Git
+      prune: true
+      # Automatically heal resources that drift from Git state
+      selfHeal: true
+      # Allow ArgoCD to create the namespace if it does not exist
+      allowEmpty: false
+
+    syncOptions:
+      # Create namespace automatically on first deploy
+      - CreateNamespace=true
+      # Apply server-side to handle large manifests
+      - ServerSideApply=true
+      # Validate manifests against Kubernetes API before applying
+      - Validate=true
+      # Keep ConfigMaps and Secrets from being deleted on sync
+      - RespectIgnoreDifferences=true
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+
+  # Ignore differences in live state that are managed by other controllers
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas   # Allow HPA to manage replicas without conflict
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data            # Don't overwrite secrets injected by ESO/Vault

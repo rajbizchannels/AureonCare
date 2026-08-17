@@ -1,4 +1,4 @@
-import { Activity, FileText, Video, DollarSign, Users, Plug, BarChart3, Stethoscope, Microscope, ClipboardList, BookOpen, Package } from 'lucide-react';
+import { Activity, FileText, Video, DollarSign, Users, Plug, BarChart3, Stethoscope, Microscope, ClipboardList, BookOpen, Package, MessageSquare } from 'lucide-react';
 
 export const getModules = (t) => [
   { id: 'practiceManagement', name: t.practiceManagement, icon: Activity, color: 'from-blue-500 to-cyan-500' },
@@ -8,6 +8,7 @@ export const getModules = (t) => [
   { id: 'rcm', name: t.rcm, icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
   { id: 'accounts', name: t.accounts || 'Accounts Management', icon: BookOpen, color: 'from-emerald-500 to-teal-500' },
   { id: 'inventory', name: t.inventory || 'Inventory Management', icon: Package, color: 'from-orange-500 to-amber-500' },
+  { id: 'messages', name: t.messages || 'Messages', icon: MessageSquare, color: 'from-cyan-500 to-blue-500' },
   { id: 'clinicalServices', name: t.clinicalServices || 'Clinical Services', icon: Microscope, color: 'from-purple-500 to-pink-500' },
   { id: 'formManagement', name: t.formManagement || 'Form Management', icon: ClipboardList, color: 'from-teal-500 to-cyan-500' },
   { id: 'reports', name: t.reports || 'Reports & Analytics', icon: BarChart3, color: 'from-cyan-500 to-blue-500' },

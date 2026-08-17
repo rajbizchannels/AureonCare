@@ -3,12 +3,19 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const redis = require('redis');
+const path = require('path');
+const fs = require('fs');
 
 // Use centralised Supabase-aware pool from db.js
 const pool = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Trust the first proxy hop (Vercel / load balancer) so req.ip reflects the
+// real client address from X-Forwarded-For — required for correct per-IP rate
+// limiting on the auth endpoints.
+app.set('trust proxy', 1);
 
 // Make pool available to routes
 app.locals.pool = pool;
@@ -72,8 +79,40 @@ app.use(cors({
 // Stripe-Signature verification fails if the body has been JSON-parsed first.
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }), require('./routes/stripeWebhook'));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing — Vercel's @vercel/node runtime consumes the request stream
+// before Express middleware runs but does NOT set req.body, so express.json()
+// always reads an empty stream and throws SyntaxError for every request.
+// Fix: intercept the parse error inside the wrapper and inspect err.body —
+// the raw bytes body-parser actually received. Empty means Vercel ate the
+// stream (treat as empty body); non-empty means genuinely malformed JSON.
+app.use((req, res, next) => {
+  if (req.body !== undefined) return next();
+  express.json({ limit: '10mb' })(req, res, (err) => {
+    if (err && err instanceof SyntaxError && err.status === 400) {
+      let received = '';
+      if (typeof err.body === 'string') {
+        received = err.body.trim();
+      } else if (Buffer.isBuffer(err.body)) {
+        received = err.body.toString('utf8').trim();
+      } else if (err.body != null) {
+        received = String(err.body).trim();
+      }
+      if (!received) {
+        // Stream was empty — Vercel consumed it before we could read it.
+        // Treat as an empty body so routes handle missing fields normally.
+        req.body = {};
+        return next();
+      }
+      return next(err);
+    }
+    if (err) return next(err);
+    next();
+  });
+});
+app.use((req, res, next) => {
+  if (req.body !== undefined) return next();
+  express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+});
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -132,8 +171,13 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Rate limiting — a global backstop across the whole API, plus a strict
+// limiter on authentication endpoints (login, password reset, social login).
+const { apiLimiter, authLimiter } = require('./middleware/rateLimiters');
+app.use('/api', apiLimiter);
+
 // Import and use routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/appointment-types', require('./routes/appointment-types'));
@@ -146,6 +190,7 @@ app.use('/api/payment-postings', require('./routes/payment-postings'));
 app.use('/api/denials', require('./routes/denials'));
 app.use('/api/edi', require('./routes/edi'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/messages', require('./routes/messages'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/providers', require('./routes/providers'));
@@ -186,14 +231,40 @@ app.use('/api/accounts', require('./routes/accounts'));
 app.use('/api/inventory', require('./routes/inventory'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/form-management', require('./routes/form-management'));
+app.use('/api/licenses', require('./routes/licenses'));
 
-// Serve uploaded files
-app.use('/uploads', express.static('uploads'));
+// Serve uploaded files — requires a valid authenticated session.
+// express.static is intentionally NOT used here; unauthenticated access to
+// PHI documents (medical records, consent forms) would be a HIPAA violation.
+const { authenticate } = require('./middleware/auth');
+const UPLOADS_ROOT = path.resolve(__dirname, 'uploads');
+
+app.get('/uploads/*', authenticate, (req, res) => {
+  // Resolve the requested path and confirm it stays inside UPLOADS_ROOT
+  // to prevent directory traversal (e.g. ../../etc/passwd).
+  const requestedPath = path.resolve(UPLOADS_ROOT, req.params[0]);
+  if (!requestedPath.startsWith(UPLOADS_ROOT + path.sep) &&
+      requestedPath !== UPLOADS_ROOT) {
+    return res.status(400).json({ error: 'Invalid file path' });
+  }
+
+  if (!fs.existsSync(requestedPath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  res.sendFile(requestedPath);
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  // express.json() throws a SyntaxError for malformed request bodies.
+  // Return 400 so clients get a useful signal rather than a generic 500.
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });

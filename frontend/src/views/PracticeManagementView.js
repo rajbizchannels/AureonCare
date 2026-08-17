@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowLeft, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2 } from 'lucide-react';
+import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2, RefreshCw } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { isProvider, isPatient } from '../utils/rolePermissions';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import ViewEditModal from '../components/modals/ViewEditModal';
 import { useAudit } from '../hooks/useAudit';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 const PracticeManagementView = ({
   theme,
@@ -50,6 +51,9 @@ const PracticeManagementView = ({
   // Telehealth state
   const [telehealthLoading, setTelehealthLoading] = useState(false);
 
+  // Appointment refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
   // Waitlist state
   const [waitlistEntries, setWaitlistEntries] = useState([]);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
@@ -64,6 +68,21 @@ const PracticeManagementView = ({
       module: 'Practice Management',
     });
   }, [logViewAccess]);
+
+  // Pull the appointment list again — the calendar and the list both read from
+  // the shared store, so one refresh serves either view.
+  const refreshAppointments = async () => {
+    setRefreshing(true);
+    try {
+      const data = await api.getAppointments();
+      setAppointments(data || []);
+    } catch (error) {
+      console.error('Error refreshing appointments:', error);
+      addNotification('alert', 'Failed to refresh appointments');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const loadWaitlist = async () => {
     setWaitlistLoading(true);
@@ -370,17 +389,7 @@ const PracticeManagementView = ({
       />
 
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title={t.backToDashboard || 'Back to Dashboard'}
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
-          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.appointments || 'Appointments'}</h2>
-        </div>
+      <div className="flex items-center justify-end flex-wrap gap-4">
         <div className="flex items-center gap-3">
           {/* View Type Toggle */}
           <div className={`flex items-center gap-2 p-1 rounded-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-200'}`}>
@@ -443,6 +452,22 @@ const PracticeManagementView = ({
                 {t.week || 'Week'}
               </button>
             </div>
+          )}
+
+          {appointmentViewType !== 'waitlist' && (
+            <button
+              onClick={refreshAppointments}
+              disabled={refreshing}
+              title={t.refresh || 'Refresh'}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-60 ${
+                theme === 'dark'
+                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {t.refresh || 'Refresh'}
+            </button>
           )}
 
           <button
@@ -523,21 +548,18 @@ const PracticeManagementView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.status || 'Status'}
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
+                focusClass="focus:ring-2 focus:ring-cyan-500"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                } focus:outline-none focus:ring-2 focus:ring-cyan-500`}
               >
                 <option value="all">{t.allStatuses || 'All Statuses'}</option>
                 <option value="confirmed">{t.confirmed || 'Confirmed'}</option>
                 <option value="pending">{t.pending || 'Pending'}</option>
                 <option value="cancelled">{t.cancelled || 'Cancelled'}</option>
                 <option value="completed">{t.completed || 'Completed'}</option>
-              </select>
+              </ThemedSelect>
             </div>
 
             {/* Appointment Type Filter */}
@@ -545,20 +567,17 @@ const PracticeManagementView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.type || 'Type'}
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
+                focusClass="focus:ring-2 focus:ring-cyan-500"
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                } focus:outline-none focus:ring-2 focus:ring-cyan-500`}
               >
                 <option value="all">{t.allTypes || 'All Types'}</option>
                 {appointmentTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
-              </select>
+              </ThemedSelect>
             </div>
           </div>
 
@@ -1014,14 +1033,10 @@ const PracticeManagementView = ({
             <label className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
               Status:
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={waitlistStatusFilter}
               onChange={(e) => setWaitlistStatusFilter(e.target.value)}
-              className={`px-3 py-2 rounded-lg border outline-none transition-colors ${
-                theme === 'dark'
-                  ? 'bg-slate-700 border-slate-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-900'
-              }`}
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -1029,7 +1044,7 @@ const PracticeManagementView = ({
               <option value="scheduled">Scheduled</option>
               <option value="cancelled">Cancelled</option>
               <option value="expired">Expired</option>
-            </select>
+            </ThemedSelect>
           </div>
 
           {/* Waitlist Entries */}

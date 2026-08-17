@@ -1,7 +1,44 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 const crypto = require('crypto');
 const axios = require('axios');
+
+const JWT_SECRET = process.env.AC_TK_S;
+
+/**
+ * `authenticate` is applied per-route rather than to the whole router, because
+ * the OAuth callback must stay open: the provider sends the browser there as a
+ * top-level navigation with no Authorization header, so a blanket gate answers
+ * Google/Zoom/Teams with {"error":"Authentication required"} and the connection
+ * can never complete. The callback authorises on its signed `state` instead.
+ */
+router.use((req, res, next) => {
+  if (/\/callback$/.test(req.path)) return next();
+  return authenticate(req, res, next);
+});
+
+/**
+ * OAuth state: a signed, short-lived token rather than a server-side entry.
+ *
+ * It has to survive the round trip to the provider, and on serverless the
+ * callback may land on a different instance than the one that started the
+ * flow — an in-memory map loses the state and every connection fails with
+ * "Invalid or expired state". Signing it keeps the CSRF guarantee without
+ * shared storage.
+ */
+const signOAuthState = (providerType, userId) =>
+  jwt.sign({ providerType, uid: String(userId) }, JWT_SECRET, { expiresIn: '10m' });
+
+const verifyOAuthState = (state, providerType) => {
+  try {
+    const claims = jwt.verify(state, JWT_SECRET);
+    return claims.providerType === providerType ? claims : null;
+  } catch (err) {
+    return null;
+  }
+};
 
 /**
  * Integration OAuth Flow Management
@@ -16,7 +53,6 @@ const axios = require('axios');
  */
 
 // Store OAuth states temporarily (in production, use Redis or database)
-const oauthStates = new Map();
 
 /**
  * Build the frontend URL for post-OAuth redirects.
@@ -183,7 +219,7 @@ const OAUTH_CONFIGS = {
   microsoft_teams: {
     authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    scope: 'OnlineMeetings.ReadWrite User.Read offline_access',
+    scope: 'https://graph.microsoft.com/OnlineMeetings.ReadWrite https://graph.microsoft.com/User.Read offline_access',
   },
   google_drive: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -309,20 +345,8 @@ router.get('/:providerType/initiate', async (req, res) => {
       );
     }
 
-    // Generate CSRF state
-    const state = crypto.randomBytes(32).toString('hex');
+    const state = signOAuthState(providerType, req.user.id);
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
-
-    oauthStates.set(state, {
-      providerType,
-      timestamp: Date.now(),
-      expiresAt: Date.now() + 10 * 60 * 1000,
-    });
-
-    // Clean up expired states
-    for (const [key, value] of oauthStates.entries()) {
-      if (value.expiresAt < Date.now()) oauthStates.delete(key);
-    }
 
     // Build authorization URL
     const authUrl = new URL(config.authUrl);
@@ -358,12 +382,10 @@ router.get('/:providerType/callback', async (req, res) => {
       return sendOAuthResult(res, false, providerType, 'Invalid callback — missing code or state.');
     }
 
-    // Verify state
-    const storedState = oauthStates.get(state);
-    if (!storedState || storedState.providerType !== providerType) {
+    // The signed state is what authorises this unauthenticated callback.
+    if (!verifyOAuthState(state, providerType)) {
       return sendOAuthResult(res, false, providerType, 'Invalid or expired state. Please try again.');
     }
-    oauthStates.delete(state);
 
     const config = OAUTH_CONFIGS[providerType];
     const pool = req.app.locals.pool;
@@ -397,6 +419,14 @@ router.get('/:providerType/callback', async (req, res) => {
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
       tokens = tokenResponse.data;
+      console.log(`[OAuth callback] ${providerType} token exchange succeeded:`, {
+        hasAccessToken: Boolean(tokens.access_token),
+        tokenLength: tokens.access_token?.length,
+        hasRefreshToken: Boolean(tokens.refresh_token),
+        scope: tokens.scope,
+        expiresIn: tokens.expires_in,
+        tokenType: tokens.token_type,
+      });
     } catch (tokenError) {
       console.error('Token exchange error:', tokenError.response?.data || tokenError.message);
       return sendOAuthResult(res, false, providerType, 'Token exchange failed — check your Client Secret and Redirect URL.');
@@ -456,20 +486,29 @@ router.get('/:providerType/callback', async (req, res) => {
       });
 
       await pool.query(
-        `UPDATE telehealth_provider_settings
-         SET access_token = $1,
-             refresh_token = $2,
-             token_type = $3,
-             token_scope = $4,
-             token_expires_at = $5,
-             account_id = COALESCE($6, account_id),
-             zoom_user_id = COALESCE($7, zoom_user_id),
-             zoom_user_email = COALESCE($8, zoom_user_email),
-             is_enabled = true,
-             settings = $10::jsonb,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE provider_type = $9`,
+        `INSERT INTO telehealth_provider_settings
+           (provider_type, client_id, client_secret, access_token, refresh_token,
+            token_type, token_scope, token_expires_at, account_id,
+            zoom_user_id, zoom_user_email, is_enabled, settings)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, $12::jsonb)
+         ON CONFLICT (provider_type) DO UPDATE SET
+           client_id = COALESCE(EXCLUDED.client_id, telehealth_provider_settings.client_id),
+           client_secret = COALESCE(EXCLUDED.client_secret, telehealth_provider_settings.client_secret),
+           access_token = EXCLUDED.access_token,
+           refresh_token = EXCLUDED.refresh_token,
+           token_type = EXCLUDED.token_type,
+           token_scope = EXCLUDED.token_scope,
+           token_expires_at = EXCLUDED.token_expires_at,
+           account_id = COALESCE(EXCLUDED.account_id, telehealth_provider_settings.account_id),
+           zoom_user_id = COALESCE(EXCLUDED.zoom_user_id, telehealth_provider_settings.zoom_user_id),
+           zoom_user_email = COALESCE(EXCLUDED.zoom_user_email, telehealth_provider_settings.zoom_user_email),
+           is_enabled = true,
+           settings = EXCLUDED.settings,
+           updated_at = CURRENT_TIMESTAMP`,
         [
+          providerType,
+          client_id,
+          client_secret,
           tokens.access_token,
           tokens.refresh_token || null,
           tokens.token_type || 'Bearer',
@@ -478,7 +517,6 @@ router.get('/:providerType/callback', async (req, res) => {
           accountId,
           connectedUserId,
           connectedUserEmail,
-          providerType,
           settingsJson,
         ]
       );

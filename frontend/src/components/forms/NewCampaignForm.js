@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Mail, Send, Users, Calendar } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from './ThemedSelect';
 
 const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, editingCampaign = null }) => {
   const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
@@ -206,10 +207,10 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.healthcareOffering || 'Healthcare Offering'} ({t.optional || 'optional'})
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={formData.offeringId}
                 onChange={(e) => setFormData({...formData, offeringId: e.target.value})}
-                className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 disabled={loadingOfferings}
               >
                 <option value="">{loadingOfferings ? (t.loading || 'Loading...') : (t.noOffering || 'No specific offering')}</option>
@@ -218,7 +219,7 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
                     {offering.name}
                   </option>
                 ))}
-              </select>
+              </ThemedSelect>
               <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                 {t.offeringHelp || 'Select an offering to promote in this campaign'}
               </p>
@@ -245,16 +246,16 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
                   <Users className="w-4 h-4 inline mr-1" />
                   {t.targetAudience || 'Target Audience'}
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={formData.targetAudience}
                   onChange={(e) => setFormData({...formData, targetAudience: e.target.value})}
-                  className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option value="all">{t.allPatients || 'All Patients'}</option>
                   <option value="active">{t.activePatients || 'Active Patients'}</option>
                   <option value="new">{t.newPatients || 'New Patients (Last 30 days)'}</option>
                   <option value="inactive">{t.inactivePatients || 'Inactive Patients (6+ months)'}</option>
-                </select>
+                </ThemedSelect>
               </div>
 
               <div>
@@ -276,15 +277,15 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 {t.status || 'Status'}
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={formData.status}
                 onChange={(e) => setFormData({...formData, status: e.target.value})}
-                className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               >
                 <option value="draft">{t.draft || 'Draft'}</option>
                 <option value="scheduled">{t.scheduled || 'Scheduled'}</option>
                 <option value="sent">{t.sent || 'Sent'}</option>
-              </select>
+              </ThemedSelect>
             </div>
           </div>
 
