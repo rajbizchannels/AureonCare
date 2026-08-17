@@ -362,7 +362,12 @@ async function handleApi(route, store) {
   if (wlNotify && method === 'POST') {
     const next = store.waitlist.find((w) => w.status === 'active');
     if (next) { next.status = 'notified'; next.notified_at = new Date().toISOString(); }
-    return json({ success: true, entry: next || null, message: 'Patient notified' });
+    // The view reports who was contacted via result.patient.name, so the demo
+    // API has to return that shape and not just the raw entry.
+    const patient = next
+      ? { id: next.patientId, name: `${next.patientFirstName} ${next.patientLastName}` }
+      : null;
+    return json({ success: true, entry: next || null, patient, message: 'Patient notified' });
   }
   const wlSched = p.match(/^\/waitlist\/(\d+)\/scheduled$/);
   if (wlSched) {
@@ -1095,7 +1100,13 @@ class Director {
   }
 
   /** Full-screen branded card. `bullets` renders a recap list. */
-  async card({ kicker, heading, sub, body, bullets = [], holdMs = 4200, logo = true, variant = '' }) {
+  /**
+   * `keep` leaves the card on screen instead of clearing it. A closing card
+   * wants this: the recorded stream lags the director's clock, so a card that
+   * clears itself gives back the last seconds of the file to whatever screen
+   * happened to be underneath.
+   */
+  async card({ kicker, heading, sub, body, bullets = [], holdMs = 4200, logo = true, variant = '', keep = false }) {
     await this.ensure();
     await this.clearCaption();
     const logoTag = logo
@@ -1120,6 +1131,7 @@ class Director {
       text: [heading, sub, body].filter(Boolean).join(' — ') || bullets.join('. '),
     });
     await sleep(hold);
+    if (keep) return;
     await this.page.evaluate(() => window.__demo.card(''));
     await sleep(500);
   }
@@ -1555,7 +1567,10 @@ async function record(spec) {
       await spec.run(d, page, { store, fixtures: F, sleep });
       await d.clearCaption();
       await d.step('');
-      await sleep(700);
+      // The captured stream lags the director's clock by a few seconds, so a
+      // short tail ends the file while the closing card is still fading in.
+      // The training path never noticed: its outro card holds for nine seconds.
+      await sleep(3500);
     } else {
       await d.bumper();
       await d.card({

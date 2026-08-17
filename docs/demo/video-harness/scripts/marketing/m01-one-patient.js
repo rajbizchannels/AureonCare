@@ -218,6 +218,7 @@ module.exports = {
       heading: 'One patient. One system.',
       body: 'Booked, seen, documented, claimed, paid.',
       holdMs: 3800,
+      keep: true,
     });
   },
 };

@@ -1,0 +1,39 @@
+1
+00:00:00,117 --> 00:00:05,017
+4:07pm. Friday. — Your 3:30 just cancelled.
+
+2
+00:00:08,442 --> 00:00:12,563
+One patient cancels.
+
+3
+00:00:12,563 --> 00:00:22,400
+Thirty seconds of admin. That is the whole cancellation.
+
+4
+00:00:22,400 --> 00:00:25,529
+The waitlist already knows who wanted that slot.
+
+5
+00:00:25,529 --> 00:00:31,952
+Priority and flexibility decide who gets called — not who asked first.
+
+6
+00:00:31,952 --> 00:00:39,098
+Notify marks the entry called, so nobody rings them twice.
+
+7
+00:00:39,098 --> 00:00:44,978
+They accept. The entry leaves the queue.
+
+8
+00:00:44,978 --> 00:00:48,838
+Their intake goes out on its own.
+
+9
+00:00:48,838 --> 00:00:52,417
+Answers land on the chart before the visit, not during it.
+
+10
+00:00:52,486 --> 00:00:57,056
+The slot refills itself. — Front desk, 4:08pm.
