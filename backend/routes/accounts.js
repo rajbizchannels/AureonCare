@@ -1039,7 +1039,12 @@ router.get('/backup', authorize('admin'), async (req, res) => {
     `);
     res.json(result.rows.map(toCamelCase));
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch backups' });
+    // Logged and returned: this handler used to swallow the error entirely,
+    // so a failure left nothing in the server logs and nothing for the client
+    // to show. A missing account_backups table (migration 053 not applied)
+    // looks identical to any other fault without this.
+    console.error('Error fetching account backups:', err);
+    res.status(500).json({ error: 'Failed to fetch backups', details: err.message });
   }
 });
 
