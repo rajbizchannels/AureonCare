@@ -1,0 +1,55 @@
+1
+00:00:00,103 --> 00:00:05,413
+One patient. Booked to paid. — No cuts between systems, because there aren’t any.
+
+2
+00:00:08,850 --> 00:00:14,009
+Front desk books a virtual visit.
+
+3
+00:00:14,009 --> 00:00:27,678
+The type sets the duration and marks it virtual.
+
+4
+00:00:27,678 --> 00:00:31,339
+It is already waiting in Telehealth.
+
+5
+00:00:31,339 --> 00:00:37,638
+Patient, provider and time come with it.
+
+6
+00:00:37,638 --> 00:00:47,017
+A Meet room is created and attached to the visit.
+
+7
+00:00:47,017 --> 00:00:52,716
+Same patient. The chart already knows her.
+
+8
+00:00:52,716 --> 00:01:00,653
+Findings go in once, and chart themselves over time.
+
+9
+00:01:00,653 --> 00:01:04,778
+The visit becomes a claim.
+
+10
+00:01:04,778 --> 00:01:16,533
+Her insurance comes with her.
+
+11
+00:01:16,533 --> 00:01:25,368
+Codes are searched, not remembered.
+
+12
+00:01:25,368 --> 00:01:35,852
+Money posts against the claim it settles.
+
+13
+00:01:35,852 --> 00:01:39,661
+Receivables are right. Nobody reconciled anything.
+
+14
+00:01:39,728 --> 00:01:45,308
+One patient. One system. — Booked, seen, documented, claimed, paid.
