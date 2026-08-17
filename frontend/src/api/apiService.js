@@ -2153,8 +2153,11 @@ const api = {
       method: 'POST'
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to backup to OneDrive' }));
-      throw new Error(errorData.error || 'Failed to backup to OneDrive. Please ensure OneDrive is connected.');
+      const errorData = await response.json().catch(() => ({}));
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error(
+        (errorData.error || 'Failed to backup to OneDrive. Please ensure OneDrive is connected.') + detail
+      );
     }
     return response.json();
   },

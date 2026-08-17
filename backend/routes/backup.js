@@ -13,18 +13,28 @@ router.use(authenticate, requireAdmin);
  * Generate complete backup of all system data
  * GET /api/backup/generate
  */
-router.get('/generate', async (req, res) => {
-  try {
-    console.log('Generating complete system backup...');
+/**
+ * Build a full system backup.
+ *
+ * Called directly rather than over HTTP. This router is gated by
+ * authenticate + requireAdmin, and a self-referential fetch cannot forward
+ * the caller's Authorization header — so the cloud-upload routes used to get
+ * a 401 back from /api/backup/generate and fail with the misleading
+ * "Failed to generate backup data". Calling in-process also avoids a second
+ * serverless invocation and does not depend on req.protocol, which is http
+ * behind the Vercel proxy.
+ */
+async function generateBackup(generatedBy) {
+  console.log('Generating complete system backup...');
 
-    const backup = {
-      timestamp: new Date().toISOString(),
-      version: '1.0',
-      data: {}
-    };
+  const backup = {
+    timestamp: new Date().toISOString(),
+    version: '1.0',
+    data: {}
+  };
 
-    // Define all tables to backup
-    const tables = [
+  // Define all tables to backup
+  const tables = [
       'users',
       'patients',
       'appointments',
@@ -59,28 +69,34 @@ router.get('/generate', async (req, res) => {
       'waitlist'
     ];
 
-    // Backup each table
-    for (const table of tables) {
-      try {
-        const result = await pool.query(`SELECT * FROM ${table}`);
-        backup.data[table] = result.rows;
-        console.log(`Backed up ${table}: ${result.rows.length} rows`);
-      } catch (error) {
-        console.warn(`Warning: Could not backup table ${table}:`, error.message);
-        // Continue with other tables even if one fails
-        backup.data[table] = [];
-      }
+  // Backup each table
+  for (const table of tables) {
+    try {
+      const result = await pool.query(`SELECT * FROM ${table}`);
+      backup.data[table] = result.rows;
+      console.log(`Backed up ${table}: ${result.rows.length} rows`);
+    } catch (error) {
+      console.warn(`Warning: Could not backup table ${table}:`, error.message);
+      // Continue with other tables even if one fails
+      backup.data[table] = [];
     }
+  }
 
-    // Add metadata
-    backup.metadata = {
-      totalTables: tables.length,
-      totalRecords: Object.values(backup.data).reduce((sum, table) => sum + table.length, 0),
-      generatedBy: req.user?.id || req.headers['x-user-id'],
-      generatedAt: new Date().toISOString()
-    };
+  // Add metadata
+  backup.metadata = {
+    totalTables: tables.length,
+    totalRecords: Object.values(backup.data).reduce((sum, table) => sum + table.length, 0),
+    generatedBy,
+    generatedAt: new Date().toISOString()
+  };
 
-    console.log('Backup generated successfully:', backup.metadata);
+  console.log('Backup generated successfully:', backup.metadata);
+  return backup;
+}
+
+router.get('/generate', async (req, res) => {
+  try {
+    const backup = await generateBackup(req.user?.id || req.headers['x-user-id']);
     res.json(backup);
   } catch (error) {
     console.error('Error generating backup:', error);
@@ -173,19 +189,8 @@ router.post('/google-drive', async (req, res) => {
       console.log('Google Drive access token refreshed successfully.');
     }
 
-    // Generate backup data
-    const backupResponse = await fetch(`${req.protocol}://${req.get('host')}/api/backup/generate`, {
-      headers: {
-        'x-user-id': req.headers['x-user-id'],
-        'x-user-role': req.headers['x-user-role']
-      }
-    });
-
-    if (!backupResponse.ok) {
-      throw new Error('Failed to generate backup data');
-    }
-
-    const backupData = await backupResponse.json();
+    // Generate backup data in-process (see generateBackup above).
+    const backupData = await generateBackup(req.user?.id || req.headers['x-user-id']);
 
     // Use the (possibly refreshed) OAuth access token
     const oauth2Client = new google.auth.OAuth2();
@@ -312,19 +317,8 @@ router.post('/onedrive', async (req, res) => {
       console.log('OneDrive access token refreshed successfully.');
     }
 
-    // Generate backup data
-    const backupResponse = await fetch(`${req.protocol}://${req.get('host')}/api/backup/generate`, {
-      headers: {
-        'x-user-id': req.headers['x-user-id'],
-        'x-user-role': req.headers['x-user-role']
-      }
-    });
-
-    if (!backupResponse.ok) {
-      throw new Error('Failed to generate backup data');
-    }
-
-    const backupData = await backupResponse.json();
+    // Generate backup data in-process (see generateBackup above).
+    const backupData = await generateBackup(req.user?.id || req.headers['x-user-id']);
 
     // Initialize Microsoft Graph client using the stored OAuth token
     const client = Client.init({
