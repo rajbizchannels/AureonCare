@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const cloudStorage = require('../services/cloudBackupStorage');
 const { authenticate, authorize } = require('../middleware/auth');
 
 // All accounts routes require authentication
@@ -1050,7 +1051,7 @@ router.get('/backup', authorize('admin'), async (req, res) => {
 
 router.post('/backup', authorize('admin'), async (req, res) => {
   const pool = req.app.locals.pool;
-  const { backupType = 'full', periodStart, periodEnd } = req.body;
+  const { backupType = 'full', periodStart, periodEnd, destination } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -1100,11 +1101,26 @@ router.post('/backup', authorize('admin'), async (req, res) => {
     `, [fileName, fileSizeBytes, recordCount, backupId]);
     await client.query('COMMIT');
 
-    // Return backup data directly (in production, store to S3/GCS)
+    // Optionally push a copy to a connected cloud provider. Failing to upload
+    // must not lose the backup the caller just paid for, so the payload is
+    // still returned and the problem reported alongside it.
+    let cloud = null;
+    let cloudError = null;
+    if (destination && cloudStorage.isSupported(destination)) {
+      try {
+        cloud = await cloudStorage.uploadBackup(pool, destination, fileName, backupData);
+      } catch (uploadErr) {
+        console.error(`Accounts backup upload to ${destination} failed:`, uploadErr);
+        cloudError = uploadErr.message;
+      }
+    }
+
     res.status(201).json({
       ...toCamelCase(backupRecord.rows[0]),
       fileName, fileSizeBytes, recordCount,
       status: 'completed',
+      cloud,
+      cloudError,
       data: backupData
     });
   } catch (err) {
