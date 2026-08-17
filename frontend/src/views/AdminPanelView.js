@@ -3177,6 +3177,9 @@ const AdminPanelView = ({
       providerType: 'microsoft_teams',
       displayName: 'Microsoft Teams',
       description: 'Microsoft 365 video conferencing & collaboration',
+      // Meeting creation needs the OnlineMeetings.ReadWrite Graph permission,
+      // which Microsoft only issues to work and school accounts.
+      accountNote: 'Requires a Microsoft 365 work or school account with a Teams licence. Personal Microsoft accounts (outlook.com, hotmail.com, live.com) cannot be used.',
       iconBg: 'bg-purple-500/10',
       iconColor: 'text-purple-500',
       gradientFrom: 'from-purple-500',
@@ -3211,6 +3214,22 @@ const AdminPanelView = ({
                 <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   {cfg.description}
                 </p>
+                {cfg.accountNote && (
+                  <div className={`flex items-start gap-2 mt-2 px-3 py-2 rounded-md border ${
+                    theme === 'dark'
+                      ? 'bg-amber-500/10 border-amber-500/30'
+                      : 'bg-amber-50 border-amber-200'
+                  }`}>
+                    <Building2 className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                      theme === 'dark' ? 'text-amber-400' : 'text-amber-600'
+                    }`} />
+                    <p className={`text-xs leading-relaxed ${
+                      theme === 'dark' ? 'text-amber-300' : 'text-amber-800'
+                    }`}>
+                      {cfg.accountNote}
+                    </p>
+                  </div>
+                )}
                 {status.has_tokens ? (
                   <div className="flex items-center gap-2 mt-2">
                     <CheckCircle className="w-4 h-4 text-green-500" />
