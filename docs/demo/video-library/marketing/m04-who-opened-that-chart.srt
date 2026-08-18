@@ -1,0 +1,43 @@
+1
+00:00:00,134 --> 00:00:04,724
+Who opened that chart, and when? — Two clicks, not a two-week search.
+
+2
+00:00:08,065 --> 00:00:11,409
+Every action, with the user and the address behind it.
+
+3
+00:00:11,409 --> 00:00:18,046
+Note the views. Opening a chart leaves a trace, not just changing it.
+
+4
+00:00:18,046 --> 00:00:25,002
+Filter by action, user, module or date, and the list is the handful that matter.
+
+5
+00:00:25,002 --> 00:00:32,825
+One entry: who, what, when, and from where.
+
+6
+00:00:32,825 --> 00:00:39,579
+The trail says what happened. This says why it was allowed.
+
+7
+00:00:39,579 --> 00:00:46,891
+Every role, every module, spelled out rather than assumed.
+
+8
+00:00:46,891 --> 00:00:51,035
+And the record is not trapped here.
+
+9
+00:00:51,035 --> 00:00:58,665
+FHIR R4 — a diagnosis is a Condition, a vital sign an Observation.
+
+10
+00:00:58,665 --> 00:01:04,578
+Downloadable as standard JSON, readable by a system that has never heard of us.
+
+11
+00:01:05,943 --> 00:01:11,703
+Answerable. Explainable. Portable. — The three things an auditor actually asks for.
