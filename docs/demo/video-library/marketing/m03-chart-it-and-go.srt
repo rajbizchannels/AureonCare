@@ -1,0 +1,31 @@
+1
+00:00:00,076 --> 00:00:05,686
+Chart it before the next patient sits down. — Clock on screen. Nothing cut out.
+
+2
+00:00:10,316 --> 00:00:16,103
+One record. The note and the order are tabs of it.
+
+3
+00:00:16,103 --> 00:00:23,927
+Findings go in once.
+
+4
+00:00:23,927 --> 00:00:31,356
+Same record. No new system.
+
+5
+00:00:31,356 --> 00:00:38,400
+Ordered by code, so the lab and the claim describe the same test.
+
+6
+00:00:38,400 --> 00:00:49,779
+And who gets the result when it lands.
+
+7
+00:00:49,779 --> 00:00:54,582
+The result files itself back to this chart. Nobody scans anything.
+
+8
+00:00:55,914 --> 00:01:01,104
+One record. One pass. — Documented and ordered — without leaving the chart.
