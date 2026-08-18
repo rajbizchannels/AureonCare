@@ -1,0 +1,19 @@
+1
+00:00:02,956 --> 00:00:06,338
+Every virtual visit starts with a link.
+
+2
+00:00:06,338 --> 00:00:09,860
+Usually copied in from somewhere else.
+
+3
+00:00:09,860 --> 00:00:16,405
+Built from the booking — patient, provider and time come with it.
+
+4
+00:00:16,405 --> 00:00:18,864
+The room is made, and it lands on the visit.
+
+5
+00:00:18,864 --> 00:00:20,878
+Nobody pasted anything.

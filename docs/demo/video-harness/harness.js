@@ -1763,7 +1763,9 @@ async function record(spec) {
       // The captured stream lags the director's clock by a few seconds, so a
       // short tail ends the file while the closing card is still fading in.
       // The training path never noticed: its outro card holds for nine seconds.
-      await sleep(3500);
+      // Reels end on product rather than a card, so they need far less — the
+      // rest would play as dead air at the end of a twenty-second clip.
+      await sleep(spec.reel ? 1200 : 3500);
     } else {
       await d.bumper();
       await d.card({
