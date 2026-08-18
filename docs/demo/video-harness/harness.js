@@ -596,6 +596,12 @@ async function handleApi(route, store) {
     });
   }
   if (p === '/backup/generate') return json({ backup: { generated_at: new Date().toISOString(), tables: 42 } });
+  // Restoring reads the uploaded file client-side and posts it here. The
+  // success dialog reports totalTables, so the answer has to carry one.
+  if (p === '/backup/restore' && method === 'POST') {
+    const tables = Object.keys((body && body.backup && body.backup.data) || {}).length || 42;
+    return json({ success: true, totalTables: tables, errors: [], restored_at: new Date().toISOString() });
+  }
   if (p === '/backup/google-drive' && method === 'POST') {
     return json({ success: true, fileId: 'demo-drive-file', message: 'Backup uploaded to Google Drive' });
   }
