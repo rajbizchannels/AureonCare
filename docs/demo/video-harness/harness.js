@@ -936,6 +936,15 @@ window.__demo = (() => {
         border-top: 3px solid \${B.teal}; opacity: 0; transition: opacity .3s ease; pointer-events: none;
       }
       #demo-caption.on { opacity: 1; }
+      /* Reel mode. A 16:9 clip sits about 1080px wide inside a 9:16 frame, so
+         everything the overlay draws is seen at roughly 56% of its authored
+         size. The type is scaled up to survive that, and to survive a phone. */
+      html.demo-reel #demo-caption {
+        font-size: 50px; line-height: 1.25; padding: 34px 56px 40px; gap: 34px;
+      }
+      html.demo-reel #demo-caption .mark { height: 66px; }
+      html.demo-reel #demo-step { font-size: 30px; padding: 18px 36px; left: 56px; top: 96px; }
+      html.demo-reel #demo-timer { font-size: 30px; padding: 18px 32px; right: 56px; top: 96px; }
       #demo-caption .mark { height: 40px; flex: 0 0 auto; opacity: .95; }
       #demo-caption .txt { flex: 1 1 auto; }
       #demo-caption b { color: \${B.amberLight}; font-weight: 600; }
@@ -1153,6 +1162,9 @@ class Director {
    * spoken track never runs past the frame it is describing.
    */
   _narrate(html, holdMs) {
+    // Reels play muted in a feed, so they carry their words on screen rather
+    // than in a voice track. The caption still drives the hold.
+    if (this.spec.silent) return holdMs;
     const clip = voice.synthesise(html, { slug: this.spec.slug, index: this._line++ });
     if (!clip) return holdMs;
     this.narration.push({ ...clip, start: this.now() });
@@ -1165,6 +1177,11 @@ class Director {
 
   async ensure() {
     await this.page.evaluate(OVERLAY_SCRIPT).catch(() => {});
+    if (this.spec.reel) {
+      await this.page
+        .evaluate(() => document.documentElement.classList.add('demo-reel'))
+        .catch(() => {});
+    }
   }
 
   /** Marks a YouTube chapter boundary. The first one is forced to 0:00 later. */
@@ -1540,6 +1557,74 @@ function thumbnailSpec(spec) {
   };
 }
 
+/* ───────────────────────────── vertical reels ───────────────────────────── */
+
+/**
+ * The 9:16 surround for a reel: a hook above the footage and a sign-off below.
+ *
+ * The middle is left transparent and the recorded clip is composited into it,
+ * so the product is never cropped — a phone-shaped crop of a 16:9 dashboard
+ * loses the nav rail and half of every table, which is most of what the
+ * footage is for.
+ */
+const REEL_FRAME_HTML = (spec) => `
+<div style="width:1080px;height:1920px;position:relative;font-family:system-ui,-apple-system,Segoe UI,sans-serif">
+  <div style="position:absolute;inset:0 0 1164px 0;background:${BRAND.ink};display:flex;
+              flex-direction:column;justify-content:flex-end;padding:0 72px 64px">
+    <div style="height:6px;background:linear-gradient(90deg,${BRAND.amber},${BRAND.teal});
+                position:absolute;top:0;left:0;right:0"></div>
+    <div style="color:${BRAND.amberLight};font-size:32px;font-weight:700;letter-spacing:.14em;
+                text-transform:uppercase;margin-bottom:28px">${spec.reelKicker || 'AureonCare'}</div>
+    <div style="color:#f8fafc;font-size:88px;font-weight:700;line-height:1.06;letter-spacing:-.025em">
+      ${spec.thumbHeadline || spec.title}
+    </div>
+  </div>
+  <div style="position:absolute;top:1364px;left:0;right:0;bottom:0;background:${BRAND.ink};
+              display:flex;flex-direction:column;justify-content:center;padding:0 72px">
+    <div style="color:#e2e8f0;font-size:46px;line-height:1.3;font-weight:500;margin-bottom:52px">
+      ${spec.thumbSub || ''}
+    </div>
+    <img src="${BRAND.logo}" style="height:84px;width:auto;align-self:flex-start" alt="AureonCare">
+    <div style="color:#64748b;font-size:26px;margin-top:32px">
+      demo environment · synthetic data, no real patients
+    </div>
+  </div>
+</div>`;
+
+async function renderReelFrame(context, spec, file) {
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1080, height: 1920 });
+  await page.setContent(`<body style="margin:0;background:transparent">${REEL_FRAME_HTML(spec)}</body>`);
+  await page.screenshot({ path: file, omitBackground: true, clip: { x: 0, y: 0, width: 1080, height: 1920 } });
+  await page.close();
+}
+
+/**
+ * Compose the 16:9 recording into the 9:16 frame.
+ *
+ * 1920x1080 scales to 1080x608 and sits centred, leaving the bands the frame
+ * PNG paints over. Nothing is cropped.
+ */
+function composeVertical(videoIn, framePng, videoOut, fps) {
+  const ff = findFfmpeg();
+  execFileSync(ff, [
+    '-y', '-i', videoIn, '-i', framePng,
+    // pad rather than a colour source: a `color` input is a fixed-length clip,
+    // and overlaying onto it with shortest=1 truncates the whole reel to that
+    // length while the container still reports the audio's duration.
+    '-filter_complex',
+    // Seated at y=1364-608 rather than centred: the hook needs the top third,
+    // which is what a thumb sees before deciding to stop.
+    `[0:v]scale=1080:-2,pad=1080:1920:0:756:color=0x${BRAND.ink.replace('#', '')}[bg];`
+    + `[bg][1:v]overlay=0:0[v]`,
+    '-map', '[v]', '-map', '0:a?',
+    '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.1', '-preset', 'slow', '-crf', '20',
+    '-r', String(fps), '-pix_fmt', 'yuv420p',
+    '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
+    videoOut,
+  ], { stdio: 'ignore' });
+}
+
 async function renderThumbnail(context, spec, file) {
   const page = await context.newPage();
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -1614,9 +1699,9 @@ async function record(spec) {
       '--hide-scrollbars', '--disable-features=IsolateOrigins'],
   });
   const context = await browser.newContext({
-    viewport: VIEWPORT,
+    viewport: spec.viewport || VIEWPORT,
     deviceScaleFactor: 1,
-    recordVideo: { dir: OUT_DIR, size: VIEWPORT },
+    recordVideo: { dir: OUT_DIR, size: spec.viewport || VIEWPORT },
   });
 
   const store = createStore();
@@ -1779,6 +1864,22 @@ async function record(spec) {
       await tb.close();
 
       console.log(`  ${spec.id} ${ts(duration)}  →  ${path.basename(mp4)}`);
+
+      // A reel ships in both shapes: the 16:9 master, and the 9:16 cut that
+      // actually gets posted.
+      if (spec.reel) {
+        const vb = await chromium.launch({ args: ['--no-sandbox'] });
+        const vctx = await vb.newContext({ viewport: { width: 1080, height: 1920 } });
+        const framePng = path.join(OUT_DIR, `${spec.slug}.reel-frame.png`);
+        await renderReelFrame(vctx, spec, framePng);
+        await vctx.close();
+        await vb.close();
+
+        const vertical = path.join(OUT_DIR, `${spec.slug}-9x16.mp4`);
+        composeVertical(mp4, framePng, vertical, FPS);
+        fs.unlinkSync(framePng);
+        console.log(`  ${spec.id} vertical  →  ${path.basename(vertical)}`);
+      }
     }
   }
 
