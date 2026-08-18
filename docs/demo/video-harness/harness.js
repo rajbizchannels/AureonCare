@@ -106,7 +106,10 @@ function createStore() {
     quotes: clone(F.quotes),
     invoices: clone(F.invoices),
     pharmacies: clone(F.pharmacies),
-    laboratories: clone(F.laboratories),
+    // The lab-order form names labs by `labName`; the fixtures use `name` like
+    // the rest of the demo data. Without the alias every option in the
+    // Laboratory dropdown renders blank, and the field is required.
+    laboratories: clone(F.laboratories).map((l) => ({ ...l, labName: l.name })),
     'lab-orders': clone(F.labOrders),
     waitlist: clone(W3.waitlist),
     campaigns: [],
@@ -285,8 +288,34 @@ async function handleApi(route, store) {
   if (p === '/medications/search') {
     const q = (url.searchParams.get('query') || '').toLowerCase();
     if (q.length < 2) return json([]);
-    return json(F.medications.filter((m) =>
-      `${m.name} ${m.generic_name} ${m.brand_name} ${m.ndc_code}`.toLowerCase().includes(q)));
+    const hits = F.medications.filter((m) =>
+      `${m.name} ${m.generic_name} ${m.brand_name} ${m.ndc_code}`.toLowerCase().includes(q));
+    // The prescribing UI reads this endpoint in camelCase while the fixtures are
+    // snake_case like the rest of the demo data. Emitting only snake_case made
+    // every result render with an empty title — a list of blank rows nobody,
+    // script or clinician, could pick from. Both shapes ship.
+    return json(hits.map((m) => ({
+      ...m,
+      drugName: m.name,
+      genericName: m.generic_name,
+      brandName: m.brand_name,
+      ndcCode: m.ndc_code,
+      dosageForm: m.dosage_form,
+      isGeneric: m.is_generic,
+    })));
+  }
+  // Allergy and interaction screening runs as soon as a medication is picked.
+  // The component swallows a failure here, so a missing route costs no error —
+  // it just silently drops the safety panel the recording narrates.
+  if (p === '/prescriptions/check-safety' && method === 'POST') {
+    const pid = String(body && body.patientId);
+    const known = store.allergies.filter((a) => String(a.patient_id) === pid);
+    return json({
+      warnings: [],
+      allergies: known,
+      interactions: [],
+      checked_at: new Date().toISOString(),
+    });
   }
   if (p === '/diagnosis/patient' || /^\/diagnosis\/patient\/\d+$/.test(p)) {
     const id = p.split('/').pop();
@@ -374,6 +403,15 @@ async function handleApi(route, store) {
     const entry = store.waitlist.find((w) => String(w.id) === wlSched[1]);
     if (entry) entry.status = 'scheduled';
     return json(entry || { success: true });
+  }
+
+  // The chart loads its patient through the portal profile route. Without it the
+  // request falls through to the generic collection handler, which answers with
+  // an empty array — and the chart then has no patient to prescribe for.
+  const portalProfile = p.match(/^\/patient-portal\/(\d+)\/profile$/);
+  if (portalProfile) {
+    const pt = store.patients.find((x) => String(x.id) === portalProfile[1]);
+    return json(pt || {});
   }
 
   if (p === '/intake-forms') return json(store['intake-forms']);
@@ -896,6 +934,18 @@ window.__demo = (() => {
         opacity: 0; transition: opacity .3s ease; pointer-events: none;
       }
       #demo-step.on { opacity: 1; }
+      /* Elapsed-time chip. Sits opposite the step badge so the two never meet,
+         and uses tabular figures so the digits do not jitter as they count. */
+      #demo-timer {
+        position: fixed; right: 44px; top: 88px; z-index: 2147483646;
+        font: 700 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-variant-numeric: tabular-nums; letter-spacing: .06em;
+        color: \${B.tealLight}; background: rgba(4,16,22,.86);
+        border: 1px solid rgba(148,163,184,.35); border-radius: 999px; padding: 10px 18px;
+        box-shadow: 0 6px 20px rgba(0,0,0,.35);
+        opacity: 0; transition: opacity .3s ease; pointer-events: none;
+      }
+      #demo-timer.on { opacity: 1; }
       #demo-brandbar {
         position: fixed; left: 0; right: 0; top: 0; height: 6px; z-index: 2147483647;
         background: linear-gradient(90deg, \${B.amber} 0%, \${B.amber} 22%, \${B.teal} 62%, \${B.tealLight} 100%);
@@ -967,6 +1017,7 @@ window.__demo = (() => {
       + '<span class="sep"></span>'
       + '<span>demo environment · synthetic data, no real patients</span>';
     add('demo-step');
+    add('demo-timer');
     add('demo-cursor');
   };
 
@@ -988,6 +1039,9 @@ window.__demo = (() => {
       ensure();
       const mark = document.getElementById('demo-watermark');
       if (mark) mark.style.opacity = html ? '0' : '1';
+      // The timer belongs to the product footage, not to a full-screen card.
+      const clock = document.getElementById('demo-timer');
+      if (clock) clock.style.opacity = html ? '0' : '';
       let el = document.getElementById('demo-card');
       if (!el) {
         el = document.createElement('div');
@@ -997,6 +1051,36 @@ window.__demo = (() => {
       el.className = variant ? variant : '';
       el.innerHTML = html || '';
       el.classList.toggle('on', Boolean(html));
+    },
+    /**
+     * Elapsed-time chip. Runs in the page rather than being driven a frame at a
+     * time from the recorder, so the digits advance smoothly with the video
+     * instead of stepping whenever a script happens to await something.
+     */
+    timer(action) {
+      ensure();
+      const el = document.getElementById('demo-timer');
+      if (!el) return;
+      if (window.__demoTimerId) {
+        clearInterval(window.__demoTimerId);
+        window.__demoTimerId = null;
+      }
+      if (action === 'stop') return;
+      if (action === 'hide') {
+        el.classList.remove('on');
+        return;
+      }
+      const t0 = Date.now();
+      const paint = () => {
+        const s = Math.floor((Date.now() - t0) / 1000);
+        // Plain concatenation: this whole script is embedded in a template
+        // literal, so an inner one would be interpolated by the outer.
+        el.textContent = String(Math.floor(s / 60)).padStart(2, '0')
+          + ':' + String(s % 60).padStart(2, '0');
+      };
+      paint();
+      el.classList.add('on');
+      window.__demoTimerId = setInterval(paint, 250);
     },
     logo() { return window.__demoBrand.logo; },
     moveCursor(x, y) {
@@ -1078,6 +1162,17 @@ class Director {
   async step(text) {
     await this.ensure();
     await this.page.evaluate((t) => window.__demo.step(t), text || '');
+  }
+
+  /**
+   * Start, stop or hide the on-screen elapsed timer.
+   *
+   * A claim about how long something takes is worth more when the clock is
+   * visible while it happens, so nothing is edited out off-camera.
+   */
+  async timer(action = 'start') {
+    await this.ensure();
+    await this.page.evaluate((a) => window.__demo.timer(a), action).catch(() => {});
   }
 
   async say(html, holdMs = 2800) {
