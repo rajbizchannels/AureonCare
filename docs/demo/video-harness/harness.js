@@ -361,6 +361,18 @@ async function handleApi(route, store) {
     return json(store.diagnosis.filter((d) => String(d.patient_id) === id));
   }
   if (/^\/prescriptions\/diagnosis\/\d+$/.test(p)) return json([]);
+  // The chart reads a patient's live prescriptions from here. Without the route
+  // the tab counted zero even with seeded prescriptions in the store, and a
+  // newly written one had nowhere to appear. Fixtures are snake_case and the
+  // ePrescribe form posts camelCase, so both spellings are matched.
+  const rxActive = p.match(/^\/prescriptions\/patient\/(\d+)\/active$/);
+  if (rxActive) {
+    return json(store.prescriptions.filter((rx) => {
+      const pid = rx.patient_id != null ? rx.patient_id : rx.patientId;
+      return String(pid) === rxActive[1]
+        && String(rx.status || 'active').toLowerCase() === 'active';
+    }));
+  }
 
   // ── telehealth specifics ──────────────────────────────────────────────
   const toggle = p.match(/^\/telehealth-settings\/([^/]+)\/toggle$/);
