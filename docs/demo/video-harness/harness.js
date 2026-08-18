@@ -100,7 +100,20 @@ function createStore() {
     'telehealth-settings': clone(F.telehealthProviders),
     offerings: clone(F.offerings),
     'form-templates': clone(F.formTemplates),
-    preapprovals: clone(F.preapprovals),
+    // The pre-authorization table reads patient_name, insurance_payer_name,
+    // requested_service and created_at. The fixtures carry patient_id,
+    // payer_name and service_description, so a seeded row rendered with only
+    // its number and status — four of six columns empty.
+    preapprovals: clone(F.preapprovals).map((pa) => {
+      const pt = F.patients.find((p) => p.id === pa.patient_id);
+      return {
+        ...pa,
+        patient_name: pa.patient_name || (pt ? `${pt.first_name} ${pt.last_name}` : ''),
+        insurance_payer_name: pa.insurance_payer_name || pa.payer_name,
+        requested_service: pa.requested_service || pa.service_description,
+        created_at: pa.created_at || pa.submitted_at,
+      };
+    }),
     // The denials table reads patient_name, denial_amount and appeal_deadline;
     // the fixtures carry patient_id and denied_amount and no deadline at all,
     // so every row rendered with a blank patient and $0.00 against it.
@@ -317,6 +330,19 @@ async function handleApi(route, store) {
       isGeneric: m.is_generic,
     })));
   }
+  // A pre-authorization checks for a clearinghouse before it will submit, and
+  // routes to a "not configured" dialog when there is none. Without this route
+  // the check fails, the status stays false, and the request is never sent —
+  // the demo clinic is configured, so it answers as one.
+  if (p === '/preapprovals/check-clearinghouse/status') {
+    return json({
+      hasClearinghouse: true,
+      name: 'Availity',
+      status: 'connected',
+      supports_278: true,
+    });
+  }
+
   // Allergy and interaction screening runs as soon as a medication is picked.
   // The component swallows a failure here, so a missing route costs no error —
   // it just silently drops the safety panel the recording narrates.
@@ -873,6 +899,19 @@ async function handleApi(route, store) {
         // Tables render joined display names, which a real backend returns and a
         // form only ever posts ids for. Without these the row a recording just
         // created reads "N/A" in every column but the amount.
+        if (resource === 'preapprovals') {
+          const pt = store.patients.find((p) => String(p.id) === String(created.patient_id));
+          const payer = (store['insurance-payers'] || [])
+            .find((ip) => String(ip.id) === String(created.insurance_payer_id));
+          if (pt) created.patient_name = `${pt.first_name} ${pt.last_name}`;
+          if (payer) created.insurance_payer_name = payer.name;
+          // The form mints its own number as `PA-<epoch millis>`, which lands a
+          // thirteen-digit timestamp in a column of PA-2026-00xx. A real
+          // backend owns this sequence, so the demo one does too.
+          if (/^PA-\d{10,}$/.test(String(created.preapproval_number || ''))) {
+            created.preapproval_number = `PA-2026-0${store._nextId % 1000}`;
+          }
+        }
         if (resource === 'payment-postings' || resource === 'denials') {
           const pt = store.patients.find((p) => String(p.id) === String(created.patient_id));
           const cl = store.claims.find((c) => String(c.id) === String(created.claim_id));
