@@ -335,14 +335,28 @@ const AppProvider = ({ children }) => {
    * @param {string} type - The type of notification (e.g., 'alert', 'info', 'success')
    * @param {string} message - The notification message
    */
-  const addNotification = async (type, message) => {
+  /**
+   * Stable across renders on purpose.
+   *
+   * Views put addNotification in the dependency array of the useCallback that
+   * fetches their data. When this function was re-created on every context
+   * render, adding a notification invalidated that callback, re-ran the fetch
+   * effect and flipped the view back to its loading branch — unmounting
+   * whatever the user had open. In the patient chart that silently discarded
+   * an in-progress prescription: the medication was added to the list, the
+   * notification fired, and the form came back empty.
+   *
+   * api is a module import and setNotifications is a setter, so there is
+   * nothing to depend on.
+   */
+  const addNotification = useCallback(async (type, message) => {
     try {
       const newNotif = await api.createNotification({ type, message, read: false });
       setNotifications(prev => [newNotif, ...prev]);
     } catch (err) {
       console.error('Error creating notification:', err);
     }
-  };
+  }, []);
 
   /**
    * Marks a task as completed
