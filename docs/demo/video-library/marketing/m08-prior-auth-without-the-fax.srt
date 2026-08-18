@@ -1,0 +1,23 @@
+1
+00:00:02,411 --> 00:00:07,654
+Prior auth. Still a fax in most practices.
+
+2
+00:00:07,654 --> 00:00:12,023
+Pick the patient. The payer comes with them.
+
+3
+00:00:12,023 --> 00:00:16,005
+Say what you are asking them to cover.
+
+4
+00:00:16,005 --> 00:00:20,469
+It carries the codes, so the payer is answering the right question.
+
+5
+00:00:20,469 --> 00:00:23,088
+Sent to the clearinghouse. Not to a fax tray.
+
+6
+00:00:23,088 --> 00:00:25,738
+And it sits on a queue with a status until they answer.
