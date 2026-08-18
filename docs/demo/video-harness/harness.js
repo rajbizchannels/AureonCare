@@ -101,7 +101,20 @@ function createStore() {
     offerings: clone(F.offerings),
     'form-templates': clone(F.formTemplates),
     preapprovals: clone(F.preapprovals),
-    denials: clone(F.denials),
+    // The denials table reads patient_name, denial_amount and appeal_deadline;
+    // the fixtures carry patient_id and denied_amount and no deadline at all,
+    // so every row rendered with a blank patient and $0.00 against it.
+    denials: clone(F.denials).map((dn) => {
+      const pt = F.patients.find((p) => p.id === dn.patient_id);
+      const deadline = new Date(dn.denial_date);
+      deadline.setDate(deadline.getDate() + 30);
+      return {
+        ...dn,
+        patient_name: dn.patient_name || (pt ? `${pt.first_name} ${pt.last_name}` : ''),
+        denial_amount: dn.denial_amount != null ? dn.denial_amount : dn.denied_amount,
+        appeal_deadline: dn.appeal_deadline || deadline.toISOString().slice(0, 10),
+      };
+    }),
     'payment-postings': clone(F.paymentPostings),
     quotes: clone(F.quotes),
     invoices: clone(F.invoices),
@@ -860,7 +873,7 @@ async function handleApi(route, store) {
         // Tables render joined display names, which a real backend returns and a
         // form only ever posts ids for. Without these the row a recording just
         // created reads "N/A" in every column but the amount.
-        if (resource === 'payment-postings') {
+        if (resource === 'payment-postings' || resource === 'denials') {
           const pt = store.patients.find((p) => String(p.id) === String(created.patient_id));
           const cl = store.claims.find((c) => String(c.id) === String(created.claim_id));
           if (pt) created.patient_name = `${pt.first_name} ${pt.last_name}`;
