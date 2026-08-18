@@ -35,7 +35,7 @@ AureonCare, no show rate, medical practice, patient no shows, practice managemen
 | Thumbnail | m06-where-does-tuesday-go.thumbnail.png |
 | Subtitles | m06-where-does-tuesday-go.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 0:27 |
+| Duration | 0:24 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
