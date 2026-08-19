@@ -3,11 +3,13 @@ const { Client } = require('@microsoft/microsoft-graph-client');
 const axios = require('axios');
 
 /**
- * Cloud backup storage.
+ * Cloud storage for backups and patient uploads.
  *
- * One place for reading, writing and listing backup files on Google Drive and
- * OneDrive, so the backup, accounts and inventory routes do not each carry
- * their own copy of the token-refresh and upload logic.
+ * One place for reading, writing and listing files on Google Drive and
+ * OneDrive, so the backup, accounts, inventory and medical-record routes do
+ * not each carry their own copy of the token-refresh and upload logic. The
+ * medical-record copy in particular never refreshed, so uploads there stopped
+ * working silently once the stored token expired.
  *
  * Files live in a named folder rather than the provider's hidden app-data
  * area. That keeps a backup retrievable by hand during a disaster: app-data
@@ -18,6 +20,7 @@ const axios = require('axios');
  */
 
 const BACKUP_FOLDER_NAME = 'AureonCare Backups';
+const UPLOADS_FOLDER_NAME = 'AureonCare Uploads';
 
 const PROVIDERS = {
   google_drive: {
@@ -167,9 +170,9 @@ function driveClient(accessToken) {
  * list only returns files this app created, so this cannot collide with an
  * unrelated folder of the same name in the user's Drive.
  */
-async function ensureDriveFolder(drive) {
+async function ensureDriveFolder(drive, folderName = BACKUP_FOLDER_NAME) {
   const existing = await drive.files.list({
-    q: `name = '${BACKUP_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+    q: `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
     fields: 'files(id, name)',
     pageSize: 1,
   });
@@ -177,7 +180,7 @@ async function ensureDriveFolder(drive) {
 
   const created = await drive.files.create({
     requestBody: {
-      name: BACKUP_FOLDER_NAME,
+      name: folderName,
       mimeType: 'application/vnd.google-apps.folder',
     },
     fields: 'id',
@@ -234,15 +237,15 @@ function graphClient(accessToken) {
 }
 
 /** Create the backup folder if it is not already there. */
-async function ensureOneDriveFolder(client) {
+async function ensureOneDriveFolder(client, folderName = BACKUP_FOLDER_NAME) {
   try {
-    await client.api(`/me/drive/root:/${BACKUP_FOLDER_NAME}`).get();
+    await client.api(`/me/drive/root:/${folderName}`).get();
     return;
   } catch (err) {
     if (err.statusCode !== 404) throw err;
   }
   await client.api('/me/drive/root/children').post({
-    name: BACKUP_FOLDER_NAME,
+    name: folderName,
     folder: {},
     // Do not clobber a folder created concurrently by another request.
     '@microsoft.graph.conflictBehavior': 'fail',
@@ -305,6 +308,72 @@ async function uploadBackup(pool, provider, fileName, data) {
   return { provider, label: providerLabel(provider), ...result };
 }
 
+/**
+ * Upload an arbitrary file (a patient document, not a JSON backup) into a
+ * named folder. `body` may be a Buffer or a readable stream.
+ *
+ * Kept separate from uploadBackup because that one owns serialising the
+ * payload; here the caller already has bytes and a real mime type.
+ */
+async function uploadFile(pool, provider, { folder = UPLOADS_FOLDER_NAME, fileName, mimeType, body }) {
+  const accessToken = await getAccessToken(pool, provider);
+
+  if (provider === 'google_drive') {
+    const drive = driveClient(accessToken);
+    const folderId = await ensureDriveFolder(drive, folder);
+    const file = await drive.files.create({
+      requestBody: { name: fileName, parents: [folderId] },
+      media: { mimeType: mimeType || 'application/octet-stream', body },
+      fields: 'id, name, size, webViewLink, createdTime',
+    });
+    return {
+      provider,
+      label: providerLabel(provider),
+      folder,
+      fileId: file.data.id,
+      fileName: file.data.name,
+      link: file.data.webViewLink,
+      createdAt: file.data.createdTime,
+    };
+  }
+
+  const client = graphClient(accessToken);
+  await ensureOneDriveFolder(client, folder);
+  const uploaded = await client
+    .api(`/me/drive/root:/${folder}/${fileName}:/content`)
+    .put(body);
+  return {
+    provider,
+    label: providerLabel(provider),
+    folder,
+    fileId: uploaded.id,
+    fileName: uploaded.name,
+    link: uploaded.webUrl,
+    createdAt: uploaded.createdDateTime,
+  };
+}
+
+/**
+ * Stream a stored file back. Used to serve a patient document that lives in
+ * the cloud rather than on local disk — on a serverless deploy the local copy
+ * does not survive, so the cloud copy is the only one there is.
+ */
+async function downloadFileStream(pool, provider, fileId) {
+  const accessToken = await getAccessToken(pool, provider);
+
+  if (provider === 'google_drive') {
+    const drive = driveClient(accessToken);
+    const res = await drive.files.get(
+      { fileId, alt: 'media' },
+      { responseType: 'stream' }
+    );
+    return res.data;
+  }
+
+  const client = graphClient(accessToken);
+  return client.api(`/me/drive/items/${fileId}/content`).getStream();
+}
+
 /** List backups stored in the folder, newest first. */
 async function listBackups(pool, provider) {
   const accessToken = await getAccessToken(pool, provider);
@@ -327,10 +396,13 @@ async function downloadBackup(pool, provider, fileId) {
 
 module.exports = {
   BACKUP_FOLDER_NAME,
+  UPLOADS_FOLDER_NAME,
   isSupported,
   providerLabel,
   getConfiguredProviders,
   uploadBackup,
   listBackups,
   downloadBackup,
+  uploadFile,
+  downloadFileStream,
 };

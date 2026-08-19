@@ -3,6 +3,7 @@ const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 router.use(authenticate);
 const multer = require('multer');
+const cloudStorage = require('../services/cloudBackupStorage');
 const path = require('path');
 const fs = require('fs');
 const { google } = require('googleapis');
@@ -52,85 +53,50 @@ const upload = multer({
   }
 });
 
-// Upload a file to Google Drive if the provider is configured and enabled
-async function uploadToGoogleDrive(pool, filePath, fileName, mimeType) {
-  try {
-    const result = await pool.query(
-      "SELECT settings FROM backup_provider_settings WHERE provider_type = 'google_drive' AND is_enabled = true"
-    );
-    if (result.rows.length === 0) return null;
-
-    const settings = typeof result.rows[0].settings === 'string'
-      ? JSON.parse(result.rows[0].settings)
-      : result.rows[0].settings;
-
-    const accessToken = settings && settings.access_token;
-    if (!accessToken) return null;
-
-    const auth = new google.auth.OAuth2();
-    auth.setCredentials({ access_token: accessToken });
-
-    const drive = google.drive({ version: 'v3', auth });
-
-    const fileStream = fs.createReadStream(filePath);
-    const file = await drive.files.create({
-      requestBody: { name: fileName },
-      media: { mimeType, body: fileStream },
-      fields: 'id, name, webViewLink'
-    });
-
-    console.log('Medical record uploaded to Google Drive:', file.data.id);
-    return {
-      provider: 'google_drive',
-      fileId: file.data.id,
-      fileName: file.data.name,
-      link: file.data.webViewLink
-    };
-  } catch (err) {
-    console.error('Google Drive upload failed (non-fatal):', err.message);
-    return null;
-  }
+/**
+ * Push an uploaded document to a cloud provider.
+ *
+ * Token refresh, folder creation and the provider SDKs all live in the shared
+ * service; the two hand-rolled helpers that used to sit here never refreshed,
+ * so uploads failed silently once the stored token expired.
+ */
+async function uploadToCloud(pool, provider, filePath, fileName, mimeType) {
+  return cloudStorage.uploadFile(pool, provider, {
+    folder: cloudStorage.UPLOADS_FOLDER_NAME,
+    fileName,
+    mimeType,
+    body: fs.createReadStream(filePath),
+  });
 }
 
-// Upload a file to OneDrive if the provider is configured and enabled
-async function uploadToOneDrive(pool, filePath, fileName) {
+/**
+ * Stream a document that lives in a cloud provider.
+ * GET /api/medical-records/cloud-file?provider=onedrive&fileId=...
+ *
+ * On a serverless deploy the local upload directory does not survive between
+ * invocations, so for cloud-stored documents this is the only way to read the
+ * file back.
+ */
+router.get('/cloud-file', async (req, res) => {
+  const { provider, fileId } = req.query;
   try {
-    const result = await pool.query(
-      "SELECT settings FROM backup_provider_settings WHERE provider_type = 'onedrive' AND is_enabled = true"
-    );
-    if (result.rows.length === 0) return null;
-
-    const settings = typeof result.rows[0].settings === 'string'
-      ? JSON.parse(result.rows[0].settings)
-      : result.rows[0].settings;
-
-    const accessToken = settings && settings.access_token;
-    if (!accessToken) return null;
-
-    const client = Client.init({
-      authProvider: (done) => {
-        done(null, accessToken);
-      }
+    if (!cloudStorage.isSupported(provider)) {
+      return res.status(400).json({ error: `Unknown storage provider: ${provider}` });
+    }
+    if (!fileId) {
+      return res.status(400).json({ error: 'fileId is required' });
+    }
+    const stream = await cloudStorage.downloadFileStream(req.app.locals.pool, provider, fileId);
+    stream.on('error', (streamErr) => {
+      console.error('Error streaming cloud document:', streamErr);
+      if (!res.headersSent) res.status(502).json({ error: 'Failed to read the stored file' });
     });
-
-    const fileContent = fs.readFileSync(filePath);
-
-    const uploadedFile = await client
-      .api(`/me/drive/root:/AureonCare/MedicalRecords/${fileName}:/content`)
-      .put(fileContent);
-
-    console.log('Medical record uploaded to OneDrive:', uploadedFile.id);
-    return {
-      provider: 'onedrive',
-      fileId: uploadedFile.id,
-      fileName: uploadedFile.name,
-      link: uploadedFile.webUrl
-    };
-  } catch (err) {
-    console.error('OneDrive upload failed (non-fatal):', err.message);
-    return null;
+    stream.pipe(res);
+  } catch (error) {
+    console.error('Error fetching cloud document:', error);
+    res.status(500).json({ error: 'Failed to fetch the stored file', details: error.message });
   }
-}
+});
 
 // Get all medical records
 router.get('/', async (req, res) => {
@@ -463,11 +429,13 @@ router.delete('/:id', async (req, res) => {
 // Upload file for medical record
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
+    const pool = req.app.locals.pool;
+
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const { patientId, recordType, classification } = req.body;
+    const { patientId, recordType, classification, destination } = req.body;
 
     if (!patientId) {
       // Delete uploaded file if patientId is missing
@@ -488,6 +456,19 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       uploadDate,
       classification: classification || 'General'
     };
+
+    // Copy to the chosen provider. 'local' (or absent) keeps the file on this
+    // server only, which is what an on-premises install wants.
+    if (cloudStorage.isSupported(destination)) {
+      try {
+        fileMetadata.cloudStorage = [
+          await uploadToCloud(pool, destination, req.file.path, req.file.filename, req.file.mimetype)
+        ];
+      } catch (uploadErr) {
+        console.error(`Upload to ${destination} failed:`, uploadErr);
+        fileMetadata.cloudError = uploadErr.message;
+      }
+    }
 
     res.status(201).json({
       message: 'File uploaded successfully',
@@ -516,7 +497,8 @@ router.post('/with-file', upload.single('file'), async (req, res) => {
       description,
       diagnosis,
       treatment,
-      classification
+      classification,
+      destination
     } = req.body;
 
     const uploadDate = todayStr();
@@ -564,22 +546,25 @@ router.post('/with-file', upload.single('file'), async (req, res) => {
 
     const record = result.rows[0];
 
-    // Attempt cloud uploads if providers are configured (non-blocking on failure)
-    if (req.file) {
-      const [gdResult, odResult] = await Promise.all([
-        uploadToGoogleDrive(pool, req.file.path, req.file.filename, req.file.mimetype),
-        uploadToOneDrive(pool, req.file.path, req.file.filename)
-      ]);
-
-      const cloudStorage = [gdResult, odResult].filter(Boolean);
-
-      if (cloudStorage.length > 0) {
-        const updatedAttachments = attachments.map(att => ({ ...att, cloudStorage }));
+    // Copy the document to the chosen cloud provider. `destination` is 'local'
+    // (or absent) for an on-premises install, where the file on disk is the
+    // only copy and nothing leaves the server.
+    if (req.file && cloudStorage.isSupported(destination)) {
+      try {
+        const uploaded = await uploadToCloud(
+          pool, destination, req.file.path, req.file.filename, req.file.mimetype
+        );
+        const updatedAttachments = attachments.map(att => ({ ...att, cloudStorage: [uploaded] }));
         await pool.query(
           'UPDATE medical_records SET attachments = $1 WHERE id = $2',
           [JSON.stringify(updatedAttachments), record.id]
         );
         record.attachments = updatedAttachments;
+      } catch (uploadErr) {
+        // The record and the local file are already saved; report the upload
+        // problem rather than failing a clinical document that did land.
+        console.error(`Medical record upload to ${destination} failed:`, uploadErr);
+        record.cloudError = uploadErr.message;
       }
     }
 
