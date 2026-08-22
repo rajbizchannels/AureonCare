@@ -161,8 +161,9 @@ Each phase is independently shippable and reversible. Order matters.
 
 ## 7. Open questions
 - **Q1 (gating):** A, B, or C? Is the product SaaS-shared or instance-per-clinic?
-- **Q2:** Can one staff user belong to multiple practices? (single column vs `user_practices`.)
-- **Q3:** Any legitimate cross-practice role (super-admin/support)? How audited?
+- **Q2 — RESOLVED:** staff are isolated to one practice → single `users.practice_id NOT NULL`. See §10b.
+- **Q3 — RESOLVED:** separate super-admin in the control plane (`control.operators`), no standing PHI
+  access, PHI support via audited break-glass. See §10b.
 - **Q4:** For the multi-tenant path, is a one-time backfill to a single default practice acceptable
   for all existing data (yes, per current single-tenant reality)?
 
@@ -339,6 +340,52 @@ touching tenant data" property you asked for. **A** is cheaper if instance-per-c
   tenant state.
 
 ---
+
+---
+
+## 10b. Control-plane management & the super-admin model (resolves Q2, Q3)
+
+**Q2 resolved — staff are isolated to one practice.** One user belongs to exactly one tenant:
+`users.practice_id uuid NOT NULL REFERENCES practices(id)` (the tenant), carried in the JWT as a
+`tid` claim and used by the S3 middleware to set `search_path`. No `user_practices` join, no
+active-practice switch.
+
+**Two separate planes — the core isolation principle:**
+
+| | Data plane (tenant apps) | Control plane (central console) |
+|---|---|---|
+| Who | Clinic staff — tenant `admin`, doctor, etc. | Platform operators (super admins) |
+| Scope | Only their own tenant schema | The `control` schema across all tenants |
+| Identity | `users` (has `practice_id`) | **Separate** `control.operators` table |
+| PHI access | Within their tenant | **None by default** — break-glass only |
+| Surface | Existing app (`/api/*`) | Separate console (`/api/platform/*`) |
+
+**Critical rule:** a tenant admin can NEVER become a super admin. Super admin is *not*
+`users.role='admin'` — it is a different principal type in a different table (`control.operators`),
+so there is no escalation path from inside a tenant.
+
+**Q3 resolved — yes, a super admin exists, but minimized and audited:**
+- **Manages (never PHI by default):** tenant lifecycle (create via `control.provision_schema` from
+  S2; suspend/resume via a status flag; offboard/export via per-schema `pg_dump`; delete);
+  subscriptions & billing (plan tier, seats, billing status, entitlements); rollout control
+  (per-tenant `app_version`/`schema_version` pinning, ring assignment, trigger the S5 fan-out, view
+  `migration_status`); observability.
+- **Cannot silently read PHI.** Support access is a **break-glass session**: time-boxed,
+  justification-required, sets `search_path` to one tenant, every action written to an immutable
+  `control.audit_log` (ideally tenant-visible). This is the HIPAA-defensible posture.
+
+**Subscriptions:** move from today's single-tenant billing (`subscription_plans`,
+`organization_settings.current_plan_id`, Stripe webhook) to the control plane — one Stripe customer
+per tenant; the webhook updates `control.subscriptions.status`; plan enforcement (`planFeatures.js`)
+reads the tenant's entitlement from the control plane. A past-due status can flip a tenant to
+read-only.
+
+**Added build steps:**
+- **S10 — Control-plane console:** `control.operators` (+ MFA), `requirePlatformAdmin` middleware,
+  `/api/platform/*` (or a separate service), tenant CRUD/suspend/export wired to
+  `control.provision_schema`, `control.audit_log`, break-glass support sessions.
+- **S11 — Subscriptions & entitlements:** `control.subscriptions` / `control.plans`, per-tenant
+  Stripe, entitlement-based plan enforcement.
 
 ---
 

@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { resolveTenantForUser } = require('../services/tenantCatalog');
 
 const JWT_SECRET = process.env.AC_TK_S;
 const JWT_EXPIRY = '24h';
@@ -30,10 +31,40 @@ if (!JWT_SECRET || Buffer.byteLength(String(JWT_SECRET), 'utf8') < MIN_SECRET_BY
  */
 const signToken = (user) =>
   jwt.sign(
-    { sub: String(user.id), role: user.role, email: user.email, tv: user.token_version ?? 0 },
+    {
+      sub: String(user.id),
+      role: user.role,
+      email: user.email,
+      tv: user.token_version ?? 0,
+      // SEC-05 (S3): tenant hint. Informational only — the tenant boundary is
+      // re-resolved from the DB on every request (never trusted from the claim).
+      pid: user.practice_id ?? null
+    },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRY, algorithm: JWT_ALGORITHMS[0] }
   );
+
+/**
+ * SEC-05 (S3): resolve and attach the caller's tenant to the request.
+ * Defensive by design — if the control plane / practice_id column is not yet present
+ * (migrations 063/065 not applied on this environment), it logs once and falls back
+ * to the default 'public' schema rather than failing authentication. Sets
+ * req.user.practiceId and req.tenant = { practiceId, tenantId, schemaName }.
+ * No route consumes req.tenant yet, so this is currently transparent.
+ */
+const attachTenantContext = async (pool, req, userId) => {
+  try {
+    const t = await resolveTenantForUser(pool, userId);
+    if (t) {
+      if (req.user) req.user.practiceId = t.practiceId;
+      req.tenant = { practiceId: t.practiceId, tenantId: t.tenantId, schemaName: t.schemaName || 'public' };
+      return;
+    }
+  } catch (err) {
+    console.warn('[auth] tenant resolution unavailable, defaulting to public schema:', err.message);
+  }
+  req.tenant = { practiceId: (req.user && req.user.practiceId) || null, tenantId: null, schemaName: 'public' };
+};
 
 /**
  * Verify a Bearer JWT and confirm the user is still active in the DB.
@@ -83,6 +114,9 @@ const authenticate = async (req, res, next) => {
       firstName: user.first_name,
       lastName: user.last_name
     };
+
+    // SEC-05 (S3): attach tenant context (defensive; transparent until routes adopt it).
+    await attachTenantContext(pool, req, user.id);
 
     next();
   } catch (error) {
@@ -139,6 +173,8 @@ const optionalAuth = async (req, res, next) => {
             firstName: user.first_name,
             lastName: user.last_name
           };
+          // SEC-05 (S3): attach tenant context for the authenticated caller.
+          await attachTenantContext(pool, req, user.id);
         }
       } catch (_) {
         // Invalid/expired token in optionalAuth — continue as unauthenticated
@@ -196,6 +232,8 @@ const requireAdmin = async (req, res, next) => {
       }
 
       req.user = { id: u.id, email: u.email, role: u.role };
+      // SEC-05 (S3): attach tenant context on the standalone path.
+      await attachTenantContext(req.app.locals.pool, req, u.id);
     }
 
     if (req.user.role !== 'admin') {
