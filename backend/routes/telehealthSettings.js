@@ -14,7 +14,7 @@ const crypto = require('crypto');
 // Returns status + connection info (never raw tokens)
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT id, provider_type, is_enabled, client_id, api_key,
              zoom_user_email, zoom_user_id, account_id,
@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
 // Get single provider settings
 router.get('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
 
     const result = await pool.query(
@@ -65,7 +65,7 @@ router.get('/:providerType', async (req, res) => {
 // Create or update provider settings
 router.post('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
     const {
       is_enabled,
@@ -130,7 +130,7 @@ router.post('/:providerType', async (req, res) => {
 // Delete provider settings
 router.delete('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
 
     const result = await pool.query(
@@ -152,7 +152,7 @@ router.delete('/:providerType', async (req, res) => {
 // Toggle provider enabled status
 router.patch('/:providerType/toggle', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
     const { is_enabled } = req.body;
 
@@ -190,7 +190,7 @@ router.patch('/:providerType/toggle', async (req, res) => {
 // Get all enabled providers (used by frontend for patient preference dropdown)
 router.get('/enabled/providers', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT provider_type, zoom_user_email
       FROM telehealth_provider_settings
@@ -207,7 +207,7 @@ router.get('/enabled/providers', async (req, res) => {
 // Get active/default provider
 router.get('/active/provider', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT * FROM telehealth_provider_settings
       WHERE is_enabled = true
@@ -231,7 +231,7 @@ router.post('/:providerType/test', async (req, res) => {
   try {
     const { providerType } = req.params;
     const TelehealthProviderManager = require('../services/telehealthProviders');
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const manager = new TelehealthProviderManager(pool);
     const provider = await manager.getProvider(providerType);
@@ -268,7 +268,7 @@ router.post('/:providerType/instant-meeting', async (req, res) => {
     const { providerType } = req.params;
     const { topic, duration, patientName, recordingEnabled } = req.body;
     const TelehealthProviderManager = require('../services/telehealthProviders');
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Diagnostic: verify DB state before attempting to create meeting
     try {
@@ -339,7 +339,7 @@ router.post('/:providerType/instant-meeting', async (req, res) => {
  */
 router.get('/zoom/host-token', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { meetingId } = req.query;
 
     // Get stored admin OAuth access token + app credentials (client_id / client_secret)

@@ -66,7 +66,7 @@ const ensureTableExists = async (pool) => {
 // Get all laboratories
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTableExists(pool);
 
     const { is_active } = req.query;
@@ -92,7 +92,7 @@ router.get('/', async (req, res) => {
 // Get laboratory by ID
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTableExists(pool);
 
     const result = await pool.query(
@@ -114,7 +114,7 @@ router.get('/:id', async (req, res) => {
 // Create new laboratory
 router.post('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTableExists(pool);
 
     const {
@@ -171,7 +171,7 @@ router.post('/', async (req, res) => {
 // Update laboratory
 router.put('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTableExists(pool);
 
     const {
@@ -246,7 +246,7 @@ router.put('/:id', async (req, res) => {
 // Delete laboratory
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTableExists(pool);
 
     const result = await pool.query(

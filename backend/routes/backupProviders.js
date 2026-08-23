@@ -11,7 +11,7 @@ router.use(authenticate);
 // Get all backup provider settings
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Check if table exists, if not create it
     try {
@@ -51,7 +51,7 @@ router.get('/', async (req, res) => {
 // Get single provider settings
 router.get('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
 
     const result = await pool.query(
@@ -73,7 +73,7 @@ router.get('/:providerType', async (req, res) => {
 // Create or update provider settings
 router.post('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
     const {
       is_enabled,
@@ -129,7 +129,7 @@ router.post('/:providerType', async (req, res) => {
 // Delete provider settings
 router.delete('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
 
     const result = await pool.query(
@@ -151,7 +151,7 @@ router.delete('/:providerType', async (req, res) => {
 // Get backup configuration status
 router.get('/config/status', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Ensure table exists
     await pool.query(`

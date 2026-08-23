@@ -67,7 +67,7 @@ const authorizePatientAccess = async (req, res, next) => {
       return next();
     }
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const owned = await pool.query(
       'SELECT 1 FROM patients WHERE id = $1 AND user_id = $2',
       [patientId, req.user.id]
@@ -158,7 +158,7 @@ router.get('/callback', async (req, res) => {
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const userInfo = await oauth2.userinfo.get();
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await pool.query(
       `
       INSERT INTO social_auth (
@@ -198,7 +198,7 @@ router.get('/callback', async (req, res) => {
 // Check if patient has Google Calendar connected
 router.get('/status/:patientId', authenticate, authorizePatientAccess, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT id, provider, provider_user_id, profile_data, created_at
        FROM social_auth
@@ -228,7 +228,7 @@ router.get('/status/:patientId', authenticate, authorizePatientAccess, async (re
 // Disconnect Google Calendar
 router.delete('/disconnect/:patientId', authenticate, authorizePatientAccess, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `DELETE FROM social_auth
        WHERE patient_id = $1 AND provider = 'google_calendar'
@@ -250,7 +250,7 @@ router.delete('/disconnect/:patientId', authenticate, authorizePatientAccess, as
 // Sync one appointment to Google Calendar
 router.post('/sync-appointment', authenticate, requireGoogleConfig, authorizePatientAccess, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { appointmentId } = req.body;
     const patientId = req.patientId;
 
@@ -340,7 +340,7 @@ router.post('/sync-appointment', authenticate, requireGoogleConfig, authorizePat
 // Enable/disable auto-sync for future appointments
 router.put('/auto-sync/:patientId', authenticate, authorizePatientAccess, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { enabled } = req.body;
 
     if (typeof enabled !== 'boolean') {
