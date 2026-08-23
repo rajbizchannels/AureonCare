@@ -6,7 +6,7 @@ router.use(authenticate);
 // Get all insurance payers
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { active_only } = req.query;
 
     let query = `
@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
 // Get single insurance payer by ID
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM insurance_payers WHERE id = $1',
       [req.params.id]
@@ -51,7 +51,7 @@ router.get('/:id', async (req, res) => {
 // Get insurance payer by payer_id
 router.get('/payer/:payerId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM insurance_payers WHERE payer_id = $1',
       [req.params.payerId]
@@ -95,7 +95,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Check if payer_id already exists
     const existing = await pool.query(
@@ -176,7 +176,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `UPDATE insurance_payers SET
@@ -242,7 +242,7 @@ router.put('/:id', async (req, res) => {
 // Delete insurance payer (soft delete by setting is_active to false)
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Check if payer is used in any claims
     const claimsCheck = await pool.query(

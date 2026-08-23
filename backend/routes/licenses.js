@@ -14,7 +14,7 @@ const {
 // Body: { planName, maxProviders, maxUsers, maxPatients, validFrom, validUntil, notes }
 router.post('/generate', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       planName, maxProviders, maxUsers, maxPatients,
       validFrom, validUntil, notes,
@@ -43,7 +43,7 @@ router.post('/generate', async (req, res) => {
 // Body: { key, installationId }
 router.post('/activate', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { key, installationId } = req.body;
 
     if (!key)            return res.status(400).json({ error: 'key is required' });
@@ -66,7 +66,7 @@ router.post('/activate', async (req, res) => {
 // Check the status of a key without activating it.
 router.get('/check/:key', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await checkLicense(pool, req.params.key);
 
     if (!result.found) {
@@ -84,7 +84,7 @@ router.get('/check/:key', async (req, res) => {
 // Admin: list all license keys with plan info.
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { rows } = await pool.query(`
       SELECT lk.*, sp.display_name AS plan_display_name, sp.price AS plan_price
       FROM license_keys lk
@@ -103,7 +103,7 @@ router.get('/', async (req, res) => {
 // Body: { key }
 router.post('/revoke', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { key } = req.body;
 
     if (!key) return res.status(400).json({ error: 'key is required' });
