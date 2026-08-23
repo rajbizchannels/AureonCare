@@ -7,7 +7,7 @@ const notificationService = require('../services/notificationService');
 // Get all payments
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId, claimId, status } = req.query;
 
     let query = `
@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
 // Get single payment
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT p.*,
               CONCAT(pat.first_name, ' ', pat.last_name) as patient_name,
@@ -93,7 +93,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `INSERT INTO payments
@@ -146,7 +146,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `UPDATE payments
@@ -194,7 +194,7 @@ router.put('/:id', async (req, res) => {
 // Delete payment
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM payments WHERE id::text = $1::text RETURNING *',
       [req.params.id]

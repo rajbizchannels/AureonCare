@@ -10,7 +10,7 @@ router.use(authenticate);
  */
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { q: query, limit = 20 } = req.query;
 
     if (!query || query.trim().length < 2) {

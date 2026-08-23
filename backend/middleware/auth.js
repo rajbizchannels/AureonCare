@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { resolveTenantForUser } = require('../services/tenantCatalog');
+const { makeTenantDb } = require('../db/requestTenantDb');
 
 const JWT_SECRET = process.env.AC_TK_S;
 const JWT_EXPIRY = '24h';
@@ -53,17 +54,27 @@ const signToken = (user) =>
  * No route consumes req.tenant yet, so this is currently transparent.
  */
 const attachTenantContext = async (pool, req, userId) => {
+  let schemaName = 'public';
   try {
     const t = await resolveTenantForUser(pool, userId);
     if (t) {
       if (req.user) req.user.practiceId = t.practiceId;
-      req.tenant = { practiceId: t.practiceId, tenantId: t.tenantId, schemaName: t.schemaName || 'public' };
-      return;
+      schemaName = t.schemaName || 'public';
+      req.tenant = { practiceId: t.practiceId, tenantId: t.tenantId, schemaName };
+    } else {
+      req.tenant = { practiceId: (req.user && req.user.practiceId) || null, tenantId: null, schemaName };
     }
   } catch (err) {
     console.warn('[auth] tenant resolution unavailable, defaulting to public schema:', err.message);
+    req.tenant = { practiceId: (req.user && req.user.practiceId) || null, tenantId: null, schemaName };
   }
-  req.tenant = { practiceId: (req.user && req.user.practiceId) || null, tenantId: null, schemaName: 'public' };
+  // Per-request tenant-scoped DB handle. Routes adopt `req.db` during the sweep; it is
+  // released when the response ends. Behaviour-preserving for the single default tenant.
+  try {
+    req.db = makeTenantDb(pool, schemaName, req.res);
+  } catch (err) {
+    console.warn('[auth] could not attach tenant db handle:', err.message);
+  }
 };
 
 /**

@@ -7,7 +7,7 @@ const vendorIntegrationManager = require('../services/vendorIntegrations');
 // Get all FHIR resources
 router.get('/resources', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { resourceType, patientId } = req.query;
 
     let query = 'SELECT * FROM fhir_resources WHERE 1=1';
@@ -37,7 +37,7 @@ router.get('/resources', async (req, res) => {
 // Get single FHIR resource
 router.get('/resources/:resourceType/:resourceId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { resourceType, resourceId } = req.params;
 
     const result = await pool.query(
@@ -59,7 +59,7 @@ router.get('/resources/:resourceType/:resourceId', async (req, res) => {
 // Create or update FHIR resource
 router.post('/resources', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       resourceType,
       resourceId,
@@ -218,7 +218,7 @@ router.post('/resources', async (req, res) => {
 // Convert patient to FHIR Patient resource
 router.get('/patient/:patientId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.params;
 
     const patient = await pool.query(
@@ -285,7 +285,7 @@ router.get('/patient/:patientId', async (req, res) => {
 // Sync patient data to FHIR
 router.post('/sync/patient/:patientId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.params;
 
     // Get patient data
@@ -346,7 +346,7 @@ router.post('/sync/patient/:patientId', async (req, res) => {
 // Get FHIR bundle for patient
 router.get('/bundle/:patientId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.params;
 
     const resources = await pool.query(
