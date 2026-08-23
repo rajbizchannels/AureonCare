@@ -268,7 +268,7 @@ router.get('/:providerType/initiate', async (req, res) => {
       });
     }
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
     if (!info) return res.status(400).json({ error: 'Invalid provider type' });
 
@@ -388,7 +388,7 @@ router.get('/:providerType/callback', async (req, res) => {
     }
 
     const config = OAUTH_CONFIGS[providerType];
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     // Fetch existing DB row for client credentials
@@ -554,7 +554,7 @@ router.get('/:providerType/callback', async (req, res) => {
 router.get('/:providerType/status', async (req, res) => {
   try {
     const { providerType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
@@ -633,7 +633,7 @@ router.get('/:providerType/redirect-url', (req, res) => {
 router.get('/:providerType/credentials', async (req, res) => {
   try {
     const { providerType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
@@ -678,7 +678,7 @@ router.post('/:providerType/credentials', async (req, res) => {
       return res.status(400).json({ error: 'client_id and client_secret are required' });
     }
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
 
@@ -761,7 +761,7 @@ router.post('/:providerType/refresh', async (req, res) => {
   try {
     const { providerType } = req.params;
     const config = OAUTH_CONFIGS[providerType];
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     const result = await pool.query(
@@ -855,7 +855,7 @@ router.post('/:providerType/refresh', async (req, res) => {
 router.delete('/:providerType', async (req, res) => {
   try {
     const { providerType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
 

@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const { resolveTenantForUser } = require('../services/tenantCatalog');
+const { makeTenantDb } = require('../db/requestTenantDb');
 const crypto = require('crypto');
 
 /**
@@ -107,6 +109,21 @@ const resolveActor = async (req, res, next) => {
     }
 
     req.actor = actor;
+
+    // SEC-05: attach a tenant-scoped db handle for messaging (staff and portal patients
+    // both key off users.id — patients.id = users.id — so their practice resolves the
+    // tenant schema). Defensive: only set req.db when a real tenant resolves, else
+    // handlers fall back to the default pool.
+    try {
+      const t = await resolveTenantForUser(pool, actor.id);
+      if (t && t.tenantId) {
+        req.tenant = { practiceId: t.practiceId, tenantId: t.tenantId, schemaName: t.schemaName || 'public' };
+        req.db = makeTenantDb(pool, req.tenant.schemaName, req.res);
+      }
+    } catch (e) {
+      console.warn('[messagingAuth] tenant resolution unavailable, using default pool:', e.message);
+    }
+
     next();
   } catch (error) {
     console.error('[messagingAuth] Actor resolution failed:', error);
