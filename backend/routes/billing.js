@@ -20,7 +20,7 @@ const toCamelCase = (obj) => {
 // Get all quotes
 router.get('/quotes', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, status } = req.query;
     let query = `
       SELECT q.*,
@@ -52,7 +52,7 @@ router.get('/quotes', async (req, res) => {
 // Get single quote with items
 router.get('/quotes/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const quoteResult = await pool.query(`
       SELECT q.*,
         p.first_name || ' ' || p.last_name AS patient_name,
@@ -81,10 +81,13 @@ router.get('/quotes/:id', async (req, res) => {
 // Create quote
 router.post('/quotes', async (req, res) => {
   const { patientId, providerId, status, issueDate, expiryDate, subtotal, discountAmount, taxAmount, totalAmount, notes, terms, diagnosisIds, offeringIds, couponId, items } = req.body;
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    // SEC-05: scope this transaction to the caller's tenant schema (SET LOCAL auto-reverts).
+    const _schema = (req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '')) ? req.tenant.schemaName : 'public';
+    await client.query(`SET LOCAL search_path TO ${_schema}, public, control`);
     const quoteNumber = (await client.query('SELECT generate_quote_number() AS num')).rows[0].num;
     const quoteResult = await client.query(`
       INSERT INTO billing_quotes (quote_number, patient_id, provider_id, status, issue_date, expiry_date, subtotal, discount_amount, tax_amount, total_amount, notes, terms, diagnosis_ids, offering_ids, coupon_id)
@@ -126,10 +129,13 @@ router.post('/quotes', async (req, res) => {
 // Update quote
 router.put('/quotes/:id', async (req, res) => {
   const { patientId, providerId, status, issueDate, expiryDate, subtotal, discountAmount, taxAmount, totalAmount, notes, terms, diagnosisIds, offeringIds, couponId, items } = req.body;
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    // SEC-05: scope this transaction to the caller's tenant schema (SET LOCAL auto-reverts).
+    const _schema = (req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '')) ? req.tenant.schemaName : 'public';
+    await client.query(`SET LOCAL search_path TO ${_schema}, public, control`);
     const quoteResult = await client.query(`
       UPDATE billing_quotes SET
         patient_id = COALESCE($1, patient_id),
@@ -189,7 +195,7 @@ router.put('/quotes/:id', async (req, res) => {
 // Delete quote
 router.delete('/quotes/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query('DELETE FROM billing_quotes WHERE id = $1 RETURNING *', [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Quote not found' });
@@ -203,10 +209,13 @@ router.delete('/quotes/:id', async (req, res) => {
 
 // Convert quote to invoice
 router.post('/quotes/:id/convert', async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    // SEC-05: scope this transaction to the caller's tenant schema (SET LOCAL auto-reverts).
+    const _schema = (req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '')) ? req.tenant.schemaName : 'public';
+    await client.query(`SET LOCAL search_path TO ${_schema}, public, control`);
 
     const quoteResult = await client.query('SELECT * FROM billing_quotes WHERE id = $1', [req.params.id]);
     if (quoteResult.rows.length === 0) {
@@ -266,7 +275,7 @@ router.post('/quotes/:id/convert', async (req, res) => {
 // Get all invoices
 router.get('/invoices', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, status } = req.query;
     let query = `
       SELECT i.*,
@@ -298,7 +307,7 @@ router.get('/invoices', async (req, res) => {
 // Get single invoice with items
 router.get('/invoices/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const invoiceResult = await pool.query(`
       SELECT i.*,
         p.first_name || ' ' || p.last_name AS patient_name,
@@ -327,10 +336,13 @@ router.get('/invoices/:id', async (req, res) => {
 // Create invoice
 router.post('/invoices', async (req, res) => {
   const { patientId, providerId, quoteId, status, issueDate, dueDate, subtotal, discountAmount, taxAmount, totalAmount, notes, terms, diagnosisIds, offeringIds, couponId, items } = req.body;
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    // SEC-05: scope this transaction to the caller's tenant schema (SET LOCAL auto-reverts).
+    const _schema = (req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '')) ? req.tenant.schemaName : 'public';
+    await client.query(`SET LOCAL search_path TO ${_schema}, public, control`);
     const invoiceNumber = (await client.query('SELECT generate_invoice_number() AS num')).rows[0].num;
     const total = totalAmount || 0;
     const invoiceResult = await client.query(`
@@ -372,10 +384,13 @@ router.post('/invoices', async (req, res) => {
 // Update invoice
 router.put('/invoices/:id', async (req, res) => {
   const { patientId, providerId, status, issueDate, dueDate, subtotal, discountAmount, taxAmount, totalAmount, amountPaid, balanceDue, notes, terms, diagnosisIds, offeringIds, couponId, reminderTaskId, items } = req.body;
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    // SEC-05: scope this transaction to the caller's tenant schema (SET LOCAL auto-reverts).
+    const _schema = (req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '')) ? req.tenant.schemaName : 'public';
+    await client.query(`SET LOCAL search_path TO ${_schema}, public, control`);
     const invoiceResult = await client.query(`
       UPDATE billing_invoices SET
         patient_id = COALESCE($1, patient_id),
@@ -438,7 +453,7 @@ router.put('/invoices/:id', async (req, res) => {
 // Delete invoice
 router.delete('/invoices/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query('DELETE FROM billing_invoices WHERE id = $1 RETURNING *', [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Invoice not found' });
@@ -457,7 +472,7 @@ router.delete('/invoices/:id', async (req, res) => {
 // Get all coupons
 router.get('/coupons', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { is_active } = req.query;
     let query = 'SELECT * FROM billing_coupons WHERE 1=1';
     const params = [];
@@ -477,7 +492,7 @@ router.get('/coupons', async (req, res) => {
 // Get single coupon
 router.get('/coupons/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query('SELECT * FROM billing_coupons WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Coupon not found' });
@@ -492,7 +507,7 @@ router.get('/coupons/:id', async (req, res) => {
 // Validate coupon code
 router.post('/coupons/validate', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { code, amount } = req.body;
     const result = await pool.query(
       "SELECT * FROM billing_coupons WHERE code = $1 AND is_active = true AND (start_date IS NULL OR start_date <= CURRENT_DATE) AND (end_date IS NULL OR end_date >= CURRENT_DATE) AND (usage_limit IS NULL OR used_count < usage_limit)",
@@ -525,7 +540,7 @@ router.post('/coupons/validate', async (req, res) => {
 router.post('/coupons', async (req, res) => {
   const { code, name, description, discountType, discountValue, minAmount, maxDiscount, usageLimit, startDate, endDate, isActive, applicableOfferings } = req.body;
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       INSERT INTO billing_coupons (code, name, description, discount_type, discount_value, min_amount, max_discount, usage_limit, start_date, end_date, is_active, applicable_offerings)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -545,7 +560,7 @@ router.post('/coupons', async (req, res) => {
 router.put('/coupons/:id', async (req, res) => {
   const { code, name, description, discountType, discountValue, minAmount, maxDiscount, usageLimit, startDate, endDate, isActive, applicableOfferings } = req.body;
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       UPDATE billing_coupons SET
         code = COALESCE($1, code),
@@ -577,7 +592,7 @@ router.put('/coupons/:id', async (req, res) => {
 // Delete coupon
 router.delete('/coupons/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query('DELETE FROM billing_coupons WHERE id = $1 RETURNING *', [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Coupon not found' });
@@ -596,7 +611,7 @@ router.delete('/coupons/:id', async (req, res) => {
 // Get all billing payments
 router.get('/payments', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, invoice_id, status } = req.query;
     let query = `
       SELECT bp.*,
@@ -632,10 +647,13 @@ router.get('/payments', async (req, res) => {
 // Create billing payment
 router.post('/payments', async (req, res) => {
   const { invoiceId, patientId, amount, paymentMethod, paymentDate, status, transactionId, referenceNumber, notes } = req.body;
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    // SEC-05: scope this transaction to the caller's tenant schema (SET LOCAL auto-reverts).
+    const _schema = (req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '')) ? req.tenant.schemaName : 'public';
+    await client.query(`SET LOCAL search_path TO ${_schema}, public, control`);
     const paymentNumber = (await client.query('SELECT generate_billing_payment_number() AS num')).rows[0].num;
     const paymentResult = await client.query(`
       INSERT INTO billing_payments (payment_number, invoice_id, patient_id, amount, payment_method, payment_date, status, transaction_id, reference_number, notes)
@@ -681,7 +699,7 @@ router.post('/payments', async (req, res) => {
 router.put('/payments/:id', async (req, res) => {
   const { amount, paymentMethod, paymentDate, status, transactionId, referenceNumber, notes } = req.body;
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       UPDATE billing_payments SET
         amount = COALESCE($1, amount),
@@ -708,7 +726,7 @@ router.put('/payments/:id', async (req, res) => {
 // Delete billing payment
 router.delete('/payments/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query('DELETE FROM billing_payments WHERE id = $1 RETURNING *', [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Payment not found' });
@@ -725,7 +743,7 @@ router.delete('/payments/:id', async (req, res) => {
 // ============================================
 router.get('/summary', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const [quotes, invoices, coupons, payments] = await Promise.all([
       pool.query("SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'draft') as draft, COUNT(*) FILTER (WHERE status = 'sent') as sent, COUNT(*) FILTER (WHERE status = 'accepted') as accepted, COALESCE(SUM(total_amount), 0) as total_value FROM billing_quotes"),
       pool.query("SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'paid') as paid, COUNT(*) FILTER (WHERE status = 'overdue') as overdue, COUNT(*) FILTER (WHERE status = 'sent') as sent, COALESCE(SUM(total_amount), 0) as total_value, COALESCE(SUM(balance_due), 0) as total_balance FROM billing_invoices"),
