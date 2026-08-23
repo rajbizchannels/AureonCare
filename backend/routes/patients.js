@@ -8,7 +8,7 @@ const { enforcePatientQuota } = require('../middleware/planEnforcement');
 // Get all patients
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT *,
              date_of_birth as dob
@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 // Get single patient
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM patients WHERE id = $1',
       [req.params.id]
@@ -48,11 +48,16 @@ router.post('/', enforcePatientQuota, async (req, res) => {
     allergies, past_history, family_history, status, createUserAccount
   } = req.body;
 
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const client = await req.app.locals.pool.connect();
 
   try {
     await client.query('BEGIN');
+    // SEC-05: scope this transaction to the caller's tenant schema. SET LOCAL is
+    // transaction-scoped and auto-reverts on COMMIT/ROLLBACK, so the pooled
+    // connection returns to the pool without leaking the tenant search_path.
+    const _schema = (req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || ''))
+      ? req.tenant.schemaName : 'public';
+    await client.query(`SET LOCAL search_path TO ${_schema}, public, control`);
 
     // Use date_of_birth (database column name), fall back to dob for compatibility
     const birthDate = date_of_birth || dob;
@@ -144,7 +149,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     // Use date_of_birth (database column name), fall back to dob for compatibility
     const birthDate = date_of_birth || dob;
 
@@ -268,7 +273,7 @@ router.put('/:id', async (req, res) => {
 // Delete patient
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM patients WHERE id = $1 RETURNING *',
       [req.params.id]

@@ -14,7 +14,7 @@ const notificationService = require('../services/notificationService');
 // Get all lab orders with optional filters
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, provider_id, status } = req.query;
 
     let query = 'SELECT * FROM lab_orders WHERE 1=1';
@@ -72,7 +72,7 @@ router.get('/', async (req, res) => {
 // Get single lab order
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(
@@ -113,7 +113,7 @@ router.get('/:id', async (req, res) => {
 // Create new lab order
 router.post('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       patient_id,
       provider_id,
@@ -379,7 +379,7 @@ router.post('/', async (req, res) => {
 // Update lab order
 router.put('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
     const {
       status,
@@ -482,7 +482,7 @@ router.put('/:id', async (req, res) => {
 // Cancel lab order
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     // Get order details
@@ -526,7 +526,7 @@ router.delete('/:id', async (req, res) => {
 // Get lab results for an order
 router.get('/:id/results', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     // Get order

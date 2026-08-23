@@ -16,7 +16,7 @@ const toCamelCase = (obj) => {
 // Get all diagnosis records
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id } = req.query;
 
     let query = `
@@ -48,7 +48,7 @@ router.get('/', async (req, res) => {
 // Get diagnoses for a specific patient
 router.get('/patient/:patientId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT d.*,
               prov.first_name || ' ' || prov.last_name as provider_name
@@ -70,7 +70,7 @@ router.get('/patient/:patientId', async (req, res) => {
 // Get single diagnosis
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT d.*,
               pat.first_name || ' ' || pat.last_name as patient_name,
@@ -108,7 +108,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `INSERT INTO diagnosis (
         patient_id, provider_id, appointment_id, diagnosis_code,
@@ -146,7 +146,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `UPDATE diagnosis SET
         diagnosis_code = COALESCE($1, diagnosis_code),
@@ -174,7 +174,7 @@ router.put('/:id', async (req, res) => {
 // Delete diagnosis
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM diagnosis WHERE id = $1 RETURNING *',
       [req.params.id]

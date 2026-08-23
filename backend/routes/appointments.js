@@ -9,7 +9,7 @@ const notificationService = require('../services/notificationService');
 // Get all appointments
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.query;
 
     let query = `
@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
 // Get single appointment
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM appointments WHERE id::text = $1::text',
       [req.params.id]
@@ -66,7 +66,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     console.log('Creating appointment with:', { patient_id, user_id, appointment_type, start_time });
 
@@ -370,7 +370,7 @@ router.patch('/:id/status', async (req, res) => {
   }
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `UPDATE appointments SET status = $1, updated_at = NOW() WHERE id::text = $2::text RETURNING *`,
@@ -419,7 +419,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Get old appointment data for comparison
     const oldAppointmentResult = await pool.query(
@@ -587,7 +587,7 @@ router.put('/:id', async (req, res) => {
 // Delete appointment
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM appointments WHERE id::text = $1::text RETURNING *',
       [req.params.id]
