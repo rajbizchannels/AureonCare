@@ -8,7 +8,7 @@ const notificationService = require('../services/notificationService');
 // Get all claims
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.query;
 
     let query = `
@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
 // Get single claim
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM claims WHERE id::text = $1::text',
       [req.params.id]
@@ -60,7 +60,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `INSERT INTO claims
@@ -197,7 +197,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `UPDATE claims
@@ -239,7 +239,7 @@ router.put('/:id', async (req, res) => {
 // Delete claim
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM claims WHERE id::text = $1::text RETURNING *',
       [req.params.id]

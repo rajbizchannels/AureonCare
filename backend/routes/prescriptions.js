@@ -79,7 +79,7 @@ const ensureDiagnosisIdColumn = async (pool) => {
 // Get all prescriptions
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, provider_id, status, erx_status } = req.query;
     const hasEPrescribing = await checkEPrescribingSchema(pool);
 
@@ -152,7 +152,7 @@ router.get('/', async (req, res) => {
 // Get single prescription
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT p.*,
               pat.first_name || ' ' || pat.last_name as patient_name,
@@ -196,7 +196,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureDiagnosisIdColumn(pool);
     const result = await pool.query(
       `INSERT INTO prescriptions (
@@ -458,7 +458,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureDiagnosisIdColumn(pool);
     const result = await pool.query(
       `UPDATE prescriptions SET
@@ -508,7 +508,7 @@ router.put('/:id', async (req, res) => {
 // Delete prescription
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM prescriptions WHERE id = $1 RETURNING *',
       [req.params.id]
@@ -530,7 +530,7 @@ router.delete('/:id', async (req, res) => {
 // Send prescription electronically to pharmacy
 router.post('/:id/send-erx', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const hasEPrescribing = await checkEPrescribingSchema(pool);
 
     if (!hasEPrescribing) {
@@ -649,7 +649,7 @@ router.post('/:id/send-erx', async (req, res) => {
 // Cancel electronic prescription
 router.post('/:id/cancel-erx', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const hasEPrescribing = await checkEPrescribingSchema(pool);
 
     if (!hasEPrescribing) {
@@ -694,7 +694,7 @@ router.post('/:id/cancel-erx', async (req, res) => {
 // Get prescription history/audit log
 router.get('/:id/history', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const hasEPrescribing = await checkEPrescribingSchema(pool);
 
     if (!hasEPrescribing) {
@@ -726,7 +726,7 @@ router.get('/:id/history', async (req, res) => {
 // Check for drug allergies and interactions
 router.post('/check-safety', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const hasEPrescribing = await checkEPrescribingSchema(pool);
 
     if (!hasEPrescribing) {
@@ -796,7 +796,7 @@ router.post('/check-safety', async (req, res) => {
 // Get patient's current active prescriptions
 router.get('/patient/:patientId/active', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const hasEPrescribing = await checkEPrescribingSchema(pool);
 
     let query;
@@ -846,7 +846,7 @@ router.get('/patient/:patientId/active', async (req, res) => {
 // Get prescriptions by diagnosis ID
 router.get('/diagnosis/:diagnosisId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureDiagnosisIdColumn(pool);
     const hasEPrescribing = await checkEPrescribingSchema(pool);
 
@@ -894,7 +894,7 @@ router.get('/diagnosis/:diagnosisId', async (req, res) => {
 // Request refill
 router.post('/:id/refill', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const hasEPrescribing = await checkEPrescribingSchema(pool);
 
     if (!hasEPrescribing) {

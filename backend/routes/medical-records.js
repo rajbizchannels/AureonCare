@@ -135,7 +135,7 @@ async function uploadToOneDrive(pool, filePath, fileName) {
 // Get all medical records
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.query;
 
     let query = `
@@ -183,7 +183,7 @@ router.get('/', async (req, res) => {
  */
 router.get('/pending-review', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
 
     if (req.user.role === 'patient') {
@@ -227,7 +227,7 @@ router.get('/pending-review', async (req, res) => {
  */
 router.get('/:recordId/attachments/:attachmentId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { recordId, attachmentId } = req.params;
 
     const recordResult = await pool.query('SELECT * FROM medical_records WHERE id = $1', [recordId]);
@@ -265,7 +265,7 @@ router.get('/:recordId/attachments/:attachmentId', async (req, res) => {
  */
 router.post('/:recordId/review', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { recordId } = req.params;
     const { decision, notes } = req.body;
 
@@ -298,7 +298,7 @@ router.post('/:recordId/review', async (req, res) => {
 // Get single medical record
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(`
@@ -336,7 +336,7 @@ router.get('/:id', async (req, res) => {
 // Create medical record
 router.post('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       patientId,
       providerId,
@@ -388,7 +388,7 @@ router.post('/', async (req, res) => {
 // Update medical record
 router.put('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
     const {
       recordType,
@@ -441,7 +441,7 @@ router.put('/:id', async (req, res) => {
 // Delete medical record
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(
@@ -506,7 +506,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 // Create medical record with file upload
 router.post('/with-file', upload.single('file'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       patientId,
       providerId,

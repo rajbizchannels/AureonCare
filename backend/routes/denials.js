@@ -6,7 +6,7 @@ router.use(authenticate);
 // Get all denials
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId, claimId, insurancePayerId, status, appealStatus, priority } = req.query;
 
     let query = `
@@ -83,7 +83,7 @@ router.get('/', async (req, res) => {
 // Get single denial
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT d.*,
               CONCAT(pat.first_name, ' ', pat.last_name) as patient_name,
@@ -112,7 +112,7 @@ router.get('/:id', async (req, res) => {
 // Get denials by claim
 router.get('/claim/:claimId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT d.*,
               ip.name as insurance_payer_name
@@ -132,7 +132,7 @@ router.get('/claim/:claimId', async (req, res) => {
 // Get denials approaching appeal deadline (within 30 days)
 router.get('/alerts/deadline', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT d.*,
               CONCAT(pat.first_name, ' ', pat.last_name) as patient_name,
@@ -190,7 +190,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `INSERT INTO denials
@@ -272,7 +272,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `UPDATE denials
@@ -350,7 +350,7 @@ router.put('/:id', async (req, res) => {
 // Delete denial
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM denials WHERE id::text = $1::text RETURNING *',
       [req.params.id]

@@ -7,7 +7,7 @@ const vendorIntegrationManager = require('../services/vendorIntegrations');
 // Get all preapprovals
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.query;
 
     let query = `
@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
 // Get single preapproval
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT p.*,
               CONCAT(pat.first_name, ' ', pat.last_name) as patient_name,
@@ -92,7 +92,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Create the preapproval record
     const result = await pool.query(
@@ -252,7 +252,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Build dynamic update query
     const updates = [];
@@ -314,7 +314,7 @@ router.put('/:id', async (req, res) => {
 // Delete preapproval
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM preapprovals WHERE id::text = $1::text RETURNING *',
       [req.params.id]
