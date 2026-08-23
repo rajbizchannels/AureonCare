@@ -389,6 +389,36 @@ read-only.
 
 ---
 
+## 10c. Resolved data decisions (table triage) — see SEC-05_Table_Triage.xlsx
+
+All 93 tables classified: **78 TENANT** (move to tenant schema), **5 IDENTITY** (stay in
+public, scope by `practice_id`), **7 SHARED** (global master data), **3 CONTROL** (control
+plane). Review items resolved:
+
+- **Integration credentials** (`backup_provider_settings`, `vendor_integration_settings`,
+  `telehealth_provider_settings`): the OAuth **client id/secret (CID/CSK) are global** (one
+  app registration per provider, in env/control) — but the **signed-in account, tokens, and
+  per-practice settings are TENANT** (these `*_settings` tables move to the tenant schema).
+- **`audit_logs` → TENANT** (per-tenant clinical audit). Super-admin auditing uses a
+  **separate `control.audit_log`** for platform actions (tenant create/suspend, subscription
+  changes, break-glass — immutable, always visible to the super-admin). Reading a tenant's
+  audit is done via **break-glass** (time-boxed, justification-required session into that one
+  schema; the read is itself logged to `control.audit_log`) or an explicit, audited
+  **cross-tenant roll-up** — never a silent global read.
+- **`insurance_payers`, `pharmacies`, `laboratories`, `service_categories` → TENANT**
+  (per-practice lists), not global directories.
+- **IDENTITY** (`users`, `user_roles`, `user_role_history`, `providers`, `social_auth`) stays
+  in `public`; `users` gets explicit `WHERE practice_id = req.user.practiceId` (staff isolation).
+- **SHARED** (`medical_codes`, `medications`, `drug_interactions`, `medication_alternatives`,
+  `roles`, `permissions`, `role_permissions`) stays global. Per-practice custom RBAC already
+  lives in the tenant `*_role_permissions` tables.
+
+Next execution: expand `control.tenant_tables` to the 78-table set → rebuild `template` →
+cutover migration (reuse S4/S5) → sweep those routes to `req.db` → scope IDENTITY by
+`practice_id`.
+
+---
+
 ## 10. Per-tenant feature/patch rollout under Model D
 
 The golden rule: **one codebase, one deployed version for everyone; per-tenant differences come
