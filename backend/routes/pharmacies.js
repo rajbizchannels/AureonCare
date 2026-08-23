@@ -17,7 +17,7 @@ const toCamelCase = (obj) => {
 // Search pharmacies by location
 router.get('/search', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { zip_code, city, state, pharmacy_name, accepts_erx, preferred_only, limit = 50 } = req.query;
 
     let query = `
@@ -76,7 +76,7 @@ router.get('/search', async (req, res) => {
 // Get all pharmacies
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT * FROM pharmacies
       WHERE is_active = true
@@ -92,7 +92,7 @@ router.get('/', async (req, res) => {
 // Get single pharmacy
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM pharmacies WHERE id = $1',
       [req.params.id]
@@ -112,7 +112,7 @@ router.get('/:id', async (req, res) => {
 // Get patient's preferred pharmacies
 router.get('/patient/:patientId/preferred', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT ph.*, pp.is_preferred, pp.added_date
       FROM patient_pharmacies pp
@@ -130,14 +130,15 @@ router.get('/patient/:patientId/preferred', async (req, res) => {
 
 // Add pharmacy to patient's list
 router.post('/patient/:patientId/preferred', async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
 
   try {
     const { pharmacyId, isPreferred } = req.body;
 
     // Use transaction to ensure atomicity
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
     // If marking as preferred, delete all existing pharmacies for this patient
     // This ensures only one preferred pharmacy exists at a time
@@ -172,7 +173,7 @@ router.post('/patient/:patientId/preferred', async (req, res) => {
 // Remove pharmacy from patient's list
 router.delete('/patient/:patientId/preferred/:pharmacyId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM patient_pharmacies WHERE patient_id = $1 AND pharmacy_id = $2 RETURNING *',
       [req.params.patientId, req.params.pharmacyId]
@@ -192,7 +193,7 @@ router.delete('/patient/:patientId/preferred/:pharmacyId', async (req, res) => {
 // Create new pharmacy (admin)
 router.post('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       ncpdpId, npi, pharmacyName, chainName, addressLine1, addressLine2,
       city, state, zipCode, phone, fax, email, website, is24Hours,
@@ -230,7 +231,7 @@ router.post('/', async (req, res) => {
 // Update pharmacy
 router.put('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       pharmacyName, chainName, addressLine1, addressLine2, city, state,
       zipCode, phone, fax, email, website, is24Hours, acceptsErx,
@@ -284,7 +285,7 @@ router.put('/:id', async (req, res) => {
 // Delete pharmacy (soft delete)
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'UPDATE pharmacies SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *',
       [req.params.id]
