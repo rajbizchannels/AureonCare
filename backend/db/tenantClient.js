@@ -35,8 +35,11 @@ async function withTenant(pool, schemaName, fn) {
     return await fn(client);
   } finally {
     // Reset before returning to the pool so a leaked connection can't carry a tenant's
-    // search_path into another request.
-    try { await client.query('SET search_path TO public, control'); } catch (_) { /* ignore */ }
+    // search_path into another request. RESET restores the connection to the configured
+    // default (the database-level search_path set at the S4 cutover — tenant_default,
+    // public, control), NOT a hardcoded value, so an un-swept pool.query on a recycled
+    // connection still resolves to the default tenant's schema.
+    try { await client.query('RESET search_path'); } catch (_) { /* ignore */ }
     client.release();
   }
 }
