@@ -41,11 +41,15 @@ const toCamelCase = (obj) => {
 router.get('/', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    // SEC-05: staff are isolated to their practice. users lives in public (identity
+    // plane), so search_path can't scope it — filter explicitly by the caller's
+    // practice. (A caller with no practice context sees an empty list, not everyone.)
     const result = await pool.query(`
       SELECT *
       FROM users
+      WHERE practice_id = $1
       ORDER BY id ASC
-    `);
+    `, [req.user.practiceId || null]);
     const users = result.rows.map(toCamelCase);
     res.json(users);
   } catch (error) {
@@ -58,11 +62,13 @@ router.get('/', authorize('admin'), async (req, res) => {
 router.get('/:id', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    // SEC-05: allow viewing self always; otherwise only users in the caller's practice.
     const result = await pool.query(
       `SELECT *
        FROM users
-       WHERE id::text = $1::text`,
-      [req.params.id]
+       WHERE id::text = $1::text
+         AND (id::text = $2::text OR practice_id = $3)`,
+      [req.params.id, req.user.id, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {
@@ -103,9 +109,10 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
     }
 
     // Explicitly generate UUID for id
+    // SEC-05: new staff belong to the creating admin's practice.
     const result = await pool.query(
-      `INSERT INTO users (id, first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, status, password_hash, created_at)
-       VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      `INSERT INTO users (id, first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, status, password_hash, practice_id, created_at)
+       VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
        RETURNING *`,
       [
         finalFirstName,
@@ -118,7 +125,8 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
         specialty,
         JSON.stringify(preferences || {}),
         status || 'active',
-        passwordHash
+        passwordHash,
+        req.user.practiceId || null
       ]
     );
 
@@ -274,6 +282,11 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     }
 
     const currentUser = currentUserResult.rows[0];
+    // SEC-05: may only modify self or a user in the same practice.
+    if (String(currentUser.id) !== String(req.user.id) &&
+        String(currentUser.practice_id || '') !== String(req.user.practiceId || ' ')) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     const oldRole = currentUser.role;
     const newRole = safeRole || oldRole;
 
@@ -431,9 +444,11 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
       [userId]
     );
 
+    // SEC-05: only delete a user in the caller's practice. A cross-practice id
+    // matches 0 rows -> rollback (undoing the cascade deletes above) -> 404.
     const result = await client.query(
-      'DELETE FROM users WHERE id::text = $1::text RETURNING *',
-      [userId]
+      'DELETE FROM users WHERE id::text = $1::text AND practice_id = $2 RETURNING *',
+      [userId, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {
@@ -515,13 +530,14 @@ router.put('/:id/switch-role', isSelfOrAdmin, async (req, res) => {
       });
     }
 
-    // Update active role
+    // Update active role — SEC-05: only self or a user in the caller's practice.
     const result = await pool.query(
       `UPDATE users
        SET active_role = $1, role = $1, updated_at = NOW()
        WHERE id::text = $2::text
+         AND (id::text = $3::text OR practice_id = $4)
        RETURNING *`,
-      [role_name, req.params.id]
+      [role_name, req.params.id, req.user.id, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {
@@ -570,6 +586,13 @@ router.post('/:id/roles', authorize('admin'), async (req, res) => {
 
     if (!role_id) {
       return res.status(400).json({ error: 'Role ID is required' });
+    }
+
+    // SEC-05: the target user must belong to the caller's practice.
+    const tgtP = await pool.query('SELECT practice_id FROM users WHERE id::text = $1::text', [req.params.id]);
+    if (tgtP.rows.length === 0 ||
+        String(tgtP.rows[0].practice_id || '') !== String(req.user.practiceId || ' ')) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     // Check if role exists
@@ -628,6 +651,13 @@ router.post('/:id/roles', authorize('admin'), async (req, res) => {
 router.delete('/:id/roles/:role_id', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+
+    // SEC-05: the target user must belong to the caller's practice.
+    const tgtP = await pool.query('SELECT practice_id FROM users WHERE id::text = $1::text', [req.params.id]);
+    if (tgtP.rows.length === 0 ||
+        String(tgtP.rows[0].practice_id || '') !== String(req.user.practiceId || ' ')) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     // Check if user has other roles
     const rolesCheck = await pool.query(
