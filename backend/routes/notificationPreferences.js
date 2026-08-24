@@ -11,7 +11,7 @@ router.use(authenticate);
 // Get notification preferences for a patient
 router.get('/:patientId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.params;
 
     const result = await pool.query(
@@ -29,7 +29,7 @@ router.get('/:patientId', async (req, res) => {
 // Create or update notification preference
 router.post('/:patientId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.params;
     const { channel_type, is_enabled, contact_info } = req.body;
 
@@ -69,7 +69,7 @@ router.post('/:patientId', async (req, res) => {
 // Delete notification preference
 router.delete('/:patientId/:channelType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId, channelType } = req.params;
 
     const result = await pool.query(

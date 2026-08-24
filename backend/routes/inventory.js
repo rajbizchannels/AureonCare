@@ -24,7 +24,7 @@ const toCamelCase = (obj) => {
 // GET /api/inventory/categories
 router.get('/categories', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { search, active } = req.query;
     let query = `
       SELECT c.*,
@@ -50,7 +50,7 @@ router.get('/categories', async (req, res) => {
 // POST /api/inventory/categories
 router.post('/categories', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { name, code, description, parentId } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
     if (!code || !code.trim()) return res.status(400).json({ error: 'code is required' });
@@ -70,7 +70,7 @@ router.post('/categories', authorize('admin', 'billing_manager'), async (req, re
 // PUT /api/inventory/categories/:id
 router.put('/categories/:id', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM inventory_categories WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Category not found' });
     const { name, code, description, parentId, isActive } = req.body;
@@ -102,7 +102,7 @@ router.put('/categories/:id', authorize('admin', 'billing_manager'), async (req,
 // DELETE /api/inventory/categories/:id (soft-delete if items exist)
 router.delete('/categories/:id', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM inventory_categories WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Category not found' });
     // Check for items in this category
@@ -130,7 +130,7 @@ router.delete('/categories/:id', authorize('admin'), async (req, res) => {
 // GET /api/inventory/suppliers
 router.get('/suppliers', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { search, status } = req.query;
     let query = `
       SELECT s.*,
@@ -154,7 +154,7 @@ router.get('/suppliers', async (req, res) => {
 // POST /api/inventory/suppliers
 router.post('/suppliers', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { name, contactName, email, phone, address, city, country, paymentTerms,
       taxId, notes, linkedAccountId } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
@@ -186,7 +186,7 @@ router.post('/suppliers', authorize('admin', 'billing_manager'), async (req, res
 // PUT /api/inventory/suppliers/:id
 router.put('/suppliers/:id', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM inventory_suppliers WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Supplier not found' });
     const { name, contactName, email, phone, address, city, country, paymentTerms,
@@ -228,7 +228,7 @@ router.put('/suppliers/:id', authorize('admin', 'billing_manager'), async (req, 
 // DELETE /api/inventory/suppliers/:id (soft-delete via status='inactive')
 router.delete('/suppliers/:id', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM inventory_suppliers WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Supplier not found' });
     const itemsCheck = await pool.query(
@@ -260,7 +260,7 @@ router.delete('/suppliers/:id', authorize('admin'), async (req, res) => {
 // GET /api/inventory/items
 router.get('/items', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { search, category, status, type, limit = 100, offset = 0 } = req.query;
     let query = `
       SELECT i.*,
@@ -294,7 +294,7 @@ router.get('/items', async (req, res) => {
 // GET /api/inventory/items/:id
 router.get('/items/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const itemResult = await pool.query(`
       SELECT i.*,
         c.name AS category_name, c.code AS category_code,
@@ -330,7 +330,7 @@ router.get('/items/:id', async (req, res) => {
 // POST /api/inventory/items
 router.post('/items', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       name, description, categoryId, supplierId, unitOfMeasure, itemType,
       sku, barcode, unitCost, sellingPrice,
@@ -388,7 +388,7 @@ router.post('/items', authorize('admin', 'billing_manager'), async (req, res) =>
 // PUT /api/inventory/items/:id
 router.put('/items/:id', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM inventory_items WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Item not found' });
 
@@ -460,7 +460,7 @@ router.put('/items/:id', authorize('admin', 'billing_manager'), async (req, res)
 // DELETE /api/inventory/items/:id (soft-delete via status='inactive')
 router.delete('/items/:id', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM inventory_items WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Item not found' });
     await pool.query(
@@ -481,7 +481,7 @@ router.delete('/items/:id', authorize('admin'), async (req, res) => {
 // GET /api/inventory/movements
 router.get('/movements', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { item, type, dateFrom, dateTo, limit = 100, offset = 0 } = req.query;
     let query = `
       SELECT m.*,
@@ -509,10 +509,11 @@ router.get('/movements', async (req, res) => {
 
 // POST /api/inventory/movements
 router.post('/movements', authorize('admin', 'billing_manager', 'nurse'), async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
     const { itemId, movementType, referenceType, referenceId, quantity,
       unitCost, lotNumber, expiryDate, movementDate, notes, journalEntryId } = req.body;
 
@@ -593,7 +594,7 @@ router.post('/movements', authorize('admin', 'billing_manager', 'nurse'), async 
 // GET /api/inventory/orders
 router.get('/orders', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, supplier, limit = 100, offset = 0 } = req.query;
     let query = `
       SELECT o.*,
@@ -622,7 +623,7 @@ router.get('/orders', async (req, res) => {
 // GET /api/inventory/orders/:id
 router.get('/orders/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const orderResult = await pool.query(`
       SELECT o.*,
         s.name AS supplier_name, s.supplier_number, s.contact_name, s.email AS supplier_email,
@@ -653,10 +654,11 @@ router.get('/orders/:id', async (req, res) => {
 
 // POST /api/inventory/orders
 router.post('/orders', authorize('admin', 'billing_manager'), async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
     const { supplierId, orderDate, expectedDate, taxAmount, shippingAmount,
       notes, linkedAccountId, lines } = req.body;
 
@@ -729,7 +731,7 @@ router.post('/orders', authorize('admin', 'billing_manager'), async (req, res) =
 // PUT /api/inventory/orders/:id (status transitions)
 router.put('/orders/:id', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM inventory_purchase_orders WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Purchase order not found' });
 
@@ -778,10 +780,11 @@ router.put('/orders/:id', authorize('admin', 'billing_manager'), async (req, res
 
 // POST /api/inventory/orders/:id/receive (receive all lines, create movements)
 router.post('/orders/:id/receive', authorize('admin', 'billing_manager'), async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
     const orderResult = await client.query(
       'SELECT * FROM inventory_purchase_orders WHERE id = $1 FOR UPDATE',
       [req.params.id]
@@ -887,7 +890,7 @@ router.post('/orders/:id/receive', authorize('admin', 'billing_manager'), async 
 // DELETE /api/inventory/orders/:id (only draft or cancelled)
 router.delete('/orders/:id', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM inventory_purchase_orders WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Purchase order not found' });
     if (!['draft', 'cancelled'].includes(existing.rows[0].status)) {
@@ -908,7 +911,7 @@ router.delete('/orders/:id', authorize('admin'), async (req, res) => {
 // GET /api/inventory/reports/summary
 router.get('/reports/summary', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const [items, lowStock, movThisMonth, orders] = await Promise.all([
       pool.query(`
         SELECT
@@ -954,7 +957,7 @@ router.get('/reports/summary', async (req, res) => {
 // GET /api/inventory/reports/stock-levels
 router.get('/reports/stock-levels', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT
         i.item_number, i.name, i.item_type, i.unit_of_measure, i.status,
@@ -980,7 +983,7 @@ router.get('/reports/stock-levels', async (req, res) => {
 // GET /api/inventory/reports/low-stock
 router.get('/reports/low-stock', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT
         i.id, i.item_number, i.name, i.item_type, i.unit_of_measure,
@@ -1008,7 +1011,7 @@ router.get('/reports/low-stock', async (req, res) => {
 // GET /api/inventory/reports/movement-history
 router.get('/reports/movement-history', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { dateFrom, dateTo } = req.query;
     let whereClause = 'WHERE 1=1';
     const params = [];
@@ -1036,7 +1039,7 @@ router.get('/reports/movement-history', async (req, res) => {
 // GET /api/inventory/reports/valuation
 router.get('/reports/valuation', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT
         i.id, i.item_number, i.name, i.item_type, i.unit_of_measure,
@@ -1067,7 +1070,7 @@ router.get('/reports/valuation', async (req, res) => {
 // GET /api/inventory/reports/expiry-alerts
 router.get('/reports/expiry-alerts', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { daysAhead = 90 } = req.query;
     const result = await pool.query(`
       SELECT
@@ -1106,7 +1109,7 @@ router.get('/reports/expiry-alerts', async (req, res) => {
 // GET /api/inventory/rbac/permissions
 router.get('/rbac/permissions', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT irp.*, u.first_name || ' ' || u.last_name AS updated_by_name
       FROM inventory_role_permissions irp
@@ -1123,7 +1126,7 @@ router.get('/rbac/permissions', authorize('admin', 'billing_manager'), async (re
 // PUT /api/inventory/rbac/permissions
 router.put('/rbac/permissions', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { roleName, resource, canView, canCreate, canEdit, canDelete, canApprove, canExport } = req.body;
     if (!roleName || !resource) return res.status(400).json({ error: 'roleName and resource are required' });
     const validResources = ['items','categories','suppliers','stock_movements','purchase_orders'];
@@ -1159,7 +1162,7 @@ router.put('/rbac/permissions', authorize('admin'), async (req, res) => {
 // GET /api/inventory/backup — list recent backups (metadata log)
 router.get('/backup', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     // Return current snapshot metadata for reference
     const [itemCount, movCount, supplierCount, orderCount] = await Promise.all([
       pool.query('SELECT COUNT(*) AS cnt FROM inventory_items'),
@@ -1187,10 +1190,11 @@ router.get('/backup', authorize('admin'), async (req, res) => {
 
 // POST /api/inventory/backup — export full inventory data snapshot
 router.post('/backup', authorize('admin'), async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
     const [items, categories, suppliers, movements, orders, orderLines, permissions] = await Promise.all([
       client.query('SELECT * FROM inventory_items ORDER BY item_number'),
       client.query('SELECT * FROM inventory_categories ORDER BY code'),

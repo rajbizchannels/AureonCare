@@ -169,7 +169,7 @@ async function logAudit(pool, { resourceType, resourceId, action, actorId, actor
 
 router.get('/categories', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query('SELECT * FROM form_categories WHERE is_active = true ORDER BY sort_order, name');
     res.json(result.rows);
@@ -182,7 +182,7 @@ router.get('/categories', async (req, res) => {
 router.post('/categories', async (req, res) => {
   const { name, slug, description, color, icon, parent_id, sort_order } = req.body;
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `INSERT INTO form_categories (name, slug, description, color, icon, parent_id, sort_order)
@@ -203,7 +203,7 @@ router.post('/categories', async (req, res) => {
 // List templates
 router.get('/templates', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const { category, template_type, specialty, is_active, search, intake_flow_eligible, role } = req.query;
 
@@ -262,7 +262,7 @@ router.get('/templates', async (req, res) => {
 // Get single template
 router.get('/templates/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `SELECT ft.*, fc.name as category_name
@@ -295,7 +295,7 @@ router.post('/templates', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     const result = await pool.query(
@@ -350,7 +350,7 @@ router.put('/templates/:id', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     // Get previous state for audit
@@ -434,7 +434,7 @@ router.delete('/templates/:id', async (req, res) => {
   const actorId = req.headers['x-user-id'];
   const actorRole = req.headers['x-user-role'];
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const prev = await pool.query('SELECT * FROM form_templates WHERE id = $1', [req.params.id]);
     if (prev.rows.length === 0) return res.status(404).json({ error: 'Template not found' });
@@ -455,7 +455,7 @@ router.delete('/templates/:id', async (req, res) => {
 
 router.get('/templates/:id/versions', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `SELECT ftv.*, u.first_name || ' ' || u.last_name as changed_by_name
@@ -477,7 +477,7 @@ router.post('/templates/:id/versions/:versionId/restore', async (req, res) => {
   const actorId = req.headers['x-user-id'];
   const actorRole = req.headers['x-user-role'];
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     const versionResult = await pool.query('SELECT * FROM form_template_versions WHERE id = $1 AND template_id = $2', [req.params.versionId, req.params.id]);
@@ -516,7 +516,7 @@ router.post('/templates/:id/versions/:versionId/restore', async (req, res) => {
 
 router.get('/submissions', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const { patient_id, template_id, status, appointment_id, intake_flow_id } = req.query;
 
@@ -563,7 +563,7 @@ router.get('/submissions', async (req, res) => {
  */
 router.get('/submissions/:id/document', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT id, patient_id, document_attachment_id FROM form_submissions WHERE id = $1',
       [req.params.id]
@@ -603,7 +603,7 @@ router.get('/submissions/:id/document', async (req, res) => {
  */
 router.post('/submissions/:id/acknowledge', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM form_submissions WHERE id = $1',
       [req.params.id]
@@ -647,7 +647,7 @@ router.post('/submissions/:id/acknowledge', async (req, res) => {
 
 router.get('/submissions/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `SELECT
@@ -688,7 +688,7 @@ router.post('/submissions', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     // Build FHIR QuestionnaireResponse if template has FHIR mapping
@@ -730,7 +730,7 @@ router.put('/submissions/:id', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     const prev = await pool.query('SELECT * FROM form_submissions WHERE id = $1', [req.params.id]);
@@ -773,7 +773,7 @@ router.delete('/submissions/:id', async (req, res) => {
   const actorId = req.headers['x-user-id'];
   const actorRole = req.headers['x-user-role'];
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const prev = await pool.query('SELECT * FROM form_submissions WHERE id = $1', [req.params.id]);
     if (prev.rows.length === 0) return res.status(404).json({ error: 'Submission not found' });
@@ -797,7 +797,7 @@ router.post('/submissions/:id/sign', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     const subResult = await pool.query('SELECT * FROM form_submissions WHERE id = $1', [req.params.id]);
@@ -825,7 +825,7 @@ router.post('/submissions/:id/sign', async (req, res) => {
 
 router.get('/submissions/:id/signatures', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query('SELECT * FROM form_signatures WHERE submission_id = $1 ORDER BY signed_at', [req.params.id]);
     res.json(result.rows);
@@ -841,7 +841,7 @@ router.get('/submissions/:id/signatures', async (req, res) => {
 
 router.get('/audit-logs', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const { resource_type, resource_id, patient_id, actor_id, action, limit = 100 } = req.query;
 
@@ -873,7 +873,7 @@ router.get('/audit-logs', async (req, res) => {
 // Get templates assigned to a flow
 router.get('/intake-flows/:flowId/templates', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `SELECT ift.*, ft.name as template_name, ft.description, ft.template_type, ft.category_slug,
@@ -898,7 +898,7 @@ router.post('/intake-flows/:flowId/templates', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     // Delete existing
@@ -968,7 +968,7 @@ function buildFhirResponse(questionnaire, formData, patientId) {
 
 router.get('/stats', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const [templates, submissions, pending, signed] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM form_templates WHERE is_active = true'),

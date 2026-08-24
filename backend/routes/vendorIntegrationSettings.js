@@ -12,7 +12,7 @@ const vendorIntegrationManager = require('../services/vendorIntegrations');
 // Get all vendor integration settings
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT * FROM vendor_integration_settings
       ORDER BY vendor_type
@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
 // Get single vendor settings
 router.get('/:vendorType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
 
     const result = await pool.query(
@@ -57,7 +57,7 @@ router.get('/:vendorType', async (req, res) => {
 // Create or update vendor settings
 router.post('/:vendorType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
     const {
       is_enabled,
@@ -136,7 +136,7 @@ router.post('/:vendorType', async (req, res) => {
 // Delete vendor settings
 router.delete('/:vendorType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
 
     const result = await pool.query(
@@ -161,7 +161,7 @@ router.delete('/:vendorType', async (req, res) => {
 // Toggle vendor enabled status
 router.patch('/:vendorType/toggle', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
     const { is_enabled } = req.body;
 
@@ -214,7 +214,7 @@ router.get('/status/all', async (req, res) => {
 router.post('/:vendorType/test', async (req, res) => {
   try {
     const { vendorType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Get vendor settings
     const settingsResult = await pool.query(
@@ -257,7 +257,7 @@ router.post('/:vendorType/test', async (req, res) => {
     console.error('Error testing vendor connection:', error);
 
     // Update test status in database
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await pool.query(`
       UPDATE vendor_integration_settings
       SET
