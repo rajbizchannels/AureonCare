@@ -3,6 +3,7 @@ const { authenticate } = require('../middleware/auth');
 const { loadAttachment, sendAttachment } = require('../utils/filedDocuments');
 const router = express.Router();
 router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 // ============================================================================
 // HELPER: Run SQL to init tables if they don't exist
