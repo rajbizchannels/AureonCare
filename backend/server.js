@@ -177,6 +177,8 @@ const { apiLimiter, authLimiter } = require('./middleware/rateLimiters');
 app.use('/api', apiLimiter);
 
 // Import and use routes
+// SEC-05 (S10): control-plane console — super-admin surface, separate from the tenant app.
+app.use('/api/platform', require('./routes/platform'));
 app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));
