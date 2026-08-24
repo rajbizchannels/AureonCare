@@ -10,7 +10,9 @@
     "migrate:preauth": "node backend/scripts/run-preapprovals-migration.js",
     "migrate:messaging": "node backend/scripts/migrate-messaging.js",
     "seed": "node scripts/seed.js",
-    "reset-db": "node backend/scripts/reset-and-seed.js"
+    "reset-db": "node backend/scripts/reset-and-seed.js",
+    "check:tenant-scoping": "node backend/scripts/check-tenant-scoping.js",
+    "test:sec05": "bash backend/test/sec05/run.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
