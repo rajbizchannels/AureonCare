@@ -217,8 +217,14 @@ const OAUTH_CONFIGS = {
     scope: 'meeting:schedules_write meeting:schedules_read',
   },
   microsoft_teams: {
-    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    // /organizations, not /common: OnlineMeetings.ReadWrite is a work/school
+    // permission that does not exist for personal Microsoft accounts. Under
+    // /common a personal account can authorize, and Microsoft then issues a
+    // token carrying only User.Read -- the Teams scope is dropped silently and
+    // the connection looks successful until the first meeting fails. Limiting
+    // the authority rejects those accounts at sign-in with a clear message.
+    authUrl: 'https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/organizations/oauth2/v2.0/token',
     scope: 'https://graph.microsoft.com/OnlineMeetings.ReadWrite https://graph.microsoft.com/User.Read offline_access',
   },
   google_drive: {
@@ -358,6 +364,15 @@ router.get('/:providerType/initiate', async (req, res) => {
 
     if (['google_meet', 'google_drive'].includes(providerType)) {
       authUrl.searchParams.append('access_type', 'offline');
+      authUrl.searchParams.append('prompt', 'consent');
+    }
+
+    // Microsoft reuses an existing consent grant unless re-consent is forced,
+    // and issues a token carrying only the scopes consented to at that time.
+    // Adding a permission in Azure does not retroactively widen a grant, so
+    // without this a disconnect/reconnect returns a token still missing the
+    // new scope and the provider's scope check keeps failing.
+    if (['microsoft_teams', 'onedrive'].includes(providerType)) {
       authUrl.searchParams.append('prompt', 'consent');
     }
 

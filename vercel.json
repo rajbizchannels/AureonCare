@@ -27,6 +27,10 @@
       "dest": "backend/server.js"
     },
     {
+      "src": "/.well-known/microsoft-identity-association.json",
+      "dest": "backend/server.js"
+    },
+    {
       "src": "/book/(.*)",
       "dest": "frontend/index.html"
     },

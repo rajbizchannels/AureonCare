@@ -51,9 +51,15 @@ class TeamsService {
     if (!scope.toLowerCase().includes('onlinemeetings')) {
       throw new Error(
         'Microsoft Teams token is missing the OnlineMeetings.ReadWrite permission. ' +
-        'In Azure Portal > App registrations > your app > API permissions, add ' +
-        'Microsoft Graph > Delegated > OnlineMeetings.ReadWrite and click ' +
-        '"Grant admin consent". Then disconnect and reconnect Teams in Admin Settings.'
+        `Microsoft granted only: ${scope || '(no scope returned)'}. ` +
+        'Most often this means the account that authorized is a personal ' +
+        'Microsoft account -- OnlineMeetings.ReadWrite exists only for work or ' +
+        'school accounts, and Microsoft drops it silently rather than failing. ' +
+        'Reconnect using a Microsoft 365 work account that has a Teams licence. ' +
+        'If it already is a work account, check that the permission is on the ' +
+        'app registration matching AC_MS_CID (Azure Portal > App registrations > ' +
+        'API permissions > Microsoft Graph > Delegated > OnlineMeetings.ReadWrite, ' +
+        'then Grant admin consent), and reconnect Teams in Admin Settings.'
       );
     }
 
@@ -90,7 +96,9 @@ class TeamsService {
     }
 
     const response = await axios.post(
-      'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+      // Must match the authority the code was exchanged against (see
+      // OAUTH_CONFIGS.microsoft_teams in routes/integrationOAuth.js).
+      'https://login.microsoftonline.com/organizations/oauth2/v2.0/token',
       new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: refreshToken,

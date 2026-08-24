@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const cloudStorage = require('../services/cloudBackupStorage');
 const { authenticate, authorize } = require('../middleware/auth');
 
 // All inventory routes require authentication
@@ -1233,11 +1234,28 @@ router.post('/backup', authorize('admin'), async (req, res) => {
     const dataStr = JSON.stringify(backupData);
     const fileName = `inventory_backup_${new Date().toISOString().split('T')[0]}.json`;
 
+    // Optionally push a copy to a connected cloud provider. An upload failure
+    // must not lose the snapshot, so it is still returned and the problem
+    // reported alongside it.
+    let cloud = null;
+    let cloudError = null;
+    const destination = req.body?.destination;
+    if (destination && cloudStorage.isSupported(destination)) {
+      try {
+        cloud = await cloudStorage.uploadBackup(pool, destination, fileName, backupData);
+      } catch (uploadErr) {
+        console.error(`Inventory backup upload to ${destination} failed:`, uploadErr);
+        cloudError = uploadErr.message;
+      }
+    }
+
     res.status(201).json({
       fileName,
       fileSizeBytes: Buffer.byteLength(dataStr, 'utf8'),
       totalRecords,
       status: 'completed',
+      cloud,
+      cloudError,
       ...backupData
     });
   } catch (err) {
