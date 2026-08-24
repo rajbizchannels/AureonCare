@@ -7,12 +7,35 @@
  */
 
 const UNLIMITED = -1;
+const { getTenantEntitlements } = require('../services/entitlements');
 
 /**
- * Loads the current active plan + org settings in one query.
- * Returns null if no plan is configured (allows all — fail open during setup).
+ * Loads the effective plan for this request. SEC-05 (S11): when the request carries a
+ * tenant (req.tenant.practiceId), the plan comes from that tenant's control-plane
+ * subscription; otherwise it falls back to the legacy single-tenant
+ * organization_settings row. Returns null if nothing is configured (fail open).
  */
-async function loadPlan(pool) {
+async function loadPlan(pool, req) {
+  const practiceId = req && req.tenant && req.tenant.practiceId;
+  if (practiceId) {
+    const ent = await getTenantEntitlements(pool, practiceId);
+    if (ent) {
+      return {
+        plan_name: ent.planName || 'your',
+        max_users: ent.maxUsers ?? UNLIMITED,
+        max_patients: ent.maxPatients ?? UNLIMITED,
+        max_providers: ent.maxProviders ?? UNLIMITED,
+        features: ent.features,
+        provider_seats_purchased: ent.seats,
+        enforcement_enabled: ent.enforcementEnabled,
+        plan_end_date: ent.currentPeriodEnd,   // period end acts as the expiry date
+        is_trial: ent.status === 'trialing',
+        trial_end_date: null,
+        _practiceId: practiceId,
+      };
+    }
+    // Has a tenant but no subscription row — fall through to the global fallback.
+  }
   const result = await pool.query(`
     SELECT
       sp.name            AS plan_name,
@@ -91,18 +114,20 @@ function expiredError(res, planName) {
 async function enforceUserQuota(req, res, next) {
   try {
     const pool = req.app.locals.pool;
-    const plan = await loadPlan(pool);
+    const plan = await loadPlan(pool, req);
 
     if (!plan || !plan.enforcement_enabled) return next();
     if (plan.max_users === UNLIMITED) return next();
     if (isPlanExpired(plan)) return expiredError(res, plan.plan_name);
 
-    const { rows } = await pool.query(`
-      SELECT COUNT(*) AS cnt
-      FROM users
-      WHERE status = 'active'
-        AND role <> 'patient'
-    `);
+    // SEC-05: staff count is per-practice (users lives in the shared public schema).
+    const practiceId = req.tenant && req.tenant.practiceId;
+    const { rows } = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM users
+        WHERE status = 'active' AND role <> 'patient'
+          AND ($1::uuid IS NULL OR practice_id = $1)`,
+      [practiceId || null]
+    );
     const current = parseInt(rows[0].cnt, 10);
 
     if (current >= plan.max_users) {
@@ -122,13 +147,15 @@ async function enforceUserQuota(req, res, next) {
 async function enforcePatientQuota(req, res, next) {
   try {
     const pool = req.app.locals.pool;
-    const plan = await loadPlan(pool);
+    const plan = await loadPlan(pool, req);
 
     if (!plan || !plan.enforcement_enabled) return next();
     if (plan.max_patients === UNLIMITED) return next();
     if (isPlanExpired(plan)) return expiredError(res, plan.plan_name);
 
-    const { rows } = await pool.query(`
+    // SEC-05: patients is a per-tenant table — count via the request's tenant db.
+    const db = req.db || pool;
+    const { rows } = await db.query(`
       SELECT COUNT(*) AS cnt FROM patients WHERE status = 'Active'
     `);
     const current = parseInt(rows[0].cnt, 10);
@@ -154,16 +181,20 @@ async function enforceProviderQuota(req, res, next) {
     if (incomingRole !== 'doctor') return next(); // only applies to provider creation
 
     const pool = req.app.locals.pool;
-    const plan = await loadPlan(pool);
+    const plan = await loadPlan(pool, req);
 
     if (!plan || !plan.enforcement_enabled) return next();
     const limit = effectiveProviderLimit(plan);
     if (limit === UNLIMITED) return next();
     if (isPlanExpired(plan)) return expiredError(res, plan.plan_name);
 
-    const { rows } = await pool.query(`
-      SELECT COUNT(*) AS cnt FROM users WHERE role = 'doctor' AND status = 'active'
-    `);
+    // SEC-05: provider (doctor) count is per-practice.
+    const practiceId = req.tenant && req.tenant.practiceId;
+    const { rows } = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM users WHERE role = 'doctor' AND status = 'active'
+         AND ($1::uuid IS NULL OR practice_id = $1)`,
+      [practiceId || null]
+    );
     const current = parseInt(rows[0].cnt, 10);
 
     if (current >= limit) {
@@ -196,7 +227,7 @@ function enforceFeature(featureKey) {
   return async function featureGate(req, res, next) {
     try {
       const pool = req.app.locals.pool;
-      const plan = await loadPlan(pool);
+      const plan = await loadPlan(pool, req);
 
       if (!plan || !plan.enforcement_enabled) return next();
       if (isPlanExpired(plan)) return expiredError(res, plan.plan_name);
@@ -214,9 +245,40 @@ function enforceFeature(featureKey) {
   };
 }
 
+/**
+ * SEC-05 (S11): read-only billing gate. When a tenant's subscription is past_due or
+ * canceled, block mutating requests (POST/PUT/PATCH/DELETE) with 402 while still
+ * allowing reads (GET/HEAD). Apply after authenticate on tenant routers. Fails open on
+ * error and when there is no tenant/subscription context.
+ */
+async function enforceActiveBilling(req, res, next) {
+  try {
+    const method = (req.method || 'GET').toUpperCase();
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
+
+    const practiceId = req.tenant && req.tenant.practiceId;
+    if (!practiceId) return next();
+
+    const ent = await getTenantEntitlements(req.app.locals.pool, practiceId);
+    if (ent && ent.enforcementEnabled && ent.isReadOnly) {
+      return res.status(402).json({
+        error: 'SubscriptionInactive',
+        message: `This workspace is read-only because its subscription is ${ent.status}. Update billing to resume changes.`,
+        status: ent.status,
+        upgrade_required: true,
+      });
+    }
+    next();
+  } catch (err) {
+    console.error('[planEnforcement] enforceActiveBilling error:', err.message);
+    next(); // fail open
+  }
+}
+
 module.exports = {
   enforceUserQuota,
   enforcePatientQuota,
   enforceProviderQuota,
   enforceFeature,
+  enforceActiveBilling,
 };
