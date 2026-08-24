@@ -9,7 +9,7 @@ const notificationService = require('../services/notificationService');
 // Get all telehealth sessions
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT
         ts.*,
@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
 // Get single telehealth session
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(`
@@ -81,7 +81,7 @@ router.get('/:id', async (req, res) => {
 // Create new telehealth session
 router.post('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       appointmentId,
       patientId,
@@ -185,7 +185,7 @@ router.post('/', async (req, res) => {
 // Update telehealth session
 router.put('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
     const {
       sessionStatus,
@@ -227,7 +227,7 @@ router.put('/:id', async (req, res) => {
 // Delete telehealth session
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(
@@ -249,7 +249,7 @@ router.delete('/:id', async (req, res) => {
 // Join session (add participant)
 router.post('/:id/join', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
     const { participantName, participantType } = req.body;
 

@@ -91,10 +91,10 @@ router.post('/', enforcePatientQuota, async (req, res) => {
 
         const userResult = await client.query(
           `INSERT INTO users
-           (id, email, password_hash, first_name, last_name, role, phone, status, created_at, updated_at)
-           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', $5, 'active', NOW(), NOW())
+           (id, email, password_hash, first_name, last_name, role, phone, status, practice_id, created_at, updated_at)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', $5, 'active', $6, NOW(), NOW())
            RETURNING id`,
-          [email, passwordHash, first_name.trim(), last_name.trim(), phone]
+          [email, passwordHash, first_name.trim(), last_name.trim(), phone, req.user && req.user.practiceId ? req.user.practiceId : null]
         );
 
         userId = userResult.rows[0].id;

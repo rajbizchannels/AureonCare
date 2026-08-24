@@ -15,7 +15,7 @@ const toCamelCase = (obj) => {
 // Add patient to waitlist (authenticated patients only)
 router.post('/', authenticate, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const patientId = req.user.id;
     const { providerId, preferredDate, preferredTimeStart, preferredTimeEnd, appointmentType, reason } = req.body;
 
@@ -72,7 +72,7 @@ router.post('/', authenticate, async (req, res) => {
 // Get patient's waitlist entries
 router.get('/my-waitlist', authenticate, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const patientId = req.user.id;
 
     const result = await pool.query(
@@ -99,7 +99,7 @@ router.get('/my-waitlist', authenticate, async (req, res) => {
 // Cancel/remove from waitlist
 router.delete('/:id', authenticate, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
     const userId = req.user.id;
     const userRole = req.user.role;
@@ -143,7 +143,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 // Admin: Get all waitlist entries with filters
 router.get('/admin/all', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, providerId, date } = req.query;
 
     let query = `
@@ -197,7 +197,7 @@ router.get('/admin/all', authenticate, authorize('admin', 'receptionist'), async
 // Admin: Notify next person on waitlist (when slot becomes available)
 router.post('/admin/notify-next', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerId, date } = req.body;
 
     if (!date) {
@@ -266,7 +266,7 @@ router.post('/admin/notify-next', authenticate, authorize('admin', 'receptionist
 // Admin: Mark waitlist entry as scheduled
 router.post('/admin/:id/scheduled', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(

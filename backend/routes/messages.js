@@ -184,7 +184,7 @@ const insertMessage = async (client, { threadId, actor, body, messageType = 'mes
  */
 router.get('/threads', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, threadType, patientId, q } = req.query;
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
     const offset = parseInt(req.query.offset, 10) || 0;
@@ -288,7 +288,7 @@ router.get('/threads', async (req, res) => {
  */
 router.get('/unread-count', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT COUNT(*)::int AS count
          FROM messages m
@@ -317,8 +317,8 @@ router.get('/unread-count', async (req, res) => {
  * Body: { subject, body, participants: [{kind, id}], patientId?, threadType?, priority? }
  */
 router.post('/threads', async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
 
   try {
     const { subject, body, participants = [], patientId, priority = 'normal' } = req.body;
@@ -368,6 +368,7 @@ router.post('/threads', async (req, res) => {
         : patientId || recipients.find((r) => r.kind === 'patient')?.id || null;
 
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
     const threadResult = await client.query(
       `INSERT INTO message_threads (
@@ -439,7 +440,7 @@ router.post('/threads', async (req, res) => {
  */
 router.get('/threads/:threadId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { threadId } = req.params;
 
     const membership = await loadMembership(pool, threadId, req.actor);
@@ -488,7 +489,7 @@ router.get('/threads/:threadId', async (req, res) => {
  */
 router.patch('/threads/:threadId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { threadId } = req.params;
     const { subject, status, priority } = req.body;
 
@@ -561,7 +562,7 @@ router.patch('/threads/:threadId', async (req, res) => {
  */
 router.get('/threads/:threadId/messages', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { threadId } = req.params;
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
     const offset = parseInt(req.query.offset, 10) || 0;
@@ -635,8 +636,8 @@ router.get('/threads/:threadId/messages', async (req, res) => {
  * Body: { body, attachments?: [{ fileName, mimeType, contentBase64 }] }
  */
 router.post('/threads/:threadId/messages', async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
 
   try {
     const { threadId } = req.params;
@@ -665,6 +666,7 @@ router.post('/threads/:threadId/messages', async (req, res) => {
     }
 
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
     const message = await insertMessage(client, { threadId, actor: req.actor, body });
 
@@ -764,8 +766,8 @@ router.post('/threads/:threadId/messages', async (req, res) => {
  * Marks the thread read up to now and records per-message receipts.
  */
 router.post('/threads/:threadId/read', async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
 
   try {
     const { threadId } = req.params;
@@ -776,6 +778,7 @@ router.post('/threads/:threadId/read', async (req, res) => {
     }
 
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
     await client.query(
       `UPDATE message_thread_participants
@@ -818,7 +821,7 @@ router.post('/threads/:threadId/read', async (req, res) => {
  */
 router.delete('/messages/:messageId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { messageId } = req.params;
 
     const existing = await pool.query('SELECT * FROM messages WHERE id = $1', [messageId]);
@@ -836,9 +839,10 @@ router.delete('/messages/:messageId', async (req, res) => {
     }
 
     const tombstone = encrypt('[message withdrawn]');
-    const client = await pool.connect();
+    const client = await req.app.locals.pool.connect();
     try {
       await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
       await client.query(
         `UPDATE messages
             SET deleted_at = CURRENT_TIMESTAMP,
@@ -895,7 +899,7 @@ router.delete('/messages/:messageId', async (req, res) => {
  */
 router.get('/attachments/:attachmentId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { attachmentId } = req.params;
 
     const result = await pool.query(
@@ -956,8 +960,8 @@ router.get('/attachments/:attachmentId', async (req, res) => {
  * Body: { kind, id }
  */
 router.post('/threads/:threadId/participants', requireStaffActor, async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
 
   try {
     const { threadId } = req.params;
@@ -981,6 +985,7 @@ router.post('/threads/:threadId/participants', requireStaffActor, async (req, re
     if (!thread) return res.status(404).json({ error: 'Thread not found' });
 
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
     // A previously-removed participant is reactivated rather than duplicated.
     await client.query(
@@ -1039,8 +1044,8 @@ router.post('/threads/:threadId/participants', requireStaffActor, async (req, re
  * DELETE /api/messages/threads/:threadId/participants/:participantRowId
  */
 router.delete('/threads/:threadId/participants/:participantRowId', requireStaffActor, async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
 
   try {
     const { threadId, participantRowId } = req.params;
@@ -1062,6 +1067,7 @@ router.delete('/threads/:threadId/participants/:participantRowId', requireStaffA
     }
 
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
     await client.query(
       `UPDATE message_thread_participants
@@ -1104,7 +1110,7 @@ router.delete('/threads/:threadId/participants/:participantRowId', requireStaffA
  */
 router.get('/recipients', requireStaffActor, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const q = req.query.q ? `%${req.query.q}%` : '%';
     const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
 
@@ -1166,7 +1172,7 @@ router.get('/recipients', requireStaffActor, async (req, res) => {
  */
 router.get('/care-team', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const requested = req.query.patientId;
 
     // Staff may look up any patient's care team; a patient only ever their own.

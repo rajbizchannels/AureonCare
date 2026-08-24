@@ -7,6 +7,8 @@ const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { authenticate } = require('../middleware/auth');
 const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('../utils/filedDocuments');
+const { resolveTenantForUser } = require('../services/tenantCatalog');
+const { makeTenantDb } = require('../db/requestTenantDb');
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -59,7 +61,7 @@ router.param('patientId', async (req, res, next, patientId) => {
 
     const token = authHeader.slice(7);
     const tokenHash = hashToken(token);
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const result = await pool.query(
       'SELECT patient_id FROM patient_portal_sessions WHERE session_token = $1 AND expires_at > NOW()',
       [tokenHash]
@@ -76,6 +78,23 @@ router.param('patientId', async (req, res, next, patientId) => {
       return res.status(403).json({ error: 'Access denied: session does not belong to this patient' });
     }
 
+    // SEC-05: attach a tenant-scoped db handle for this portal patient (patients.id =
+    // users.id, so the patient's practice resolves the tenant schema). Only set req.db
+    // when a real tenant resolves; otherwise handlers fall back to the default pool
+    // (default tenant). NOTE: for true multi-tenant portal, the session/patient lookups
+    // above run against the default search_path — a portal request must identify its
+    // tenant up front (e.g. per-practice subdomain, or a shared session->tenant index),
+    // since patient_portal_sessions now lives per-tenant. Flagged as a design decision.
+    try {
+      const t = await resolveTenantForUser(pool, sessionPatientId);
+      if (t && t.tenantId) {
+        req.tenant = { practiceId: t.practiceId, tenantId: t.tenantId, schemaName: t.schemaName || 'public' };
+        req.db = makeTenantDb(pool, req.tenant.schemaName, req.res);
+      }
+    } catch (e) {
+      console.warn('[portal] tenant resolution unavailable, using default pool:', e.message);
+    }
+
     next();
   } catch (error) {
     console.error('Portal session validation error:', error);
@@ -86,7 +105,7 @@ router.param('patientId', async (req, res, next, patientId) => {
 // Patient portal login — rate limited per IP and locked out per account
 router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { email, password, provider, providerId, accessToken } = req.body;
 
     let patient;
@@ -216,7 +235,7 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
 // anyone enable the portal and set a password for ANY patientId (account takeover).
 router.post('/register', authenticate, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, email, password } = req.body;
 
     // Staff may enable any patient's portal; a patient may only enable their own.
@@ -262,7 +281,7 @@ router.post('/register', authenticate, async (req, res) => {
 // Get patient appointments
 router.get('/:patientId/appointments', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
 
     const result = await pool.query(`
@@ -290,7 +309,7 @@ router.get('/:patientId/appointments', async (req, res) => {
 // Update patient appointment
 router.put('/:patientId/appointments/:appointmentId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, appointmentId } = req.params;
     const { startTime, endTime, reason, notes, appointmentType, providerId } = req.body;
 
@@ -322,7 +341,7 @@ router.put('/:patientId/appointments/:appointmentId', async (req, res) => {
 // Delete patient appointment
 router.delete('/:patientId/appointments/:appointmentId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, appointmentId } = req.params;
 
     const result = await pool.query(
@@ -344,7 +363,7 @@ router.delete('/:patientId/appointments/:appointmentId', async (req, res) => {
 // Get patient profile
 router.get('/:patientId/profile', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
 
     // Join with users table to get language preference, country, and timezone
@@ -373,7 +392,7 @@ router.get('/:patientId/profile', async (req, res) => {
 // Update patient profile
 router.put('/:patientId/profile', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
     const { first_name, last_name, phone, email, address, date_of_birth, emergencyContact, language, country } = req.body;
 
@@ -490,7 +509,7 @@ router.put('/:patientId/profile', async (req, res) => {
 // Get patient case history/medical records
 router.get('/:patientId/medical-records', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
 
     const result = await pool.query(`
@@ -525,7 +544,7 @@ router.get('/:patientId/medical-records', async (req, res) => {
  */
 router.get('/:patientId/medical-records/:recordId/attachments/:attachmentId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, recordId, attachmentId } = req.params;
 
     const recordResult = await pool.query(
@@ -555,7 +574,7 @@ router.get('/:patientId/medical-records/:recordId/attachments/:attachmentId', as
 /** Forms Requested, for a portal session. */
 router.get('/:patientId/form-requests', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const result = await pool.query(
       `SELECT id, template_id, template_name, status, source,
               document_attachment_id, document_name, document_action,
@@ -574,7 +593,7 @@ router.get('/:patientId/form-requests', async (req, res) => {
 
 router.get('/:patientId/form-requests/:submissionId/document', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, submissionId } = req.params;
 
     const result = await pool.query(
@@ -600,7 +619,7 @@ router.get('/:patientId/form-requests/:submissionId/document', async (req, res) 
 
 router.post('/:patientId/form-requests/:submissionId/acknowledge', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, submissionId } = req.params;
 
     const result = await pool.query(
@@ -626,7 +645,7 @@ router.post('/:patientId/form-requests/:submissionId/acknowledge', async (req, r
 // Update patient medical record
 router.put('/:patientId/medical-records/:recordId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, recordId} = req.params;
     const { title, description, providerId } = req.body;
 
@@ -655,7 +674,7 @@ router.put('/:patientId/medical-records/:recordId', async (req, res) => {
 // Delete patient medical record
 router.delete('/:patientId/medical-records/:recordId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, recordId } = req.params;
     const fs = require('fs');
     const path = require('path');
@@ -717,7 +736,7 @@ router.delete('/:patientId/medical-records/:recordId', async (req, res) => {
 // Link social auth to patient
 router.post('/:patientId/link-social', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
     const { provider, providerId, accessToken, refreshToken, profileData } = req.body;
 
@@ -781,7 +800,7 @@ router.post('/:patientId/link-social', async (req, res) => {
 // Logout (delete session)
 router.post('/logout', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { sessionToken } = req.body;
 
     // Sessions are stored hashed — hash the presented token to find the row.

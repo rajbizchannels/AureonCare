@@ -24,12 +24,15 @@ router.get('/', authenticate, async (req, res) => {
 
     // providers.id = users.id in current schema (migration 025)
     if (userRole === 'admin' || userRole === 'receptionist' || userRole === 'nurse' || userRole === 'patient') {
+      // SEC-05: providers are staff — scope to the caller's practice via users.practice_id
+      // (providers.id = users.id).
       result = await pool.query(`
         SELECT p.*, u.status, u.role
         FROM providers p
-        LEFT JOIN users u ON p.id = u.id
+        JOIN users u ON p.id = u.id
+        WHERE u.practice_id = $1
         ORDER BY p.last_name, p.first_name ASC
-      `);
+      `, [req.user.practiceId || null]);
     } else if (userRole === 'doctor') {
       result = await pool.query(`
         SELECT p.*, u.status, u.role
@@ -62,12 +65,14 @@ router.get('/:id', authenticate, async (req, res) => {
     const userId = req.user.id;
     const providerId = req.params.id;
 
+    // SEC-05: only providers in the caller's practice (self always allowed).
     const result = await pool.query(
       `SELECT p.*, u.status, u.role
        FROM providers p
-       LEFT JOIN users u ON p.id = u.id
-       WHERE p.id::text = $1::text`,
-      [providerId]
+       JOIN users u ON p.id = u.id
+       WHERE p.id::text = $1::text
+         AND (p.id::text = $2::text OR u.practice_id = $3)`,
+      [providerId, userId, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {
@@ -140,10 +145,14 @@ router.put('/:id', authenticate, async (req, res) => {
     const userId = req.user.id;
     const providerId = req.params.id;
 
-    // Check if provider exists and get user_id
+    // Check if provider exists and get user_id — SEC-05: scope to caller's practice
+    // (self always allowed). providers.id = users.id.
     const providerCheck = await pool.query(
-      'SELECT * FROM providers WHERE id::text = $1::text',
-      [providerId]
+      `SELECT p.* FROM providers p
+       JOIN users u ON p.id = u.id
+       WHERE p.id::text = $1::text
+         AND (p.id::text = $2::text OR u.practice_id = $3)`,
+      [providerId, userId, req.user.practiceId || null]
     );
 
     if (providerCheck.rows.length === 0) {
@@ -204,9 +213,11 @@ router.put('/:id', authenticate, async (req, res) => {
 router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    // SEC-05: only delete a provider whose linked user is in the caller's practice.
     const result = await pool.query(
-      'DELETE FROM providers WHERE id::text = $1::text RETURNING *',
-      [req.params.id]
+      `DELETE FROM providers WHERE id::text = $1::text
+         AND id IN (SELECT id FROM users WHERE practice_id = $2) RETURNING *`,
+      [req.params.id, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {

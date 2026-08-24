@@ -15,7 +15,7 @@ router.use(authenticate);
  */
 router.get('/info', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Try to get organization name from organization_settings first
     const orgResult = await pool.query(`
@@ -68,7 +68,7 @@ router.get('/info', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Get organization settings
     const orgResult = await pool.query(`
@@ -123,7 +123,7 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { name, address, phone, email, website, taxId, npi, currency } = req.body;
 
     // Start transaction
@@ -223,7 +223,7 @@ router.post('/', async (req, res) => {
  */
 router.get('/working-hours', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Create table if it doesn't exist
     await pool.query(`
@@ -277,7 +277,7 @@ router.get('/working-hours', async (req, res) => {
  */
 router.post('/working-hours', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const workingHours = req.body;
 
     // Create table if it doesn't exist
@@ -320,7 +320,7 @@ router.post('/working-hours', async (req, res) => {
  */
 router.get('/appointment-settings', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Create table if it doesn't exist
     await pool.query(`
@@ -366,7 +366,7 @@ router.get('/appointment-settings', async (req, res) => {
  */
 router.post('/appointment-settings', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { defaultDuration, slotInterval, maxAdvanceBooking, cancellationDeadline } = req.body;
 
     // Create table if it doesn't exist

@@ -10,7 +10,7 @@ router.use(authenticate);
 // Get all intake forms
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, status, form_type } = req.query;
 
     let query = `
@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
 // Get single intake form
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT
         pif.*,
@@ -94,7 +94,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `INSERT INTO patient_intake_forms
@@ -132,7 +132,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Build dynamic update query
     const updateFields = [];
@@ -206,7 +206,7 @@ router.put('/:id', async (req, res) => {
 // Delete intake form
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM patient_intake_forms WHERE id = $1 RETURNING *',
       [req.params.id]
@@ -230,7 +230,7 @@ router.delete('/:id', async (req, res) => {
 // Get all intake flows
 router.get('/flows', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, status, flow_type } = req.query;
 
     let query = `
@@ -274,7 +274,7 @@ router.get('/flows', async (req, res) => {
 // Get single intake flow
 router.get('/flows/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT
         pif.*,
@@ -311,7 +311,7 @@ router.post('/flows', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `INSERT INTO patient_intake_flows
@@ -348,7 +348,7 @@ router.put('/flows/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const updateFields = [];
     const params = [];
@@ -408,7 +408,7 @@ router.put('/flows/:id', async (req, res) => {
 // Delete intake flow
 router.delete('/flows/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM patient_intake_flows WHERE id = $1 RETURNING *',
       [req.params.id]
@@ -432,7 +432,7 @@ router.delete('/flows/:id', async (req, res) => {
 // Get all consent forms
 router.get('/consents', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, status, consent_type } = req.query;
 
     let query = `
@@ -476,7 +476,7 @@ router.get('/consents', async (req, res) => {
 // Get single consent form
 router.get('/consents/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT
         pcf.*,
@@ -515,7 +515,7 @@ router.post('/consents', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `INSERT INTO patient_consent_forms
@@ -559,7 +559,7 @@ router.put('/consents/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const updateFields = [];
     const params = [];
@@ -641,7 +641,7 @@ router.put('/consents/:id', async (req, res) => {
 // Delete consent form
 router.delete('/consents/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM patient_consent_forms WHERE id = $1 RETURNING *',
       [req.params.id]
