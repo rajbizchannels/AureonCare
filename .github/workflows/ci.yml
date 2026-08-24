@@ -125,3 +125,84 @@ jobs:
             --set postgresql.auth.password=dummy-password \
             > /tmp/rendered.yaml
           echo "Template rendering succeeded"
+
+  # ── Job 4: SEC-05 tenant-scoping guard (static, fast) ──────────────────────
+  tenant-scoping-guard:
+    name: SEC-05 Tenant-Scoping Guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      # Static check — no dependencies or database needed. Fails the build if a route
+      # bypasses tenant isolation (raw shared pool on a tenant table, hardcoded tenant
+      # schema, or a tenant table pinned to public.*).
+      - name: Run tenant-scoping guard
+        run: npm run check:tenant-scoping
+
+  # ── Job 5: SEC-05 cross-tenant isolation test (against Postgres) ───────────
+  sec05-isolation:
+    name: SEC-05 Cross-Tenant Isolation Test
+    runs-on: ubuntu-latest
+    needs: tenant-scoping-guard
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: aureoncare
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      AC_DB_H: localhost
+      AC_DB_P: "5432"
+      AC_DB_N: aureoncare
+      AC_DB_U: postgres
+      AC_DB_W: postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Load schema + SEC-05 migrations
+        run: |
+          PSQL="psql -h localhost -U postgres -d aureoncare"
+          # schema.sql is a pg_dump; a newer-server SET is a harmless error on pg16.
+          $PSQL -q -f backend/schema.sql || true
+          # accounts/inventory feature tables (best-effort; some depend on other features).
+          $PSQL -q -f backend/migrations/053_create_accounts_tables.sql || true
+          $PSQL -q -f backend/migrations/055_create_inventory_tables.sql || true
+          # SEC-05 control plane + template + cutover must apply cleanly.
+          for m in 063_sec05_control_plane 064_sec05_template_schema 065_sec05_users_practice_id \
+                   066_sec05_cutover_default_tenant 067_sec05_provisioner_from_template 068_sec05_expand_tenant_set; do
+            $PSQL -v ON_ERROR_STOP=1 -q -f "backend/migrations/$m.sql"
+          done
+
+      - name: Run cross-tenant isolation test
+        run: node backend/test/sec05/isolation.test.js
