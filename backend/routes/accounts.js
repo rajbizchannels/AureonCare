@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const cloudStorage = require('../services/cloudBackupStorage');
 const { authenticate, authorize } = require('../middleware/auth');
 
 // All accounts routes require authentication
@@ -1043,7 +1044,12 @@ router.get('/backup', authorize('admin'), async (req, res) => {
     `);
     res.json(result.rows.map(toCamelCase));
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch backups' });
+    // Logged and returned: this handler used to swallow the error entirely,
+    // so a failure left nothing in the server logs and nothing for the client
+    // to show. A missing account_backups table (migration 053 not applied)
+    // looks identical to any other fault without this.
+    console.error('Error fetching account backups:', err);
+    res.status(500).json({ error: 'Failed to fetch backups', details: err.message });
   }
 });
 
@@ -1100,11 +1106,26 @@ router.post('/backup', authorize('admin'), async (req, res) => {
     `, [fileName, fileSizeBytes, recordCount, backupId]);
     await client.query('COMMIT');
 
-    // Return backup data directly (in production, store to S3/GCS)
+    // Optionally push a copy to a connected cloud provider. Failing to upload
+    // must not lose the backup the caller just paid for, so the payload is
+    // still returned and the problem reported alongside it.
+    let cloud = null;
+    let cloudError = null;
+    if (destination && cloudStorage.isSupported(destination)) {
+      try {
+        cloud = await cloudStorage.uploadBackup(pool, destination, fileName, backupData);
+      } catch (uploadErr) {
+        console.error(`Accounts backup upload to ${destination} failed:`, uploadErr);
+        cloudError = uploadErr.message;
+      }
+    }
+
     res.status(201).json({
       ...toCamelCase(backupRecord.rows[0]),
       fileName, fileSizeBytes, recordCount,
       status: 'completed',
+      cloud,
+      cloudError,
       data: backupData
     });
   } catch (err) {

@@ -2143,8 +2143,11 @@ const api = {
       method: 'POST'
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to backup to Google Drive' }));
-      throw new Error(errorData.error || 'Failed to backup to Google Drive. Please ensure Google Drive is connected.');
+      const errorData = await response.json().catch(() => ({}));
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error(
+        (errorData.error || 'Failed to backup to Google Drive. Please ensure Google Drive is connected.') + detail
+      );
     }
     return response.json();
   },
@@ -2153,8 +2156,11 @@ const api = {
       method: 'POST'
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to backup to OneDrive' }));
-      throw new Error(errorData.error || 'Failed to backup to OneDrive. Please ensure OneDrive is connected.');
+      const errorData = await response.json().catch(() => ({}));
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error(
+        (errorData.error || 'Failed to backup to OneDrive. Please ensure OneDrive is connected.') + detail
+      );
     }
     return response.json();
   },
@@ -2169,6 +2175,55 @@ const api = {
     }
     return response.json();
   },
+  // Which cloud destinations are connected. Used to decide whether to upload
+  // straight away or ask the admin which one to use.
+  getCloudBackupProviders: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/cloud/providers`);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Failed to load backup destinations') + detail);
+    }
+    const data = await response.json();
+    return data.providers || [];
+  },
+  backupToCloud: async (provider) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/cloud`, {
+      method: 'POST',
+      body: JSON.stringify({ provider })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Backup failed') + detail);
+    }
+    return response.json();
+  },
+  listCloudBackups: async (provider) => {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/backup/cloud/list?provider=${encodeURIComponent(provider)}`
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Failed to list backups') + detail);
+    }
+    const data = await response.json();
+    return data.backups || [];
+  },
+  restoreFromCloudBackup: async (provider, fileId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/cloud/restore`, {
+      method: 'POST',
+      body: JSON.stringify({ provider, fileId })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Failed to restore backup') + detail);
+    }
+    return response.json();
+  },
+
   getBackupConfig: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/backup/config`);
     if (!response.ok) {
@@ -3187,12 +3242,20 @@ const api = {
   // Backup & Archive
   getAccountBackups: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`);
-    if (!response.ok) throw new Error('Failed to fetch backups');
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Failed to fetch backups') + detail);
+    }
     return response.json();
   },
   createAccountBackup: async (data) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`, { method: 'POST', body: JSON.stringify(data) });
-    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Backup failed'); }
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Backup failed') + detail);
+    }
     return response.json();
   },
   archiveAccountRecords: async (data) => {
@@ -3363,7 +3426,11 @@ const api = {
   },
   createInventoryBackup: async (data) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`, { method: 'POST', body: JSON.stringify(data) });
-    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Backup failed'); }
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      const detail = e.details ? `: ${e.details}` : '';
+      throw new Error((e.error || 'Backup failed') + detail);
+    }
     return r.json();
   },
 
