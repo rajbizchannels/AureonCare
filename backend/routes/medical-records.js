@@ -429,7 +429,7 @@ router.delete('/:id', async (req, res) => {
 // Upload file for medical record
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
