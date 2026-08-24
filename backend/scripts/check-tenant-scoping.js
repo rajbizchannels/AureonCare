@@ -26,6 +26,7 @@ const RAW_POOL_ALLOWLIST = new Set([
   'roles.js', 'permissions.js', 'medical-codes.js',      // shared RBAC / code master
   'medications.js', 'plans.js',                          // shared master / control
   'stripeSettings.js', 'stripeWebhook.js',               // control-plane billing config
+  'platform.js',                                         // control-plane console: operates on control.* + explicit withTenant (break-glass)
 ]);
 
 // Tenant table set, parsed from the migrations that populate control.tenant_tables.
