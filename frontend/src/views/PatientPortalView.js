@@ -2459,11 +2459,11 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
               </div>
               <div class="info-row">
                 <span class="info-label">Date of Birth:</span>
-                <span class="info-value">${user.dateOfBirth || user.date_of_birth || 'N/A'}</span>
+                <span class="info-value">${profileData?.date_of_birth || profileData?.dob || user.dateOfBirth || user.date_of_birth || 'N/A'}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Address:</span>
-                <span class="info-value">${user.address || user.addressLine1 || 'N/A'}</span>
+                <span class="info-value">${profileData?.address || user.address || user.addressLine1 || 'N/A'}</span>
               </div>
             </div>
 

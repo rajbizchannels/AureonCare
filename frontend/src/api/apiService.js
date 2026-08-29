@@ -7,15 +7,31 @@ console.log('API Service: Base URL configured as:', API_BASE_URL);
  * Get authentication headers using the stored JWT.
  * @returns {Object} Headers object with Authorization: Bearer <token>
  */
+// SEC-15: read the CSRF token from the JS-readable cookie the server sets at login. The
+// session itself lives in an HttpOnly cookie the page cannot read, which is the point.
+const readCookie = (name) => {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (_) {
+    return null;
+  }
+};
+
 const getAuthHeaders = () => {
   const headers = { 'Content-Type': 'application/json' };
   try {
+    // Transitional: the Bearer token is still sent when present, so a browser that blocks
+    // third-party cookies (Safari/ITP, with the API on another origin) keeps working.
+    // Once the API is served same-site this fallback can be dropped entirely.
     const token = sessionStorage.getItem('token');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
+    const csrf = readCookie('ac_csrf');
+    if (csrf) headers['X-CSRF-Token'] = csrf;
   } catch (error) {
-    console.error('Error reading token from sessionStorage:', error);
+    console.error('Error building auth headers:', error);
   }
   return headers;
 };
@@ -36,6 +52,9 @@ const authenticatedFetch = async (url, options = {}) => {
 
   const mergedOptions = {
     ...options,
+    // SEC-15: send the HttpOnly session cookie. The API is cross-origin, so this is
+    // required for the cookie to be attached at all (CORS already allows credentials).
+    credentials: 'include',
     headers: {
       ...authHeaders,
       ...(options.headers || {})
@@ -3540,6 +3559,13 @@ const api = {
       body: JSON.stringify(payload)
     });
     if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to book appointment'); }
+    return r.json();
+  },
+
+  // SEC-15: re-fetch identity instead of persisting the user object in the browser.
+  getCurrentUser: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/me`);
+    if (!r.ok) throw new Error('Failed to fetch current user');
     return r.json();
   },
 
