@@ -18,6 +18,7 @@ const { signPlatformToken, requirePlatformAdmin, requireSecret } = require('../m
 const { logPlatformAction } = require('../services/platformAudit');
 const { withTenant } = require('../db/tenantClient');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+const { invalidateEntitlements } = require('../services/entitlements');
 
 const clientIp = (req) => req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null;
 const slugify = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40);
@@ -218,6 +219,74 @@ router.get('/tenants/:id/tenant-audit', async (req, res) => {
   const out = await withTenant(pool, t.rows[0].schema_name, (c) =>
     c.query('SELECT id, action_type, resource_type, resource_name, user_email, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 200'));
   res.json(out.rows);
+});
+
+// ── Subscriptions & entitlements (S11) ────────────────────────────────────────
+const VALID_SUB_STATUS = new Set(['trialing', 'active', 'past_due', 'canceled']);
+
+// Plan catalog (shared).
+router.get('/plans', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { rows } = await pool.query(
+    'SELECT id, name, display_name, price, billing_cycle, max_users, max_patients, max_providers, features FROM public.subscription_plans WHERE is_active = true ORDER BY price NULLS FIRST, id');
+  res.json(rows);
+});
+
+router.get('/tenants/:id/subscription', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { rows } = await pool.query(
+    `SELECT s.*, sp.display_name AS plan_display_name
+       FROM control.subscriptions s
+       LEFT JOIN public.subscription_plans sp ON sp.id = s.plan_id
+      WHERE s.tenant_id = $1`, [req.params.id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'Subscription not found' });
+  res.json(rows[0]);
+});
+
+// Assign/update a tenant's subscription (plan, status, seats, Stripe ids).
+router.put('/tenants/:id/subscription', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { planId, status, seats, stripeCustomerId, stripeSubscriptionId, currentPeriodEnd, enforcementEnabled } = req.body || {};
+  if (status && !VALID_SUB_STATUS.has(status)) {
+    return res.status(400).json({ error: `status must be one of ${[...VALID_SUB_STATUS].join(', ')}` });
+  }
+  const tenant = await pool.query('SELECT id, practice_id FROM control.tenants WHERE id = $1', [req.params.id]);
+  if (tenant.rows.length === 0) return res.status(404).json({ error: 'Tenant not found' });
+  const { practice_id } = tenant.rows[0];
+
+  let planName = null;
+  if (planId != null) {
+    const p = await pool.query('SELECT name FROM public.subscription_plans WHERE id = $1', [planId]);
+    if (p.rows.length === 0) return res.status(400).json({ error: 'Unknown planId' });
+    planName = p.rows[0].name;
+  }
+
+  // Upsert the subscription; COALESCE keeps existing values when a field is omitted.
+  const { rows } = await pool.query(
+    `INSERT INTO control.subscriptions
+       (tenant_id, practice_id, plan_id, plan_name, status, seats, stripe_customer_id,
+        stripe_subscription_id, current_period_end, enforcement_enabled)
+     VALUES ($1,$2,$3,$4,COALESCE($5,'active'),COALESCE($6,0),$7,$8,$9,COALESCE($10,true))
+     ON CONFLICT (tenant_id) DO UPDATE SET
+       plan_id = COALESCE($3, control.subscriptions.plan_id),
+       plan_name = COALESCE($4, control.subscriptions.plan_name),
+       status = COALESCE($5, control.subscriptions.status),
+       seats = COALESCE($6, control.subscriptions.seats),
+       stripe_customer_id = COALESCE($7, control.subscriptions.stripe_customer_id),
+       stripe_subscription_id = COALESCE($8, control.subscriptions.stripe_subscription_id),
+       current_period_end = COALESCE($9, control.subscriptions.current_period_end),
+       enforcement_enabled = COALESCE($10, control.subscriptions.enforcement_enabled),
+       updated_at = now()
+     RETURNING *`,
+    [req.params.id, practice_id, planId ?? null, planName, status ?? null,
+     seats ?? null, stripeCustomerId ?? null, stripeSubscriptionId ?? null,
+     currentPeriodEnd ?? null, enforcementEnabled ?? null]);
+
+  invalidateEntitlements(practice_id);
+  await logPlatformAction(pool, { operatorId: req.operator.id, action: 'subscription.update',
+    targetType: 'tenant', targetId: req.params.id, tenantId: req.params.id,
+    detail: { planId, status, seats }, ip: clientIp(req) });
+  res.json(rows[0]);
 });
 
 module.exports = router;

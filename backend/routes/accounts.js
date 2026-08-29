@@ -5,6 +5,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 
 // All accounts routes require authentication
 router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 const toCamelCase = (obj) => {
   if (!obj || typeof obj !== 'object') return obj;
