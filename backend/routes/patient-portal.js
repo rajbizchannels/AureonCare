@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const { storeFor } = require('../middleware/rateLimitStore');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { authenticate } = require('../middleware/auth');
@@ -20,6 +21,7 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 // endpoint (credential stuffing across many accounts, DoS). Counts every
 // request regardless of outcome.
 const loginIpLimiter = rateLimit({
+  store: storeFor('portal-ip'),   // SEC-21: shared across instances
   windowMs: LOGIN_WINDOW_MS,
   max: 20,
   standardHeaders: true,
@@ -35,6 +37,7 @@ const loginIpLimiter = rateLimit({
 // Social logins (no password) bypass this — they can't be brute-forced and
 // would otherwise share a single 'unknown'-email bucket.
 const loginAccountLimiter = rateLimit({
+  store: storeFor('portal-account'),  // SEC-21: shared across instances
   windowMs: LOGIN_WINDOW_MS,
   max: 3,
   skipSuccessfulRequests: true,

@@ -1,13 +1,14 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+const { auditPhiRead } = require('../middleware/phiAccessLog');
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforcePatientQuota } = require('../middleware/planEnforcement');
 
 // Get all patients
-router.get('/', async (req, res) => {
+router.get('/', auditPhiRead('patient'), async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
@@ -24,7 +25,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get single patient
-router.get('/:id', async (req, res) => {
+router.get('/:id', auditPhiRead('patient'), async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(

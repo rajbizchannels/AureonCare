@@ -10,6 +10,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const { storeFor } = require('../middleware/rateLimitStore');
 let speakeasy;
 try { speakeasy = require('speakeasy'); } catch (_) { speakeasy = null; } // MFA optional if lib absent
 
@@ -25,6 +26,7 @@ const slugify = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
 // ── Operator login (rate limited) ─────────────────────────────────────────────
 const loginLimiter = rateLimit({
+  store: storeFor('platform-login'),  // SEC-21: shared across instances
   windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false,
   handler: (req, res) => res.status(429).json({ error: 'Too many attempts. Try again later.' }),
 });
