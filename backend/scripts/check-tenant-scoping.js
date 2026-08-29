@@ -43,6 +43,18 @@ function tenantTables() {
   return set;
 }
 
+// D. Runtime DDL ratchet. Creating tables at request time is what caused the tenant
+// shadowing bug fixed by migration 071 (a lazy CREATE under a tenant search_path makes
+// an empty copy in the tenant schema and hides the real data). Schema changes belong in
+// migrations. These files still contain legacy runtime DDL and are allowlisted; the list
+// must only ever SHRINK as their DDL moves into migrations. New entries are not allowed.
+const RUNTIME_DDL_ALLOWLIST = new Set([
+  'form-management.js', 'integrationOAuth.js', 'clinicSettings.js', 'lab-orders.js',
+  'campaigns.js', 'backupProviders.js', 'users.js', 'stripeSettings.js',
+  'prescriptions.js', 'offerings.js', 'laboratories.js',
+]);
+const DDL_RE = /\b(CREATE\s+(TABLE|EXTENSION|INDEX|SCHEMA)|ALTER\s+TABLE|DROP\s+TABLE)\b/i;
+
 const TENANT = tenantTables();
 const violations = [];
 
@@ -65,6 +77,15 @@ for (const file of fs.readdirSync(ROUTES).filter(f => f.endsWith('.js'))) {
       }
     }
   });
+
+  // D. runtime DDL (ratchet — allowlist may only shrink)
+  if (!RUNTIME_DDL_ALLOWLIST.has(file) && DDL_RE.test(src)) {
+    lines.forEach((line, i) => {
+      if (DDL_RE.test(line) && !/^\s*(\/\/|\*)/.test(line)) {
+        violations.push(`${file}:${i + 1}  runtime DDL — move schema changes to a migration: ${line.trim().slice(0, 80)}`);
+      }
+    });
+  }
 
   // C. raw shared-pool binding in a non-allowlisted route
   if (!RAW_POOL_ALLOWLIST.has(file)) {
