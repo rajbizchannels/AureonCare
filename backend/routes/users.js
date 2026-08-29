@@ -96,8 +96,7 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
     const pool = req.app.locals.pool;
     const bcrypt = require('bcryptjs');
 
-    // Ensure UUID extension is enabled
-    await pool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
     // Accept both camelCase and snake_case
     const finalFirstName = first_name || firstName || '';

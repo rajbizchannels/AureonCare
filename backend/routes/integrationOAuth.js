@@ -280,34 +280,9 @@ router.get('/:providerType/initiate', async (req, res) => {
 
     // Ensure table exists
     if (info.table === 'telehealth_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id TEXT, client_secret TEXT,
-          access_token TEXT, refresh_token TEXT,
-          token_type VARCHAR(50) DEFAULT 'Bearer',
-          token_scope TEXT, token_expires_at BIGINT,
-          account_id VARCHAR(255), zoom_user_id VARCHAR(255), zoom_user_email VARCHAR(255),
-          api_key TEXT, api_secret TEXT, webhook_secret TEXT,
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } else if (info.table === 'backup_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS backup_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255), client_secret VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     }
 
     // Fetch DB row (may be empty)
@@ -699,47 +674,11 @@ router.post('/:providerType/credentials', async (req, res) => {
 
     // Ensure table exists
     if (info.table === 'telehealth_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id TEXT, client_secret TEXT,
-          access_token TEXT, refresh_token TEXT,
-          token_type VARCHAR(50) DEFAULT 'Bearer',
-          token_scope TEXT, token_expires_at BIGINT,
-          account_id VARCHAR(255), zoom_user_id VARCHAR(255), zoom_user_email VARCHAR(255),
-          api_key TEXT, api_secret TEXT, webhook_secret TEXT,
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } else if (info.table === 'backup_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS backup_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255), client_secret VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } else if (info.table === 'vendor_integration_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS vendor_integration_settings (
-          id SERIAL PRIMARY KEY,
-          vendor_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255), client_secret VARCHAR(255),
-          api_key VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     }
 
     // Upsert

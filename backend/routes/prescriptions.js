@@ -45,37 +45,11 @@ const checkEPrescribingSchema = async (pool) => {
 
 // Helper function to ensure diagnosis_id column exists
 let diagnosisIdColumnChecked = false;
-const ensureDiagnosisIdColumn = async (pool) => {
-  if (diagnosisIdColumnChecked) {
-    return;
-  }
-
-  try {
-    // Check if diagnosis_id column exists
-    const columnCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.columns
-        WHERE table_schema = 'public'
-        AND table_name = 'prescriptions'
-        AND column_name = 'diagnosis_id'
-      );
-    `);
-
-    if (!columnCheck.rows[0].exists) {
-      console.log('Adding diagnosis_id column to prescriptions table...');
-      await pool.query(`
-        ALTER TABLE prescriptions
-        ADD COLUMN diagnosis_id UUID REFERENCES diagnosis(id) ON DELETE SET NULL;
-      `);
-      console.log('✓ diagnosis_id column added successfully');
-    }
-
-    diagnosisIdColumnChecked = true;
-  } catch (error) {
-    console.error('Error ensuring diagnosis_id column:', error);
-    diagnosisIdColumnChecked = true; // Mark as checked to avoid repeated attempts
-  }
-};
+// SEC-05: schema creation moved to migrations/tenant/001_adopt_runtime_created_tables.sql.
+// Creating tables at request time made an empty copy inside the caller's tenant schema
+// (hiding the real data) and required DDL privileges the app should not hold. Kept as a
+// no-op so existing call sites are unchanged; run the migrations to provision the tables.
+const ensureDiagnosisIdColumn = async (_pool) => { /* no-op: see migrations */ };
 
 // Get all prescriptions
 router.get('/', async (req, res) => {

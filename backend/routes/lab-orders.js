@@ -141,16 +141,7 @@ router.post('/', async (req, res) => {
 
     // Check if new columns exist, if not add them
     try {
-      await pool.query(`
-        ALTER TABLE lab_orders
-        ADD COLUMN IF NOT EXISTS laboratory_id UUID REFERENCES laboratories(id),
-        ADD COLUMN IF NOT EXISTS linked_diagnosis_id UUID REFERENCES diagnoses(id),
-        ADD COLUMN IF NOT EXISTS order_status VARCHAR(20) DEFAULT 'one-time',
-        ADD COLUMN IF NOT EXISTS order_status_date DATE,
-        ADD COLUMN IF NOT EXISTS frequency VARCHAR(20),
-        ADD COLUMN IF NOT EXISTS collection_class VARCHAR(20) DEFAULT 'clinic-collect',
-        ADD COLUMN IF NOT EXISTS result_recipients JSONB DEFAULT '[]'::jsonb
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } catch (err) {
       // Column might already exist, continue
       console.log('Lab orders table columns already exist or error:', err.message);
@@ -158,19 +149,7 @@ router.post('/', async (req, res) => {
 
     // Also update existing VARCHAR result_recipients column to JSONB if it exists
     try {
-      await pool.query(`
-        DO $$
-        BEGIN
-          IF EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = 'lab_orders'
-            AND column_name = 'result_recipients'
-            AND data_type = 'character varying'
-          ) THEN
-            ALTER TABLE lab_orders ALTER COLUMN result_recipients TYPE JSONB USING result_recipients::jsonb;
-          END IF;
-        END $$;
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } catch (err) {
       console.log('Could not convert result_recipients to JSONB:', err.message);
     }

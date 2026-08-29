@@ -24,18 +24,7 @@ router.get('/', async (req, res) => {
     } catch (tableError) {
       if (tableError.code === '42P01') {
         // Table doesn't exist, create it
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS backup_provider_settings (
-            id SERIAL PRIMARY KEY,
-            provider_type VARCHAR(50) UNIQUE NOT NULL,
-            is_enabled BOOLEAN DEFAULT false,
-            client_id VARCHAR(255),
-            client_secret VARCHAR(255),
-            settings JSONB DEFAULT '{}'::jsonb,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
+        // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
         // Return empty array for now
         res.json([]);
@@ -155,18 +144,7 @@ router.get('/config/status', async (req, res) => {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Ensure table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS backup_provider_settings (
-        id SERIAL PRIMARY KEY,
-        provider_type VARCHAR(50) UNIQUE NOT NULL,
-        is_enabled BOOLEAN DEFAULT false,
-        client_id VARCHAR(255),
-        client_secret VARCHAR(255),
-        settings JSONB DEFAULT '{}'::jsonb,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
     const result = await pool.query(`
       SELECT provider_type, is_enabled,
