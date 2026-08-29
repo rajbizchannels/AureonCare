@@ -318,7 +318,11 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // Social login endpoint (Google, Microsoft, Facebook)
-router.post('/social-login', async (req, res) => {
+// SEC-20: extracted so the authorization-code exchange below can reuse this exact
+// logic. All the social-account protections live here (SEC-07 verified-email
+// linking, SEC-19 canonical-id matching, blocked/pending checks, cookie issuance),
+// so the new flow must not reimplement them.
+const socialLoginHandler = async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const {
@@ -332,7 +336,11 @@ router.post('/social-login', async (req, res) => {
       profileData
     } = req.body;
 
-    if (!provider || !providerId || !accessToken) {
+    // SEC-19/SEC-20: providerId is no longer required. Since SEC-19 the canonical id
+    // comes from the provider-verified token, so a client-supplied id is unused (it is
+    // still accepted for backward compatibility). The authorization-code flow has no
+    // client-side id at all, which is the point.
+    if (!provider || !accessToken) {
       return res.status(400).json({ error: 'Provider, provider ID, and access token are required' });
     }
 
@@ -563,6 +571,152 @@ router.post('/social-login', async (req, res) => {
 
   } catch (error) {
     console.error('Error during social login:', error);
+    res.status(500).json({ error: 'Social login failed' });
+  }
+};
+
+// SEC-20: the legacy endpoint still accepts a provider access token minted in the
+// browser, which is the vulnerability itself. It stays enabled by default so clients can
+// migrate, but setting AC_DISABLE_LEGACY_SOCIAL_TOKEN=true closes it — that flip is what
+// actually completes SEC-20 once every client uses /oauth/*/exchange.
+const LEGACY_SOCIAL_DISABLED =
+  String(process.env.AC_DISABLE_LEGACY_SOCIAL_TOKEN || '').toLowerCase() === 'true';
+
+const legacySocialGuard = (req, res, next) => {
+  if (LEGACY_SOCIAL_DISABLED) {
+    return res.status(410).json({
+      error: 'This sign-in method has been retired. Please update the app — sign-in now uses the authorization-code flow.',
+    });
+  }
+  next();
+};
+
+router.post('/social-login', legacySocialGuard, socialLoginHandler);
+
+// SEC-20: authorization-code exchange (server-side).
+//
+// The implicit flow hands the provider's ACCESS TOKEN to browser JavaScript and the SPA
+// then forwards it here as a login credential — so any XSS can lift a live provider
+// token. In the authorization-code flow the browser only ever sees a single-use code,
+// which is worthless without the client secret held on the server.
+//
+// The redeemed token never leaves this process: after exchanging, the request is handed
+// to socialLoginHandler unchanged, so every existing protection still applies
+// (SEC-07 verified-email linking, SEC-19 canonical-id matching, blocked/pending checks).
+//
+// Requires AC_GG_CID / AC_GG_CSK, and REACT_APP_GG_CID in the SPA MUST be the same client
+// id — a code issued to one client cannot be redeemed by another.
+// SEC-20 (Microsoft): same server-side exchange. Uses the Azure app registration's Web
+// platform secret (AC_MS_CID / AC_MS_CSK). The 'common' authority is used because the
+// registration accepts both organizational and personal Microsoft accounts — the Teams
+// telehealth integration keeps using the 'organizations' endpoint on the same app, which
+// is unaffected.
+router.post('/oauth/microsoft/exchange', async (req, res) => {
+  try {
+    const { code, redirectUri, codeVerifier } = req.body || {};
+    if (!code) return res.status(400).json({ error: 'Authorization code is required' });
+    if (!redirectUri) return res.status(400).json({ error: 'redirectUri is required' });
+
+    const clientId = process.env.AC_MS_CID;
+    const clientSecret = process.env.AC_MS_CSK;
+    if (!clientId || !clientSecret) {
+      return res.status(503).json({
+        error: 'Microsoft sign-in is not configured on the server (AC_MS_CID / AC_MS_CSK).',
+      });
+    }
+
+    const params = {
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+      scope: 'https://graph.microsoft.com/User.Read offline_access openid profile email',
+    };
+    if (codeVerifier) params.code_verifier = codeVerifier; // PKCE, when the SPA used it
+
+    let tokenData;
+    try {
+      const resp = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(params).toString(),
+      });
+      tokenData = await resp.json();
+      if (!resp.ok || !tokenData.access_token) {
+        console.warn('[SEC-20] Microsoft code exchange failed:', tokenData.error_description || tokenData.error || resp.status);
+        return res.status(401).json({ error: 'Microsoft sign-in failed. Please try again.' });
+      }
+    } catch (err) {
+      console.error('[SEC-20] Microsoft token endpoint unreachable:', err.message);
+      return res.status(502).json({ error: 'Could not reach Microsoft to complete sign-in.' });
+    }
+
+    req.body = {
+      provider: 'microsoft',
+      providerId: null,
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token || null,
+      profileData: {},
+    };
+    return socialLoginHandler(req, res);
+  } catch (error) {
+    console.error('Error during Microsoft code exchange:', error);
+    res.status(500).json({ error: 'Social login failed' });
+  }
+});
+
+router.post('/oauth/google/exchange', async (req, res) => {
+  try {
+    const { code, redirectUri } = req.body || {};
+    if (!code) return res.status(400).json({ error: 'Authorization code is required' });
+
+    const clientId = process.env.AC_GG_CID;
+    const clientSecret = process.env.AC_GG_CSK;
+    if (!clientId || !clientSecret) {
+      return res.status(503).json({
+        error: 'Google sign-in is not configured on the server (AC_GG_CID / AC_GG_CSK).',
+      });
+    }
+
+    // 'postmessage' is Google's redirect_uri for popup/auth-code flows started in JS.
+    const body = new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri || 'postmessage',
+      grant_type: 'authorization_code',
+    });
+
+    let tokenData;
+    try {
+      const resp = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+      tokenData = await resp.json();
+      if (!resp.ok || !tokenData.access_token) {
+        console.warn('[SEC-20] Google code exchange failed:', tokenData.error || resp.status);
+        return res.status(401).json({ error: 'Google sign-in failed. Please try again.' });
+      }
+    } catch (err) {
+      console.error('[SEC-20] Google token endpoint unreachable:', err.message);
+      return res.status(502).json({ error: 'Could not reach Google to complete sign-in.' });
+    }
+
+    // Delegate to the existing social-login path. providerId is intentionally omitted:
+    // SEC-19 resolves the canonical id from the provider itself, never from the client.
+    req.body = {
+      provider: 'google',
+      providerId: null,
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token || null,
+      profileData: {},
+    };
+    return socialLoginHandler(req, res);
+  } catch (error) {
+    console.error('Error during Google code exchange:', error);
     res.status(500).json({ error: 'Social login failed' });
   }
 });
