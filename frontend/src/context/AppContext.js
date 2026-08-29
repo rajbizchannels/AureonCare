@@ -130,7 +130,18 @@ const AppProvider = ({ children }) => {
   useEffect(() => {
     try {
       if (user) {
-        sessionStorage.setItem('user', JSON.stringify(user));
+        // SEC-15: persist ONLY non-PHI identity/UI fields. The full record (and the
+        // patient's clinical fields in particular) must not sit in web storage where any
+        // injected script can read it; views fetch what they need from the API.
+        const PERSISTABLE = [
+          'id', 'role', 'active_role', 'activeRole', 'email',
+          'first_name', 'last_name', 'firstName', 'lastName', 'name',
+          'avatar', 'language', 'country', 'timezone', 'specialty',
+          'status', 'preferences', 'practice', 'practice_id', 'practiceId', 'phone',
+        ];
+        const minimal = {};
+        for (const k of PERSISTABLE) if (user[k] !== undefined) minimal[k] = user[k];
+        sessionStorage.setItem('user', JSON.stringify(minimal));
       } else {
         sessionStorage.removeItem('user');
       }

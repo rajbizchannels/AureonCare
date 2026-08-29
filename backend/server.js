@@ -176,6 +176,13 @@ app.get('/api/test', (req, res) => {
 const { apiLimiter, authLimiter } = require('./middleware/rateLimiters');
 app.use('/api', apiLimiter);
 
+// SEC-15: CSRF protection for cookie-authenticated requests. The session cookie must be
+// SameSite=None (the SPA and API are on different origins), so SameSite offers no
+// protection and this double-submit check is what prevents forged state-changing
+// requests. Bearer-authenticated calls are exempt — the browser never attaches that
+// header automatically — so existing token-based clients are unaffected.
+app.use('/api', require('./middleware/csrf').verifyCsrf);
+
 // Import and use routes
 // SEC-05 (S10): control-plane console — super-admin surface, separate from the tenant app.
 app.use('/api/platform', require('./routes/platform'));

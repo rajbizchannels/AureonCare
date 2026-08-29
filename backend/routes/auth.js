@@ -6,6 +6,7 @@ const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+const { issueAuthCookies, clearAuthCookies } = require('../utils/authCookies');
 
 // SEC-17: a fixed dummy bcrypt hash (of a random string) used to run a real compare
 // when an account is missing or has no password, so the response time does not reveal
@@ -74,9 +75,15 @@ router.post('/login', async (req, res) => {
 
     const token = signToken(user);
 
+    // SEC-15: also deliver the session as an HttpOnly cookie so a browser client never
+    // has to keep it in JS-readable storage. `token` stays in the body for existing
+    // clients; the frontend migrates to the cookie and stops storing it.
+    const csrfToken = issueAuthCookies(res, token);
+
     res.json({
       message: 'Login successful',
       token,
+      csrfToken,
       user: toCamelCase(userData)
     });
   } catch (error) {
@@ -142,10 +149,31 @@ router.post('/change-password', authenticate, async (req, res) => {
       token_version: updateResult.rows[0].token_version
     });
 
-    res.json({ message: 'Password changed successfully', token });
+    const csrfToken = issueAuthCookies(res, token);
+    res.json({ message: 'Password changed successfully', token, csrfToken });
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// SEC-15: current-user endpoint. The browser no longer persists the user object, so it
+// re-fetches identity here after a reload. Returns UI/identity fields only — never the
+// clinical record, which the relevant view fetches on its own.
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { rows } = await pool.query(
+      `SELECT id, email, first_name, last_name, role, active_role, avatar, phone,
+              language, country, timezone, specialty, preferences, status, practice_id
+         FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(toCamelCase(rows[0]));
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    res.status(500).json({ error: 'Failed to fetch current user' });
   }
 });
 
@@ -163,6 +191,9 @@ router.post('/logout', authenticate, async (req, res) => {
       [userId]
     );
     await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [userId]);
+
+    // SEC-15: drop the browser's session + CSRF cookies as well as revoking server-side.
+    clearAuthCookies(res);
 
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
@@ -520,9 +551,12 @@ router.post('/social-login', async (req, res) => {
 
     const token = signToken(user);
 
+    const csrfToken = issueAuthCookies(res, token);
+
     res.json({
       message: 'Social login successful',
       token,
+      csrfToken,
       user: toCamelCase(userData),
       isNewUser
     });

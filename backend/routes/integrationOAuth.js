@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { authenticate } = require('../middleware/auth');
+const { makeTenantDb } = require('../db/requestTenantDb');
 const router = express.Router();
 const crypto = require('crypto');
 const axios = require('axios');
@@ -28,8 +29,16 @@ router.use((req, res, next) => {
  * "Invalid or expired state". Signing it keeps the CSRF guarantee without
  * shared storage.
  */
-const signOAuthState = (providerType, userId) =>
-  jwt.sign({ providerType, uid: String(userId) }, JWT_SECRET, { expiresIn: '10m' });
+// SEC-05: the state also carries the TENANT the flow started in. The provider redirects
+// back to an unauthenticated callback with no session, so without this the callback
+// cannot know which tenant schema to write the tokens into. The value is inside the
+// signed token, so a caller cannot tamper with it to target another tenant.
+const signOAuthState = (providerType, userId, tenantId) =>
+  jwt.sign(
+    { providerType, uid: String(userId), tid: tenantId ? String(tenantId) : null },
+    JWT_SECRET,
+    { expiresIn: '10m' }
+  );
 
 const verifyOAuthState = (state, providerType) => {
   try {
@@ -134,8 +143,29 @@ function getBaseUrl(req) {
   if (process.env.AC_BE_URL) {
     return process.env.AC_BE_URL.replace(/\/+$/, '');
   }
+  // Host-header injection: x-forwarded-host / host are supplied by the client and are
+  // only trustworthy if a proxy overwrites them. This value becomes the OAuth
+  // redirect_uri, so a forged host aims the provider's redirect elsewhere. Providers
+  // reject redirect URIs that are not registered, which limits the impact, but the
+  // correct fix is to pin the value: set AC_BE_URL in every deployed environment.
+  // AC_TRUSTED_HOSTS (comma-separated) additionally constrains the derived host.
   const protocol = req.get('x-forwarded-proto') || req.protocol;
   const host = req.get('x-forwarded-host') || req.get('host');
+
+  const allowlist = (process.env.AC_TRUSTED_HOSTS || '')
+    .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+  if (allowlist.length > 0 && !allowlist.includes(String(host).toLowerCase())) {
+    throw Object.assign(
+      new Error(`Refusing to build a callback URL for untrusted host "${host}".`),
+      { statusCode: 400 }
+    );
+  }
+  if (allowlist.length === 0) {
+    console.warn(
+      `[integrationOAuth] AC_BE_URL is not set — deriving the OAuth callback from the ` +
+      `client-supplied host "${host}". Set AC_BE_URL (or AC_TRUSTED_HOSTS) to pin it.`
+    );
+  }
   return `${protocol}://${host}`;
 }
 
@@ -330,7 +360,7 @@ router.get('/:providerType/initiate', async (req, res) => {
       );
     }
 
-    const state = signOAuthState(providerType, req.user.id);
+    const state = signOAuthState(providerType, req.user.id, req.tenant && req.tenant.tenantId);
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
 
     // Build authorization URL
@@ -377,12 +407,26 @@ router.get('/:providerType/callback', async (req, res) => {
     }
 
     // The signed state is what authorises this unauthenticated callback.
-    if (!verifyOAuthState(state, providerType)) {
+    const stateClaims = verifyOAuthState(state, providerType);
+    if (!stateClaims) {
       return sendOAuthResult(res, false, providerType, 'Invalid or expired state. Please try again.');
     }
 
     const config = OAUTH_CONFIGS[providerType];
-    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
+    // SEC-05: resolve the tenant from the SIGNED state (never from a query parameter) so
+    // the provider's tokens are written into the schema the flow actually started in.
+    // Falls back to the default tenant for states minted before this claim existed.
+    const basePool = req.app.locals.pool;
+    let callbackDb = null;
+    if (stateClaims.tid) {
+      try {
+        const t = await basePool.query('SELECT schema_name FROM control.tenants WHERE id = $1', [stateClaims.tid]);
+        if (t.rows[0]?.schema_name) callbackDb = makeTenantDb(basePool, t.rows[0].schema_name, res);
+      } catch (e) {
+        console.warn('[integrationOAuth] tenant lookup failed for callback state:', e.message);
+      }
+    }
+    const pool = callbackDb || req.db || basePool;
     const info = getTableInfo(providerType);
 
     // Fetch existing DB row for client credentials
