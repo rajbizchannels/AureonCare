@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { resolveTenantForUser } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
+const { getSessionCookie } = require('../utils/authCookies');
 
 const JWT_SECRET = process.env.AC_TK_S;
 const JWT_EXPIRY = '24h';
@@ -20,6 +21,17 @@ if (!JWT_SECRET || Buffer.byteLength(String(JWT_SECRET), 'utf8') < MIN_SECRET_BY
     `Refusing to start with an insecure JWT signing secret.`
   );
 }
+
+/**
+ * SEC-15: the bearer token may arrive in the Authorization header (existing clients) or
+ * in the HttpOnly session cookie (browser clients, which cannot read it from JS). The
+ * header is preferred so a stale cookie never shadows an explicit token.
+ */
+const extractToken = (req) => {
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) return authHeader.slice(7);
+  return getSessionCookie(req);
+};
 
 /**
  * Issue a signed JWT for a user record.
@@ -83,13 +95,12 @@ const attachTenantContext = async (pool, req, userId) => {
  */
 const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization'];
+    const token = extractToken(req);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const token = authHeader.slice(7);
     let payload;
     try {
       payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS });
@@ -164,9 +175,8 @@ const authorize = (...allowedRoles) => {
  */
 const optionalAuth = async (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization'];
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
+    const token = extractToken(req);
+    if (token) {
       try {
         const payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS });
         const pool = req.app.locals.pool;
@@ -209,12 +219,11 @@ const optionalAuth = async (req, res, next) => {
 const requireAdmin = async (req, res, next) => {
   try {
     if (!req.user) {
-      const authHeader = req.headers['authorization'];
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const token = extractToken(req);
+      if (!token) {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const token = authHeader.slice(7);
       let payload;
       try {
         payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS });
