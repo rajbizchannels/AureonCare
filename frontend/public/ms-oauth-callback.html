@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Signing you in…</title>
+  <meta name="robots" content="noindex" />
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0;
+           display: flex; align-items: center; justify-content: center; height: 100vh;
+           color: #334155; background: #f8fafc; }
+    .box { text-align: center; }
+    .err { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <p id="msg">Completing sign-in…</p>
+  </div>
+
+  <!--
+    SEC-20: Microsoft authorization-code callback.
+
+    This page receives the single-use CODE from Microsoft and hands it to the opener. It
+    deliberately does NOT exchange anything: the code is worthless without the client
+    secret, which lives only on the server. No provider access token ever reaches the
+    browser, which is the whole point of moving off the implicit flow.
+
+    The code is posted to the opener with an explicit target origin (this page's own
+    origin) so it cannot be read by another window.
+  -->
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var code = params.get('code');
+      var state = params.get('state');
+      var error = params.get('error_description') || params.get('error');
+      var msg = document.getElementById('msg');
+
+      var payload = error
+        ? { source: 'ms-oauth', ok: false, error: error, state: state }
+        : { source: 'ms-oauth', ok: true, code: code, state: state };
+
+      if (!error && !code) {
+        payload = { source: 'ms-oauth', ok: false, error: 'No authorization code was returned.' };
+      }
+
+      try {
+        if (window.opener) {
+          // Same-origin target: this page is served from the SPA's own origin.
+          window.opener.postMessage(payload, window.location.origin);
+          msg.textContent = payload.ok ? 'Signed in. You can close this window.' : 'Sign-in failed.';
+          if (!payload.ok) msg.className = 'err';
+          setTimeout(function () { window.close(); }, payload.ok ? 200 : 2500);
+        } else {
+          msg.textContent = 'This window was opened directly. Please return to the app and sign in again.';
+        }
+      } catch (e) {
+        msg.textContent = 'Sign-in could not be completed.';
+        msg.className = 'err';
+      }
+    })();
+  </script>
+</body>
+</html>

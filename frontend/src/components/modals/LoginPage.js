@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useMsal } from '@azure/msal-react';
+import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
+import { microsoftOAuthConfig } from '../../config/oauthConfig';
 
 const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  const { instance } = useMsal();
+  // SEC-20: MSAL is no longer used for sign-in (see handleMicrosoftLogin).
 
   // Helper function to route user based on their role
   const routeUserByRole = (user) => {
@@ -69,25 +70,16 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
   });
 
   // Microsoft OAuth Login
+  // SEC-20: authorization code + PKCE, redeemed on the server. MSAL is not used here
+  // because it redeems the code inside the browser, leaving a provider access token in
+  // JavaScript — the exposure this change removes. The popup returns only a single-use
+  // code, which is useless without the client secret held by the backend.
   const handleMicrosoftLogin = async () => {
     try {
-      const loginResponse = await instance.loginPopup({
-        scopes: ['user.read']
-      });
-
-      // Get user info
-      const userInfo = loginResponse.account;
-
-      // Login with our backend
-      const response = await api.socialLogin(
-        'microsoft',
-        userInfo.homeAccountId,
-        loginResponse.accessToken,
-        userInfo.username,
-        userInfo.name?.split(' ')[0] || '',
-        userInfo.name?.split(' ').slice(1).join(' ') || '',
-        userInfo
+      const { code, redirectUri, codeVerifier } = await getMicrosoftAuthCode(
+        microsoftOAuthConfig.auth.clientId
       );
+      const response = await api.exchangeMicrosoftCode(code, redirectUri, codeVerifier);
 
       api.storeToken(response.token);
       setUser(response.user);
