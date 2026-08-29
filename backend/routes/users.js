@@ -5,6 +5,12 @@ const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforceUserQuota, enforceProviderQuota } = require('../middleware/planEnforcement');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 
+// SEC-05: true only when the target row belongs to the caller's practice. A caller with
+// no practice context never matches, so these checks fail CLOSED. Replaces an earlier
+// sentinel-string comparison (which also introduced a stray null byte into this file).
+const samePractice = (rowPracticeId, callerPracticeId) =>
+  Boolean(callerPracticeId) && String(rowPracticeId || '') === String(callerPracticeId);
+
 // All user routes require a valid JWT
 router.use(authenticate);
 
@@ -284,7 +290,7 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     const currentUser = currentUserResult.rows[0];
     // SEC-05: may only modify self or a user in the same practice.
     if (String(currentUser.id) !== String(req.user.id) &&
-        String(currentUser.practice_id || '') !== String(req.user.practiceId || ' ')) {
+        !samePractice(currentUser.practice_id, req.user.practiceId)) {
       return res.status(404).json({ error: 'User not found' });
     }
     const oldRole = currentUser.role;
@@ -591,7 +597,7 @@ router.post('/:id/roles', authorize('admin'), async (req, res) => {
     // SEC-05: the target user must belong to the caller's practice.
     const tgtP = await pool.query('SELECT practice_id FROM users WHERE id::text = $1::text', [req.params.id]);
     if (tgtP.rows.length === 0 ||
-        String(tgtP.rows[0].practice_id || '') !== String(req.user.practiceId || ' ')) {
+        !samePractice(tgtP.rows[0].practice_id, req.user.practiceId)) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -655,7 +661,7 @@ router.delete('/:id/roles/:role_id', authorize('admin'), async (req, res) => {
     // SEC-05: the target user must belong to the caller's practice.
     const tgtP = await pool.query('SELECT practice_id FROM users WHERE id::text = $1::text', [req.params.id]);
     if (tgtP.rows.length === 0 ||
-        String(tgtP.rows[0].practice_id || '') !== String(req.user.practiceId || ' ')) {
+        !samePractice(tgtP.rows[0].practice_id, req.user.practiceId)) {
       return res.status(404).json({ error: 'User not found' });
     }
 
