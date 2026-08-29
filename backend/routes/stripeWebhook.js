@@ -197,6 +197,80 @@ async function handleDisputeCreated(pool, dispute) {
 
 // ─── Route ────────────────────────────────────────────────────────────────────
 
+/**
+ * SEC-05 (S11): keep control.subscriptions in step with Stripe.
+ *
+ * Billing is per tenant, so a subscription event is matched to its tenant by the Stripe
+ * customer id recorded on the subscription row. Events for an unknown customer are
+ * ignored (they belong to another system or a not-yet-linked tenant) rather than
+ * guessed at — mapping a payment event to the wrong clinic would be worse than dropping
+ * it, and the platform console can link the customer id explicitly.
+ *
+ * Stripe status values map onto ours directly: trialing / active keep the workspace
+ * writable; past_due / unpaid / canceled make it read-only via enforceActiveBilling.
+ */
+const STRIPE_STATUS_MAP = {
+  trialing: 'trialing',
+  active: 'active',
+  past_due: 'past_due',
+  unpaid: 'past_due',
+  canceled: 'canceled',
+  incomplete_expired: 'canceled',
+};
+
+async function handleSubscriptionChange(pool, subscription) {
+  const customerId = typeof subscription.customer === 'string'
+    ? subscription.customer
+    : subscription.customer?.id;
+  if (!customerId) return;
+
+  const status = STRIPE_STATUS_MAP[subscription.status] || null;
+  if (!status) {
+    console.warn(`[stripe-webhook] unmapped subscription status "${subscription.status}" — ignoring`);
+    return;
+  }
+
+  const periodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000)
+    : null;
+
+  const { rows } = await pool.query(
+    `UPDATE control.subscriptions
+        SET status = $1,
+            stripe_subscription_id = COALESCE($2, stripe_subscription_id),
+            current_period_end = COALESCE($3, current_period_end),
+            updated_at = now()
+      WHERE stripe_customer_id = $4
+      RETURNING tenant_id, practice_id`,
+    [status, subscription.id || null, periodEnd, customerId]
+  );
+
+  if (rows.length === 0) {
+    console.warn(`[stripe-webhook] no tenant linked to Stripe customer ${customerId} — ignoring`);
+    return;
+  }
+
+  // Entitlements are cached per practice; drop the entry so the new status takes effect
+  // on the next request rather than after the TTL.
+  try {
+    const { invalidateEntitlements } = require('../services/entitlements');
+    invalidateEntitlements(rows[0].practice_id);
+  } catch (_) { /* cache is best-effort */ }
+
+  try {
+    const { logPlatformAction } = require('../services/platformAudit');
+    await logPlatformAction(pool, {
+      action: 'subscription.stripe_sync',
+      targetType: 'tenant',
+      targetId: rows[0].tenant_id,
+      tenantId: rows[0].tenant_id,
+      detail: { status, stripeCustomerId: customerId, stripeStatus: subscription.status },
+    });
+  } catch (_) { /* audit is best-effort */ }
+
+  console.log(`[stripe-webhook] tenant ${rows[0].tenant_id} subscription -> ${status}`);
+}
+
 // NOTE: This route MUST receive the raw body for signature verification.
 // It is mounted in server.js BEFORE express.json() with express.raw().
 router.post('/', async (req, res) => {
@@ -233,6 +307,23 @@ router.post('/', async (req, res) => {
         break;
       case 'charge.dispute.created':
         await handleDisputeCreated(pool, event.data.object);
+        break;
+      // SEC-05 (S11): per-tenant subscription lifecycle -> control.subscriptions
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted':
+      case 'customer.subscription.paused':
+      case 'customer.subscription.resumed':
+        await handleSubscriptionChange(pool, event.data.object);
+        break;
+      case 'invoice.payment_failed':
+      case 'invoice.payment_succeeded':
+        // The invoice carries the subscription's customer; re-read status from the
+        // subscription object when Stripe expanded it, otherwise let the paired
+        // customer.subscription.updated event carry the change.
+        if (event.data.object.subscription && typeof event.data.object.subscription === 'object') {
+          await handleSubscriptionChange(pool, event.data.object.subscription);
+        }
         break;
       default:
         // Unhandled event types are silently acknowledged
