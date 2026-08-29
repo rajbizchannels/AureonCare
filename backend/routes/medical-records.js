@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+const { auditPhiRead } = require('../middleware/phiAccessLog');
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const multer = require('multer');
@@ -100,7 +101,7 @@ router.get('/cloud-file', async (req, res) => {
 });
 
 // Get all medical records
-router.get('/', async (req, res) => {
+router.get('/', auditPhiRead('medical_record'), async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.query;
@@ -263,7 +264,7 @@ router.post('/:recordId/review', async (req, res) => {
 });
 
 // Get single medical record
-router.get('/:id', async (req, res) => {
+router.get('/:id', auditPhiRead('medical_record'), async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;

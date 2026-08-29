@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+const { auditPhiRead } = require('../middleware/phiAccessLog');
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const WhatsAppService = require('../services/whatsappService');
@@ -125,7 +126,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get single prescription
-router.get('/:id', async (req, res) => {
+router.get('/:id', auditPhiRead('prescription'), async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
