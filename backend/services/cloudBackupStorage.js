@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const { Client } = require('@microsoft/microsoft-graph-client');
 const axios = require('axios');
+const { sealBackup, openAnyBackup } = require('../utils/backupCrypto');
 
 /**
  * Cloud storage for backups and patient uploads.
@@ -298,7 +299,10 @@ async function downloadFromOneDrive(accessToken, fileId) {
  */
 async function uploadBackup(pool, provider, fileName, data) {
   const accessToken = await getAccessToken(pool, provider);
-  const json = JSON.stringify(data, null, 2);
+  // SEC-26: a backup is a full dump of clinical tables. Seal it with AES-256-GCM before
+  // it leaves our infrastructure, so the copy sitting in a third party's storage is not
+  // readable by anyone who gains access to that account.
+  const json = sealBackup(data);
 
   const result = provider === 'google_drive'
     ? await uploadToDrive(accessToken, fileName, json)
@@ -389,9 +393,17 @@ async function listBackups(pool, provider) {
 /** Fetch and parse a stored backup. */
 async function downloadBackup(pool, provider, fileId) {
   const accessToken = await getAccessToken(pool, provider);
-  return provider === 'google_drive'
+  const raw = provider === 'google_drive'
     ? await downloadFromDrive(accessToken, fileId)
     : await downloadFromOneDrive(accessToken, fileId);
+
+  // SEC-26: unseal. Backups taken before encryption was added are plain JSON and must
+  // still restore, so openAnyBackup accepts both and reports which it was.
+  const { data, wasEncrypted } = openAnyBackup(raw);
+  if (!wasEncrypted) {
+    console.warn('[backup] restored a LEGACY UNENCRYPTED backup — re-run a backup to replace it with an encrypted copy');
+  }
+  return data;
 }
 
 module.exports = {
