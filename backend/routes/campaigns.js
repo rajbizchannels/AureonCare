@@ -15,58 +15,11 @@ const toCamelCase = (obj) => {
 };
 
 // Helper function to ensure campaigns table exists
-const ensureTableExists = async (pool) => {
-  try {
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = 'campaigns'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      // Create campaigns table
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS campaigns (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          subject VARCHAR(500),
-          email_content TEXT,
-          target_audience VARCHAR(100),
-          status VARCHAR(50) DEFAULT 'draft',
-          scheduled_date TIMESTAMP,
-          offering_id TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      console.log('✓ Campaigns table created successfully');
-    } else {
-      // Check if offering_id column needs to be migrated from INTEGER to TEXT
-      const columnCheck = await pool.query(`
-        SELECT data_type
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-        AND table_name = 'campaigns'
-        AND column_name = 'offering_id';
-      `);
-
-      if (columnCheck.rows.length > 0 && columnCheck.rows[0].data_type === 'integer') {
-        // Migrate offering_id from INTEGER to TEXT
-        console.log('Migrating campaigns.offering_id from INTEGER to TEXT...');
-        await pool.query(`
-          ALTER TABLE campaigns
-          ALTER COLUMN offering_id TYPE TEXT USING offering_id::TEXT;
-        `);
-        console.log('✓ Campaigns table migrated successfully');
-      }
-    }
-  } catch (error) {
-    console.error('Error ensuring campaigns table exists:', error);
-    throw error;
-  }
-};
+// SEC-05: schema creation moved to migrations/tenant/001_adopt_runtime_created_tables.sql.
+// Creating tables at request time made an empty copy inside the caller's tenant schema
+// (hiding the real data) and required DDL privileges the app should not hold. Kept as a
+// no-op so existing call sites are unchanged; run the migrations to provision the tables.
+const ensureTableExists = async (_pool) => { /* no-op: see migrations */ };
 
 // Get all campaigns
 router.get('/', async (req, res) => {

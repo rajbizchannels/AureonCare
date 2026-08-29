@@ -15,24 +15,7 @@ router.use(authenticate);
 
 // Helper: ensure the stripe_integration_settings table exists and return the singleton row
 async function getOrInitRow(pool) {
-  // Run migration inline if the table is missing
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS stripe_integration_settings (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      is_enabled BOOLEAN DEFAULT false,
-      publishable_key VARCHAR(500),
-      secret_key VARCHAR(500),
-      webhook_secret VARCHAR(500),
-      sandbox_mode BOOLEAN DEFAULT true,
-      use_platform_integration BOOLEAN DEFAULT false,
-      settings JSONB DEFAULT '{}',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      last_tested_at TIMESTAMP,
-      test_status VARCHAR(50),
-      test_message TEXT
-    )
-  `);
+  // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
   const existing = await pool.query('SELECT id FROM stripe_integration_settings LIMIT 1');
   if (existing.rows.length === 0) {
