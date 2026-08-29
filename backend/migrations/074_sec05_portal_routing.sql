@@ -42,9 +42,43 @@ CREATE TABLE IF NOT EXISTS control.portal_identity_route (
   PRIMARY KEY (email_hmac, tenant_id)                        -- same email may exist at 2 clinics
 );
 
+-- Reconcile a table created by hand from an earlier draft of this design (which omitted
+-- created_at and the cascading foreign key).
+ALTER TABLE control.portal_identity_route ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE control.portal_identity_route ADD COLUMN IF NOT EXISTS key_version smallint NOT NULL DEFAULT 1;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'control' AND t.relname = 'portal_identity_route' AND c.contype = 'f'
+  ) THEN
+    -- Drop rows that would violate the FK before adding it, so the migration cannot fail
+    -- on stale hand-inserted test data.
+    DELETE FROM control.portal_identity_route r
+     WHERE NOT EXISTS (SELECT 1 FROM control.tenants t WHERE t.id = r.tenant_id);
+    ALTER TABLE control.portal_identity_route
+      ADD CONSTRAINT portal_identity_route_tenant_id_fkey
+      FOREIGN KEY (tenant_id) REFERENCES control.tenants(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
 -- ── Accessors (the ONLY way the application may touch these tables) ─────────────────
 -- Every function pins search_path: mandatory for SECURITY DEFINER, otherwise object
 -- resolution can be hijacked by a caller-controlled search_path.
+--
+-- Dropped first: CREATE OR REPLACE cannot rename an existing function's parameters, so
+-- a function left over from an earlier draft (e.g. resolve_portal_tenants(p_hash))
+-- would abort this migration with 42P13. Dropping by exact signature is safe — the
+-- grants are re-applied at the end of this file.
+DROP FUNCTION IF EXISTS control.resolve_portal_session(char);
+DROP FUNCTION IF EXISTS control.register_portal_session(char, uuid, timestamptz);
+DROP FUNCTION IF EXISTS control.forget_portal_session(char);
+DROP FUNCTION IF EXISTS control.resolve_portal_tenants(char);
+DROP FUNCTION IF EXISTS control.register_portal_identity(char, uuid, smallint);
+DROP FUNCTION IF EXISTS control.forget_portal_identity(char, uuid);
+DROP FUNCTION IF EXISTS control.purge_expired_portal_sessions();
 
 CREATE OR REPLACE FUNCTION control.resolve_portal_session(p_token_hash char(64))
 RETURNS uuid LANGUAGE sql SECURITY DEFINER SET search_path = control, pg_temp AS $$
