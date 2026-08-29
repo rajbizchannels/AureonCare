@@ -1,5 +1,6 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+const { assertSafeExternalUrl } = require('../utils/safeUrl');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -56,7 +57,10 @@ router.get('/:vendorType', async (req, res) => {
 });
 
 // Create or update vendor settings
-router.post('/:vendorType', async (req, res) => {
+// SSRF/RBAC: writing these settings decides where the server sends requests — and it
+// sends the integration's credentials with them — so it is admin-only. Previously any
+// authenticated user (a patient included) could point base_url anywhere.
+router.post('/:vendorType', authorize('admin'), async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
@@ -72,6 +76,18 @@ router.post('/:vendorType', async (req, res) => {
       sandbox_mode,
       settings
     } = req.body;
+
+    // SSRF: an operator-supplied endpoint must be a public https address. Without this
+    // check base_url could name cloud metadata (169.254.169.254), loopback or a private
+    // range, and the vendor client would send its client id/secret there and return the
+    // response through /test.
+    if (base_url) {
+      try {
+        await assertSafeExternalUrl(base_url, { label: 'base_url' });
+      } catch (e) {
+        return res.status(e.statusCode || 400).json({ error: e.message });
+      }
+    }
 
     // Check if vendor settings already exist
     const existing = await pool.query(
@@ -212,7 +228,10 @@ router.get('/status/all', async (req, res) => {
 });
 
 // Test vendor connection
-router.post('/:vendorType/test', async (req, res) => {
+// The test endpoint performs the outbound request, so it is the SSRF trigger and is
+// admin-only too. It also re-validates the stored base_url: a value written before
+// this guard existed must not be reachable simply because it is already in the table.
+router.post('/:vendorType/test', authorize('admin'), async (req, res) => {
   try {
     const { vendorType } = req.params;
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
@@ -228,6 +247,18 @@ router.post('/:vendorType/test', async (req, res) => {
         success: false,
         error: 'Vendor settings not found'
       });
+    }
+
+    const storedBaseUrl = settingsResult.rows[0].base_url;
+    if (storedBaseUrl) {
+      try {
+        await assertSafeExternalUrl(storedBaseUrl, { label: 'stored base_url' });
+      } catch (e) {
+        return res.status(e.statusCode || 400).json({
+          success: false,
+          error: `${e.message}. Update the endpoint before testing this integration.`,
+        });
+      }
     }
 
     // Reload vendor with current settings
