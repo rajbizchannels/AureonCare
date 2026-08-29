@@ -188,6 +188,19 @@ function resolveClientCredentials(providerType, dbRow) {
   const client_id = envClientId || dbRow?.client_id || null;
   const client_secret = envClientSecret || dbRow?.client_secret || null;
 
+  // SEC-05: the DB columns are DEPRECATED — the OAuth client id/secret are global and
+  // belong in the environment, not duplicated into every tenant's settings row. The
+  // fallback is retained so an environment that has not set its env vars yet keeps
+  // working, but it is reported so it gets fixed, then cleared with
+  // scripts/deprecate-oauth-credentials.js.
+  if (!envClientSecret && dbRow?.client_secret) {
+    console.warn(
+      `[integrationOAuth] DEPRECATED: using database-stored client_secret for "${providerType}". ` +
+      `Set ${prefix}_CLIENT_ID / ${prefix}_CLIENT_SECRET in the environment, then run ` +
+      `scripts/deprecate-oauth-credentials.js to clear the stored copy.`
+    );
+  }
+
   return { client_id, client_secret };
 }
 
@@ -303,26 +316,17 @@ router.get('/:providerType/initiate', async (req, res) => {
       });
     }
 
-    // Sync DB with resolved credentials (env vars may have changed after
-    // Marketplace approval, or DB row may not exist yet).
+    // SEC-05: the OAuth client id/secret are GLOBAL (one app registration per provider)
+    // and live in the environment. They are deliberately no longer written back into the
+    // per-tenant settings row — that copied the same secret into every tenant schema.
+    // Only the per-practice account and its tokens belong in tenant data. Ensure the row
+    // exists (for enablement + tokens) without persisting any credential.
     if (!dbRow) {
       await pool.query(
-        `INSERT INTO ${info.table} (${info.field}, client_id, client_secret, is_enabled)
-         VALUES ($1, $2, $3, false)
-         ON CONFLICT (${info.field}) DO UPDATE SET
-           client_id = EXCLUDED.client_id,
-           client_secret = EXCLUDED.client_secret,
-           updated_at = CURRENT_TIMESTAMP`,
-        [providerType, client_id, client_secret]
-      );
-    } else if (dbRow.client_id !== client_id || dbRow.client_secret !== client_secret) {
-      await pool.query(
-        `UPDATE ${info.table}
-         SET client_id = $1,
-             client_secret = $2,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE ${info.field} = $3`,
-        [client_id, client_secret, providerType]
+        `INSERT INTO ${info.table} (${info.field}, is_enabled)
+         VALUES ($1, false)
+         ON CONFLICT (${info.field}) DO NOTHING`,
+        [providerType]
       );
     }
 
