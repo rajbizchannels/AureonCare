@@ -143,8 +143,29 @@ function getBaseUrl(req) {
   if (process.env.AC_BE_URL) {
     return process.env.AC_BE_URL.replace(/\/+$/, '');
   }
+  // Host-header injection: x-forwarded-host / host are supplied by the client and are
+  // only trustworthy if a proxy overwrites them. This value becomes the OAuth
+  // redirect_uri, so a forged host aims the provider's redirect elsewhere. Providers
+  // reject redirect URIs that are not registered, which limits the impact, but the
+  // correct fix is to pin the value: set AC_BE_URL in every deployed environment.
+  // AC_TRUSTED_HOSTS (comma-separated) additionally constrains the derived host.
   const protocol = req.get('x-forwarded-proto') || req.protocol;
   const host = req.get('x-forwarded-host') || req.get('host');
+
+  const allowlist = (process.env.AC_TRUSTED_HOSTS || '')
+    .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+  if (allowlist.length > 0 && !allowlist.includes(String(host).toLowerCase())) {
+    throw Object.assign(
+      new Error(`Refusing to build a callback URL for untrusted host "${host}".`),
+      { statusCode: 400 }
+    );
+  }
+  if (allowlist.length === 0) {
+    console.warn(
+      `[integrationOAuth] AC_BE_URL is not set — deriving the OAuth callback from the ` +
+      `client-supplied host "${host}". Set AC_BE_URL (or AC_TRUSTED_HOSTS) to pin it.`
+    );
+  }
   return `${protocol}://${host}`;
 }
 
