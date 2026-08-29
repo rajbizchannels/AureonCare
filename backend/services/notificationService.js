@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const WhatsAppService = require('./whatsappService');
+const { consumeSendQuota } = require('../utils/sendQuota');
 
 let transporter = null;
 let whatsappService = null;
@@ -89,6 +90,14 @@ function buildEmailHtml(title, headerColor, greeting, intro, rows, extra) {
 
 async function sendEmail(to, subject, html) {
   if (!to || !process.env.AC_SM_U) return;
+  // SEC-24: cap sends per RECIPIENT. Notifications fire from ordinary business events, so
+  // a per-IP or per-route limit would miss them; the abuse that matters is one inbox being
+  // flooded, and the victim's address is the stable key.
+  const quota = await consumeSendQuota('email', to);
+  if (!quota.allowed) {
+    console.warn(`[SEC-24] email to ${to} suppressed — ${quota.count} sends exceeds the limit of ${quota.limit} in the window`);
+    return;
+  }
   try {
     const t = getTransporter();
     const from = `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`;
@@ -100,6 +109,12 @@ async function sendEmail(to, subject, html) {
 
 async function sendWhatsApp(phone, message) {
   if (!whatsappService || !phone) return;
+  // SEC-24: same per-recipient cap, which also bounds spend at the messaging provider.
+  const quota = await consumeSendQuota('whatsapp', phone);
+  if (!quota.allowed) {
+    console.warn(`[SEC-24] WhatsApp to ${phone} suppressed — ${quota.count} sends exceeds the limit of ${quota.limit} in the window`);
+    return;
+  }
   try {
     await whatsappService.sendMessage(phone, message);
   } catch (e) {
