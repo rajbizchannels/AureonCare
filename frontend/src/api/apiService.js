@@ -809,6 +809,32 @@ const api = {
     }
     return response.json();
   },
+  // SEC-20: authorization-code exchange. The browser only ever handles a single-use
+  // code; the provider's access token is redeemed server-side with the client secret and
+  // never enters JavaScript.
+  exchangeGoogleCode: async (code, redirectUri) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/google/exchange`, {
+      method: 'POST',
+      body: JSON.stringify({ code, redirectUri }),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      throw new Error(e.error || 'Google sign-in failed');
+    }
+    return response.json();
+  },
+  exchangeMicrosoftCode: async (code, redirectUri, codeVerifier) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/microsoft/exchange`, {
+      method: 'POST',
+      body: JSON.stringify({ code, redirectUri, codeVerifier }),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      throw new Error(e.error || 'Microsoft sign-in failed');
+    }
+    return response.json();
+  },
+
   socialLogin: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-login`, {
       method: 'POST',

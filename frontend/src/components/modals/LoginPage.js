@@ -40,27 +40,15 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
   };
 
   // Google OAuth Login
+  // SEC-20: authorization-code flow. The browser receives a single-use code instead of a
+  // provider access token, so an XSS on this page has nothing to steal — the code is
+  // redeemed server-side with the client secret. Requires REACT_APP_GG_CID to be the SAME
+  // Google client id as the server's AC_GG_CID.
   const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
       try {
-        // Get user info from Google
-        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: {
-            Authorization: `Bearer ${tokenResponse.access_token}`
-          }
-        });
-        const userInfo = await userInfoResponse.json();
-
-        // Login with our backend
-        const response = await api.socialLogin(
-          'google',
-          userInfo.sub,
-          tokenResponse.access_token,
-          userInfo.email,
-          userInfo.given_name,
-          userInfo.family_name,
-          userInfo
-        );
+        const response = await api.exchangeGoogleCode(codeResponse.code, 'postmessage');
 
         api.storeToken(response.token);
         setUser(response.user);
