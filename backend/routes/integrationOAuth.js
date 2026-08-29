@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { authenticate } = require('../middleware/auth');
+const { makeTenantDb } = require('../db/requestTenantDb');
 const router = express.Router();
 const crypto = require('crypto');
 const axios = require('axios');
@@ -28,8 +29,16 @@ router.use((req, res, next) => {
  * "Invalid or expired state". Signing it keeps the CSRF guarantee without
  * shared storage.
  */
-const signOAuthState = (providerType, userId) =>
-  jwt.sign({ providerType, uid: String(userId) }, JWT_SECRET, { expiresIn: '10m' });
+// SEC-05: the state also carries the TENANT the flow started in. The provider redirects
+// back to an unauthenticated callback with no session, so without this the callback
+// cannot know which tenant schema to write the tokens into. The value is inside the
+// signed token, so a caller cannot tamper with it to target another tenant.
+const signOAuthState = (providerType, userId, tenantId) =>
+  jwt.sign(
+    { providerType, uid: String(userId), tid: tenantId ? String(tenantId) : null },
+    JWT_SECRET,
+    { expiresIn: '10m' }
+  );
 
 const verifyOAuthState = (state, providerType) => {
   try {
@@ -330,7 +339,7 @@ router.get('/:providerType/initiate', async (req, res) => {
       );
     }
 
-    const state = signOAuthState(providerType, req.user.id);
+    const state = signOAuthState(providerType, req.user.id, req.tenant && req.tenant.tenantId);
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
 
     // Build authorization URL
@@ -377,12 +386,26 @@ router.get('/:providerType/callback', async (req, res) => {
     }
 
     // The signed state is what authorises this unauthenticated callback.
-    if (!verifyOAuthState(state, providerType)) {
+    const stateClaims = verifyOAuthState(state, providerType);
+    if (!stateClaims) {
       return sendOAuthResult(res, false, providerType, 'Invalid or expired state. Please try again.');
     }
 
     const config = OAUTH_CONFIGS[providerType];
-    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
+    // SEC-05: resolve the tenant from the SIGNED state (never from a query parameter) so
+    // the provider's tokens are written into the schema the flow actually started in.
+    // Falls back to the default tenant for states minted before this claim existed.
+    const basePool = req.app.locals.pool;
+    let callbackDb = null;
+    if (stateClaims.tid) {
+      try {
+        const t = await basePool.query('SELECT schema_name FROM control.tenants WHERE id = $1', [stateClaims.tid]);
+        if (t.rows[0]?.schema_name) callbackDb = makeTenantDb(basePool, t.rows[0].schema_name, res);
+      } catch (e) {
+        console.warn('[integrationOAuth] tenant lookup failed for callback state:', e.message);
+      }
+    }
+    const pool = callbackDb || req.db || basePool;
     const info = getTableInfo(providerType);
 
     // Fetch existing DB row for client credentials
