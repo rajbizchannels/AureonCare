@@ -1350,25 +1350,12 @@ router.put('/promotions/:id', async (req, res) => {
 
 // ==================== OFFERING → FORM LINKS ====================
 
-const ENSURE_OFFERING_FORM_LINKS = `
-  CREATE TABLE IF NOT EXISTS offering_form_links (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    offering_id UUID NOT NULL REFERENCES healthcare_offerings(id) ON DELETE CASCADE,
-    form_template_id TEXT NOT NULL,
-    form_template_name VARCHAR(255),
-    trigger_on VARCHAR(50) DEFAULT 'order',
-    is_active BOOLEAN DEFAULT true,
-    created_by UUID,
-    created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(offering_id, form_template_id)
-  );
-`;
+// SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
 // GET /api/offerings/:id/forms
 router.get('/:id/forms', async (req, res) => {
   const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   try {
-    await pool.query(ENSURE_OFFERING_FORM_LINKS);
     const result = await pool.query(
       'SELECT * FROM offering_form_links WHERE offering_id = $1 AND is_active = true ORDER BY created_at',
       [req.params.id]
@@ -1386,7 +1373,6 @@ router.post('/:id/forms', async (req, res) => {
   const { form_template_id, form_template_name, trigger_on } = req.body;
   const actorId = req.headers['x-user-id'];
   try {
-    await pool.query(ENSURE_OFFERING_FORM_LINKS);
     const result = await pool.query(
       `INSERT INTO offering_form_links (offering_id, form_template_id, form_template_name, trigger_on, created_by)
        VALUES ($1, $2, $3, $4, $5)
@@ -1405,7 +1391,6 @@ router.post('/:id/forms', async (req, res) => {
 router.delete('/:id/forms/:formTemplateId', async (req, res) => {
   const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   try {
-    await pool.query(ENSURE_OFFERING_FORM_LINKS);
     await pool.query(
       'DELETE FROM offering_form_links WHERE offering_id = $1 AND form_template_id = $2',
       [req.params.id, req.params.formTemplateId]

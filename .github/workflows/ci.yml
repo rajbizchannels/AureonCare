@@ -200,9 +200,24 @@ jobs:
           $PSQL -q -f backend/migrations/055_create_inventory_tables.sql || true
           # SEC-05 control plane + template + cutover must apply cleanly.
           for m in 063_sec05_control_plane 064_sec05_template_schema 065_sec05_users_practice_id \
-                   066_sec05_cutover_default_tenant 067_sec05_provisioner_from_template 068_sec05_expand_tenant_set; do
+                   066_sec05_cutover_default_tenant 067_sec05_provisioner_from_template \
+                   068_sec05_expand_tenant_set 069_sec05_control_plane_console \
+                   070_sec05_subscriptions 071_sec05_lazy_created_tenant_tables \
+                   072_global_runtime_ddl 073_sec05_least_privilege_role; do
             $PSQL -v ON_ERROR_STOP=1 -q -f "backend/migrations/$m.sql"
           done
 
+      - name: Apply tenant migrations (fan-out to every tenant schema + template)
+        run: node backend/run-tenant-migrations.js
+
       - name: Run cross-tenant isolation test
         run: node backend/test/sec05/isolation.test.js
+
+      # The app must not connect as a superuser: superusers bypass REVOKE, grants and
+      # RLS, which makes every database-side isolation control inert. Runs as the
+      # least-privilege role created by migration 073.
+      - name: Verify least-privilege database role
+        env:
+          AC_DB_U: aureoncare_app
+          AC_DB_W: ""
+        run: node backend/scripts/check-db-role.js

@@ -16,53 +16,11 @@ const toCamelCase = (obj) => {
 
 // Helper function to ensure laboratories table exists
 let tableChecked = false;
-const ensureTableExists = async (pool) => {
-  if (tableChecked) {
-    return;
-  }
-
-  try {
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = 'laboratories'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      console.log('Creating laboratories table...');
-      await pool.query(`
-        CREATE TABLE laboratories (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          lab_name VARCHAR(255) NOT NULL,
-          address_line1 VARCHAR(255),
-          address_line2 VARCHAR(255),
-          city VARCHAR(100),
-          state VARCHAR(2),
-          zip_code VARCHAR(10),
-          phone VARCHAR(20),
-          fax VARCHAR(20),
-          email VARCHAR(255),
-          website VARCHAR(255),
-          clia_number VARCHAR(50),
-          npi VARCHAR(20),
-          is_active BOOLEAN DEFAULT true,
-          accepts_electronic_orders BOOLEAN DEFAULT true,
-          specialty VARCHAR(100),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      console.log('✓ Laboratories table created successfully');
-    }
-
-    tableChecked = true;
-  } catch (error) {
-    console.error('Error ensuring laboratories table:', error);
-    tableChecked = true;
-  }
-};
+// SEC-05: schema creation moved to migrations/tenant/001_adopt_runtime_created_tables.sql.
+// Creating tables at request time made an empty copy inside the caller's tenant schema
+// (hiding the real data) and required DDL privileges the app should not hold. Kept as a
+// no-op so existing call sites are unchanged; run the migrations to provision the tables.
+const ensureTableExists = async (_pool) => { /* no-op: see migrations */ };
 
 // Get all laboratories
 router.get('/', async (req, res) => {
