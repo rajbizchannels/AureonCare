@@ -9,6 +9,10 @@ const { authenticate } = require('../middleware/auth');
 const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('../utils/filedDocuments');
 const { resolveTenantForUser } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
+const {
+  tenantForSession, candidateTenantsForEmail, registerSession, forgetSession, registerIdentity,
+  defaultTenant,
+} = require('../services/portalRouting');
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -61,7 +65,17 @@ router.param('patientId', async (req, res, next, patientId) => {
 
     const token = authHeader.slice(7);
     const tokenHash = hashToken(token);
-    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
+    const basePool = req.app.locals.pool;
+
+    // SEC-05 (Option D): resolve the tenant from the shared routing table FIRST. That
+    // table maps a random token hash to a clinic and contains no identifiers, so it can
+    // be consulted before any tenant context exists. The session itself is then verified
+    // inside that tenant's schema, where patient_portal_sessions actually lives.
+    const routed = await tenantForSession(basePool, tokenHash);
+    req.tenant = { practiceId: null, tenantId: routed.tenantId, schemaName: routed.schemaName };
+    req.db = makeTenantDb(basePool, routed.schemaName, req.res);
+
+    const pool = req.db;
     const result = await pool.query(
       'SELECT patient_id FROM patient_portal_sessions WHERE session_token = $1 AND expires_at > NOW()',
       [tokenHash]
@@ -78,21 +92,14 @@ router.param('patientId', async (req, res, next, patientId) => {
       return res.status(403).json({ error: 'Access denied: session does not belong to this patient' });
     }
 
-    // SEC-05: attach a tenant-scoped db handle for this portal patient (patients.id =
-    // users.id, so the patient's practice resolves the tenant schema). Only set req.db
-    // when a real tenant resolves; otherwise handlers fall back to the default pool
-    // (default tenant). NOTE: for true multi-tenant portal, the session/patient lookups
-    // above run against the default search_path — a portal request must identify its
-    // tenant up front (e.g. per-practice subdomain, or a shared session->tenant index),
-    // since patient_portal_sessions now lives per-tenant. Flagged as a design decision.
+    // Enrich req.tenant with the practice id for downstream entitlement checks. The
+    // schema is already settled by the session route above and must NOT be re-derived
+    // here — that lookup ran inside the tenant we just routed to.
     try {
-      const t = await resolveTenantForUser(pool, sessionPatientId);
-      if (t && t.tenantId) {
-        req.tenant = { practiceId: t.practiceId, tenantId: t.tenantId, schemaName: t.schemaName || 'public' };
-        req.db = makeTenantDb(pool, req.tenant.schemaName, req.res);
-      }
+      const t = await resolveTenantForUser(basePool, sessionPatientId);
+      if (t && t.practiceId) req.tenant.practiceId = t.practiceId;
     } catch (e) {
-      console.warn('[portal] tenant resolution unavailable, using default pool:', e.message);
+      console.warn('[portal] practice lookup unavailable:', e.message);
     }
 
     next();
@@ -109,6 +116,10 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
     const { email, password, provider, providerId, accessToken } = req.body;
 
     let patient;
+    // SEC-05 (Option D): the tenant that authenticated this login. Set by the credential
+    // branch below; the session row and its routing entry are written against it.
+    let tenantDb = pool;
+    let loginTenantId = null;
 
     // Social login
     if (provider && providerId) {
@@ -176,29 +187,59 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
       // Match either address: patients.email is what the portal registers, but a
       // record created through the staff EHR may only carry the email on the
       // linked users row, and the patient signs in with the address they know.
-      const result = await pool.query(`
-        SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
-        FROM patients p
-        LEFT JOIN users u ON p.id = u.id
-        WHERE (LOWER(p.email) = LOWER($1) OR LOWER(u.email) = LOWER($1))
-          AND p.portal_enabled = true
-      `, [email]);
+      // SEC-05 (Option D): the email is not stored in the shared routing table in the
+      // clear — it is looked up as a keyed hash that yields only candidate TENANTS. The
+      // credential is then verified inside each candidate's own schema, so the shared
+      // slice never holds a password and never confirms where someone is a patient.
+      const candidates = await candidateTenantsForEmail(req.app.locals.pool, email);
 
-      const candidate = result.rows[0];
+      let candidate = null;
+      let matchedTenant = null;
+      let anyCompareRun = false;
 
-      // SEC-17: always run a compare (dummy hash when the account/portal is absent)
-      // and return one uniform error, so timing and message never disclose whether
-      // an email is enrolled in the portal.
-      const hashToCompare = candidate && candidate.portal_password_hash
-        ? candidate.portal_password_hash
-        : DUMMY_PASSWORD_HASH;
-      const validPassword = await bcrypt.compare(password, hashToCompare);
+      for (const cand of candidates) {
+        const candDb = makeTenantDb(req.app.locals.pool, cand.schemaName, req.res);
+        let row;
+        try {
+          const r = await candDb.query(`
+            SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
+            FROM patients p
+            LEFT JOIN users u ON p.id = u.id
+            WHERE (LOWER(p.email) = LOWER($1) OR LOWER(u.email) = LOWER($1))
+              AND p.portal_enabled = true
+          `, [email]);
+          row = r.rows[0];
+        } finally {
+          candDb.release();
+        }
 
-      if (!candidate || !candidate.portal_password_hash || !validPassword) {
+        // SEC-17: run a compare for every candidate, using a dummy hash when the row or
+        // its password is absent, so timing does not reveal which clinic (if any) knows
+        // this address.
+        const hashToCompare = row && row.portal_password_hash ? row.portal_password_hash : DUMMY_PASSWORD_HASH;
+        const ok = await bcrypt.compare(password, hashToCompare);
+        anyCompareRun = true;
+
+        if (row && row.portal_password_hash && ok) {
+          candidate = row;
+          matchedTenant = cand;
+          break; // first authenticated match wins; a picker would be post-auth UX
+        }
+      }
+
+      // Guarantee at least one compare even when there were no candidates at all.
+      if (!anyCompareRun) await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+
+      if (!candidate) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
       patient = candidate;
+      if (matchedTenant) {
+        req.tenant = { practiceId: null, tenantId: matchedTenant.tenantId, schemaName: matchedTenant.schemaName };
+        tenantDb = makeTenantDb(req.app.locals.pool, matchedTenant.schemaName, req.res);
+        loginTenantId = matchedTenant.tenantId;
+      }
     }
 
     // Create session token — return the raw token to the client but persist only
@@ -207,10 +248,23 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
     const sessionTokenHash = hashToken(sessionToken);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    await pool.query(`
+    // Social login does not go through the candidate-tenant search, so fall back to the
+    // default tenant; without a routing entry the next request could not find this session.
+    if (!loginTenantId) {
+      const d = await defaultTenant(req.app.locals.pool);
+      loginTenantId = d.tenantId;
+    }
+
+    // The session row lives in the tenant that authenticated this login.
+    await tenantDb.query(`
       INSERT INTO patient_portal_sessions (patient_id, session_token, ip_address, user_agent, expires_at)
       VALUES ($1, $2, $3, $4, $5)
     `, [patient.id, sessionTokenHash, req.ip, req.get('user-agent'), expiresAt]);
+
+    // SEC-05 (Option D): record token_hash -> tenant in the shared routing table so the
+    // next request can find this session before any tenant context exists. The row holds
+    // no patient id and no identifier — only a random hash and a clinic.
+    await registerSession(req.app.locals.pool, sessionTokenHash, loginTenantId, expiresAt);
 
     // Return patient data without sensitive info.
     // `role` is stated explicitly: the patients table has no role column, and
@@ -267,6 +321,14 @@ router.post('/register', authenticate, async (req, res) => {
     }
 
     const { portal_password_hash, ...patientData } = result.rows[0];
+
+    // SEC-05 (Option D): record which tenant this address can sign in at, as a keyed
+    // hash — the shared table never stores the address itself, and holds no credential.
+    await registerIdentity(
+      req.app.locals.pool,
+      email || patientData.email,
+      (req.tenant && req.tenant.tenantId) || (await defaultTenant(req.app.locals.pool)).tenantId
+    );
 
     res.json({
       message: 'Patient portal enabled successfully',
@@ -804,10 +866,20 @@ router.post('/logout', async (req, res) => {
     const { sessionToken } = req.body;
 
     // Sessions are stored hashed — hash the presented token to find the row.
-    await pool.query(
-      'DELETE FROM patient_portal_sessions WHERE session_token = $1',
-      [sessionToken ? hashToken(sessionToken) : null]
-    );
+    const logoutHash = sessionToken ? hashToken(sessionToken) : null;
+
+    // SEC-05 (Option D): resolve the tenant from the routing table so the session is
+    // deleted from the schema it actually lives in, then drop the routing entry.
+    if (logoutHash) {
+      const routed = await tenantForSession(req.app.locals.pool, logoutHash);
+      const logoutDb = makeTenantDb(req.app.locals.pool, routed.schemaName, req.res);
+      try {
+        await logoutDb.query('DELETE FROM patient_portal_sessions WHERE session_token = $1', [logoutHash]);
+      } finally {
+        logoutDb.release();
+      }
+      await forgetSession(req.app.locals.pool, logoutHash);
+    }
 
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
