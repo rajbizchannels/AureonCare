@@ -157,6 +157,26 @@ router.post('/change-password', authenticate, async (req, res) => {
   }
 });
 
+// SEC-15: current-user endpoint. The browser no longer persists the user object, so it
+// re-fetches identity here after a reload. Returns UI/identity fields only — never the
+// clinical record, which the relevant view fetches on its own.
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { rows } = await pool.query(
+      `SELECT id, email, first_name, last_name, role, active_role, avatar, phone,
+              language, country, timezone, specialty, preferences, status, practice_id
+         FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(toCamelCase(rows[0]));
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    res.status(500).json({ error: 'Failed to fetch current user' });
+  }
+});
+
 // Logout — server-side revocation (SEC-16). Bumping token_version invalidates every
 // clinician JWT currently held for this account (this device and any other), and we
 // clear any portal sessions too. The client still discards its local token, but this
