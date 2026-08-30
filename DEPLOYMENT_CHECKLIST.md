@@ -151,9 +151,19 @@ The isolation machinery is complete, but these are worth confirming deliberately
 
 # Accessing the super-admin console
 
-> **There is no super-admin UI.** The control plane is a **backend API** (`/api/platform/*`)
-> only — no screens were built. Access is via `curl`, Postman, or whatever admin client you
-> prefer. Building a UI on top of these endpoints is a separate piece of work.
+The control plane has two front doors onto the same API (`/api/platform/*`):
+
+- **The console UI at `https://<host>/platform`** — served by the **backend**, not by the
+  tenant SPA. Operator code is never shipped to clinic users' browsers, and the tenant app
+  has no knowledge of these endpoints. The page is `noindex, no-store`; consider putting it
+  behind an IP allowlist or your VPN as well.
+- **`curl` / Postman**, for scripted or emergency use, with `Authorization: Bearer <token>`.
+
+The two authenticate differently on purpose. The UI signs in to an **HttpOnly** `ac_platform`
+cookie scoped to `/api/platform`, so the token is never readable by JavaScript, and every
+state-changing call must echo the `ac_platform_csrf` cookie in an `X-CSRF-Token` header
+(the console does this for you). Scripted clients keep using the Bearer header, which the
+browser never attaches automatically and so needs no CSRF token.
 
 ## One-time setup
 
@@ -168,6 +178,12 @@ Password must satisfy the shared policy (≥12 chars, mixed classes).
 
 ## Signing in
 
+**In the browser:** open `https://<host>/platform`, enter the operator email and password
+(plus the 6-digit code once MFA is enrolled). The session lasts **8 hours**; "Sign out"
+clears the cookies server-side.
+
+**From a script:**
+
 ```bash
 curl -X POST https://<host>/api/platform/login \
   -H 'Content-Type: application/json' \
@@ -179,6 +195,9 @@ Use that token as `Authorization: Bearer <token>` on every call below. It lasts 
 
 ## Enable MFA (do this immediately)
 
+In the console: **Security** tab → *Enrol authenticator* → scan/paste the `otpauth://` URL
+into your authenticator app → enter the 6-digit code to confirm. Or by hand:
+
 ```bash
 curl -X POST https://<host>/api/platform/mfa/enroll -H "Authorization: Bearer $TOK"
 # -> otpauthUrl — add it to your authenticator app, then:
@@ -189,19 +208,22 @@ After this, `login` requires `mfaCode`.
 
 ## What the console can do
 
-| Action | Endpoint |
-|---|---|
-| List / view tenants | `GET /api/platform/tenants`, `GET /api/platform/tenants/:id` |
-| Create a tenant (provisions its schema) | `POST /api/platform/tenants` `{ name, planTier, country, timezone }` |
-| Suspend / resume | `POST /api/platform/tenants/:id/suspend` · `/resume` |
-| Plan catalog | `GET /api/platform/plans` |
-| View / set a subscription | `GET`/`PUT /api/platform/tenants/:id/subscription` |
-| Platform audit trail | `GET /api/platform/audit` |
+| Action | Console | Endpoint |
+|---|---|---|
+| List / view tenants | Tenants tab | `GET /api/platform/tenants`, `GET /api/platform/tenants/:id` |
+| Create a tenant (provisions its schema) | Tenants → *New tenant* | `POST /api/platform/tenants` `{ name, planTier, country, timezone }` |
+| Suspend / resume | Tenants → row actions | `POST /api/platform/tenants/:id/suspend` · `/resume` |
+| Plan catalog | (fills the plan picker) | `GET /api/platform/plans` |
+| View / set a subscription | Tenant detail → *Subscription* | `GET`/`PUT /api/platform/tenants/:id/subscription` |
+| Platform audit trail | Platform audit tab | `GET /api/platform/audit` |
 
 ## Reading a tenant's data (break-glass)
 
 Operators have **no standing access to PHI**. To read a tenant's own audit log you must
-open a time-boxed, justified session — and that act is itself audited:
+open a time-boxed, justified session — and that act is itself audited. In the console, the
+tenant detail view's *View tenant audit* prompts for a justification (minimum 20 characters)
+before it will open one, and shows a banner with the session's expiry and an *End session*
+button. By hand:
 
 ```bash
 curl -X POST https://<host>/api/platform/tenants/$TENANT/break-glass \
@@ -224,3 +246,19 @@ than letting it expire.
   platform trail cannot be rewritten from the application.
 - To revoke one operator, bump their `token_version` or set `status='disabled'`.
   Changing `AC_PLAT_S` logs out **all** operators at once (an 8-hour blast radius).
+- The `ac_platform` cookie is scoped to `/api/platform`, so it is not attached to any tenant
+  API call — and the tenant `ac_session` cookie is never attached to platform calls.
+- The console loads no third-party scripts and stores nothing in `localStorage`; everything
+  the server returns is HTML-escaped before it is rendered.
+
+## Routing note (Vercel and similar)
+
+`/platform` is served by the **backend** process, so the edge config must send it there and
+not to the SPA. `vercel.json` already carries:
+
+```json
+{ "src": "/platform(/.*)?", "dest": "backend/server.js" }
+```
+
+If you deploy behind your own proxy, add the equivalent rule — otherwise `/platform` will
+404 or fall through to the tenant app's index.html.
