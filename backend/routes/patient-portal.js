@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const { storeFor } = require('../middleware/rateLimitStore');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
+const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { authenticate } = require('../middleware/auth');
 const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('../utils/filedDocuments');
 const { resolveTenantForUser } = require('../services/tenantCatalog');
@@ -113,7 +114,10 @@ router.param('patientId', async (req, res, next, patientId) => {
 });
 
 // Patient portal login — rate limited per IP and locked out per account
-router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
+// SEC-20: extracted so the authorization-code exchange can reuse this exact path.
+// Every portal protection lives here (SEC-03 provider-token validation, SEC-19
+// canonical-id matching, the Option D tenant routing and session creation).
+const portalLoginHandler = async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { email, password, provider, providerId, accessToken } = req.body;
@@ -124,8 +128,10 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
     let tenantDb = pool;
     let loginTenantId = null;
 
-    // Social login
-    if (provider && providerId) {
+    // Social login. providerId is no longer required: since SEC-19 the canonical id
+    // comes from the provider-verified token, and the authorization-code flow has no
+    // client-side id at all.
+    if (provider && (providerId || accessToken)) {
       // SEC-03: validate the access token server-side with the provider before
       // trusting providerId. A providerId is a public identifier, not a secret;
       // without this check anyone could forge a session by supplying a known id.
@@ -284,6 +290,31 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
   } catch (error) {
     console.error('Error in patient portal login:', error);
     res.status(500).json({ error: 'Login failed' });
+  }
+};
+
+router.post('/login', loginIpLimiter, loginAccountLimiter, portalLoginHandler);
+
+// SEC-20: portal authorization-code exchange. The patient's browser receives only a
+// single-use code; it is redeemed here with the client secret and the provider token
+// never reaches the browser. The request is then handed to portalLoginHandler unchanged,
+// so SEC-03 token validation, SEC-19 canonical-id matching and the Option D tenant
+// routing all still apply.
+router.post('/oauth/:provider/exchange', loginIpLimiter, async (req, res) => {
+  const { provider } = req.params;
+  try {
+    if (provider !== 'google' && provider !== 'microsoft') {
+      return res.status(400).json({ error: `Unsupported provider: ${provider}` });
+    }
+    const { code, redirectUri, codeVerifier } = req.body || {};
+    const { accessToken, refreshToken } = await exchangeAuthCode(provider, { code, redirectUri, codeVerifier });
+
+    req.body = { provider, providerId: null, accessToken, refreshToken };
+    return portalLoginHandler(req, res);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    console.error(`Error during portal ${provider} code exchange:`, err);
+    res.status(500).json({ error: 'Social login failed' });
   }
 });
 

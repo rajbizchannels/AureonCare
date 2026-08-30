@@ -1,5 +1,22 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_SVC_URL || 'http://localhost:3001/api';
+// SEC-15: default to a RELATIVE base so the API is same-origin with the SPA (vercel.json
+// already routes /api/* to the backend). Same-origin means the session cookie is
+// first-party: it works in every browser, is unaffected by third-party-cookie blocking
+// (Safari/ITP), and can use SameSite=Lax. Setting REACT_APP_SVC_URL to an absolute URL
+// still works but puts the API on another origin, which forces the cross-site cookie mode
+// and keeps the Bearer fallback alive.
+const API_BASE_URL = process.env.REACT_APP_SVC_URL || '/api';
+
+// True when the API shares the SPA's origin — the condition under which the session
+// cookie alone is sufficient and no token needs to be kept in JS-readable storage.
+const API_IS_SAME_ORIGIN = (() => {
+  try {
+    if (API_BASE_URL.startsWith('/')) return true;
+    return new URL(API_BASE_URL, window.location.href).origin === window.location.origin;
+  } catch (_) {
+    return false;
+  }
+})();
 
 console.log('API Service: Base URL configured as:', API_BASE_URL);
 
@@ -989,6 +1006,20 @@ const api = {
     const token = sessionStorage.getItem('portalSessionToken');
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
+  // SEC-20: portal authorization-code exchange. The browser holds only a single-use code;
+  // the provider token is redeemed server-side and never enters JavaScript.
+  exchangePortalOAuthCode: async (provider, code, redirectUri, codeVerifier) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/oauth/${provider}/exchange`, {
+      method: 'POST',
+      body: JSON.stringify({ code, redirectUri, codeVerifier }),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      throw new Error(e.error || 'Sign-in failed');
+    }
+    return response.json();
+  },
+
   patientPortalLogin: async (email, password, provider, providerId, accessToken) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/login`, {
       method: 'POST',
@@ -3597,6 +3628,11 @@ const api = {
 
   // Token lifecycle helpers — called by LoginPage (store) and App logout (clear)
   storeToken: (token) => {
+    // SEC-15: when the API is same-origin the HttpOnly session cookie carries the session,
+    // so the token is deliberately NOT persisted — nothing for an XSS to steal. It is kept
+    // only in the cross-origin deployment, where a browser blocking third-party cookies
+    // would otherwise be unable to authenticate at all.
+    if (API_IS_SAME_ORIGIN) return;
     try {
       sessionStorage.setItem('token', token);
     } catch (e) {
