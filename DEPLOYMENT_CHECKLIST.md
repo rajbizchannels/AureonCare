@@ -43,16 +43,43 @@ the repo, and (for `AC_MSG_KEY`) **not** alongside the backups it protects.
 Routes no longer create their own tables (SEC-05). Deploying the code first would 500 any
 feature whose table is missing.
 
+**On your existing database, run `--adopt` first — once, ever.** The runner now keeps a
+ledger (`public.schema_migrations`). Your database predates it, so the runner cannot tell
+which of the 92 files it has already had, and it refuses to guess:
+
 ```bash
-node backend/run-migrations.js          # global: public + control, incl. 063–074
+node backend/run-migrations.js --adopt   # records the current file set as applied,
+                                         # executing NOTHING. One-time, existing DBs only.
+```
+
+Then, and on every deploy after:
+
+```bash
+node backend/run-migrations.js          # global: public + control — applies only what is new
 node backend/run-tenant-migrations.js   # fans out tenant/001, 002 to every tenant schema
 ```
 
+Add `--dry-run` to either to see what would run without touching anything.
+
+- [ ] `--adopt` run exactly once on the existing database (skip on a brand-new one)
 - [ ] Global migrations complete without error
 - [ ] Tenant fan-out reports `N/N schema(s) up to date; 0 failed`
 - [ ] Check the `071` output: a `WARNING … manual reconciliation required` means a table
       exists in **both** `public` and `tenant_default` with data in each — reconcile before
       continuing (the migration deliberately does not guess)
+
+### On an empty database
+
+`node backend/run-migrations.js` handles it with no extra flags: it detects that
+`public.users` is absent, restores `migrations/baseline/000_baseline.sql`, records the
+superseded historical files listed in `baseline/contains.txt` as already-contained, and
+applies the rest.
+
+The historical chain is **not** replayable from empty and was never meant to be — several
+early files open with `DROP TABLE … CASCADE` and rebuild tables in their old integer-keyed
+shape, which is why they are skipped rather than run. Verified end to end: a clean
+Postgres 16 through `migrate` → `migrate:tenants` → `check:tenant-scoping` → the SEC-05
+isolation suite (10/10) → the app booting and a platform login succeeding.
 
 ---
 
@@ -171,10 +198,43 @@ browser never attaches automatically and so needs no CSRF token.
 2. Create the first operator — credentials are deliberately **not** seeded by any migration:
 
 ```bash
-node backend/scripts/create-platform-operator.js \
+npm run platform:operator -- \
      admin@yourdomain.com 'A-Strong-Passphrase!23' "Platform Admin"
 ```
-Password must satisfy the shared policy (≥12 chars, mixed classes).
+Password must satisfy the shared policy (≥12 chars, mixed classes). The script is
+idempotent on email, so re-running it **resets that operator's password** — that is also
+the recovery path if everyone is locked out.
+
+### Running this on Vercel (or any serverless host)
+
+There is no shell on Vercel — no SSH, no `vercel run`, and a function invocation is not a
+place to bootstrap credentials. **Run the command from your machine, pointed at the managed
+database.** The database is the shared resource; where the command runs is irrelevant.
+
+```bash
+vercel env pull .env.production            # fetches AC_PG_URI and friends
+set -a && . ./.env.production && set +a    # load them into the shell
+npm run platform:operator -- admin@yourdomain.com 'A-Strong-Passphrase!23' "Platform Admin"
+rm .env.production                         # it holds live secrets — do not leave it around
+```
+
+`AC_PG_URI` (the Supabase connection string) is all that is needed; the scripts share the
+app's pool config, so they connect over TLS exactly as the deployed app does. Use the
+**direct** connection string here rather than the transaction pooler — the pooler does not
+support the session-level state that DDL and `SET search_path` rely on.
+
+The same applies to the migration runners, which are the other two things people look for a
+shell to run:
+
+```bash
+npm run migrate:core       # public/control migrations
+npm run migrate:tenants    # fans the tenant/*.sql set out across every tenant schema
+```
+
+If your Supabase project blocks connections from arbitrary IPs, either allowlist your
+address for the duration or run these from a bastion — do **not** add a bootstrap endpoint
+to the API to work around it. An HTTP route that can mint an operator is a permanent
+privilege-escalation path in exchange for a one-time convenience.
 
 ## Signing in
 
