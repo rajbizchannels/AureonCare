@@ -17,6 +17,10 @@ const crypto = require('crypto');
 
 const SESSION_COOKIE = 'ac_session';
 const CSRF_COOKIE = 'ac_csrf';
+// Platform (super-admin) console. A SEPARATE cookie from the tenant session so the two
+// planes never share credentials: holding one grants nothing on the other.
+const PLATFORM_COOKIE = 'ac_platform';
+const PLATFORM_CSRF_COOKIE = 'ac_platform_csrf';
 
 // Cookie mode:
 //   default            SameSite=Lax + Secure — correct when the SPA and API share an
@@ -85,8 +89,40 @@ function clearAuthCookies(res) {
   res.clearCookie(CSRF_COOKIE, { ...baseOptions(0), httpOnly: false });
 }
 
+/** The platform operator JWT from its cookie, or null. */
+function getPlatformCookie(req) {
+  return parseCookies(req)[PLATFORM_COOKIE] || null;
+}
+
+/** The platform CSRF token from its cookie, or null. */
+function getPlatformCsrfCookie(req) {
+  return parseCookies(req)[PLATFORM_CSRF_COOKIE] || null;
+}
+
+/**
+ * Issue the operator session cookie (HttpOnly) plus its CSRF cookie, so the console never
+ * has to keep the token in JS-readable storage. Scoped to /api/platform, so it is not
+ * even sent on tenant requests.
+ * @returns {string} the CSRF token to echo in X-CSRF-Token
+ */
+function issuePlatformCookies(res, token, { maxAgeMs = 8 * 60 * 60 * 1000 } = {}) {
+  const csrfToken = crypto.randomBytes(32).toString('hex');
+  const opts = { ...baseOptions(maxAgeMs), path: '/api/platform' };
+  res.cookie(PLATFORM_COOKIE, token, { ...opts, httpOnly: true });
+  res.cookie(PLATFORM_CSRF_COOKIE, csrfToken, { ...opts, httpOnly: false });
+  return csrfToken;
+}
+
+function clearPlatformCookies(res) {
+  const opts = { ...baseOptions(0), path: '/api/platform' };
+  res.clearCookie(PLATFORM_COOKIE, { ...opts, httpOnly: true });
+  res.clearCookie(PLATFORM_CSRF_COOKIE, { ...opts, httpOnly: false });
+}
+
 module.exports = {
-  SESSION_COOKIE, CSRF_COOKIE,
+  SESSION_COOKIE, CSRF_COOKIE, PLATFORM_COOKIE, PLATFORM_CSRF_COOKIE,
   parseCookies, getSessionCookie, getCsrfCookie,
+  getPlatformCookie, getPlatformCsrfCookie,
   issueAuthCookies, clearAuthCookies,
+  issuePlatformCookies, clearPlatformCookies,
 };

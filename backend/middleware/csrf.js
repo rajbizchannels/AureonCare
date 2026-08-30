@@ -16,7 +16,7 @@
 // This keeps the existing token-based frontend working unchanged during the migration.
 
 const crypto = require('crypto');
-const { getCsrfCookie, getSessionCookie } = require('../utils/authCookies');
+const { getCsrfCookie, getSessionCookie, getPlatformCookie, getPlatformCsrfCookie } = require('../utils/authCookies');
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -35,11 +35,15 @@ function verifyCsrf(req, res, next) {
   const authHeader = req.headers['authorization'];
   if (authHeader && authHeader.startsWith('Bearer ')) return next();
 
+  // The platform console authenticates with its own cookie pair, which must be checked
+  // here too — otherwise an operator's cookie would be usable cross-site unprotected.
+  const isPlatform = Boolean(getPlatformCookie(req));
+
   // Not cookie-authenticated either (e.g. an unauthenticated public endpoint) — nothing
   // for CSRF to protect here; the route's own auth decides.
-  if (!getSessionCookie(req)) return next();
+  if (!isPlatform && !getSessionCookie(req)) return next();
 
-  const cookieToken = getCsrfCookie(req);
+  const cookieToken = isPlatform ? getPlatformCsrfCookie(req) : getCsrfCookie(req);
   const headerToken = req.headers['x-csrf-token'] || req.headers['x-xsrf-token'];
 
   if (!cookieToken || !headerToken || !safeEqual(cookieToken, headerToken)) {
