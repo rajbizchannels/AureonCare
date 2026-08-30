@@ -16,19 +16,14 @@
 // tenants start current.
 //
 // Usage:  node run-tenant-migrations.js
-// Env:    AC_DB_* (same as run-migrations.js), TENANT_MIGRATE_CONCURRENCY (default 5).
+// Env:    AC_PG_URI or AC_DB_* (same as run-migrations.js), TENANT_MIGRATE_CONCURRENCY
+//         (default 5).
 
-const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-const pool = new Pool({
-  host: process.env.AC_DB_H || 'localhost',
-  port: process.env.AC_DB_P || 5432,
-  database: process.env.AC_DB_N || 'aureoncare',
-  user: process.env.AC_DB_U || 'postgres',
-  password: process.env.AC_DB_W || 'AureonCare2024!',
-});
+// Shared pool config — understands AC_PG_URI (Supabase) and SSL. See run-migrations.js.
+const pool = require('./db');
 
 const TENANT_DIR = path.join(__dirname, 'migrations', 'tenant');
 const CONCURRENCY = Math.max(1, parseInt(process.env.TENANT_MIGRATE_CONCURRENCY || '5', 10));
