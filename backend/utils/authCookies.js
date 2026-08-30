@@ -18,13 +18,25 @@ const crypto = require('crypto');
 const SESSION_COOKIE = 'ac_session';
 const CSRF_COOKIE = 'ac_csrf';
 
-// SameSite=None requires Secure, which requires HTTPS. Local development over plain
-// http therefore cannot use it; AC_COOKIE_INSECURE=true switches to Lax without Secure.
+// Cookie mode:
+//   default            SameSite=Lax + Secure — correct when the SPA and API share an
+//                      origin (vercel.json routes /api/* to the backend). Lax also gives
+//                      real CSRF protection on top of the double-submit token.
+//   AC_COOKIE_CROSS_SITE=true
+//                      SameSite=None + Secure — required only when REACT_APP_SVC_URL puts
+//                      the API on a different origin. SameSite then protects nothing, so
+//                      the double-submit token carries the whole CSRF defence, and
+//                      browsers blocking third-party cookies may reject the cookie
+//                      entirely (which is why the Bearer fallback survives in that mode).
+//   AC_COOKIE_INSECURE=true
+//                      drops Secure for local http development.
 const INSECURE = String(process.env.AC_COOKIE_INSECURE || '').toLowerCase() === 'true';
+const CROSS_SITE = String(process.env.AC_COOKIE_CROSS_SITE || '').toLowerCase() === 'true';
 
 const baseOptions = (maxAgeMs) => ({
   secure: !INSECURE,
-  sameSite: INSECURE ? 'lax' : 'none',
+  // SameSite=None requires Secure, so it cannot be combined with insecure local mode.
+  sameSite: CROSS_SITE && !INSECURE ? 'none' : 'lax',
   path: '/',
   maxAge: maxAgeMs,
 });
