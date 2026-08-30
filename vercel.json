@@ -19,6 +19,10 @@
       "dest": "backend/server.js"
     },
     {
+      "src": "/platform(/.*)?",
+      "dest": "backend/server.js"
+    },
+    {
       "src": "/health",
       "dest": "backend/server.js"
     },

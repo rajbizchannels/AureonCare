@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>AureonCare — Platform Console</title>
+<link rel="stylesheet" href="./console.css" />
+</head>
+<body>
+<!--
+  SEC-05 / S10: the super-admin console.
+
+  Served by the BACKEND, deliberately not built into the tenant SPA: operator code should
+  not ship in every clinic user's browser, and keeping the two apps separate mirrors the
+  separation of the two identity planes.
+
+  Script is in an external file because helmet's CSP defaults forbid inline <script>.
+-->
+<header class="topbar">
+  <div class="brand">AureonCare <span>Platform Console</span></div>
+  <div class="who" id="who" hidden>
+    <span id="whoEmail"></span>
+    <button id="signOut" class="link">Sign out</button>
+  </div>
+</header>
+
+<main id="app">
+  <!-- Sign in -->
+  <section id="loginView" class="card narrow">
+    <h1>Operator sign-in</h1>
+    <p class="muted">Platform operators only. This is not the clinic application.</p>
+    <form id="loginForm" autocomplete="off">
+      <label>Email<input id="email" type="email" required autocomplete="username" /></label>
+      <label>Password<input id="password" type="password" required autocomplete="current-password" /></label>
+      <label>MFA code <span class="muted">(if enabled)</span>
+        <input id="mfaCode" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" /></label>
+      <button type="submit" class="primary">Sign in</button>
+    </form>
+    <p id="loginError" class="error" role="alert" hidden></p>
+  </section>
+
+  <!-- Console -->
+  <section id="consoleView" hidden>
+    <nav class="tabs" id="tabs">
+      <button data-tab="tenants" class="active">Tenants</button>
+      <button data-tab="audit">Platform audit</button>
+      <button data-tab="security">Security</button>
+    </nav>
+
+    <!-- Tenants -->
+    <div class="tab" data-panel="tenants">
+      <div class="row between">
+        <h2>Tenants</h2>
+        <button id="newTenantBtn" class="primary">New tenant</button>
+      </div>
+      <form id="newTenantForm" class="card inline" hidden>
+        <label>Name<input id="tName" required /></label>
+        <label>Plan tier<input id="tPlan" placeholder="professional" /></label>
+        <label>Country<input id="tCountry" maxlength="2" placeholder="US" /></label>
+        <label>Timezone<input id="tTz" placeholder="America/New_York" /></label>
+        <div class="row">
+          <button type="submit" class="primary">Create</button>
+          <button type="button" id="cancelTenant" class="link">Cancel</button>
+        </div>
+        <p class="muted small">Creating a tenant provisions its database schema.</p>
+      </form>
+      <div id="tenantList" class="list"></div>
+    </div>
+
+    <!-- Audit -->
+    <div class="tab" data-panel="audit" hidden>
+      <h2>Platform audit trail</h2>
+      <p class="muted small">Append-only. Records operator actions, not clinical activity.</p>
+      <div id="auditList" class="list"></div>
+    </div>
+
+    <!-- Security -->
+    <div class="tab" data-panel="security" hidden>
+      <h2>Your account</h2>
+      <div class="card">
+        <h3>Multi-factor authentication</h3>
+        <p class="muted small">Strongly recommended: this account manages every tenant.</p>
+        <div id="mfaState"></div>
+        <button id="mfaEnroll" class="primary">Set up MFA</button>
+        <div id="mfaSetup" hidden>
+          <p class="small">Add this to your authenticator app, then enter a code to confirm.</p>
+          <code id="otpUrl" class="break"></code>
+          <form id="mfaVerifyForm" class="row">
+            <input id="mfaVerifyCode" inputmode="numeric" maxlength="6" placeholder="123456" required />
+            <button type="submit" class="primary">Confirm</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden role="status"></div>
+<script src="./console.js"></script>
+</body>
+</html>

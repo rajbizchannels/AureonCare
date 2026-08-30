@@ -186,6 +186,17 @@ app.use('/api', require('./middleware/csrf').verifyCsrf);
 // Import and use routes
 // SEC-05 (S10): control-plane console — super-admin surface, separate from the tenant app.
 app.use('/api/platform', require('./routes/platform'));
+
+// The console UI itself. Served from the backend rather than bundled into the tenant SPA,
+// so operator code never ships in a clinic user's browser. It is a static shell — every
+// privileged action still goes through /api/platform, which authenticates the operator.
+app.use('/platform', express.static(path.join(__dirname, 'public/platform'), {
+  index: 'index.html',
+  setHeaders: (res) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('Cache-Control', 'no-store');
+  },
+}));
 app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));

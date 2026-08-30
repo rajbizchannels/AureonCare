@@ -7,6 +7,7 @@
 // access to tenant PHI; that requires a break-glass session (see routes/platform.js).
 
 const jwt = require('jsonwebtoken');
+const { getPlatformCookie } = require('../utils/authCookies');
 
 const PLAT_SECRET = process.env.AC_PLAT_S;
 const PLAT_EXPIRY = '8h';
@@ -37,13 +38,19 @@ const signPlatformToken = (operator) =>
 const requirePlatformAdmin = async (req, res, next) => {
   try {
     const secret = requireSecret();
+    // The console signs in with an HttpOnly cookie so it never stores the token in
+    // JS-readable storage; scripted clients keep using the Authorization header. The
+    // header wins so a stale cookie cannot shadow an explicit token.
     const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = (authHeader && authHeader.startsWith('Bearer '))
+      ? authHeader.slice(7)
+      : getPlatformCookie(req);
+    if (!token) {
       return res.status(401).json({ error: 'Platform authentication required' });
     }
     let payload;
     try {
-      payload = jwt.verify(authHeader.slice(7), secret, { algorithms: ALGS });
+      payload = jwt.verify(token, secret, { algorithms: ALGS });
     } catch (err) {
       return res.status(401).json({ error: err.name === 'TokenExpiredError' ? 'Session expired' : 'Invalid token' });
     }
