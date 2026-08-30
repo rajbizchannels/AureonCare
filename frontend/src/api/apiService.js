@@ -1006,6 +1006,20 @@ const api = {
     const token = sessionStorage.getItem('portalSessionToken');
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
+  // SEC-20: portal authorization-code exchange. The browser holds only a single-use code;
+  // the provider token is redeemed server-side and never enters JavaScript.
+  exchangePortalOAuthCode: async (provider, code, redirectUri, codeVerifier) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/oauth/${provider}/exchange`, {
+      method: 'POST',
+      body: JSON.stringify({ code, redirectUri, codeVerifier }),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      throw new Error(e.error || 'Sign-in failed');
+    }
+    return response.json();
+  },
+
   patientPortalLogin: async (email, password, provider, providerId, accessToken) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/login`, {
       method: 'POST',

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useMsal } from '@azure/msal-react';
+import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
+import { microsoftOAuthConfig } from '../../config/oauthConfig';
 import { useAudit } from '../../hooks/useAudit';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
 import TermsOfServicePage from './TermsOfServicePage';
@@ -14,7 +15,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showToS, setShowToS] = useState(false);
 
-  const { instance } = useMsal();
+  // SEC-20: MSAL is no longer used for sign-in (see handleMicrosoftLogin).
 
   // Log page access on mount
   useEffect(() => {
@@ -58,25 +59,14 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
   };
 
   // Google OAuth Login
+  // SEC-20: authorization-code flow. The patient's browser receives a single-use code
+  // instead of a provider access token, so an XSS here has nothing to steal — the code
+  // is redeemed server-side with the client secret.
   const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
       try {
-        // Get user info from Google
-        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: {
-            Authorization: `Bearer ${tokenResponse.access_token}`
-          }
-        });
-        const userInfo = await userInfoResponse.json();
-
-        // Login with our backend using patient portal login
-        const response = await api.patientPortalLogin(
-          null, // email
-          null, // password
-          'google', // provider
-          userInfo.sub, // providerId
-          tokenResponse.access_token // accessToken
-        );
+        const response = await api.exchangePortalOAuthCode('google', codeResponse.code, 'postmessage');
 
         // Patient portal login returns { patient, sessionToken, expiresAt }
         sessionStorage.setItem('portalSessionToken', response.sessionToken);
@@ -112,21 +102,10 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
   // Microsoft OAuth Login
   const handleMicrosoftLogin = async () => {
     try {
-      const loginResponse = await instance.loginPopup({
-        scopes: ['user.read']
-      });
-
-      // Get user info
-      const userInfo = loginResponse.account;
-
-      // Login with our backend using patient portal login
-      const response = await api.patientPortalLogin(
-        null, // email
-        null, // password
-        'microsoft', // provider
-        userInfo.homeAccountId, // providerId
-        loginResponse.accessToken // accessToken
+      const { code, redirectUri, codeVerifier } = await getMicrosoftAuthCode(
+        microsoftOAuthConfig.auth.clientId
       );
+      const response = await api.exchangePortalOAuthCode('microsoft', code, redirectUri, codeVerifier);
 
       // Patient portal login returns { patient, sessionToken, expiresAt }
       sessionStorage.setItem('portalSessionToken', response.sessionToken);
