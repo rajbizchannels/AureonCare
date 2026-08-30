@@ -107,16 +107,24 @@ function getPlatformCsrfCookie(req) {
  */
 function issuePlatformCookies(res, token, { maxAgeMs = 8 * 60 * 60 * 1000 } = {}) {
   const csrfToken = crypto.randomBytes(32).toString('hex');
-  const opts = { ...baseOptions(maxAgeMs), path: '/api/platform' };
-  res.cookie(PLATFORM_COOKIE, token, { ...opts, httpOnly: true });
-  res.cookie(PLATFORM_CSRF_COOKIE, csrfToken, { ...opts, httpOnly: false });
+  const opts = baseOptions(maxAgeMs);
+  // The session cookie is scoped to /api/platform so it is never even sent on tenant
+  // requests. The CSRF cookie CANNOT share that path: the console page is served from
+  // /platform, and document.cookie only exposes cookies whose path matches the current
+  // URL — so a /api/platform-scoped cookie is invisible to the very script that has to
+  // echo it, and every console POST fails its own CSRF check. It holds no secret (it is
+  // deliberately JS-readable, and is only ever compared against the header on the same
+  // request), so a site-wide path costs nothing.
+  res.cookie(PLATFORM_COOKIE, token, { ...opts, path: '/api/platform', httpOnly: true });
+  res.cookie(PLATFORM_CSRF_COOKIE, csrfToken, { ...opts, path: '/', httpOnly: false });
   return csrfToken;
 }
 
 function clearPlatformCookies(res) {
-  const opts = { ...baseOptions(0), path: '/api/platform' };
-  res.clearCookie(PLATFORM_COOKIE, { ...opts, httpOnly: true });
-  res.clearCookie(PLATFORM_CSRF_COOKIE, { ...opts, httpOnly: false });
+  const opts = baseOptions(0);
+  // Paths must match the ones used to set them, or the cookies survive the logout.
+  res.clearCookie(PLATFORM_COOKIE, { ...opts, path: '/api/platform', httpOnly: true });
+  res.clearCookie(PLATFORM_CSRF_COOKIE, { ...opts, path: '/', httpOnly: false });
 }
 
 module.exports = {

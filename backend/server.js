@@ -66,14 +66,23 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'https://app.aureoncare.tech
   .map(o => o.trim())
   .filter(Boolean);
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow server-to-server or same-origin requests (no Origin header)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origin '${origin}' not allowed`));
-  },
-  credentials: true
+app.use(cors((req, callback) => {
+  const origin = req.headers.origin;
+  // Server-to-server, or a request the browser sends without an Origin header.
+  if (!origin) return callback(null, { origin: true, credentials: true });
+  if (allowedOrigins.includes(origin)) return callback(null, { origin: true, credentials: true });
+  // Same-origin requests DO carry an Origin header on POST/fetch. The platform console is
+  // served by this process at /platform, so its origin is this host — which need not be in
+  // FRONTEND_URL (that names the SPA). Rejecting it would break every console write.
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  if (host) {
+    try {
+      if (new URL(origin).host === String(host).split(',')[0].trim()) {
+        return callback(null, { origin: true, credentials: true });
+      }
+    } catch { /* unparseable Origin — fall through to the rejection below */ }
+  }
+  callback(new Error(`CORS: origin '${origin}' not allowed`));
 }));
 // Stripe webhook MUST be mounted before express.json() so it receives the raw body.
 // Stripe-Signature verification fails if the body has been JSON-parsed first.
