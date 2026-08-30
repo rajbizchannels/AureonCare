@@ -6,7 +6,10 @@
 // email: re-running updates the password/name.
 
 const bcrypt = require('bcryptjs');
-const { Pool } = require('pg');
+// Shared pool config — understands AC_PG_URI (Supabase) and SSL, so this can be run
+// against the production database from a laptop. On a serverless host (Vercel) there is
+// no shell, so pointing this at the managed database is the ONLY way to bootstrap.
+const pool = require('../db');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 
 (async () => {
@@ -18,13 +21,6 @@ const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
   const pw = validatePassword(password);
   if (!pw.valid) { console.error('Password rejected:', pw.message); process.exit(2); }
 
-  const pool = new Pool({
-    host: process.env.AC_DB_H || 'localhost',
-    port: process.env.AC_DB_P || 5432,
-    database: process.env.AC_DB_N || 'aureoncare',
-    user: process.env.AC_DB_U || 'postgres',
-    password: process.env.AC_DB_W || 'AureonCare2024!',
-  });
   try {
     const hash = await bcrypt.hash(password, BCRYPT_COST);
     const { rows } = await pool.query(
