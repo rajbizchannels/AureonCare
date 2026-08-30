@@ -1,3 +1,11 @@
+const path = require('path');
+// Load backend/.env first (that is the gitignored path, and the one `vercel env pull`
+// should target), then fall back to a .env in the working directory. dotenv never
+// overrides variables that are already set, so a real environment — Vercel, CI, an
+// exported shell var — always wins over both files. Resolving from __dirname rather than
+// cwd means the admin scripts work whichever directory they are invoked from, which
+// matters on Windows where there is no `set -a && . ./.env` idiom.
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 require('dotenv').config();
 const { Pool } = require('pg');
 
