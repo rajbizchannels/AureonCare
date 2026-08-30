@@ -7,6 +7,7 @@ const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 const { issueAuthCookies, clearAuthCookies } = require('../utils/authCookies');
+const { exchangeAuthCode } = require('../utils/oauthExchange');
 
 // SEC-17: a fixed dummy bcrypt hash (of a random string) used to run a real compare
 // when an account is missing or has no password, so the response time does not reveal
@@ -614,54 +615,15 @@ router.post('/social-login', legacySocialGuard, socialLoginHandler);
 router.post('/oauth/microsoft/exchange', async (req, res) => {
   try {
     const { code, redirectUri, codeVerifier } = req.body || {};
-    if (!code) return res.status(400).json({ error: 'Authorization code is required' });
-    if (!redirectUri) return res.status(400).json({ error: 'redirectUri is required' });
+    const { accessToken, refreshToken } = await exchangeAuthCode('microsoft', { code, redirectUri, codeVerifier });
 
-    const clientId = process.env.AC_MS_CID;
-    const clientSecret = process.env.AC_MS_CSK;
-    if (!clientId || !clientSecret) {
-      return res.status(503).json({
-        error: 'Microsoft sign-in is not configured on the server (AC_MS_CID / AC_MS_CSK).',
-      });
-    }
-
-    const params = {
-      client_id: clientId,
-      client_secret: clientSecret,
-      code,
-      redirect_uri: redirectUri,
-      grant_type: 'authorization_code',
-      scope: 'https://graph.microsoft.com/User.Read offline_access openid profile email',
-    };
-    if (codeVerifier) params.code_verifier = codeVerifier; // PKCE, when the SPA used it
-
-    let tokenData;
-    try {
-      const resp = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(params).toString(),
-      });
-      tokenData = await resp.json();
-      if (!resp.ok || !tokenData.access_token) {
-        console.warn('[SEC-20] Microsoft code exchange failed:', tokenData.error_description || tokenData.error || resp.status);
-        return res.status(401).json({ error: 'Microsoft sign-in failed. Please try again.' });
-      }
-    } catch (err) {
-      console.error('[SEC-20] Microsoft token endpoint unreachable:', err.message);
-      return res.status(502).json({ error: 'Could not reach Microsoft to complete sign-in.' });
-    }
-
-    req.body = {
-      provider: 'microsoft',
-      providerId: null,
-      accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token || null,
-      profileData: {},
-    };
+    // Delegate to the existing social-login path. providerId is intentionally omitted:
+    // SEC-19 resolves the canonical id from the provider itself, never from the client.
+    req.body = { provider: 'microsoft', providerId: null, accessToken, refreshToken, profileData: {} };
     return socialLoginHandler(req, res);
-  } catch (error) {
-    console.error('Error during Microsoft code exchange:', error);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    console.error('Error during microsoft code exchange:', err);
     res.status(500).json({ error: 'Social login failed' });
   }
 });
@@ -669,54 +631,15 @@ router.post('/oauth/microsoft/exchange', async (req, res) => {
 router.post('/oauth/google/exchange', async (req, res) => {
   try {
     const { code, redirectUri } = req.body || {};
-    if (!code) return res.status(400).json({ error: 'Authorization code is required' });
-
-    const clientId = process.env.AC_GG_CID;
-    const clientSecret = process.env.AC_GG_CSK;
-    if (!clientId || !clientSecret) {
-      return res.status(503).json({
-        error: 'Google sign-in is not configured on the server (AC_GG_CID / AC_GG_CSK).',
-      });
-    }
-
-    // 'postmessage' is Google's redirect_uri for popup/auth-code flows started in JS.
-    const body = new URLSearchParams({
-      code,
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: redirectUri || 'postmessage',
-      grant_type: 'authorization_code',
-    });
-
-    let tokenData;
-    try {
-      const resp = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-      });
-      tokenData = await resp.json();
-      if (!resp.ok || !tokenData.access_token) {
-        console.warn('[SEC-20] Google code exchange failed:', tokenData.error || resp.status);
-        return res.status(401).json({ error: 'Google sign-in failed. Please try again.' });
-      }
-    } catch (err) {
-      console.error('[SEC-20] Google token endpoint unreachable:', err.message);
-      return res.status(502).json({ error: 'Could not reach Google to complete sign-in.' });
-    }
+    const { accessToken, refreshToken } = await exchangeAuthCode('google', { code, redirectUri });
 
     // Delegate to the existing social-login path. providerId is intentionally omitted:
     // SEC-19 resolves the canonical id from the provider itself, never from the client.
-    req.body = {
-      provider: 'google',
-      providerId: null,
-      accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token || null,
-      profileData: {},
-    };
+    req.body = { provider: 'google', providerId: null, accessToken, refreshToken, profileData: {} };
     return socialLoginHandler(req, res);
-  } catch (error) {
-    console.error('Error during Google code exchange:', error);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    console.error('Error during google code exchange:', err);
     res.status(500).json({ error: 'Social login failed' });
   }
 });
