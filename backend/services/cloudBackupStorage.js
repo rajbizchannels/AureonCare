@@ -27,14 +27,16 @@ const PROVIDERS = {
   google_drive: {
     label: 'Google Drive',
     tokenUrl: 'https://oauth2.googleapis.com/token',
-    envClientId: 'REACT_APP_GG_CID',
-    envClientSecret: 'AC_GD_CSK',
+    // Prefer the backend-scoped name; the REACT_APP_* name is kept as a fallback so
+    // existing deployments that only set the frontend variable keep working.
+    envClientId: ['AC_GG_CID', 'REACT_APP_GG_CID'],
+    envClientSecret: ['AC_GD_CSK', 'AC_GG_CSK'],
   },
   onedrive: {
     label: 'OneDrive',
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    envClientId: 'REACT_APP_MS_CID',
-    envClientSecret: 'AC_OD_CSK',
+    envClientId: ['AC_MS_CID', 'REACT_APP_MS_CID'],
+    envClientSecret: ['AC_OD_CSK', 'AC_MS_CSK'],
   },
 };
 
@@ -113,8 +115,14 @@ async function getAccessToken(pool, provider) {
     throw new Error(`${label} session expired. Please reconnect it in Admin Settings.`);
   }
 
-  const clientId = row?.client_id || process.env[cfg.envClientId];
-  const clientSecret = row?.client_secret || process.env[cfg.envClientSecret];
+  // Resolve from the first configured candidate. A backend service reading a REACT_APP_*
+  // variable was confusing (those are frontend build-time names); AC_* now wins, with the
+  // old name retained so nothing breaks on an existing deployment.
+  const fromEnv = (names) =>
+    (Array.isArray(names) ? names : [names]).map((n) => process.env[n]).find(Boolean) || undefined;
+
+  const clientId = row?.client_id || fromEnv(cfg.envClientId);
+  const clientSecret = row?.client_secret || fromEnv(cfg.envClientSecret);
   if (!clientId || !clientSecret) {
     throw new Error(
       `${label} session expired and client credentials are missing. Please reconnect it in Admin Settings.`
