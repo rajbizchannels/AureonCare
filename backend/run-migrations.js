@@ -1,15 +1,11 @@
-const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-// Database connection
-const pool = new Pool({
-  host: process.env.AC_DB_H || 'localhost',
-  port: process.env.AC_DB_P || 5432,
-  database: process.env.AC_DB_N || 'aureoncare',
-  user: process.env.AC_DB_U || 'postgres',
-  password: process.env.AC_DB_W || 'AureonCare2024!',
-});
+// Share the app's pool config rather than re-deriving it. That one place understands
+// AC_PG_URI (Supabase) and SSL, so this runner works against a managed/production
+// database — not just a local socket — which is the only way to migrate a Vercel
+// deployment, where there is no shell to run this in.
+const pool = require('./db');
 
 async function runMigrations() {
   try {
