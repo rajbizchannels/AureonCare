@@ -61,7 +61,7 @@ Quick reference for setting up social login with Google, Microsoft, and Facebook
    - Copy the **Client ID** (looks like: `123456789-abc...googleusercontent.com`)
    - Add to `frontend/.env`:
      ```env
-     REACT_APP_GOOGLE_CLIENT_ID=your_client_id_here
+     REACT_APP_GG_CID=your_client_id_here
      ```
 
 ### Testing Google Login
@@ -117,7 +117,7 @@ Quick reference for setting up social login with Google, Microsoft, and Facebook
    - Copy the **Application (client) ID** (UUID format)
    - Add to `frontend/.env`:
      ```env
-     REACT_APP_MICROSOFT_CLIENT_ID=your_client_id_here
+     REACT_APP_MS_CID=your_client_id_here
      ```
 
 ### Testing Microsoft Login
@@ -178,7 +178,7 @@ Quick reference for setting up social login with Google, Microsoft, and Facebook
    - Copy the **App ID**
    - Add to `frontend/.env`:
      ```env
-     REACT_APP_FACEBOOK_APP_ID=your_app_id_here
+     REACT_APP_FB_AID=your_app_id_here
      ```
 
 ### Testing Facebook Login
@@ -198,12 +198,12 @@ Your `frontend/.env` should look like this:
 
 ```env
 # API Configuration
-REACT_APP_API_URL=http://localhost:3000/api
+REACT_APP_SVC_URL=http://localhost:3000/api
 
 # OAuth Configuration
-REACT_APP_GOOGLE_CLIENT_ID=123456789-abcdefgh.apps.googleusercontent.com
-REACT_APP_MICROSOFT_CLIENT_ID=12345678-1234-1234-1234-123456789abc
-REACT_APP_FACEBOOK_APP_ID=1234567890123456
+REACT_APP_GG_CID=123456789-abcdefgh.apps.googleusercontent.com
+REACT_APP_MS_CID=12345678-1234-1234-1234-123456789abc
+REACT_APP_FB_AID=1234567890123456
 
 # Redirect URI
 REACT_APP_REDIRECT_URI=http://localhost:3001
@@ -260,10 +260,10 @@ For each provider, add your production URLs:
 
 Production `frontend/.env`:
 ```env
-REACT_APP_API_URL=https://api.yourdomain.com/api
-REACT_APP_GOOGLE_CLIENT_ID=your_production_google_id
-REACT_APP_MICROSOFT_CLIENT_ID=your_production_microsoft_id
-REACT_APP_FACEBOOK_APP_ID=your_production_facebook_id
+REACT_APP_SVC_URL=https://api.yourdomain.com/api
+REACT_APP_GG_CID=your_production_google_id
+REACT_APP_MS_CID=your_production_microsoft_id
+REACT_APP_FB_AID=your_production_facebook_id
 REACT_APP_REDIRECT_URI=https://yourdomain.com
 ```
 
