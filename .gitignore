@@ -29,3 +29,8 @@ docs/demo/video-library/**/*.thumbnail.png
 # theirs. Delete this line to store Wave 3 the same way as the others; the
 # scripts in ../video-harness reproduce the files either way.
 docs/demo/video-library/wave3/
+
+# Root-level env file (e.g. from `vercel env pull`) — never commit
+.env
+.env.*
+!.env.example

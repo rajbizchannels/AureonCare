@@ -43,16 +43,43 @@ the repo, and (for `AC_MSG_KEY`) **not** alongside the backups it protects.
 Routes no longer create their own tables (SEC-05). Deploying the code first would 500 any
 feature whose table is missing.
 
+**On your existing database, run `--adopt` first — once, ever.** The runner now keeps a
+ledger (`public.schema_migrations`). Your database predates it, so the runner cannot tell
+which of the 92 files it has already had, and it refuses to guess:
+
 ```bash
-node backend/run-migrations.js          # global: public + control, incl. 063–074
+node backend/run-migrations.js --adopt   # records the current file set as applied,
+                                         # executing NOTHING. One-time, existing DBs only.
+```
+
+Then, and on every deploy after:
+
+```bash
+node backend/run-migrations.js          # global: public + control — applies only what is new
 node backend/run-tenant-migrations.js   # fans out tenant/001, 002 to every tenant schema
 ```
 
+Add `--dry-run` to either to see what would run without touching anything.
+
+- [ ] `--adopt` run exactly once on the existing database (skip on a brand-new one)
 - [ ] Global migrations complete without error
 - [ ] Tenant fan-out reports `N/N schema(s) up to date; 0 failed`
 - [ ] Check the `071` output: a `WARNING … manual reconciliation required` means a table
       exists in **both** `public` and `tenant_default` with data in each — reconcile before
       continuing (the migration deliberately does not guess)
+
+### On an empty database
+
+`node backend/run-migrations.js` handles it with no extra flags: it detects that
+`public.users` is absent, restores `migrations/baseline/000_baseline.sql`, records the
+superseded historical files listed in `baseline/contains.txt` as already-contained, and
+applies the rest.
+
+The historical chain is **not** replayable from empty and was never meant to be — several
+early files open with `DROP TABLE … CASCADE` and rebuild tables in their old integer-keyed
+shape, which is why they are skipped rather than run. Verified end to end: a clean
+Postgres 16 through `migrate` → `migrate:tenants` → `check:tenant-scoping` → the SEC-05
+isolation suite (10/10) → the app booting and a platform login succeeding.
 
 ---
 
