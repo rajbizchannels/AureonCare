@@ -20,6 +20,7 @@ const { logPlatformAction } = require('../services/platformAudit');
 const { withTenant } = require('../db/tenantClient');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 const { invalidateEntitlements } = require('../services/entitlements');
+const { issuePlatformCookies, clearPlatformCookies } = require('../utils/authCookies');
 
 const clientIp = (req) => req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null;
 const slugify = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40);
@@ -58,7 +59,10 @@ router.post('/login', loginLimiter, async (req, res) => {
     await pool.query('UPDATE control.operators SET last_login = now() WHERE id = $1', [op.id]);
     const token = signPlatformToken(op);
     await logPlatformAction(pool, { operatorId: op.id, action: 'operator.login', targetType: 'operator', targetId: op.id, ip: clientIp(req) });
-    res.json({ token, operator: { id: op.id, email: op.email, name: op.name, mfaEnabled: op.mfa_enabled } });
+    // Deliver the session as an HttpOnly cookie scoped to /api/platform so the console
+    // never holds the token in JS-readable storage; csrfToken is echoed in X-CSRF-Token.
+    const csrfToken = issuePlatformCookies(res, token);
+    res.json({ token, csrfToken, operator: { id: op.id, email: op.email, name: op.name, mfaEnabled: op.mfa_enabled } });
   } catch (e) {
     if (e.statusCode === 503) return res.status(503).json({ error: e.message });
     console.error('Operator login error:', e);
@@ -68,6 +72,20 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 // Everything below requires an authenticated operator.
 router.use(requirePlatformAdmin);
+
+// Sign out: clear the operator cookies. Bumping token_version would additionally revoke
+// every device for this operator; that is deliberately a separate admin action.
+router.post('/logout', async (req, res) => {
+  clearPlatformCookies(res);
+  await logPlatformAction(req.app.locals.pool, {
+    operatorId: req.operator.id, action: 'operator.logout',
+    targetType: 'operator', targetId: req.operator.id, ip: clientIp(req),
+  });
+  res.json({ message: 'Signed out' });
+});
+
+// Who am I — lets the console restore its session after a reload without storing anything.
+router.get('/me', (req, res) => res.json({ operator: req.operator }));
 
 // ── MFA enrollment ────────────────────────────────────────────────────────────
 router.post('/mfa/enroll', async (req, res) => {
