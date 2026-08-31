@@ -8,6 +8,7 @@ const { sendEmail, buildEmailHtml } = require('../services/notificationService')
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 const { issueAuthCookies, clearAuthCookies } = require('../utils/authCookies');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
+const { findUsableInvite, claimInvite } = require('./invites');
 
 // SEC-17: a fixed dummy bcrypt hash (of a random string) used to run a real compare
 // when an account is missing or has no password, so the response time does not reveal
@@ -334,7 +335,10 @@ const socialLoginHandler = async (req, res) => {
       email: clientEmail,
       firstName: clientFirstName,
       lastName: clientLastName,
-      profileData
+      profileData,
+      // Optional staff invite. When present and matching the provider-VERIFIED email, the
+      // account is created bound to the inviting practice instead of unbound.
+      inviteToken
     } = req.body;
 
     // SEC-19/SEC-20: providerId is no longer required. Since SEC-19 the canonical id
@@ -369,6 +373,20 @@ const socialLoginHandler = async (req, res) => {
 
     if (!email) {
       return res.status(400).json({ error: 'Could not determine email from social provider' });
+    }
+
+    // Resolve a staff invite, if one was presented. Two conditions, both required:
+    //   * the provider itself vouches for the email (providerEmailVerified), and
+    //   * that verified email is the one the invite was issued to.
+    // Without the first, anyone could claim an invite by asserting an address; without the
+    // second, any valid invite token would bind any Google account to that practice.
+    let invite = null;
+    if (inviteToken) {
+      const candidate = await findUsableInvite(pool, inviteToken);
+      if (candidate && providerEmailVerified &&
+          candidate.email.toLowerCase() === String(verified.email).toLowerCase()) {
+        invite = candidate;
+      }
     }
 
     // SEC-19: match ONLY on the provider-verified canonical id — never the
@@ -436,6 +454,30 @@ const socialLoginHandler = async (req, res) => {
         return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
       }
 
+      // An existing but unbound account (created by social signup before invites existed)
+      // adopts the practice when it presents a matching invite. Only ever fills a NULL —
+      // an invite can never move a user from one practice to another.
+      if (invite && !user.practice_id) {
+        const bindClient = await pool.connect();
+        try {
+          await bindClient.query('BEGIN');
+          if (await claimInvite(bindClient, invite.id, user.id)) {
+            const upd = await bindClient.query(
+              `UPDATE users SET practice_id = $2, role = $3, updated_at = NOW()
+                WHERE id = $1 AND practice_id IS NULL RETURNING *`,
+              [user.id, invite.practice_id, invite.role]
+            );
+            if (upd.rows[0]) user = upd.rows[0];
+          }
+          await bindClient.query('COMMIT');
+        } catch (bindErr) {
+          await bindClient.query('ROLLBACK').catch(() => {});
+          console.error('[auth] invite binding failed:', bindErr.message);
+        } finally {
+          bindClient.release();
+        }
+      }
+
       // Update tokens
       await pool.query(`
         UPDATE social_auth
@@ -491,19 +533,34 @@ const socialLoginHandler = async (req, res) => {
           const sl_firstName = firstName || '';
           const sl_lastName = lastName || '';
 
+          // An invite makes this a STAFF signup: the account is created with the inviting
+          // practice's id and role. Without one it stays a patient self-registration, as
+          // before. practice_id set here is what binds every later request to a tenant —
+          // an unbound user resolves to `public`, which holds no tenant tables.
           const newUserResult = await sl_client.query(`
-            INSERT INTO users (id, email, first_name, last_name, role, status, avatar, created_at, updated_at)
-            VALUES (gen_random_uuid(), $1, $2, $3, 'patient', 'active', $4, NOW(), NOW())
+            INSERT INTO users (id, email, first_name, last_name, role, status, avatar, practice_id, created_at, updated_at)
+            VALUES (gen_random_uuid(), $1, $2, $3, $5, 'active', $4, $6, NOW(), NOW())
             RETURNING *
           `, [
             email,
             sl_firstName,
             sl_lastName,
-            `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase()
+            `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase(),
+            invite ? invite.role : 'patient',
+            invite ? invite.practice_id : null
           ]);
 
           user = newUserResult.rows[0];
 
+          if (invite) {
+            if (!(await claimInvite(sl_client, invite.id, user.id))) {
+              throw new Error('This invite has already been used.');
+            }
+          }
+
+          // Staff do not get a patient chart. Skip straight past patient/role creation —
+          // the rest of this block is the patient self-registration path.
+          if (!invite) {
           // Create patient record — patients.id = users.id in current schema
           const sl_patientCheck = await sl_client.query(
             'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
@@ -531,6 +588,7 @@ const socialLoginHandler = async (req, res) => {
               [user.id, sl_roleResult.rows[0].id]
             );
           }
+          } // end patient self-registration path
 
           // Create social auth entry — set both user_id and patient_id to the same UUID
           // (patients.id = users.id in current schema, so both columns hold user.id)
@@ -619,7 +677,9 @@ router.post('/oauth/microsoft/exchange', async (req, res) => {
 
     // Delegate to the existing social-login path. providerId is intentionally omitted:
     // SEC-19 resolves the canonical id from the provider itself, never from the client.
-    req.body = { provider: 'microsoft', providerId: null, accessToken, refreshToken, profileData: {} };
+    // Preserve the invite token: rebuilding req.body wholesale would drop it, and the
+    // staff binding would be silently lost on the code-exchange path.
+    req.body = { provider: 'microsoft', providerId: null, accessToken, refreshToken, profileData: {}, inviteToken: (req.body || {}).inviteToken };
     return socialLoginHandler(req, res);
   } catch (err) {
     if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
@@ -635,7 +695,7 @@ router.post('/oauth/google/exchange', async (req, res) => {
 
     // Delegate to the existing social-login path. providerId is intentionally omitted:
     // SEC-19 resolves the canonical id from the provider itself, never from the client.
-    req.body = { provider: 'google', providerId: null, accessToken, refreshToken, profileData: {} };
+    req.body = { provider: 'google', providerId: null, accessToken, refreshToken, profileData: {}, inviteToken: (req.body || {}).inviteToken };
     return socialLoginHandler(req, res);
   } catch (err) {
     if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });

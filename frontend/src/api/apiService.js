@@ -829,10 +829,12 @@ const api = {
   // SEC-20: authorization-code exchange. The browser only ever handles a single-use
   // code; the provider's access token is redeemed server-side with the client secret and
   // never enters JavaScript.
-  exchangeGoogleCode: async (code, redirectUri) => {
+  // `inviteToken` binds the new account to the inviting practice. Without it an OAuth
+  // signup has no practice and lands in an empty workspace.
+  exchangeGoogleCode: async (code, redirectUri, inviteToken) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/google/exchange`, {
       method: 'POST',
-      body: JSON.stringify({ code, redirectUri }),
+      body: JSON.stringify({ code, redirectUri, inviteToken }),
     });
     if (!response.ok) {
       const e = await response.json().catch(() => ({}));
@@ -840,10 +842,10 @@ const api = {
     }
     return response.json();
   },
-  exchangeMicrosoftCode: async (code, redirectUri, codeVerifier) => {
+  exchangeMicrosoftCode: async (code, redirectUri, codeVerifier, inviteToken) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/microsoft/exchange`, {
       method: 'POST',
-      body: JSON.stringify({ code, redirectUri, codeVerifier }),
+      body: JSON.stringify({ code, redirectUri, codeVerifier, inviteToken }),
     });
     if (!response.ok) {
       const e = await response.json().catch(() => ({}));
@@ -3649,6 +3651,78 @@ const api = {
   },
   // SEC-16: revoke the session server-side before dropping local state. Bumps the
   // account's token_version (invalidating this and any other clinician JWT) and clears
+
+  // ── Self-serve signup (public — no auth header) ─────────────────────────────
+  signupPlans: async () => {
+    const r = await fetch(`${API_BASE_URL}/signup/plans`);
+    if (!r.ok) throw new Error('Failed to load plans');
+    return r.json();
+  },
+
+  checkPromoCode: async (code) => {
+    const r = await fetch(`${API_BASE_URL}/signup/promo/${encodeURIComponent(code)}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Invalid code');
+    return r.json();
+  },
+
+  startSignup: async (payload) => {
+    const r = await fetch(`${API_BASE_URL}/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Signup failed');
+    return data;
+  },
+
+  signupStatus: async (intentId) => {
+    const r = await fetch(`${API_BASE_URL}/signup/${intentId}/status`);
+    if (!r.ok) throw new Error('Failed to check signup status');
+    return r.json();
+  },
+
+  // ── Staff invites ──────────────────────────────────────────────────────────
+  lookupInvite: async (token) => {
+    const r = await fetch(`${API_BASE_URL}/invites/lookup/${encodeURIComponent(token)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'This invite is no longer valid.');
+    return data;
+  },
+
+  acceptInvite: async (payload) => {
+    const r = await fetch(`${API_BASE_URL}/invites/accept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to accept invite');
+    return data;
+  },
+
+  listInvites: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/invites`);
+    if (!r.ok) throw new Error('Failed to load invites');
+    return r.json();
+  },
+
+  createInvite: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/invites`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to create invite');
+    return data;
+  },
+
+  revokeInvite: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/invites/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Failed to revoke invite');
+    return r.json();
+  },
+
   // portal sessions. Best-effort: local logout still proceeds if the request fails.
   logout: async () => {
     try {

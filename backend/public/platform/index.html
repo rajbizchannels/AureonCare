@@ -44,6 +44,7 @@
   <section id="consoleView" hidden>
     <nav class="tabs" id="tabs">
       <button data-tab="tenants" class="active">Tenants</button>
+      <button data-tab="plans">Plans</button>
       <button data-tab="audit">Platform audit</button>
       <button data-tab="security">Security</button>
     </nav>
@@ -73,6 +74,16 @@
       <h2>Platform audit trail</h2>
       <p class="muted small">Append-only. Records operator actions, not clinical activity.</p>
       <div id="auditList" class="list"></div>
+    </div>
+
+    <!-- Plans -->
+    <div class="tab" data-panel="plans" hidden>
+      <h2>Self-serve plans</h2>
+      <p class="muted small">
+        A plan needs a Stripe Price id before customers can buy it. This is configured once
+        per plan — signups themselves need no operator action.
+      </p>
+      <div id="plansList" class="list"></div>
     </div>
 
     <!-- Security -->

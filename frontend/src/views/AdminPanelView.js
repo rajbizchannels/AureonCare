@@ -62,6 +62,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import InviteStaffPanel from '../components/InviteStaffPanel';
 import CredentialModal from '../components/modals/CredentialModal';
 import BackupDestinationModal from '../components/modals/BackupDestinationModal';
 import { useAudit } from '../hooks/useAudit';
@@ -2421,6 +2422,9 @@ const AdminPanelView = ({
    */
   const renderUserManagementTab = () => (
     <div className="space-y-6">
+
+      {/* Self-service onboarding: an admin adds colleagues without any operator action. */}
+      <InviteStaffPanel theme={theme} api={api} addNotification={addNotification} />
 
       {/* ── My Preferences Card ─────────────────────────────── */}
       <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>

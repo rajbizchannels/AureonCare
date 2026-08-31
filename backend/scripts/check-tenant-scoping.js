@@ -27,6 +27,10 @@ const RAW_POOL_ALLOWLIST = new Set([
   'medications.js', 'plans.js',                          // shared master / control
   'stripeSettings.js', 'stripeWebhook.js',               // control-plane billing config
   'platform.js',                                         // control-plane console: operates on control.* + explicit withTenant (break-glass)
+  // Onboarding runs BEFORE a tenant exists (signup) or acts on global tables only
+  // (invites: public.staff_invites, public.users, public.practices). Neither touches a
+  // tenant table, and signup has no authenticated user to resolve a tenant from.
+  'signup.js', 'invites.js',
 ]);
 
 // Tenant table set, parsed from the migrations that populate control.tenant_tables.

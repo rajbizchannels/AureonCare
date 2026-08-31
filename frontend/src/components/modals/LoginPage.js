@@ -4,7 +4,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
 import { microsoftOAuthConfig } from '../../config/oauthConfig';
 
-const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
+const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister, onCreatePractice }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -244,6 +244,17 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
               Register here
             </button>
           </p>
+          {onCreatePractice && (
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Running a practice?{' '}
+              <button
+                onClick={onCreatePractice}
+                className="text-cyan-500 hover:text-cyan-400 font-medium transition-colors"
+              >
+                Start a subscription
+              </button>
+            </p>
+          )}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className={`text-sm ${theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-600 hover:text-gray-700'}`}
