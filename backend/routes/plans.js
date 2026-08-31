@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const router = express.Router();
 router.use(authenticate);
 
@@ -53,8 +53,16 @@ router.get('/current', async (req, res) => {
   }
 });
 
-// Update organization plan (admin only)
-router.put('/current', async (req, res) => {
+// Update organization plan (admin only).
+//
+// The comment said "admin only" but nothing enforced it: any authenticated user — a
+// patient-portal account included — could change the workspace's plan. It writes the
+// LEGACY global organization_settings row, which is shared by every tenant and is what
+// plan enforcement falls back to when a tenant has no control.subscriptions row, so an
+// unprivileged caller could raise (or drop) limits for everyone. Real entitlements now
+// come from control.subscriptions, which only a platform operator or a paid Stripe
+// subscription can change.
+router.put('/current', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { plan_id, auto_renew } = req.body;
@@ -206,8 +214,12 @@ router.get('/features', async (req, res) => {
   }
 });
 
-// Purchase additional provider seats
-router.post('/provider-seats', async (req, res) => {
+// Purchase additional provider seats (admin only).
+//
+// Same defect as PUT /current: it increments purchased seats on the shared
+// organization_settings row with no authorization at all, so any signed-in user could
+// grant themselves capacity nobody paid for.
+router.post('/provider-seats', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { additionalSeats } = req.body;
