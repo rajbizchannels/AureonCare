@@ -176,6 +176,57 @@ The isolation machinery is complete, but these are worth confirming deliberately
 
 ---
 
+# Self-serve signup
+
+A customer can now subscribe, pay and start working without any operator action:
+
+```
+/signup  ->  Stripe Checkout  ->  webhook provisions the tenant  ->  /signup/complete  ->  sign in
+```
+
+Nothing is created before payment: the form stores a *signup intent*, and the tenant,
+subscription and admin user are provisioned by Stripe's **signed webhook**, not by the
+browser returning to the success URL. A customer who closes the tab still gets their
+workspace; a forged redirect gets nothing.
+
+## What must be configured once
+
+- [ ] `AC_STRIPE_SK` — the **platform** Stripe secret key (clinics paying you). This is a
+      different account from the per-clinic keys in Settings → Stripe, which are for
+      clinics collecting money from *their* patients. Platform billing never reads those.
+- [ ] `AC_STRIPE_WHS` — webhook signing secret, with `checkout.session.completed` and the
+      `customer.subscription.*` events subscribed
+- [ ] `FRONTEND_URL` — used to build the checkout return URLs
+- [ ] In the console's **Plans** tab, give each sellable plan a **Stripe Price id** and tick
+      *Sell on the public signup page*. A plan without a price id cannot be self-served.
+
+Coupons are Stripe **promotion codes**, managed in the Stripe dashboard — one source of
+truth for what a code is worth and how often it may be used. The signup form previews the
+discount and Checkout also lets the customer enter one.
+
+Card details never reach this application, which keeps the deployment in PCI **SAQ-A**.
+
+## Staff onboarding
+
+An admin invites colleagues from **Settings → User Management → Invite team members**. The
+invite is what binds a new account to a practice — including accounts created with Google
+or Microsoft. Previously an OAuth signup had `practice_id` NULL, resolved to the `public`
+schema (which holds no tenant tables after the SEC-05 cutover) and hit fail-closed guards
+everywhere.
+
+Only the SHA-256 of an invite token is stored, so a database leak yields no usable invites,
+and the raw link is shown exactly once. Server-side, an invite is honoured only when the
+provider itself vouches for the email *and* that verified address matches the invited one —
+so a valid token cannot bind somebody else's Google account.
+
+## Routing
+
+`/signup`, `/signup/complete` and `/accept-invite` are SPA routes served before the auth
+gate. `vercel.json` carries the rewrites; replicate them behind your own proxy or those
+paths will 404.
+
+---
+
 # Accessing the super-admin console
 
 The control plane has two front doors onto the same API (`/api/platform/*`):
