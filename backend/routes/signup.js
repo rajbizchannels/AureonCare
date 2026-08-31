@@ -31,6 +31,25 @@ const signupLimiter = rateLimit({
   store: storeFor('signup'),
 });
 
+/**
+ * A missing table or column here means migration 075 has not been applied — the single
+ * most likely reason for a 500 on a freshly deployed signup flow. Say so, rather than
+ * leaving an operator to guess from a generic error.
+ */
+const SCHEMA_ERRORS = new Set(['42703', '42P01', '3F000']);
+function schemaOutOfDate(err, res, what) {
+  if (!err || !SCHEMA_ERRORS.has(err.code)) return false;
+  console.error(
+    `[signup] ${what} failed: the database schema is out of date (${err.code}: ${err.message}).\n` +
+    '  Migration 075_self_serve_signup.sql has almost certainly not been applied.\n' +
+    '  Run: node backend/run-migrations.js'
+  );
+  res.status(503).json({
+    error: 'Signup is not available yet: the database schema is out of date. Please contact support.',
+  });
+  return true;
+}
+
 const APP_URL = () =>
   (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
 
@@ -46,6 +65,7 @@ router.get('/plans', async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
+    if (schemaOutOfDate(err, res, 'loading plans')) return;
     console.error('[signup] plans error:', err);
     res.status(500).json({ error: 'Failed to load plans' });
   }
@@ -151,6 +171,7 @@ router.post('/', signupLimiter, async (req, res) => {
 
     res.status(201).json({ intentId, checkoutUrl: session.url });
   } catch (err) {
+    if (schemaOutOfDate(err, res, 'signup')) return;
     console.error('[signup] error:', err);
     res.status(500).json({ error: 'Signup failed. Please try again.' });
   }
@@ -172,6 +193,7 @@ router.get('/:id/status', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Signup not found' });
     res.json({ status: rows[0].status, ready: rows[0].status === 'completed' });
   } catch (err) {
+    if (schemaOutOfDate(err, res, 'checking signup status')) return;
     console.error('[signup] status error:', err);
     res.status(500).json({ error: 'Failed to check signup status' });
   }

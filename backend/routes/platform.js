@@ -14,7 +14,25 @@ const { storeFor } = require('../middleware/rateLimitStore');
 let speakeasy;
 try { speakeasy = require('speakeasy'); } catch (_) { speakeasy = null; } // MFA optional if lib absent
 
-const router = express.Router();
+// Express 4 does not catch rejections from `async` handlers: an unhandled rejection
+// terminates the PROCESS, taking the clinical application down with it — a single missing
+// column here would 500 the console and then kill the API for every patient-facing screen.
+// Most handlers in this file were written without try/catch, so rather than rely on each
+// one remembering, every handler registered on this router is wrapped once, here.
+const baseRouter = express.Router();
+const wrapHandler = (h) =>
+  (typeof h === 'function' && h.length < 4
+    ? (req, res, next) => { try { return Promise.resolve(h(req, res, next)).catch(next); } catch (e) { return next(e); } }
+    : h);
+const router = new Proxy(baseRouter, {
+  get(target, prop, recv) {
+    const orig = Reflect.get(target, prop, recv);
+    if (typeof orig === 'function' && ['get', 'post', 'put', 'patch', 'delete', 'use', 'all'].includes(prop)) {
+      return (...args) => orig.call(target, ...args.map(wrapHandler));
+    }
+    return typeof orig === 'function' ? orig.bind(target) : orig;
+  },
+});
 const { signPlatformToken, requirePlatformAdmin, requireSecret } = require('../middleware/platformAuth');
 const { logPlatformAction } = require('../services/platformAudit');
 const { withTenant } = require('../db/tenantClient');
@@ -327,4 +345,20 @@ router.put('/tenants/:id/subscription', async (req, res) => {
   res.json(rows[0]);
 });
 
-module.exports = router;
+// Anything a handler throws lands here as JSON, not as Express's HTML error page — and,
+// critically, not as a process exit. A missing column almost always means a migration has
+// not been applied, so say that rather than emitting a bare 500.
+baseRouter.use((err, req, res, _next) => {
+  const missingSchema = err && (err.code === '42703' || err.code === '42P01');
+  if (missingSchema) {
+    console.error(`[platform] schema out of date (${err.code}): ${err.message}\n` +
+      '  Run: node backend/run-migrations.js');
+    return res.status(503).json({
+      error: 'The database schema is out of date. Run the pending migrations (node backend/run-migrations.js).',
+    });
+  }
+  console.error('[platform] unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+module.exports = baseRouter;
