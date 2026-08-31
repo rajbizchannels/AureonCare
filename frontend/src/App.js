@@ -3,6 +3,7 @@ import { Bot, X, AlertCircle } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Context
 import { AppProvider, useApp } from './context/AppContext';
@@ -1457,6 +1458,7 @@ export default function AppWithProvider() {
       <MsalProvider instance={msalInstance}>
         <AppProvider>
           <App />
+          <SpeedInsights />
         </AppProvider>
       </MsalProvider>
     </GoogleOAuthProvider>
