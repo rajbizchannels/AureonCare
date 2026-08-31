@@ -207,6 +207,10 @@ app.use('/platform', express.static(path.join(__dirname, 'public/platform'), {
   },
 }));
 app.use('/api/auth', authLimiter, require('./routes/auth'));
+// Public self-serve signup (plans, coupon preview, checkout) and staff invites. Both are
+// partly unauthenticated by design and carry their own rate limits.
+app.use('/api/signup', require('./routes/signup'));
+app.use('/api/invites', require('./routes/invites').router);
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/appointment-types', require('./routes/appointment-types'));

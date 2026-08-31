@@ -78,6 +78,42 @@ async function candidateTenantsForEmail(pool, email) {
   return [await defaultTenant(pool)];
 }
 
+/**
+ * Every active tenant, cheapest-first for a bounded search. Used only as a last resort by
+ * the social portal login, which has a user id but no email route to narrow with.
+ * @returns {Promise<Array<{tenantId: string, schemaName: string}>>}
+ */
+async function allActiveTenants(pool, limit = 100) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, schema_name FROM control.tenants
+        WHERE status = 'active' AND schema_name IS NOT NULL
+        ORDER BY created_at ASC LIMIT $1`, [limit]
+    );
+    return rows.map((r) => ({ tenantId: r.id, schemaName: r.schema_name }));
+  } catch (err) {
+    console.warn('[portalRouting] tenant enumeration failed:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Search order for a portal login that knows the patient's id but cannot narrow by email:
+ * the blind-index candidates first (one query, usually exactly right), then the default
+ * tenant, then every other active tenant. Deduplicated, so a hit is never checked twice.
+ */
+async function searchOrderForPatient(pool, email) {
+  const seen = new Set();
+  const out = [];
+  const add = (t) => {
+    if (t && t.tenantId && !seen.has(t.tenantId)) { seen.add(t.tenantId); out.push(t); }
+  };
+  if (email) (await candidateTenantsForEmail(pool, email)).forEach(add);
+  add(await defaultTenant(pool));
+  (await allActiveTenants(pool)).forEach(add);
+  return out;
+}
+
 /** Record where a session lives, so the next request can route without touching PHI. */
 async function registerSession(pool, tokenHash, tenantId, expiresAt) {
   if (!tenantId) return;
@@ -109,5 +145,5 @@ async function registerIdentity(pool, email, tenantId) {
 
 module.exports = {
   tenantForSession, candidateTenantsForEmail, registerSession, forgetSession,
-  registerIdentity, defaultTenant,
+  registerIdentity, defaultTenant, allActiveTenants, searchOrderForPatient,
 };

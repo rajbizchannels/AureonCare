@@ -20,10 +20,10 @@ const { logPlatformAction } = require('../services/platformAudit');
 const { withTenant } = require('../db/tenantClient');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 const { invalidateEntitlements } = require('../services/entitlements');
+const { provisionTenant } = require('../services/tenantProvisioning');
 const { issuePlatformCookies, clearPlatformCookies } = require('../utils/authCookies');
 
 const clientIp = (req) => req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null;
-const slugify = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40);
 
 // ── Operator login (rate limited) ─────────────────────────────────────────────
 const loginLimiter = rateLimit({
@@ -127,40 +127,23 @@ router.get('/tenants/:id', async (req, res) => {
 
 router.post('/tenants', async (req, res) => {
   const pool = req.app.locals.pool;
-  const { name, planTier, country, timezone } = req.body || {};
+  const { name, planTier, planId, country, timezone } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name is required' });
 
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    const { rows: pr } = await client.query(
-      `INSERT INTO public.practices (id, name, plan_tier, country, timezone)
-       VALUES (gen_random_uuid(), $1, COALESCE($2,'professional'), $3, $4) RETURNING id`,
-      [name, planTier || null, country || null, timezone || null]);
-    const practiceId = pr[0].id;
-    const schema = 'tenant_' + practiceId.replace(/-/g, '');
-    await client.query('SELECT control.provision_schema($1)', [schema]);
-
-    let slug = slugify(name) || ('t' + practiceId.slice(0, 8));
-    // Ensure slug uniqueness.
-    const exists = await client.query('SELECT 1 FROM control.tenants WHERE slug = $1', [slug]);
-    if (exists.rows.length) slug = `${slug}-${practiceId.slice(0, 6)}`;
-
-    const { rows: tr } = await client.query(
-      `INSERT INTO control.tenants (slug, name, schema_name, practice_id, plan_tier, country, timezone, status)
-       VALUES ($1, $2, $3, $4, COALESCE($5,'professional'), $6, $7, 'active') RETURNING *`,
-      [slug, name, schema, practiceId, planTier || null, country || null, timezone || null]);
-    await client.query('COMMIT');
-
+    // Shared with the self-serve signup path so an operator-created tenant is identical to
+    // a customer-created one — including the control.subscriptions row, whose absence made
+    // entitlement checks fall open to the legacy global settings.
+    const { tenant } = await provisionTenant(pool, {
+      name, planTier, planId, country, timezone,
+    });
     await logPlatformAction(pool, { operatorId: req.operator.id, action: 'tenant.create',
-      targetType: 'tenant', targetId: tr[0].id, tenantId: tr[0].id, detail: { name, schema }, ip: clientIp(req) });
-    res.status(201).json(tr[0]);
+      targetType: 'tenant', targetId: tenant.id, tenantId: tenant.id,
+      detail: { name, schema: tenant.schema_name }, ip: clientIp(req) });
+    res.status(201).json(tenant);
   } catch (e) {
-    await client.query('ROLLBACK');
     console.error('Tenant create error:', e);
     res.status(500).json({ error: 'Failed to create tenant' });
-  } finally {
-    client.release();
   }
 });
 
@@ -248,8 +231,43 @@ const VALID_SUB_STATUS = new Set(['trialing', 'active', 'past_due', 'canceled'])
 router.get('/plans', async (req, res) => {
   const pool = req.app.locals.pool;
   const { rows } = await pool.query(
-    'SELECT id, name, display_name, price, billing_cycle, max_users, max_patients, max_providers, features FROM public.subscription_plans WHERE is_active = true ORDER BY price NULLS FIRST, id');
+    `SELECT id, name, display_name, price, billing_cycle, max_users, max_patients, max_providers,
+            features, self_serve, stripe_price_id, trial_days
+       FROM public.subscription_plans WHERE is_active = true ORDER BY price NULLS FIRST, id`);
   res.json(rows);
+});
+
+// Make a plan buyable from the public signup page. This is the only platform-side step in
+// self-serve onboarding: a plan needs a Stripe Price before a customer can check out. It
+// is configured once per plan, not per customer — no operator is involved in a signup.
+router.put('/plans/:id', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { selfServe, stripePriceId, trialDays } = req.body || {};
+  if (selfServe && !stripePriceId) {
+    return res.status(400).json({ error: 'A Stripe price id is required to sell a plan self-serve.' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `UPDATE public.subscription_plans
+          SET self_serve = COALESCE($2, self_serve),
+              stripe_price_id = CASE WHEN $3::text IS NOT NULL THEN NULLIF($3,'') ELSE stripe_price_id END,
+              trial_days = COALESCE($4, trial_days),
+              updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+        RETURNING id, name, display_name, price, self_serve, stripe_price_id, trial_days`,
+      [req.params.id, typeof selfServe === 'boolean' ? selfServe : null,
+       stripePriceId === undefined ? null : String(stripePriceId),
+       trialDays === undefined || trialDays === null ? null : Number(trialDays)]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Plan not found' });
+    await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.update',
+      targetType: 'plan', targetId: String(req.params.id),
+      detail: { selfServe, stripePriceId, trialDays }, ip: clientIp(req) });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('Plan update error:', e);
+    res.status(500).json({ error: 'Failed to update plan' });
+  }
 });
 
 router.get('/tenants/:id/subscription', async (req, res) => {

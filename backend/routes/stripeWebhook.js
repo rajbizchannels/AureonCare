@@ -20,7 +20,11 @@ async function resolveWebhookSecret(pool) {
       'SELECT webhook_secret, use_platform_integration FROM stripe_integration_settings LIMIT 1'
     );
     const row = result.rows[0];
-    if (!row) return null;
+    // No settings row at all is the normal state for a deployment that only does platform
+    // billing (clinics paying us) and has never configured per-clinic Stripe. Returning
+    // null here meant the webhook could never be verified and every event was rejected —
+    // including the signup events that provision tenants.
+    if (!row) return process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
 
     if (row.use_platform_integration) {
       return process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
@@ -141,7 +145,97 @@ async function handlePaymentIntentFailed(pool, paymentIntent) {
   console.log(`[stripe-webhook] payment_intent.payment_failed: ${id} — ${reason}`);
 }
 
+/**
+ * Self-serve signup completing: provision the tenant the customer just paid for.
+ *
+ * Provisioning is driven from here rather than from the browser hitting the success URL,
+ * so a customer who closes the tab still gets their workspace and a forged redirect gets
+ * nothing. Returns true if this session was a platform signup (and so is not a clinic
+ * payment).
+ *
+ * Idempotent: Stripe retries webhooks, and the row is claimed with a conditional UPDATE so
+ * two concurrent deliveries cannot both provision.
+ */
+async function handleSignupCheckout(pool, session) {
+  const intentId = session.client_reference_id;
+  if (!intentId) return false;
+
+  // Claim the intent. Only the delivery that flips pending -> provisioning proceeds.
+  const { rows } = await pool.query(
+    `UPDATE control.signup_intents
+        SET status = 'provisioning',
+            stripe_customer_id = COALESCE($2, stripe_customer_id),
+            stripe_subscription_id = COALESCE($3, stripe_subscription_id)
+      WHERE id = $1 AND status = 'pending'
+      RETURNING *`,
+    [intentId,
+     typeof session.customer === 'string' ? session.customer : session.customer?.id || null,
+     typeof session.subscription === 'string' ? session.subscription : session.subscription?.id || null]
+  );
+  if (rows.length === 0) {
+    // Either not one of ours, or already handled — check which, so a genuine clinic
+    // payment still falls through to the payments path below.
+    const { rows: known } = await pool.query(
+      'SELECT 1 FROM control.signup_intents WHERE id = $1', [intentId]
+    );
+    if (known.length) {
+      console.log(`[stripe-webhook] signup ${intentId} already provisioned, ignoring retry`);
+      return true;
+    }
+    return false;
+  }
+  const intent = rows[0];
+
+  try {
+    const { provisionTenant } = require('../services/tenantProvisioning');
+    const { tenant, adminUserId } = await provisionTenant(pool, {
+      name: intent.practice_name,
+      planId: intent.plan_id,
+      country: intent.country,
+      timezone: intent.timezone,
+      subscription: {
+        status: 'active',
+        stripeCustomerId: intent.stripe_customer_id,
+        stripeSubscriptionId: intent.stripe_subscription_id,
+      },
+      admin: {
+        email: intent.email,
+        passwordHash: intent.password_hash,
+        firstName: intent.first_name,
+        lastName: intent.last_name,
+      },
+    });
+
+    await pool.query(
+      `UPDATE control.signup_intents
+          SET status='completed', tenant_id=$2, completed_at=now() WHERE id=$1`,
+      [intentId, tenant.id]
+    );
+
+    // The platform trail records tenants appearing without an operator having acted.
+    await pool.query(
+      `INSERT INTO control.audit_log (operator_id, action, target_type, target_id, tenant_id, detail)
+       VALUES (NULL, 'tenant.self_serve_create', 'tenant', $1, $1, $2)`,
+      [tenant.id, JSON.stringify({ email: intent.email, practice: intent.practice_name, adminUserId })]
+    ).catch((e) => console.error('[stripe-webhook] signup audit failed:', e.message));
+
+    console.log(`[stripe-webhook] provisioned tenant ${tenant.slug} for ${intent.email}`);
+  } catch (err) {
+    // Leave a durable trace: the customer has paid, so this needs operator attention
+    // rather than a silent failure.
+    await pool.query(
+      `UPDATE control.signup_intents SET status='failed', failure_reason=$2 WHERE id=$1`,
+      [intentId, String(err.message).slice(0, 500)]
+    ).catch(() => {});
+    console.error(`[stripe-webhook] PROVISIONING FAILED for paid signup ${intentId}:`, err);
+  }
+  return true;
+}
+
 async function handleCheckoutSessionCompleted(pool, session) {
+  // A platform signup is not a clinic payment — it has no `payments` row to reconcile.
+  if (await handleSignupCheckout(pool, session)) return;
+
   const { id, payment_intent, amount_total, customer_details } = session;
   const amountDecimal = ((amount_total || 0) / 100).toFixed(2);
 

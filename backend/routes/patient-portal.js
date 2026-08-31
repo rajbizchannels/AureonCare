@@ -13,7 +13,7 @@ const { resolveTenantForUser } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
 const {
   tenantForSession, candidateTenantsForEmail, registerSession, forgetSession, registerIdentity,
-  defaultTenant,
+  defaultTenant, searchOrderForPatient,
 } = require('../services/portalRouting');
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
@@ -181,13 +181,37 @@ const portalLoginHandler = async (req, res) => {
       }
 
       if (socialAuth.rows.length > 0) {
-        const patientResult = await pool.query(`
-          SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
-          FROM patients p
-          LEFT JOIN users u ON p.id = u.id
-          WHERE p.id = $1 AND p.portal_enabled = true
-        `, [socialAuth.rows[0].user_id]);
-        patient = patientResult.rows[0];
+        const patientId = socialAuth.rows[0].user_id;
+        // SEC-05: social_auth is global, but `patients` lives in a tenant schema — so the
+        // patient row must be located, not assumed. This previously ran unscoped and so
+        // always read the default tenant, meaning a patient at any other clinic could not
+        // sign in socially (and, on a single-tenant install, appeared to work by accident).
+        //
+        // Search the blind-index candidates for the verified email first, then the default
+        // tenant, then any remaining active tenant. The id is a primary key in every
+        // schema, so each probe is a single index lookup.
+        const order = await searchOrderForPatient(req.app.locals.pool, verified.email);
+        for (const cand of order) {
+          const candDb = makeTenantDb(req.app.locals.pool, cand.schemaName, req.res);
+          try {
+            const r = await candDb.query(`
+              SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
+              FROM patients p
+              LEFT JOIN users u ON p.id = u.id
+              WHERE p.id = $1 AND p.portal_enabled = true
+            `, [patientId]);
+            if (r.rows[0]) {
+              patient = r.rows[0];
+              tenantDb = candDb;
+              loginTenantId = cand.tenantId;
+              break;
+            }
+          } catch (err) {
+            // A tenant whose schema is mid-migration must not block a login that belongs
+            // to a different tenant.
+            console.warn(`[portal] social lookup failed in ${cand.schemaName}:`, err.message);
+          }
+        }
       } else {
         return res.status(404).json({ error: 'Social account not linked to a patient' });
       }
@@ -257,12 +281,19 @@ const portalLoginHandler = async (req, res) => {
     const sessionTokenHash = hashToken(sessionToken);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Social login does not go through the candidate-tenant search, so fall back to the
-    // default tenant; without a routing entry the next request could not find this session.
+    // Last-resort fallback. Both login paths now identify their own tenant, so this only
+    // fires when the control plane could not answer at all — without a routing entry the
+    // next request could not find this session.
     if (!loginTenantId) {
       const d = await defaultTenant(req.app.locals.pool);
       loginTenantId = d.tenantId;
     }
+
+    // Record the identity route so the NEXT login for this address is a single indexed
+    // lookup rather than a search. Social logins previously never populated this, which is
+    // why they had nothing to route on. Best-effort: registerIdentity swallows its own
+    // errors, and a missing route only costs a slower next login.
+    await registerIdentity(req.app.locals.pool, patient.email || email, loginTenantId);
 
     // The session row lives in the tenant that authenticated this login.
     await tenantDb.query(`
