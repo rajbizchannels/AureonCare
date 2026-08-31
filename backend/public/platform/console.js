@@ -91,6 +91,58 @@
     showLogin();
   });
 
+  // ── plans ──────────────────────────────────────────────────────────────────
+  // Everything the server returns is escaped through esc(); this page never builds
+  // markup from unescaped data.
+  async function loadPlans() {
+    var el = $('plansList');
+    el.textContent = 'Loading…';
+    try {
+      var plans = await api('/plans');
+      if (!plans.length) { el.innerHTML = '<p class="muted">No active plans.</p>'; return; }
+      el.innerHTML = plans.map(function (p) {
+        return '<div class="card">' +
+          '<h3>' + esc(p.display_name || p.name) + '</h3>' +
+          '<p class="muted small">' + (p.price != null ? '$' + esc(p.price) : 'no price') +
+          ' · ' + esc(p.billing_cycle || 'monthly') + '</p>' +
+          '<form class="planForm" data-id="' + esc(p.id) + '">' +
+            '<label class="row"><input type="checkbox" name="selfServe"' +
+              (p.self_serve ? ' checked' : '') + ' /> Sell on the public signup page</label>' +
+            '<label>Stripe price id<input name="stripePriceId" placeholder="price_…" value="' +
+              esc(p.stripe_price_id || '') + '" /></label>' +
+            '<label>Trial days<input name="trialDays" type="number" min="0" value="' +
+              esc(p.trial_days == null ? 0 : p.trial_days) + '" /></label>' +
+            '<button type="submit" class="primary">Save</button>' +
+            '<span class="planMsg small"></span>' +
+          '</form>' +
+        '</div>';
+      }).join('');
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  document.addEventListener('submit', async function (e) {
+    var form = e.target.closest('form.planForm');
+    if (!form) return;
+    e.preventDefault();
+    var msg = form.querySelector('.planMsg');
+    msg.textContent = 'Saving…';
+    try {
+      await api('/plans/' + encodeURIComponent(form.dataset.id), {
+        method: 'PUT',
+        body: {
+          selfServe: form.selfServe.checked,
+          stripePriceId: form.stripePriceId.value.trim(),
+          trialDays: Number(form.trialDays.value || 0),
+        },
+      });
+      msg.textContent = 'Saved.';
+    } catch (err) {
+      msg.textContent = err.message;
+    }
+  });
+
   // ── tabs ───────────────────────────────────────────────────────────────────
   $('tabs').addEventListener('click', function (e) {
     var btn = e.target.closest('button[data-tab]');
@@ -104,6 +156,7 @@
     });
     if (tab === 'audit') loadAudit();
     if (tab === 'tenants') loadTenants();
+    if (tab === 'plans') loadPlans();
   });
 
   // ── tenants ────────────────────────────────────────────────────────────────

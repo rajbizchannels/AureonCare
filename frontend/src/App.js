@@ -61,6 +61,9 @@ import PublicBookingPage from './components/scheduling/PublicBookingPage';
 // Modals
 import LoginPage from './components/modals/LoginPage';
 import PatientLoginPage from './components/modals/PatientLoginPage';
+import SignupPage from './components/modals/SignupPage';
+import SignupCompletePage from './components/modals/SignupCompletePage';
+import AcceptInvitePage from './components/modals/AcceptInvitePage';
 import RegisterPage from './components/modals/RegisterPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
@@ -382,6 +385,21 @@ function App() {
     return match ? decodeURIComponent(match[1]) : null;
   }, []);
   const [showBookingLogin, setShowBookingLogin] = React.useState(false);
+
+  // Public self-serve routes. Like /book/<slug> these are served before the auth gate,
+  // because the whole point is that nobody has an account yet.
+  const publicRoute = React.useMemo(() => {
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    if (/^\/signup\/complete\/?$/.test(path)) return { kind: 'signupComplete', intentId: params.get('intent') };
+    if (/^\/signup\/?$/.test(path)) return { kind: 'signup' };
+    if (/^\/accept-invite\/?$/.test(path) && params.get('token')) {
+      return { kind: 'acceptInvite', token: params.get('token') };
+    }
+    return null;
+  }, []);
+  const [showSignup, setShowSignup] = React.useState(false);
+  const goToSignIn = React.useCallback(() => { window.location.assign('/'); }, []);
 
   // Check if URL is patient login page
   const isPatientLoginUrl = React.useMemo(() => {
@@ -760,6 +778,30 @@ function App() {
     }
   };
 
+  // ── Public self-serve pages ────────────────────────────────────────────────
+  if (publicRoute?.kind === 'signup') {
+    return <SignupPage theme={theme} onSignIn={goToSignIn} onBack={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'signupComplete') {
+    return <SignupCompletePage theme={theme} intentId={publicRoute.intentId} onSignIn={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'acceptInvite') {
+    return (
+      <AcceptInvitePage
+        theme={theme}
+        token={publicRoute.token}
+        api={api}
+        addNotification={addNotification}
+        onAccepted={goToSignIn}
+        onSignIn={goToSignIn}
+      />
+    );
+  }
+  // Reached from the "Create a practice" link on the sign-in page, without a URL change.
+  if (showSignup && !isAuthenticated) {
+    return <SignupPage theme={theme} onSignIn={() => setShowSignup(false)} onBack={() => setShowSignup(false)} />;
+  }
+
   // ── Public booking page ────────────────────────────────────────────────────
   // Open to anyone with the link. A patient may sign in from here to have their
   // details filled in; signing in happens in-place, so the session survives.
@@ -825,6 +867,7 @@ function App() {
           />
         ) : (
           <LoginPage
+            onCreatePractice={() => setShowSignup(true)}
             theme={theme}
             setTheme={setTheme}
             api={api}
