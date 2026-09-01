@@ -14,15 +14,22 @@ h1{font-size:20px;margin:0 0 4px}h2{font-size:17px;margin:0}h3{font-size:15px;ma
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
 .narrow{max-width:380px;margin:48px auto}
 label{display:block;margin-bottom:10px;font-size:13px;color:var(--muted)}
-input{width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:6px;
+input,select{width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:6px;
       font:inherit;color:var(--ink);background:#fff}
+/* The rule above is written for text fields. Without this, a checkbox is stretched to the
+   full width of its label and pushed 4px down, which is what made the Active / Sell
+   checkboxes sit out of line with their text. */
+input[type=checkbox],input[type=radio]{width:auto;margin:0;padding:0;vertical-align:middle;flex:none}
+label.check{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+label.check input{margin:0}
 button{font:inherit;cursor:pointer;border-radius:6px;padding:8px 14px;border:1px solid var(--line);background:#fff}
 button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 button.link{background:none;border:none;color:inherit;text-decoration:underline;padding:4px}
 button:disabled{opacity:.6;cursor:not-allowed}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .row.between{justify-content:space-between;margin-bottom:12px}
-.inline label{display:inline-block;width:48%;margin-right:2%}
+.inline label{display:inline-block;width:48%;margin-right:2%;vertical-align:top}
+.inline label.check{display:flex;width:100%;margin-right:0}
 .tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--line)}
 .tabs button{border:none;background:none;padding:10px 14px;border-bottom:2px solid transparent;color:var(--muted)}
 .tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}

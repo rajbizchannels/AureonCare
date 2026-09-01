@@ -92,6 +92,16 @@
   });
 
   // ── plans ──────────────────────────────────────────────────────────────────
+  // Stripe wants a lower-case ISO-4217 code; a free-text box invited typos that Stripe
+  // would only reject at push time, so the choice is constrained here instead.
+  var CURRENCIES = ["usd", "eur", "gbp", "cad", "aud", "nzd", "inr", "aed", "sgd", "chf", "jpy", "zar", "sek", "nok", "dkk"];
+  function currencyOptions(selected) {
+    var cur = String(selected || 'usd').toLowerCase();
+    return CURRENCIES.map(function (c) {
+      return '<option value="' + c + '"' + (c === cur ? ' selected' : '') + '>' + c.toUpperCase() + '</option>';
+    }).join('');
+  }
+
   // Everything the server returns is escaped through esc(); this page never builds
   // markup from unescaped data.
   async function loadPlans() {
@@ -117,12 +127,13 @@
           ' · ' + esc(p.billing_cycle || 'monthly') +
           (p.stripe_price_id ? ' · ' + esc(p.stripe_price_id) : '') + '</p>' +
           '<form class="planForm" data-id="' + esc(p.id) + '">' +
-            '<label class="row"><input type="checkbox" name="isActive"' +
-              (p.is_active ? ' checked' : '') + ' /> Active</label>' +
-            '<label class="row"><input type="checkbox" name="selfServe"' +
-              (p.self_serve ? ' checked' : '') + ' /> Sell on the public signup page</label>' +
+            '<label class="check"><input type="checkbox" name="isActive"' +
+              (p.is_active ? ' checked' : '') + ' /> <span>Active</span></label>' +
+            '<label class="check"><input type="checkbox" name="selfServe"' +
+              (p.self_serve ? ' checked' : '') + ' /> <span>Sell on the public signup page</span></label>' +
             '<label>Price<input name="price" type="number" min="0" step="0.01" value="' +
               esc(p.price == null ? '' : p.price) + '" /></label>' +
+            '<label>Currency<select name="currency">' + currencyOptions(p.currency) + '</select></label>' +
             '<label>Stripe price id<input name="stripePriceId" placeholder="price_…" value="' +
               esc(p.stripe_price_id || '') + '" /></label>' +
             '<label>Trial days<input name="trialDays" type="number" min="0" value="' +
@@ -154,6 +165,7 @@
           stripePriceId: form.stripePriceId.value.trim(),
           trialDays: Number(form.trialDays.value || 0),
           price: form.price.value === '' ? null : Number(form.price.value),
+          currency: form.currency.value,
         },
       });
       msg.textContent = 'Saved.';
