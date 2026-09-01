@@ -16,7 +16,9 @@
     "check:tenant-scoping": "node backend/scripts/check-tenant-scoping.js",
     "check:db-role": "node backend/scripts/check-db-role.js",
     "check:schema-health": "node backend/scripts/check-schema-health.js",
-    "test:sec05": "bash backend/test/sec05/run.sh"
+    "test:sec05": "bash backend/test/sec05/run.sh",
+    "test:signup": "node backend/test/signup/flow.test.js",
+    "test:plans": "node backend/test/signup/plan-change.test.js"
   },
   "dependencies": {
     "@azure/msal-browser": "^4.25.1",

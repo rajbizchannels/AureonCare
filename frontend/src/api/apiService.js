@@ -3682,6 +3682,37 @@ const api = {
     return r.json();
   },
 
+
+  // ── Subscription plans (tenant-facing) ─────────────────────────────────────
+  getSubscriptionPlans: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans`);
+    if (!r.ok) throw new Error('Failed to load plans');
+    return r.json();
+  },
+
+  getCurrentSubscription: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans/current`);
+    if (!r.ok) throw new Error('Failed to load your current plan');
+    return r.json();
+  },
+
+  previewPlanChange: async (planId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans/preview/${planId}`);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Could not price that change');
+    return d;
+  },
+
+  changePlan: async (planId, prorationDate) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans/current`, {
+      method: 'PUT',
+      body: JSON.stringify({ plan_id: planId, prorationDate }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Could not change the plan');
+    return d;
+  },
+
   // ── Staff invites ──────────────────────────────────────────────────────────
   lookupInvite: async (token) => {
     const r = await fetch(`${API_BASE_URL}/invites/lookup/${encodeURIComponent(token)}`);
