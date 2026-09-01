@@ -11,6 +11,7 @@ const { authenticate } = require('../middleware/auth');
 const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('../utils/filedDocuments');
 const { resolveTenantForUser } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
+const { withTenant } = require('../db/tenantClient');
 const {
   tenantForSession, candidateTenantsForEmail, registerSession, forgetSession, registerIdentity,
   defaultTenant, searchOrderForPatient,
@@ -191,18 +192,26 @@ const portalLoginHandler = async (req, res) => {
         // tenant, then any remaining active tenant. The id is a primary key in every
         // schema, so each probe is a single index lookup.
         const order = await searchOrderForPatient(req.app.locals.pool, verified.email);
+        let matchedSchema = null;
         for (const cand of order) {
-          const candDb = makeTenantDb(req.app.locals.pool, cand.schemaName, req.res);
           try {
-            const r = await candDb.query(`
-              SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
-              FROM patients p
-              LEFT JOIN users u ON p.id = u.id
-              WHERE p.id = $1 AND p.portal_enabled = true
-            `, [patientId]);
-            if (r.rows[0]) {
-              patient = r.rows[0];
-              tenantDb = candDb;
+            // Probe with withTenant, NOT makeTenantDb: makeTenantDb holds its pooled client
+            // until the response ends, so probing N tenants pins N connections and exhausts
+            // the pool (max 10) as soon as a deployment has more tenants than that — every
+            // social portal login then fails with a connect timeout. withTenant checks a
+            // client out and releases it per probe.
+            const row = await withTenant(req.app.locals.pool, cand.schemaName, async (c) => {
+              const r = await c.query(`
+                SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
+                FROM patients p
+                LEFT JOIN users u ON p.id = u.id
+                WHERE p.id = $1 AND p.portal_enabled = true
+              `, [patientId]);
+              return r.rows[0] || null;
+            });
+            if (row) {
+              patient = row;
+              matchedSchema = cand.schemaName;
               loginTenantId = cand.tenantId;
               break;
             }
@@ -212,6 +221,8 @@ const portalLoginHandler = async (req, res) => {
             console.warn(`[portal] social lookup failed in ${cand.schemaName}:`, err.message);
           }
         }
+        // Only the winning tenant gets a request-lifetime handle, for the session write.
+        if (matchedSchema) tenantDb = makeTenantDb(req.app.locals.pool, matchedSchema, req.res);
       } else {
         return res.status(404).json({ error: 'Social account not linked to a patient' });
       }
