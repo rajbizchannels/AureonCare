@@ -353,8 +353,16 @@ baseRouter.use((err, req, res, _next) => {
   if (missingSchema) {
     console.error(`[platform] schema out of date (${err.code}): ${err.message}\n` +
       '  Run: node backend/run-migrations.js');
+    // Name the missing object. This route is operator-only and already authenticated, so
+    // the detail leaks nothing a platform admin cannot see — and without it the message is
+    // unactionable, especially after `--adopt`, which marks migrations applied WITHOUT
+    // running them and so can hide a file the database never actually received.
     return res.status(503).json({
-      error: 'The database schema is out of date. Run the pending migrations (node backend/run-migrations.js).',
+      error: `The database schema is out of date: ${err.message}. ` +
+        'Run the pending migrations (node backend/run-migrations.js). If that reports ' +
+        'nothing to do, an earlier migration was recorded by --adopt but never applied — ' +
+        're-run that file directly.',
+      pgCode: err.code,
     });
   }
   console.error('[platform] unhandled error:', err);
