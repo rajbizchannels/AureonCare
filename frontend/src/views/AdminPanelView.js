@@ -63,6 +63,7 @@ import {
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import InviteStaffPanel from '../components/InviteStaffPanel';
+import SubscriptionPlansPanel from '../components/SubscriptionPlansPanel';
 import CredentialModal from '../components/modals/CredentialModal';
 import BackupDestinationModal from '../components/modals/BackupDestinationModal';
 import { useAudit } from '../hooks/useAudit';
@@ -75,11 +76,9 @@ import { useShellTab } from '../hooks/useShellTab';
 import {
   USER_ROLES,
   USER_STATUS,
-  PLAN_IDS,
   DEFAULT_APPOINTMENT_SETTINGS,
   DEFAULT_WORKING_HOURS,
   DEFAULT_ROLE_PERMISSIONS,
-  SUBSCRIPTION_PLANS,
   ADMIN_TABS,
   TELEHEALTH_PROVIDERS,
   VENDOR_TYPES,
@@ -314,7 +313,7 @@ const AdminPanelView = ({
   onCurrencyChange,
 }) => {
   // ==================== CONTEXT ====================
-  const { setPlanTier, updateUserPreferences, planTier, user } = useApp();
+  const { updateUserPreferences, user } = useApp();
 
   // ==================== STATE ====================
   const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, ADMIN_TABS.CLINIC);
@@ -378,7 +377,6 @@ const AdminPanelView = ({
   const [invBackups, setInvBackups] = useState([]);
   const [invBackupLoading, setInvBackupLoading] = useState(false);
 
-  const [currentPlan, setCurrentPlan] = useState(planTier || PLAN_IDS.PROFESSIONAL);
 
   // Integration settings: status + connection info (never raw tokens)
   const [telehealthStatus, setTelehealthStatus] = useState({
@@ -516,7 +514,9 @@ const AdminPanelView = ({
       { id: ADMIN_TABS.CLINIC, label: t.clinicSettings || 'Clinic Settings', icon: Building2 },
       { id: ADMIN_TABS.USERS, label: t.userManagement || 'User Management', icon: Users },
       { id: ADMIN_TABS.ROLES, label: t.rolesPermissions || 'Roles & Permissions', icon: Shield },
-      { id: ADMIN_TABS.PLANS, label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard },
+      // Billing is admin-only. The API enforces this too (authorize('admin') on
+      // PUT /api/plans/current); hiding the tab stops non-admins reaching a 403.
+      ...(isAdmin(user) ? [{ id: ADMIN_TABS.PLANS, label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard }] : []),
       { id: ADMIN_TABS.TELEHEALTH, label: t.integrations || 'Integrations', icon: Video },
       { id: ADMIN_TABS.HOURS, label: t.workingHours || 'Working Hours', icon: Clock },
       { id: ADMIN_TABS.APPOINTMENTS, label: t.appointmentSettings || 'Appointment Settings', icon: Settings },
@@ -524,7 +524,7 @@ const AdminPanelView = ({
       { id: ADMIN_TABS.ARCHIVE, label: 'Archive Management', icon: Archive },
       { id: ADMIN_TABS.AUDIT, label: 'Audit Logs', icon: FileText },
     ],
-    [t]
+    [t, user]
   );
 
   /**
@@ -568,14 +568,6 @@ const AdminPanelView = ({
     });
   }, [logViewAccess]);
 
-  /**
-   * Sync currentPlan with planTier from context
-   */
-  useEffect(() => {
-    if (planTier) {
-      setCurrentPlan(planTier);
-    }
-  }, [planTier]);
 
   /**
    * Load backup configuration on mount
@@ -4254,101 +4246,12 @@ const AdminPanelView = ({
    * Render Subscription Plans Tab
    * TODO: Extract to separate component SubscriptionPlansTab.js
    */
+  // Real plans from the API, the practice's own subscription, and a Stripe-priced
+  // proration preview before any change is committed.
   const renderSubscriptionPlansTab = () => (
-    <div className="space-y-6">
-      <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Subscription Plans
-      </h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {SUBSCRIPTION_PLANS.map((plan) => (
-          <div
-            key={plan.id}
-            className={`border rounded-lg p-6 ${
-              currentPlan === plan.id
-                ? theme === 'dark'
-                  ? 'border-blue-500 bg-blue-500/10'
-                  : 'border-blue-500 bg-blue-50'
-                : theme === 'dark'
-                ? 'border-slate-700 bg-slate-800'
-                : 'border-gray-300 bg-white'
-            } ${plan.popular ? 'relative' : ''}`}
-          >
-            {plan.popular && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="bg-purple-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                  Popular
-                </span>
-              </div>
-            )}
-
-            <div className="text-center">
-              <h3 className={`text-xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {plan.name}
-              </h3>
-              <div className="mb-4">
-                <span className={`text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  ${plan.price}
-                </span>
-                <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  /{plan.billing}
-                </span>
-              </div>
-
-              <div className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                <p>Up to {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers} users</p>
-                <p>Up to {plan.maxPatients === -1 ? 'Unlimited' : plan.maxPatients} patients</p>
-              </div>
-
-              <ul className="space-y-2 mb-6">
-                {Object.entries(plan.features).map(([feature, enabled]) => (
-                  <li
-                    key={feature}
-                    className={`flex items-center justify-center gap-2 text-sm ${
-                      enabled
-                        ? theme === 'dark'
-                          ? 'text-green-400'
-                          : 'text-green-600'
-                        : theme === 'dark'
-                        ? 'text-slate-600'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    {enabled ? <Check className="w-4 h-4" /> : <span className="w-4 h-4">-</span>}
-                    <span className="capitalize">{feature.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => {
-                  setCurrentPlan(plan.id);
-                  setPlanTier(plan.id);
-                  updateUserPreferences({ planTier: plan.id });
-                  addNotification('success', `Switched to ${plan.name}`);
-                }}
-                disabled={currentPlan === plan.id}
-                className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-                  currentPlan === plan.id
-                    ? theme === 'dark'
-                      ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
-                }`}
-              >
-                {currentPlan === plan.id ? 'Current Plan' : 'Select Plan'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <SubscriptionPlansPanel theme={theme} api={api} addNotification={addNotification} />
   );
 
-  /**
-   * Render Working Hours Tab
-   * TODO: Extract to separate component WorkingHoursTab.js
-   */
   const renderWorkingHoursTab = () => (
     <div className="space-y-6">
       <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
