@@ -20,6 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const pool = require('../db');
+const { explainConnectionError } = require('../db');
 
 // Columns added by migrations that are easy to miss and that break a visible screen.
 // Format: [table, column, "migration that adds it"].
@@ -135,5 +136,10 @@ async function main() {
 }
 
 main()
-  .catch((err) => { console.error('Check failed:', err.message); process.exitCode = 1; })
+  .catch((err) => {
+    const hint = explainConnectionError(err);
+    console.error('Check failed:', err.message);
+    if (hint) console.error('\n' + hint);
+    process.exitCode = 1;
+  })
   .finally(() => pool.end());
