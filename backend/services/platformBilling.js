@@ -181,10 +181,78 @@ async function pushPlanToStripe({
   return { productId: product.id, priceId: price.id, archivedPriceId };
 }
 
+
+/**
+ * Preview what changing a subscription to `newPriceId` costs right now.
+ *
+ * Stripe computes the proration itself — crediting the unused remainder of the current
+ * period and charging the new plan pro rata — so this asks Stripe rather than reimplementing
+ * that arithmetic, which is where a home-grown "prorata" calculation usually goes wrong
+ * (mid-period upgrades, trials, existing credit balance, tax).
+ *
+ * @returns {Promise<{amountDue: number, currency: string, prorationDate: number, lines: Array}>}
+ */
+async function previewPlanChange({ subscriptionId, newPriceId }) {
+  const s = stripe();
+  const sub = await s.subscriptions.retrieve(subscriptionId);
+  const itemId = sub.items.data[0] && sub.items.data[0].id;
+  if (!itemId) {
+    const e = new Error('That subscription has no billable item to change.');
+    e.statusCode = 409;
+    throw e;
+  }
+  const prorationDate = Math.floor(Date.now() / 1000);
+  const preview = await s.invoices.createPreview({
+    customer: typeof sub.customer === 'string' ? sub.customer : sub.customer.id,
+    subscription: subscriptionId,
+    subscription_details: {
+      items: [{ id: itemId, price: newPriceId }],
+      proration_behavior: 'create_prorations',
+      proration_date: prorationDate,
+    },
+  });
+  return {
+    amountDue: (preview.amount_due || 0) / 100,
+    currency: preview.currency,
+    prorationDate,
+    // Only the proration lines — the ones that explain the credit and the new charge.
+    lines: (preview.lines?.data || [])
+      .filter((l) => l.proration)
+      .map((l) => ({ description: l.description, amount: (l.amount || 0) / 100 })),
+  };
+}
+
+/**
+ * Move a subscription onto a different price, prorated.
+ *
+ * `proration_behavior: 'create_prorations'` is what makes the change pro rata: Stripe
+ * credits the unused part of the old plan and bills the new one for the remainder of the
+ * period. The credit/charge lands on the next invoice rather than being taken immediately,
+ * which is the conventional SaaS behaviour and avoids surprise card charges mid-period.
+ */
+async function changeSubscriptionPlan({ subscriptionId, newPriceId, prorationDate }) {
+  const s = stripe();
+  const sub = await s.subscriptions.retrieve(subscriptionId);
+  const itemId = sub.items.data[0] && sub.items.data[0].id;
+  if (!itemId) {
+    const e = new Error('That subscription has no billable item to change.');
+    e.statusCode = 409;
+    throw e;
+  }
+  return s.subscriptions.update(subscriptionId, {
+    items: [{ id: itemId, price: newPriceId }],
+    proration_behavior: 'create_prorations',
+    // Pin to the timestamp the customer was quoted, so the amount they confirmed is the
+    // amount they are billed even if they sat on the confirmation for a while.
+    ...(prorationDate ? { proration_date: prorationDate } : {}),
+  });
+}
+
 const retrieveCheckoutSession = (id) =>
   stripe().checkout.sessions.retrieve(id, { expand: ['subscription'] });
 
 module.exports = {
   isConfigured, createSubscriptionCheckout, findPromotionCode,
   describePromotionCode, retrieveCheckoutSession, pushPlanToStripe, recurringFor,
+  previewPlanChange, changeSubscriptionPlan,
 };
