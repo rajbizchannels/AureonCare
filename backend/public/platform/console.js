@@ -101,8 +101,15 @@
       var plans = await api('/plans');
       if (!plans.length) { el.innerHTML = '<p class="muted">No active plans.</p>'; return; }
       el.innerHTML = plans.map(function (p) {
+        // A plan is only offered on the public signup page when BOTH are true. Saying so
+        // per plan turns "No plans are available" from a mystery into a checklist.
+        var sellable = p.self_serve && p.stripe_price_id;
+        var why = !p.stripe_price_id
+          ? 'not sellable — no Stripe price id'
+          : (!p.self_serve ? 'not sellable — "Sell on the public signup page" is off' : 'live on the signup page');
         return '<div class="card">' +
-          '<h3>' + esc(p.display_name || p.name) + '</h3>' +
+          '<h3>' + esc(p.display_name || p.name) +
+          ' <span class="small" style="font-weight:400">' + (sellable ? '✓ ' : '· ') + esc(why) + '</span></h3>' +
           '<p class="muted small">' + (p.price != null ? '$' + esc(p.price) : 'no price') +
           ' · ' + esc(p.billing_cycle || 'monthly') + '</p>' +
           '<form class="planForm" data-id="' + esc(p.id) + '">' +
@@ -138,6 +145,8 @@
         },
       });
       msg.textContent = 'Saved.';
+      // Re-read from the server: the badge must reflect what was stored, not what was typed.
+      loadPlans();
     } catch (err) {
       msg.textContent = err.message;
     }
