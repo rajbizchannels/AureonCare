@@ -97,10 +97,94 @@ async function describePromotionCode(code) {
   };
 }
 
+/**
+ * Map our billing_cycle wording onto a Stripe recurring interval.
+ * Returns null for a cycle Stripe cannot express as a subscription.
+ */
+function recurringFor(billingCycle) {
+  switch (String(billingCycle || 'monthly').toLowerCase()) {
+    case 'monthly': return { interval: 'month' };
+    case 'quarterly': return { interval: 'month', interval_count: 3 };
+    case 'yearly':
+    case 'annual':
+    case 'annually': return { interval: 'year' };
+    case 'weekly': return { interval: 'week' };
+    default: return null;
+  }
+}
+
+/**
+ * Create (or update) the Stripe Product for a plan and attach a new Price to it.
+ *
+ * Stripe Prices are immutable — an amount cannot be edited — so every push creates a NEW
+ * Price and, when asked, archives the one it replaces. The Product is reused across
+ * pushes so a plan's price history stays under one product rather than scattering a
+ * product per price change.
+ *
+ * @returns {Promise<{productId: string, priceId: string, archivedPriceId: string|null}>}
+ */
+async function pushPlanToStripe({
+  name, description, amount, currency = 'usd', billingCycle,
+  productId = null, previousPriceId = null, archivePrevious = true,
+}) {
+  const s = stripe();
+
+  const recurring = recurringFor(billingCycle);
+  if (!recurring) {
+    const e = new Error(`Billing cycle "${billingCycle}" cannot be sold as a Stripe subscription.`);
+    e.statusCode = 400;
+    throw e;
+  }
+  const cents = Math.round(Number(amount) * 100);
+  if (!Number.isFinite(cents) || cents < 0) {
+    const e = new Error('Plan price must be a non-negative number to push to Stripe.');
+    e.statusCode = 400;
+    throw e;
+  }
+  // A zero-amount recurring price is legal in Stripe but would let anyone provision a
+  // tenant for nothing through the public signup page. Refuse it explicitly.
+  if (cents === 0) {
+    const e = new Error('A plan priced at 0 cannot be sold self-serve. Set a price first.');
+    e.statusCode = 400;
+    throw e;
+  }
+
+  let product;
+  if (productId) {
+    // Keep the Stripe-side name/description in step with ours; harmless if unchanged.
+    product = await s.products.update(productId, { name, description: description || undefined });
+  } else {
+    product = await s.products.create({ name, description: description || undefined });
+  }
+
+  const price = await s.prices.create({
+    product: product.id,
+    unit_amount: cents,
+    currency: String(currency).toLowerCase(),
+    recurring,
+  });
+
+  // Archiving is deliberate rather than deletion: Stripe will not delete a Price that
+  // subscriptions reference, and existing subscribers must keep billing at the price they
+  // agreed to. Archiving only stops it being offered to NEW customers.
+  let archivedPriceId = null;
+  if (archivePrevious && previousPriceId && previousPriceId !== price.id) {
+    try {
+      await s.prices.update(previousPriceId, { active: false });
+      archivedPriceId = previousPriceId;
+    } catch (err) {
+      // Not fatal: the new price is live either way.
+      console.warn('[platformBilling] could not archive previous price:', err.message);
+    }
+  }
+
+  return { productId: product.id, priceId: price.id, archivedPriceId };
+}
+
 const retrieveCheckoutSession = (id) =>
   stripe().checkout.sessions.retrieve(id, { expand: ['subscription'] });
 
 module.exports = {
   isConfigured, createSubscriptionCheckout, findPromotionCode,
-  describePromotionCode, retrieveCheckoutSession,
+  describePromotionCode, retrieveCheckoutSession, pushPlanToStripe, recurringFor,
 };
