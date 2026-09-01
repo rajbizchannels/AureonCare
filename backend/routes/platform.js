@@ -39,6 +39,7 @@ const { withTenant } = require('../db/tenantClient');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 const { invalidateEntitlements } = require('../services/entitlements');
 const { provisionTenant } = require('../services/tenantProvisioning');
+const billing = require('../services/platformBilling');
 const { issuePlatformCookies, clearPlatformCookies } = require('../utils/authCookies');
 
 const clientIp = (req) => req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null;
@@ -249,10 +250,107 @@ const VALID_SUB_STATUS = new Set(['trialing', 'active', 'past_due', 'canceled'])
 router.get('/plans', async (req, res) => {
   const pool = req.app.locals.pool;
   const { rows } = await pool.query(
-    `SELECT id, name, display_name, price, billing_cycle, max_users, max_patients, max_providers,
-            features, self_serve, stripe_price_id, trial_days
-       FROM public.subscription_plans WHERE is_active = true ORDER BY price NULLS FIRST, id`);
+    `SELECT id, name, display_name, description, price, currency, billing_cycle,
+            max_users, max_patients, max_providers, features, is_active, self_serve,
+            stripe_price_id, stripe_product_id, trial_days
+       FROM public.subscription_plans ORDER BY is_active DESC, price NULLS FIRST, id`);
   res.json(rows);
+});
+
+// Create a plan. Deactivated plans are still listed (is_active is a column, not a filter),
+// so retiring a plan never breaks the tenants already subscribed to it.
+router.post('/plans', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const {
+    name, displayName, description, price, currency, billingCycle,
+    maxUsers, maxProviders, maxPatients, trialDays, isActive,
+  } = req.body || {};
+
+  const slug = String(name || '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+  if (!slug) return res.status(400).json({ error: 'A plan name is required.' });
+  if (!displayName || !String(displayName).trim()) {
+    return res.status(400).json({ error: 'A display name is required.' });
+  }
+  if (price == null || Number.isNaN(Number(price)) || Number(price) < 0) {
+    return res.status(400).json({ error: 'Price must be a non-negative number.' });
+  }
+
+  try {
+    const dup = await pool.query('SELECT 1 FROM public.subscription_plans WHERE name = $1', [slug]);
+    if (dup.rows.length) return res.status(409).json({ error: `A plan named "${slug}" already exists.` });
+
+    const { rows } = await pool.query(
+      `INSERT INTO public.subscription_plans
+         (name, display_name, description, price, currency, billing_cycle,
+          max_users, max_providers, max_patients, trial_days, is_active, self_serve)
+       VALUES ($1,$2,$3,$4,COALESCE(LOWER($5),'usd'),COALESCE($6,'monthly'),
+               COALESCE($7,-1),COALESCE($8,-1),COALESCE($9,-1),COALESCE($10,0),
+               COALESCE($11,true), false)
+       RETURNING *`,
+      [slug, String(displayName).trim(), description || null, Number(price), currency || null,
+       billingCycle || null,
+       maxUsers == null ? null : Number(maxUsers),
+       maxProviders == null ? null : Number(maxProviders),
+       maxPatients == null ? null : Number(maxPatients),
+       trialDays == null ? null : Number(trialDays),
+       typeof isActive === 'boolean' ? isActive : null]
+    );
+    // self_serve starts false on purpose: a plan is not sellable until it has a Stripe
+    // price, which is a separate, deliberate step.
+    await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.create',
+      targetType: 'plan', targetId: String(rows[0].id), detail: { name: slug, price }, ip: clientIp(req) });
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    console.error('Plan create error:', e);
+    res.status(500).json({ error: 'Failed to create plan' });
+  }
+});
+
+/**
+ * Create the plan's Product and Price in Stripe and record the ids.
+ *
+ * This is what removes the copy-and-paste step: an operator no longer has to build the
+ * price in the Stripe dashboard and paste its id back. Stripe Prices are immutable, so a
+ * push after a price change mints a NEW price and archives the old one — existing
+ * subscribers keep billing at the price they agreed to; only new customers see the new one.
+ */
+router.post('/plans/:id/stripe', async (req, res) => {
+  const pool = req.app.locals.pool;
+  if (!billing.isConfigured()) {
+    return res.status(503).json({ error: 'Platform billing is not configured (set AC_STRIPE_SK).' });
+  }
+  try {
+    const { rows } = await pool.query('SELECT * FROM public.subscription_plans WHERE id = $1', [req.params.id]);
+    const plan = rows[0];
+    if (!plan) return res.status(404).json({ error: 'Plan not found' });
+
+    const result = await billing.pushPlanToStripe({
+      name: plan.display_name || plan.name,
+      description: plan.description,
+      amount: plan.price,
+      currency: plan.currency || 'usd',
+      billingCycle: plan.billing_cycle,
+      productId: plan.stripe_product_id,
+      previousPriceId: plan.stripe_price_id,
+    });
+
+    const { rows: updated } = await pool.query(
+      `UPDATE public.subscription_plans
+          SET stripe_product_id = $2, stripe_price_id = $3, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 RETURNING *`,
+      [plan.id, result.productId, result.priceId]
+    );
+    await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.push_to_stripe',
+      targetType: 'plan', targetId: String(plan.id),
+      detail: { priceId: result.priceId, archived: result.archivedPriceId }, ip: clientIp(req) });
+    res.json({ ...updated[0], archivedPriceId: result.archivedPriceId });
+  } catch (e) {
+    if (e.statusCode) return res.status(e.statusCode).json({ error: e.message });
+    console.error('Plan Stripe push error:', e);
+    // Surface Stripe's own message: an operator can act on "No such product" but not on
+    // a generic failure.
+    res.status(502).json({ error: e.message || 'Stripe rejected the request.' });
+  }
 });
 
 // Make a plan buyable from the public signup page. This is the only platform-side step in
@@ -260,9 +358,17 @@ router.get('/plans', async (req, res) => {
 // is configured once per plan, not per customer — no operator is involved in a signup.
 router.put('/plans/:id', async (req, res) => {
   const pool = req.app.locals.pool;
-  const { selfServe, stripePriceId, trialDays } = req.body || {};
+  const { selfServe, stripePriceId, trialDays, isActive, displayName, description, price, currency, billingCycle } = req.body || {};
+  // Guard against the common mistake: ticking "sell self-serve" with no price attached
+  // would leave the plan invisible on the signup page with no explanation.
   if (selfServe && !stripePriceId) {
-    return res.status(400).json({ error: 'A Stripe price id is required to sell a plan self-serve.' });
+    const { rows: cur } = await req.app.locals.pool.query(
+      'SELECT stripe_price_id FROM public.subscription_plans WHERE id = $1', [req.params.id]);
+    if (!cur.length || !cur[0].stripe_price_id) {
+      return res.status(400).json({
+        error: 'This plan has no Stripe price yet. Use "Create in Stripe" first, or paste a price id.',
+      });
+    }
   }
   try {
     const { rows } = await pool.query(
@@ -270,17 +376,27 @@ router.put('/plans/:id', async (req, res) => {
           SET self_serve = COALESCE($2, self_serve),
               stripe_price_id = CASE WHEN $3::text IS NOT NULL THEN NULLIF($3,'') ELSE stripe_price_id END,
               trial_days = COALESCE($4, trial_days),
+              is_active = COALESCE($5, is_active),
+              display_name = COALESCE($6, display_name),
+              description = COALESCE($7, description),
+              price = COALESCE($8, price),
+              currency = COALESCE(LOWER($9), currency),
+              billing_cycle = COALESCE($10, billing_cycle),
               updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
-        RETURNING id, name, display_name, price, self_serve, stripe_price_id, trial_days`,
+        RETURNING *`,
       [req.params.id, typeof selfServe === 'boolean' ? selfServe : null,
        stripePriceId === undefined ? null : String(stripePriceId),
-       trialDays === undefined || trialDays === null ? null : Number(trialDays)]
+       trialDays === undefined || trialDays === null ? null : Number(trialDays),
+       typeof isActive === 'boolean' ? isActive : null,
+       displayName || null, description === undefined ? null : description,
+       price == null || price === '' ? null : Number(price),
+       currency || null, billingCycle || null]
     );
     if (!rows.length) return res.status(404).json({ error: 'Plan not found' });
     await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.update',
       targetType: 'plan', targetId: String(req.params.id),
-      detail: { selfServe, stripePriceId, trialDays }, ip: clientIp(req) });
+      detail: { selfServe, stripePriceId, trialDays, isActive }, ip: clientIp(req) });
     res.json(rows[0]);
   } catch (e) {
     console.error('Plan update error:', e);

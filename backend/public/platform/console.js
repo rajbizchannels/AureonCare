@@ -103,23 +103,33 @@
       el.innerHTML = plans.map(function (p) {
         // A plan is only offered on the public signup page when BOTH are true. Saying so
         // per plan turns "No plans are available" from a mystery into a checklist.
-        var sellable = p.self_serve && p.stripe_price_id;
-        var why = !p.stripe_price_id
-          ? 'not sellable — no Stripe price id'
-          : (!p.self_serve ? 'not sellable — "Sell on the public signup page" is off' : 'live on the signup page');
+        var sellable = p.is_active && p.self_serve && p.stripe_price_id;
+        var why = !p.is_active
+          ? 'inactive'
+          : (!p.stripe_price_id
+              ? 'not sellable — no Stripe price yet'
+              : (!p.self_serve ? 'not sellable — "Sell on the public signup page" is off'
+                               : 'live on the signup page'));
         return '<div class="card">' +
           '<h3>' + esc(p.display_name || p.name) +
           ' <span class="small" style="font-weight:400">' + (sellable ? '✓ ' : '· ') + esc(why) + '</span></h3>' +
-          '<p class="muted small">' + (p.price != null ? '$' + esc(p.price) : 'no price') +
-          ' · ' + esc(p.billing_cycle || 'monthly') + '</p>' +
+          '<p class="muted small">' + (p.price != null ? esc(p.price) + ' ' + esc((p.currency || 'usd').toUpperCase()) : 'no price') +
+          ' · ' + esc(p.billing_cycle || 'monthly') +
+          (p.stripe_price_id ? ' · ' + esc(p.stripe_price_id) : '') + '</p>' +
           '<form class="planForm" data-id="' + esc(p.id) + '">' +
+            '<label class="row"><input type="checkbox" name="isActive"' +
+              (p.is_active ? ' checked' : '') + ' /> Active</label>' +
             '<label class="row"><input type="checkbox" name="selfServe"' +
               (p.self_serve ? ' checked' : '') + ' /> Sell on the public signup page</label>' +
+            '<label>Price<input name="price" type="number" min="0" step="0.01" value="' +
+              esc(p.price == null ? '' : p.price) + '" /></label>' +
             '<label>Stripe price id<input name="stripePriceId" placeholder="price_…" value="' +
               esc(p.stripe_price_id || '') + '" /></label>' +
             '<label>Trial days<input name="trialDays" type="number" min="0" value="' +
               esc(p.trial_days == null ? 0 : p.trial_days) + '" /></label>' +
             '<button type="submit" class="primary">Save</button>' +
+            '<button type="button" class="pushStripe" data-id="' + esc(p.id) + '">' +
+              (p.stripe_price_id ? 'Re-create price in Stripe' : 'Create in Stripe') + '</button>' +
             '<span class="planMsg small"></span>' +
           '</form>' +
         '</div>';
@@ -139,13 +149,77 @@
       await api('/plans/' + encodeURIComponent(form.dataset.id), {
         method: 'PUT',
         body: {
+          isActive: form.isActive.checked,
           selfServe: form.selfServe.checked,
           stripePriceId: form.stripePriceId.value.trim(),
           trialDays: Number(form.trialDays.value || 0),
+          price: form.price.value === '' ? null : Number(form.price.value),
         },
       });
       msg.textContent = 'Saved.';
       // Re-read from the server: the badge must reflect what was stored, not what was typed.
+      loadPlans();
+    } catch (err) {
+      msg.textContent = err.message;
+    }
+  });
+
+  // Create the Product and Price in Stripe, so an operator never has to copy a price id
+  // out of the Stripe dashboard. Confirm first when it would replace an existing price:
+  // Stripe prices are immutable, so this mints a new one and archives the old.
+  document.addEventListener('click', async function (e) {
+    var btn = e.target.closest('button.pushStripe');
+    if (!btn) return;
+    var form = btn.closest('form.planForm');
+    var msg = form.querySelector('.planMsg');
+    var replacing = form.stripePriceId.value.trim();
+    if (replacing && !window.confirm(
+      'This creates a NEW Stripe price and archives ' + replacing + '.\n\n' +
+      'Existing subscribers keep paying their current price; only new customers get the new one.\n\nContinue?'
+    )) return;
+
+    btn.disabled = true;
+    msg.textContent = 'Creating in Stripe…';
+    try {
+      var updated = await api('/plans/' + encodeURIComponent(btn.dataset.id) + '/stripe', { method: 'POST' });
+      msg.textContent = 'Created ' + updated.stripe_price_id +
+        (updated.archivedPriceId ? ' (archived ' + updated.archivedPriceId + ')' : '');
+      loadPlans();
+    } catch (err) {
+      msg.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ── new plan ───────────────────────────────────────────────────────────────
+  $('newPlanBtn').addEventListener('click', function () {
+    var f = $('newPlanForm');
+    f.hidden = !f.hidden;
+  });
+  $('cancelPlan').addEventListener('click', function () { $('newPlanForm').hidden = true; });
+
+  $('newPlanForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('newPlanMsg');
+    msg.textContent = 'Creating…';
+    try {
+      await api('/plans', {
+        method: 'POST',
+        body: {
+          name: $('pName').value.trim(),
+          displayName: $('pDisplay').value.trim(),
+          description: $('pDesc').value.trim() || null,
+          price: Number($('pPrice').value),
+          currency: $('pCurrency').value.trim() || 'usd',
+          billingCycle: $('pCycle').value,
+          trialDays: Number($('pTrial').value || 0),
+          maxUsers: Number($('pMaxUsers').value || -1),
+          maxProviders: Number($('pMaxProviders').value || -1),
+        },
+      });
+      msg.textContent = 'Created. Now use "Create in Stripe", then tick "Sell on the public signup page".';
+      $('newPlanForm').reset();
       loadPlans();
     } catch (err) {
       msg.textContent = err.message;
