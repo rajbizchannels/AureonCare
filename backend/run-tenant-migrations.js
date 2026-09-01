@@ -24,6 +24,7 @@ const path = require('path');
 
 // Shared pool config — understands AC_PG_URI (Supabase) and SSL. See run-migrations.js.
 const pool = require('./db');
+const { explainConnectionError } = require('./db');
 
 const TENANT_DIR = path.join(__dirname, 'migrations', 'tenant');
 const CONCURRENCY = Math.max(1, parseInt(process.env.TENANT_MIGRATE_CONCURRENCY || '5', 10));
