@@ -15,6 +15,7 @@
     "reset-db": "node backend/scripts/reset-and-seed.js",
     "check:tenant-scoping": "node backend/scripts/check-tenant-scoping.js",
     "check:db-role": "node backend/scripts/check-db-role.js",
+    "check:schema-health": "node backend/scripts/check-schema-health.js",
     "test:sec05": "bash backend/test/sec05/run.sh"
   },
   "dependencies": {

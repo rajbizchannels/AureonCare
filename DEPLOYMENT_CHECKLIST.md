@@ -197,8 +197,19 @@ workspace; a forged redirect gets nothing.
 - [ ] `AC_STRIPE_WHS` — webhook signing secret, with `checkout.session.completed` and the
       `customer.subscription.*` events subscribed
 - [ ] `FRONTEND_URL` — used to build the checkout return URLs
-- [ ] In the console's **Plans** tab, give each sellable plan a **Stripe Price id** and tick
-      *Sell on the public signup page*. A plan without a price id cannot be self-served.
+- [ ] In the console's **Plans** tab, create or configure a plan and press **Create in
+      Stripe** — that builds the Product and recurring Price in your Stripe account and
+      records the ids, so there is no copying price ids out of the Stripe dashboard. Then
+      tick *Sell on the public signup page*. Each plan shows its own status: *live on the
+      signup page*, *not sellable — no Stripe price yet*, or *inactive*.
+
+**Changing a plan's price:** Stripe Prices are immutable. Edit the price, save, then press
+**Re-create price in Stripe** — that mints a new Price and archives the old one. Existing
+subscribers keep billing at the price they agreed to; only new customers see the new one.
+The console asks for confirmation and names the price being archived.
+
+**Retiring a plan:** untick *Active* rather than deleting it. It disappears from the signup
+page immediately; tenants already subscribed to it are unaffected.
 
 Coupons are Stripe **promotion codes**, managed in the Stripe dashboard — one source of
 truth for what a code is worth and how often it may be used. The signup form previews the
