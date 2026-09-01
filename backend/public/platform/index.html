@@ -83,6 +83,28 @@
         A plan needs a Stripe Price id before customers can buy it. This is configured once
         per plan — signups themselves need no operator action.
       </p>
+      <button id="newPlanBtn" class="primary">New plan</button>
+      <form id="newPlanForm" class="card inline" hidden>
+        <label>Key<input id="pName" placeholder="clinical_pro" required /></label>
+        <label>Display name<input id="pDisplay" placeholder="Clinical Pro" required /></label>
+        <label>Description<input id="pDesc" placeholder="For growing practices" /></label>
+        <label>Price<input id="pPrice" type="number" min="0" step="0.01" required /></label>
+        <label>Currency<input id="pCurrency" maxlength="3" placeholder="usd" /></label>
+        <label>Billing cycle
+          <select id="pCycle">
+            <option value="monthly">monthly</option>
+            <option value="quarterly">quarterly</option>
+            <option value="yearly">yearly</option>
+            <option value="weekly">weekly</option>
+          </select>
+        </label>
+        <label>Trial days<input id="pTrial" type="number" min="0" value="0" /></label>
+        <label>Max users<input id="pMaxUsers" type="number" value="-1" /></label>
+        <label>Max providers<input id="pMaxProviders" type="number" value="-1" /></label>
+        <button type="submit" class="primary">Create plan</button>
+        <button type="button" id="cancelPlan">Cancel</button>
+        <p id="newPlanMsg" class="small"></p>
+      </form>
       <div id="plansList" class="list"></div>
     </div>
 
