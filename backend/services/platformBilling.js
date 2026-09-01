@@ -248,11 +248,28 @@ async function changeSubscriptionPlan({ subscriptionId, newPriceId, prorationDat
   });
 }
 
+/** A customer's invoices, newest first — the authoritative document list from Stripe. */
+async function listInvoices(customerId, limit = 24) {
+  const list = await stripe().invoices.list({ customer: customerId, limit });
+  return list.data.map((i) => ({
+    id: i.id,
+    number: i.number,
+    status: i.status,
+    amountDue: (i.amount_due || 0) / 100,
+    amountPaid: (i.amount_paid || 0) / 100,
+    currency: i.currency,
+    created: i.created,
+    periodEnd: i.period_end,
+    hostedInvoiceUrl: i.hosted_invoice_url,
+    invoicePdf: i.invoice_pdf,
+  }));
+}
+
 const retrieveCheckoutSession = (id) =>
   stripe().checkout.sessions.retrieve(id, { expand: ['subscription'] });
 
 module.exports = {
   isConfigured, createSubscriptionCheckout, findPromotionCode,
   describePromotionCode, retrieveCheckoutSession, pushPlanToStripe, recurringFor,
-  previewPlanChange, changeSubscriptionPlan,
+  previewPlanChange, changeSubscriptionPlan, listInvoices,
 };

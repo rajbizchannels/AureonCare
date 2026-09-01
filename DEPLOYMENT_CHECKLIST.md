@@ -217,6 +217,31 @@ discount and Checkout also lets the customer enter one.
 
 Card details never reach this application, which keeps the deployment in PCI **SAQ-A**.
 
+## Billing & accounting (platform console)
+
+The **Billing** tab reports on `control.billing_events`, an append-only local ledger written
+by the Stripe webhook. Stripe remains the system of record for the money; the ledger is what
+makes revenue reportable without querying Stripe per page, and it survives a rotated key.
+
+- **MRR/ARR** is computed from the plans tenants are *on* — contracted recurring value.
+- **Collected** is money actually received, from the ledger. These are deliberately
+  different numbers: MRR excludes discounts and failed payments; collected is history.
+- **Per tenant** shows collected, refunded and net, plus last payment date.
+- A tenant's **invoices** come live from Stripe (`GET /api/platform/tenants/:id/invoices`).
+
+The ledger is **not backfilled** — it fills from the moment the webhook is configured. If
+you need history from before that, export it from Stripe.
+
+Two properties worth knowing: rows are keyed on Stripe's own object id, so a retried
+webhook cannot book a payment twice; and the table has a trigger rejecting UPDATE and
+DELETE, so the revenue record cannot be rewritten by the application.
+
+Changing a tenant's plan from the console now pushes the change to **Stripe**, prorated,
+rather than only recording it. Preview the amount first with
+`GET /api/platform/tenants/:id/subscription/preview/:planId`. Pass `pushToStripe: false`
+to correct our records without touching billing — for reconciling a change made by hand in
+the Stripe dashboard.
+
 ## Staff onboarding
 
 An admin invites colleagues from **Settings → User Management → Invite team members**. The
