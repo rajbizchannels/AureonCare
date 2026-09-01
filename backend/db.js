@@ -42,4 +42,49 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle database client', err.message);
 });
 
+/**
+ * Turn a driver-level connection failure into something an operator can act on.
+ *
+ * pg's own messages name the mechanism, not the misconfiguration: "SASL:
+ * SCRAM-SERVER-FIRST-MESSAGE: client password must be a string" means no password was
+ * supplied to a server that requires one, which is not obvious from the text.
+ *
+ * @returns {string|null} guidance, or null if the error is not a known connection problem
+ */
+function explainConnectionError(err) {
+  const msg = String((err && err.message) || '');
+  const usingUri = Boolean(process.env.AC_PG_URI);
+
+  if (/client password must be a string|SASL/i.test(msg)) {
+    return usingUri
+      ? 'The connection string in AC_PG_URI has no password. Copy the full URI from\n' +
+        '  Supabase -> Settings -> Database -> Connection string (it includes the password).'
+      : 'No database password was supplied, but the server requires one.\n' +
+        '  Set AC_DB_W, or better, set AC_PG_URI to the full connection string.\n' +
+        '  If you pulled the environment with `vercel env pull backend/.env`, check that the\n' +
+        '  file actually contains AC_PG_URI or AC_DB_W — an empty value reads as unset.';
+  }
+  if (err && err.code === '28P01') {
+    return 'The database rejected the password (28P01). Check AC_DB_W / AC_PG_URI.';
+  }
+  if (err && err.code === '3D000') {
+    return `The database named in ${usingUri ? 'AC_PG_URI' : 'AC_DB_N'} does not exist.`;
+  }
+  if (/ECONNREFUSED/.test(msg)) {
+    return `Nothing is listening at ${usingUri ? 'the host in AC_PG_URI' : `${process.env.AC_DB_H || 'localhost'}:${process.env.AC_DB_P || 5432}`}.\n` +
+      '  A default of localhost usually means the environment was never loaded.';
+  }
+  if (/ENOTFOUND|EAI_AGAIN/.test(msg)) {
+    return 'The database host could not be resolved. Check the host in AC_PG_URI / AC_DB_H.';
+  }
+  if (/does not support SSL/i.test(msg)) {
+    return 'The server does not speak SSL, but AC_PG_URI forces it. Use AC_DB_* for a plain local server.';
+  }
+  if (/self.signed|certificate/i.test(msg)) {
+    return 'TLS negotiation failed. Managed providers need SSL — prefer AC_PG_URI, which enables it.';
+  }
+  return null;
+}
+
 module.exports = pool;
+module.exports.explainConnectionError = explainConnectionError;
