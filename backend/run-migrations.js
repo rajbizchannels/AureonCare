@@ -30,6 +30,7 @@ const path = require('path');
 // database — not just a local socket — which is the only way to migrate a Vercel
 // deployment, where there is no shell to run this in.
 const pool = require('./db');
+const { explainConnectionError } = require('./db');
 
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 const BASELINE_DIR = path.join(MIGRATIONS_DIR, 'baseline');
@@ -197,6 +198,8 @@ async function main() {
 main()
   .catch((err) => {
     console.error('\n❌ Migration run failed:', err.message);
+    const hint = explainConnectionError(err);
+    if (hint) console.error('\n' + hint);
     process.exitCode = 1;
   })
   .finally(() => pool.end());

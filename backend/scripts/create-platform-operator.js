@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 // against the production database from a laptop. On a serverless host (Vercel) there is
 // no shell, so pointing this at the managed database is the ONLY way to bootstrap.
 const pool = require('../db');
+const { explainConnectionError } = require('../db');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 
 (async () => {
@@ -36,6 +37,8 @@ const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
     await pool.end();
   } catch (e) {
     console.error('Failed:', e.message);
+    const hint = explainConnectionError(e);
+    if (hint) console.error('\n' + hint);
     await pool.end().catch(() => {});
     process.exit(1);
   }
