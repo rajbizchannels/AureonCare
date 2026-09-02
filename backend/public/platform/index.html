@@ -45,6 +45,7 @@
     <nav class="tabs" id="tabs">
       <button data-tab="tenants" class="active">Tenants</button>
       <button data-tab="plans">Plans</button>
+      <button data-tab="billing">Billing</button>
       <button data-tab="audit">Platform audit</button>
       <button data-tab="security">Security</button>
     </nav>
@@ -106,6 +107,20 @@
         <p id="newPlanMsg" class="small"></p>
       </form>
       <div id="plansList" class="list"></div>
+    </div>
+
+    <!-- Billing & accounting -->
+    <div class="tab" data-panel="billing" hidden>
+      <h2>Billing</h2>
+      <p class="muted small">
+        Recurring revenue is what tenants are contracted for; collected is money actually
+        received, from the local ledger. They are different numbers on purpose.
+      </p>
+      <div id="billingSummary" class="list"></div>
+      <h3>Per tenant</h3>
+      <div id="billingTenants"></div>
+      <h3>Recent activity</h3>
+      <div id="billingEvents"></div>
     </div>
 
     <!-- Security -->

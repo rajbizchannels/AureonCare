@@ -232,6 +232,55 @@ async function handleSignupCheckout(pool, session) {
   return true;
 }
 
+// ── Platform billing ledger ───────────────────────────────────────────────────
+// A local, append-only record of what each tenant was invoiced and paid, so the console
+// can report revenue without querying Stripe on every page — and so the history survives
+// a rotated key or a closed account. recordEvent is idempotent on the Stripe object id,
+// which is what makes a webhook retry safe.
+
+const ledger = require('../services/billingLedger');
+
+async function recordInvoiceEvent(event) {
+  const inv = event.data.object;
+  const customerId = typeof inv.customer === 'string' ? inv.customer : inv.customer?.id;
+  const { tenant_id, practice_id } = await ledger.tenantForCustomer(customerId);
+  const paid = event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded';
+  await ledger.recordEvent({
+    tenantId: tenant_id || null,
+    practiceId: practice_id || null,
+    eventType: paid ? 'invoice.paid' : 'invoice.payment_failed',
+    // The invoice id, not the event id: Stripe sends invoice.paid AND
+    // invoice.payment_succeeded for the same invoice, and booking both would double the
+    // revenue. Keying on the invoice makes the second one a no-op.
+    stripeObjectId: paid ? inv.id : `${inv.id}:failed:${inv.attempt_count || 0}`,
+    stripeCustomerId: customerId || null,
+    amountMinor: paid ? (inv.amount_paid || 0) : 0,
+    currency: inv.currency || null,
+    description: inv.number ? `Invoice ${inv.number}` : 'Invoice',
+    occurredAt: inv.status_transitions?.paid_at || inv.created,
+    detail: { hosted_invoice_url: inv.hosted_invoice_url || null, amount_due: inv.amount_due },
+  });
+}
+
+async function recordRefundEvent(event) {
+  const charge = event.data.object;
+  const customerId = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id;
+  const { tenant_id, practice_id } = await ledger.tenantForCustomer(customerId);
+  await ledger.recordEvent({
+    tenantId: tenant_id || null,
+    practiceId: practice_id || null,
+    eventType: 'charge.refunded',
+    // Keyed on the charge plus the refunded total, so a SECOND partial refund on the same
+    // charge is recorded rather than swallowed as a duplicate.
+    stripeObjectId: `${charge.id}:refund:${charge.amount_refunded}`,
+    stripeCustomerId: customerId || null,
+    amountMinor: -(charge.amount_refunded || 0),
+    currency: charge.currency || null,
+    description: 'Refund',
+    occurredAt: charge.created,
+  });
+}
+
 async function handleCheckoutSessionCompleted(pool, session) {
   // A platform signup is not a clinic payment — it has no `payments` row to reconcile.
   if (await handleSignupCheckout(pool, session)) return;
@@ -397,6 +446,10 @@ router.post('/', async (req, res) => {
         await handleCheckoutSessionCompleted(pool, event.data.object);
         break;
       case 'charge.refunded':
+        // Ledger FIRST, and independently: this is the platform's accounting record, and
+        // it must not be lost because the unrelated clinic-payments reconciliation below
+        // threw (its `payments` table may not even exist on a platform-only deployment).
+        await recordRefundEvent(event);
         await handleChargeRefunded(pool, event.data.object);
         break;
       case 'charge.dispute.created':
@@ -410,8 +463,11 @@ router.post('/', async (req, res) => {
       case 'customer.subscription.resumed':
         await handleSubscriptionChange(pool, event.data.object);
         break;
+      case 'invoice.paid':
       case 'invoice.payment_failed':
       case 'invoice.payment_succeeded':
+        // Ledger first, for the same reason as charge.refunded.
+        await recordInvoiceEvent(event);
         // The invoice carries the subscription's customer; re-read status from the
         // subscription object when Stripe expanded it, otherwise let the paired
         // customer.subscription.updated event carry the change.

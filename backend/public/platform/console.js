@@ -238,6 +238,79 @@
     }
   });
 
+  // ── billing & accounting ───────────────────────────────────────────────────
+  function money(v, cur) {
+    return (v == null ? '—' : Number(v).toFixed(2) + ' ' + String(cur || 'usd').toUpperCase());
+  }
+
+  async function loadBilling() {
+    var sum = $('billingSummary'), ten = $('billingTenants'), ev = $('billingEvents');
+    sum.textContent = 'Loading…';
+    try {
+      var s = await api('/billing/summary');
+      var statuses = Object.keys(s.byStatus).map(function (k) {
+        return esc(k) + ': ' + esc(s.byStatus[k]);
+      }).join(' · ') || 'none';
+      sum.innerHTML =
+        '<div class="card"><h3>' + esc(s.mrr.toFixed(2)) + ' MRR</h3>' +
+          '<p class="muted small">' + esc(s.arr.toFixed(2)) + ' ARR · ' + esc(s.tenants) +
+          ' tenant(s) · ' + statuses + '</p>' +
+          (s.failedPayments90d.count
+            ? '<p class="error small">' + esc(s.failedPayments90d.count) +
+              ' failed payment(s) in the last 90 days</p>'
+            : '') +
+        '</div>' +
+        '<div class="card"><h3>Collected</h3>' +
+          (s.collectedByMonth.length
+            ? '<table><tr><th>Month</th><th>Amount</th></tr>' +
+              s.collectedByMonth.map(function (m) {
+                return '<tr><td>' + esc(m.month) + '</td><td>' + esc(money(m.amount, m.currency)) + '</td></tr>';
+              }).join('') + '</table>'
+            : '<p class="muted small">No payments recorded yet. The ledger fills as Stripe ' +
+              'webhooks arrive — it is not backfilled from Stripe history.</p>') +
+        '</div>';
+    } catch (e) {
+      sum.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+      return;
+    }
+
+    try {
+      var rows = await api('/billing/tenants');
+      ten.innerHTML = rows.length
+        ? '<table><tr><th>Tenant</th><th>Plan</th><th>Status</th><th>MRR</th>' +
+          '<th>Collected</th><th>Refunded</th><th>Net</th><th>Last payment</th></tr>' +
+          rows.map(function (r) {
+            return '<tr><td>' + esc(r.name || r.slug) + '</td>' +
+              '<td>' + esc(r.plan_name || '—') + '</td>' +
+              '<td>' + esc(r.subscription_status || '—') + '</td>' +
+              '<td>' + esc(money(r.mrr, r.currency)) + '</td>' +
+              '<td>' + esc(money(r.collected, r.currency)) + '</td>' +
+              '<td>' + esc(money(r.refunded, r.currency)) + '</td>' +
+              '<td>' + esc(money(r.net, r.currency)) + '</td>' +
+              '<td>' + esc(r.last_payment_at ? new Date(r.last_payment_at).toLocaleDateString() : '—') + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">No tenants.</p>';
+    } catch (e) {
+      ten.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+
+    try {
+      var events = await api('/billing/events?limit=50');
+      ev.innerHTML = events.length
+        ? '<table><tr><th>When</th><th>Tenant</th><th>Event</th><th>Amount</th><th>Detail</th></tr>' +
+          events.map(function (e2) {
+            return '<tr><td>' + esc(new Date(e2.occurred_at).toLocaleString()) + '</td>' +
+              '<td>' + esc(e2.tenant_name || e2.tenant_slug || '—') + '</td>' +
+              '<td>' + esc(e2.event_type) + '</td>' +
+              '<td>' + esc(money(e2.amount, e2.currency)) + '</td>' +
+              '<td>' + esc(e2.description || '') + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">No billing activity recorded yet.</p>';
+    } catch (e) {
+      ev.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
   // ── tabs ───────────────────────────────────────────────────────────────────
   $('tabs').addEventListener('click', function (e) {
     var btn = e.target.closest('button[data-tab]');
@@ -252,6 +325,7 @@
     if (tab === 'audit') loadAudit();
     if (tab === 'tenants') loadTenants();
     if (tab === 'plans') loadPlans();
+    if (tab === 'billing') loadBilling();
   });
 
   // ── tenants ────────────────────────────────────────────────────────────────
