@@ -15,7 +15,7 @@ Module.prototype.require = function (id) {
     return function StripeStub() {
       return {
         subscriptions: {
-          retrieve: async (id2) => ({ id: id2, customer: 'cus_1', items: { data: [{ id: 'si_1' }] } }),
+          retrieve: async (id2) => ({ id: id2, customer: 'cus_stub', items: { data: [{ id: 'si_1' }] } }),
           update: async (id2, params) => { stripeCalls.push(['subscriptions.update', params]); return { id: id2, ...params }; },
         },
         invoices: {
@@ -76,9 +76,12 @@ const api = async (method, url, body, token) => {
 
   // A practice with its own subscription, billed through Stripe.
   const t = await provisionTenant(pool, { name: 'Plan Test Clinic ' + crypto.randomBytes(3).toString('hex'), planId: planA.id });
+  // A unique customer id per run: control.subscriptions now enforces one tenant per Stripe
+  // customer, so a hardcoded value collides with any other tenant in the same database.
+  const CUS = 'cus_' + crypto.randomBytes(6).toString('hex');
   await pool.query(
-    `UPDATE control.subscriptions SET stripe_subscription_id = 'sub_1', stripe_customer_id = 'cus_1'
-      WHERE practice_id = $1`, [t.practiceId]);
+    `UPDATE control.subscriptions SET stripe_subscription_id = 'sub_1', stripe_customer_id = $2
+      WHERE practice_id = $1`, [t.practiceId, CUS]);
 
   const hash = await bcrypt.hash('A-Strong-Passphrase!23', 12);
   const mk = async (role) => {

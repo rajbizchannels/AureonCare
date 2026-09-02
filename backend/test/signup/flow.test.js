@@ -109,8 +109,13 @@ async function postWebhook(secret, event) {
      VALUES ('test-pro','Test Pro',49,'monthly',true,true,'price_test_pro',0)
      ON CONFLICT DO NOTHING`
   );
+  // Look the plan up by NAME and (re)assert its price id: sibling suites rewrite
+  // stripe_price_id across all plans, and these tests share a database.
+  await pool.query(
+    "UPDATE public.subscription_plans SET stripe_price_id='price_test_pro', self_serve=true, is_active=true WHERE name='test-pro'"
+  );
   const { rows: planRows } = await pool.query(
-    "SELECT id FROM public.subscription_plans WHERE stripe_price_id = 'price_test_pro'"
+    "SELECT id FROM public.subscription_plans WHERE name = 'test-pro'"
   );
   const planId = planRows[0].id;
 

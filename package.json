@@ -18,7 +18,8 @@
     "check:schema-health": "node backend/scripts/check-schema-health.js",
     "test:sec05": "bash backend/test/sec05/run.sh",
     "test:signup": "node backend/test/signup/flow.test.js",
-    "test:plans": "node backend/test/signup/plan-change.test.js"
+    "test:plans": "node backend/test/signup/plan-change.test.js",
+    "test:billing": "node backend/test/signup/billing.test.js"
   },
   "dependencies": {
     "@azure/msal-browser": "^4.25.1",

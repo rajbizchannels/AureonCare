@@ -40,6 +40,7 @@ const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 const { invalidateEntitlements } = require('../services/entitlements');
 const { provisionTenant } = require('../services/tenantProvisioning');
 const billing = require('../services/platformBilling');
+const ledger = require('../services/billingLedger');
 const { issuePlatformCookies, clearPlatformCookies } = require('../utils/authCookies');
 
 const clientIp = (req) => req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null;
@@ -416,9 +417,38 @@ router.get('/tenants/:id/subscription', async (req, res) => {
 });
 
 // Assign/update a tenant's subscription (plan, status, seats, Stripe ids).
+/**
+ * What moving this tenant to `planId` costs right now, prorated. Read-only.
+ * Lets an operator quote a customer before making the change.
+ */
+router.get('/tenants/:id/subscription/preview/:planId', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { rows } = await pool.query(
+    `SELECT s.stripe_subscription_id, p.stripe_price_id
+       FROM control.subscriptions s
+       CROSS JOIN public.subscription_plans p
+      WHERE s.tenant_id = $1 AND p.id = $2`,
+    [req.params.id, req.params.planId]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Tenant or plan not found' });
+  const { stripe_subscription_id: subId, stripe_price_id: priceId } = rows[0];
+  if (!subId || !priceId || !billing.isConfigured()) {
+    return res.json({ prorated: false, amountDue: 0, lines: [] });
+  }
+  const preview = await billing.previewPlanChange({ subscriptionId: subId, newPriceId: priceId });
+  res.json({ prorated: true, ...preview });
+});
+
 router.put('/tenants/:id/subscription', async (req, res) => {
   const pool = req.app.locals.pool;
-  const { planId, status, seats, stripeCustomerId, stripeSubscriptionId, currentPeriodEnd, enforcementEnabled } = req.body || {};
+  const {
+    planId, status, seats, stripeCustomerId, stripeSubscriptionId, currentPeriodEnd,
+    enforcementEnabled,
+    // When true (the default for a plan change), the change is pushed to Stripe and
+    // prorated rather than only recorded here. Set false to correct our records without
+    // touching billing — for example when reconciling after a manual Stripe change.
+    pushToStripe = true, prorationDate,
+  } = req.body || {};
   if (status && !VALID_SUB_STATUS.has(status)) {
     return res.status(400).json({ error: `status must be one of ${[...VALID_SUB_STATUS].join(', ')}` });
   }
@@ -427,10 +457,37 @@ router.put('/tenants/:id/subscription', async (req, res) => {
   const { practice_id } = tenant.rows[0];
 
   let planName = null;
+  let prorated = false;
   if (planId != null) {
-    const p = await pool.query('SELECT name FROM public.subscription_plans WHERE id = $1', [planId]);
+    const p = await pool.query(
+      'SELECT name, stripe_price_id FROM public.subscription_plans WHERE id = $1', [planId]);
     if (p.rows.length === 0) return res.status(400).json({ error: 'Unknown planId' });
     planName = p.rows[0].name;
+
+    // Move the money first. Recording a plan the customer is not actually being billed for
+    // is how a tenant ends up on a higher tier for free — the same ordering the
+    // tenant-facing change uses.
+    const { rows: cur } = await pool.query(
+      'SELECT plan_id, stripe_subscription_id FROM control.subscriptions WHERE tenant_id = $1',
+      [req.params.id]);
+    const existing = cur[0];
+    const changingPlan = existing && existing.plan_id !== planId;
+    const subId = stripeSubscriptionId || (existing && existing.stripe_subscription_id);
+
+    if (pushToStripe && changingPlan && subId && p.rows[0].stripe_price_id && billing.isConfigured()) {
+      await billing.changeSubscriptionPlan({
+        subscriptionId: subId,
+        newPriceId: p.rows[0].stripe_price_id,
+        prorationDate: prorationDate ? Number(prorationDate) : undefined,
+      });
+      prorated = true;
+      await ledger.recordEvent({
+        tenantId: req.params.id, practiceId: practice_id,
+        eventType: 'subscription.changed',
+        stripeObjectId: `${subId}:plan:${planId}:${Date.now()}`,
+        description: `Operator moved tenant to ${planName} (prorated)`,
+      });
+    }
   }
 
   // Upsert the subscription; COALESCE keeps existing values when a field is omitted.
@@ -457,8 +514,43 @@ router.put('/tenants/:id/subscription', async (req, res) => {
   invalidateEntitlements(practice_id);
   await logPlatformAction(pool, { operatorId: req.operator.id, action: 'subscription.update',
     targetType: 'tenant', targetId: req.params.id, tenantId: req.params.id,
-    detail: { planId, status, seats }, ip: clientIp(req) });
-  res.json(rows[0]);
+    detail: { planId, status, seats, prorated }, ip: clientIp(req) });
+  res.json({ ...rows[0], prorated });
+});
+
+// ── Billing & accounting ──────────────────────────────────────────────────────
+// Revenue reporting reads the local ledger (control.billing_events) rather than querying
+// Stripe per page: it is fast, it survives a rotated key, and it is what an accountant can
+// reconcile against. Stripe stays the system of record for the money itself.
+
+router.get('/billing/summary', async (req, res) => {
+  res.json(await ledger.summary());
+});
+
+router.get('/billing/events', async (req, res) => {
+  res.json(await ledger.events({
+    tenantId: req.query.tenantId || null,
+    limit: req.query.limit,
+    offset: req.query.offset,
+  }));
+});
+
+/** Per-tenant revenue: what each is contracted for, and what has actually been collected. */
+router.get('/billing/tenants', async (req, res) => {
+  res.json(await ledger.perTenantTotals());
+});
+
+/** A tenant's invoices, live from Stripe — the authoritative document list. */
+router.get('/tenants/:id/invoices', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { rows } = await pool.query(
+    'SELECT stripe_customer_id FROM control.subscriptions WHERE tenant_id = $1', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Tenant not found' });
+  const customerId = rows[0].stripe_customer_id;
+  if (!customerId || !billing.isConfigured()) {
+    return res.json({ linked: false, invoices: [] });
+  }
+  res.json({ linked: true, invoices: await billing.listInvoices(customerId) });
 });
 
 // Anything a handler throws lands here as JSON, not as Express's HTML error page — and,
