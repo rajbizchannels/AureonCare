@@ -33,7 +33,7 @@ const router = new Proxy(baseRouter, {
     return typeof orig === 'function' ? orig.bind(target) : orig;
   },
 });
-const { signPlatformToken, requirePlatformAdmin, requireSecret } = require('../middleware/platformAuth');
+const { signPlatformToken, requirePlatformAdmin, requireSecret, requireOperatorRole } = require('../middleware/platformAuth');
 const { logPlatformAction } = require('../services/platformAudit');
 const { withTenant } = require('../db/tenantClient');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
@@ -166,7 +166,7 @@ router.get('/tenants/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
-router.post('/tenants', async (req, res) => {
+router.post('/tenants', requireOperatorRole('support'), async (req, res) => {
   const pool = req.app.locals.pool;
   const { name, planTier, planId, country, timezone } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name is required' });
@@ -197,8 +197,8 @@ async function setTenantStatus(req, res, status, action) {
   await logPlatformAction(pool, { operatorId: req.operator.id, action, targetType: 'tenant', targetId: req.params.id, tenantId: req.params.id, ip: clientIp(req) });
   res.json(rows[0]);
 }
-router.post('/tenants/:id/suspend', (req, res) => setTenantStatus(req, res, 'suspended', 'tenant.suspend'));
-router.post('/tenants/:id/resume', (req, res) => setTenantStatus(req, res, 'active', 'tenant.resume'));
+router.post('/tenants/:id/suspend', requireOperatorRole('support'), (req, res) => setTenantStatus(req, res, 'suspended', 'tenant.suspend'));
+router.post('/tenants/:id/resume', requireOperatorRole('support'), (req, res) => setTenantStatus(req, res, 'active', 'tenant.resume'));
 
 // ── Platform audit log (read) ─────────────────────────────────────────────────
 router.get('/audit', async (req, res) => {
@@ -213,7 +213,7 @@ router.get('/audit', async (req, res) => {
 });
 
 // ── Break-glass: time-boxed, justified access to one tenant ───────────────────
-router.post('/tenants/:id/break-glass', async (req, res) => {
+router.post('/tenants/:id/break-glass', requireOperatorRole('support'), async (req, res) => {
   const pool = req.app.locals.pool;
   const { reason, ttlMinutes } = req.body || {};
   if (!reason || String(reason).trim().length < 8) {
@@ -281,7 +281,7 @@ router.get('/plans', async (req, res) => {
 
 // Create a plan. Deactivated plans are still listed (is_active is a column, not a filter),
 // so retiring a plan never breaks the tenants already subscribed to it.
-router.post('/plans', async (req, res) => {
+router.post('/plans', requireOperatorRole('billing'), async (req, res) => {
   const pool = req.app.locals.pool;
   const {
     name, displayName, description, price, currency, billingCycle,
@@ -336,7 +336,7 @@ router.post('/plans', async (req, res) => {
  * push after a price change mints a NEW price and archives the old one — existing
  * subscribers keep billing at the price they agreed to; only new customers see the new one.
  */
-router.post('/plans/:id/stripe', async (req, res) => {
+router.post('/plans/:id/stripe', requireOperatorRole('billing'), async (req, res) => {
   const pool = req.app.locals.pool;
   if (!billing.isConfigured()) {
     return res.status(503).json({ error: 'Platform billing is not configured (set AC_STRIPE_SK).' });
@@ -378,9 +378,25 @@ router.post('/plans/:id/stripe', async (req, res) => {
 // Make a plan buyable from the public signup page. This is the only platform-side step in
 // self-serve onboarding: a plan needs a Stripe Price before a customer can check out. It
 // is configured once per plan, not per customer — no operator is involved in a signup.
-router.put('/plans/:id', async (req, res) => {
+router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
   const pool = req.app.locals.pool;
-  const { selfServe, stripePriceId, trialDays, isActive, displayName, description, price, currency, billingCycle } = req.body || {};
+  const {
+    selfServe, stripePriceId, trialDays, isActive, displayName, description, price,
+    currency, billingCycle, freeMonths,
+    // Renaming the KEY is separate from the display name: plan_name is snapshotted onto
+    // control.subscriptions, so a rename has to carry through or the console shows one
+    // name and the subscription another.
+    name,
+  } = req.body || {};
+  // A plan key is an identifier: lower-case, underscore-separated, and unique.
+  let cleanKey = null;
+  if (name != null && String(name).trim() !== '') {
+    cleanKey = String(name).trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+    const clash = await req.app.locals.pool.query(
+      'SELECT 1 FROM public.subscription_plans WHERE name = $1 AND id <> $2', [cleanKey, req.params.id]);
+    if (clash.rows.length) return res.status(409).json({ error: `A plan named "${cleanKey}" already exists.` });
+  }
+
   // Guard against the common mistake: ticking "sell self-serve" with no price attached
   // would leave the plan invisible on the signup page with no explanation.
   if (selfServe && !stripePriceId) {
@@ -398,6 +414,8 @@ router.put('/plans/:id', async (req, res) => {
           SET self_serve = COALESCE($2, self_serve),
               stripe_price_id = CASE WHEN $3::text IS NOT NULL THEN NULLIF($3,'') ELSE stripe_price_id END,
               trial_days = COALESCE($4, trial_days),
+              free_months = COALESCE($11, free_months),
+              name = COALESCE($12, name),
               is_active = COALESCE($5, is_active),
               display_name = COALESCE($6, display_name),
               description = COALESCE($7, description),
@@ -413,9 +431,18 @@ router.put('/plans/:id', async (req, res) => {
        typeof isActive === 'boolean' ? isActive : null,
        displayName || null, description === undefined ? null : description,
        price == null || price === '' ? null : Number(price),
-       currency || null, billingCycle || null]
+       currency || null, billingCycle || null,
+       freeMonths == null || freeMonths === '' ? null : Number(freeMonths),
+       cleanKey]
     );
     if (!rows.length) return res.status(404).json({ error: 'Plan not found' });
+    if (cleanKey) {
+      // Carry the rename onto every subscription holding the old snapshot, so the console
+      // and the tenant's own settings page agree on what the plan is called.
+      await pool.query(
+        'UPDATE control.subscriptions SET plan_name = $2, updated_at = now() WHERE plan_id = $1',
+        [req.params.id, cleanKey]);
+    }
     await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.update',
       targetType: 'plan', targetId: String(req.params.id),
       detail: { selfServe, stripePriceId, trialDays, isActive }, ip: clientIp(req) });
@@ -460,7 +487,7 @@ router.get('/tenants/:id/subscription/preview/:planId', async (req, res) => {
   res.json({ prorated: true, ...preview });
 });
 
-router.put('/tenants/:id/subscription', async (req, res) => {
+router.put('/tenants/:id/subscription', requireOperatorRole('billing'), async (req, res) => {
   const pool = req.app.locals.pool;
   const {
     planId, status, seats, stripeCustomerId, stripeSubscriptionId, currentPeriodEnd,
@@ -574,6 +601,233 @@ router.get('/tenants/:id/invoices', async (req, res) => {
   res.json({ linked: true, invoices: await billing.listInvoices(customerId) });
 });
 
+/** Outstanding balances — who owes money and how long it has been outstanding. */
+router.get('/billing/aging', async (req, res) => {
+  res.json(await ledger.aging());
+});
+
+/** One tenant's full billing picture: totals, ledger, and what has been granted. */
+router.get('/tenants/:id/billing', async (req, res) => {
+  res.json(await ledger.tenantDetail(req.params.id));
+});
+
+/** The ledger as CSV, for an accountant. Read-only, so any operator may take it. */
+router.get('/billing/export.csv', async (req, res) => {
+  const csv = await ledger.exportCsv({ from: req.query.from || null, to: req.query.to || null });
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="billing-${new Date().toISOString().slice(0, 10)}.csv"`);
+  res.send(csv);
+});
+
+/**
+ * Post a manual credit or debit — a goodwill credit, a written-off invoice, an
+ * out-of-band bank transfer.
+ *
+ * This does NOT move money in Stripe: it records that money moved, so the books reconcile.
+ * A reason is mandatory and the operator is recorded, because an adjustment nobody signed
+ * for is not an accounting record. Uses the strict writer so a failure is reported rather
+ * than swallowed.
+ */
+router.post('/billing/adjustments', requireOperatorRole('billing'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { tenantId, amount, currency = 'usd', reason, kind = 'credit' } = req.body || {};
+  if (!tenantId) return res.status(400).json({ error: 'tenantId is required' });
+  if (!reason || String(reason).trim().length < 10) {
+    return res.status(400).json({ error: 'A reason of at least 10 characters is required.' });
+  }
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value <= 0) {
+    return res.status(400).json({ error: 'Amount must be a positive number.' });
+  }
+  if (!['credit', 'debit'].includes(kind)) {
+    return res.status(400).json({ error: "kind must be 'credit' or 'debit'." });
+  }
+
+  const t = await pool.query('SELECT practice_id FROM control.tenants WHERE id = $1', [tenantId]);
+  if (!t.rows.length) return res.status(404).json({ error: 'Tenant not found' });
+
+  // A credit REDUCES what the tenant owes us, so it is negative in the ledger — the same
+  // sign convention as a refund. A debit is money in.
+  const minor = Math.round(value * 100) * (kind === 'credit' ? -1 : 1);
+  const row = await ledger.recordEventStrict({
+    tenantId, practiceId: t.rows[0].practice_id,
+    eventType: `adjustment.${kind}`,
+    stripeObjectId: `adj_${crypto.randomUUID()}`,
+    amountMinor: minor, currency: String(currency).toLowerCase(),
+    description: String(reason).trim().slice(0, 500),
+    operatorId: req.operator.id,
+  });
+  await logPlatformAction(pool, { operatorId: req.operator.id, action: `billing.adjustment.${kind}`,
+    targetType: 'tenant', targetId: tenantId, tenantId,
+    detail: { amount: value, currency, reason }, ip: clientIp(req) });
+  res.status(201).json({ ...row, amount: minor / 100, kind });
+});
+
+// ── Coupons ───────────────────────────────────────────────────────────────────
+
+router.get('/coupons', async (req, res) => {
+  if (!billing.isConfigured()) return res.json({ configured: false, coupons: [] });
+  res.json({ configured: true, coupons: await billing.listCoupons() });
+});
+
+/**
+ * Create a coupon and its promotion code, optionally restricted to specific plans.
+ * Restriction is by Stripe product, which is why a plan must have been pushed to Stripe
+ * before it can be named here.
+ */
+router.post('/coupons', requireOperatorRole('billing'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  if (!billing.isConfigured()) {
+    return res.status(503).json({ error: 'Platform billing is not configured (set AC_STRIPE_SK).' });
+  }
+  const { code, percentOff, amountOff, currency, duration, durationInMonths,
+          maxRedemptions, expiresAt, planIds = [], name } = req.body || {};
+  if (!code || !/^[A-Za-z0-9_-]{3,40}$/.test(String(code).trim())) {
+    return res.status(400).json({ error: 'Code must be 3-40 characters, letters, digits, - or _.' });
+  }
+
+  let productIds = [];
+  if (Array.isArray(planIds) && planIds.length) {
+    const { rows } = await pool.query(
+      'SELECT id, display_name, stripe_product_id FROM public.subscription_plans WHERE id = ANY($1)',
+      [planIds.map(Number)]);
+    const missing = rows.filter((r) => !r.stripe_product_id);
+    if (missing.length) {
+      return res.status(400).json({
+        error: `These plans have no Stripe product yet — use "Create in Stripe" first: ${missing.map((m) => m.display_name).join(', ')}`,
+      });
+    }
+    productIds = rows.map((r) => r.stripe_product_id);
+  }
+
+  const out = await billing.createCoupon({
+    code, percentOff, amountOff, currency, duration, durationInMonths,
+    maxRedemptions, expiresAt, productIds, name,
+  });
+  await logPlatformAction(pool, { operatorId: req.operator.id, action: 'coupon.create',
+    targetType: 'coupon', targetId: out.couponId,
+    detail: { code: out.code, percentOff, amountOff, duration, planIds }, ip: clientIp(req) });
+  res.status(201).json(out);
+});
+
+router.post('/coupons/:promotionCodeId/deactivate', requireOperatorRole('billing'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  if (!billing.isConfigured()) return res.status(503).json({ error: 'Platform billing is not configured.' });
+  await billing.deactivateCoupon(req.params.promotionCodeId);
+  await logPlatformAction(pool, { operatorId: req.operator.id, action: 'coupon.deactivate',
+    targetType: 'coupon', targetId: req.params.promotionCodeId, ip: clientIp(req) });
+  res.json({ success: true });
+});
+
+// ── Free months ───────────────────────────────────────────────────────────────
+
+/**
+ * Give a tenant N months free. Applied in Stripe as a 100%-off discount on their
+ * subscription and recorded locally with the reason and the operator who granted it.
+ */
+router.post('/tenants/:id/free-months', requireOperatorRole('billing'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { months, reason } = req.body || {};
+  if (!reason || String(reason).trim().length < 10) {
+    return res.status(400).json({ error: 'A reason of at least 10 characters is required.' });
+  }
+  const { rows } = await pool.query(
+    'SELECT stripe_subscription_id FROM control.subscriptions WHERE tenant_id = $1', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Tenant has no subscription record.' });
+  const subId = rows[0].stripe_subscription_id;
+  if (!subId || !billing.isConfigured()) {
+    return res.status(409).json({
+      error: 'This tenant is not billed through Stripe, so there is nothing to discount.',
+    });
+  }
+
+  const out = await billing.grantFreeMonths({ subscriptionId: subId, months, reason });
+  await pool.query(
+    `INSERT INTO control.subscription_grants (tenant_id, grant_type, months, stripe_coupon_id, reason, operator_id)
+     VALUES ($1,'free_months',$2,$3,$4,$5)`,
+    [req.params.id, out.months, out.couponId, String(reason).trim(), req.operator.id]);
+  await logPlatformAction(pool, { operatorId: req.operator.id, action: 'subscription.free_months',
+    targetType: 'tenant', targetId: req.params.id, tenantId: req.params.id,
+    detail: { months: out.months, reason, couponId: out.couponId }, ip: clientIp(req) });
+  res.status(201).json(out);
+});
+
+// ── Operators ─────────────────────────────────────────────────────────────────
+// Owner-only. Managing who can reach the console — and with what power — is the one thing
+// a billing or support operator must not be able to do for themselves.
+
+router.get('/operators', requireOperatorRole('owner'), async (req, res) => {
+  const { rows } = await req.app.locals.pool.query(
+    `SELECT id, email, name, role, status, mfa_enabled, last_login, created_at
+       FROM control.operators ORDER BY created_at`);
+  res.json(rows);
+});
+
+router.post('/operators', requireOperatorRole('owner'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { email, password, name, role = 'readonly' } = req.body || {};
+  if (!['owner', 'billing', 'support', 'readonly'].includes(role)) {
+    return res.status(400).json({ error: 'Unknown role.' });
+  }
+  const clean = String(email || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) {
+    return res.status(400).json({ error: 'A valid email address is required.' });
+  }
+  const pw = validatePassword(password);
+  if (!pw.valid) return res.status(400).json({ error: pw.message });
+
+  const hash = await bcrypt.hash(password, BCRYPT_COST);
+  const { rows } = await pool.query(
+    `INSERT INTO control.operators (email, password_hash, name, role, status)
+     VALUES ($1,$2,$3,$4,'active')
+     ON CONFLICT (email) DO NOTHING
+     RETURNING id, email, name, role, status, created_at`,
+    [clean, hash, name || null, role]);
+  if (!rows.length) return res.status(409).json({ error: 'An operator with that email already exists.' });
+
+  await logPlatformAction(pool, { operatorId: req.operator.id, action: 'operator.create',
+    targetType: 'operator', targetId: rows[0].id, detail: { email: clean, role }, ip: clientIp(req) });
+  res.status(201).json(rows[0]);
+});
+
+router.put('/operators/:id', requireOperatorRole('owner'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { role, status } = req.body || {};
+  if (role && !['owner', 'billing', 'support', 'readonly'].includes(role)) {
+    return res.status(400).json({ error: 'Unknown role.' });
+  }
+  if (status && !['active', 'disabled'].includes(status)) {
+    return res.status(400).json({ error: "status must be 'active' or 'disabled'." });
+  }
+
+  // Never let the last active owner be demoted or disabled — that would lock everyone out
+  // of operator management permanently, with no way back short of database surgery.
+  if ((role && role !== 'owner') || status === 'disabled') {
+    const { rows: owners } = await pool.query(
+      "SELECT id FROM control.operators WHERE role = 'owner' AND status = 'active'");
+    if (owners.length === 1 && owners[0].id === req.params.id) {
+      return res.status(409).json({ error: 'This is the last active owner. Promote another operator first.' });
+    }
+  }
+
+  const { rows } = await pool.query(
+    `UPDATE control.operators
+        SET role = COALESCE($2, role),
+            status = COALESCE($3, status),
+            -- Any change to role or status revokes that operator's live sessions: a
+            -- demotion that leaves an 8-hour token holding the old power is not a demotion.
+            token_version = token_version + 1,
+            updated_at = now()
+      WHERE id = $1
+      RETURNING id, email, name, role, status`,
+    [req.params.id, role || null, status || null]);
+  if (!rows.length) return res.status(404).json({ error: 'Operator not found' });
+
+  await logPlatformAction(pool, { operatorId: req.operator.id, action: 'operator.update',
+    targetType: 'operator', targetId: req.params.id, detail: { role, status }, ip: clientIp(req) });
+  res.json(rows[0]);
+});
+
 // Anything a handler throws lands here as JSON, not as Express's HTML error page — and,
 // critically, not as a process exit. A missing column almost always means a migration has
 // not been applied, so say that rather than emitting a bare 500.
@@ -594,7 +848,18 @@ baseRouter.use((err, req, res, _next) => {
       pgCode: err.code,
     });
   }
+  // Validation and conflict errors thrown from the billing service carry a statusCode.
+  // Without this they surfaced as a bare 500, so "a repeating coupon needs
+  // durationInMonths" looked like a server fault rather than a correctable mistake.
+  if (err && err.statusCode >= 400 && err.statusCode < 500) {
+    return res.status(err.statusCode).json({ error: err.message });
+  }
   console.error('[platform] unhandled error:', err);
+  // Stripe rejections are actionable ("No such coupon"), so pass the message through as a
+  // 502 rather than hiding it — this route is operator-only and already authenticated.
+  if (err && (err.type || '').startsWith('Stripe')) {
+    return res.status(502).json({ error: err.message });
+  }
   res.status(500).json({ error: 'Internal server error' });
 });
 
