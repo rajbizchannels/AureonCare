@@ -113,7 +113,28 @@ router.post('/mfa/enroll', async (req, res) => {
   const pool = req.app.locals.pool;
   const secret = speakeasy.generateSecret({ name: `AureonCare Platform (${req.operator.email})` });
   await pool.query('UPDATE control.operators SET mfa_secret = $1 WHERE id = $2', [secret.base32, req.operator.id]);
-  res.json({ otpauthUrl: secret.otpauth_url, base32: secret.base32, note: 'Verify a code at /mfa/verify to enable.' });
+
+  // Two ways to enrol, because they need DIFFERENT values and mixing them up is the usual
+  // failure: a QR encodes the whole otpauth:// URL, while manual entry takes the base32
+  // SECRET only. Pasting the URL into Google Authenticator's "setup key" field is rejected
+  // as containing illegal characters — base32 is A-Z and 2-7, so ':' '/' '?' '=' are not
+  // valid. The QR is rendered server-side as a data: URI; the console's CSP allows
+  // img-src data: but not a third-party QR script.
+  let qrDataUrl = null;
+  try {
+    qrDataUrl = await require('qrcode').toDataURL(secret.otpauth_url, { margin: 1, width: 220 });
+  } catch (e) {
+    console.warn('[platform] QR generation failed, manual entry still available:', e.message);
+  }
+
+  res.json({
+    otpauthUrl: secret.otpauth_url,
+    base32: secret.base32,
+    qrDataUrl,
+    account: req.operator.email,
+    issuer: 'AureonCare Platform',
+    note: 'Scan the QR, or type the base32 key manually. Then verify a code to enable.',
+  });
 });
 
 router.post('/mfa/verify', async (req, res) => {

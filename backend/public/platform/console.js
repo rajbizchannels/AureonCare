@@ -459,10 +459,29 @@
   $('mfaEnroll').addEventListener('click', async function () {
     try {
       var out = await api('/mfa/enroll', { method: 'POST' });
-      $('otpUrl').textContent = out.otpauthUrl || out.base32;
+      // The QR carries the otpauth:// URL; the text field carries the base32 SECRET.
+      // They are not interchangeable — an authenticator's manual-entry field rejects the
+      // URL, because base32 has no ':' '/' '?' or '='.
+      if (out.qrDataUrl) {
+        $('mfaQr').src = out.qrDataUrl;
+        $('mfaQr').hidden = false;
+      }
+      $('mfaKey').value = out.base32 || '';
       $('mfaSetup').hidden = false;
     } catch (err) { toast(err.message, true); }
   });
+  $('copyMfaKey').addEventListener('click', function () {
+    var f = $('mfaKey');
+    f.select();
+    try {
+      navigator.clipboard.writeText(f.value);
+      toast('Setup key copied');
+    } catch (e) {
+      // Clipboard access can be blocked; the field is selected either way.
+      toast('Press Ctrl+C to copy the selected key');
+    }
+  });
+
   $('mfaVerifyForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     try {
