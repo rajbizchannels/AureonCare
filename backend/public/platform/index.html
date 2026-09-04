@@ -132,8 +132,17 @@
         <div id="mfaState"></div>
         <button id="mfaEnroll" class="primary">Set up MFA</button>
         <div id="mfaSetup" hidden>
-          <p class="small">Add this to your authenticator app, then enter a code to confirm.</p>
-          <code id="otpUrl" class="break"></code>
+          <p class="small"><strong>1. Scan this with your authenticator app</strong></p>
+          <img id="mfaQr" alt="MFA setup QR code" width="220" height="220" hidden />
+          <p class="small">
+            <strong>Or add it by hand:</strong> choose <em>Enter a setup key</em> in Google
+            Authenticator, put your email in <em>Account</em>, and paste the key below into
+            <em>Key</em>. Paste the key only — the full <code>otpauth://</code> link is
+            rejected as containing illegal characters.
+          </p>
+          <label>Setup key<input id="mfaKey" readonly /></label>
+          <button type="button" id="copyMfaKey">Copy key</button>
+          <p class="small"><strong>2. Enter the 6-digit code it shows</strong></p>
           <form id="mfaVerifyForm" class="row">
             <input id="mfaVerifyCode" inputmode="numeric" maxlength="6" placeholder="123456" required />
             <button type="submit" class="primary">Confirm</button>
