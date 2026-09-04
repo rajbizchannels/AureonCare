@@ -342,8 +342,15 @@ Use that token as `Authorization: Bearer <token>` on every call below. It lasts 
 
 ## Enable MFA (do this immediately)
 
-In the console: **Security** tab → *Enrol authenticator* → scan/paste the `otpauth://` URL
-into your authenticator app → enter the 6-digit code to confirm. Or by hand:
+In the console: **Security** tab → *Set up MFA*. **Scan the QR code** with your
+authenticator app, then enter the 6-digit code.
+
+To add it by hand instead, use the **setup key** shown under the QR — that is the base32
+secret. In Google Authenticator choose *Enter a setup key*, put your email in *Account* and
+the key in *Key*. Do **not** paste the `otpauth://` link there: base32 allows only A–Z and
+2–7, so the link's `:` `/` `?` `=` are rejected as illegal characters.
+
+Or by hand over the API:
 
 ```bash
 curl -X POST https://<host>/api/platform/mfa/enroll -H "Authorization: Bearer $TOK"
