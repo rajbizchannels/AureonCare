@@ -60,7 +60,7 @@ const requirePlatformAdmin = async (req, res, next) => {
 
     const pool = req.app.locals.pool;
     const { rows } = await pool.query(
-      "SELECT id, email, name, token_version FROM control.operators WHERE id = $1 AND status = 'active'",
+      "SELECT id, email, name, role, token_version FROM control.operators WHERE id = $1 AND status = 'active'",
       [payload.sub]
     );
     if (rows.length === 0) return res.status(401).json({ error: 'Operator not found or disabled' });
@@ -68,7 +68,12 @@ const requirePlatformAdmin = async (req, res, next) => {
       return res.status(401).json({ error: 'Session expired, please sign in again' });
     }
 
-    req.operator = { id: rows[0].id, email: rows[0].email, name: rows[0].name };
+    req.operator = {
+      id: rows[0].id, email: rows[0].email, name: rows[0].name,
+      // Default to the most privileged role only for a row that predates migration 078;
+      // the column is NOT NULL with a default, so in practice this is always set.
+      role: rows[0].role || 'owner',
+    };
     next();
   } catch (error) {
     if (error.statusCode === 503) return res.status(503).json({ error: error.message });
@@ -77,4 +82,37 @@ const requirePlatformAdmin = async (req, res, next) => {
   }
 };
 
-module.exports = { signPlatformToken, requirePlatformAdmin, requireSecret };
+/**
+ * Role gate for platform routes. Roles are cumulative in capability but checked as a set,
+ * so a route names exactly the roles it accepts.
+ *
+ *   readonly  read reports; change nothing
+ *   billing   + plans, coupons, subscriptions, adjustments, free months
+ *   support   + tenant lifecycle and break-glass over PHI
+ *   owner     + manage operators
+ *
+ * Deliberately separate from requirePlatformAdmin: authentication says who you are,
+ * this says what that principal may do. Applied per route rather than router-wide,
+ * because the console mixes read and write endpoints under one prefix.
+ */
+const ROLE_GRANTS = {
+  owner: ['owner', 'billing', 'support', 'readonly'],
+  billing: ['billing', 'readonly'],
+  support: ['support', 'readonly'],
+  readonly: ['readonly'],
+};
+
+const requireOperatorRole = (...allowed) => (req, res, next) => {
+  if (!req.operator) return res.status(401).json({ error: 'Platform authentication required' });
+  const held = ROLE_GRANTS[req.operator.role] || [];
+  if (!allowed.some((a) => held.includes(a))) {
+    return res.status(403).json({
+      error: `This action requires one of: ${allowed.join(', ')}. Your role is ${req.operator.role}.`,
+    });
+  }
+  next();
+};
+
+module.exports = {
+  signPlatformToken, requirePlatformAdmin, requireSecret, requireOperatorRole, ROLE_GRANTS,
+};

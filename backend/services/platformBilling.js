@@ -265,6 +265,109 @@ async function listInvoices(customerId, limit = 24) {
   }));
 }
 
+
+// ── Coupons ───────────────────────────────────────────────────────────────────
+// Coupons live in Stripe, not mirrored here: one source of truth for what a code is worth
+// and how many times it may be redeemed. A coupon is the discount; a promotion code is the
+// customer-facing string that applies it. Creating both together is what makes a code
+// usable at checkout.
+
+/** Every promotion code with the coupon it applies, newest first. */
+async function listCoupons(limit = 50) {
+  const list = await stripe().promotionCodes.list({ limit, expand: ['data.coupon'] });
+  return list.data.map((pc) => ({
+    promotionCodeId: pc.id,
+    code: pc.code,
+    active: pc.active,
+    timesRedeemed: pc.times_redeemed,
+    maxRedemptions: pc.max_redemptions,
+    expiresAt: pc.expires_at,
+    couponId: pc.coupon?.id,
+    percentOff: pc.coupon?.percent_off || null,
+    amountOff: pc.coupon?.amount_off != null ? pc.coupon.amount_off / 100 : null,
+    currency: pc.coupon?.currency || null,
+    duration: pc.coupon?.duration,
+    durationInMonths: pc.coupon?.duration_in_months || null,
+    appliesToProducts: pc.coupon?.applies_to?.products || null,
+  }));
+}
+
+/**
+ * Create a coupon plus its promotion code.
+ *
+ * `productIds` restricts the discount to specific plans (Stripe's applies_to.products).
+ * Without it a code discounts anything, which is rarely what "a coupon for the Pro plan"
+ * is meant to mean.
+ */
+async function createCoupon({
+  code, percentOff, amountOff, currency = 'usd', duration = 'once', durationInMonths,
+  maxRedemptions, expiresAt, productIds = [], name,
+}) {
+  const s = stripe();
+  if ((percentOff == null) === (amountOff == null)) {
+    const e = new Error('Give exactly one of percentOff or amountOff.');
+    e.statusCode = 400; throw e;
+  }
+  if (duration === 'repeating' && !(durationInMonths > 0)) {
+    const e = new Error('A repeating coupon needs durationInMonths.');
+    e.statusCode = 400; throw e;
+  }
+
+  const couponParams = { duration, name: name || code };
+  if (percentOff != null) couponParams.percent_off = Number(percentOff);
+  else {
+    couponParams.amount_off = Math.round(Number(amountOff) * 100);
+    couponParams.currency = String(currency).toLowerCase();
+  }
+  if (duration === 'repeating') couponParams.duration_in_months = Number(durationInMonths);
+  if (productIds.length) couponParams.applies_to = { products: productIds };
+
+  const coupon = await s.coupons.create(couponParams);
+
+  const promoParams = { coupon: coupon.id, code: String(code).trim().toUpperCase() };
+  if (maxRedemptions) promoParams.max_redemptions = Number(maxRedemptions);
+  if (expiresAt) promoParams.expires_at = Math.floor(new Date(expiresAt).getTime() / 1000);
+  const promo = await s.promotionCodes.create(promoParams);
+
+  return { couponId: coupon.id, promotionCodeId: promo.id, code: promo.code };
+}
+
+/**
+ * Stop a promotion code being redeemed.
+ *
+ * Deactivates the CODE, not the coupon: customers already on a discount keep it, which is
+ * what you want when withdrawing an offer rather than clawing one back.
+ */
+async function deactivateCoupon(promotionCodeId) {
+  return stripe().promotionCodes.update(promotionCodeId, { active: false });
+}
+
+/**
+ * Give an existing subscription N free months.
+ *
+ * Implemented as a 100%-off coupon repeating for N months, applied to that subscription
+ * only. The alternative — moving trial_end — silently voids the current period's invoice
+ * and resets billing anchors on an already-paying customer; a discount leaves the billing
+ * cycle intact and shows up on the invoice as a line the customer can see.
+ */
+async function grantFreeMonths({ subscriptionId, months, reason }) {
+  const s = stripe();
+  const n = Number(months);
+  if (!Number.isInteger(n) || n < 1 || n > 36) {
+    const e = new Error('Free months must be a whole number between 1 and 36.');
+    e.statusCode = 400; throw e;
+  }
+  const coupon = await s.coupons.create({
+    percent_off: 100,
+    duration: n === 1 ? 'once' : 'repeating',
+    ...(n === 1 ? {} : { duration_in_months: n }),
+    name: `${n} free month${n === 1 ? '' : 's'}`,
+    metadata: { reason: String(reason || '').slice(0, 500) },
+  });
+  await s.subscriptions.update(subscriptionId, { coupon: coupon.id });
+  return { couponId: coupon.id, months: n };
+}
+
 const retrieveCheckoutSession = (id) =>
   stripe().checkout.sessions.retrieve(id, { expand: ['subscription'] });
 
@@ -272,4 +375,5 @@ module.exports = {
   isConfigured, createSubscriptionCheckout, findPromotionCode,
   describePromotionCode, retrieveCheckoutSession, pushPlanToStripe, recurringFor,
   previewPlanChange, changeSubscriptionPlan, listInvoices,
+  listCoupons, createCoupon, deactivateCoupon, grantFreeMonths,
 };

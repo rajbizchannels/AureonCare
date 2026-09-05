@@ -138,6 +138,10 @@
               esc(p.stripe_price_id || '') + '" /></label>' +
             '<label>Trial days<input name="trialDays" type="number" min="0" value="' +
               esc(p.trial_days == null ? 0 : p.trial_days) + '" /></label>' +
+            '<label>Free months<input name="freeMonths" type="number" min="0" value="' +
+              esc(p.free_months == null ? 0 : p.free_months) + '" /></label>' +
+            '<label>Display name<input name="displayName" value="' + esc(p.display_name || '') + '" /></label>' +
+            '<label>Key<input name="name" value="' + esc(p.name || '') + '" /></label>' +
             '<button type="submit" class="primary">Save</button>' +
             '<button type="button" class="pushStripe" data-id="' + esc(p.id) + '">' +
               (p.stripe_price_id ? 'Re-create price in Stripe' : 'Create in Stripe') + '</button>' +
@@ -166,6 +170,9 @@
           trialDays: Number(form.trialDays.value || 0),
           price: form.price.value === '' ? null : Number(form.price.value),
           currency: form.currency.value,
+          freeMonths: form.freeMonths.value === '' ? null : Number(form.freeMonths.value),
+          displayName: form.displayName.value.trim() || null,
+          name: form.name.value.trim() || null,
         },
       });
       msg.textContent = 'Saved.';
@@ -244,6 +251,9 @@
   }
 
   async function loadBilling() {
+    fillCurrencies($('adjCurrency'));
+    fillTenantPickers().catch(function () { /* pickers are optional */ });
+    loadAging();
     var sum = $('billingSummary'), ten = $('billingTenants'), ev = $('billingEvents');
     sum.textContent = 'Loading…';
     try {
@@ -311,6 +321,236 @@
     }
   }
 
+  // ── billing extras: aging, adjustments, free months, CSV ───────────────────
+  var CURRENCY_OPTS = null;
+  function fillCurrencies(el) {
+    if (!CURRENCY_OPTS) CURRENCY_OPTS = currencyOptions('usd');
+    el.innerHTML = CURRENCY_OPTS;
+  }
+
+  async function fillTenantPickers() {
+    var tenants = await api('/tenants');
+    var opts = tenants.map(function (t) {
+      return '<option value="' + esc(t.id) + '">' + esc(t.name || t.slug) + '</option>';
+    }).join('');
+    $('adjTenant').innerHTML = opts;
+    $('freeTenant').innerHTML = opts;
+  }
+
+  async function loadAging() {
+    var el = $('billingAging');
+    try {
+      var rows = await api('/billing/aging');
+      el.innerHTML = rows.length
+        ? '<table><tr><th>Tenant</th><th>Subscription</th><th>Last failure</th>' +
+          '<th>Days</th><th>MRR at risk</th></tr>' +
+          rows.map(function (r) {
+            return '<tr><td>' + esc(r.name || r.slug) + '</td>' +
+              '<td>' + esc(r.subscription_status || '—') + '</td>' +
+              '<td>' + esc(r.last_failure_at ? new Date(r.last_failure_at).toLocaleDateString() : '—') + '</td>' +
+              '<td>' + esc(r.days_since_failure == null ? '—' : r.days_since_failure) + '</td>' +
+              '<td>' + esc(money(r.mrrAtRisk, r.currency)) + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">Nothing outstanding.</p>';
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  $('adjustForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('adjMsg');
+    msg.textContent = 'Posting…';
+    try {
+      var out = await api('/billing/adjustments', {
+        method: 'POST',
+        body: {
+          tenantId: $('adjTenant').value,
+          kind: $('adjKind').value,
+          amount: Number($('adjAmount').value),
+          currency: $('adjCurrency').value,
+          reason: $('adjReason').value.trim(),
+        },
+      });
+      msg.textContent = 'Posted ' + out.amount.toFixed(2) + '.';
+      $('adjAmount').value = ''; $('adjReason').value = '';
+      loadBilling();
+    } catch (err) { msg.textContent = err.message; }
+  });
+
+  $('freeForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('freeMsg');
+    msg.textContent = 'Granting…';
+    try {
+      var out = await api('/tenants/' + encodeURIComponent($('freeTenant').value) + '/free-months', {
+        method: 'POST',
+        body: { months: Number($('freeMonths').value), reason: $('freeReason').value.trim() },
+      });
+      msg.textContent = out.months + ' free month(s) applied in Stripe.';
+      $('freeReason').value = '';
+      loadBilling();
+    } catch (err) { msg.textContent = err.message; }
+  });
+
+  $('exportCsv').addEventListener('click', function (e) {
+    e.preventDefault();
+    // A plain link would not carry the CSRF/cookie handling api() does, and the response is
+    // a file rather than JSON — so fetch it and hand the browser a blob.
+    fetch(API + '/billing/export.csv', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.blob() : Promise.reject(new Error('Export failed')); })
+      .then(function (b) {
+        var url = URL.createObjectURL(b);
+        var a = document.createElement('a');
+        a.href = url; a.download = 'billing.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      })
+      .catch(function (err) { toast(err.message, true); });
+  });
+
+  // ── coupons ────────────────────────────────────────────────────────────────
+  async function loadCoupons() {
+    fillCurrencies($('cCurrency'));
+    try {
+      var plans = await api('/plans');
+      $('cPlans').innerHTML = plans.map(function (p) {
+        return '<option value="' + esc(p.id) + '"' + (p.stripe_product_id ? '' : ' disabled') + '>' +
+          esc(p.display_name || p.name) + (p.stripe_product_id ? '' : ' (not in Stripe yet)') + '</option>';
+      }).join('');
+    } catch (e) { /* the list is optional */ }
+
+    var el = $('couponList');
+    el.textContent = 'Loading…';
+    try {
+      var out = await api('/coupons');
+      if (!out.configured) {
+        el.innerHTML = '<p class="muted small">Platform billing is not configured (AC_STRIPE_SK).</p>';
+        return;
+      }
+      el.innerHTML = out.coupons.length
+        ? '<table><tr><th>Code</th><th>Discount</th><th>Duration</th><th>Redeemed</th>' +
+          '<th>Active</th><th></th></tr>' +
+          out.coupons.map(function (c) {
+            var disc = c.percentOff ? c.percentOff + '%' : money(c.amountOff, c.currency);
+            var dur = c.duration === 'repeating' ? c.durationInMonths + ' months' : c.duration;
+            return '<tr><td>' + esc(c.code) + '</td><td>' + esc(disc) + '</td>' +
+              '<td>' + esc(dur) + '</td>' +
+              '<td>' + esc(c.timesRedeemed) + (c.maxRedemptions ? ' / ' + esc(c.maxRedemptions) : '') + '</td>' +
+              '<td>' + (c.active ? 'yes' : 'no') + '</td>' +
+              '<td>' + (c.active
+                ? '<button class="deactivateCoupon" data-id="' + esc(c.promotionCodeId) + '">Deactivate</button>'
+                : '') + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">No coupons yet.</p>';
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  $('couponForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('couponMsg');
+    msg.textContent = 'Creating…';
+    var planIds = Array.prototype.filter.call($('cPlans').options, function (o) { return o.selected; })
+      .map(function (o) { return Number(o.value); });
+    try {
+      var out = await api('/coupons', {
+        method: 'POST',
+        body: {
+          code: $('cCode').value.trim(),
+          percentOff: $('cPercent').value === '' ? null : Number($('cPercent').value),
+          amountOff: $('cAmount').value === '' ? null : Number($('cAmount').value),
+          currency: $('cCurrency').value,
+          duration: $('cDuration').value,
+          durationInMonths: $('cMonths').value === '' ? null : Number($('cMonths').value),
+          maxRedemptions: $('cMax').value === '' ? null : Number($('cMax').value),
+          planIds: planIds,
+        },
+      });
+      msg.textContent = 'Created ' + out.code + '.';
+      $('couponForm').reset();
+      loadCoupons();
+    } catch (err) { msg.textContent = err.message; }
+  });
+
+  document.addEventListener('click', async function (e) {
+    var btn = e.target.closest('button.deactivateCoupon');
+    if (!btn) return;
+    if (!window.confirm('Stop this code being redeemed? Customers already on the discount keep it.')) return;
+    try {
+      await api('/coupons/' + encodeURIComponent(btn.dataset.id) + '/deactivate', { method: 'POST' });
+      loadCoupons();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // ── operators ──────────────────────────────────────────────────────────────
+  async function loadOperators() {
+    var el = $('operatorList');
+    el.textContent = 'Loading…';
+    try {
+      var ops = await api('/operators');
+      el.innerHTML = '<table><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th>' +
+        '<th>MFA</th><th>Last login</th><th></th></tr>' +
+        ops.map(function (o) {
+          return '<tr><td>' + esc(o.email) + '</td><td>' + esc(o.name || '—') + '</td>' +
+            '<td><select class="opRole" data-id="' + esc(o.id) + '">' +
+              ['owner', 'billing', 'support', 'readonly'].map(function (r) {
+                return '<option value="' + r + '"' + (o.role === r ? ' selected' : '') + '>' + r + '</option>';
+              }).join('') + '</select></td>' +
+            '<td>' + esc(o.status) + '</td>' +
+            '<td>' + (o.mfa_enabled ? 'on' : '<span class="error">off</span>') + '</td>' +
+            '<td>' + esc(o.last_login ? new Date(o.last_login).toLocaleDateString() : '—') + '</td>' +
+            '<td><button class="opToggle" data-id="' + esc(o.id) + '" data-status="' + esc(o.status) + '">' +
+              (o.status === 'active' ? 'Disable' : 'Enable') + '</button></td></tr>';
+        }).join('') + '</table>';
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  $('operatorForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('operatorMsg');
+    msg.textContent = 'Creating…';
+    try {
+      await api('/operators', {
+        method: 'POST',
+        body: {
+          email: $('oEmail').value.trim(), name: $('oName').value.trim() || null,
+          role: $('oRole').value, password: $('oPassword').value,
+        },
+      });
+      msg.textContent = 'Operator added. They should enrol MFA at first sign-in.';
+      $('operatorForm').reset();
+      loadOperators();
+    } catch (err) { msg.textContent = err.message; }
+  });
+
+  document.addEventListener('change', async function (e) {
+    var sel = e.target.closest('select.opRole');
+    if (!sel) return;
+    try {
+      await api('/operators/' + encodeURIComponent(sel.dataset.id), {
+        method: 'PUT', body: { role: sel.value },
+      });
+      toast('Role updated; that operator has been signed out.');
+      loadOperators();
+    } catch (err) { toast(err.message, true); loadOperators(); }
+  });
+
+  document.addEventListener('click', async function (e) {
+    var btn = e.target.closest('button.opToggle');
+    if (!btn) return;
+    var next = btn.dataset.status === 'active' ? 'disabled' : 'active';
+    try {
+      await api('/operators/' + encodeURIComponent(btn.dataset.id), {
+        method: 'PUT', body: { status: next },
+      });
+      loadOperators();
+    } catch (err) { toast(err.message, true); }
+  });
+
   // ── tabs ───────────────────────────────────────────────────────────────────
   $('tabs').addEventListener('click', function (e) {
     var btn = e.target.closest('button[data-tab]');
@@ -326,6 +566,8 @@
     if (tab === 'tenants') loadTenants();
     if (tab === 'plans') loadPlans();
     if (tab === 'billing') loadBilling();
+    if (tab === 'coupons') loadCoupons();
+    if (tab === 'operators') loadOperators();
   });
 
   // ── tenants ────────────────────────────────────────────────────────────────
