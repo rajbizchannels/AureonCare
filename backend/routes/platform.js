@@ -602,6 +602,15 @@ router.get('/tenants/:id/invoices', async (req, res) => {
 });
 
 /** Outstanding balances — who owes money and how long it has been outstanding. */
+/**
+ * What this process can actually see. Answers "I set AC_STRIPE_SK in the dashboard but the
+ * console says it is not configured" without anyone having to guess. Returns presence and
+ * mode only — never key material.
+ */
+router.get('/billing/config', async (req, res) => {
+  res.json(billing.configStatus());
+});
+
 router.get('/billing/aging', async (req, res) => {
   res.json(await ledger.aging());
 });

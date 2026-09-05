@@ -360,6 +360,20 @@ npm run platform:operator -- admin@yourdomain.com 'A-Strong-Passphrase!23' "Plat
 rm .env.production                         # it holds live secrets — do not leave it around
 ```
 
+### If the console says billing is not configured
+
+The **Billing** tab reports what the running process can actually see. A shared variable set
+in the Vercel dashboard is not enough on its own:
+
+1. A **shared** variable must be **linked to this project** (Settings → Environment
+   Variables → Shared), not merely defined at the team level.
+2. Variables are baked into a deployment. An existing deployment never picks up a new
+   value — **redeploy** after adding it.
+3. Check the environment: a Production value is not visible to a Preview deployment.
+
+`GET /api/platform/billing/config` (operator-only) returns whether each variable is present
+and which Stripe mode the key is for. It never returns key material.
+
 `AC_PG_URI` (the Supabase connection string) is all that is needed; the scripts share the
 app's pool config, so they connect over TLS exactly as the deployed app does. Use the
 **direct** connection string here rather than the transaction pooler — the pooler does not
