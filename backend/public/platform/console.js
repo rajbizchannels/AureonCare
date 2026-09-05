@@ -254,6 +254,7 @@
     fillCurrencies($('adjCurrency'));
     fillTenantPickers().catch(function () { /* pickers are optional */ });
     loadAging();
+    loadBillingConfig();
     var sum = $('billingSummary'), ten = $('billingTenants'), ev = $('billingEvents');
     sum.textContent = 'Loading…';
     try {
@@ -318,6 +319,43 @@
         : '<p class="muted small">No billing activity recorded yet.</p>';
     } catch (e) {
       ev.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  // Surfaces what the running process sees, so a missing key is diagnosed here rather
+  // than by guessing at the dashboard.
+  async function loadBillingConfig() {
+    var el = $('billingConfig');
+    try {
+      var c = await api('/billing/config');
+      if (c.secretKeyPresent && c.webhookSecretPresent) {
+        el.innerHTML = '<p class="muted small">Stripe: ' + esc(c.mode) + ' mode via ' +
+          esc(c.secretKeyVar) + ' · webhook secret set.</p>';
+        return;
+      }
+      var lines = [];
+      if (!c.secretKeyPresent) {
+        lines.push('<strong>AC_STRIPE_SK is not visible to this deployment.</strong> ' +
+          'In Vercel a shared variable must be linked to THIS project and the project ' +
+          'redeployed — variables are baked into a deployment, so an existing one never ' +
+          'picks them up. Check the environment too: a Production value is not visible to ' +
+          'a Preview deployment.');
+      }
+      if (c.secretKeyPresent && c.mode === 'unrecognised') {
+        lines.push('AC_STRIPE_SK does not look like a Stripe secret key (expected sk_live_ ' +
+          'or sk_test_). It may have been truncated on paste — it is ' + esc(c.secretKeyLength) +
+          ' characters.');
+      }
+      if (!c.webhookSecretPresent) {
+        lines.push('AC_STRIPE_WHS is not set, so webhooks cannot be verified and signups ' +
+          'will not provision.');
+      } else if (!c.webhookSecretLooksRight) {
+        lines.push('AC_STRIPE_WHS does not start with whsec_ — that is the signing secret, ' +
+          'not the endpoint id.');
+      }
+      el.innerHTML = '<div class="card"><p class="error small">' + lines.join('</p><p class="error small">') + '</p></div>';
+    } catch (e) {
+      el.innerHTML = '';
     }
   }
 
