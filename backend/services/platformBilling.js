@@ -13,20 +13,57 @@
 
 const Stripe = require('stripe');
 
-const SECRET = process.env.AC_STRIPE_SK || process.env.STRIPE_SECRET_KEY || null;
+// Read at call time, not at module load. Freezing the value in a module-level const means
+// that if this module is ever required before the environment is populated — dotenv running
+// later, a bundler hoisting the import, a platform that injects variables after cold start —
+// the process reports "not configured" for its whole life, no matter what the environment
+// actually holds. Reading lazily costs one property lookup and removes that failure mode.
+const secretKey = () =>
+  (process.env.AC_STRIPE_SK || process.env.STRIPE_SECRET_KEY || '').trim() || null;
 
 let client = null;
+let clientKey = null;
 function stripe() {
-  if (!SECRET) {
+  const key = secretKey();
+  if (!key) {
     const e = new Error('Platform billing is not configured (set AC_STRIPE_SK).');
     e.statusCode = 503;
     throw e;
   }
-  if (!client) client = new Stripe(SECRET, { apiVersion: '2024-06-20' });
+  // Rebuild if the key changed, so a rotated key takes effect without a restart.
+  if (!client || clientKey !== key) {
+    client = new Stripe(key, { apiVersion: '2024-06-20' });
+    clientKey = key;
+  }
   return client;
 }
 
-const isConfigured = () => Boolean(SECRET);
+const isConfigured = () => Boolean(secretKey());
+
+/**
+ * What this PROCESS can see, for diagnosing "I set it in the dashboard but it says
+ * unconfigured". Never returns key material — only whether each value is present, and which
+ * Stripe mode the key is for, since a test key against live data (or the reverse) is the
+ * other common cause of things silently not working.
+ */
+function configStatus() {
+  const key = secretKey();
+  const webhook = (process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || '').trim();
+  const mode = !key ? null : key.startsWith('sk_live') || key.startsWith('rk_live') ? 'live'
+    : key.startsWith('sk_test') || key.startsWith('rk_test') ? 'test' : 'unrecognised';
+  return {
+    secretKeyPresent: Boolean(key),
+    secretKeyVar: process.env.AC_STRIPE_SK ? 'AC_STRIPE_SK'
+      : process.env.STRIPE_SECRET_KEY ? 'STRIPE_SECRET_KEY' : null,
+    mode,
+    // Length only — enough to spot a truncated paste without revealing the key.
+    secretKeyLength: key ? key.length : 0,
+    webhookSecretPresent: Boolean(webhook),
+    webhookSecretLooksRight: webhook ? webhook.startsWith('whsec_') : false,
+    frontendUrl: process.env.FRONTEND_URL || null,
+    nodeEnv: process.env.NODE_ENV || null,
+  };
+}
 
 /**
  * Create a hosted Checkout Session for a new subscription.
@@ -375,5 +412,5 @@ module.exports = {
   isConfigured, createSubscriptionCheckout, findPromotionCode,
   describePromotionCode, retrieveCheckoutSession, pushPlanToStripe, recurringFor,
   previewPlanChange, changeSubscriptionPlan, listInvoices,
-  listCoupons, createCoupon, deactivateCoupon, grantFreeMonths,
+  listCoupons, createCoupon, deactivateCoupon, grantFreeMonths, configStatus,
 };
