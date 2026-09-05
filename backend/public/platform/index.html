@@ -46,6 +46,8 @@
       <button data-tab="tenants" class="active">Tenants</button>
       <button data-tab="plans">Plans</button>
       <button data-tab="billing">Billing</button>
+      <button data-tab="coupons">Coupons</button>
+      <button data-tab="operators">Operators</button>
       <button data-tab="audit">Platform audit</button>
       <button data-tab="security">Security</button>
     </nav>
@@ -119,8 +121,93 @@
       <div id="billingSummary" class="list"></div>
       <h3>Per tenant</h3>
       <div id="billingTenants"></div>
+      <h3>Outstanding</h3>
+      <div id="billingAging"></div>
       <h3>Recent activity</h3>
       <div id="billingEvents"></div>
+
+      <h3>Post an adjustment</h3>
+      <p class="muted small">
+        Records that money moved without moving it in Stripe — a goodwill credit, a written-off
+        invoice, a bank transfer. A credit reduces what the tenant owes.
+      </p>
+      <form id="adjustForm" class="card inline">
+        <label>Tenant<select id="adjTenant" required></select></label>
+        <label>Kind
+          <select id="adjKind"><option value="credit">Credit</option><option value="debit">Debit</option></select>
+        </label>
+        <label>Amount<input id="adjAmount" type="number" min="0.01" step="0.01" required /></label>
+        <label>Currency<select id="adjCurrency"></select></label>
+        <label style="width:98%">Reason<input id="adjReason" minlength="10" required placeholder="Why this adjustment is being made" /></label>
+        <button type="submit" class="primary">Post adjustment</button>
+        <span id="adjMsg" class="small"></span>
+      </form>
+
+      <h3>Grant free months</h3>
+      <form id="freeForm" class="card inline">
+        <label>Tenant<select id="freeTenant" required></select></label>
+        <label>Months<input id="freeMonths" type="number" min="1" max="36" value="1" required /></label>
+        <label style="width:98%">Reason<input id="freeReason" minlength="10" required placeholder="Why these months are free" /></label>
+        <button type="submit" class="primary">Grant</button>
+        <span id="freeMsg" class="small"></span>
+      </form>
+
+      <p><a id="exportCsv" href="#">Download the ledger as CSV</a></p>
+    </div>
+
+    <!-- Coupons -->
+    <div class="tab" data-panel="coupons" hidden>
+      <h2>Coupons</h2>
+      <p class="muted small">
+        Coupons live in Stripe. A coupon is the discount; a promotion code is the string a
+        customer types. Restricting to plans uses each plan's Stripe product, so a plan must
+        have been created in Stripe first.
+      </p>
+      <form id="couponForm" class="card inline">
+        <label>Code<input id="cCode" placeholder="LAUNCH20" required /></label>
+        <label>Percent off<input id="cPercent" type="number" min="1" max="100" /></label>
+        <label>or Amount off<input id="cAmount" type="number" min="0.01" step="0.01" /></label>
+        <label>Currency<select id="cCurrency"></select></label>
+        <label>Duration
+          <select id="cDuration">
+            <option value="once">once</option>
+            <option value="repeating">repeating</option>
+            <option value="forever">forever</option>
+          </select>
+        </label>
+        <label>Months (if repeating)<input id="cMonths" type="number" min="1" /></label>
+        <label>Max redemptions<input id="cMax" type="number" min="1" /></label>
+        <label>Restrict to plans<select id="cPlans" multiple size="4"></select></label>
+        <button type="submit" class="primary">Create coupon</button>
+        <span id="couponMsg" class="small"></span>
+      </form>
+      <div id="couponList"></div>
+    </div>
+
+    <!-- Operators -->
+    <div class="tab" data-panel="operators" hidden>
+      <h2>Operators</h2>
+      <p class="muted small">
+        readonly reads reports · billing manages plans, coupons and money ·
+        support adds tenant lifecycle and break-glass over PHI · owner adds this page.
+        Changing a role or disabling an account signs that operator out immediately.
+      </p>
+      <form id="operatorForm" class="card inline">
+        <label>Email<input id="oEmail" type="email" required /></label>
+        <label>Name<input id="oName" /></label>
+        <label>Role
+          <select id="oRole">
+            <option value="readonly">readonly</option>
+            <option value="billing">billing</option>
+            <option value="support">support</option>
+            <option value="owner">owner</option>
+          </select>
+        </label>
+        <label>Password<input id="oPassword" type="password" required /></label>
+        <button type="submit" class="primary">Add operator</button>
+        <span id="operatorMsg" class="small"></span>
+      </form>
+      <div id="operatorList"></div>
     </div>
 
     <!-- Security -->

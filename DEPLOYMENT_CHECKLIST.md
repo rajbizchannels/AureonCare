@@ -242,6 +242,61 @@ rather than only recording it. Preview the amount first with
 to correct our records without touching billing — for reconciling a change made by hand in
 the Stripe dashboard.
 
+## Operator roles
+
+Migration `078` adds roles. **Existing operators become `owner`** so nothing they can do
+today stops working — narrow them deliberately in the console's **Operators** tab.
+
+| Role | Can do |
+|---|---|
+| `readonly` | Read every report. Change nothing. |
+| `billing` | + plans, coupons, subscriptions, adjustments, free months |
+| `support` | + tenant lifecycle (create/suspend/resume) and **break-glass over PHI** |
+| `owner` | + manage operators |
+
+The split matters: a finance contractor who needs revenue reports should not be able to
+open PHI, and a support engineer should not be able to move money. Changing a role or
+disabling an account bumps `token_version`, so that operator's live session ends at once —
+a demotion that leaves an 8-hour token holding the old power is not a demotion.
+
+The last active owner cannot demote or disable themselves; promote someone else first.
+
+## Accounting
+
+- **Aging** — tenants whose last payment failed or whose subscription is `past_due`/
+  `canceled`, with MRR at risk. This is "who owes us money", which the collected totals do
+  not answer.
+- **Adjustments** — post a manual credit or debit (goodwill, a written-off invoice, a bank
+  transfer). This records that money moved; it does **not** move money in Stripe. A reason
+  of 10+ characters is mandatory and the operator is recorded, because an adjustment nobody
+  signed for is not an accounting record. A credit is negative, the same sign convention as
+  a refund.
+- **CSV export** — the ledger for an accountant, every field quoted so a comma in a
+  description cannot shift columns.
+
+## Coupons
+
+Created in the console, stored in Stripe. A *coupon* is the discount; a *promotion code* is
+the string a customer types — both are created together. Restricting a coupon to specific
+plans uses each plan's Stripe **product**, so a plan must have been pushed to Stripe first;
+the form disables plans that have not been.
+
+Deactivating a code stops new redemptions. Customers already on the discount keep it, which
+is what withdrawing an offer means — use a refund if you need to claw one back.
+
+## Free months
+
+**Per tenant:** Billing tab → *Grant free months*. Applied in Stripe as a 100%-off discount
+repeating for N months on that subscription, recorded locally with the reason and operator.
+Implemented as a discount rather than by moving `trial_end`, which would void the current
+period's invoice and reset the billing anchor on a paying customer.
+
+**Per plan:** set *Free months* on the plan. Checkout converts it to Stripe's
+`trial_period_days` (months × 30), taking whichever of that and `trial_days` is larger.
+
+Renaming a plan's **key** rewrites the `plan_name` snapshot on every subscription holding
+it, so the console and the tenant's own settings page keep agreeing.
+
 ## Staff onboarding
 
 An admin invites colleagues from **Settings → User Management → Invite team members**. The

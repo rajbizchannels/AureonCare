@@ -58,7 +58,7 @@ router.get('/plans', async (req, res) => {
   try {
     const { rows } = await req.app.locals.pool.query(
       `SELECT id, name, display_name, description, price, billing_cycle,
-              max_users, max_providers, max_patients, features, trial_days
+              max_users, max_providers, max_patients, features, trial_days, free_months
          FROM public.subscription_plans
         WHERE is_active = true AND self_serve = true AND stripe_price_id IS NOT NULL
         ORDER BY price ASC NULLS FIRST, id ASC`
@@ -113,7 +113,7 @@ router.post('/', signupLimiter, async (req, res) => {
     }
 
     const { rows: planRows } = await pool.query(
-      `SELECT id, name, stripe_price_id, trial_days
+      `SELECT id, name, stripe_price_id, trial_days, free_months
          FROM public.subscription_plans
         WHERE is_active = true AND self_serve = true AND stripe_price_id IS NOT NULL
           AND ($1::int IS NULL OR id = $1)
@@ -148,7 +148,10 @@ router.post('/', signupLimiter, async (req, res) => {
         priceId: plan.stripe_price_id,
         email: cleanEmail,
         clientReferenceId: intentId,
-        trialDays: plan.trial_days,
+        // Free months are authored in months but Stripe Checkout takes days, so the
+        // larger of the two is sent. Keeping both lets the console say "2 free months"
+        // while the API still receives the day count it requires.
+        trialDays: Math.max(Number(plan.trial_days) || 0, (Number(plan.free_months) || 0) * 30),
         promoCode: promoCode || null,
         successUrl: `${APP_URL()}/signup/complete?intent=${intentId}`,
         cancelUrl: `${APP_URL()}/signup?cancelled=1`,
