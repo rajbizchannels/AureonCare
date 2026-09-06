@@ -18,6 +18,7 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [freshLink, setFreshLink] = useState(null);
+  const [delivery, setDelivery] = useState(null);
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
@@ -34,12 +35,16 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
 
   const create = async (e) => {
     e.preventDefault();
-    setError(''); setFreshLink(null); setBusy(true);
+    setError(''); setFreshLink(null); setDelivery(null); setBusy(true);
     try {
       const inv = await api.createInvite({ email: email.trim(), role });
       setFreshLink(inv.inviteUrl);
+      setDelivery({ emailed: inv.emailed, reason: inv.emailError, to: inv.email });
       setEmail('');
-      addNotification?.(`Invite created for ${inv.email}`, 'success');
+      addNotification?.(
+        inv.emailed ? `Invite emailed to ${inv.email}` : `Invite created for ${inv.email} — send the link yourself`,
+        inv.emailed ? 'success' : 'warning'
+      );
       load();
     } catch (err) {
       setError(err.message || 'Could not create the invite.');
@@ -116,8 +121,22 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
       {freshLink && (
         <div className={`mt-4 p-3 rounded-lg border ${dark ? 'border-slate-600 bg-slate-900' : 'border-blue-200 bg-blue-50'}`}>
           <div className={`text-xs mb-2 ${muted}`}>
-            Send this link to your colleague. It is shown only once — if you lose it, create
-            a new invite.
+            {delivery?.emailed ? (
+              <>Emailed to <strong>{delivery.to}</strong>. The same link is below in case it
+              does not arrive — it is shown only once, so if you lose it, create a new invite.</>
+            ) : (
+              <>
+                <span className="text-amber-600 font-medium">
+                  {delivery?.reason === 'smtp_not_configured'
+                    ? 'Email is not configured on this server, so nothing was sent.'
+                    : delivery?.reason === 'rate_limited'
+                    ? 'Too many emails have gone to this address recently, so nothing was sent.'
+                    : 'The invitation email could not be delivered.'}
+                </span>{' '}
+                Send this link to your colleague yourself. It is shown only once — if you lose
+                it, create a new invite.
+              </>
+            )}
           </div>
           <div className="flex gap-2">
             <code className={`flex-1 text-xs break-all ${text}`}>{freshLink}</code>
