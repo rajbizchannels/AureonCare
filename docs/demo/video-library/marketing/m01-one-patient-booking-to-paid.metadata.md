@@ -18,9 +18,9 @@ No cuts between modules and no switching systems — the continuity is the point
 
 Chapters:
 0:00 Booked
-0:25 Seen on video
+0:26 Seen on video
 0:44 Documented
-0:59 Claimed
+1:00 Claimed
 1:24 Paid
 
 Subtitles: upload m01-one-patient-booking-to-paid.srt as the English track — do not rely on auto-captions.
