@@ -3,12 +3,16 @@ const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 router.use(authenticate);
 
-// Cache for table existence check (expires after 5 minutes)
-let tableExistsCache = {
-  exists: null,
-  timestamp: 0,
-  ttl: 5 * 60 * 1000, // 5 minutes
-};
+// Cache for the table-existence check, keyed BY SCHEMA (expires after 5 minutes).
+//
+// The check itself is per-tenant — to_regclass resolves against the caller's search_path,
+// so the answer differs per schema. A single shared entry therefore let one tenant answer
+// for all of them: a caller whose account resolves to `public` (which holds no audit_logs
+// since the 068 cutover) cached `exists: false`, and for the next five minutes every other
+// clinic on that instance was told to run a migration and refused audit logging. Audit
+// logging is a control, so failing it for an unrelated tenant is not a cosmetic bug.
+const TABLE_CACHE_TTL_MS = 5 * 60 * 1000;
+const tableExistsCache = new Map(); // schema -> { exists, timestamp }
 
 /**
  * Middleware to check if audit_logs table exists
@@ -21,20 +25,32 @@ const checkAuditTableExists = async (req, res, next) => {
     // against the caller's schema, and detect the table via search_path (to_regclass)
     // rather than a hard-coded 'public'.
     const pool = req.db || req.app.locals.pool;
+    const schema = (req.tenant && req.tenant.schemaName) || 'public';
 
     const now = Date.now();
 
+    // An account that resolves to `public` is not missing a migration — it is not bound to
+    // an active tenant, and `public` has held no clinical tables since the 068 cutover.
+    // Telling the operator to run 040 sends them to fix a database that is already correct.
+    const missing = () =>
+      schema === 'public'
+        ? res.status(503).json({
+            error: 'No tenant workspace for this account',
+            message:
+              'This account is not bound to an active tenant, so it resolved to the public '
+              + 'schema, which holds no audit_logs table. See GET /api/auth/tenant-status.',
+          })
+        : res.status(503).json({
+            error: 'Audit logs table not found',
+            message: `Schema "${schema}" has no audit_logs table. Run migration `
+              + '040_create_audit_logs_table.sql (or re-provision the tenant from the template).',
+            migration: 'backend/migrations/040_create_audit_logs_table.sql',
+          });
+
     // Check cache first
-    if (tableExistsCache.exists !== null && (now - tableExistsCache.timestamp) < tableExistsCache.ttl) {
-      if (!tableExistsCache.exists) {
-        return res.status(503).json({
-          error: 'Audit logs table not found',
-          message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-          migration: 'backend/migrations/040_create_audit_logs_table.sql',
-        });
-      }
-      // Table exists, continue
-      return next();
+    const cached = tableExistsCache.get(schema);
+    if (cached && (now - cached.timestamp) < TABLE_CACHE_TTL_MS) {
+      return cached.exists ? next() : missing();
     }
 
     // Cache miss or expired - check database (search_path-aware; finds it in the tenant schema)
@@ -42,16 +58,10 @@ const checkAuditTableExists = async (req, res, next) => {
       SELECT to_regclass('audit_logs') IS NOT NULL AS exists;
     `);
 
-    tableExistsCache.exists = tableCheck.rows[0].exists;
-    tableExistsCache.timestamp = now;
+    const exists = tableCheck.rows[0].exists;
+    tableExistsCache.set(schema, { exists, timestamp: now });
 
-    if (!tableExistsCache.exists) {
-      return res.status(503).json({
-        error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
-      });
-    }
+    if (!exists) return missing();
 
     next();
   } catch (error) {
@@ -59,12 +69,12 @@ const checkAuditTableExists = async (req, res, next) => {
 
     // Check if error is due to missing table
     if (error.message && error.message.includes('relation "audit_logs" does not exist')) {
-      tableExistsCache.exists = false;
-      tableExistsCache.timestamp = Date.now();
+      const schema = (req.tenant && req.tenant.schemaName) || 'public';
+      tableExistsCache.set(schema, { exists: false, timestamp: Date.now() });
 
       return res.status(503).json({
         error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
+        message: `Schema "${schema}" has no audit_logs table.`,
         migration: 'backend/migrations/040_create_audit_logs_table.sql',
       });
     }
