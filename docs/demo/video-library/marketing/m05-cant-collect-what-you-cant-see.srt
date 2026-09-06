@@ -1,35 +1,35 @@
 1
-00:00:00,093 --> 00:00:02,493
+00:00:00,729 --> 00:00:03,129
 You can’t collect what you can’t see.
 
 2
-00:00:05,924 --> 00:00:08,899
+00:00:06,271 --> 00:00:09,941
 Every denial, with the reason the payer gave.
 
 3
-00:00:08,899 --> 00:00:14,988
+00:00:09,941 --> 00:00:16,695
 Category, amount, priority, and the date the appeal window shuts.
 
 4
-00:00:14,988 --> 00:00:23,406
+00:00:16,695 --> 00:00:25,447
 A new one gets recorded against the claim it belongs to.
 
 5
-00:00:23,406 --> 00:00:30,961
+00:00:25,447 --> 00:00:33,585
 The reason code is the whole story — it decides whether this is worth appealing.
 
 6
-00:00:30,961 --> 00:00:37,827
+00:00:33,585 --> 00:00:40,924
 On the queue, with its deadline. Not in somebody’s inbox.
 
 7
-00:00:37,827 --> 00:00:43,541
+00:00:40,924 --> 00:00:47,294
 And the receivable stays visible until the money actually arrives.
 
 8
-00:00:43,541 --> 00:00:48,609
+00:00:47,294 --> 00:00:52,964
 Open, partial, paid, written off — the difference between hoping and knowing.
 
 9
-00:00:48,664 --> 00:00:54,704
+00:00:53,701 --> 00:00:59,741
 Visible beats optimistic. — Every denial with its reason, every receivable with its status.

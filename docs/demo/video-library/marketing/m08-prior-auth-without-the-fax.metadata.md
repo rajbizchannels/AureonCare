@@ -14,7 +14,7 @@ Chapters:
 0:00 The request
 
 Subtitles: upload m08-prior-auth-without-the-fax.srt as the English track — do not rely on auto-captions.
-Narration: spoken track included (espeak / mb-us2).
+Narration: spoken track included (google / en-US-Neural2-D).
 
 This video uses a demo environment with synthetic data. No real patient
 information appears in it.
@@ -35,7 +35,7 @@ AureonCare, prior authorization, pre-authorization, medical billing, revenue cyc
 | Thumbnail | m08-prior-auth-without-the-fax.thumbnail.png |
 | Subtitles | m08-prior-auth-without-the-fax.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 0:28 |
+| Duration | 0:27 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

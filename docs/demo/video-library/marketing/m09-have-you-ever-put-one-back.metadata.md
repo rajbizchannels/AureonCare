@@ -16,7 +16,7 @@ Chapters:
 0:00 The question
 
 Subtitles: upload m09-have-you-ever-put-one-back.srt as the English track — do not rely on auto-captions.
-Narration: spoken track included (espeak / mb-us2).
+Narration: spoken track included (google / en-US-Neural2-D).
 
 This video uses a demo environment with synthetic data. No real patient
 information appears in it.

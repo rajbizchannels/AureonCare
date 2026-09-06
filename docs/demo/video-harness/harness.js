@@ -1877,7 +1877,10 @@ async function record(spec) {
         });
         fs.writeFileSync(
           path.join(debugDir, `${spec.slug}.failure.txt`),
-          `${String(failure.message).split('\n')[0]}\n\nMODALS:\n${state.modals.join('\n')}\n\nBUTTONS:\n${state.buttons.join('\n')}\n`,
+          // The full message, not just its first line: Playwright appends the
+          // locator it was waiting on and what it resolved to, which is the
+          // part that actually identifies a stale DOM guess.
+          `${String(failure.stack || failure.message)}\n\nMODALS:\n${state.modals.join('\n')}\n\nBUTTONS:\n${state.buttons.join('\n')}\n`,
           'utf8'
         );
       } catch (_) { /* best effort */ }

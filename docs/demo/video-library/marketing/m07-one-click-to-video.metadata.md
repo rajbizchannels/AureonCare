@@ -14,7 +14,7 @@ Chapters:
 0:00 One click
 
 Subtitles: upload m07-one-click-to-video.srt as the English track — do not rely on auto-captions.
-Narration: spoken track included (espeak / mb-us2).
+Narration: spoken track included (google / en-US-Neural2-D).
 
 This video uses a demo environment with synthetic data. No real patient
 information appears in it.
@@ -35,7 +35,7 @@ AureonCare, telehealth, virtual visit, Google Meet, telemedicine software, video
 | Thumbnail | m07-one-click-to-video.thumbnail.png |
 | Subtitles | m07-one-click-to-video.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 0:25 |
+| Duration | 0:22 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

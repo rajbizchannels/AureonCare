@@ -12,8 +12,8 @@ Then the part that decides whether the answer is trustworthy — the role matrix
 
 Chapters:
 0:00 The trail
-0:30 Why they could
-0:44 And it can leave
+0:33 Why they could
+0:46 And it can leave
 
 Subtitles: upload m04-who-opened-that-chart.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -37,7 +37,7 @@ AureonCare, healthcare compliance, audit trail, HIPAA audit log, role based acce
 | Thumbnail | m04-who-opened-that-chart.thumbnail.png |
 | Subtitles | m04-who-opened-that-chart.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:17 |
+| Duration | 1:18 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

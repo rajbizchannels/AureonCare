@@ -12,8 +12,8 @@ Synthetic data throughout; no real patient information appears.
 
 Chapters:
 0:00 The queue
-0:13 Nothing gets lost
-0:35 On the books
+0:15 Nothing gets lost
+0:38 On the books
 
 Subtitles: upload m05-cant-collect-what-you-cant-see.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -37,7 +37,7 @@ AureonCare, medical billing, claim denials, denial management, revenue cycle man
 | Thumbnail | m05-cant-collect-what-you-cant-see.thumbnail.png |
 | Subtitles | m05-cant-collect-what-you-cant-see.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:00 |
+| Duration | 1:05 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
