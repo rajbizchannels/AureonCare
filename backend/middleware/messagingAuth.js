@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { getSessionCookie } = require('../utils/authCookies');
 const { resolveTenantForUser } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
 const crypto = require('crypto');
@@ -90,12 +91,20 @@ const resolvePatientActor = async (pool, token) => {
  */
 const resolveActor = async (req, res, next) => {
   try {
+    // Header first, then the HttpOnly session cookie — the same order as extractToken in
+    // middleware/auth.js. Since SEC-15 the staff session normally lives ONLY in that
+    // cookie, so requiring a Bearer header here meant every messaging request from a
+    // cookie session was rejected before it was ever looked up. Portal patients still
+    // present their opaque token as a Bearer header, which the first branch covers.
     const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = (authHeader && authHeader.startsWith('Bearer '))
+      ? authHeader.slice(7)
+      : getSessionCookie(req);
+
+    if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const token = authHeader.slice(7);
     const pool = req.app.locals.pool;
 
     // Try the likelier shape first, then fall back — a malformed JWT and an
