@@ -197,7 +197,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
       );
 
       setShowConfirmation(false);
-      onSuccess();
+      onSuccess(result);
       onClose();
     } catch (error) {
       console.error('Error creating denial:', error);
@@ -574,10 +574,10 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
               </div>
             </div>
           }
+          isOpen={showConfirmation}
           onConfirm={handleActualSubmit}
-          onCancel={() => setShowConfirmation(false)}
+          onClose={() => setShowConfirmation(false)}
           confirmText="Create Denial"
-          confirmButtonClass="bg-red-500 hover:bg-red-600"
         />
       )}
     </>

@@ -139,7 +139,14 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
       setPrescriptions(presc);
       setLabOrders(labOrds);
       setMedicalRecords(records);
-      setPatientData(fullPatient || patient);
+      // An endpoint answering with an array (or anything without an id) must not
+      // replace the patient we already have: [] is truthy, so it would win the
+      // fallback and leave the chart with no identity — which silently breaks
+      // e-prescribing, since that modal refuses to open without patient.id.
+      const resolved = fullPatient && !Array.isArray(fullPatient) && fullPatient.id
+        ? fullPatient
+        : patient;
+      setPatientData(resolved);
     } catch (error) {
       console.error('Error fetching patient history:', error);
       addNotification('error', 'Failed to load patient history');

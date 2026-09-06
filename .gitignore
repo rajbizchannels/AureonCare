@@ -24,6 +24,16 @@ docs/demo/video-library/**/*.mp4
 docs/demo/video-library/**/*.webm
 docs/demo/video-library/**/*.thumbnail.png
 
+# The marketing cuts are the exception: they are the deliverable itself, shared
+# by link and re-cut rarely, so they are carried in the repo. Vercel skips the
+# whole docs/ tree (see .vercelignore), so their weight never reaches a build.
+!docs/demo/video-library/marketing/*.mp4
+!docs/demo/video-library/marketing/*.thumbnail.png
+
+# Screenshot and DOM dump written when a recording step fails. Useful while
+# fixing a stale selector, worthless once it is fixed.
+docs/demo/video-library/**/_debug/
+
 # Wave 3 was commissioned as downloads rather than repository content, so its
 # subtitles, chapters and metadata stay out too. Waves 1 and 2 still track
 # theirs. Delete this line to store Wave 3 the same way as the others; the
