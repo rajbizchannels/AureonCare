@@ -98,7 +98,13 @@ function buildEmailHtml(title, headerColor, greeting, intro, rows, extra) {
  */
 async function sendEmail(to, subject, html) {
   if (!to) return { sent: false, reason: 'no recipient' };
-  if (!process.env.AC_SM_U) return { sent: false, reason: 'smtp_not_configured' };
+  // Both halves, not just the username. With AC_SM_U set and AC_SM_W missing, nodemailer
+  // builds a transport it cannot authenticate and fails at send time with
+  // `EAUTH Missing credentials for "PLAIN"` — technically accurate, but it points at the
+  // mail server rather than at the unset variable that actually caused it.
+  if (!process.env.AC_SM_U || !process.env.AC_SM_W) {
+    return { sent: false, reason: 'smtp_not_configured' };
+  }
   // SEC-24: cap sends per RECIPIENT. Notifications fire from ordinary business events, so
   // a per-IP or per-route limit would miss them; the abuse that matters is one inbox being
   // flooded, and the victim's address is the stable key.
