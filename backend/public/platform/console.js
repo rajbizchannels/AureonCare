@@ -49,6 +49,11 @@
     try { data = await res.json(); } catch (e) { /* empty body */ }
     if (!res.ok) {
       if (res.status === 401) { showLogin(); throw new Error(data && data.error || 'Session expired'); }
+      // Stripe failures carry a classification; without it the operator sees only
+      // "502 Bad Gateway" in the browser console and nothing actionable on the page.
+      if (data && data.stripeType) {
+        throw new Error(data.stripeType + ': ' + (data.error || 'Stripe rejected the request.'));
+      }
       throw new Error((data && (data.error || data.message)) || ('Request failed (' + res.status + ')'));
     }
     return data;
@@ -209,6 +214,8 @@
       loadPlans();
     } catch (err) {
       msg.textContent = err.message;
+      msg.className = 'planMsg small error';
+      toast(err.message, true);
     } finally {
       btn.disabled = false;
     }

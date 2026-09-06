@@ -32,7 +32,12 @@ function stripe() {
   }
   // Rebuild if the key changed, so a rotated key takes effect without a restart.
   if (!client || clientKey !== key) {
-    client = new Stripe(key, { apiVersion: '2024-06-20' });
+    // No apiVersion pin. The SDK is built against a specific API version and shapes its
+    // requests for it; pinning an OLDER version makes the library send parameters — and
+    // call endpoints — that version does not know. invoices.createPreview, used by both
+    // proration previews, only exists from 2025-03-31, so a 2024 pin made it 404 as an
+    // unrecognised URL and surface as a 502.
+    client = new Stripe(key);
     clientKey = key;
   }
   return client;

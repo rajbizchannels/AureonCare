@@ -403,11 +403,16 @@ router.post('/plans/:id/stripe', requireOperatorRole('billing'), async (req, res
       detail: { priceId: result.priceId, archived: result.archivedPriceId }, ip: clientIp(req) });
     res.json({ ...updated[0], archivedPriceId: result.archivedPriceId });
   } catch (e) {
-    if (e.statusCode) return res.status(e.statusCode).json({ error: e.message });
-    console.error('Plan Stripe push error:', e);
-    // Surface Stripe's own message: an operator can act on "No such product" but not on
-    // a generic failure.
-    res.status(502).json({ error: e.message || 'Stripe rejected the request.' });
+    if (e.statusCode && !e.type) return res.status(e.statusCode).json({ error: e.message });
+    // Surface Stripe's own message AND its classification. "Invalid API Key", "you do not
+    // have permission" and "no such price" all need different fixes, and a bare 502 in the
+    // browser console names none of them.
+    console.error(`[platform] Stripe rejected plan push: ${e.type || 'unknown'} ${e.code || ''} — ${e.message}`);
+    res.status(502).json({
+      error: stripeErrorMessage(e),
+      stripeType: e.type || null,
+      stripeCode: e.code || null,
+    });
   }
 });
 
@@ -601,6 +606,27 @@ router.put('/tenants/:id/subscription', requireOperatorRole('billing'), async (r
     detail: { planId, status, seats, prorated }, ip: clientIp(req) });
   res.json({ ...rows[0], prorated });
 });
+
+/**
+ * Turn a Stripe rejection into something an operator can act on.
+ *
+ * Stripe's own message is usually good, but the two most common setup failures deserve
+ * naming explicitly: a key that is not accepted at all, and a restricted key that lacks
+ * write access to products and prices.
+ */
+function stripeErrorMessage(e) {
+  const base = e.message || 'Stripe rejected the request.';
+  if (e.type === 'StripeAuthenticationError') {
+    return `${base} Check AC_STRIPE_SK — it may be for a different account, revoked, or truncated on paste.`;
+  }
+  if (e.type === 'StripePermissionError') {
+    return `${base} If this is a restricted key (rk_...), it needs write access to Products and Prices.`;
+  }
+  if (e.type === 'StripeConnectionError' || e.type === 'StripeAPIError') {
+    return `${base} This is Stripe or the network, not your data — retry, and check status.stripe.com.`;
+  }
+  return base;
+}
 
 // ── Billing & accounting ──────────────────────────────────────────────────────
 // Revenue reporting reads the local ledger (control.billing_events) rather than querying
@@ -904,7 +930,9 @@ baseRouter.use((err, req, res, _next) => {
   // Stripe rejections are actionable ("No such coupon"), so pass the message through as a
   // 502 rather than hiding it — this route is operator-only and already authenticated.
   if (err && (err.type || '').startsWith('Stripe')) {
-    return res.status(502).json({ error: err.message });
+    return res.status(502).json({
+      error: stripeErrorMessage(err), stripeType: err.type, stripeCode: err.code || null,
+    });
   }
   res.status(500).json({ error: 'Internal server error' });
 });
