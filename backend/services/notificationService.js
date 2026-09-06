@@ -114,7 +114,16 @@ async function sendEmail(to, subject, html) {
     return { sent: true };
   } catch (e) {
     console.error(`NotificationService: email to ${to} failed:`, e.message);
-    return { sent: false, reason: 'send_failed' };
+    // Carry the provider's own words back to the caller. "Could not be delivered" is not
+    // actionable; "535-5.7.8 Username and Password not accepted" is. Only the SMTP status
+    // and the server's response line are passed on — never the transport configuration —
+    // and it is truncated so a chatty server cannot flood a UI.
+    return {
+      sent: false,
+      reason: 'send_failed',
+      detail: [e.code, e.responseCode, e.response || e.message]
+        .filter(Boolean).join(' ').slice(0, 300),
+    };
   }
 }
 
