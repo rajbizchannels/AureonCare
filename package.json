@@ -20,7 +20,8 @@
     "test:signup": "node backend/test/signup/flow.test.js",
     "test:plans": "node backend/test/signup/plan-change.test.js",
     "test:billing": "node backend/test/signup/billing.test.js",
-    "test:accounting": "node backend/test/signup/accounting.test.js"
+    "test:accounting": "node backend/test/signup/accounting.test.js",
+    "test:notify": "node backend/test/signup/notify.test.js"
   },
   "dependencies": {
     "@azure/msal-browser": "^4.25.1",
