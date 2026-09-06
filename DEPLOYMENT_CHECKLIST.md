@@ -274,6 +274,35 @@ The last active owner cannot demote or disable themselves; promote someone else 
 - **CSV export** — the ledger for an accountant, every field quoted so a comma in a
   description cannot shift columns.
 
+## Email alerts to operators
+
+Migration `079`. Operators are emailed when something notable happens, **routed by role** so
+a finance contractor is not paged about break-glass and a support engineer is not paged
+about coupons:
+
+| Event | Goes to | Severity |
+|---|---|---|
+| Operator created or changed | owner | critical |
+| Break-glass opened over tenant data | owner, support | critical |
+| Billing credit/debit posted, free months granted | owner, billing | warning |
+| Tenant suspended, payment failed, subscription canceled | owner, billing/support | warning |
+| Tenant created, customer signed up, coupon changes | per role | info |
+
+Security-relevant events also mail the person who performed them — a message you did not
+expect is how a compromised account gets noticed. Routine actions do not mail the actor back.
+
+- **Requires SMTP** (`AC_SM_U` and the rest of the mail configuration). Without it
+  `sendEmail` is a no-op, so alerting silently does nothing — the events are still audited.
+- **`AC_PLATFORM_ALERTS=false`** silences platform email entirely. Set this in staging,
+  especially if that database is ever restored from production.
+- Each operator can opt out for themselves in **Security → Email alerts**. Who currently
+  receives alerts is shown in the Operators tab.
+- Every send is recorded in `control.platform_notifications` with its recipients, visible
+  under Operators → Recent alerts. That record is also the idempotency key, so a retried
+  Stripe webhook cannot produce duplicate mail.
+- Alerting never blocks the action it reports: a mail failure is logged, and the action
+  still completes and is still audited.
+
 ## Coupons
 
 Created in the console, stored in Stripe. A *coupon* is the discount; a *promotion code* is

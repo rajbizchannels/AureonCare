@@ -239,8 +239,9 @@ async function handleSignupCheckout(pool, session) {
 // which is what makes a webhook retry safe.
 
 const ledger = require('../services/billingLedger');
+const platformNotify = require('../services/platformNotify');
 
-async function recordInvoiceEvent(event) {
+async function recordInvoiceEvent(pool, event) {
   const inv = event.data.object;
   const customerId = typeof inv.customer === 'string' ? inv.customer : inv.customer?.id;
   const { tenant_id, practice_id } = await ledger.tenantForCustomer(customerId);
@@ -260,9 +261,27 @@ async function recordInvoiceEvent(event) {
     occurredAt: inv.status_transitions?.paid_at || inv.created,
     detail: { hosted_invoice_url: inv.hosted_invoice_url || null, amount_due: inv.amount_due },
   });
+
+  // A failed payment is the one invoice outcome someone must act on. Keyed on the invoice
+  // and attempt so Stripe's retries of the SAME attempt do not re-alert, while a genuine
+  // second attempt failing does.
+  if (!paid) {
+    platformNotify.notifyAsync(pool, {
+      action: 'payment.failed',
+      tenantId: tenant_id || null,
+      dedupeKey: `payment.failed:${inv.id}:${inv.attempt_count || 0}`,
+      detail: {
+        invoice: inv.number || inv.id,
+        amountDue: ((inv.amount_due || 0) / 100).toFixed(2),
+        currency: (inv.currency || '').toUpperCase(),
+        attempt: inv.attempt_count || 1,
+        invoiceUrl: inv.hosted_invoice_url || null,
+      },
+    });
+  }
 }
 
-async function recordRefundEvent(event) {
+async function recordRefundEvent(pool, event) {
   const charge = event.data.object;
   const customerId = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id;
   const { tenant_id, practice_id } = await ledger.tenantForCustomer(customerId);
@@ -393,6 +412,18 @@ async function handleSubscriptionChange(pool, subscription) {
     return;
   }
 
+  // A cancellation is revenue walking out of the door — somebody should hear about it.
+  // Keyed on the subscription and status so Stripe's retries of the same transition do not
+  // re-alert, while a later re-cancellation does.
+  if (status === 'canceled') {
+    platformNotify.notifyAsync(pool, {
+      action: 'subscription.canceled',
+      tenantId: rows[0].tenant_id,
+      dedupeKey: `subscription.canceled:${subscription.id}`,
+      detail: { subscription: subscription.id, endedAt: periodEnd ? periodEnd.toISOString() : null },
+    });
+  }
+
   // Entitlements are cached per practice; drop the entry so the new status takes effect
   // on the next request rather than after the TTL.
   try {
@@ -449,7 +480,7 @@ router.post('/', async (req, res) => {
         // Ledger FIRST, and independently: this is the platform's accounting record, and
         // it must not be lost because the unrelated clinic-payments reconciliation below
         // threw (its `payments` table may not even exist on a platform-only deployment).
-        await recordRefundEvent(event);
+        await recordRefundEvent(pool, event);
         await handleChargeRefunded(pool, event.data.object);
         break;
       case 'charge.dispute.created':
@@ -467,7 +498,7 @@ router.post('/', async (req, res) => {
       case 'invoice.payment_failed':
       case 'invoice.payment_succeeded':
         // Ledger first, for the same reason as charge.refunded.
-        await recordInvoiceEvent(event);
+        await recordInvoiceEvent(pool, event);
         // The invoice carries the subscription's customer; re-read status from the
         // subscription object when Stripe expanded it, otherwise let the paired
         // customer.subscription.updated event carry the change.

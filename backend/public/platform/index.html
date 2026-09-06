@@ -209,11 +209,24 @@
         <span id="operatorMsg" class="small"></span>
       </form>
       <div id="operatorList"></div>
+      <h3>Recent alerts</h3>
+      <p class="muted small">What has been emailed, and to whom.</p>
+      <div id="notificationList"></div>
     </div>
 
     <!-- Security -->
     <div class="tab" data-panel="security" hidden>
       <h2>Your account</h2>
+      <div class="card">
+        <h3>Email alerts</h3>
+        <p class="muted small">
+          Operators are emailed about platform events relevant to their role — operator and
+          break-glass changes, tenant lifecycle, money moving, failed payments. This is your
+          own preference; it does not affect anyone else.
+        </p>
+        <label class="check"><input type="checkbox" id="notifyToggle" /> <span>Email me platform events</span></label>
+      </div>
+
       <div class="card">
         <h3>Multi-factor authentication</h3>
         <p class="muted small">Strongly recommended: this account manages every tenant.</p>
