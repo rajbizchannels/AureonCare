@@ -15,8 +15,44 @@ const rateLimit = require('express-rate-limit');
 const { authenticate, authorize } = require('../middleware/auth');
 const { storeFor } = require('../middleware/rateLimitStore');
 const { validatePassword, BCRYPT_COST } = require('../utils/passwordPolicy');
+const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 
 const router = express.Router();
+
+/**
+ * Mail the invite to the person being invited.
+ *
+ * The link is the whole message — it carries the one-time token, and the token exists
+ * nowhere else, so this mail cannot be regenerated later. That is why the caller reports
+ * the send result to the admin instead of assuming it worked: a silently dropped invite
+ * means a colleague who is simply never onboarded, with nothing on screen to say so.
+ */
+async function sendInviteEmail({ to, practiceName, inviterName, role, inviteUrl, expiresAt }) {
+  const product = process.env.AC_CLN || 'AureonCare';
+  const html = buildEmailHtml(
+    `You have been invited to ${practiceName}`,
+    '#2563eb',
+    'Hello,',
+    `${inviterName || 'An administrator'} has invited you to join <strong>${practiceName}</strong> on ${product}. ` +
+      'Use the button below to set up your account — you can finish with a password or with your Google account.',
+    [
+      ['Practice', practiceName],
+      ['Your role', role],
+      ['Invited by', inviterName || '—'],
+      ['Link expires', expiresAt ? new Date(expiresAt).toUTCString() : '—'],
+    ]
+      .map(([label, value]) =>
+        `<tr><td style="padding:8px 12px;font-weight:bold;color:#555;white-space:nowrap;width:35%">${label}</td>` +
+        `<td style="padding:8px 12px;color:#333">${value}</td></tr>`)
+      .join(''),
+    `<a href="${inviteUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;` +
+      `border-radius:6px;text-decoration:none;font-weight:bold">Accept the invitation</a>` +
+      `<br><br><span style="color:#666;font-size:13px">If the button does not work, paste this into your browser:<br>` +
+      `${inviteUrl}</span><br><br><span style="color:#666;font-size:13px">If you were not expecting this, ignore ` +
+      `this email — the invitation expires on its own and no account is created until it is used.</span>`
+  );
+  return sendEmail(to, `You have been invited to join ${practiceName} on ${product}`, html);
+}
 
 const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
 
@@ -96,9 +132,27 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     );
 
     const base = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
+    const inviteUrl = `${base}/accept-invite?token=${token}`;
+
+    const practice = await pool.query('SELECT name FROM public.practices WHERE id = $1', [req.user.practiceId]);
+    const delivery = await sendInviteEmail({
+      to: cleanEmail,
+      practiceName: (practice.rows[0] && practice.rows[0].name) || process.env.AC_CLN || 'AureonCare',
+      inviterName: [req.user.firstName, req.user.lastName].filter(Boolean).join(' ') || req.user.email,
+      role: inviteRole,
+      inviteUrl,
+      expiresAt: rows[0].expires_at,
+    });
+
     // The raw token is returned exactly once, here. It is not stored and cannot be
-    // recovered — a lost invite must be reissued.
-    res.status(201).json({ ...rows[0], inviteUrl: `${base}/accept-invite?token=${token}` });
+    // recovered — a lost invite must be reissued. The link is still returned even when the
+    // mail went out, so an admin can hand it over directly if the invitee never sees it.
+    res.status(201).json({
+      ...rows[0],
+      inviteUrl,
+      emailed: delivery.sent,
+      emailError: delivery.sent ? undefined : delivery.reason,
+    });
   } catch (err) {
     console.error('[invites] create error:', err);
     res.status(500).json({ error: 'Failed to create invite' });

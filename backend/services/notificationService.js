@@ -88,22 +88,33 @@ function buildEmailHtml(title, headerColor, greeting, intro, rows, extra) {
 </html>`;
 }
 
+/**
+ * Send one email. Never throws — a notification failure must not fail the action that
+ * raised it.
+ *
+ * Returns `{ sent, reason }` so a caller that needs to *tell the user* whether the mail
+ * went out (an invite, say, where a silently dropped message means the invitee is simply
+ * never onboarded) can do so. Callers that only fire-and-forget can ignore it.
+ */
 async function sendEmail(to, subject, html) {
-  if (!to || !process.env.AC_SM_U) return;
+  if (!to) return { sent: false, reason: 'no recipient' };
+  if (!process.env.AC_SM_U) return { sent: false, reason: 'smtp_not_configured' };
   // SEC-24: cap sends per RECIPIENT. Notifications fire from ordinary business events, so
   // a per-IP or per-route limit would miss them; the abuse that matters is one inbox being
   // flooded, and the victim's address is the stable key.
   const quota = await consumeSendQuota('email', to);
   if (!quota.allowed) {
     console.warn(`[SEC-24] email to ${to} suppressed — ${quota.count} sends exceeds the limit of ${quota.limit} in the window`);
-    return;
+    return { sent: false, reason: 'rate_limited' };
   }
   try {
     const t = getTransporter();
     const from = `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`;
     await t.sendMail({ from, to, subject, html });
+    return { sent: true };
   } catch (e) {
     console.error(`NotificationService: email to ${to} failed:`, e.message);
+    return { sent: false, reason: 'send_failed' };
   }
 }
 
