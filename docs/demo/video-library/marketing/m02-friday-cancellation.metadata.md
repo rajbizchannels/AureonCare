@@ -12,8 +12,8 @@ No phone tree, no re-typing, no empty hour.
 
 Chapters:
 0:00 The cancellation
-0:19 The queue
-0:42 The paperwork
+0:21 The queue
+0:45 The paperwork
 
 Subtitles: upload m02-friday-cancellation.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -37,7 +37,7 @@ AureonCare, medical practice management, patient waitlist, appointment cancellat
 | Thumbnail | m02-friday-cancellation.thumbnail.png |
 | Subtitles | m02-friday-cancellation.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:01 |
+| Duration | 1:06 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
