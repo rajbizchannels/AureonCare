@@ -26,6 +26,7 @@ process.env.AC_JWT_S = process.env.AC_JWT_S || crypto.randomBytes(48).toString('
 // sendEmail is stubbed, but the real one no-ops without this; set it so nothing silently
 // short-circuits if the stub is ever bypassed.
 process.env.AC_SM_U = 'platform@example.com';
+process.env.AC_SM_W = 'test-app-password';
 
 const pool = require(path.join(BACKEND, 'db.js'));
 const bcrypt = require(path.join(BACKEND, '..', 'node_modules', 'bcryptjs'));
