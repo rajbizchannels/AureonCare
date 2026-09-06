@@ -82,7 +82,17 @@ router.post('/login', loginLimiter, async (req, res) => {
     // Deliver the session as an HttpOnly cookie scoped to /api/platform so the console
     // never holds the token in JS-readable storage; csrfToken is echoed in X-CSRF-Token.
     const csrfToken = issuePlatformCookies(res, token);
-    res.json({ token, csrfToken, operator: { id: op.id, email: op.email, name: op.name, mfaEnabled: op.mfa_enabled } });
+    res.json({
+      token,
+      csrfToken,
+      // Same shape as GET /me: the console renders its header and the alert toggle from
+      // whichever of the two it happens to have, so they must not disagree.
+      operator: {
+        id: op.id, email: op.email, name: op.name, role: op.role,
+        mfaEnabled: op.mfa_enabled,
+        notifyPlatformEvents: op.notify_platform_events !== false,
+      },
+    });
   } catch (e) {
     if (e.statusCode === 503) return res.status(503).json({ error: e.message });
     console.error('Operator login error:', e);
@@ -105,7 +115,33 @@ router.post('/logout', async (req, res) => {
 });
 
 // Who am I — lets the console restore its session after a reload without storing anything.
-router.get('/me', (req, res) => res.json({ operator: req.operator }));
+router.get('/me', async (req, res) => {
+  const { rows } = await req.app.locals.pool.query(
+    'SELECT notify_platform_events FROM control.operators WHERE id = $1', [req.operator.id]);
+  res.json({
+    operator: { ...req.operator, notifyPlatformEvents: rows[0] ? rows[0].notify_platform_events : true },
+  });
+});
+
+/** Each operator controls their own alert preference; nobody sets it for anyone else. */
+router.put('/me/notifications', async (req, res) => {
+  const { enabled } = req.body || {};
+  if (typeof enabled !== 'boolean') return res.status(400).json({ error: 'enabled must be true or false' });
+  await req.app.locals.pool.query(
+    'UPDATE control.operators SET notify_platform_events = $2, updated_at = now() WHERE id = $1',
+    [req.operator.id, enabled]);
+  res.json({ notifyPlatformEvents: enabled });
+});
+
+/** What has been emailed, and to whom — the evidence half of the alerting. */
+router.get('/notifications', async (req, res) => {
+  const { rows } = await req.app.locals.pool.query(
+    `SELECT n.sent_at, n.action, n.severity, n.subject, n.recipients, t.name AS tenant_name
+       FROM control.platform_notifications n
+       LEFT JOIN control.tenants t ON t.id = n.tenant_id
+      ORDER BY n.sent_at DESC LIMIT 100`);
+  res.json(rows);
+});
 
 // ── MFA enrollment ────────────────────────────────────────────────────────────
 router.post('/mfa/enroll', async (req, res) => {
@@ -767,7 +803,8 @@ router.post('/tenants/:id/free-months', requireOperatorRole('billing'), async (r
 
 router.get('/operators', requireOperatorRole('owner'), async (req, res) => {
   const { rows } = await req.app.locals.pool.query(
-    `SELECT id, email, name, role, status, mfa_enabled, last_login, created_at
+    `SELECT id, email, name, role, status, mfa_enabled, notify_platform_events,
+            last_login, created_at
        FROM control.operators ORDER BY created_at`);
   res.json(rows);
 });
