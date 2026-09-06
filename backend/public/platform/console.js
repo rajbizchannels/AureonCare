@@ -64,8 +64,11 @@
     $('loginView').hidden = true;
     $('consoleView').hidden = false;
     $('who').hidden = false;
-    $('whoEmail').textContent = op.email;
+    $('whoEmail').textContent = op.email + (op.role ? ' · ' + op.role : '');
     renderMfaState(op);
+    // Default to on when the field is absent (an older /me response), matching the column
+    // default — a toggle that shows "off" when alerts are actually on is worse than wrong.
+    $('notifyToggle').checked = op.notifyPlatformEvents !== false;
     loadTenants();
   }
 
@@ -529,7 +532,7 @@
     try {
       var ops = await api('/operators');
       el.innerHTML = '<table><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th>' +
-        '<th>MFA</th><th>Last login</th><th></th></tr>' +
+        '<th>MFA</th><th>Alerts</th><th>Last login</th><th></th></tr>' +
         ops.map(function (o) {
           return '<tr><td>' + esc(o.email) + '</td><td>' + esc(o.name || '—') + '</td>' +
             '<td><select class="opRole" data-id="' + esc(o.id) + '">' +
@@ -538,6 +541,7 @@
               }).join('') + '</select></td>' +
             '<td>' + esc(o.status) + '</td>' +
             '<td>' + (o.mfa_enabled ? 'on' : '<span class="error">off</span>') + '</td>' +
+            '<td>' + (o.notify_platform_events ? 'on' : 'off') + '</td>' +
             '<td>' + esc(o.last_login ? new Date(o.last_login).toLocaleDateString() : '—') + '</td>' +
             '<td><button class="opToggle" data-id="' + esc(o.id) + '" data-status="' + esc(o.status) + '">' +
               (o.status === 'active' ? 'Disable' : 'Enable') + '</button></td></tr>';
@@ -605,7 +609,7 @@
     if (tab === 'plans') loadPlans();
     if (tab === 'billing') loadBilling();
     if (tab === 'coupons') loadCoupons();
-    if (tab === 'operators') loadOperators();
+    if (tab === 'operators') { loadOperators(); loadNotifications(); }
   });
 
   // ── tenants ────────────────────────────────────────────────────────────────
@@ -736,6 +740,36 @@
       : '<p class="pill suspended">Not enabled</p>';
     $('mfaEnroll').hidden = !!enabled;
   }
+  $('notifyToggle').addEventListener('change', async function () {
+    try {
+      await api('/me/notifications', { method: 'PUT', body: { enabled: $('notifyToggle').checked } });
+      toast($('notifyToggle').checked ? 'You will be emailed platform events.' : 'Platform emails turned off.');
+    } catch (err) {
+      // Put the box back: a toggle that looks changed but was not is worse than an error.
+      $('notifyToggle').checked = !$('notifyToggle').checked;
+      toast(err.message, true);
+    }
+  });
+
+  async function loadNotifications() {
+    var el = $('notificationList');
+    try {
+      var rows = await api('/notifications');
+      el.innerHTML = rows.length
+        ? '<table><tr><th>When</th><th>Severity</th><th>Event</th><th>Tenant</th><th>Sent to</th></tr>' +
+          rows.map(function (n) {
+            return '<tr><td>' + esc(new Date(n.sent_at).toLocaleString()) + '</td>' +
+              '<td>' + esc(n.severity) + '</td>' +
+              '<td>' + esc(n.action) + '</td>' +
+              '<td>' + esc(n.tenant_name || '—') + '</td>' +
+              '<td>' + esc((n.recipients || []).join(', ')) + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">No alerts sent yet.</p>';
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
   $('mfaEnroll').addEventListener('click', async function () {
     try {
       var out = await api('/mfa/enroll', { method: 'POST' });

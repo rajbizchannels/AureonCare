@@ -6,6 +6,17 @@
 
 async function logPlatformAction(pool, entry) {
   const { operatorId = null, action, targetType = null, targetId = null, tenantId = null, detail = null, ip = null } = entry;
+
+  // Every privileged action already passes through here, so this is the one place that has
+  // to know about alerting. Fire-and-forget: an alert must never delay or fail the action
+  // it reports, and routing decides whether this particular action is worth an email at
+  // all — an unrouted action is silent.
+  try {
+    require('./platformNotify').notifyAsync(pool, { action, actorId: operatorId, tenantId, detail, ip });
+  } catch (err) {
+    console.error('[platformAudit] could not raise alert:', err.message);
+  }
+
   try {
     await pool.query(
       `INSERT INTO control.audit_log (operator_id, action, target_type, target_id, tenant_id, detail, ip_address)
