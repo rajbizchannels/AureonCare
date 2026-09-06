@@ -358,7 +358,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
           <div class="section">
             <h2>Patient Information</h2>
             <div class="field"><span class="label">Name:</span> ${patient ? `${patient.first_name} ${patient.last_name}` : 'N/A'}</div>
-            <div class="field"><span class="label">MRN:</span> ${patient?.medical_record_number || 'N/A'}</div>
+            <div class="field"><span class="label">MRN:</span> ${patient?.mrn || patient?.medical_record_number || 'N/A'}</div>
           </div>
           <div class="section">
             <h2>Insurance Information</h2>
@@ -452,7 +452,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
             <option value="">Select a patient</option>
             {patients.map(patient => (
               <option key={patient.id} value={patient.id}>
-                {patient.first_name} {patient.last_name} - MRN: {patient.medical_record_number}
+                {patient.first_name} {patient.last_name} - MRN: {patient.mrn || patient.medical_record_number}
               </option>
             ))}
           </ThemedSelect>

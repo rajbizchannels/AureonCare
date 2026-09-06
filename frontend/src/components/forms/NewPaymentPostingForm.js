@@ -167,7 +167,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
       });
 
       setShowConfirmation(false);
-      onSuccess();
+      onSuccess(result);
       onClose();
     } catch (error) {
       console.error('Error creating payment posting:', error);
@@ -652,10 +652,10 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
               </div>
             </div>
           }
+          isOpen={showConfirmation}
           onConfirm={handleActualSubmit}
-          onCancel={() => setShowConfirmation(false)}
+          onClose={() => setShowConfirmation(false)}
           confirmText="Post Payment"
-          confirmButtonClass="bg-emerald-500 hover:bg-emerald-600"
         />
       )}
     </>

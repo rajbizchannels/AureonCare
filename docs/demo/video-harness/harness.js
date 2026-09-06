@@ -46,6 +46,8 @@ const PLAYLISTS = {
   4: 'AureonCare — Administration and Back Office (Wave 4)',
 };
 
+const MARKETING_PLAYLIST = 'AureonCare — See It Work';
+
 const BASE_URL = process.env.DEMO_BASE_URL || 'http://localhost:3000';
 const API_BASE = process.env.DEMO_API_URL || 'http://localhost:3001/api';
 /**
@@ -54,7 +56,10 @@ const API_BASE = process.env.DEMO_API_URL || 'http://localhost:3001/api';
  * overrides for one-off runs.
  */
 const outDirFor = (spec) => process.env.OUT_DIR
-  || path.join(__dirname, '..', 'video-library', `wave${spec.wave || 1}`);
+  || path.join(
+    __dirname, '..', 'video-library',
+    spec.marketing ? 'marketing' : `wave${spec.wave || 1}`
+  );
 const VIEWPORT = { width: 1920, height: 1080 };
 const FPS = 30;
 
@@ -95,13 +100,42 @@ function createStore() {
     'telehealth-settings': clone(F.telehealthProviders),
     offerings: clone(F.offerings),
     'form-templates': clone(F.formTemplates),
-    preapprovals: clone(F.preapprovals),
-    denials: clone(F.denials),
+    // The pre-authorization table reads patient_name, insurance_payer_name,
+    // requested_service and created_at. The fixtures carry patient_id,
+    // payer_name and service_description, so a seeded row rendered with only
+    // its number and status — four of six columns empty.
+    preapprovals: clone(F.preapprovals).map((pa) => {
+      const pt = F.patients.find((p) => p.id === pa.patient_id);
+      return {
+        ...pa,
+        patient_name: pa.patient_name || (pt ? `${pt.first_name} ${pt.last_name}` : ''),
+        insurance_payer_name: pa.insurance_payer_name || pa.payer_name,
+        requested_service: pa.requested_service || pa.service_description,
+        created_at: pa.created_at || pa.submitted_at,
+      };
+    }),
+    // The denials table reads patient_name, denial_amount and appeal_deadline;
+    // the fixtures carry patient_id and denied_amount and no deadline at all,
+    // so every row rendered with a blank patient and $0.00 against it.
+    denials: clone(F.denials).map((dn) => {
+      const pt = F.patients.find((p) => p.id === dn.patient_id);
+      const deadline = new Date(dn.denial_date);
+      deadline.setDate(deadline.getDate() + 30);
+      return {
+        ...dn,
+        patient_name: dn.patient_name || (pt ? `${pt.first_name} ${pt.last_name}` : ''),
+        denial_amount: dn.denial_amount != null ? dn.denial_amount : dn.denied_amount,
+        appeal_deadline: dn.appeal_deadline || deadline.toISOString().slice(0, 10),
+      };
+    }),
     'payment-postings': clone(F.paymentPostings),
     quotes: clone(F.quotes),
     invoices: clone(F.invoices),
     pharmacies: clone(F.pharmacies),
-    laboratories: clone(F.laboratories),
+    // The lab-order form names labs by `labName`; the fixtures use `name` like
+    // the rest of the demo data. Without the alias every option in the
+    // Laboratory dropdown renders blank, and the field is required.
+    laboratories: clone(F.laboratories).map((l) => ({ ...l, labName: l.name })),
     'lab-orders': clone(F.labOrders),
     waitlist: clone(W3.waitlist),
     campaigns: [],
@@ -280,14 +314,65 @@ async function handleApi(route, store) {
   if (p === '/medications/search') {
     const q = (url.searchParams.get('query') || '').toLowerCase();
     if (q.length < 2) return json([]);
-    return json(F.medications.filter((m) =>
-      `${m.name} ${m.generic_name} ${m.brand_name} ${m.ndc_code}`.toLowerCase().includes(q)));
+    const hits = F.medications.filter((m) =>
+      `${m.name} ${m.generic_name} ${m.brand_name} ${m.ndc_code}`.toLowerCase().includes(q));
+    // The prescribing UI reads this endpoint in camelCase while the fixtures are
+    // snake_case like the rest of the demo data. Emitting only snake_case made
+    // every result render with an empty title — a list of blank rows nobody,
+    // script or clinician, could pick from. Both shapes ship.
+    return json(hits.map((m) => ({
+      ...m,
+      drugName: m.name,
+      genericName: m.generic_name,
+      brandName: m.brand_name,
+      ndcCode: m.ndc_code,
+      dosageForm: m.dosage_form,
+      isGeneric: m.is_generic,
+    })));
+  }
+  // A pre-authorization checks for a clearinghouse before it will submit, and
+  // routes to a "not configured" dialog when there is none. Without this route
+  // the check fails, the status stays false, and the request is never sent —
+  // the demo clinic is configured, so it answers as one.
+  if (p === '/preapprovals/check-clearinghouse/status') {
+    return json({
+      hasClearinghouse: true,
+      name: 'Availity',
+      status: 'connected',
+      supports_278: true,
+    });
+  }
+
+  // Allergy and interaction screening runs as soon as a medication is picked.
+  // The component swallows a failure here, so a missing route costs no error —
+  // it just silently drops the safety panel the recording narrates.
+  if (p === '/prescriptions/check-safety' && method === 'POST') {
+    const pid = String(body && body.patientId);
+    const known = store.allergies.filter((a) => String(a.patient_id) === pid);
+    return json({
+      warnings: [],
+      allergies: known,
+      interactions: [],
+      checked_at: new Date().toISOString(),
+    });
   }
   if (p === '/diagnosis/patient' || /^\/diagnosis\/patient\/\d+$/.test(p)) {
     const id = p.split('/').pop();
     return json(store.diagnosis.filter((d) => String(d.patient_id) === id));
   }
   if (/^\/prescriptions\/diagnosis\/\d+$/.test(p)) return json([]);
+  // The chart reads a patient's live prescriptions from here. Without the route
+  // the tab counted zero even with seeded prescriptions in the store, and a
+  // newly written one had nowhere to appear. Fixtures are snake_case and the
+  // ePrescribe form posts camelCase, so both spellings are matched.
+  const rxActive = p.match(/^\/prescriptions\/patient\/(\d+)\/active$/);
+  if (rxActive) {
+    return json(store.prescriptions.filter((rx) => {
+      const pid = rx.patient_id != null ? rx.patient_id : rx.patientId;
+      return String(pid) === rxActive[1]
+        && String(rx.status || 'active').toLowerCase() === 'active';
+    }));
+  }
 
   // ── telehealth specifics ──────────────────────────────────────────────
   const toggle = p.match(/^\/telehealth-settings\/([^/]+)\/toggle$/);
@@ -357,13 +442,27 @@ async function handleApi(route, store) {
   if (wlNotify && method === 'POST') {
     const next = store.waitlist.find((w) => w.status === 'active');
     if (next) { next.status = 'notified'; next.notified_at = new Date().toISOString(); }
-    return json({ success: true, entry: next || null, message: 'Patient notified' });
+    // The view reports who was contacted via result.patient.name, so the demo
+    // API has to return that shape and not just the raw entry.
+    const patient = next
+      ? { id: next.patientId, name: `${next.patientFirstName} ${next.patientLastName}` }
+      : null;
+    return json({ success: true, entry: next || null, patient, message: 'Patient notified' });
   }
   const wlSched = p.match(/^\/waitlist\/(\d+)\/scheduled$/);
   if (wlSched) {
     const entry = store.waitlist.find((w) => String(w.id) === wlSched[1]);
     if (entry) entry.status = 'scheduled';
     return json(entry || { success: true });
+  }
+
+  // The chart loads its patient through the portal profile route. Without it the
+  // request falls through to the generic collection handler, which answers with
+  // an empty array — and the chart then has no patient to prescribe for.
+  const portalProfile = p.match(/^\/patient-portal\/(\d+)\/profile$/);
+  if (portalProfile) {
+    const pt = store.patients.find((x) => String(x.id) === portalProfile[1]);
+    return json(pt || {});
   }
 
   if (p === '/intake-forms') return json(store['intake-forms']);
@@ -509,6 +608,12 @@ async function handleApi(route, store) {
     });
   }
   if (p === '/backup/generate') return json({ backup: { generated_at: new Date().toISOString(), tables: 42 } });
+  // Restoring reads the uploaded file client-side and posts it here. The
+  // success dialog reports totalTables, so the answer has to carry one.
+  if (p === '/backup/restore' && method === 'POST') {
+    const tables = Object.keys((body && body.backup && body.backup.data) || {}).length || 42;
+    return json({ success: true, totalTables: tables, errors: [], restored_at: new Date().toISOString() });
+  }
   if (p === '/backup/google-drive' && method === 'POST') {
     return json({ success: true, fileId: 'demo-drive-file', message: 'Backup uploaded to Google Drive' });
   }
@@ -809,6 +914,36 @@ async function handleApi(route, store) {
           created[field] = created[field] || `${prefix}-2026-0${store._nextId % 1000}`;
           created.status = created.status || fallbackStatus;
         }
+        // Tables render joined display names, which a real backend returns and a
+        // form only ever posts ids for. Without these the row a recording just
+        // created reads "N/A" in every column but the amount.
+        if (resource === 'preapprovals') {
+          const pt = store.patients.find((p) => String(p.id) === String(created.patient_id));
+          const payer = (store['insurance-payers'] || [])
+            .find((ip) => String(ip.id) === String(created.insurance_payer_id));
+          if (pt) created.patient_name = `${pt.first_name} ${pt.last_name}`;
+          if (payer) created.insurance_payer_name = payer.name;
+          // The form mints its own number as `PA-<epoch millis>`, which lands a
+          // thirteen-digit timestamp in a column of PA-2026-00xx. A real
+          // backend owns this sequence, so the demo one does too.
+          if (/^PA-\d{10,}$/.test(String(created.preapproval_number || ''))) {
+            created.preapproval_number = `PA-2026-0${store._nextId % 1000}`;
+          }
+        }
+        if (resource === 'payment-postings' || resource === 'denials') {
+          const pt = store.patients.find((p) => String(p.id) === String(created.patient_id));
+          const cl = store.claims.find((c) => String(c.id) === String(created.claim_id));
+          if (pt) created.patient_name = `${pt.first_name} ${pt.last_name}`;
+          if (cl) {
+            created.claim_number = cl.claim_number;
+            // A claim carries its payer as insurance_provider when it came from
+            // the fixtures and as payer_id when a recording just created it.
+            const payer = (store['insurance-payers'] || [])
+              .find((ip) => String(ip.id) === String(cl.payer_id));
+            created.insurance_payer_name = created.insurance_payer_name
+              || cl.insurance_provider || (payer && payer.name);
+          }
+        }
         rows.unshift(created);
         return json(created);
       }
@@ -858,6 +993,15 @@ window.__demo = (() => {
         border-top: 3px solid \${B.teal}; opacity: 0; transition: opacity .3s ease; pointer-events: none;
       }
       #demo-caption.on { opacity: 1; }
+      /* Reel mode. A 16:9 clip sits about 1080px wide inside a 9:16 frame, so
+         everything the overlay draws is seen at roughly 56% of its authored
+         size. The type is scaled up to survive that, and to survive a phone. */
+      html.demo-reel #demo-caption {
+        font-size: 50px; line-height: 1.25; padding: 34px 56px 40px; gap: 34px;
+      }
+      html.demo-reel #demo-caption .mark { height: 66px; }
+      html.demo-reel #demo-step { font-size: 30px; padding: 18px 36px; left: 56px; top: 96px; }
+      html.demo-reel #demo-timer { font-size: 30px; padding: 18px 32px; right: 56px; top: 96px; }
       #demo-caption .mark { height: 40px; flex: 0 0 auto; opacity: .95; }
       #demo-caption .txt { flex: 1 1 auto; }
       #demo-caption b { color: \${B.amberLight}; font-weight: 600; }
@@ -869,6 +1013,18 @@ window.__demo = (() => {
         opacity: 0; transition: opacity .3s ease; pointer-events: none;
       }
       #demo-step.on { opacity: 1; }
+      /* Elapsed-time chip. Sits opposite the step badge so the two never meet,
+         and uses tabular figures so the digits do not jitter as they count. */
+      #demo-timer {
+        position: fixed; right: 44px; top: 88px; z-index: 2147483646;
+        font: 700 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-variant-numeric: tabular-nums; letter-spacing: .06em;
+        color: \${B.tealLight}; background: rgba(4,16,22,.86);
+        border: 1px solid rgba(148,163,184,.35); border-radius: 999px; padding: 10px 18px;
+        box-shadow: 0 6px 20px rgba(0,0,0,.35);
+        opacity: 0; transition: opacity .3s ease; pointer-events: none;
+      }
+      #demo-timer.on { opacity: 1; }
       #demo-brandbar {
         position: fixed; left: 0; right: 0; top: 0; height: 6px; z-index: 2147483647;
         background: linear-gradient(90deg, \${B.amber} 0%, \${B.amber} 22%, \${B.teal} 62%, \${B.tealLight} 100%);
@@ -940,6 +1096,7 @@ window.__demo = (() => {
       + '<span class="sep"></span>'
       + '<span>demo environment · synthetic data, no real patients</span>';
     add('demo-step');
+    add('demo-timer');
     add('demo-cursor');
   };
 
@@ -961,6 +1118,9 @@ window.__demo = (() => {
       ensure();
       const mark = document.getElementById('demo-watermark');
       if (mark) mark.style.opacity = html ? '0' : '1';
+      // The timer belongs to the product footage, not to a full-screen card.
+      const clock = document.getElementById('demo-timer');
+      if (clock) clock.style.opacity = html ? '0' : '';
       let el = document.getElementById('demo-card');
       if (!el) {
         el = document.createElement('div');
@@ -970,6 +1130,36 @@ window.__demo = (() => {
       el.className = variant ? variant : '';
       el.innerHTML = html || '';
       el.classList.toggle('on', Boolean(html));
+    },
+    /**
+     * Elapsed-time chip. Runs in the page rather than being driven a frame at a
+     * time from the recorder, so the digits advance smoothly with the video
+     * instead of stepping whenever a script happens to await something.
+     */
+    timer(action) {
+      ensure();
+      const el = document.getElementById('demo-timer');
+      if (!el) return;
+      if (window.__demoTimerId) {
+        clearInterval(window.__demoTimerId);
+        window.__demoTimerId = null;
+      }
+      if (action === 'stop') return;
+      if (action === 'hide') {
+        el.classList.remove('on');
+        return;
+      }
+      const t0 = Date.now();
+      const paint = () => {
+        const s = Math.floor((Date.now() - t0) / 1000);
+        // Plain concatenation: this whole script is embedded in a template
+        // literal, so an inner one would be interpolated by the outer.
+        el.textContent = String(Math.floor(s / 60)).padStart(2, '0')
+          + ':' + String(s % 60).padStart(2, '0');
+      };
+      paint();
+      el.classList.add('on');
+      window.__demoTimerId = setInterval(paint, 250);
     },
     logo() { return window.__demoBrand.logo; },
     moveCursor(x, y) {
@@ -1010,6 +1200,16 @@ class Director {
     this.narration = [];  // { start, file, duration, text }
     this._open = null;
     this._line = 0;
+    // Multiplies the mechanical dwell — cursor travel and post-action pauses —
+    // without touching narration, which is floored by its own audio length. A
+    // training viewer is following along and needs the beat; a marketing viewer
+    // is deciding whether to keep watching.
+    this.pace = spec.pace || 1;
+  }
+
+  /** Mechanical dwell, scaled by the spec's pace. */
+  _dwell(ms) {
+    return sleep(Math.round(ms * this.pace));
   }
 
   /**
@@ -1019,6 +1219,9 @@ class Director {
    * spoken track never runs past the frame it is describing.
    */
   _narrate(html, holdMs) {
+    // Reels play muted in a feed, so they carry their words on screen rather
+    // than in a voice track. The caption still drives the hold.
+    if (this.spec.silent) return holdMs;
     const clip = voice.synthesise(html, { slug: this.spec.slug, index: this._line++ });
     if (!clip) return holdMs;
     this.narration.push({ ...clip, start: this.now() });
@@ -1031,6 +1234,11 @@ class Director {
 
   async ensure() {
     await this.page.evaluate(OVERLAY_SCRIPT).catch(() => {});
+    if (this.spec.reel) {
+      await this.page
+        .evaluate(() => document.documentElement.classList.add('demo-reel'))
+        .catch(() => {});
+    }
   }
 
   /** Marks a YouTube chapter boundary. The first one is forced to 0:00 later. */
@@ -1041,6 +1249,17 @@ class Director {
   async step(text) {
     await this.ensure();
     await this.page.evaluate((t) => window.__demo.step(t), text || '');
+  }
+
+  /**
+   * Start, stop or hide the on-screen elapsed timer.
+   *
+   * A claim about how long something takes is worth more when the clock is
+   * visible while it happens, so nothing is edited out off-camera.
+   */
+  async timer(action = 'start') {
+    await this.ensure();
+    await this.page.evaluate((a) => window.__demo.timer(a), action).catch(() => {});
   }
 
   async say(html, holdMs = 2800) {
@@ -1063,7 +1282,13 @@ class Director {
   }
 
   /** Full-screen branded card. `bullets` renders a recap list. */
-  async card({ kicker, heading, sub, body, bullets = [], holdMs = 4200, logo = true, variant = '' }) {
+  /**
+   * `keep` leaves the card on screen instead of clearing it. A closing card
+   * wants this: the recorded stream lags the director's clock, so a card that
+   * clears itself gives back the last seconds of the file to whatever screen
+   * happened to be underneath.
+   */
+  async card({ kicker, heading, sub, body, bullets = [], holdMs = 4200, logo = true, variant = '', keep = false }) {
     await this.ensure();
     await this.clearCaption();
     const logoTag = logo
@@ -1088,6 +1313,7 @@ class Director {
       text: [heading, sub, body].filter(Boolean).join(' — ') || bullets.join('. '),
     });
     await sleep(hold);
+    if (keep) return;
     await this.page.evaluate(() => window.__demo.card(''));
     await sleep(500);
   }
@@ -1120,18 +1346,18 @@ class Director {
 
   async click(locator, { pause = 900 } = {}) {
     await locator.scrollIntoViewIfNeeded().catch(() => {});
-    await sleep(320);
+    await this._dwell(320);
     const box = await locator.boundingBox();
     if (box) {
       const x = box.x + box.width / 2;
       const y = box.y + box.height / 2;
       await this.page.evaluate(([px, py]) => window.__demo.moveCursor(px, py), [x, y]);
-      await sleep(560);
+      await this._dwell(560);
       await this.page.mouse.move(x, y);
       await this.page.evaluate(() => window.__demo.pressCursor());
     }
     await locator.click({ timeout: 15000 });
-    await sleep(pause);
+    await this._dwell(pause);
   }
 
   async type(locator, text, { delay = 45, pause = 400 } = {}) {
@@ -1142,12 +1368,12 @@ class Director {
         ([px, py]) => window.__demo.moveCursor(px, py),
         [box.x + box.width / 2, box.y + box.height / 2]
       );
-      await sleep(380);
+      await this._dwell(380);
     }
     await locator.click();
     await locator.fill('');
     await locator.type(text, { delay });
-    await sleep(pause);
+    await this._dwell(pause);
   }
 
   /**
@@ -1183,11 +1409,11 @@ class Director {
         ([px, py]) => window.__demo.moveCursor(px, py),
         [box.x + box.width / 2, box.y + box.height / 2]
       );
-      await sleep(380);
+      await this._dwell(380);
     }
     await locator.click();
     await locator.fill(value);
-    await sleep(pause);
+    await this._dwell(pause);
   }
 
   async select(locator, value, { pause = 700 } = {}) {
@@ -1198,10 +1424,10 @@ class Director {
         ([px, py]) => window.__demo.moveCursor(px, py),
         [box.x + box.width / 2, box.y + box.height / 2]
       );
-      await sleep(380);
+      await this._dwell(380);
     }
     await locator.selectOption(value);
-    await sleep(pause);
+    await this._dwell(pause);
   }
 
   /**
@@ -1224,7 +1450,7 @@ class Director {
       const target = Math.min(pane.scrollTop + wanted, pane.scrollHeight - pane.clientHeight);
       if (target > pane.scrollTop + 8) pane.scrollTo({ top: target, behavior: 'smooth' });
     }, pixels).catch(() => {});
-    await sleep(650);
+    await this._dwell(650);
   }
 
   /** The input that follows a label containing `text` (forms have no htmlFor). */
@@ -1388,6 +1614,74 @@ function thumbnailSpec(spec) {
   };
 }
 
+/* ───────────────────────────── vertical reels ───────────────────────────── */
+
+/**
+ * The 9:16 surround for a reel: a hook above the footage and a sign-off below.
+ *
+ * The middle is left transparent and the recorded clip is composited into it,
+ * so the product is never cropped — a phone-shaped crop of a 16:9 dashboard
+ * loses the nav rail and half of every table, which is most of what the
+ * footage is for.
+ */
+const REEL_FRAME_HTML = (spec) => `
+<div style="width:1080px;height:1920px;position:relative;font-family:system-ui,-apple-system,Segoe UI,sans-serif">
+  <div style="position:absolute;inset:0 0 1164px 0;background:${BRAND.ink};display:flex;
+              flex-direction:column;justify-content:flex-end;padding:0 72px 64px">
+    <div style="height:6px;background:linear-gradient(90deg,${BRAND.amber},${BRAND.teal});
+                position:absolute;top:0;left:0;right:0"></div>
+    <div style="color:${BRAND.amberLight};font-size:32px;font-weight:700;letter-spacing:.14em;
+                text-transform:uppercase;margin-bottom:28px">${spec.reelKicker || 'AureonCare'}</div>
+    <div style="color:#f8fafc;font-size:88px;font-weight:700;line-height:1.06;letter-spacing:-.025em">
+      ${spec.thumbHeadline || spec.title}
+    </div>
+  </div>
+  <div style="position:absolute;top:1364px;left:0;right:0;bottom:0;background:${BRAND.ink};
+              display:flex;flex-direction:column;justify-content:center;padding:0 72px">
+    <div style="color:#e2e8f0;font-size:46px;line-height:1.3;font-weight:500;margin-bottom:52px">
+      ${spec.thumbSub || ''}
+    </div>
+    <img src="${BRAND.logo}" style="height:84px;width:auto;align-self:flex-start" alt="AureonCare">
+    <div style="color:#64748b;font-size:26px;margin-top:32px">
+      demo environment · synthetic data, no real patients
+    </div>
+  </div>
+</div>`;
+
+async function renderReelFrame(context, spec, file) {
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1080, height: 1920 });
+  await page.setContent(`<body style="margin:0;background:transparent">${REEL_FRAME_HTML(spec)}</body>`);
+  await page.screenshot({ path: file, omitBackground: true, clip: { x: 0, y: 0, width: 1080, height: 1920 } });
+  await page.close();
+}
+
+/**
+ * Compose the 16:9 recording into the 9:16 frame.
+ *
+ * 1920x1080 scales to 1080x608 and sits centred, leaving the bands the frame
+ * PNG paints over. Nothing is cropped.
+ */
+function composeVertical(videoIn, framePng, videoOut, fps) {
+  const ff = findFfmpeg();
+  execFileSync(ff, [
+    '-y', '-i', videoIn, '-i', framePng,
+    // pad rather than a colour source: a `color` input is a fixed-length clip,
+    // and overlaying onto it with shortest=1 truncates the whole reel to that
+    // length while the container still reports the audio's duration.
+    '-filter_complex',
+    // Seated at y=1364-608 rather than centred: the hook needs the top third,
+    // which is what a thumb sees before deciding to stop.
+    `[0:v]scale=1080:-2,pad=1080:1920:0:756:color=0x${BRAND.ink.replace('#', '')}[bg];`
+    + `[bg][1:v]overlay=0:0[v]`,
+    '-map', '[v]', '-map', '0:a?',
+    '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.1', '-preset', 'slow', '-crf', '20',
+    '-r', String(fps), '-pix_fmt', 'yuv420p',
+    '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
+    videoOut,
+  ], { stdio: 'ignore' });
+}
+
 async function renderThumbnail(context, spec, file) {
   const page = await context.newPage();
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -1427,7 +1721,7 @@ ${spec.tags.join(', ')}
 | --- | --- |
 | Visibility | Unlisted until the playlist is complete, then Public |
 | Category | Science & Technology |
-| Playlist | ${PLAYLISTS[spec.wave || 1]} |
+| Playlist | ${spec.marketing ? MARKETING_PLAYLIST : PLAYLISTS[spec.wave || 1]} |
 | Language | English |
 | Audience | Not made for kids |
 | Thumbnail | ${spec.slug}.thumbnail.png |
@@ -1462,9 +1756,9 @@ async function record(spec) {
       '--hide-scrollbars', '--disable-features=IsolateOrigins'],
   });
   const context = await browser.newContext({
-    viewport: VIEWPORT,
+    viewport: spec.viewport || VIEWPORT,
     deviceScaleFactor: 1,
-    recordVideo: { dir: OUT_DIR, size: VIEWPORT },
+    recordVideo: { dir: OUT_DIR, size: spec.viewport || VIEWPORT },
   });
 
   const store = createStore();
@@ -1516,34 +1810,49 @@ async function record(spec) {
       throw { __probeDone: true };
     }
     d.videoStart = d.now();
-    await d.bumper();
-    await d.card({
-      kicker: 'AureonCare training',
-      heading: spec.title,
-      sub: spec.moduleLabel,
-      body: spec.intro,
-      holdMs: 5000,
-    });
-    d.chapters.unshift({ start: 0, title: 'Introduction' });
-    await spec.run(d, page, { store, fixtures: F, sleep });
-    await d.clearCaption();
-    await d.step('');
-    await d.card({
-      kicker: 'Recap',
-      heading: 'What you just did',
-      bullets: spec.recap,
-      holdMs: 6000,
-    });
-    d.chapter('Recap');
-    // Held long enough for a YouTube end screen, which needs at least 5 seconds
-    // of still picture to sit on.
-    await d.card({
-      kicker: 'AureonCare',
-      heading: 'Health | Efficiency | Growth',
-      body: 'More in the Getting Started series — the next video is linked on screen.',
-      holdMs: 9000,
-    });
-    await sleep(700);
+    if (spec.marketing) {
+      // A marketing cut owns its own open and close. The training chrome — logo
+      // bumper, title card, recap — costs about twenty seconds before anything
+      // happens on screen, which is most of a short video's attention budget.
+      await spec.run(d, page, { store, fixtures: F, sleep });
+      await d.clearCaption();
+      await d.step('');
+      // The captured stream lags the director's clock by a few seconds, so a
+      // short tail ends the file while the closing card is still fading in.
+      // The training path never noticed: its outro card holds for nine seconds.
+      // Reels end on product rather than a card, so they need far less — the
+      // rest would play as dead air at the end of a twenty-second clip.
+      await sleep(spec.reel ? 1200 : 3500);
+    } else {
+      await d.bumper();
+      await d.card({
+        kicker: 'AureonCare training',
+        heading: spec.title,
+        sub: spec.moduleLabel,
+        body: spec.intro,
+        holdMs: 5000,
+      });
+      d.chapters.unshift({ start: 0, title: 'Introduction' });
+      await spec.run(d, page, { store, fixtures: F, sleep });
+      await d.clearCaption();
+      await d.step('');
+      await d.card({
+        kicker: 'Recap',
+        heading: 'What you just did',
+        bullets: spec.recap,
+        holdMs: 6000,
+      });
+      d.chapter('Recap');
+      // Held long enough for a YouTube end screen, which needs at least 5 seconds
+      // of still picture to sit on.
+      await d.card({
+        kicker: 'AureonCare',
+        heading: 'Health | Efficiency | Growth',
+        body: 'More in the Getting Started series — the next video is linked on screen.',
+        holdMs: 9000,
+      });
+      await sleep(700);
+    }
   } catch (err) {
     failure = err && err.__probeDone ? null : err;
     // A failed step is almost always a DOM guess gone stale, so capture what
@@ -1568,7 +1877,10 @@ async function record(spec) {
         });
         fs.writeFileSync(
           path.join(debugDir, `${spec.slug}.failure.txt`),
-          `${String(failure.message).split('\n')[0]}\n\nMODALS:\n${state.modals.join('\n')}\n\nBUTTONS:\n${state.buttons.join('\n')}\n`,
+          // The full message, not just its first line: Playwright appends the
+          // locator it was waiting on and what it resolved to, which is the
+          // part that actually identifies a stale DOM guess.
+          `${String(failure.stack || failure.message)}\n\nMODALS:\n${state.modals.join('\n')}\n\nBUTTONS:\n${state.buttons.join('\n')}\n`,
           'utf8'
         );
       } catch (_) { /* best effort */ }
@@ -1614,6 +1926,22 @@ async function record(spec) {
       await tb.close();
 
       console.log(`  ${spec.id} ${ts(duration)}  →  ${path.basename(mp4)}`);
+
+      // A reel ships in both shapes: the 16:9 master, and the 9:16 cut that
+      // actually gets posted.
+      if (spec.reel) {
+        const vb = await chromium.launch({ args: ['--no-sandbox'] });
+        const vctx = await vb.newContext({ viewport: { width: 1080, height: 1920 } });
+        const framePng = path.join(OUT_DIR, `${spec.slug}.reel-frame.png`);
+        await renderReelFrame(vctx, spec, framePng);
+        await vctx.close();
+        await vb.close();
+
+        const vertical = path.join(OUT_DIR, `${spec.slug}-9x16.mp4`);
+        composeVertical(mp4, framePng, vertical, FPS);
+        fs.unlinkSync(framePng);
+        console.log(`  ${spec.id} vertical  →  ${path.basename(vertical)}`);
+      }
     }
   }
 

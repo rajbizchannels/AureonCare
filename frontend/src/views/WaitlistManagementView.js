@@ -67,7 +67,11 @@ const WaitlistManagementView = ({
     try {
       const result = await api.notifyNextWaitlist({ date, providerId });
       if (result.success) {
-        await addNotification('success', `Notified ${result.patient.name} about available slot`);
+        // Guarded: a response without a patient block used to throw here, which
+        // surfaced as "failed to notify" even though the notification had been
+        // sent and the entry was already marked.
+        const name = result.patient?.name || 'the next patient';
+        await addNotification('success', `Notified ${name} about available slot`);
         await loadWaitlist();
       }
     } catch (error) {

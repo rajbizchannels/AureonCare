@@ -664,7 +664,7 @@ const PracticeManagementView = ({
               <tbody>
                 {sortedAppointments.map((apt, idx) => {
                   const patient = patients.find(p => p.id === apt.patient_id);
-                  const patientName = apt.patient || patient?.name || t.unknownPatient || 'Unknown Patient';
+                  const patientName = apt.patient || patient?.name || (patient?.first_name && patient?.last_name ? `${patient.first_name} ${patient.last_name}` : '') || t.unknownPatient || 'Unknown Patient';
                   const aptDateTime = getAppointmentDateTime(apt);
                   // Get doctor name from users array
                   const provider = users?.find(u => u.id === apt.provider_id);
@@ -858,7 +858,7 @@ const PracticeManagementView = ({
                       <div className="space-y-1">
                         {dayAppointments.map(apt => {
                           const patient = patients.find(p => p.id === apt.patient_id);
-                          const patientName = apt.patient || patient?.name || t.unknown || 'Unknown';
+                          const patientName = apt.patient || patient?.name || (patient?.first_name && patient?.last_name ? `${patient.first_name} ${patient.last_name}` : '') || t.unknown || 'Unknown';
                           const aptDateTime = getAppointmentDateTime(apt);
                           return (
                             <div
@@ -894,7 +894,7 @@ const PracticeManagementView = ({
                 {getAppointmentsForDate(selectedDay).length > 0 ? (
                   getAppointmentsForDate(selectedDay).map(apt => {
                     const patient = patients.find(p => p.id === apt.patient_id);
-                    const patientName = apt.patient || patient?.name || t.unknownPatient || 'Unknown Patient';
+                    const patientName = apt.patient || patient?.name || (patient?.first_name && patient?.last_name ? `${patient.first_name} ${patient.last_name}` : '') || t.unknownPatient || 'Unknown Patient';
                     const aptDateTime = getAppointmentDateTime(apt);
                     // Get doctor name from users array
                     const provider = users?.find(u => u.id === apt.provider_id);
