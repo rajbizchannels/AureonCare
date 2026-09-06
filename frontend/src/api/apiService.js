@@ -500,8 +500,13 @@ const api = {
   _messagingHeaders: (extra = {}) => {
     const headers = { 'Content-Type': 'application/json', ...extra };
     try {
+      // Transitional Bearer fallback, same as getAuthHeaders. Since SEC-15 the session
+      // normally lives in an HttpOnly cookie and sessionStorage holds nothing, so this is
+      // usually absent — the cookie sent below is what actually authenticates.
       const token = sessionStorage.getItem('token') || sessionStorage.getItem('portalSessionToken');
       if (token) headers['Authorization'] = `Bearer ${token}`;
+      const csrf = readCookie('ac_csrf');
+      if (csrf) headers['X-CSRF-Token'] = csrf;
     } catch (error) {
       console.error('Error reading session token:', error);
     }
@@ -510,6 +515,12 @@ const api = {
   _messagingFetch: async (path, options = {}, errorMessage = 'Messaging request failed') => {
     const response = await fetch(`${API_BASE_URL}/messages${path}`, {
       ...options,
+      // Without this the HttpOnly session cookie is not attached at all, and every
+      // messaging call answers 401 for any session that has no Bearer token in
+      // sessionStorage — which, after SEC-15, is the normal case. Every other call in this
+      // module goes through authenticatedFetch, which has always sent credentials; this
+      // one path was left behind.
+      credentials: 'include',
       headers: api._messagingHeaders(options.headers)
     });
     if (!response.ok) {
