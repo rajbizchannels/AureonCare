@@ -76,6 +76,19 @@ const attachTenantContext = async (pool, req, userId) => {
     } else {
       req.tenant = { practiceId: (req.user && req.user.practiceId) || null, tenantId: null, schemaName };
     }
+    // Falling back to `public` used to be harmless — it WAS the single default tenant.
+    // Since the SEC-05 cutover it holds no clinical tables, so this fallback guarantees
+    // that every tenant-scoped route will fail with `relation ... does not exist` and
+    // return its own opaque 500. Say so once, here, naming the account, rather than
+    // leaving the cause to be inferred from forty identical errors downstream.
+    // GET /api/auth/tenant-status reports the same thing to the signed-in user.
+    if (schemaName === 'public') {
+      console.warn(
+        `[auth] user ${userId} resolved to the public schema (practice_id=` +
+        `${(req.tenant && req.tenant.practiceId) || 'null'}). It holds no tenant tables, so ` +
+        'tenant-scoped requests for this account will fail — the account is not bound to an active tenant.'
+      );
+    }
   } catch (err) {
     console.warn('[auth] tenant resolution unavailable, defaulting to public schema:', err.message);
     req.tenant = { practiceId: (req.user && req.user.practiceId) || null, tenantId: null, schemaName };

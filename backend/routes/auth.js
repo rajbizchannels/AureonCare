@@ -179,6 +179,71 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * Why is this account seeing errors everywhere?
+ *
+ * A staff account is only usable if it resolves to an active tenant schema. When it does
+ * not — no practice_id, or a practice with no active row in control.tenants — resolution
+ * falls back to `public`, which since the SEC-05 cutover contains none of the clinical
+ * tables. Every tenant-scoped route then fails with `relation "..." does not exist` and
+ * returns its own 500, so the browser shows a storm of identical errors that say nothing
+ * about the cause.
+ *
+ * This endpoint says the cause out loud. It reports only the caller's own binding — no
+ * other tenant is visible through it — and names the concrete repair.
+ */
+router.get('/tenant-status', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { rows } = await pool.query(
+      `SELECT u.practice_id,
+              p.name  AS practice_name,
+              t.id    AS tenant_id,
+              t.status AS tenant_status,
+              t.schema_name
+         FROM public.users u
+         LEFT JOIN public.practices  p ON p.id = u.practice_id
+         LEFT JOIN control.tenants   t ON t.practice_id = u.practice_id
+        WHERE u.id = $1`,
+      [req.user.id]
+    );
+    const r = rows[0] || {};
+    const resolved = req.tenant && req.tenant.schemaName;
+    const healthy = Boolean(resolved && resolved !== 'public');
+
+    let problem = null;
+    if (!healthy) {
+      if (!r.practice_id) {
+        problem = 'This account has no practice_id, so it is not bound to any tenant. Bind it '
+          + 'by accepting a staff invite, or set users.practice_id to the practice it belongs to.';
+      } else if (!r.tenant_id) {
+        problem = `Practice ${r.practice_id} has no row in control.tenants, so it was never `
+          + 'provisioned. Provision it (the platform console creates the schema and the control-plane rows).';
+      } else if (r.tenant_status !== 'active') {
+        problem = `The tenant for this practice exists but its status is "${r.tenant_status}", not "active".`;
+      } else if (!r.schema_name) {
+        problem = 'The tenant row has no schema_name, so there is no schema to route to.';
+      } else {
+        problem = 'The tenant looks correct but resolution still fell back to public — check the server log.';
+      }
+    }
+
+    res.json({
+      healthy,
+      resolvedSchema: resolved || null,
+      practiceId: r.practice_id || null,
+      practiceName: r.practice_name || null,
+      tenantId: r.tenant_id || null,
+      tenantStatus: r.tenant_status || null,
+      schemaName: r.schema_name || null,
+      problem,
+    });
+  } catch (error) {
+    console.error('Error reporting tenant status:', error);
+    res.status(500).json({ error: 'Failed to report tenant status' });
+  }
+});
+
 // Logout — server-side revocation (SEC-16). Bumping token_version invalidates every
 // clinician JWT currently held for this account (this device and any other), and we
 // clear any portal sessions too. The client still discards its local token, but this
