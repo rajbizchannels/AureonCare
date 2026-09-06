@@ -388,7 +388,11 @@ function App() {
 
   // Public self-serve routes. Like /book/<slug> these are served before the auth gate,
   // because the whole point is that nobody has an account yet.
-  const publicRoute = React.useMemo(() => {
+  // State rather than a memo: these routes are checked before the auth gate, so once one
+  // of them has signed the visitor in (accepting an invite with Google returns a session)
+  // it has to be able to stand down and let the app render. A memo with no dependencies
+  // never recomputes, and the invitee would stay stuck on the invite page.
+  const [publicRoute, setPublicRoute] = React.useState(() => {
     const path = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
     if (/^\/signup\/complete\/?$/.test(path)) return { kind: 'signupComplete', intentId: params.get('intent') };
@@ -397,7 +401,7 @@ function App() {
       return { kind: 'acceptInvite', token: params.get('token') };
     }
     return null;
-  }, []);
+  });
   const [showSignup, setShowSignup] = React.useState(false);
   const goToSignIn = React.useCallback(() => { window.location.assign('/'); }, []);
 
@@ -793,6 +797,19 @@ function App() {
         api={api}
         addNotification={addNotification}
         onAccepted={goToSignIn}
+        // Accepting an invite with Google already returns a signed session, so the invitee
+        // goes straight into the app rather than being bounced to a sign-in page to prove
+        // who they are a second time. The URL is reset so a reload does not re-open the
+        // (now redeemed) invite.
+        onAuthenticated={(u, t) => {
+          api.storeToken(t);
+          setUser(u);
+          setIsAuthenticated(true);
+          // Drop the invite route and its token from the URL — it has been redeemed, so a
+          // reload must not try to open it again.
+          window.history.replaceState({}, '', '/');
+          setPublicRoute(null);
+        }}
         onSignIn={goToSignIn}
       />
     );

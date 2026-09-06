@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, AlertCircle, UserPlus } from 'lucide-react';
+import { Loader2, AlertCircle, UserPlus, CheckCircle2 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 
 /**
@@ -10,12 +10,14 @@ import { useGoogleLogin } from '@react-oauth/google';
  * the token is passed through to the social login and validated server-side against the
  * provider-verified email.
  */
-const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAccepted, onSignIn }) => {
+const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAccepted, onAuthenticated, onSignIn }) => {
   const dark = theme === 'dark';
   const [invite, setInvite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
+  // Set once the provider has vouched for the account AND the server has issued a session.
+  const [connected, setConnected] = useState(null);
   const [form, setForm] = useState({ firstName: '', lastName: '', password: '', confirmPassword: '' });
 
   useEffect(() => {
@@ -26,6 +28,14 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show the confirmation long enough to be read, then enter the app. The Continue button
+  // does the same thing for anyone who would rather not wait.
+  useEffect(() => {
+    if (!connected) return undefined;
+    const t = setTimeout(() => onAuthenticated?.(connected.user, connected.token), 1400);
+    return () => clearTimeout(t);
+  }, [connected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -53,9 +63,21 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
     onSuccess: async (resp) => {
       setBusy('google'); setError('');
       try {
-        await api.exchangeGoogleCode(resp.code, 'postmessage', token);
-        addNotification?.('Account created. Please sign in.', 'success');
-        onAccepted?.();
+        const res = await api.exchangeGoogleCode(resp.code, 'postmessage', token);
+        // The server has already signed a JWT and set the session cookies by this point —
+        // sending the user back to a sign-in page threw that away and made them
+        // authenticate a second time immediately after proving who they are. Carry the
+        // session straight into the app instead.
+        if (res && res.token && res.user) {
+          api.storeToken(res.token);
+          setConnected(res);
+          addNotification?.(`Connected as ${res.user.email}`, 'success');
+        } else {
+          // Older server, or a response without a session: fall back to the sign-in page
+          // rather than leaving the user on a page with nowhere to go.
+          addNotification?.('Account created. Please sign in.', 'success');
+          onAccepted?.();
+        }
       } catch (err) {
         setError(err.message || 'Google sign-up failed.');
       } finally {
@@ -75,6 +97,27 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
     return (
       <div className={`min-h-screen ${bg} flex items-center justify-center`}>
         <Loader2 className="animate-spin text-blue-600" size={32} />
+      </div>
+    );
+  }
+
+  if (connected) {
+    return (
+      <div className={`min-h-screen ${bg} flex items-center justify-center px-4`}>
+        <div className={`w-full max-w-md p-6 rounded-xl border text-center ${card}`}>
+          <CheckCircle2 className="mx-auto text-green-600" size={40} />
+          <h1 className={`mt-4 text-2xl font-semibold ${text}`}>Connected</h1>
+          <p className={`mt-2 ${muted}`}>
+            Your Google account <strong>{connected.user.email}</strong> is now linked to{' '}
+            <strong>{invite?.practiceName}</strong>. Signing you in…
+          </p>
+          <button
+            onClick={() => onAuthenticated?.(connected.user, connected.token)}
+            className="mt-6 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium"
+          >
+            Continue
+          </button>
+        </div>
       </div>
     );
   }
