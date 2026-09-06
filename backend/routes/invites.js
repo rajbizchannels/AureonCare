@@ -152,6 +152,10 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
       inviteUrl,
       emailed: delivery.sent,
       emailError: delivery.sent ? undefined : delivery.reason,
+      // Shown to the practice admin who created the invite — they are the only person who
+      // can act on a mail-server rejection, and without it the failure is undiagnosable
+      // from anywhere but the server log.
+      emailErrorDetail: delivery.sent ? undefined : delivery.detail,
     });
   } catch (err) {
     console.error('[invites] create error:', err);

@@ -39,7 +39,7 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
     try {
       const inv = await api.createInvite({ email: email.trim(), role });
       setFreshLink(inv.inviteUrl);
-      setDelivery({ emailed: inv.emailed, reason: inv.emailError, to: inv.email });
+      setDelivery({ emailed: inv.emailed, reason: inv.emailError, detail: inv.emailErrorDetail, to: inv.email });
       setEmail('');
       addNotification?.(
         inv.emailed ? `Invite emailed to ${inv.email}` : `Invite created for ${inv.email} — send the link yourself`,
@@ -133,6 +133,13 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
                     ? 'Too many emails have gone to this address recently, so nothing was sent.'
                     : 'The invitation email could not be delivered.'}
                 </span>{' '}
+                {delivery?.detail && (
+                  <>
+                    <br />
+                    <code className="text-[11px] break-all opacity-80">{delivery.detail}</code>
+                    <br />
+                  </>
+                )}
                 Send this link to your colleague yourself. It is shown only once — if you lose
                 it, create a new invite.
               </>
