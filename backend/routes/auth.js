@@ -10,6 +10,24 @@ const { issueAuthCookies, clearAuthCookies } = require('../utils/authCookies');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { findUsableInvite, claimInvite } = require('./invites');
 const { resolveDomainClaim } = require('../services/domainJoin');
+const {
+  beginEnrolment, verifyTotp, verifySecondFactor, generateBackupCodes,
+} = require('../services/userMfa');
+
+/**
+ * Does this account's practice mandate a second factor?
+ *
+ * A user with no practice cannot be subject to a practice policy, so they are not held to
+ * one — the alternative would lock unbound accounts out of the very screens that let them
+ * fix their binding.
+ */
+async function mfaRequiredFor(pool, user) {
+  if (!user.practice_id) return false;
+  const { rows } = await pool.query(
+    'SELECT require_mfa FROM public.practices WHERE id = $1', [user.practice_id]
+  );
+  return Boolean(rows[0] && rows[0].require_mfa);
+}
 
 // SEC-17: a fixed dummy bcrypt hash (of a random string) used to run a real compare
 // when an account is missing or has no password, so the response time does not reveal
@@ -40,7 +58,7 @@ const toCamelCase = (obj) => {
 // Login endpoint
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body || {};
+    const { email, password, mfaCode } = req.body || {};
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
@@ -73,10 +91,42 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
     }
 
+    // Second factor. Asked for only after the password is proven, so the prompt itself
+    // never reveals that an address has an account.
+    if (user.mfa_enabled) {
+      if (!mfaCode) {
+        return res.status(401).json({ mfaRequired: true, error: 'Enter the code from your authenticator app.' });
+      }
+      const check = verifySecondFactor(user, mfaCode);
+      if (!check.ok) {
+        return res.status(401).json({ mfaRequired: true, error: 'That code is not valid.' });
+      }
+      if (check.usedBackupCode) {
+        // Single use. Struck immediately, before the session is issued, so a replayed
+        // request cannot spend the same code twice.
+        await pool.query(
+          'UPDATE users SET mfa_backup_codes = array_remove(mfa_backup_codes, $2) WHERE id = $1',
+          [user.id, check.usedBackupCode]
+        );
+      }
+    } else if (await mfaRequiredFor(pool, user)) {
+      // The practice requires a second factor and this account has none. Refused rather
+      // than waved through — but told plainly what to do, since the fix is self-service.
+      return res.status(403).json({
+        mfaEnrolmentRequired: true,
+        error: 'Your practice requires two-factor authentication. Sign in on a device where '
+          + 'you can set it up, or ask an administrator for help.',
+      });
+    }
+
     // Don't send password_hash back to client
-    const { password_hash, reset_token, reset_token_expires, ...userData } = user;
+    const { password_hash, reset_token, reset_token_expires, mfa_secret, mfa_backup_codes,
+      ...userData } = user;
 
     const token = signToken(user);
+    // Start the idle clock at sign-in; without this the first request after login would be
+    // measured against a null last_activity_at.
+    await pool.query('UPDATE users SET last_activity_at = now() WHERE id = $1', [user.id]);
 
     // SEC-15: also deliver the session as an HttpOnly cookie so a browser client never
     // has to keep it in JS-readable storage. `token` stays in the body for existing
@@ -406,6 +456,162 @@ router.get('/tenant-status', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Error reporting tenant status:', error);
     res.status(500).json({ error: 'Failed to report tenant status' });
+  }
+});
+
+// ── Two-factor authentication ────────────────────────────────────────────────
+
+/** Where this account stands: enrolled, required by policy, codes remaining. */
+router.get('/mfa/status', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { rows } = await pool.query(
+      `SELECT u.mfa_enabled, u.mfa_enrolled_at,
+              COALESCE(array_length(u.mfa_backup_codes, 1), 0) AS backup_codes_remaining,
+              COALESCE(p.require_mfa, false) AS required,
+              p.session_idle_minutes
+         FROM public.users u
+         LEFT JOIN public.practices p ON p.id = u.practice_id
+        WHERE u.id = $1`,
+      [req.user.id]
+    );
+    const r = rows[0] || {};
+    res.json({
+      enabled: Boolean(r.mfa_enabled),
+      enrolledAt: r.mfa_enrolled_at || null,
+      backupCodesRemaining: Number(r.backup_codes_remaining || 0),
+      requiredByPractice: Boolean(r.required),
+      sessionIdleMinutes: r.session_idle_minutes || null,
+    });
+  } catch (err) {
+    console.error('[mfa] status error:', err);
+    res.status(500).json({ error: 'Failed to read two-factor status' });
+  }
+});
+
+/**
+ * Start enrolment: mint a secret and show it.
+ *
+ * The secret is stored but mfa_enabled stays false until a code from it verifies. An
+ * enrolment abandoned halfway therefore changes nothing — the alternative locks the account
+ * behind a secret nobody finished scanning.
+ */
+router.post('/mfa/enroll', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { rows } = await pool.query('SELECT mfa_enabled FROM users WHERE id = $1', [req.user.id]);
+    if (rows[0] && rows[0].mfa_enabled) {
+      // Re-enrolling would silently invalidate the authenticator they are still using.
+      return res.status(409).json({ error: 'Two-factor authentication is already enabled. Turn it off first.' });
+    }
+    const enrolment = await beginEnrolment(req.user.email);
+    await pool.query('UPDATE users SET mfa_secret = $1 WHERE id = $2', [enrolment.base32, req.user.id]);
+    res.json({
+      ...enrolment,
+      note: 'Scan the QR code, or type the key by hand. Then enter a code to switch it on.',
+    });
+  } catch (err) {
+    console.error('[mfa] enrol error:', err);
+    res.status(500).json({ error: 'Failed to start enrolment' });
+  }
+});
+
+/** Prove the authenticator works, then switch the factor on and hand back recovery codes. */
+router.post('/mfa/verify', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { code } = req.body || {};
+    const { rows } = await pool.query(
+      'SELECT mfa_secret, mfa_enabled FROM users WHERE id = $1', [req.user.id]);
+    if (!rows[0] || !rows[0].mfa_secret) {
+      return res.status(400).json({ error: 'Start enrolment first.' });
+    }
+    if (rows[0].mfa_enabled) {
+      return res.status(409).json({ error: 'Two-factor authentication is already enabled.' });
+    }
+    if (!verifyTotp(rows[0].mfa_secret, code)) {
+      return res.status(400).json({ error: 'That code is not valid. Check your device clock and try again.' });
+    }
+
+    const { codes, hashes } = generateBackupCodes();
+    await pool.query(
+      `UPDATE users SET mfa_enabled = true, mfa_enrolled_at = now(), mfa_backup_codes = $2
+        WHERE id = $1`,
+      [req.user.id, hashes]
+    );
+    // Returned exactly once — only hashes are stored, so these cannot be shown again.
+    res.json({ enabled: true, backupCodes: codes });
+  } catch (err) {
+    console.error('[mfa] verify error:', err);
+    res.status(500).json({ error: 'Failed to enable two-factor authentication' });
+  }
+});
+
+/**
+ * Turn the factor off.
+ *
+ * Requires the current password AND a current code. Removing a second factor is exactly
+ * what someone who has stolen a live session would want to do, so a session alone must not
+ * be enough — and the practice policy can refuse it outright.
+ */
+router.post('/mfa/disable', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { password, code } = req.body || {};
+    const { rows } = await pool.query(
+      `SELECT id, password_hash, mfa_enabled, mfa_secret, mfa_backup_codes, practice_id
+         FROM users WHERE id = $1`, [req.user.id]);
+    const user = rows[0];
+    if (!user || !user.mfa_enabled) {
+      return res.status(400).json({ error: 'Two-factor authentication is not enabled.' });
+    }
+    if (await mfaRequiredFor(pool, user)) {
+      return res.status(403).json({
+        error: 'Your practice requires two-factor authentication, so it cannot be turned off.',
+      });
+    }
+    const passwordOk = user.password_hash && password
+      && await bcrypt.compare(password, user.password_hash);
+    if (!passwordOk) return res.status(401).json({ error: 'That password is not correct.' });
+    if (!verifySecondFactor(user, code).ok) {
+      return res.status(401).json({ error: 'That code is not valid.' });
+    }
+
+    await pool.query(
+      `UPDATE users
+          SET mfa_enabled = false, mfa_secret = NULL, mfa_enrolled_at = NULL,
+              mfa_backup_codes = '{}'
+        WHERE id = $1`,
+      [req.user.id]
+    );
+    res.json({ enabled: false });
+  } catch (err) {
+    console.error('[mfa] disable error:', err);
+    res.status(500).json({ error: 'Failed to disable two-factor authentication' });
+  }
+});
+
+/** Replace the recovery codes — the old ones stop working the moment this returns. */
+router.post('/mfa/backup-codes', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { code } = req.body || {};
+    const { rows } = await pool.query(
+      'SELECT mfa_enabled, mfa_secret, mfa_backup_codes FROM users WHERE id = $1', [req.user.id]);
+    if (!rows[0] || !rows[0].mfa_enabled) {
+      return res.status(400).json({ error: 'Two-factor authentication is not enabled.' });
+    }
+    // A current code, not just a session: otherwise a stolen session could mint itself a
+    // permanent bypass and lock the owner out.
+    if (!verifyTotp(rows[0].mfa_secret, code)) {
+      return res.status(401).json({ error: 'That code is not valid.' });
+    }
+    const { codes, hashes } = generateBackupCodes();
+    await pool.query('UPDATE users SET mfa_backup_codes = $2 WHERE id = $1', [req.user.id, hashes]);
+    res.json({ backupCodes: codes });
+  } catch (err) {
+    console.error('[mfa] backup codes error:', err);
+    res.status(500).json({ error: 'Failed to regenerate recovery codes' });
   }
 });
 

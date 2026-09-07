@@ -789,13 +789,22 @@ const api = {
   },
 
   // Auth
-  login: async (email, password) => {
+  login: async (email, password, mfaCode) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, mfaCode })
     });
-    if (!response.ok) throw new Error('Failed to login');
+    if (!response.ok) {
+      // This used to throw a flat 'Failed to login', discarding what the server said —
+      // including "your account is pending approval" and the second-factor prompt, which
+      // are not failures the user can act on if they never see them.
+      const data = await response.json().catch(() => ({}));
+      const err = new Error(data.error || 'Failed to login');
+      err.mfaRequired = Boolean(data.mfaRequired);
+      err.mfaEnrolmentRequired = Boolean(data.mfaEnrolmentRequired);
+      throw err;
+    }
     return response.json();
   },
   changePassword: async (currentPassword, newPassword) => {
@@ -3825,6 +3834,68 @@ const api = {
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || 'Failed to record the decision');
+    return data;
+  },
+
+  getSecurityPolicy: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/security-policy`);
+    if (!r.ok) throw new Error('Failed to load the security policy');
+    return r.json();
+  },
+
+  updateSecurityPolicy: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/security-policy`, {
+      method: 'PATCH', body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      // The lockout refusal names the accounts at fault; carry that through rather than
+      // reducing it to "failed", which leaves the admin nothing to act on.
+      const who = Array.isArray(data.administratorsWithout) && data.administratorsWithout.length
+        ? ` (${data.administratorsWithout.join(', ')})` : '';
+      throw new Error((data.error || 'Failed to update the security policy') + who);
+    }
+    return data;
+  },
+
+  // ── Two-factor authentication (own account) ───────────────────────────────
+  getMfaStatus: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/status`);
+    if (!r.ok) throw new Error('Failed to read two-factor status');
+    return r.json();
+  },
+
+  startMfaEnrolment: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/enroll`, { method: 'POST', body: '{}' });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to start enrolment');
+    return data;
+  },
+
+  confirmMfaEnrolment: async (code) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/verify`, {
+      method: 'POST', body: JSON.stringify({ code }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'That code is not valid');
+    return data;
+  },
+
+  disableMfa: async (password, code) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/disable`, {
+      method: 'POST', body: JSON.stringify({ password, code }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to turn off two-factor authentication');
+    return data;
+  },
+
+  regenerateBackupCodes: async (code) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/backup-codes`, {
+      method: 'POST', body: JSON.stringify({ code }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to regenerate recovery codes');
     return data;
   },
 
