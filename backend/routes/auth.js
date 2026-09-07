@@ -216,6 +216,23 @@ router.get('/tenant-status', authenticate, async (req, res) => {
     // every read, which is worse than reporting nothing. Actually read from the tables the
     // failing endpoints read, through the caller's own tenant handle, and hand back the
     // database's own error. The list is a fixed allowlist — never anything caller-supplied.
+    // Does the schema we are routing to actually exist, and does it contain anything?
+    //
+    // `SET search_path TO <schema>, public, control` does NOT fail when <schema> is absent
+    // — Postgres silently ignores the missing entry — so a dropped or never-created schema
+    // is indistinguishable at query time from a schema full of missing tables. Both show up
+    // as 42P01 on every relation. Ask the catalogue instead of inferring.
+    const { rows: schemaRows } = await pool.query(
+      `SELECT
+         (SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = $1) > 0 AS schema_exists,
+         (SELECT COUNT(*) FROM information_schema.tables   WHERE table_schema = $1)   AS table_count,
+         (SELECT COUNT(*) FROM information_schema.tables   WHERE table_schema = 'template') AS template_table_count`,
+      [resolved || 'public']
+    );
+    const schemaExists = Boolean(schemaRows[0].schema_exists);
+    const tableCount = Number(schemaRows[0].table_count);
+    const templateTableCount = Number(schemaRows[0].template_table_count);
+
     const PROBES = ['notifications', 'payments', 'tasks', 'audit_logs', 'appointments', 'patients'];
     const probes = {};
     if (routed && req.db) {
@@ -289,11 +306,27 @@ router.get('/tenant-status', authenticate, async (req, res) => {
       }
     }
 
-    const healthy = routed && broken.length === 0 && missingColumns.length === 0
+    const healthy = routed && schemaExists && tableCount >= templateTableCount
+      && broken.length === 0 && missingColumns.length === 0
       && shadowed.length === 0 && writeProbe === 'ok';
 
+    // Order matters: the most upstream cause wins. A missing schema makes every other
+    // symptom follow, and reporting it as a constraint problem — as this did — sends
+    // whoever is reading off to inspect triggers on a table that does not exist.
     let problem = null;
-    if (routed && shadowed.length) {
+    if (routed && !schemaExists) {
+      problem = `control.tenants points this practice at schema "${resolved}", but no such schema `
+        + 'exists. search_path silently ignores a missing schema, so every table resolves to public '
+        + 'and fails with 42P01. Re-provision the tenant schema from the template, or correct '
+        + 'control.tenants.schema_name if it is pointing at the wrong name.';
+    } else if (routed && tableCount === 0) {
+      problem = `Schema "${resolved}" exists but is empty (template has ${templateTableCount} tables). `
+        + 'It was created but never populated — clone it from the template.';
+    } else if (routed && tableCount < templateTableCount) {
+      problem = `Schema "${resolved}" has ${tableCount} tables; template has ${templateTableCount}. `
+        + 'It is incomplete — re-apply the migrations, which are idempotent, and run '
+        + 'npm run check:schema-health for the list.';
+    } else if (routed && shadowed.length) {
       problem = `Schema "${resolved}" contains its own ${shadowed.join(', ')} table(s). Those belong `
         + 'in public — a tenant-local copy shadows the real one for every query and foreign key '
         + 'resolved through this search_path, so reads succeed against an empty table and writes '
@@ -335,6 +368,9 @@ router.get('/tenant-status', authenticate, async (req, res) => {
       tenantId: r.tenant_id || null,
       tenantStatus: r.tenant_status || null,
       schemaName: r.schema_name || null,
+      schemaExists,
+      tableCount,
+      templateTableCount,
       probes,
       missingColumns,
       shadowedPublicTables: shadowed,
