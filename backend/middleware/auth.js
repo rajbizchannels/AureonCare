@@ -127,7 +127,11 @@ const authenticate = async (req, res, next) => {
     // Confirm user is still active — catches deactivated accounts after token issue
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      'SELECT id, email, role, first_name, last_name, token_version FROM users WHERE id = $1 AND status = $2',
+      `SELECT u.id, u.email, u.role, u.first_name, u.last_name, u.token_version,
+              u.last_activity_at, p.session_idle_minutes
+         FROM users u
+         LEFT JOIN public.practices p ON p.id = u.practice_id
+        WHERE u.id = $1 AND u.status = $2`,
       [payload.sub, 'active']
     );
 
@@ -140,6 +144,28 @@ const authenticate = async (req, res, next) => {
     // SEC-09: reject tokens minted before the last revocation (password change/reset/logout).
     if ((user.token_version ?? 0) !== (payload.tv ?? 0)) {
       return res.status(401).json({ error: 'Session expired, please log in again' });
+    }
+
+    // Idle timeout, enforced HERE rather than by shortening the JWT's own lifetime, because
+    // the policy is about inactivity: a clinician working continuously should not be thrown
+    // out mid-note, and one who walked away from an unlocked workstation should be. The
+    // check is server-side because a client-side timer protects nobody holding the token.
+    const idleLimit = user.session_idle_minutes;
+    if (idleLimit && user.last_activity_at) {
+      const idleMs = Date.now() - new Date(user.last_activity_at).getTime();
+      if (idleMs > idleLimit * 60 * 1000) {
+        return res.status(401).json({
+          sessionTimedOut: true,
+          error: `Signed out after ${idleLimit} minutes of inactivity. Please log in again.`,
+        });
+      }
+    }
+    // Refresh the activity stamp, but not on every single request — a write per request
+    // would put the whole app behind one row's lock. A minute of granularity is far finer
+    // than any timeout worth setting.
+    if (!user.last_activity_at || Date.now() - new Date(user.last_activity_at).getTime() > 60_000) {
+      pool.query('UPDATE users SET last_activity_at = now() WHERE id = $1', [user.id])
+        .catch((err) => console.error('[auth] could not record activity:', err.message));
     }
 
     req.user = {
