@@ -229,10 +229,39 @@ router.get('/tenant-status', authenticate, async (req, res) => {
       }
     }
     const broken = Object.entries(probes).filter(([, v]) => v !== 'ok');
-    const healthy = routed && broken.length === 0;
+
+    // A table can exist, be readable, and still be missing a column a later migration
+    // added — `SELECT 1 FROM patients` succeeds while the route's real query fails with
+    // 42703. So diff the caller's schema against `template`, the golden schema every
+    // tenant is cloned from: anything present there and absent here is a gap by
+    // definition, with no hand-maintained list to fall behind.
+    let missingColumns = [];
+    if (routed) {
+      const { rows: drift } = await pool.query(
+        `SELECT t.table_name, t.column_name
+           FROM information_schema.columns t
+          WHERE t.table_schema = 'template'
+            AND EXISTS (SELECT 1 FROM information_schema.tables x
+                         WHERE x.table_schema = $1 AND x.table_name = t.table_name)
+            AND NOT EXISTS (SELECT 1 FROM information_schema.columns c
+                             WHERE c.table_schema = $1
+                               AND c.table_name = t.table_name
+                               AND c.column_name = t.column_name)
+          ORDER BY 1, 2 LIMIT 200`,
+        [resolved]
+      );
+      missingColumns = drift.map((d) => `${d.table_name}.${d.column_name}`);
+    }
+
+    const healthy = routed && broken.length === 0 && missingColumns.length === 0;
 
     let problem = null;
-    if (routed && broken.length) {
+    if (routed && missingColumns.length) {
+      problem = `Schema "${resolved}" is missing ${missingColumns.length} column(s) that exist in `
+        + 'the template. Tables that exist but have drifted like this read fine on a simple probe '
+        + 'and still make routes fail with 42703. Re-apply the migration that adds them — they are '
+        + 'idempotent — and run npm run check:schema-health for the full picture.';
+    } else if (routed && broken.length) {
       problem = `Routing is correct — this account resolves to "${resolved}" — but ${broken.length} of `
         + `${PROBES.length} core tables could not be read there. See "probes" for the database's own `
         + 'error on each. A missing relation means that schema was never fully built from the '
@@ -262,6 +291,7 @@ router.get('/tenant-status', authenticate, async (req, res) => {
       tenantStatus: r.tenant_status || null,
       schemaName: r.schema_name || null,
       probes,
+      missingColumns,
       problem,
     });
   } catch (error) {
