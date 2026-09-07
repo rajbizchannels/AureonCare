@@ -5,7 +5,7 @@ import { useAudit } from '../../hooks/useAudit';
 import { FORM_TEMPLATES } from '../../data/formTemplates';
 import ThemedSelect from './ThemedSelect';
 
-const NewPatientForm = ({ theme, api, patients, onClose, onSuccess, addNotification, t }) => {
+const NewPatientForm = ({ theme, api, patients = [], onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     firstName: '',
