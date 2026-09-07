@@ -28,6 +28,10 @@ const checkAuditTableExists = async (req, res, next) => {
     const schema = (req.tenant && req.tenant.schemaName) || 'public';
 
     const now = Date.now();
+    // Whether this refusal came from a remembered answer rather than a fresh look. A stale
+    // negative and a live one need different responses — wait out the TTL, or fix the
+    // schema — and they are indistinguishable from outside without this.
+    let fromCache = false;
 
     // An account that resolves to `public` is not missing a migration — it is not bound to
     // an active tenant, and `public` has held no clinical tables since the 068 cutover.
@@ -42,15 +46,22 @@ const checkAuditTableExists = async (req, res, next) => {
           })
         : res.status(503).json({
             error: 'Audit logs table not found',
-            message: `Schema "${schema}" has no audit_logs table. Run migration `
-              + '040_create_audit_logs_table.sql (or re-provision the tenant from the template).',
+            message: `Schema "${schema}" has no audit_logs table on the connection this request `
+              + `used (tenantDb=${req.db ? 'yes' : 'no'}${fromCache ? ', cached' : ''}). `
+              + 'If the schema does have the table, the request ran on the untenanted pool. '
+              + 'Otherwise run migration 040_create_audit_logs_table.sql.',
+            schema,
+            tenantDb: Boolean(req.db),
+            cached: fromCache,
             migration: 'backend/migrations/040_create_audit_logs_table.sql',
           });
 
     // Check cache first
     const cached = tableExistsCache.get(schema);
     if (cached && (now - cached.timestamp) < TABLE_CACHE_TTL_MS) {
-      return cached.exists ? next() : missing();
+      if (cached.exists) return next();
+      fromCache = true;
+      return missing();
     }
 
     // Cache miss or expired - check database (search_path-aware; finds it in the tenant schema)

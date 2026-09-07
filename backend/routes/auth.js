@@ -253,10 +253,55 @@ router.get('/tenant-status', authenticate, async (req, res) => {
       missingColumns = drift.map((d) => `${d.table_name}.${d.column_name}`);
     }
 
-    const healthy = routed && broken.length === 0 && missingColumns.length === 0;
+    // Reads can pass while writes fail. A tenant schema that has its own copy of a table
+    // the app expects to live in `public` — `users` above all — silently repoints every
+    // foreign key that references it, so an INSERT is rejected for a user who plainly
+    // exists. Nothing about that is visible from a SELECT, a column diff, or a table list.
+    const shadowed = [];
+    if (routed) {
+      const { rows: dupes } = await pool.query(
+        `SELECT table_name FROM information_schema.tables
+          WHERE table_schema = $1
+            AND table_name IN ('users','practices','subscription_plans','operators')
+          ORDER BY 1`,
+        [resolved]
+      );
+      shadowed.push(...dupes.map((d) => d.table_name));
+    }
+
+    // Actually attempt the write the app makes, then roll it back. This is the only probe
+    // that exercises constraints, defaults and triggers — the things a read never touches.
+    let writeProbe = 'skipped';
+    if (routed && req.db) {
+      try {
+        await req.db.query('BEGIN');
+        await req.db.query(
+          `INSERT INTO notifications (user_id, type, message, read, created_at)
+           VALUES ($1, 'info', 'tenant-status write probe', false, NOW())`,
+          [req.user.id]
+        );
+        writeProbe = 'ok';
+      } catch (e) {
+        writeProbe = `${e.code || 'error'}: ${String(e.message || '').slice(0, 200)}`;
+      } finally {
+        // Always roll back: this is a diagnostic, it must not leave a row behind.
+        await req.db.query('ROLLBACK').catch(() => {});
+      }
+    }
+
+    const healthy = routed && broken.length === 0 && missingColumns.length === 0
+      && shadowed.length === 0 && writeProbe === 'ok';
 
     let problem = null;
-    if (routed && missingColumns.length) {
+    if (routed && shadowed.length) {
+      problem = `Schema "${resolved}" contains its own ${shadowed.join(', ')} table(s). Those belong `
+        + 'in public — a tenant-local copy shadows the real one for every query and foreign key '
+        + 'resolved through this search_path, so reads succeed against an empty table and writes '
+        + 'are rejected for rows that do exist. Drop the tenant-local copies.';
+    } else if (routed && writeProbe !== 'ok' && writeProbe !== 'skipped') {
+      problem = `Reads succeed but a write to notifications failed with "${writeProbe}". `
+        + 'That points at a constraint, default or trigger rather than a missing table.';
+    } else if (routed && missingColumns.length) {
       problem = `Schema "${resolved}" is missing ${missingColumns.length} column(s) that exist in `
         + 'the template. Tables that exist but have drifted like this read fine on a simple probe '
         + 'and still make routes fail with 42703. Re-apply the migration that adds them — they are '
@@ -292,6 +337,8 @@ router.get('/tenant-status', authenticate, async (req, res) => {
       schemaName: r.schema_name || null,
       probes,
       missingColumns,
+      shadowedPublicTables: shadowed,
+      writeProbe,
       problem,
     });
   } catch (error) {
