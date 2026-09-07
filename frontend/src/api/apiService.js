@@ -2527,7 +2527,15 @@ const api = {
         body: JSON.stringify(auditData)
       });
       if (!response.ok) {
-        console.warn('Failed to create audit log:', response.status);
+        // The status alone is not diagnosable: a 503 here means "this schema has no
+        // audit_logs table", "this account has no tenant workspace", or a genuinely
+        // missing migration, and the server says which in the body. Logging only the
+        // number throws that away and sends whoever is debugging back to the server log.
+        const body = await response.json().catch(() => null);
+        console.warn(
+          'Failed to create audit log:', response.status,
+          body ? `${body.error || ''} ${body.message || ''}`.trim() : '(no response body)'
+        );
         return null;
       }
       return response.json();
