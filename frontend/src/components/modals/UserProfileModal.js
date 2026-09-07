@@ -209,6 +209,35 @@ const UserProfileModal = ({
                   />
                 </button>
               </div>
+              {/* Moved here when the header settings dialog was removed. This modal is the
+                  only place every staff role can reach their own preferences — the Settings
+                  group in pane 1 is admin-only — so the toggle had to come with it. */}
+              <div className="flex items-center justify-between">
+                <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {t.pushNotifications || 'Push Notifications'}
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const newValue = !(user.preferences?.pushNotifications ?? true);
+                    const success = await updateUserPreferences({ pushNotifications: newValue });
+                    if (success) {
+                      await addNotification('success', t.preferenceSaved);
+                    }
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    (user.preferences?.pushNotifications ?? true)
+                      ? 'bg-blue-500'
+                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (user.preferences?.pushNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
                 <button

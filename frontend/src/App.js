@@ -69,7 +69,6 @@ import RegisterPage from './components/modals/RegisterPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
-import SettingsModal from './components/modals/SettingsModal';
 
 // Forms
 import NewAppointmentForm from './components/forms/NewAppointmentForm';
@@ -960,8 +959,6 @@ function App() {
           onMessages: canMessage ? goToMessages : null,
           onNotifications: () => setShowNotifications(!showNotifications),
           onHelp: () => setShowHelpDrawer(!showHelpDrawer),
-          onAssistant: () => setShowAIAssistant(!showAIAssistant),
-          onSettings: () => handleSetShowForm('settings'),
           onProfile: () => {
             // Patients manage their profile from the portal's profile tab
             if (user?.role !== 'patient') handleSetShowForm('userProfile');
@@ -1427,27 +1424,6 @@ function App() {
             setShowOnboarding(false);
             localStorage.setItem(`onboarding_${user.role}_complete`, 'true');
           }}
-        />
-      )}
-
-      {/* Settings Modal */}
-      {showForm === 'settings' && (
-        <SettingsModal
-          theme={theme}
-          user={user}
-          users={users}
-          language={language}
-          onClose={() => setShowForm(null)}
-          setCurrentView={setCurrentView}
-          updateUserPreferences={updateUserPreferences}
-          setTheme={setTheme}
-          setLanguage={setLanguage}
-          setShowForm={handleSetShowForm}
-          setEditingItem={handleSetEditingItem}
-          setUsers={setUsers}
-          setCurrentModule={setCurrentModule}
-          api={api}
-          addNotification={addNotification}
         />
       )}
 
