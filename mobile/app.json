@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "AureonCare",
+    "slug": "aureoncare",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "aureoncare",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "tech.aureoncare.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Take a photo to send to your care team or add to your records.",
+        "NSPhotoLibraryUsageDescription": "Attach an existing photo to a message or record.",
+        "NSFaceIDUsageDescription": "Unlock AureonCare without re-entering your password.",
+        "NSMicrophoneUsageDescription": "Speak during a video visit.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "tech.aureoncare.app",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-local-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Attach an existing photo to a message or record.",
+          "cameraPermission": "Take a photo to send to your care team or add to your records."
+        }
+      ]
+    ],
+    "extra": {
+      "defaultServerUrl": "https://app.aureoncare.tech",
+      "googleClientIdIos": "",
+      "googleClientIdAndroid": "",
+      "googleClientIdWeb": "",
+      "microsoftClientId": "",
+      "microsoftTenant": "common"
+    }
+  }
+}
