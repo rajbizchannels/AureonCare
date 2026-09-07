@@ -138,6 +138,19 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   /**
+   * A rejected credential ends the session rather than leaving the app in a
+   * signed-in state where every screen fails. The backend can revoke a JWT
+   * (SEC-09) and portal sessions lapse after 24h, so this is routine, not an
+   * edge case.
+   */
+  useEffect(() => {
+    api.setUnauthorizedHandler(() => {
+      void signOut();
+    });
+    return () => api.setUnauthorizedHandler(null);
+  }, [api, signOut]);
+
+  /**
    * Changing the server invalidates the session by definition — the token was
    * issued by a different deployment — so this signs out rather than leaving a
    * credential that will start 401ing on the next request.
