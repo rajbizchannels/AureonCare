@@ -71,28 +71,42 @@ phone-sized the next.
 | `≥ 900dp` | wide | Split view — list and detail side by side, selecting never navigates |
 
 600dp is Android's own `sw600dp` tablet threshold. The tablet-only tabs
-(Encounter, Orders, Revenue cycle) are the scope doc's tablet-first list: work
-that needs multi-select pickers and side-by-side context, which is exactly what
-does not fit on a phone.
+(Orders, Revenue cycle) come from the scope doc's tablet-first list: table work
+that a phone cannot hold. Chart review is *not* among them — `Patients` already
+splits into roster-and-summary at that width, so the extra room is spent on
+data a phone has no room for at all.
 
 ## What is built, and what is not
 
-Working end to end against a live backend:
+Every screen is routed to a real one — there are no placeholders left. All of
+these read live data from the API:
 
-- Sign-in (both audiences, one email box), role-derived shells, sign out
-- Server configuration — normalise, https enforcement, reachability probe,
-  sign-out on change
-- Secure messaging — thread list, conversation, send, read receipts, camera
-  attachment with its filing destination shown before sending
-- The clinician review queue — accept/reject a patient upload into the chart
+**Patient** — Home (next appointment with a join button, unread nudge, recent
+visits), Visits (upcoming/past, join, status), Records (documents with
+provenance chips and attachment fetch), Messages, More.
 
-Routed and honest about being unbuilt (`src/screens/Placeholder.tsx` names the
-endpoints each will call): patient Home, Visits, Records and More; clinician
-Schedule, Patients and More; the three tablet-only surfaces.
+**Clinician** — Today (the patient-upload review queue, accept/reject),
+Schedule (week strip and day agenda, start-visit), Patients (roster, search,
+and a summary carrying allergies, medications, diagnoses and documents),
+Messages, More.
 
-Not started: push notifications, biometric unlock, social sign-in UI (the
-`signInSocial` plumbing exists; the provider SDK handshake does not), telehealth
-join.
+**Tablet only** — Orders (prescriptions and lab orders) and Revenue cycle
+(claims with outstanding/denied totals).
+
+Two deliberate omissions, both stated rather than stubbed:
+
+- **Clinical write actions** — prescribing, diagnosis coding, ordering labs —
+  are read-only here. They are safety-critical and depend on the ICD/CPT and
+  result-recipient pickers the web app has; a half-built prescribing form is
+  worse than none.
+- **A separate tablet Chart tab.** `Patients` already opens a split view with
+  the summary beside the roster, so a third route to the same data would be
+  clutter rather than capability.
+
+Not started: push notifications, biometric unlock, the social sign-in handshake
+(`signInSocial` plumbing exists; the provider SDK does not), and opening a
+downloaded document in a viewer (the fetch is wired; handing bytes to a viewer
+needs expo-file-system and Sharing).
 
 ## Configuration
 

@@ -110,6 +110,107 @@ export interface PendingReview {
   attachments: { messageAttachmentId?: string; originalName?: string }[];
 }
 
+/**
+ * Rows below are returned as `SELECT *` by their routes, so the field names
+ * are the database columns — snake_case, not camelCase like `Account`. They
+ * are typed as they actually arrive rather than being renamed in flight, so a
+ * reader can match a screen against the SQL that feeds it.
+ */
+
+export interface ProviderRef {
+  id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  specialty?: string | null;
+}
+
+export interface Appointment {
+  id: string;
+  patient_id: string;
+  provider_id: string | null;
+  appointment_type: string | null;
+  status: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number | null;
+  reason: string | null;
+  notes: string | null;
+  meeting_url?: string | null;
+  provider?: ProviderRef | null;
+}
+
+export interface MedicalRecord {
+  id: string;
+  patient_id: string;
+  record_type: string;
+  record_date: string;
+  title: string | null;
+  description: string | null;
+  attachments: { messageAttachmentId?: string; originalName?: string; classification?: string }[] | null;
+  /** Present once migration 060 has run. */
+  source?: 'manual' | 'secure_message';
+  review_status?: 'pending_review' | 'accepted' | 'rejected' | null;
+  provider?: ProviderRef | null;
+}
+
+export interface PatientRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  mrn: string | null;
+  email: string | null;
+  phone: string | null;
+  dob?: string | null;
+  date_of_birth?: string | null;
+  allergies?: string | null;
+  blood_type?: string | null;
+  current_medications?: string | null;
+}
+
+export interface Prescription {
+  id: string;
+  patient_id: string;
+  medication_name: string | null;
+  generic_name?: string | null;
+  brand_name?: string | null;
+  dosage: string | null;
+  frequency: string | null;
+  status: string | null;
+  prescribed_date: string | null;
+  refills: number | null;
+  provider_name?: string | null;
+}
+
+export interface Diagnosis {
+  id: string | number;
+  patient_id: string;
+  diagnosis_code: string | null;
+  diagnosis_name: string;
+  severity: string | null;
+  status: string | null;
+  diagnosed_date: string | null;
+}
+
+export interface Claim {
+  id: string;
+  claim_number: string;
+  payer: string | null;
+  service_date: string;
+  amount: string | number | null;
+  status: string;
+  patient_id: string | null;
+}
+
+export interface LabOrder {
+  id: string;
+  order_number: string | null;
+  order_type: string | null;
+  priority: string | null;
+  status: string | null;
+  patient_id: string;
+  created_at: string;
+}
+
 /** What the sender wants done with an attachment; mirrors messageDocumentFiling.js. */
 export type Disposition = 'records' | 'form_request' | 'none';
 
@@ -310,16 +411,57 @@ export class ApiClient {
     });
   }
 
+  downloadRecordAttachment(
+    recordId: string,
+    attachmentId: string,
+    patientId: string
+  ): Promise<Blob> {
+    return this.credential?.kind === 'portal'
+      ? this.requestBlob(`/patient-portal/${patientId}/medical-records/${recordId}/attachments/${attachmentId}`)
+      : this.requestBlob(`/medical-records/${recordId}/attachments/${attachmentId}`);
+  }
+
   // ── Appointments ──────────────────────────────────────────────────────────
 
-  listPatientAppointments(patientId: string): Promise<unknown[]> {
+  listPatientAppointments(patientId: string): Promise<Appointment[]> {
     return this.credential?.kind === 'portal'
       ? this.request(`/patient-portal/${patientId}/appointments`)
       : this.request(`/appointments?patientId=${encodeURIComponent(patientId)}`);
   }
 
-  listAppointments(): Promise<unknown[]> {
+  listAppointments(): Promise<Appointment[]> {
     return this.request('/appointments');
+  }
+
+  // ── Clinical ──────────────────────────────────────────────────────────────
+
+  listPatients(): Promise<PatientRow[]> {
+    return this.request('/patients');
+  }
+
+  getPatient(id: string): Promise<PatientRow> {
+    return this.request(`/patients/${id}`);
+  }
+
+  listPrescriptions(patientId?: string): Promise<Prescription[]> {
+    const suffix = patientId ? `?patientId=${encodeURIComponent(patientId)}` : '';
+    return this.request(`/prescriptions${suffix}`);
+  }
+
+  listDiagnoses(patientId?: string): Promise<Diagnosis[]> {
+    const suffix = patientId ? `?patientId=${encodeURIComponent(patientId)}` : '';
+    return this.request(`/diagnosis${suffix}`);
+  }
+
+  listLabOrders(patientId?: string): Promise<LabOrder[]> {
+    const suffix = patientId ? `?patientId=${encodeURIComponent(patientId)}` : '';
+    return this.request(`/lab-orders${suffix}`);
+  }
+
+  // ── Revenue cycle ─────────────────────────────────────────────────────────
+
+  listClaims(): Promise<Claim[]> {
+    return this.request('/claims');
   }
 }
 
