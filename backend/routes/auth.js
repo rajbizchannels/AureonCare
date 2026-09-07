@@ -9,6 +9,7 @@ const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 const { issueAuthCookies, clearAuthCookies } = require('../utils/authCookies');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { findUsableInvite, claimInvite } = require('./invites');
+const { resolveDomainClaim } = require('../services/domainJoin');
 
 // SEC-17: a fixed dummy bcrypt hash (of a random string) used to run a real compare
 // when an account is missing or has no password, so the response time does not reveal
@@ -762,21 +763,34 @@ const socialLoginHandler = async (req, res) => {
           const sl_firstName = firstName || '';
           const sl_lastName = lastName || '';
 
+          // No invite, but the provider vouched for this address and its domain may be
+          // claimed by a practice. Both halves are required: a claim without a
+          // provider-verified email would let anyone type a colleague's address, and a
+          // verified email at an unclaimed domain says nothing about where they belong.
+          // `auto_request` creates the account in 'pending' — the login route already
+          // refuses that with a clear message — rather than letting an unbound account
+          // through to an empty workspace.
+          const domainClaim = (!invite && providerEmailVerified)
+            ? await resolveDomainClaim(pool, email)
+            : null;
+          const claimPending = Boolean(domainClaim) && domainClaim.join_policy === 'auto_request';
+
           // An invite makes this a STAFF signup: the account is created with the inviting
           // practice's id and role. Without one it stays a patient self-registration, as
           // before. practice_id set here is what binds every later request to a tenant —
           // an unbound user resolves to `public`, which holds no tenant tables.
           const newUserResult = await sl_client.query(`
             INSERT INTO users (id, email, first_name, last_name, role, status, avatar, practice_id, created_at, updated_at)
-            VALUES (gen_random_uuid(), $1, $2, $3, $5, 'active', $4, $6, NOW(), NOW())
+            VALUES (gen_random_uuid(), $1, $2, $3, $5, $7, $4, $6, NOW(), NOW())
             RETURNING *
           `, [
             email,
             sl_firstName,
             sl_lastName,
             `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase(),
-            invite ? invite.role : 'patient',
-            invite ? invite.practice_id : null
+            invite ? invite.role : (domainClaim ? domainClaim.default_role : 'patient'),
+            invite ? invite.practice_id : (domainClaim ? domainClaim.practice_id : null),
+            claimPending ? 'pending' : 'active'
           ]);
 
           user = newUserResult.rows[0];
@@ -787,9 +801,20 @@ const socialLoginHandler = async (req, res) => {
             }
           }
 
+          if (claimPending) {
+            await sl_client.query(
+              `INSERT INTO public.join_requests
+                 (practice_id, user_id, email, requested_role, email_verified_via)
+               VALUES ($1,$2,$3,$4,$5)`,
+              [domainClaim.practice_id, user.id, email, domainClaim.default_role, `oauth:${provider}`]
+            );
+          }
+
           // Staff do not get a patient chart. Skip straight past patient/role creation —
-          // the rest of this block is the patient self-registration path.
-          if (!invite) {
+          // the rest of this block is the patient self-registration path. A domain claim
+          // makes this a staff signup just as an invite does, so it skips it too;
+          // otherwise a new clinician would silently acquire a patient record.
+          if (!invite && !domainClaim) {
           // Create patient record — patients.id = users.id in current schema
           const sl_patientCheck = await sl_client.query(
             'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',

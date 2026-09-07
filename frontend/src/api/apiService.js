@@ -3773,6 +3773,80 @@ const api = {
     return r.json();
   },
 
+  // ── Team access: claimed email domains and join requests ──────────────────
+  listDomains: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains`);
+    if (!r.ok) throw new Error('Failed to load domains');
+    return r.json();
+  },
+
+  claimDomain: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains`, {
+      method: 'POST', body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to claim domain');
+    return data;
+  },
+
+  verifyDomain: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains/${id}/verify`, { method: 'POST' });
+    const data = await r.json().catch(() => ({}));
+    // The 400 here is "not published yet", which is ordinary rather than exceptional —
+    // carry the hint through so the panel can show it.
+    if (!r.ok) throw new Error(data.hint ? `${data.error} ${data.hint}` : (data.error || 'Verification failed'));
+    return data;
+  },
+
+  updateDomain: async (id, payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains/${id}`, {
+      method: 'PATCH', body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to update domain');
+    return data;
+  },
+
+  removeDomain: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Failed to remove domain');
+    return r.json();
+  },
+
+  listJoinRequests: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/requests`);
+    if (!r.ok) throw new Error('Failed to load join requests');
+    return r.json();
+  },
+
+  decideJoinRequest: async (id, decision) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/requests/${id}/${decision}`, {
+      method: 'POST', body: JSON.stringify({}),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to record the decision');
+    return data;
+  },
+
+  // Public — no account yet, so these bypass authenticatedFetch deliberately.
+  lookupJoinDomain: async (email) => {
+    const r = await fetch(`${API_BASE_URL}/team-access/lookup?email=${encodeURIComponent(email)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not check that address');
+    return data;
+  },
+
+  joinPractice: async (payload) => {
+    const r = await fetch(`${API_BASE_URL}/team-access/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not complete signup');
+    return data;
+  },
+
   // portal sessions. Best-effort: local logout still proceeds if the request fails.
   logout: async () => {
     try {
