@@ -126,10 +126,23 @@ export interface OutgoingAttachment {
 export class ApiClient {
   private baseUrl: string;
   private credential: Credential | null;
+  /**
+   * Called when the server rejects this client's credential.
+   *
+   * Tokens do not only expire — since SEC-09 the backend can revoke one, and a
+   * portal session lapses after 24h. Without this the app would sit in a
+   * signed-in state where every screen quietly fails; the session layer wires
+   * it to sign-out so the person is returned to a login they can act on.
+   */
+  private onUnauthorized: (() => void) | null = null;
 
   constructor(baseUrl: string, credential: Credential | null = null) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.credential = credential;
+  }
+
+  setUnauthorizedHandler(handler: (() => void) | null): void {
+    this.onUnauthorized = handler;
   }
 
   setBaseUrl(url: string): void {
@@ -157,6 +170,9 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      // Only a credentialled request can have its credential rejected; a 401
+      // from a login attempt is a wrong password, not a dead session.
+      if (response.status === 401 && this.credential) this.onUnauthorized?.();
       const detail = (await response.json().catch(() => null)) as { error?: string } | null;
       throw new ApiError(response.status, detail?.error ?? `Request failed (${response.status})`);
     }
@@ -167,7 +183,10 @@ export class ApiClient {
   /** Raw bytes (attachment downloads), which are not JSON. */
   private async requestBlob(path: string): Promise<Blob> {
     const response = await fetch(`${this.baseUrl}/api${path}`, { headers: this.headers() });
-    if (!response.ok) throw new ApiError(response.status, `Download failed (${response.status})`);
+    if (!response.ok) {
+      if (response.status === 401 && this.credential) this.onUnauthorized?.();
+      throw new ApiError(response.status, `Download failed (${response.status})`);
+    }
     return response.blob();
   }
 
