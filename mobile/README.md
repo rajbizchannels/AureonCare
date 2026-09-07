@@ -36,6 +36,7 @@ Several dependencies (`expo-secure-store`, `expo-local-authentication`,
 | `src/theme/tokens.ts` | Colours, type scale, spacing — the literal Tailwind values the web app uses, so the two clients cannot drift |
 | `src/lib/device.ts` | Device class and breakpoints; drives every responsive decision |
 | `src/lib/url.ts` | Server-address rules (pure, unit tested) |
+| `src/lib/chart.ts` | Merges the clinical streams into one timeline (pure, unit tested) |
 | `src/lib/server.ts` | Server persistence and the reachability probe |
 | `src/lib/storage.ts` | Keychain/Keystore for credentials, AsyncStorage for preferences |
 | `src/lib/api.ts` | Typed client for the endpoints this app uses |
@@ -70,11 +71,17 @@ phone-sized the next.
 | `600–900dp` | tablet | Wider gutters, inline row actions, tablet-only tabs appear |
 | `≥ 900dp` | wide | Split view — list and detail side by side, selecting never navigates |
 
-600dp is Android's own `sw600dp` tablet threshold. The tablet-only tabs
-(Orders, Revenue cycle) come from the scope doc's tablet-first list: table work
-that a phone cannot hold. Chart review is *not* among them — `Patients` already
-splits into roster-and-summary at that width, so the extra room is spent on
-data a phone has no room for at all.
+600dp is Android's own `sw600dp` tablet threshold. The tablet-only tabs (Chart,
+Orders, Revenue cycle) come from the scope doc's tablet-first list: work a phone
+cannot hold.
+
+Chart and Patients are not the same view twice. **Patients** answers *who is
+this* — allergies, current medications, the last few of everything. **Chart**
+answers *what has happened, in order*, merging visits, diagnoses, medications,
+labs and documents into one filterable chronology, so a diagnosis, the
+prescription that followed it and the lab that checked it read together. They
+share the selected patient (`ActivePatientContext`), so choosing someone in
+either opens them in both.
 
 ## What is built, and what is not
 
@@ -90,18 +97,14 @@ Schedule (week strip and day agenda, start-visit), Patients (roster, search,
 and a summary carrying allergies, medications, diagnoses and documents),
 Messages, More.
 
-**Tablet only** — Orders (prescriptions and lab orders) and Revenue cycle
-(claims with outstanding/denied totals).
+**Tablet only** — Chart (the full record as one chronology), Orders
+(prescriptions and lab orders) and Revenue cycle (claims with
+outstanding/denied totals).
 
-Two deliberate omissions, both stated rather than stubbed:
-
-- **Clinical write actions** — prescribing, diagnosis coding, ordering labs —
-  are read-only here. They are safety-critical and depend on the ICD/CPT and
-  result-recipient pickers the web app has; a half-built prescribing form is
-  worse than none.
-- **A separate tablet Chart tab.** `Patients` already opens a split view with
-  the summary beside the roster, so a third route to the same data would be
-  clutter rather than capability.
+One deliberate omission, stated rather than stubbed: **clinical write actions**
+— prescribing, diagnosis coding, ordering labs — are read-only here. They are
+safety-critical and depend on the ICD/CPT and result-recipient pickers the web
+app has; a half-built prescribing form is worse than none.
 
 Not started: push notifications, biometric unlock, the social sign-in handshake
 (`signInSocial` plumbing exists; the provider SDK does not), and opening a

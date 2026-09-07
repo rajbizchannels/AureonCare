@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AlertTriangle, ArrowLeft, Search, Users } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
+import { useActivePatient } from '@/context/ActivePatientContext';
 import { SplitView } from '@/components/SplitView';
 import { Card, Chip, EmptyState, ErrorNote, Loading, SectionLabel } from '@/components/ui';
 import { formatDate, fullName, useResource } from '@/lib/useResource';
@@ -12,7 +13,9 @@ import type { Diagnosis, MedicalRecord, PatientRow, Prescription } from '@/lib/a
 /** The roster, and one patient's summary. Two panes on a tablet, one on a phone. */
 export const StaffPatientsScreen: React.FC = () => {
   const { api } = useSession();
-  const [selected, setSelected] = useState<PatientRow | null>(null);
+  // Selection is shared so the Chart tab opens on whoever is chosen here,
+  // rather than making the clinician pick the same person twice.
+  const { patient: selected, setPatient: setSelected } = useActivePatient();
   const [query, setQuery] = useState('');
   const { gutter } = useLayout();
 
