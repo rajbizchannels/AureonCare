@@ -272,7 +272,7 @@ ON CONFLICT (role_name) DO NOTHING;
 -- Insert Admin User
 INSERT INTO users (user_id, email, password_hash, first_name, last_name, status, created_at)
 VALUES
-('admin-001', 'admin@aureoncare.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Admin', 'User', 'active', NOW())
+('admin-001', 'admin@aureoncare.tech', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Admin', 'User', 'active', NOW())
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role_name) VALUES ('admin-001', 'admin') ON CONFLICT DO NOTHING;
@@ -280,8 +280,8 @@ INSERT INTO user_roles (user_id, role_name) VALUES ('admin-001', 'admin') ON CON
 -- Insert Doctor Users
 INSERT INTO users (user_id, email, password_hash, first_name, last_name, status, created_at)
 VALUES
-('doctor-001', 'dr.anderson@aureoncare.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Michael', 'Anderson', 'active', NOW()),
-('doctor-002', 'dr.patel@aureoncare.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Priya', 'Patel', 'active', NOW())
+('doctor-001', 'dr.anderson@aureoncare.tech', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Michael', 'Anderson', 'active', NOW()),
+('doctor-002', 'dr.patel@aureoncare.tech', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Priya', 'Patel', 'active', NOW())
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role_name) VALUES
@@ -292,7 +292,7 @@ ON CONFLICT DO NOTHING;
 -- Insert Receptionist User
 INSERT INTO users (user_id, email, password_hash, first_name, last_name, status, created_at)
 VALUES
-('recep-001', 'frontdesk@aureoncare.com', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Jessica', 'Chen', 'active', NOW())
+('recep-001', 'frontdesk@aureoncare.tech', '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k', 'Jessica', 'Chen', 'active', NOW())
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role_name) VALUES ('recep-001', 'receptionist') ON CONFLICT DO NOTHING;
@@ -668,10 +668,10 @@ This will simulate all vendor responses for demo purposes.
 
 | Role | Email | Password | Purpose |
 |------|-------|----------|---------|
-| Admin | admin@aureoncare.com | Demo123! | System administration |
-| Doctor | dr.anderson@aureoncare.com | Demo123! | Primary clinician for demo |
-| Doctor | dr.patel@aureoncare.com | Demo123! | Secondary clinician |
-| Receptionist | frontdesk@aureoncare.com | Demo123! | Front desk operations |
+| Admin | admin@aureoncare.tech | Demo123! | System administration |
+| Doctor | dr.anderson@aureoncare.tech | Demo123! | Primary clinician for demo |
+| Doctor | dr.patel@aureoncare.tech | Demo123! | Secondary clinician |
+| Receptionist | frontdesk@aureoncare.tech | Demo123! | Front desk operations |
 | Patient | sarah.williams@email.com | Demo123! | Demo patient (Sarah Williams) |
 | Patient | robert.johnson@email.com | Demo123! | Additional patient |
 
@@ -706,18 +706,18 @@ curl http://localhost:3000/health
 
 1. Open browser: http://localhost:3001
 2. You should see AureonCare login page
-3. Login with: `admin@aureoncare.com` / `Demo123!`
+3. Login with: `admin@aureoncare.tech` / `Demo123!`
 
 ### Step 3: Test Key Demo Flows
 
 **Scheduling Flow:**
-1. Login as receptionist: `frontdesk@aureoncare.com`
+1. Login as receptionist: `frontdesk@aureoncare.tech`
 2. Navigate to "Practice Management"
 3. Search for "Sarah Williams"
 4. Verify patient appears in search results
 
 **Clinical Flow:**
-1. Login as doctor: `dr.anderson@aureoncare.com`
+1. Login as doctor: `dr.anderson@aureoncare.tech`
 2. Navigate to "EHR"
 3. Search for "Sarah Williams"
 4. Verify:
@@ -726,14 +726,14 @@ curl http://localhost:3000/health
    - Medications show Metformin
 
 **Telehealth Flow:**
-1. Login as doctor: `dr.anderson@aureoncare.com`
+1. Login as doctor: `dr.anderson@aureoncare.tech`
 2. Navigate to "Telehealth"
 3. Find Sarah Williams' upcoming appointment
 4. Click "Start Session"
 5. Verify session creation (Zoom link generated if configured)
 
 **RCM Flow:**
-1. Login as admin: `admin@aureoncare.com`
+1. Login as admin: `admin@aureoncare.tech`
 2. Navigate to "RCM"
 3. Verify dashboard shows:
    - Total claims
@@ -741,7 +741,7 @@ curl http://localhost:3000/health
    - Revenue metrics
 
 **Reports Flow:**
-1. Login as admin: `admin@aureoncare.com`
+1. Login as admin: `admin@aureoncare.tech`
 2. Navigate to "Reports & Analytics"
 3. Verify dashboards display:
    - Clinical metrics
@@ -800,13 +800,13 @@ sudo systemctl start postgresql
 **Solution:**
 - Verify user exists in database:
   ```sql
-  SELECT * FROM users WHERE email = 'admin@aureoncare.com';
+  SELECT * FROM users WHERE email = 'admin@aureoncare.tech';
   ```
 - Reset password:
   ```sql
   UPDATE users
   SET password_hash = '$2a$10$CwTycUXWue0Thq9StjUM0uJ4K6K9W3bHPwmJq2K2k2K2k2K2k2K2k'
-  WHERE email = 'admin@aureoncare.com';
+  WHERE email = 'admin@aureoncare.tech';
   ```
 
 ### Issue 4: Telehealth session creation fails
@@ -852,7 +852,7 @@ CREATE SCHEMA public;
 - [ ] Open browser tabs:
   - [ ] Frontend (http://localhost:3001)
   - [ ] Backup tab (in case first tab has issues)
-- [ ] Login as doctor (`dr.anderson@aureoncare.com`)
+- [ ] Login as doctor (`dr.anderson@aureoncare.tech`)
 - [ ] Verify Sarah Williams patient exists and has data
 - [ ] Test telehealth session creation (but don't start actual call)
 - [ ] Close unnecessary applications (to free resources)
@@ -895,7 +895,7 @@ CREATE SCHEMA public;
 **Support:**
 - GitHub Issues: https://github.com/rajbizchannels/AureonCare/issues
 - Community Forum: [link]
-- Email: support@aureoncare.com
+- Email: support@aureoncare.tech
 
 **Demo Recording Examples:**
 - [Link to sample demo video]

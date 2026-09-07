@@ -4,6 +4,17 @@ import './index.css';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 
+// SEC-14: strip diagnostic logging from production builds. Much of the app's
+// console.log output includes PHI (patient records, appointments, prescriptions,
+// IDs). Neuter the verbose channels in production so none of it reaches the
+// browser console/devtools of a deployed build; keep warn/error for real faults.
+if (process.env.NODE_ENV === 'production') {
+  const noop = () => {};
+  console.log = noop;
+  console.debug = noop;
+  console.info = noop;
+}
+
 console.log('AureonCare: Starting application...');
 
 // Add global error handler

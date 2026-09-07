@@ -14,11 +14,11 @@ INSERT INTO practices (id, name, tax_id, phone, email, address, plan_tier) VALUE
 -- =============================================
 -- Password for all users: "password123" (hashed with bcrypt)
 INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone, specialty, license_number, status) VALUES
-('650e8400-e29b-41d4-a716-446655440001', 'dr.smith@aureoncare.com', '$2a$10$YourHashedPasswordHere', 'John', 'Smith', 'physician', '(555) 111-2222', 'Family Medicine', 'MD-123456', 'active'),
-('650e8400-e29b-41d4-a716-446655440002', 'dr.johnson@aureoncare.com', '$2a$10$YourHashedPasswordHere', 'Emily', 'Johnson', 'physician', '(555) 222-3333', 'Internal Medicine', 'MD-234567', 'active'),
-('650e8400-e29b-41d4-a716-446655440003', 'dr.williams@aureoncare.com', '$2a$10$YourHashedPasswordHere', 'Michael', 'Williams', 'physician', '(555) 333-4444', 'Cardiology', 'MD-345678', 'active'),
-('650e8400-e29b-41d4-a716-446655440004', 'admin@aureoncare.com', '$2a$10$YourHashedPasswordHere', 'Admin', 'User', 'admin', '(555) 444-5555', NULL, NULL, 'active'),
-('650e8400-e29b-41d4-a716-446655440005', 'nurse.davis@aureoncare.com', '$2a$10$YourHashedPasswordHere', 'Sarah', 'Davis', 'nurse', '(555) 555-6666', 'Registered Nurse', 'RN-456789', 'active');
+('650e8400-e29b-41d4-a716-446655440001', 'dr.smith@aureoncare.tech', '$2a$10$YourHashedPasswordHere', 'John', 'Smith', 'physician', '(555) 111-2222', 'Family Medicine', 'MD-123456', 'active'),
+('650e8400-e29b-41d4-a716-446655440002', 'dr.johnson@aureoncare.tech', '$2a$10$YourHashedPasswordHere', 'Emily', 'Johnson', 'physician', '(555) 222-3333', 'Internal Medicine', 'MD-234567', 'active'),
+('650e8400-e29b-41d4-a716-446655440003', 'dr.williams@aureoncare.tech', '$2a$10$YourHashedPasswordHere', 'Michael', 'Williams', 'physician', '(555) 333-4444', 'Cardiology', 'MD-345678', 'active'),
+('650e8400-e29b-41d4-a716-446655440004', 'admin@aureoncare.tech', '$2a$10$YourHashedPasswordHere', 'Admin', 'User', 'admin', '(555) 444-5555', NULL, NULL, 'active'),
+('650e8400-e29b-41d4-a716-446655440005', 'nurse.davis@aureoncare.tech', '$2a$10$YourHashedPasswordHere', 'Sarah', 'Davis', 'nurse', '(555) 555-6666', 'Registered Nurse', 'RN-456789', 'active');
 
 -- =============================================
 -- PATIENTS
@@ -44,11 +44,11 @@ INSERT INTO appointments (id, practice_id, patient_id, provider_id, appointment_
 -- TELEHEALTH SESSIONS
 -- =============================================
 INSERT INTO telehealth_sessions (appointment_id, patient_id, provider_id, session_status, room_id, meeting_url, start_time, end_time, duration_minutes, recording_url, recording_enabled) VALUES
-('850e8400-e29b-41d4-a716-446655440001', '750e8400-e29b-41d4-a716-446655440001', '650e8400-e29b-41d4-a716-446655440001', 'completed', 'room-abc123', 'https://meet.aureoncare.com/room-abc123', '2025-10-20 10:00:00', '2025-10-20 10:30:00', 30, 'https://storage.aureoncare.com/recordings/session1.mp4', true),
-('850e8400-e29b-41d4-a716-446655440002', '750e8400-e29b-41d4-a716-446655440002', '650e8400-e29b-41d4-a716-446655440002', 'scheduled', 'room-def456', 'https://meet.aureoncare.com/room-def456', '2025-10-25 14:00:00', '2025-10-25 14:45:00', 45, NULL, false),
-('850e8400-e29b-41d4-a716-446655440003', '750e8400-e29b-41d4-a716-446655440003', '650e8400-e29b-41d4-a716-446655440001', 'completed', 'room-ghi789', 'https://meet.aureoncare.com/room-ghi789', '2025-10-21 09:00:00', '2025-10-21 09:30:00', 30, 'https://storage.aureoncare.com/recordings/session2.mp4', true),
-('850e8400-e29b-41d4-a716-446655440004', '750e8400-e29b-41d4-a716-446655440004', '650e8400-e29b-41d4-a716-446655440003', 'scheduled', 'room-jkl012', 'https://meet.aureoncare.com/room-jkl012', '2025-10-26 11:00:00', '2025-10-26 12:00:00', 60, NULL, false),
-('850e8400-e29b-41d4-a716-446655440005', '750e8400-e29b-41d4-a716-446655440005', '650e8400-e29b-41d4-a716-446655440002', 'in-progress', 'room-mno345', 'https://meet.aureoncare.com/room-mno345', '2025-10-24 15:30:00', '2025-10-24 16:00:00', 30, NULL, true);
+('850e8400-e29b-41d4-a716-446655440001', '750e8400-e29b-41d4-a716-446655440001', '650e8400-e29b-41d4-a716-446655440001', 'completed', 'room-abc123', 'https://meet.aureoncare.tech/room-abc123', '2025-10-20 10:00:00', '2025-10-20 10:30:00', 30, 'https://storage.aureoncare.tech/recordings/session1.mp4', true),
+('850e8400-e29b-41d4-a716-446655440002', '750e8400-e29b-41d4-a716-446655440002', '650e8400-e29b-41d4-a716-446655440002', 'scheduled', 'room-def456', 'https://meet.aureoncare.tech/room-def456', '2025-10-25 14:00:00', '2025-10-25 14:45:00', 45, NULL, false),
+('850e8400-e29b-41d4-a716-446655440003', '750e8400-e29b-41d4-a716-446655440003', '650e8400-e29b-41d4-a716-446655440001', 'completed', 'room-ghi789', 'https://meet.aureoncare.tech/room-ghi789', '2025-10-21 09:00:00', '2025-10-21 09:30:00', 30, 'https://storage.aureoncare.tech/recordings/session2.mp4', true),
+('850e8400-e29b-41d4-a716-446655440004', '750e8400-e29b-41d4-a716-446655440004', '650e8400-e29b-41d4-a716-446655440003', 'scheduled', 'room-jkl012', 'https://meet.aureoncare.tech/room-jkl012', '2025-10-26 11:00:00', '2025-10-26 12:00:00', 60, NULL, false),
+('850e8400-e29b-41d4-a716-446655440005', '750e8400-e29b-41d4-a716-446655440005', '650e8400-e29b-41d4-a716-446655440002', 'in-progress', 'room-mno345', 'https://meet.aureoncare.tech/room-mno345', '2025-10-24 15:30:00', '2025-10-24 16:00:00', 30, NULL, true);
 
 -- =============================================
 -- FHIR RESOURCES
@@ -92,9 +92,9 @@ INSERT INTO patient_portal_sessions (patient_id, session_token, ip_address, user
 -- SOCIAL AUTH (Sample - for testing)
 -- =============================================
 INSERT INTO social_auth (user_id, provider, provider_user_id, access_token, profile_data) VALUES
-('650e8400-e29b-41d4-a716-446655440001', 'google', 'google-user-123456789', 'sample-access-token-google-xyz', '{"email":"dr.smith@aureoncare.com","name":"John Smith","picture":"https://example.com/avatar1.jpg"}'::jsonb),
-('650e8400-e29b-41d4-a716-446655440002', 'microsoft', 'microsoft-user-987654321', 'sample-access-token-microsoft-abc', '{"email":"dr.johnson@aureoncare.com","name":"Emily Johnson"}'::jsonb),
-('650e8400-e29b-41d4-a716-446655440003', 'facebook', 'facebook-user-456789012', 'sample-access-token-facebook-def', '{"email":"dr.williams@aureoncare.com","name":"Michael Williams","picture":"https://example.com/avatar3.jpg"}'::jsonb);
+('650e8400-e29b-41d4-a716-446655440001', 'google', 'google-user-123456789', 'sample-access-token-google-xyz', '{"email":"dr.smith@aureoncare.tech","name":"John Smith","picture":"https://example.com/avatar1.jpg"}'::jsonb),
+('650e8400-e29b-41d4-a716-446655440002', 'microsoft', 'microsoft-user-987654321', 'sample-access-token-microsoft-abc', '{"email":"dr.johnson@aureoncare.tech","name":"Emily Johnson"}'::jsonb),
+('650e8400-e29b-41d4-a716-446655440003', 'facebook', 'facebook-user-456789012', 'sample-access-token-facebook-def', '{"email":"dr.williams@aureoncare.tech","name":"Michael Williams","picture":"https://example.com/avatar3.jpg"}'::jsonb);
 
 -- =============================================
 -- VERIFICATION QUERIES

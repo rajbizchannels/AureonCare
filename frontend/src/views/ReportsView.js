@@ -1025,7 +1025,11 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
     }
     // Defaults per report
     const rd = report.id;
-    if (rd === 'daily-appointments' || rd === 'no-shows') return makeChartData(summary.slice(0, 30).reverse(), 'date', 'total');
+    if (rd === 'daily-appointments') return makeChartData(summary.slice(0, 30).reverse(), 'date', 'total');
+    // The no-show summary has no `total` column — it returns no_shows,
+    // total_appointments and no_show_rate — so charting `total` plotted an
+    // empty series. The point of the report is the no-show trend.
+    if (rd === 'no-shows') return makeChartData(summary.slice(0, 30).reverse(), 'date', 'no_shows');
     if (rd === 'provider-utilization' || rd === 'productivity') return makeChartData(summary, 'provider_name', 'total_appointments');
     if (rd === 'patient-visits' || rd === 'visit-history') return makeChartData(summary.slice(0, 10), 'patient_name', 'total_visits');
     if (rd === 'wait-times') return makeChartData(summary, 'provider_name', 'avg_wait_minutes');
@@ -1088,6 +1092,20 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
         { label: 'Completed', value: completed, icon: CheckCircle, color: 'green' },
         { label: 'No-Shows', value: noShows, icon: AlertTriangle, color: 'red' },
         { label: 'Completion Rate', value: `${rate}%`, icon: TrendingUp, color: 'purple' },
+      ];
+    }
+    if (rd === 'no-shows') {
+      const scheduled = summary.reduce((s, r) => s + (parseInt(r.total_appointments) || 0), 0);
+      const noShows = summary.reduce((s, r) => s + (parseInt(r.no_shows) || 0), 0);
+      const rate = scheduled > 0 ? (noShows / scheduled * 100).toFixed(1) : '0.0';
+      const lateCancellations = details.filter(
+        (r) => String(r.status || '').toLowerCase().startsWith('cancel')
+      ).length;
+      return [
+        { label: 'Scheduled', value: scheduled, icon: Calendar, color: 'blue' },
+        { label: 'No-Shows', value: noShows, icon: AlertTriangle, color: 'red' },
+        { label: 'No-Show Rate', value: `${rate}%`, icon: TrendingUp, color: 'purple' },
+        { label: 'Late Cancellations', value: lateCancellations, icon: XCircle, color: 'orange' },
       ];
     }
     if (rd === 'provider-utilization' || rd === 'productivity') {

@@ -200,12 +200,12 @@ async function main() {
     log('Password for all accounts: password123\n', 'yellow');
 
     log('Admin:', 'bright');
-    log('  Email: admin@aureoncare.com', 'white');
+    log('  Email: admin@aureoncare.tech', 'white');
 
     log('\nDoctors:', 'bright');
-    log('  Email: dr.smith@aureoncare.com (Family Medicine)', 'white');
-    log('  Email: dr.johnson@aureoncare.com (Cardiology)', 'white');
-    log('  Email: dr.williams@aureoncare.com (Pediatrics)', 'white');
+    log('  Email: dr.smith@aureoncare.tech (Family Medicine)', 'white');
+    log('  Email: dr.johnson@aureoncare.tech (Cardiology)', 'white');
+    log('  Email: dr.williams@aureoncare.tech (Pediatrics)', 'white');
 
     log('\nPatients:', 'bright');
     log('  Email: john.doe@example.com', 'white');
@@ -214,7 +214,7 @@ async function main() {
     log('  Email: alice.brown@example.com', 'white');
 
     log('\nStaff:', 'bright');
-    log('  Email: staff@aureoncare.com', 'white');
+    log('  Email: staff@aureoncare.tech', 'white');
 
     logSection('🎉 SUCCESS - Database Reset and Seed Complete!');
 

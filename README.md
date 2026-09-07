@@ -644,8 +644,8 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ## Contact
 
 For questions and support, please contact:
-- Email: support@aureoncare.com
-- Website: https://aureoncare.com
+- Email: support@aureoncare.tech
+- Website: https://aureoncare.tech
 - GitHub Issues: https://github.com/rajbizchannels/AureonCare/issues
 
 ---

@@ -141,11 +141,11 @@ All staff use password: `password123`
 
 | Name | Email | Role | Specialty |
 |------|-------|------|-----------|
-| Sarah Chen | sarah.chen@aureoncare.com | admin | Family Medicine |
-| James Wilson | james.wilson@aureoncare.com | doctor | Internal Medicine |
-| Emily Rodriguez | emily.rodriguez@aureoncare.com | doctor | Pediatrics |
-| Michael Brown | michael.brown@aureoncare.com | nurse | Registered Nurse |
-| Lisa Anderson | lisa.anderson@aureoncare.com | reception | - |
+| Sarah Chen | sarah.chen@aureoncare.tech | admin | Family Medicine |
+| James Wilson | james.wilson@aureoncare.tech | doctor | Internal Medicine |
+| Emily Rodriguez | emily.rodriguez@aureoncare.tech | doctor | Pediatrics |
+| Michael Brown | michael.brown@aureoncare.tech | nurse | Registered Nurse |
+| Lisa Anderson | lisa.anderson@aureoncare.tech | reception | - |
 
 ### Patients (with Portal Access)
 All patients use password: `password123`
@@ -177,8 +177,8 @@ You can login to the patient portal with any of these accounts:
 - **Email:** `robert.johnson@email.com` | **Password:** `password123`
 
 ### Admin/Staff Testing
-- **Email:** `sarah.chen@aureoncare.com` | **Password:** `password123`
-- **Email:** `james.wilson@aureoncare.com` | **Password:** `password123`
+- **Email:** `sarah.chen@aureoncare.tech` | **Password:** `password123`
+- **Email:** `james.wilson@aureoncare.tech` | **Password:** `password123`
 
 ## Verification
 
@@ -288,7 +288,7 @@ After resetting the database:
    - Verify it appears in the appointments list
 
 3. **Test staff login:**
-   - Login with: `sarah.chen@aureoncare.com` / `password123`
+   - Login with: `sarah.chen@aureoncare.tech` / `password123`
    - Verify all modules work correctly
 
 ## Support

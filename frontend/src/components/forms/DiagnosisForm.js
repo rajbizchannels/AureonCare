@@ -324,7 +324,7 @@ const DiagnosisForm = ({
       }
 
       // Find patient name from patients array or use provided patient
-      const selectedPatient = patients.find(p => p.id === formData.patientId) || patient;
+      const selectedPatient = patients.find(p => String(p.id) === String(formData.patientId)) || patient;
       const patientName = selectedPatient ? `${selectedPatient.first_name || selectedPatient.firstName || ''} ${selectedPatient.last_name || selectedPatient.lastName || ''}`.trim() : 'patient';
       const action = editDiagnosis ? 'updated' : 'created';
       await addNotification('diagnosis', `Diagnosis ${action} for ${patientName}`);
@@ -579,7 +579,7 @@ const DiagnosisForm = ({
                       : 'bg-gray-50 border-gray-300 text-gray-700'
                   }`}>
                     {(() => {
-                      const selectedPatient = patients.find(p => p.id === formData.patientId) || patient;
+                      const selectedPatient = patients.find(p => String(p.id) === String(formData.patientId)) || patient;
                       if (selectedPatient) {
                         const patientName = `${selectedPatient.first_name || selectedPatient.firstName || ''} ${selectedPatient.last_name || selectedPatient.lastName || ''}`.trim();
                         const mrn = selectedPatient.mrn || 'N/A';
@@ -648,7 +648,7 @@ const DiagnosisForm = ({
                   <EPrescribeModal
                     theme={theme}
                     api={api}
-                    patient={patients.find(p => p.id === formData.patientId) || patient}
+                    patient={patients.find(p => String(p.id) === String(formData.patientId)) || patient}
                     provider={user}
                     initialMedication={preSelectedMedication}
                     inline={true}
@@ -899,7 +899,7 @@ const DiagnosisForm = ({
                                 required={true}
                                 doctor={user}
                                 staff={providers.filter(p => p.role === 'staff')}
-                                patient={patient || (formData.patientId && patients.find(p => p.id === formData.patientId))}
+                                patient={patient || (formData.patientId && patients.find(p => String(p.id) === String(formData.patientId)))}
                               />
                             </div>
                           </div>

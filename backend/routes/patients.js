@@ -80,8 +80,9 @@ router.post('/', enforcePatientQuota, async (req, res) => {
         userId = existingUser.rows[0].id;
       } else {
         const bcrypt = require('bcryptjs');
+        const { BCRYPT_COST } = require('../utils/passwordPolicy');
         tempPassword = Math.random().toString(36).slice(-8);
-        const passwordHash = await bcrypt.hash(tempPassword, 10);
+        const passwordHash = await bcrypt.hash(tempPassword, BCRYPT_COST);
 
         const userResult = await client.query(
           `INSERT INTO users

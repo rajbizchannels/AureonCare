@@ -165,6 +165,14 @@ const RCMView = ({
     }
   }, [api, addNotification]);
 
+  // Load on mount. Without this the module only ever populated as a side effect
+  // of saving something, so opening Pre-Authorizations, Denials, Payment
+  // Postings, Quotes & Invoices or Insurance Payers showed an empty list on a
+  // fresh visit — including the payer dropdowns those forms depend on.
+  useEffect(() => {
+    fetchRCMData();
+  }, [fetchRCMData]);
+
   // Filter functions
   const filteredClaims = claims.filter(claim => {
     if (!claimSearch) return true;

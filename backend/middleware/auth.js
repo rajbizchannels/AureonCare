@@ -2,20 +2,37 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.AC_TK_S;
 const JWT_EXPIRY = '24h';
+// SEC-11: pin the signing/verification algorithm. HS256 is symmetric; pinning it
+// blocks algorithm-confusion attacks (e.g. a forged token declaring alg:"none" or
+// asking the verifier to treat our secret as an RSA public key).
+const JWT_ALGORITHMS = ['HS256'];
 
-if (!JWT_SECRET) {
-  console.warn('[auth] WARNING: AC_TK_S env var is not set — JWT signing will fail');
+// SEC-10: fail fast at startup rather than warning. A missing or weak signing
+// secret is a critical misconfiguration — booting with one would let anyone mint
+// valid tokens. Require at least 32 bytes of entropy (256 bits).
+const MIN_SECRET_BYTES = 32;
+if (!JWT_SECRET || Buffer.byteLength(String(JWT_SECRET), 'utf8') < MIN_SECRET_BYTES) {
+  throw new Error(
+    `[auth] FATAL: AC_TK_S must be set to a strong secret of at least ${MIN_SECRET_BYTES} bytes ` +
+    `(got ${JWT_SECRET ? Buffer.byteLength(String(JWT_SECRET), 'utf8') + ' bytes' : 'unset'}). ` +
+    `Refusing to start with an insecure JWT signing secret.`
+  );
 }
 
 /**
  * Issue a signed JWT for a user record.
  * Call this at login/social-login and include the result in the response.
+ *
+ * The "tv" claim carries the user's current token_version. authenticate re-checks
+ * it against the DB, so bumping token_version (on password change/reset/logout)
+ * invalidates every JWT minted before the bump. Defaults to 0 for freshly created
+ * users whose row was returned without the column.
  */
 const signToken = (user) =>
   jwt.sign(
-    { sub: String(user.id), role: user.role, email: user.email },
+    { sub: String(user.id), role: user.role, email: user.email, tv: user.token_version ?? 0 },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRY }
+    { expiresIn: JWT_EXPIRY, algorithm: JWT_ALGORITHMS[0] }
   );
 
 /**
@@ -33,7 +50,7 @@ const authenticate = async (req, res, next) => {
     const token = authHeader.slice(7);
     let payload;
     try {
-      payload = jwt.verify(token, JWT_SECRET);
+      payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS });
     } catch (err) {
       const msg = err.name === 'TokenExpiredError'
         ? 'Token expired, please log in again'
@@ -44,7 +61,7 @@ const authenticate = async (req, res, next) => {
     // Confirm user is still active — catches deactivated accounts after token issue
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      'SELECT id, email, role, first_name, last_name FROM users WHERE id = $1 AND status = $2',
+      'SELECT id, email, role, first_name, last_name, token_version FROM users WHERE id = $1 AND status = $2',
       [payload.sub, 'active']
     );
 
@@ -53,6 +70,12 @@ const authenticate = async (req, res, next) => {
     }
 
     const user = result.rows[0];
+
+    // SEC-09: reject tokens minted before the last revocation (password change/reset/logout).
+    if ((user.token_version ?? 0) !== (payload.tv ?? 0)) {
+      return res.status(401).json({ error: 'Session expired, please log in again' });
+    }
+
     req.user = {
       id: user.id,
       email: user.email,
@@ -100,13 +123,14 @@ const optionalAuth = async (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS });
         const pool = req.app.locals.pool;
         const result = await pool.query(
-          'SELECT id, email, role, first_name, last_name FROM users WHERE id = $1 AND status = $2',
+          'SELECT id, email, role, first_name, last_name, token_version FROM users WHERE id = $1 AND status = $2',
           [payload.sub, 'active']
         );
-        if (result.rows.length > 0) {
+        // SEC-09: only attach the user when the token has not been revoked.
+        if (result.rows.length > 0 && (result.rows[0].token_version ?? 0) === (payload.tv ?? 0)) {
           const user = result.rows[0];
           req.user = {
             id: user.id,
@@ -146,7 +170,7 @@ const requireAdmin = async (req, res, next) => {
       const token = authHeader.slice(7);
       let payload;
       try {
-        payload = jwt.verify(token, JWT_SECRET);
+        payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS });
       } catch (err) {
         const msg = err.name === 'TokenExpiredError'
           ? 'Token expired, please log in again'
@@ -157,7 +181,7 @@ const requireAdmin = async (req, res, next) => {
       // Fetch role from the DB — never rely on the JWT role claim for privilege decisions
       const pool = req.app.locals.pool;
       const result = await pool.query(
-        'SELECT id, email, role FROM users WHERE id = $1 AND status = $2',
+        'SELECT id, email, role, token_version FROM users WHERE id = $1 AND status = $2',
         [payload.sub, 'active']
       );
       if (result.rows.length === 0) {
@@ -165,6 +189,12 @@ const requireAdmin = async (req, res, next) => {
       }
 
       const u = result.rows[0];
+
+      // SEC-09: reject revoked tokens on the standalone path too.
+      if ((u.token_version ?? 0) !== (payload.tv ?? 0)) {
+        return res.status(401).json({ error: 'Session expired, please log in again' });
+      }
+
       req.user = { id: u.id, email: u.email, role: u.role };
     }
 

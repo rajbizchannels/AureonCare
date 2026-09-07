@@ -447,7 +447,7 @@
 ### For Early Adopter Practices
 1. **Join Beta Program** → Early access pricing (20% discount Year 1)
 2. **Pilot Participation** → 90-day trial with implementation support
-3. **Schedule Demo** → sales@aureoncare.com
+3. **Schedule Demo** → sales@aureoncare.tech
 4. **Review Pricing** → Request proposal for your practice size
 
 ### For Investors
@@ -470,12 +470,12 @@
 1234 Healthcare Drive, Suite 500  
 San Francisco, CA 94105
 
-**Sales & Demos:** sales@aureoncare.com | 1-800-AUREON1  
-**Partnership Inquiries:** partners@aureoncare.com  
-**Investor Relations:** investors@aureoncare.com  
-**General Information:** info@aureoncare.com  
+**Sales & Demos:** sales@aureoncare.tech | 1-800-AUREON1  
+**Partnership Inquiries:** partners@aureoncare.tech  
+**Investor Relations:** investors@aureoncare.tech  
+**General Information:** info@aureoncare.tech  
 
-**Website:** https://aureoncare.com (launching Q2 2026)  
+**Website:** https://aureoncare.tech (launching Q2 2026)  
 **Product Demo:** Available upon request
 
 ---

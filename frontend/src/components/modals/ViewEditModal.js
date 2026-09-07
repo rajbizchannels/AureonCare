@@ -2172,14 +2172,7 @@ const ViewEditModal = ({
 
       {/* ePrescribe Modal */}
       {showEPrescribe && type === 'patient' && (() => {
-        // Debug logging for ePrescribe modal props
-        console.log('[ViewEditModal] Opening ePrescribe with:');
-        console.log('[ViewEditModal] Patient (editData):', editData);
-        console.log('[ViewEditModal] Patient ID:', editData?.id);
-        console.log('[ViewEditModal] Provider (user):', user);
-        console.log('[ViewEditModal] Provider ID:', user?.id);
-        console.log('[ViewEditModal] Provider user_id:', user?.user_id);
-
+        // SEC-14: removed debug logging of patient/provider PHI objects and IDs.
         return (
           <EPrescribeModal
             theme={theme}

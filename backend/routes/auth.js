@@ -5,6 +5,12 @@ const crypto = require('crypto');
 const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken, isProviderIdMatch } = require('../utils/socialTokenValidator');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+
+// SEC-17: a fixed dummy bcrypt hash (of a random string) used to run a real compare
+// when an account is missing or has no password, so the response time does not reveal
+// whether the email exists. Cost factor matches the policy so timing lines up.
+const DUMMY_PASSWORD_HASH = '$2a$12$C6UzMDM.H6dfI/f/IKcEeO3z8kU0m9Yb0aH3mHqz9uJm8lTgqQG0K';
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -42,31 +48,25 @@ router.post('/login', async (req, res) => {
       [email]
     );
 
-    if (result.rows.length === 0) {
+    const user = result.rows[0];
+
+    // SEC-17: always run a bcrypt compare — against the real hash when the account
+    // exists and has a password, otherwise against a fixed dummy hash — so response
+    // timing and the error message are identical whether or not the email is known.
+    const hashToCompare = user && user.password_hash ? user.password_hash : DUMMY_PASSWORD_HASH;
+    const isMatch = await bcrypt.compare(password, hashToCompare);
+
+    if (!user || !user.password_hash || !isMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const user = result.rows[0];
-
-    // Check if user is blocked
+    // Only after the credentials are proven correct do we reveal account-state
+    // details — so these messages can never be used to enumerate valid accounts.
     if (user.status === 'blocked') {
       return res.status(403).json({ error: 'Your account has been blocked. Please contact an administrator.' });
     }
-
-    // Check if user is pending
     if (user.status === 'pending') {
       return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
-    }
-
-    // Check if password_hash exists
-    if (!user.password_hash) {
-      return res.status(401).json({ error: 'Password not set for this account' });
-    }
-
-    // Compare password
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     // Don't send password_hash back to client
@@ -96,8 +96,10 @@ router.post('/change-password', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    // SEC-12: enforce the shared password policy (length + complexity)
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) {
+      return res.status(400).json({ error: pwCheck.message });
     }
 
     const pool = req.app.locals.pool;
@@ -120,17 +122,52 @@ router.post('/change-password', authenticate, async (req, res) => {
       }
     }
 
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
 
-    await pool.query(
-      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+    // SEC-09: bump token_version so every JWT issued before this change is rejected,
+    // then mint a fresh token for the caller's current session so they are not logged
+    // out of the tab they just changed their password in. Other sessions are revoked.
+    const updateResult = await pool.query(
+      'UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2 RETURNING token_version',
       [newPasswordHash, userId]
     );
 
-    res.json({ message: 'Password changed successfully' });
+    // SEC-18: also revoke any active patient-portal sessions for this account.
+    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [userId]);
+
+    const token = signToken({
+      id: userId,
+      role: req.user.role,
+      email: req.user.email,
+      token_version: updateResult.rows[0].token_version
+    });
+
+    res.json({ message: 'Password changed successfully', token });
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Logout — server-side revocation (SEC-16). Bumping token_version invalidates every
+// clinician JWT currently held for this account (this device and any other), and we
+// clear any portal sessions too. The client still discards its local token, but this
+// guarantees a stolen/old token cannot be replayed after logout.
+router.post('/logout', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const userId = req.user.id;
+
+    await pool.query(
+      'UPDATE users SET token_version = token_version + 1, updated_at = NOW() WHERE id = $1',
+      [userId]
+    );
+    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [userId]);
+
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Error during logout:', error);
+    res.status(500).json({ error: 'Failed to logout' });
   }
 });
 
@@ -208,8 +245,10 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Reset token and new password are required' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    // SEC-12: enforce the shared password policy (length + complexity)
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) {
+      return res.status(400).json({ error: pwCheck.message });
     }
 
     const pool = req.app.locals.pool;
@@ -227,14 +266,18 @@ router.post('/reset-password', async (req, res) => {
     const user = userResult.rows[0];
 
     // Hash new password
-    const saltRounds = 10;
-    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
 
-    // Update password and clear reset token
+    // Update password and clear reset token.
+    // SEC-18: a reset is a credential-recovery event — assume the old credentials are
+    // compromised and revoke every outstanding session. Bumping token_version kills all
+    // existing JWTs and we delete the account's portal sessions. The user must sign in
+    // fresh, so (unlike change-password) we do NOT reissue a token here.
     await pool.query(
-      'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, token_version = token_version + 1, updated_at = NOW() WHERE id = $2',
       [newPasswordHash, user.id]
     );
+    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [user.id]);
 
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
@@ -280,6 +323,9 @@ router.post('/social-login', async (req, res) => {
     const firstName = verified.firstName || clientFirstName || '';
     const lastName = verified.lastName || clientLastName || '';
     const canonicalProviderId = verified.providerId;
+    // SEC-07: true only when the PROVIDER itself vouches for the email. Used to
+    // decide whether this social identity may attach to a pre-existing account.
+    const providerEmailVerified = verified.emailVerified === true && Boolean(verified.email);
 
     if (!email) {
       return res.status(400).json({ error: 'Could not determine email from social provider' });
@@ -332,6 +378,17 @@ router.post('/social-login', async (req, res) => {
       );
 
       if (existingUserResult.rows.length > 0) {
+        // SEC-07: a matching-email account may only be auto-linked when the
+        // provider verified the email. Otherwise an attacker who sets an
+        // unverified provider email to a victim's address could seize their
+        // account. Require explicit, authenticated linking instead.
+        if (!providerEmailVerified) {
+          console.log(`[DEBUG sec07-link] refused auto-link: unverified provider email for ${email} (${provider})`);
+          return res.status(409).json({
+            error: 'An account with this email already exists. Please sign in with your password, then link your social account from settings.'
+          });
+        }
+
         // User exists — link social auth
         user = existingUserResult.rows[0];
 
@@ -480,6 +537,9 @@ router.post('/social-register', async (req, res) => {
     const firstName = verified.firstName || clientFirstName || '';
     const lastName = verified.lastName || clientLastName || '';
     const canonicalProviderId = verified.providerId;
+    // SEC-07: true only when the PROVIDER itself vouches for the email. Used to
+    // decide whether this social identity may attach to a pre-existing account.
+    const providerEmailVerified = verified.emailVerified === true && Boolean(verified.email);
 
     if (!email) {
       return res.status(400).json({ error: 'Could not determine email from social provider' });
@@ -593,14 +653,26 @@ router.post('/link-social-account', authenticate, async (req, res) => {
     const userId = req.user.id;
     const { provider, providerId, accessToken, refreshToken, profileData } = req.body;
 
-    if (!provider || !providerId) {
-      return res.status(400).json({ error: 'Provider and provider ID are required' });
+    if (!provider || !accessToken) {
+      return res.status(400).json({ error: 'Provider and access token are required' });
     }
+
+    // SEC-08: validate the access token with the provider and link ONLY the
+    // provider-verified canonical id. Previously the client-supplied providerId
+    // was stored unverified, letting a user claim someone else's social identity.
+    let verified;
+    try {
+      verified = await validateSocialToken(provider, accessToken);
+    } catch (validationErr) {
+      console.log(`[DEBUG sec08-link] token validation failed on link for user ${userId} (${provider})`);
+      return res.status(401).json({ error: 'Social provider token validation failed. Please try again.' });
+    }
+    const canonicalProviderId = verified.providerId;
 
     // Check if this social account is already linked to another user
     const existingSocialAuth = await pool.query(
       'SELECT * FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
-      [provider, providerId]
+      [provider, canonicalProviderId]
     );
 
     if (existingSocialAuth.rows.length > 0 && String(existingSocialAuth.rows[0].user_id) !== String(userId)) {
@@ -619,7 +691,7 @@ router.post('/link-social-account', authenticate, async (req, res) => {
         refresh_token = $5,
         profile_data = $6,
         updated_at = CURRENT_TIMESTAMP
-    `, [userId, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
+    `, [userId, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
     res.json({ message: 'Social account linked successfully' });
 

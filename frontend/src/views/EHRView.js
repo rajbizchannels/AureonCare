@@ -88,6 +88,7 @@ const EHRView = ({
           <NewPatientForm
             theme={theme}
             api={api}
+            patients={patients}
             onClose={() => setShowForm(null)}
             onSuccess={(newPatient) => {
               setPatients([...patients, newPatient]);

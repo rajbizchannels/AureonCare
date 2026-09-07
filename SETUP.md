@@ -268,7 +268,7 @@ After running migrations, you can create a test user:
 -- Run in psql
 INSERT INTO users (email, password, first_name, last_name, role, plan_tier)
 VALUES (
-  'admin@aureoncare.com',
+  'admin@aureoncare.tech',
   '$2a$10$YourHashedPasswordHere',  -- Use bcrypt to hash
   'Admin',
   'User',
@@ -282,7 +282,7 @@ Or use the registration endpoint:
 curl -X POST http://localhost:3000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@aureoncare.com",
+    "email": "admin@aureoncare.tech",
     "password": "securepassword123",
     "firstName": "Admin",
     "lastName": "User",

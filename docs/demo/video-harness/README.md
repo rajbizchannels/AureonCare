@@ -1,0 +1,216 @@
+# Video harness
+
+Everything needed to produce the AureonCare training videos: a script per video,
+a mocked API so no backend or database is involved, and a recorder that emits
+YouTube-ready files.
+
+```
+harness.js    the recorder: mock API, branded overlay, caption/chapter capture, encode
+voice.js      narration: synthesis, mastering, and the mix onto the picture
+fixtures.js   the synthetic clinic — patients, appointments, claims, sessions
+brand/        the AureonCare logo used by the bumper, captions, cards and thumbnails
+record.js     CLI: record one video or all of them
+probe.js      development helper: dump the selectors on any screen
+scripts/      one file per video
+```
+
+## Branding
+
+Every video opens on a logo bumper and closes on a branded outro card. In
+between, the logo sits at the left of the caption bar, so a frame grabbed from
+anywhere in the video is recognisably AureonCare.
+
+The palette is sampled from the logo itself rather than invented: amber
+`#f0b000` for emphasis and the step badge, teal `#00b0a0` for rules, the caption
+border and the chapter kickers, on a near-black `#041016`. Change `BRAND` at the
+top of `harness.js` and every surface follows — bumper, captions, cards and
+thumbnails.
+
+The recording starts at the bumper: the app's cold-start frames are trimmed off
+in the encode, and the caption, chapter and narration timings are shifted to
+match.
+
+## Narration
+
+Captions and narration are the same text, so the spoken line, the burned-in
+caption and the `.srt` cannot drift apart. Each line is synthesised *before* its
+caption is shown and the caption is then held for at least the length of its
+audio — sync comes from the recording rather than from aligning afterwards.
+Clips are mixed at their caption timestamps and mastered to -16 LUFS, which is
+what YouTube normalises to.
+
+| `VOICE_ENGINE` | What it does |
+| --- | --- |
+| `espeak` (default) | Offline espeak-ng through an mbrola voice. Always available, and audibly synthetic |
+| `google` | Google Cloud Text-to-Speech — the voice family Google Maps navigation speaks with. Needs `GOOGLE_TTS_API_KEY` |
+| `files` | Pre-recorded audio from `narration/<slug>/<NN>.wav`, numbered in speaking order |
+| `none` | Silent track |
+
+### The Google Maps navigation voice
+
+```bash
+export GOOGLE_TTS_API_KEY=…            # a key with the Cloud Text-to-Speech API enabled
+VOICE_ENGINE=google NODE_PATH=$(npm root -g) \
+  node docs/demo/video-harness/record.js all
+```
+
+`en-US-Neural2-D` is the default: the male US voice from the family Maps
+navigation speaks with — measured, mid-pitched, unhurried. Google does not
+publish which model Maps ships, so this is the same vendor, language and
+character rather than a guaranteed byte-identical match; unlike a cloned voice
+it is licensed for this use through Google Cloud.
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `GOOGLE_TTS_VOICE` | `en-US-Neural2-D` | `en-US-Studio-M` is smoother for long narration; `en-US-Wavenet-D` is the older, most instantly recognisable male |
+| `GOOGLE_TTS_LANG` | `en-US` | |
+| `GOOGLE_TTS_RATE` | `0.96` | Navigation reads a touch under conversational pace |
+| `GOOGLE_TTS_PITCH` | `-1.0` | Semitones |
+
+To see every male US voice on the account:
+
+```bash
+curl -s "https://texttospeech.googleapis.com/v1/voices?languageCode=en-US&key=$GOOGLE_TTS_API_KEY" \
+  | grep -B2 '"MALE"' | grep '"name"'
+```
+
+Wave 1 is 100 lines, roughly 12,000 characters — comfortably inside the free
+monthly tier for Neural2 voices at the time of writing, and cents beyond it.
+Clips are cached by voice and text, so a re-run only pays for lines that
+changed. A missing or rejected key stops the run rather than quietly producing
+eight silent videos.
+
+Wave 1 as shipped is rendered with this engine — see
+`../video-library/README.md`. The `espeak` default is a placeholder: clear and
+correctly timed, but audibly a speech synthesiser, so it is for local iteration
+rather than anything a customer hears.
+
+Moving to a human voice needs no re-recording of the picture: every line
+of every video is written out as a recording sheet by
+
+```bash
+node docs/demo/video-harness/narration-scripts.js
+```
+
+which produces `narration/<slug>/SCRIPT.md` — the lines in order, the file name
+each belongs in, and how long the matching shot stays on screen. Record them,
+drop them in, and re-run with `VOICE_ENGINE=files`. Wave 1 is 100 lines, about
+14 minutes of speech.
+
+Supplied recordings are de-reverbed before they are mixed, so an ordinary room
+is fine — see `narration/README.md` for the chain and the measurements behind
+it. `VOICE_DEVERB=0` turns it off for already-treated audio.
+
+Other knobs: `VOICE_NAME` (default `mb-us2`), `VOICE_RATE` (default 160 wpm),
+`VOICE_CACHE`.
+
+Voice *cloning* — synthesising these lines in the timbre of a short sample — is
+not possible from this environment. Every cloning model host is blocked by the
+network policy: Hugging Face, GitHub release assets, Coqui and the commercial
+cloning APIs all fail at the proxy. Google Cloud Text-to-Speech is the exception
+that does answer, which is why the `google` engine above exists. A supplied
+sample can be cleaned up and used as-is, but it cannot be turned into a hundred
+new lines here.
+
+## Recording
+
+```bash
+# once
+npm --prefix frontend install
+npm i -g playwright ffmpeg-static
+
+# terminal 1 — the app under test
+cd frontend && HOST=localhost PORT=3000 BROWSER=none npm start
+
+# terminal 2
+NODE_PATH=$(npm root -g) node docs/demo/video-harness/record.js v03   # one
+NODE_PATH=$(npm root -g) node docs/demo/video-harness/record.js all   # the wave
+```
+
+Output lands in `docs/demo/video-library/wave1/`, five files per video:
+
+| File | What to do with it |
+| --- | --- |
+| `<slug>.mp4` | 1920×1080, 30fps, H.264 high, faststart, narrated AAC track — upload as-is |
+| `<slug>.srt` | Upload as the English subtitle track. Do not settle for auto-captions |
+| `<slug>.chapters.txt` | Paste into the description; the first entry is always 0:00 |
+| `<slug>.metadata.md` | Title, description, tags and the upload checklist |
+| `<slug>.thumbnail.png` | 1280×720 custom thumbnail |
+
+`ffmpeg-static` is required for the mp4: Playwright's bundled ffmpeg can only
+write VP8, so without a real ffmpeg you would be left with a `.webm`.
+
+The `.mp4` and `.thumbnail.png` are gitignored — they are build output and were
+costing ~110 MB of repository history per render. Produce them by running the
+recorder, and distribute them as downloads. The `.srt`, `.chapters.txt` and
+`.metadata.md` written alongside are text and stay tracked.
+
+## Writing a new video script
+
+A script is a module with metadata plus `run(d, page)`:
+
+```js
+module.exports = {
+  id: 'V09', slug: 'v09-…', title: '…', thumbHeadline: '…',
+  moduleLabel: 'Billing ▸ Pre-Authorizations', audience: 'Billing',
+  intro: '…', journey: '…', youtubeTitle: '…', description: '…',
+  tags: [...], recap: ['…', '…', '…'],
+  async run(d, page) { … },
+};
+```
+
+The harness supplies the title card, the recap card, the watermark and the
+encode. `d` is the director:
+
+| Call | Effect |
+| --- | --- |
+| `d.chapter('Booking the visit')` | Marks a YouTube chapter boundary |
+| `d.step('Step 2 — New Appointment')` | Sets the step badge in the corner |
+| `d.say(html, ms)` | Caption at the bottom; also the narration line and a subtitle |
+| `d.card({...})` | Full-screen branded card (kicker, heading, sub, body, bullets) |
+| `d.bumper()` | Logo bumper; the harness plays one at the top of every video |
+| `d.click(locator)` | Moves the on-screen cursor, then clicks |
+| `d.type(locator, text)` | Types at a readable speed |
+| `d.fill(locator, value)` | Sets a value directly — use for date, time and number inputs |
+| `d.select(locator, {label})` | Picks from a `<select>` |
+| `d.nav('Billing', 'Claims')` | Workspace then module; tolerates single-destination groups |
+| `d.scrollBy(px)` | Slow, readable scroll |
+
+Two flags on the spec change how the session starts:
+
+- `showsLogin: true` — start at the sign-in screen (only V01 does).
+- `sessionUser: {...}` — record as somebody else. V08 uses a patient account so
+  the portal video is genuinely the patient's view rather than a staff preview.
+
+### Finding selectors
+
+Do not guess them. `probe.js` boots the app with the same mocks and prints every
+visible button, input and select:
+
+```bash
+NODE_PATH=$(npm root -g) node docs/demo/video-harness/probe.js "Billing" "Claims" "New Claim"
+```
+
+Labels come from the translation files, so they are not always what the
+navigation config suggests — the Patients module renders as "Electronic Health
+Records", for instance.
+
+## How the mock works
+
+`context.route('**/api/**')` answers every request from an in-memory store
+seeded from `fixtures.js`. Named handlers cover login, search, code lookup,
+telehealth and claim submission; everything else falls through to generic REST
+(`GET /x`, `POST /x`, `GET/PUT/DELETE /x/:id`), so a journey that creates a
+record really does see it appear in the list afterwards.
+
+The app clears its session on every page load unless the load is the return leg
+of an OAuth round trip, so the harness sets that marker alongside the seeded
+session — otherwise every video would start at the login screen.
+
+## Conventions
+
+- 1920×1080 with narration; the captions carry the same words for sound-off viewing.
+- Every frame carries the "demo environment · synthetic data" watermark.
+- Personas match `../DEMO_SCENARIOS.md`: Sarah Williams is the patient,
+  Dr. Anderson the provider.
+- Target 60–120 seconds. If a journey overruns, split it rather than speed it up.

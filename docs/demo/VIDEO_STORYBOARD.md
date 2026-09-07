@@ -843,10 +843,10 @@
 - Contact information fades in:
   ```
   Learn More
-  www.aureoncare.com
+  www.aureoncare.tech
 
   Contact Sales
-  sales@aureoncare.com
+  sales@aureoncare.tech
   1-800-AUREONCARE
 
   Schedule a Demo
@@ -863,10 +863,10 @@
 │         End-to-End Care.               │
 │                                        │
 │        Learn More                      │
-│     www.aureoncare.com                    │
+│     www.aureoncare.tech                    │
 │                                        │
 │      Contact Sales                     │
-│    sales@aureoncare.com                   │
+│    sales@aureoncare.tech                   │
 │    1-800-AUREONCARE                       │
 │                                        │
 │     [QR Code for Demo Booking]         │

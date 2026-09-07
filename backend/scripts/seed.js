@@ -53,7 +53,7 @@ async function seedDatabase() {
     `, [
       'System',
       'Administrator',
-      'admin@aureoncare.com',
+      'admin@aureoncare.tech',
       passwordHash,
       'admin',
       'active'
@@ -69,7 +69,7 @@ async function seedDatabase() {
     `, [
       'Sarah',
       'Chen',
-      'dr.chen@aureoncare.com',
+      'dr.chen@aureoncare.tech',
       physicianPassword,
       'physician',
       '+1-555-0101',
@@ -103,8 +103,8 @@ async function seedDatabase() {
     console.log('\n✓ Database seeding completed successfully!');
     console.log('\nDefault Credentials:');
     console.log('-------------------');
-    console.log('Admin: admin@aureoncare.com / Admin123!');
-    console.log('Doctor: dr.chen@aureoncare.com / Doctor123!');
+    console.log('Admin: admin@aureoncare.tech / Admin123!');
+    console.log('Doctor: dr.chen@aureoncare.tech / Doctor123!');
     console.log('-------------------\n');
     
   } catch (error) {
