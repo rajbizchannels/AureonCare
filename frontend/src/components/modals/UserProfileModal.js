@@ -4,6 +4,7 @@ import ConfirmationModal from './ConfirmationModal';
 import { getTranslations } from '../../config/translations';
 import { useAudit } from '../../hooks/useAudit';
 import { isPhoneValid, validateOptionalPhone } from '../../utils/validators';
+import TwoFactorPanel from '../TwoFactorPanel';
 
 const UserProfileModal = ({
   theme,
@@ -181,6 +182,10 @@ const UserProfileModal = ({
               <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{user.specialty || t.notApplicable || 'N/A'}</p>
             </div>
           </div>
+
+          {/* Security before preferences: this is the control that matters, and burying it
+              under notification toggles is how it goes unused. */}
+          <TwoFactorPanel theme={theme} api={api} addNotification={addNotification} />
 
           <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
             <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.preferences || 'Preferences'}</h4>

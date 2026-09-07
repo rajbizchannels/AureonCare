@@ -371,6 +371,38 @@ so claiming a domain cannot become a privilege-escalation path.
 Rejecting a request blocks the account rather than leaving it pending, so a rejected
 applicant cannot later be approved by accident.
 
+### Two-factor authentication and session timeout
+
+Requires migration `081_user_mfa_and_session_policy.sql`.
+
+The old settings dialog displayed a hardcoded "Enabled" badge for 2FA and a session-timeout
+dropdown bound to nothing. Both were removed rather than reproduced. These are the real
+controls.
+
+**Per user** — Profile (header avatar) → Two-factor authentication. Standard TOTP, so any
+authenticator app works. Enrolment is two-phase: the secret is stored when enrolment starts
+but the factor only switches on once a code from it verifies, so an abandoned enrolment
+cannot lock anyone out. Ten single-use recovery codes are issued on success and shown
+**once** — only their SHA-256 hashes are stored, so they cannot be displayed again.
+
+Turning 2FA off needs the account password **and** a current code. A signed-in session is
+deliberately not sufficient: removing the second factor is exactly what someone holding a
+stolen session would want to do.
+
+**Per practice** — Settings → User Management → Team access → Security policy:
+
+- **Sign out after inactivity** — 5 to 1440 minutes, or empty for no limit. Enforced
+  server-side on every authenticated request and measured from the last action rather than
+  from sign-in, so continuous work is never interrupted and an unattended workstation is.
+  The activity stamp is written at most once a minute, so this does not put the app behind
+  one row's lock.
+- **Require two-factor authentication** — refused while any administrator still lacks a
+  second factor, and the error names them. Enabling it otherwise would lock the person
+  enabling it out of their own practice at the next sign-in.
+
+Under that requirement a user cannot turn their own 2FA off, and an account without it is
+refused at login with an explicit "set it up" message rather than a generic failure.
+
 ## Routing
 
 `/signup`, `/signup/complete`, `/accept-invite` and `/join` are SPA routes served before the

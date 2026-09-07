@@ -20,12 +20,35 @@ const TeamAccessPanel = ({ theme, api, addNotification }) => {
   const [role, setRole] = useState('staff');
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState('');
+  const [securityPolicy, setSecurityPolicy] = useState(null);
+  const [idleDraft, setIdleDraft] = useState('');
+
+  const savePolicy = async (patch) => {
+    setBusy('policy');
+    try {
+      const next = await api.updateSecurityPolicy(patch);
+      setSecurityPolicy((p) => ({ ...p, ...next }));
+      setIdleDraft(next.sessionIdleMinutes == null ? '' : String(next.sessionIdleMinutes));
+      addNotification?.('Security policy updated.', 'success');
+    } catch (err) {
+      // The lockout refusal names the administrators without a second factor; showing it
+      // verbatim is the difference between a fixable message and a dead end.
+      addNotification?.(err.message || 'Could not update the security policy.', 'error');
+      load();
+    } finally {
+      setBusy('');
+    }
+  };
 
   const load = useCallback(async () => {
     try {
-      const [d, r] = await Promise.all([api.listDomains(), api.listJoinRequests()]);
+      const [d, r, p] = await Promise.all([
+        api.listDomains(), api.listJoinRequests(), api.getSecurityPolicy(),
+      ]);
       setDomains(d);
       setRequests(r);
+      setSecurityPolicy(p);
+      setIdleDraft(p.sessionIdleMinutes == null ? '' : String(p.sessionIdleMinutes));
       setError('');
     } catch (e) {
       setError(e.message || 'Could not load team access settings.');
@@ -168,6 +191,64 @@ const TeamAccessPanel = ({ theme, api, addNotification }) => {
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Security policy ── */}
+      {securityPolicy && (
+        <div className={`mt-5 p-4 rounded-lg border ${dark ? 'border-slate-700' : 'border-gray-200'}`}>
+          <h4 className={`font-medium ${text}`}>Security policy</h4>
+          <p className={`mt-1 text-xs ${muted}`}>Applies to every account at this practice.</p>
+
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <div>
+              <label className={`block text-xs mb-1 ${muted}`}>Sign out after inactivity</label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="number" min="5" max="1440" value={idleDraft}
+                  onChange={(e) => setIdleDraft(e.target.value)}
+                  placeholder="No limit"
+                  className={`${field} w-32`}
+                />
+                <span className={`text-sm ${muted}`}>minutes</span>
+                <button
+                  onClick={() => savePolicy({ sessionIdleMinutes: idleDraft === '' ? null : Number(idleDraft) })}
+                  disabled={busy === 'policy'}
+                  className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm disabled:opacity-60"
+                >
+                  Save
+                </button>
+              </div>
+              <p className={`mt-1 text-xs ${muted}`}>
+                Between 5 and 1440. Leave empty for no limit. Measured from the last action,
+                not from sign-in, so continuous work is never interrupted.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-start justify-between gap-4">
+            <div>
+              <div className={`text-sm font-medium ${text}`}>Require two-factor authentication</div>
+              <div className={`text-xs ${muted}`}>
+                {securityPolicy.staffWithoutMfa > 0
+                  ? `${securityPolicy.staffWithoutMfa} of ${securityPolicy.totalStaff} staff have not set it up yet.`
+                  : `All ${securityPolicy.totalStaff} staff have it set up.`}
+                {' '}Everyone sets theirs up from their own profile.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => savePolicy({ requireMfa: !securityPolicy.requireMfa })}
+              disabled={busy === 'policy'}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                securityPolicy.requireMfa ? 'bg-blue-500' : dark ? 'bg-slate-600' : 'bg-gray-300'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                securityPolicy.requireMfa ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
           </div>
         </div>
       )}
