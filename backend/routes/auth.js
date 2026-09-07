@@ -209,10 +209,35 @@ router.get('/tenant-status', authenticate, async (req, res) => {
     );
     const r = rows[0] || {};
     const resolved = req.tenant && req.tenant.schemaName;
-    const healthy = Boolean(resolved && resolved !== 'public');
+    const routed = Boolean(resolved && resolved !== 'public');
+
+    // Routing to a non-public schema is not the same as that schema being usable. Reporting
+    // only the former gave a clean bill of health to an account that was still 500ing on
+    // every read, which is worse than reporting nothing. Actually read from the tables the
+    // failing endpoints read, through the caller's own tenant handle, and hand back the
+    // database's own error. The list is a fixed allowlist — never anything caller-supplied.
+    const PROBES = ['notifications', 'payments', 'tasks', 'audit_logs', 'appointments', 'patients'];
+    const probes = {};
+    if (routed && req.db) {
+      for (const t of PROBES) {
+        try {
+          await req.db.query(`SELECT 1 FROM ${t} LIMIT 1`);
+          probes[t] = 'ok';
+        } catch (e) {
+          probes[t] = `${e.code || 'error'}: ${String(e.message || '').slice(0, 200)}`;
+        }
+      }
+    }
+    const broken = Object.entries(probes).filter(([, v]) => v !== 'ok');
+    const healthy = routed && broken.length === 0;
 
     let problem = null;
-    if (!healthy) {
+    if (routed && broken.length) {
+      problem = `Routing is correct — this account resolves to "${resolved}" — but ${broken.length} of `
+        + `${PROBES.length} core tables could not be read there. See "probes" for the database's own `
+        + 'error on each. A missing relation means that schema was never fully built from the '
+        + 'template; a permission error means the app role lacks grants on it.';
+    } else if (!routed) {
       if (!r.practice_id) {
         problem = 'This account has no practice_id, so it is not bound to any tenant. Bind it '
           + 'by accepting a staff invite, or set users.practice_id to the practice it belongs to.';
@@ -236,6 +261,7 @@ router.get('/tenant-status', authenticate, async (req, res) => {
       tenantId: r.tenant_id || null,
       tenantStatus: r.tenant_status || null,
       schemaName: r.schema_name || null,
+      probes,
       problem,
     });
   } catch (error) {
