@@ -156,6 +156,88 @@ router.delete('/domains/:id', authenticate, authorize('admin'), requirePractice,
   }
 });
 
+// ── Practice admin: security policy ──────────────────────────────────────────
+
+router.get('/security-policy', authenticate, authorize('admin'), requirePractice, async (req, res) => {
+  try {
+    const { rows } = await req.app.locals.pool.query(
+      `SELECT session_idle_minutes, require_mfa,
+              (SELECT COUNT(*) FROM public.users
+                WHERE practice_id = $1 AND status = 'active' AND mfa_enabled = false) AS without_mfa,
+              (SELECT COUNT(*) FROM public.users
+                WHERE practice_id = $1 AND status = 'active') AS total_staff
+         FROM public.practices WHERE id = $1`,
+      [req.user.practiceId]
+    );
+    const r = rows[0] || {};
+    res.json({
+      sessionIdleMinutes: r.session_idle_minutes || null,
+      requireMfa: Boolean(r.require_mfa),
+      staffWithoutMfa: Number(r.without_mfa || 0),
+      totalStaff: Number(r.total_staff || 0),
+    });
+  } catch (err) {
+    console.error('[teamAccess] read security policy error:', err);
+    res.status(500).json({ error: 'Failed to read the security policy' });
+  }
+});
+
+router.patch('/security-policy', authenticate, authorize('admin'), requirePractice, async (req, res) => {
+  const { sessionIdleMinutes, requireMfa } = req.body || {};
+
+  // null is a legitimate value — it means "no idle limit" — so it has to be told apart
+  // from "field not supplied", which means "leave it alone".
+  let idle;
+  if (sessionIdleMinutes !== undefined) {
+    if (sessionIdleMinutes === null || sessionIdleMinutes === '') {
+      idle = null;
+    } else {
+      const n = Number(sessionIdleMinutes);
+      if (!Number.isInteger(n) || n < 5 || n > 1440) {
+        return res.status(400).json({ error: 'The idle timeout must be between 5 and 1440 minutes.' });
+      }
+      idle = n;
+    }
+  }
+
+  try {
+    // Turning the requirement on while an admin has no second factor would lock the person
+    // enabling it out of their own practice at the next sign-in. Refuse, and say who is
+    // missing one — this is the mistake most likely to need an operator to undo.
+    if (requireMfa === true) {
+      const { rows } = await req.app.locals.pool.query(
+        `SELECT email FROM public.users
+          WHERE practice_id = $1 AND role = 'admin' AND status = 'active' AND mfa_enabled = false`,
+        [req.user.practiceId]
+      );
+      if (rows.length) {
+        return res.status(409).json({
+          error: 'Set up two-factor authentication on every administrator account first, '
+            + 'otherwise this would lock them out.',
+          administratorsWithout: rows.map((r) => r.email),
+        });
+      }
+    }
+
+    const { rows } = await req.app.locals.pool.query(
+      `UPDATE public.practices
+          SET session_idle_minutes = CASE WHEN $2::boolean THEN $3::integer ELSE session_idle_minutes END,
+              require_mfa          = COALESCE($4, require_mfa)
+        WHERE id = $1
+        RETURNING session_idle_minutes, require_mfa`,
+      [req.user.practiceId, sessionIdleMinutes !== undefined, idle ?? null,
+       typeof requireMfa === 'boolean' ? requireMfa : null]
+    );
+    res.json({
+      sessionIdleMinutes: rows[0].session_idle_minutes || null,
+      requireMfa: Boolean(rows[0].require_mfa),
+    });
+  } catch (err) {
+    console.error('[teamAccess] update security policy error:', err);
+    res.status(500).json({ error: 'Failed to update the security policy' });
+  }
+});
+
 // ── Public: where does my email lead? ────────────────────────────────────────
 
 /**

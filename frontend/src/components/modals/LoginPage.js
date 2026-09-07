@@ -8,6 +8,8 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [needsMfa, setNeedsMfa] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
 
   // SEC-20: MSAL is no longer used for sign-in (see handleMicrosoftLogin).
 
@@ -26,7 +28,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
     setLoginError('');
 
     try {
-      const response = await api.login(email, password);
+      const response = await api.login(email, password, mfaCode || undefined);
       api.storeToken(response.token);
       setUser(response.user);
       setIsAuthenticated(true);
@@ -36,6 +38,9 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
 
       await addNotification('success', 'Login successful');
     } catch (error) {
+      // The password was right and a second factor is wanted. Reveal the code field and
+      // keep the password the user already typed, rather than making them start over.
+      if (error.mfaRequired) setNeedsMfa(true);
       setLoginError(error.message || 'Login failed');
     }
   };
@@ -171,6 +176,35 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
               placeholder="Enter your password"
             />
           </div>
+
+          {/* Shown only once the server has asked for it — the password is verified first,
+              so the prompt itself never reveals that an address has an account. */}
+          {needsMfa && (
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Authentication code
+              </label>
+              <input
+                type="text"
+                inputMode="text"
+                autoComplete="one-time-code"
+                autoFocus
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg tracking-widest focus:outline-none focus:border-cyan-500 ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                required
+                placeholder="6-digit code, or a recovery code"
+              />
+              <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                From your authenticator app. If you have lost your device, use one of the
+                recovery codes you saved.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <label className="flex items-center">
