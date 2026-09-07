@@ -59,3 +59,14 @@ test('plain http is allowed on a LAN deployment', () => {
   assert.equal(isServerUrlAllowed('http://192.168.1.10:3001'), true);
   assert.equal(isServerUrlAllowed('http://localhost:3001'), true);
 });
+
+test('the local development addresses all pass the https rule', () => {
+  // These are exactly what a developer types to reach a backend on their own
+  // machine: the iOS simulator shares the host network, the Android emulator
+  // reaches the host at 10.0.2.2, and a physical device needs the LAN IP.
+  // If the https rule rejected these, nobody could run the app locally.
+  for (const origin of ['http://localhost:3000', 'http://10.0.2.2:3000', 'http://192.168.1.42:3000']) {
+    assert.equal(normaliseServerUrl(origin), origin, origin);
+    assert.equal(isServerUrlAllowed(origin), true, origin);
+  }
+});
