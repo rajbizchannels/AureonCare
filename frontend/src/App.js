@@ -64,6 +64,7 @@ import PatientLoginPage from './components/modals/PatientLoginPage';
 import SignupPage from './components/modals/SignupPage';
 import SignupCompletePage from './components/modals/SignupCompletePage';
 import AcceptInvitePage from './components/modals/AcceptInvitePage';
+import JoinPracticePage from './components/modals/JoinPracticePage';
 import RegisterPage from './components/modals/RegisterPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
@@ -400,6 +401,7 @@ function App() {
     if (/^\/accept-invite\/?$/.test(path) && params.get('token')) {
       return { kind: 'acceptInvite', token: params.get('token') };
     }
+    if (/^\/join\/?$/.test(path)) return { kind: 'join' };
     return null;
   });
   const [showSignup, setShowSignup] = React.useState(false);
@@ -788,6 +790,9 @@ function App() {
   }
   if (publicRoute?.kind === 'signupComplete') {
     return <SignupCompletePage theme={theme} intentId={publicRoute.intentId} onSignIn={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'join') {
+    return <JoinPracticePage theme={theme} api={api} onSignIn={goToSignIn} />;
   }
   if (publicRoute?.kind === 'acceptInvite') {
     return (
