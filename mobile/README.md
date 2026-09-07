@@ -26,8 +26,31 @@ npm test
 
 Several dependencies (`expo-secure-store`, `expo-local-authentication`,
 `expo-image-picker`) contain native code, so a **development build** is needed
-— Expo Go will not load them. `npx expo prebuild` then `npm run ios` /
-`npm run android`.
+— Expo Go will not load them:
+
+```bash
+npx expo prebuild        # generates ios/ and android/ (both are gitignored)
+npm run ios              # or: npm run android
+```
+
+### Pointing it at a backend
+
+Start the API from the repo root (`npm install && npm run dev`); it listens on
+port 3000. Then set the server on the app's sign-in screen — "Change server" —
+because a simulator cannot reach your machine by the name you use:
+
+| Running on | Server URL |
+|---|---|
+| iOS simulator | `http://localhost:3000` |
+| Android emulator | `http://10.0.2.2:3000` |
+| Physical device | `http://<your-LAN-IP>:3000` |
+
+Plain `http` is refused for public hosts but allowed for these, which is why
+local development works without weakening the rule for real deployments.
+
+The probe that validates the address hits `/health` — the backend mounts it at
+the root, not under `/api` like everything else — and falls back to
+`/api/health` for a proxy that only forwards `/api/*`.
 
 ## How it is put together
 
