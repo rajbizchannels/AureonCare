@@ -270,6 +270,24 @@ router.get('/tenant-status', authenticate, async (req, res) => {
       missingColumns = drift.map((d) => `${d.table_name}.${d.column_name}`);
     }
 
+    // Is a transaction-mode pooler splitting statements across backends? Two consecutive
+    // queries on the SAME handle should report the same backend pid; different pids mean
+    // session state (search_path included) cannot survive between statements, which is the
+    // difference between "the tables are missing" and "the app cannot see them".
+    const connection = {};
+    if (req.db) {
+      try {
+        const a = await req.db.query('SELECT pg_backend_pid() AS pid, current_setting($1) AS sp', ['search_path']);
+        const b = await req.db.query('SELECT pg_backend_pid() AS pid');
+        connection.searchPath = a.rows[0].sp;
+        connection.backendPidFirst = a.rows[0].pid;
+        connection.backendPidSecond = b.rows[0].pid;
+        connection.stickyBackend = a.rows[0].pid === b.rows[0].pid;
+      } catch (e) {
+        connection.error = String(e.message || '').slice(0, 200);
+      }
+    }
+
     // Reads can pass while writes fail. A tenant schema that has its own copy of a table
     // the app expects to live in `public` — `users` above all — silently repoints every
     // foreign key that references it, so an INSERT is rejected for a user who plainly
@@ -319,6 +337,12 @@ router.get('/tenant-status', authenticate, async (req, res) => {
         + 'exists. search_path silently ignores a missing schema, so every table resolves to public '
         + 'and fails with 42P01. Re-provision the tenant schema from the template, or correct '
         + 'control.tenants.schema_name if it is pointing at the wrong name.';
+    } else if (routed && schemaExists && tableCount > 0 && broken.length === PROBES.length) {
+      problem = `Schema "${resolved}" exists with ${tableCount} tables, yet every one of them reads as `
+        + 'missing. The tables are there; this connection cannot see them, which means the tenant '
+        + 'search_path is not in effect for the statement. See "connection": if stickyBackend is '
+        + 'false, a transaction-mode pooler is splitting statements across backends and session '
+        + 'state cannot survive between them.';
     } else if (routed && tableCount === 0) {
       problem = `Schema "${resolved}" exists but is empty (template has ${templateTableCount} tables). `
         + 'It was created but never populated — clone it from the template.';
@@ -371,6 +395,7 @@ router.get('/tenant-status', authenticate, async (req, res) => {
       schemaExists,
       tableCount,
       templateTableCount,
+      connection,
       probes,
       missingColumns,
       shadowedPublicTables: shadowed,
