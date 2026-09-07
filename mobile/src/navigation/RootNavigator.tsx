@@ -3,16 +3,22 @@ import { NavigationContainer, DarkTheme, type Theme } from '@react-navigation/na
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
-  CalendarDays, ClipboardList, FileText, Home, MessageSquare, MoreHorizontal,
-  Stethoscope, Users, FlaskConical, Receipt,
+  CalendarDays, FileText, FlaskConical, Home, MessageSquare, MoreHorizontal, Receipt, Users,
 } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { SignInScreen } from '@/screens/SignInScreen';
 import { ServerScreen } from '@/screens/ServerScreen';
+import { MoreScreen } from '@/screens/MoreScreen';
 import { MessagesScreen } from '@/screens/messaging/MessagesScreen';
+import { PatientHomeScreen } from '@/screens/patient/HomeScreen';
+import { PatientVisitsScreen } from '@/screens/patient/VisitsScreen';
+import { PatientRecordsScreen } from '@/screens/patient/RecordsScreen';
 import { StaffTodayScreen } from '@/screens/staff/TodayScreen';
-import { Placeholder } from '@/screens/Placeholder';
+import { StaffScheduleScreen } from '@/screens/staff/ScheduleScreen';
+import { StaffPatientsScreen } from '@/screens/staff/PatientsScreen';
+import { StaffOrdersScreen } from '@/screens/staff/OrdersScreen';
+import { StaffBillingScreen } from '@/screens/staff/BillingScreen';
 import { Loading } from '@/components/ui';
 import { palette } from '@/theme/tokens';
 
@@ -40,51 +46,33 @@ const tabScreenOptions = {
   tabBarInactiveTintColor: palette.textMuted,
 } as const;
 
+type Nav = { navigate: (screen: string) => void };
+
 /** Patient shell — Home · Visits · Records · Messages · More. */
-const PatientTabs: React.FC = () => (
+const PatientTabs: React.FC<{ openServer: () => void }> = ({ openServer }) => (
   <Tabs.Navigator screenOptions={tabScreenOptions}>
     <Tabs.Screen
       name="Home"
       options={{ tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }}
     >
-      {() => (
-        <Placeholder
-          title="Home"
-          summary="Next appointment with a join button, outstanding forms and balance due."
-          endpoints={['GET /api/patient-portal/:id/appointments']}
+      {({ navigation }: { navigation: Nav }) => (
+        <PatientHomeScreen
+          onOpenMessages={() => navigation.navigate('Messages')}
+          onOpenVisits={() => navigation.navigate('Visits')}
         />
       )}
     </Tabs.Screen>
 
     <Tabs.Screen
       name="Visits"
+      component={PatientVisitsScreen}
       options={{ tabBarIcon: ({ color, size }) => <CalendarDays color={color} size={size} /> }}
-    >
-      {() => (
-        <Placeholder
-          title="Visits"
-          summary="Upcoming and past appointments, with reschedule, cancel and add-to-calendar."
-          endpoints={[
-            'GET /api/patient-portal/:id/appointments',
-            'PUT /api/patient-portal/:id/appointments/:apptId',
-          ]}
-        />
-      )}
-    </Tabs.Screen>
-
+    />
     <Tabs.Screen
       name="Records"
+      component={PatientRecordsScreen}
       options={{ tabBarIcon: ({ color, size }) => <FileText color={color} size={size} /> }}
-    >
-      {() => (
-        <Placeholder
-          title="Records"
-          summary="Documents with provenance — a patient upload reads Awaiting review until a clinician accepts it."
-          endpoints={['GET /api/patient-portal/:id/medical-records']}
-        />
-      )}
-    </Tabs.Screen>
-
+    />
     <Tabs.Screen
       name="Messages"
       component={MessagesScreen}
@@ -95,23 +83,22 @@ const PatientTabs: React.FC = () => (
       name="More"
       options={{ tabBarIcon: ({ color, size }) => <MoreHorizontal color={color} size={size} /> }}
     >
-      {() => (
-        <Placeholder
-          title="More"
-          summary="Prescriptions, diagnoses, forms requested, invoices, notifications, server and sign out."
-        />
-      )}
+      {() => <MoreScreen onOpenServer={openServer} />}
     </Tabs.Screen>
   </Tabs.Navigator>
 );
 
 /**
- * Clinician shell — Today · Schedule · Messages · Patients · More, plus the
- * tablet-only surfaces. The scope doc's split is the rule: a phone is for the
- * ward round, a tablet is where data entry with code pickers becomes usable,
- * so those tabs appear only when there is width for them.
+ * Clinician shell — Today · Schedule · Messages · Patients · More, plus two
+ * tablet-only tabs.
+ *
+ * The scope doc's split is the rule: a phone is for the ward round, a tablet
+ * is where list-and-table work becomes usable. Orders and Revenue cycle appear
+ * only when there is width for them. Chart review is not a separate tablet tab
+ * — Patients already opens a split view with the summary beside the roster, so
+ * a third route to the same data would be clutter, not capability.
  */
-const StaffTabs: React.FC = () => {
+const StaffTabs: React.FC<{ openServer: () => void }> = ({ openServer }) => {
   const { isTablet } = useLayout();
 
   return (
@@ -121,97 +108,46 @@ const StaffTabs: React.FC = () => {
         component={StaffTodayScreen}
         options={{ tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }}
       />
-
       <Tabs.Screen
         name="Schedule"
+        component={StaffScheduleScreen}
         options={{ tabBarIcon: ({ color, size }) => <CalendarDays color={color} size={size} /> }}
-      >
-        {() => (
-          <Placeholder
-            title="Schedule"
-            summary="Day agenda on a phone; the tablet gains the week grid the web app uses."
-            endpoints={['GET /api/appointments']}
-          />
-        )}
-      </Tabs.Screen>
-
+      />
       <Tabs.Screen
         name="Messages"
         component={MessagesScreen}
         options={{ tabBarIcon: ({ color, size }) => <MessageSquare color={color} size={size} /> }}
       />
-
       <Tabs.Screen
         name="Patients"
+        component={StaffPatientsScreen}
         options={{ tabBarIcon: ({ color, size }) => <Users color={color} size={size} /> }}
-      >
-        {() => (
-          <Placeholder
-            title="Patients"
-            summary="Search, then a summary card: allergies, active medications, recent visits."
-            endpoints={['GET /api/patients', 'GET /api/medical-records?patientId=']}
-          />
-        )}
-      </Tabs.Screen>
-
-      {/* ── Tablet-only, per the scope doc's tablet-first list ─────────────
-          These need multi-select pickers and side-by-side context, which is
-          exactly what does not fit on a phone. */}
-      {isTablet && (
-        <Tabs.Screen
-          name="Chart"
-          options={{ tabBarIcon: ({ color, size }) => <Stethoscope color={color} size={size} /> }}
-        >
-          {() => (
-            <Placeholder
-              title="Encounter"
-              summary="Tablet only. Diagnosis capture with ICD and CPT pickers, and the full chart beside it."
-              endpoints={['POST /api/diagnosis', 'GET /api/medical-codes']}
-            />
-          )}
-        </Tabs.Screen>
-      )}
+      />
 
       {isTablet && (
         <Tabs.Screen
           name="Orders"
+          component={StaffOrdersScreen}
           options={{ tabBarIcon: ({ color, size }) => <FlaskConical color={color} size={size} /> }}
-        >
-          {() => (
-            <Placeholder
-              title="Orders"
-              summary="Tablet only. e-Prescribing and lab orders — both need multi-select and a result-recipient picker."
-              endpoints={['POST /api/prescriptions', 'POST /api/lab-orders']}
-            />
-          )}
-        </Tabs.Screen>
+        />
       )}
-
       {isTablet && (
         <Tabs.Screen
           name="Billing"
-          options={{ tabBarIcon: ({ color, size }) => <Receipt color={color} size={size} /> }}
-        >
-          {() => (
-            <Placeholder
-              title="Revenue cycle"
-              summary="Tablet only. Claims, pre-authorisations and denials — table work that a phone cannot hold."
-              endpoints={['GET /api/claims', 'GET /api/denials', 'GET /api/preapprovals']}
-            />
-          )}
-        </Tabs.Screen>
+          component={StaffBillingScreen}
+          options={{
+            title: 'Revenue cycle',
+            tabBarLabel: 'Billing',
+            tabBarIcon: ({ color, size }) => <Receipt color={color} size={size} />,
+          }}
+        />
       )}
 
       <Tabs.Screen
         name="More"
         options={{ tabBarIcon: ({ color, size }) => <MoreHorizontal color={color} size={size} /> }}
       >
-        {() => (
-          <Placeholder
-            title="More"
-            summary="Tasks, waitlist, notifications, server and sign out. Admin, reports and form authoring stay on the web app."
-          />
-        )}
+        {() => <MoreScreen onOpenServer={openServer} />}
       </Tabs.Screen>
     </Tabs.Navigator>
   );
@@ -227,8 +163,8 @@ export const RootNavigator: React.FC = () => {
       ) : status === 'signed-out' ? (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="SignIn">
-            {({ navigation }) => (
-              <SignInScreen onOpenServer={() => navigation.navigate('Server' as never)} />
+            {({ navigation }: { navigation: Nav }) => (
+              <SignInScreen onOpenServer={() => navigation.navigate('Server')} />
             )}
           </Stack.Screen>
           <Stack.Screen
@@ -239,7 +175,15 @@ export const RootNavigator: React.FC = () => {
         </Stack.Navigator>
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="App" component={isPatient ? PatientTabs : StaffTabs} />
+          <Stack.Screen name="App">
+            {({ navigation }: { navigation: Nav }) =>
+              isPatient ? (
+                <PatientTabs openServer={() => navigation.navigate('Server')} />
+              ) : (
+                <StaffTabs openServer={() => navigation.navigate('Server')} />
+              )
+            }
+          </Stack.Screen>
           <Stack.Screen
             name="Server"
             component={ServerScreen}
