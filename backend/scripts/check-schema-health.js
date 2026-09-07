@@ -98,6 +98,56 @@ async function main() {
     }
   }
 
+  // 3b. Column-level diff of every tenant schema against the golden `template`.
+  //
+  // Table-existence checks miss the failure that actually bites: a table that exists but
+  // is missing a column a later migration added. `SELECT 1 FROM patients` succeeds while
+  // `SELECT *, date_of_birth AS dob FROM patients ORDER BY last_name` fails with 42703,
+  // so the endpoint 500s and every existence check says the schema is fine.
+  //
+  // `template` is the reference every tenant is cloned from, so anything present there and
+  // absent in a tenant is a gap by definition — no hand-maintained list to fall behind.
+  if (schemas.includes('template')) {
+    const { rows: tmplCols } = await pool.query(
+      `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'template'`
+    );
+    const wanted = new Map(); // table -> Set(columns)
+    for (const c of tmplCols) {
+      if (!wanted.has(c.table_name)) wanted.set(c.table_name, new Set());
+      wanted.get(c.table_name).add(c.column_name);
+    }
+
+    for (const schema of schemas.filter((s) => s !== 'template')) {
+      const { rows: cols } = await pool.query(
+        `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = $1`,
+        [schema]
+      );
+      const have = new Map();
+      for (const c of cols) {
+        if (!have.has(c.table_name)) have.set(c.table_name, new Set());
+        have.get(c.table_name).add(c.column_name);
+      }
+
+      const gaps = [];
+      for (const [table, columns] of wanted) {
+        // A table missing entirely is already reported above; only report column drift here.
+        if (!have.has(table)) continue;
+        for (const col of columns) {
+          if (!have.get(table).has(col)) gaps.push(`${table}.${col}`);
+        }
+      }
+      if (gaps.length) {
+        problems.push(
+          `${schema}: ${gaps.length} column(s) present in template but missing here — ` +
+          gaps.slice(0, 10).join(', ') + (gaps.length > 10 ? `, +${gaps.length - 10} more` : '')
+        );
+      }
+    }
+    note(`  diffed ${schemas.length - 1} tenant schema(s) against template, column by column`);
+  } else {
+    problems.push('template schema is missing — new tenants cannot be provisioned from it');
+  }
+
   // 4. Tenant migration files recorded per schema.
   const tenantDir = path.join(__dirname, '..', 'migrations', 'tenant');
   const files = fs.existsSync(tenantDir)
