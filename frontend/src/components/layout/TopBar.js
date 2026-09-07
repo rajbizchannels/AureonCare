@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Bot, HelpCircle, LogOut, Menu, MessageSquare, Moon, Search, Settings, Sun } from 'lucide-react';
+import { Bell, HelpCircle, LogOut, Menu, MessageSquare, Moon, Search, Sun } from 'lucide-react';
 
 /**
  * The app-shell top bar. Spans all three panes and owns the global actions
@@ -16,8 +16,6 @@ const TopBar = ({
   onMessages,
   onNotifications,
   onHelp,
-  onAssistant,
-  onSettings,
   onProfile,
   onLogout,
   onToggleTheme,
@@ -104,15 +102,9 @@ const TopBar = ({
           <HelpCircle className="w-5 h-5" />
         </button>
 
-        <button onClick={onAssistant} className={iconButton} title="AI Assistant">
-          <Bot className="w-5 h-5" />
-        </button>
-
-        {!isPatient && (
-          <button onClick={onSettings} className={iconButton} title="Settings">
-            <Settings className="w-5 h-5" />
-          </button>
-        )}
+        {/* The AI assistant and settings buttons used to sit here. Settings is reached from
+            the Settings group in pane 1; personal preferences live in the profile modal,
+            which every staff role can open from the avatar. */}
 
         <button
           onClick={onToggleTheme}
