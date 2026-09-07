@@ -339,10 +339,42 @@ and the raw link is shown exactly once. Server-side, an invite is honoured only 
 provider itself vouches for the email *and* that verified address matches the invited one —
 so a valid token cannot bind somebody else's Google account.
 
+### Self-service joining by email domain
+
+Requires migration `080_domain_join_requests.sql`.
+
+Under **Settings → User Management → Team access** an admin claims a domain the practice
+controls and publishes the shown value as a TXT record at the domain apex (or at
+`_aureoncare.<domain>`). Until that record is found the claim grants nothing at all — an
+unverified claim is invisible even to the public lookup.
+
+A domain sets one of three policies:
+
+| Policy | What a matching signup gets |
+|---|---|
+| `auto_request` (default) | An account in `pending` status plus a request in the admin queue. They cannot sign in until approved. |
+| `auto_join` | Bound to the practice immediately. |
+| `disabled` | Nothing — the claim is held but grants no access. |
+
+`auto_request` is the default deliberately: a claimed domain is not an employee list, and
+for a clinical system a human should decide who gets in.
+
+Two proofs are required and neither is sufficient alone — the practice must have proven it
+controls the **domain** (the DNS record), and the signup must have proven it controls the
+**address** (a provider-verified OAuth email, or a password signup at that address). Public
+mailbox providers (gmail.com, outlook.com and the rest) cannot be claimed at all; without
+that rule, claiming gmail.com would capture every Google signup on the platform.
+
+A self-serve joiner is never made an admin — the role is limited to staff, nurse or doctor,
+so claiming a domain cannot become a privilege-escalation path.
+
+Rejecting a request blocks the account rather than leaving it pending, so a rejected
+applicant cannot later be approved by accident.
+
 ## Routing
 
-`/signup`, `/signup/complete` and `/accept-invite` are SPA routes served before the auth
-gate. `vercel.json` carries the rewrites; replicate them behind your own proxy or those
+`/signup`, `/signup/complete`, `/accept-invite` and `/join` are SPA routes served before the
+auth gate. `vercel.json` carries the rewrites; replicate them behind your own proxy or those
 paths will 404.
 
 ---

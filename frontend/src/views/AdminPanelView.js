@@ -63,6 +63,7 @@ import {
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import InviteStaffPanel from '../components/InviteStaffPanel';
+import TeamAccessPanel from '../components/TeamAccessPanel';
 import SubscriptionPlansPanel from '../components/SubscriptionPlansPanel';
 import CredentialModal from '../components/modals/CredentialModal';
 import BackupDestinationModal from '../components/modals/BackupDestinationModal';
@@ -2417,6 +2418,10 @@ const AdminPanelView = ({
 
       {/* Self-service onboarding: an admin adds colleagues without any operator action. */}
       <InviteStaffPanel theme={theme} api={api} addNotification={addNotification} />
+
+      {/* The other half: colleagues who sign themselves up from a verified email domain,
+          and the queue of people waiting to be let in. */}
+      <TeamAccessPanel theme={theme} api={api} addNotification={addNotification} />
 
       {/* ── My Preferences Card ─────────────────────────────── */}
       <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>

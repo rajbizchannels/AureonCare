@@ -51,6 +51,10 @@
       "dest": "frontend/index.html"
     },
     {
+      "src": "/join",
+      "dest": "frontend/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "frontend/$1"
     }

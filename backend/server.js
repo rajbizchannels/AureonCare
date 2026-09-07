@@ -211,6 +211,7 @@ app.use('/api/auth', authLimiter, require('./routes/auth'));
 // partly unauthenticated by design and carry their own rate limits.
 app.use('/api/signup', require('./routes/signup'));
 app.use('/api/invites', require('./routes/invites').router);
+app.use('/api/team-access', require('./routes/teamAccess').router);
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/appointment-types', require('./routes/appointment-types'));
