@@ -44,3 +44,5 @@ docs/demo/video-library/wave3/
 .env
 .env.*
 !.env.example
+.vercel
+.env*
