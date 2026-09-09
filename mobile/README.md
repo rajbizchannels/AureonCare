@@ -33,6 +33,43 @@ npx expo prebuild        # generates ios/ and android/ (both are gitignored)
 npm run ios              # or: npm run android
 ```
 
+All commands run from `mobile/`, never from the repository root — the root is
+the backend, and it has no Expo project in it.
+
+### Android prerequisites
+
+`npm run android` shells out to the Android SDK. It is not bundled with Expo or
+Node, so a machine without it fails with *"Failed to resolve the Android SDK
+path"* and then *"'adb' is not recognized"*.
+
+Install **Android Studio**, then in *Settings → Languages & Frameworks → Android
+SDK* tick the SDK Platform for API 35 and, under *SDK Tools*, **Android SDK
+Platform-Tools** (that is what `adb` comes from) and **Android Emulator**. The
+SDK path shown at the top of that screen is the value the environment needs.
+
+Windows (PowerShell, once — reopen the terminal afterwards):
+
+```powershell
+setx ANDROID_HOME "$env:LOCALAPPDATA\Android\Sdk"
+setx PATH "$env:PATH;$env:LOCALAPPDATA\Android\Sdk\platform-tools"
+```
+
+macOS / Linux (`~/.zshrc` or `~/.bashrc`):
+
+```bash
+export ANDROID_HOME="$HOME/Library/Android/sdk"   # Linux: $HOME/Android/Sdk
+export PATH="$PATH:$ANDROID_HOME/platform-tools"
+```
+
+`adb devices` should then print a device list. Start an emulator from Android
+Studio's Device Manager, or plug in a phone with USB debugging on, before
+`npm run android`.
+
+There is one way round installing the SDK at all: build the development client
+in the cloud with `npx eas build --platform android --profile development`,
+install the resulting APK on the phone once, then `npm start` and scan the QR
+code. Only the *build* needs the SDK; the dev server does not.
+
 ### Pointing it at a backend
 
 Start the API from the repo root (`npm install && npm run dev`); it listens on
@@ -66,6 +103,7 @@ the root, not under `/api` like everything else — and falls back to
 | `src/context/SessionContext.tsx` | Who is signed in, against which server, with which credential |
 | `src/components/SplitView.tsx` | Master–detail that is one pane on a phone and two on a tablet |
 | `src/navigation/RootNavigator.tsx` | Role-derived shells and the tablet-only tabs |
+| `metro.config.js` | Pins the bundler to `mobile/` so it does not adopt the backend above it as a workspace root |
 
 ### The credential model is the part worth reading
 
