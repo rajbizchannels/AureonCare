@@ -754,7 +754,10 @@ const api = {
       // the account was in another practice, unlinked, or still referenced by other
       // records. The server distinguishes those; pass its answer through.
       const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || 'Failed to delete user');
+      const detail = data.code || data.detail
+        ? ` [${[data.code, data.detail].filter(Boolean).join(': ')}]`
+        : '';
+      throw new Error((data.error || 'Failed to delete user') + detail);
     }
     return response.json();
   },

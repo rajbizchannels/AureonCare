@@ -309,6 +309,30 @@ const PW = 'A-Strong-Passphrase!23';
   check('and says so, rather than claiming the user does not exist',
     crossDelete.body && /different practice/i.test(crossDelete.body.error || ''));
 
+  // ── The tenant handle's transaction handling ──────────────────────────────
+  // `ROLLBACK TO SAVEPOINT x` starts with ROLLBACK but does not end the transaction.
+  // Treating it as one cleared the in-transaction flag while the transaction was still
+  // open, so every following statement tried to open a nested BEGIN inside it. The user
+  // deletion path relies on savepoints to skip a cleanup table that is not present.
+  {
+    const { makeTenantDb } = require(path.join(BACKEND, 'db/requestTenantDb.js'));
+    const tdb = makeTenantDb(pool, 'tenant_default');
+    await tdb.query('BEGIN');
+    await tdb.query('SAVEPOINT probe');
+    let code = null;
+    try { await tdb.query('DELETE FROM definitely_not_a_table WHERE 1=0'); }
+    catch (e) { code = e.code; await tdb.query('ROLLBACK TO SAVEPOINT probe'); }
+    check('a missing table inside a savepoint reports 42P01', code === '42P01');
+    const after = await tdb.query('SELECT current_setting($1) AS sp', ['search_path']);
+    check('the transaction survives a savepoint rollback', Boolean(after.rows[0]));
+    check('and the tenant search_path is still pinned',
+      /tenant_default/.test(after.rows[0].sp));
+    await tdb.query('COMMIT');
+    const post = await tdb.query('SELECT 1 AS x');
+    check('ordinary queries work again after COMMIT', post.rows[0].x === 1);
+    tdb.release();
+  }
+
   // ── Report ────────────────────────────────────────────────────────────────
   let pass = 0;
   for (const [name, ok] of results) {
