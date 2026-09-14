@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Account Security - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>🔐 Account Security</h1>
+                    <p>Two-factor authentication, sessions and audit</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.4</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Account Security</h1>
+
+            <h2>Two-Factor Authentication (2FA)</h2>
+            <p>Two-factor authentication asks for a 6-digit code from your phone in addition to your password. It is the single most effective protection for an account that touches patient data.</p>
+
+            <h3>Enrolling</h3>
+            <ol>
+                <li>Open <strong>User Profile → Security</strong></li>
+                <li>Click <strong>Enable Two-Factor Authentication</strong></li>
+                <li>Scan the QR code with an authenticator app, <strong>or</strong> type the setup key shown beneath it</li>
+                <li>Enter the 6-digit code your app displays</li>
+                <li>Click <strong>Verify</strong></li>
+                <li><strong>Save your ten recovery codes</strong> — they are shown only once</li>
+            </ol>
+            <p>2FA switches on only after a code from your app verifies, so an abandoned setup cannot lock you out.</p>
+            <p><strong>Supported apps:</strong> Google Authenticator, Microsoft Authenticator, Authy, 1Password, Bitwarden, or any app supporting TOTP.</p>
+
+            <h3>Recovery Codes</h3>
+            <ul>
+                <li>Ten codes are issued when you enrol</li>
+                <li>Each works <strong>once</strong></li>
+                <li>Use one in place of an authenticator code if you lose your phone</li>
+                <li>They are stored hashed — AureonCare cannot show them to you again</li>
+            </ul>
+            <p><strong>Save your recovery codes somewhere safe and offline before leaving the enrolment screen.</strong> Losing both your phone and your recovery codes means an administrator must reset your access.</p>
+
+            <p><strong>To regenerate:</strong> User Profile → Security → Regenerate Recovery Codes, then enter a current authenticator code. The old set stops working immediately.</p>
+
+            <h3>Signing In With 2FA</h3>
+            <ol>
+                <li>Enter your email and password</li>
+                <li>Enter the 6-digit code from your authenticator app</li>
+                <li>If you cannot reach your phone, click <strong>Use a recovery code</strong></li>
+            </ol>
+
+            <h3>Turning 2FA Off</h3>
+            <p>Requires <strong>both</strong> your password and a current authenticator code. Being signed in is deliberately not enough — that is exactly what someone holding a stolen session would try to do.</p>
+
+            <h3>Requiring 2FA Practice-Wide</h3>
+            <ol>
+                <li>Go to <strong>Settings → Access → Team Access</strong></li>
+                <li>Enable <strong>Require two-factor authentication</strong></li>
+                <li>Save</li>
+            </ol>
+            <p>The setting is refused while any administrator still lacks a second factor, and the error names them — enabling it otherwise would lock the person enabling it out of their own practice at the next sign-in.</p>
+            <p><strong>Tip:</strong> Have every administrator enrol first, then switch the requirement on, then give staff a deadline to enrol.</p>
+
+            <h2>Session Timeout</h2>
+            <p>Idle sessions expire automatically, enforced on the server.</p>
+            <ul>
+                <li>The clock runs from your <strong>last action</strong>, not from when you signed in</li>
+                <li>Working continuously will not sign you out mid-note</li>
+                <li>The length is set by your administrator in <strong>Settings → Practice</strong></li>
+                <li>When a session expires you return to the sign-in screen; unsaved work in an open form is lost</li>
+            </ul>
+            <p><strong>Tip:</strong> Save long clinical notes as you go rather than leaving a form open while you step away.</p>
+
+            <h2>Passwords</h2>
+            <p><strong>Requirements:</strong> minimum <strong>12 characters</strong>, mixing upper case, lower case, digits and symbols.</p>
+            <p><strong>To change:</strong> User Profile → Security → Change Password.</p>
+            <ul>
+                <li>✓ Use a password manager and a unique password per system</li>
+                <li>✓ Change it immediately if you suspect exposure</li>
+                <li>✗ Don't reuse a password from another system</li>
+                <li>✗ Don't share credentials — audit entries are attributed to the account that acted</li>
+            </ul>
+
+            <h2>Sign-in Messages</h2>
+            <table>
+                <tr><th>Message</th><th>What it means</th></tr>
+                <tr><td>Invalid email or password</td><td>The combination was not accepted. This message is identical whether or not the address is registered, which stops an outsider discovering who has an account</td></tr>
+                <tr><td>Enter your authentication code</td><td>Your account has 2FA enabled</td></tr>
+                <tr><td>Your account is awaiting approval</td><td>You signed up through your practice's email domain; an administrator must accept you</td></tr>
+                <tr><td>Your account has been blocked</td><td>An administrator has disabled the account</td></tr>
+                <tr><td>Your session has expired</td><td>You were idle longer than your practice's timeout</td></tr>
+            </table>
+
+            <h2>What Gets Audited</h2>
+            <p><strong>Recorded:</strong></p>
+            <ul>
+                <li>Who signed in, when, and from what address</li>
+                <li>Every create, edit and delete</li>
+                <li><strong>Every read of patient data</strong> — who opened which chart, record, prescription, lab order or diagnosis</li>
+                <li>Permission and role changes</li>
+                <li>Export and backup operations</li>
+            </ul>
+            <p><strong>Not recorded:</strong> the patient data itself. Entries record <em>what</em> was accessed, never the content returned — an audit trail that copied the data would become a second place to leak it.</p>
+            <p><strong>Immutability:</strong> audit entries cannot be edited or deleted by anyone, including administrators. This is enforced by the database, not by application permissions.</p>
+            <p>Review at <strong>Settings → System → Audit Logs</strong>.</p>
+
+            <h2>Data Protection</h2>
+            <table>
+                <tr><th>Protection</th><th>What it covers</th></tr>
+                <tr><td>Encryption in transit</td><td>Everything between your browser or phone and the server</td></tr>
+                <tr><td>Encryption at rest</td><td>The database, plus message bodies and attachments encrypted separately</td></tr>
+                <tr><td>Encrypted backups</td><td>Backups containing patient data are encrypted before leaving your infrastructure</td></tr>
+                <tr><td>Rate limiting</td><td>Repeated failed sign-ins are throttled and the account temporarily locked</td></tr>
+                <tr><td>Send quotas</td><td>Per-recipient limits on email and WhatsApp, so a fault cannot flood a patient</td></tr>
+            </table>
+
+            <h2>Administrator Checklist</h2>
+            <ul>
+                <li>✓ Require 2FA for all accounts, administrators first</li>
+                <li>✓ Set an idle session timeout appropriate to your setting — shorter for shared workstations</li>
+                <li>✓ Review the pending-joiner queue regularly; reject anything unexpected</li>
+                <li>✓ Review user accounts quarterly and disable leavers the day they leave</li>
+                <li>✓ Check audit logs for unusual access patterns</li>
+                <li>✓ Confirm backups are running and encrypted</li>
+                <li>✓ Keep the claimed-domain join policy on <em>Request approval</em></li>
+                <li>✗ Don't share administrator accounts</li>
+                <li>✗ Don't leave departed staff accounts active "just in case"</li>
+            </ul>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="user-management.html">User Management</a></li>
+                <li><a href="practice-settings.html">Practice Settings</a></li>
+                <li><a href="mobile-app.html">Mobile App</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.4 - Account Security</p>
+    </footer>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # AureonCare User Manual
 
-**Version 1.3 - Updated August 2026**
+**Version 1.4 - Updated September 2026**
 **Modern Healthcare Practice Management System**
 
 ---
@@ -34,6 +34,9 @@
 25. [Accounting](#25-accounting)
 26. [Inventory Management](#26-inventory-management)
 27. [Subscription Plans & Licensing](#27-subscription-plans--licensing)
+28. [Secure Messaging](#28-secure-messaging)
+29. [Mobile App](#29-mobile-app)
+30. [Account Security](#30-account-security)
 
 ---
 
@@ -50,11 +53,14 @@ AureonCare is a comprehensive, enterprise-grade medical practice management plat
 - Double-entry accounting and inventory management
 - Custom form building with automated patient intake
 - Telehealth video consultations across Zoom, Google Meet, Teams, and Webex
+- Secure messaging between staff, and between the practice and its patients
 - Patient portal for self-service
+- Native mobile apps for iOS and Android
 - Laboratory and pharmacy management
 - Email and WhatsApp notifications across every module
 - FHIR HL7 compliant for interoperability
 - Multi-language support (8 languages)
+- Two-factor authentication and enforced session timeouts
 - HIPAA-ready security and compliance
 - Cloud, customer-cloud, and on-premises deployment
 
@@ -77,12 +83,18 @@ This manual is designed for:
 - Internet connection (minimum 5 Mbps recommended)
 - Screen resolution: 1280x720 or higher
 - For telehealth: Webcam and microphone
+- For two-factor authentication: an authenticator app on your phone
 
 **For Patients:**
 - Modern web browser or mobile device
 - Internet connection
 - Email address for portal access
 - For telehealth: Webcam and microphone
+
+**For the Mobile App:**
+- iOS 15 or later, or Android 8 (API 26) or later
+- Biometric hardware if you want Face ID / Touch ID / fingerprint unlock
+- Notifications permission for appointment and message alerts
 
 ### 1.4 Conventions Used in This Manual
 
@@ -92,7 +104,86 @@ This manual is designed for:
 - 💡 **Tip** - Helpful suggestions and best practices
 - ✅ **Note** - Additional information
 
-### 1.5 What's New in Version 1.3 (August 2026)
+### 1.5 What's New in Version 1.4 (September 2026)
+
+**Major New Features:**
+
+🆕 **Secure Messaging**
+- Threaded conversations between colleagues, and between the practice and its patients
+- One shared inbox at **Patients → Engagement → Messages**
+- Patients reply from a **Messages** tab in the Patient Portal
+- Unread count shown on the message icon in the header
+- Attach documents to a message and file them straight into the patient's chart
+- Message bodies and attachments are encrypted before they are stored
+- See Section 28
+
+🆕 **Native Mobile App (iOS & Android)**
+- Real native apps, not a wrapped website
+- Separate experiences for staff and for patients, chosen automatically at sign-in
+- Biometric unlock (Face ID, Touch ID, fingerprint)
+- Push notifications
+- Capture a photo directly into a message
+- Layout adapts live between phone and tablet — tablets get a list-and-detail split view
+- Tablet-only tabs for encounter capture, orders, and revenue cycle
+- See Section 29
+
+🆕 **Two-Factor Authentication (2FA)**
+- Time-based one-time codes (TOTP) from any authenticator app
+- Enrol by scanning a QR code, or by typing the setup key
+- Ten single-use recovery codes issued when you enrol
+- Turning 2FA off requires both your password and a current code
+- Administrators can require 2FA for everyone in the practice
+- See Section 30
+
+🆕 **Enforced Session Timeout**
+- Idle sessions now expire for real, checked on the server
+- Measured from your last action, not from when you signed in — working continuously will not sign you out mid-note
+- Timeout length is set by your administrator
+
+🆕 **Self-Service Practice Signup**
+- New practices can sign up at `/signup` without contacting sales
+- Pick a plan, enter details, apply a coupon if you have one, and pay through Stripe Checkout
+- Your workspace is created once payment succeeds
+- Card details never touch AureonCare
+
+🆕 **Join Your Practice by Email Domain**
+- A practice can claim a domain it controls and prove it with a DNS record
+- Colleagues then sign up with their work email — no invitation needed
+- New joiners land in a pending-approval queue for an administrator to accept
+- Self-serve joiners are never given administrator rights
+
+🆕 **Subscription Plans in Settings**
+- **Settings → Plans** is now live and administrator-only
+- Change plan and see the prorated amount before confirming
+- Changes sync to billing automatically
+
+🆕 **Diagnoses Moved to Clinical**
+- Diagnosis management now lives under **Clinical → Diagnosis** rather than Patients
+- Standalone diagnosis form gained a patient picker
+
+🆕 **Document Upload Review Queue**
+- Documents arriving from patients queue for staff review before filing
+- Review, accept, or reject from one screen
+
+🆕 **Stronger Account Protection**
+- Minimum password length raised to 12 characters, with mixed character types
+- Sign-in no longer reveals whether an email address is registered
+- Sessions are held in a protected browser cookie that scripts cannot read
+- Google and Microsoft sign-in moved to a more secure exchange handled by the server
+
+🆕 **Expanded Audit Trail**
+- Record *reads* are now logged, so "who opened this chart" has an answer
+- Audit entries can no longer be edited or deleted, by anyone
+- Entries record what was accessed, never the data returned
+
+🆕 **Encrypted Backups**
+- Backups containing patient data are encrypted before they leave your infrastructure
+
+🆕 **Training Video Library**
+- A published library of short how-to videos covering front desk, clinical, finance, and administration workflows
+- Linked from the in-app help drawer
+
+### 1.6 What's New in Version 1.3 (August 2026)
 
 **Major New Features:**
 
@@ -186,7 +277,7 @@ This manual is designed for:
 - CI/CD pipelines and an automated update agent
 - Supports cloud, customer-cloud, and on-premises deployment
 
-### 1.6 What's New in Version 1.2 (January 2026)
+### 1.7 What's New in Version 1.2 (January 2026)
 
 **Major New Features:**
 
@@ -283,7 +374,7 @@ This manual is designed for:
 - Contextual help based on current module
 - Quick access via Help icon in header or ?help=true URL parameter
 
-### 1.7 What's New in Version 1.1 (December 2025)
+### 1.8 What's New in Version 1.1 (December 2025)
 
 **Previous Enhancements:**
 
@@ -348,6 +439,7 @@ This manual is designed for:
 2. Enter your **Email Address**
 3. Enter your **Password**
 4. Click **Sign In**
+5. If two-factor authentication is on, enter the 6-digit code from your authenticator app
 
 **Patient Portal Login:**
 
@@ -367,6 +459,29 @@ This manual is designed for:
 5. Confirm your new password
 6. Log in with your new credentials
 
+**Sign-in Messages You May See:**
+
+| Message | What it means | What to do |
+|---------|---------------|------------|
+| *Invalid email or password* | The email and password combination was not accepted | Re-check both. For your safety this message is identical whether or not the address is registered |
+| *Enter your authentication code* | Your account has 2FA enabled | Open your authenticator app and enter the current code |
+| *Your account is awaiting approval* | You signed up through your practice's email domain and an administrator has not yet accepted you | Contact your practice administrator |
+| *Your account has been blocked* | An administrator has disabled the account | Contact your practice administrator |
+| *Your session has expired* | You were idle longer than your practice's timeout | Sign in again |
+
+⚠️ **Note:** AureonCare deliberately gives the same message for a wrong password and an unknown email address. This stops an outsider from discovering who has an account.
+
+**Session Timeout:**
+
+🆕 **NEW IN V1.4:** Idle sessions expire automatically.
+
+- The clock runs from your **last action**, not from when you signed in
+- Working continuously will not sign you out mid-note
+- The timeout length is set by your administrator in **Settings → Practice**
+- When a session expires you are returned to the sign-in screen; unsaved work in an open form is lost
+
+💡 **Tip:** Save long clinical notes as you go rather than leaving a form open while you step away.
+
 ### 2.2 First-Time Login
 
 When logging in for the first time:
@@ -376,6 +491,36 @@ When logging in for the first time:
 3. Upload a profile picture (optional)
 4. Set your language preference
 5. Review your assigned roles and permissions
+6. Set up two-factor authentication, if your practice requires it (see Section 30)
+
+**Password Requirements:**
+
+🆕 **UPDATED IN V1.4:** Passwords must be at least **12 characters** and mix character types — upper case, lower case, digits, and symbols.
+
+### 2.2.1 Getting an Account
+
+There are three ways to get an AureonCare account:
+
+**1. Invitation from your practice**
+- An administrator adds you under **Settings → Users**
+- You receive an email with a link to set your password
+- You can also accept the invitation with Google or Microsoft sign-in
+
+**2. Signing up with your work email** (🆕 NEW IN V1.4)
+- If your practice has claimed and verified its email domain, you can sign yourself up with your work address
+- Go to the sign-up page and register with that address
+- Your account is created in a **pending** state and appears in your practice's approval queue
+- An administrator approves it before you can sign in
+- Self-serve joiners are never given administrator rights
+
+**3. Starting a new practice** (🆕 NEW IN V1.4)
+- Go to `/signup`
+- Choose a subscription plan
+- Enter your practice details and apply a coupon code if you have one
+- Complete payment through Stripe Checkout
+- Your workspace and administrator account are created once payment succeeds
+
+✅ **Note:** Card details are handled entirely by Stripe and never reach AureonCare.
 
 ### 2.3 Social Login (OAuth)
 
@@ -434,14 +579,16 @@ Every module in AureonCare lives in exactly one workspace group. Use this map to
 - *Setup:* Appointment types
 
 **👥 Patients**
-- *Records:* EHR, Diagnosis, Patient history
+- *Records:* EHR, Patient history
 - *Forms:* Patient intake, Form templates, Form submissions, Form audit
-- *Engagement:* Patient portal — appointments, diagnoses, prescriptions, records, forms
+- *Engagement:* Messages, Patient portal — appointments, diagnoses, prescriptions, records, forms, messages
 
 **🩺 Clinical**
-- *Care:* Telehealth
+- *Care:* Telehealth, Diagnosis
 - *Network:* Pharmacies, Laboratories
 - *FHIR:* FHIR tracking
+
+⚠️ **Moved in V1.4:** Diagnosis management is now under **Clinical**, not Patients. Messages is new under **Patients → Engagement**.
 
 **💰 Billing**
 - *Revenue Cycle:* Claims, Pre-approvals, Payments, Payment postings, Denials
@@ -1941,6 +2088,10 @@ When creating a prescription, the system automatically checks for:
 
 ## 10. Diagnosis Management
 
+⚠️ **MOVED IN V1.4:** Diagnosis management now lives under **Clinical → Diagnosis**. It was previously under Patients. Everything else works as before.
+
+🆕 **NEW IN V1.4:** The standalone diagnosis form now has its own patient picker, so you can record a diagnosis without opening the chart first. The form sits above the diagnosis list on the same screen.
+
 ### 10.1 Creating a Diagnosis
 
 **To Document a Patient Diagnosis:**
@@ -3054,17 +3205,23 @@ The Patient Portal is a secure online platform where patients can:
 - Access medical records
 - View prescriptions
 - Complete assigned forms
-- Communicate with providers
+- Exchange secure messages with the practice
 - Manage personal information
 - Browse healthcare offerings
 
-**🆕 UPDATED IN V1.3:** When a patient signs in, the portal *is* their Home workspace — they land directly on it rather than navigating to it. Portal sections appear in the second pane: Appointments, Diagnoses, Prescriptions, Records, and Forms.
+**🆕 UPDATED IN V1.4:** Portal sections in the second pane are now Appointments, Diagnoses, Prescriptions, Records, **Forms**, and **Messages**.
 
-**Portal Security (V1.3):**
+When a patient signs in, the portal *is* their Home workspace — they land directly on it rather than navigating to it.
+
+Patients can also use the **mobile app** (Section 29) instead of the browser portal.
+
+**Portal Security:**
 - Session tokens are hashed at rest and bound to the specific patient
 - Repeated failed logins trigger rate limiting and temporary account lockout
-- Sessions are held in `sessionStorage` and clear when the browser closes
+- Sessions clear when the browser closes
 - Social login tokens are validated server-side before any account is created
+- 🆕 **V1.4:** Sign-in gives the same message for a wrong password and an unknown email, so an outsider cannot discover who is registered
+- 🆕 **V1.4:** Passwords must be at least 12 characters with mixed character types
 
 ### 16.2 Public Booking Links
 
@@ -3450,6 +3607,8 @@ AureonCare sends automatic notifications for:
 - Lab results available
 - Prescription refill requests
 - Form assignments and submission receipts
+- New secure messages (🆕 V1.4)
+- Documents awaiting review in the upload queue (🆕 V1.4)
 - Patient portal messages
 - Claim status updates
 - Payment receipts and failures
@@ -4835,7 +4994,7 @@ See **Section 2.7 Help & Documentation System** for complete details on using th
 
 If you need additional assistance beyond the help system:
 
-- Email: support@aureoncare.com
+- Email: support@aureoncare.tech
 - Phone: [Clinic phone number]
 - Live chat: Available during business hours
 - Support ticket system via Administration > Support
@@ -5524,6 +5683,8 @@ If either check fails, the module does not appear in the navigation.
 | Form Management | ✅ | ✅ | ✅ | ✅ |
 | Accounting | ✅ | ✅ | ✅ | ✅ |
 | Inventory | ✅ | ✅ | ✅ | ✅ |
+| Secure Messaging | ✅ | ✅ | ✅ | ✅ |
+| Mobile App | ✅ | ✅ | ✅ | ✅ |
 | Administration | ✅ | ✅ | ✅ | ✅ |
 | Telehealth | — | ✅ | ✅ | ✅ |
 | Revenue Cycle (RCM) | — | ✅ | ✅ | ✅ |
@@ -5594,6 +5755,408 @@ Administrators can generate, activate, and revoke license keys from the same scr
 
 Self-hosted deployments ship with Docker images, Helm charts, CI/CD pipeline templates, and an update agent that applies releases on a schedule you control.
 
+### 27.7 Self-Service Signup & Domain Joining
+
+**🆕 NEW IN V1.4**
+
+#### Starting a New Practice
+
+1. Go to `/signup`
+2. Choose a subscription tier
+3. Enter practice name, your name, and your email address
+4. Apply a coupon code if you have one — the discount is shown before you pay
+5. Continue to Stripe Checkout and complete payment
+6. Your workspace, subscription, and administrator account are created automatically
+
+✅ **Note:** Nothing is created until payment succeeds. If you close the browser tab after paying, your workspace is still created — check your email for the sign-in link.
+
+⚠️ **Warning:** Card details are entered on Stripe's own page and never pass through AureonCare.
+
+#### Claiming Your Email Domain
+
+Claiming a domain lets colleagues sign themselves up with their work address instead of waiting for an invitation.
+
+**To claim a domain:**
+
+1. Go to **Settings → Access → Team Access**
+2. Click **Claim Domain**
+3. Enter the domain, for example `yourpractice.com`
+4. The system gives you a DNS TXT record
+5. Add that record to your domain's DNS settings
+6. Return and click **Verify** — verification confirms you control the domain
+
+⚠️ **Warning:** Public mailbox providers such as `gmail.com`, `outlook.com`, or `yahoo.com` cannot be claimed. A domain can only be claimed by one practice.
+
+**Join Policy:**
+
+| Policy | What happens when a colleague signs up |
+|--------|----------------------------------------|
+| **Request approval** (default) | Account created as *pending*; an administrator must approve it |
+| **Auto-join** | Account is activated immediately |
+
+💡 **Tip:** Leave the policy on *Request approval*. A claimed domain is not a staff list, and for a clinical system a person should decide who gets in.
+
+#### Approving Pending Joiners
+
+1. Go to **Settings → Access → Team Access**
+2. Open the **Pending Requests** queue
+3. Review the name, email address, and how the address was verified
+4. Click **Approve** or **Reject**
+
+⚠️ **Warning:** Rejecting blocks the account rather than leaving it pending, so it cannot be approved later by mistake.
+
+✅ **Note:** Two proofs are required before anyone can join this way — your practice must have proven it controls the *domain*, and the joiner must have proven they control the *address*. Neither alone is enough.
+
+---
+
+## 28. Secure Messaging
+
+**🆕 NEW IN V1.4** — Found under **Patients → Engagement → Messages**
+
+Secure Messaging provides threaded conversations between colleagues, and between the practice and its patients, inside AureonCare rather than over email or text.
+
+### 28.1 Why Use It
+
+- Patient messages stay attached to the practice record rather than sitting in a personal inbox
+- Message bodies and attachments are encrypted before they are stored
+- Conversations are visible to the care team, so cover arrangements work
+- Documents sent by a patient can be filed straight into their chart
+
+⚠️ **Warning:** Secure Messaging is not for emergencies. Tell patients to call the practice or emergency services for anything urgent.
+
+### 28.2 The Inbox
+
+Open **Patients → Engagement → Messages**. The inbox has two panes:
+
+- **Left:** your conversation threads, newest activity first
+- **Right:** the selected conversation
+
+Staff-to-staff and staff-to-patient threads share one inbox — they are not split across separate screens.
+
+**Unread Messages:**
+
+The message icon in the header carries a count of unread conversations. Click it from anywhere to jump to the inbox.
+
+### 28.3 Starting a Conversation
+
+1. Click **New Message**
+2. Choose who you are writing to:
+   - **Colleague** — search staff by name
+   - **Patient** — search by name or MRN
+3. Add more participants if the conversation needs them
+4. Enter a subject
+5. Type your message
+6. Attach documents if needed
+7. Click **Send**
+
+✅ **Note:** Patients see only the threads they are a participant in. They never see staff-only conversations.
+
+### 28.4 Replying
+
+1. Select the thread
+2. Type in the reply box at the bottom
+3. Attach files if needed
+4. Click **Send**
+
+The thread updates for every participant. Patients are notified by email, and by WhatsApp if they have opted in.
+
+### 28.5 Attachments
+
+**Sending an attachment:**
+
+1. Click the paperclip in the message composer
+2. Choose the file
+3. Send
+
+**Filing a patient's attachment into the chart:**
+
+1. Open the message containing the document
+2. Click **File to Chart** on the attachment
+3. Choose the record type and add a description
+4. Confirm
+
+The document is added to the patient's records and stays visible in the message thread.
+
+💡 **Tip:** File clinically relevant documents promptly. A document that lives only in a message thread is easy to miss when someone later reads the chart.
+
+### 28.6 Patient View
+
+Patients reach messaging as a **Messages** tab in the Patient Portal.
+
+They can:
+- Read threads they are part of
+- Reply
+- Attach documents such as photos of an insurance card or a referral letter
+- See when a message has been read
+
+They cannot:
+- Start a thread with a staff member who is not part of their care
+- See staff-only conversations
+- See other patients' threads
+
+### 28.7 Privacy & Retention
+
+- Message bodies and attachment contents are encrypted before being written to the database
+- Encryption is at rest under a key the practice controls — it is **not** end-to-end encryption, and this is deliberate: retention, legal hold, audit, and clinical coverage all require the practice to retain access
+- Messages are covered by the audit trail
+- Messages are retained and archived under the same rules as other patient records
+
+### 28.8 Best Practices
+
+- ✅ Answer patient messages within one business day
+- ✅ Set expectations with patients about response times
+- ✅ File clinically significant messages into the chart
+- ✅ Use messaging for follow-up questions, results discussion, and admin queries
+- ❌ Don't use messaging for urgent clinical problems
+- ❌ Don't discuss one patient in another patient's thread
+- ❌ Don't move a clinical conversation to personal email or text
+
+---
+
+## 29. Mobile App
+
+**🆕 NEW IN V1.4** — Available for iOS and Android
+
+AureonCare ships native mobile apps for both staff and patients. They are real native applications sharing the platform's API, not a wrapped website.
+
+### 29.1 Installing
+
+1. Search for **AureonCare** in the App Store (iOS) or Google Play (Android)
+2. Install and open the app
+3. Enter the practice URL if prompted
+4. Sign in with the same email and password you use on the web
+
+The app chooses the right experience automatically based on your account — you do not pick "staff" or "patient".
+
+### 29.2 Signing In & Security
+
+**Biometric Unlock:**
+
+1. Sign in with your password once
+2. When prompted, enable **Face ID**, **Touch ID**, or **fingerprint unlock**
+3. Subsequent launches unlock biometrically
+
+Credentials are held in the device's secure hardware store (iOS Keychain / Android Keystore).
+
+**Two-Factor Authentication:**
+
+If your account has 2FA enabled, the app asks for your authenticator code at sign-in exactly as the web app does.
+
+**Automatic Sign-Out:**
+
+The app signs you out if the server rejects your stored credential — for example after a password change or an administrator disabling the account.
+
+⚠️ **Warning:** Enable a device passcode and biometric lock. An unlocked phone with the app installed is an unlocked chart.
+
+### 29.3 Staff App
+
+**Tabs on a phone:**
+
+| Tab | What it shows |
+|-----|---------------|
+| **Schedule** | Today's appointments, with the ability to open each one |
+| **Patients** | Patient search and chart summary |
+| **Orders** | Lab and prescription orders |
+| **Billing** | Claims and payment status |
+| **More** | Messages, settings, sign out |
+
+**Additional tablet tabs:**
+
+On a tablet the app adds the workflows that need more room:
+- **Encounter capture** — document a visit
+- **Orders** with multi-select pickers
+- **Revenue cycle** with side-by-side context
+
+### 29.4 Patient App
+
+| Tab | What it shows |
+|-----|---------------|
+| **Home** | Next appointment, recent activity, outstanding forms |
+| **Visits** | Upcoming and past appointments |
+| **Records** | Medical records, prescriptions, results |
+| **Messages** | Secure messages with the practice |
+| **More** | Profile, notification settings, sign out |
+
+### 29.5 Responsive Layout
+
+The app measures the window width live rather than assuming a device type:
+
+- **Under 600dp** — phone layout, screens stack
+- **900dp and above** — tablet layout, list and detail side by side
+
+This matters for iPad Split View and Android foldables, which change size while the app is running.
+
+### 29.6 Push Notifications
+
+Enable notifications when first prompted, or later in your device settings.
+
+You will be notified for:
+- New secure messages
+- Appointment reminders
+- Appointment changes and cancellations
+- Lab results (patients)
+- Task assignments (staff)
+
+Notification preferences follow the same settings as email and WhatsApp — see Section 18.
+
+### 29.7 Camera Capture
+
+1. Open a message thread
+2. Tap the camera icon
+3. Take the photo
+4. Review and send
+
+The photo is encrypted and attached to the message. Staff can file it into the patient's chart.
+
+💡 **Tip:** This is the fastest way for a patient to send an insurance card, a rash photo, or a home reading.
+
+### 29.8 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| **Cannot sign in** | Confirm the practice URL, and that your account works on the web |
+| **Biometric unlock stopped working** | Sign in with your password; the stored credential is cleared when it is rejected |
+| **No notifications** | Check notification permission in device settings, then your in-app preferences |
+| **Data looks stale** | Pull down to refresh |
+| **Signed out unexpectedly** | Your session hit the idle timeout, or an administrator changed your account |
+
+---
+
+## 30. Account Security
+
+**🆕 NEW IN V1.4**
+
+### 30.1 Two-Factor Authentication (2FA)
+
+Two-factor authentication asks for a 6-digit code from your phone in addition to your password. It is the single most effective protection for an account that touches patient data.
+
+#### Enrolling
+
+1. Open **User Profile → Security**
+2. Click **Enable Two-Factor Authentication**
+3. Scan the QR code with an authenticator app, **or** type the setup key shown beneath it
+4. Enter the 6-digit code your app displays
+5. Click **Verify**
+6. **Save your ten recovery codes** — they are shown only once
+
+✅ **Note:** 2FA switches on only after a code from your app verifies. An abandoned setup cannot lock you out.
+
+**Supported authenticator apps:** Google Authenticator, Microsoft Authenticator, Authy, 1Password, Bitwarden, or any app supporting TOTP.
+
+#### Recovery Codes
+
+- Ten codes are issued when you enrol
+- Each works **once**
+- Use one in place of an authenticator code if you lose your phone
+- They are stored hashed — AureonCare cannot show them to you again
+
+⚠️ **Warning:** Save your recovery codes somewhere safe and offline **before** leaving the enrolment screen. Losing both your phone and your recovery codes means an administrator must reset your access.
+
+**Regenerating recovery codes:**
+
+1. Go to **User Profile → Security**
+2. Click **Regenerate Recovery Codes**
+3. Enter a current authenticator code
+4. Save the new set — the old set stops working immediately
+
+#### Signing In With 2FA
+
+1. Enter your email and password
+2. Enter the 6-digit code from your authenticator app
+3. If you cannot reach your phone, click **Use a recovery code** and enter one
+
+#### Turning 2FA Off
+
+1. Go to **User Profile → Security**
+2. Click **Disable Two-Factor Authentication**
+3. Enter **both** your password and a current authenticator code
+4. Confirm
+
+⚠️ **Warning:** Being signed in is deliberately not enough to remove your second factor — that is exactly what someone holding a stolen session would try to do.
+
+#### Requiring 2FA Practice-Wide
+
+Administrators can require 2FA for every account.
+
+1. Go to **Settings → Access → Team Access**
+2. Enable **Require two-factor authentication**
+3. Save
+
+⚠️ **Warning:** The setting is refused while any administrator still lacks a second factor, and the error names them. Enabling it otherwise would lock the person enabling it out of their own practice at the next sign-in.
+
+💡 **Tip:** Have every administrator enrol first, then switch the requirement on, then give staff a deadline to enrol.
+
+### 30.2 Passwords
+
+**Requirements (updated in V1.4):**
+- Minimum **12 characters**
+- Mix of upper case, lower case, digits, and symbols
+
+**Changing your password:**
+
+1. Go to **User Profile → Security**
+2. Click **Change Password**
+3. Enter your current password, then the new one twice
+4. Click **Save**
+
+**Best practice:**
+- ✅ Use a password manager and a unique password per system
+- ✅ Change it immediately if you suspect exposure
+- ❌ Don't reuse a password from another system
+- ❌ Don't share credentials, ever — audit entries are attributed to the account that acted
+
+### 30.3 How Sessions Are Protected
+
+You do not need to configure any of this, but it is worth knowing:
+
+- Your session is held in a protected browser cookie that page scripts cannot read, so a malicious script cannot steal it
+- Requests carry a second token that proves they came from the real application
+- Sessions expire after a period of inactivity, enforced on the server
+- Signing out invalidates the session immediately — it cannot be replayed
+- Google and Microsoft sign-in use an exchange completed by the server, so no third-party token is exposed to the browser
+
+### 30.4 What Gets Audited
+
+🆕 **EXPANDED IN V1.4:** The audit trail now records reads as well as changes.
+
+**Recorded:**
+- Who signed in, when, and from what address
+- Every create, edit, and delete
+- **Every read of patient data** — who opened which chart, record, prescription, lab order, or diagnosis
+- Permission and role changes
+- Export and backup operations
+
+**Not recorded:**
+- The patient data itself. Entries record *what* was accessed, never the content returned — an audit trail that copied the data would become a second place to leak it.
+
+**Immutability:**
+
+Audit entries cannot be edited or deleted by anyone, including administrators. This is enforced by the database, not by application permissions.
+
+To review: **Settings → System → Audit Logs**. See Section 19 for filtering and export.
+
+### 30.5 Data Protection
+
+| Protection | What it covers |
+|------------|----------------|
+| **Encryption in transit** | Everything between your browser or phone and the server |
+| **Encryption at rest** | The database, plus message bodies and attachments encrypted separately |
+| **Encrypted backups** | Backups containing patient data are encrypted before leaving your infrastructure |
+| **Rate limiting** | Repeated failed sign-ins are throttled and the account is temporarily locked |
+| **Send quotas** | Per-recipient limits on email and WhatsApp, so a fault cannot flood a patient |
+
+### 30.6 Security Checklist for Administrators
+
+- ✅ Require 2FA for all accounts, administrators first
+- ✅ Set an idle session timeout appropriate to your setting — shorter for shared workstations
+- ✅ Review the pending-joiner queue regularly; reject anything unexpected
+- ✅ Review user accounts quarterly and disable leavers the day they leave
+- ✅ Check audit logs for unusual access patterns
+- ✅ Confirm backups are running and encrypted
+- ✅ Keep the claimed-domain join policy on *Request approval*
+- ❌ Don't share administrator accounts
+- ❌ Don't leave departed staff accounts active "just in case"
+
 ---
 
 ## Appendix A: Keyboard Shortcuts
@@ -5616,9 +6179,9 @@ Self-hosted deployments ship with Docker images, Helm charts, CI/CD pipeline tem
 ## Appendix B: Contact Information
 
 **AureonCare Support:**
-- Email: support@aureoncare.com
-- Website: https://aureoncare.com
-- Documentation: https://docs.aureoncare.com
+- Email: support@aureoncare.tech
+- Website: https://aureoncare.tech
+- Documentation: https://docs.aureoncare.tech
 
 **Emergency Support:**
 - For medical emergencies: Call 911
@@ -5653,6 +6216,24 @@ Self-hosted deployments ship with Docker images, Helm charts, CI/CD pipeline tem
 ---
 
 ## Document Version History
+
+**Version 1.4** - September 2026 - Major Update with:
+- Secure Messaging between staff, and between the practice and its patients
+- Native mobile apps for iOS and Android, with biometric unlock and push notifications
+- Two-factor authentication (TOTP) with recovery codes and a practice-wide requirement option
+- Server-enforced idle session timeout, measured from last activity
+- Self-service practice signup through Stripe Checkout, with coupon support
+- Join-by-email-domain with DNS verification and a pending-approval queue
+- Settings → Plans made live, administrator-only, with prorated plan changes
+- Diagnosis management moved from Patients to Clinical
+- Document upload review queue
+- Password minimum raised to 12 characters with mixed character types
+- Sign-in no longer reveals whether an email address is registered
+- Sessions moved to protected cookies; OAuth exchange moved server-side
+- Audit trail expanded to record PHI reads, and made immutable
+- Backups containing patient data encrypted before leaving the infrastructure
+- Published training video library
+- Contact and documentation domains moved to aureoncare.tech
 
 **Version 1.3** - August 2026 - Major Update with:
 - Three-pane application shell (workspace groups → modules → content)

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Secure Messaging - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>💬 Secure Messaging</h1>
+                    <p>Threaded conversations with colleagues and patients</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.4</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Secure Messaging</h1>
+            <p>Found under <strong>Patients → Engagement → Messages</strong>. Threaded conversations between colleagues, and between the practice and its patients — inside AureonCare rather than over email or text.</p>
+
+            <h2>Why Use It</h2>
+            <ul>
+                <li>Patient messages stay attached to the practice record rather than sitting in a personal inbox</li>
+                <li>Message bodies and attachments are encrypted before they are stored</li>
+                <li>Conversations are visible to the care team, so cover arrangements work</li>
+                <li>Documents sent by a patient can be filed straight into their chart</li>
+            </ul>
+
+            <p><strong>Not for emergencies.</strong> Tell patients to call the practice or emergency services for anything urgent.</p>
+
+            <h2>The Inbox</h2>
+            <p>Open <strong>Patients → Engagement → Messages</strong>. Two panes:</p>
+            <ul>
+                <li><strong>Left:</strong> your conversation threads, newest activity first</li>
+                <li><strong>Right:</strong> the selected conversation</li>
+            </ul>
+            <p>Staff-to-staff and staff-to-patient threads share one inbox — they are not split across separate screens.</p>
+
+            <h3>Unread Messages</h3>
+            <p>The message icon in the header carries a count of unread conversations. Click it from anywhere in the app to jump to the inbox.</p>
+
+            <h2>Starting a Conversation</h2>
+            <ol>
+                <li>Click <strong>New Message</strong></li>
+                <li>Choose who you are writing to:
+                    <ul>
+                        <li><strong>Colleague</strong> — search staff by name</li>
+                        <li><strong>Patient</strong> — search by name or MRN</li>
+                    </ul>
+                </li>
+                <li>Add more participants if the conversation needs them</li>
+                <li>Enter a subject</li>
+                <li>Type your message</li>
+                <li>Attach documents if needed</li>
+                <li>Click <strong>Send</strong></li>
+            </ol>
+            <p>Patients see only the threads they are a participant in. They never see staff-only conversations.</p>
+
+            <h2>Replying</h2>
+            <ol>
+                <li>Select the thread</li>
+                <li>Type in the reply box at the bottom</li>
+                <li>Attach files if needed</li>
+                <li>Click <strong>Send</strong></li>
+            </ol>
+            <p>The thread updates for every participant. Patients are notified by email, and by WhatsApp if they have opted in.</p>
+
+            <h2>Attachments</h2>
+
+            <h3>Sending</h3>
+            <ol>
+                <li>Click the paperclip in the message composer</li>
+                <li>Choose the file</li>
+                <li>Send</li>
+            </ol>
+
+            <h3>Filing a Patient's Attachment into the Chart</h3>
+            <ol>
+                <li>Open the message containing the document</li>
+                <li>Click <strong>File to Chart</strong> on the attachment</li>
+                <li>Choose the record type and add a description</li>
+                <li>Confirm</li>
+            </ol>
+            <p>The document is added to the patient's records and stays visible in the message thread.</p>
+            <p><strong>Tip:</strong> File clinically relevant documents promptly. A document that lives only in a message thread is easy to miss when someone later reads the chart.</p>
+
+            <h2>What Patients See</h2>
+            <p>Patients reach messaging as a <strong>Messages</strong> tab in the Patient Portal, or in the mobile app.</p>
+
+            <table>
+                <tr><th>Patients can</th><th>Patients cannot</th></tr>
+                <tr>
+                    <td>Read threads they are part of</td>
+                    <td>Start a thread with a staff member outside their care</td>
+                </tr>
+                <tr>
+                    <td>Reply</td>
+                    <td>See staff-only conversations</td>
+                </tr>
+                <tr>
+                    <td>Attach documents</td>
+                    <td>See other patients' threads</td>
+                </tr>
+                <tr>
+                    <td>See when a message has been read</td>
+                    <td>&nbsp;</td>
+                </tr>
+            </table>
+
+            <h2>Privacy &amp; Retention</h2>
+            <ul>
+                <li>Message bodies and attachment contents are encrypted before being written to the database</li>
+                <li>Encryption is <strong>at rest</strong> under a key the practice controls — it is not end-to-end encryption, and this is deliberate: retention, legal hold, audit, and clinical coverage all require the practice to retain access</li>
+                <li>Messages are covered by the audit trail</li>
+                <li>Messages are retained and archived under the same rules as other patient records</li>
+            </ul>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>✓ Answer patient messages within one business day</li>
+                <li>✓ Set expectations with patients about response times</li>
+                <li>✓ File clinically significant messages into the chart</li>
+                <li>✓ Use messaging for follow-up questions, results discussion, and admin queries</li>
+                <li>✗ Don't use messaging for urgent clinical problems</li>
+                <li>✗ Don't discuss one patient in another patient's thread</li>
+                <li>✗ Don't move a clinical conversation to personal email or text</li>
+            </ul>
+
+            <h2>Common Questions</h2>
+
+            <h3>Q: Can I delete a message I sent by mistake?</h3>
+            <p><strong>A:</strong> No. Messages are part of the clinical record and are retained. If you sent something in error, send a follow-up correcting it.</p>
+
+            <h3>Q: Who else can see a patient thread?</h3>
+            <p><strong>A:</strong> The participants on the thread. Add colleagues deliberately when they need to cover.</p>
+
+            <h3>Q: Are messages encrypted end to end?</h3>
+            <p><strong>A:</strong> No — encryption is at rest under a practice-held key. End-to-end encryption would prevent the practice from meeting retention, legal hold, and audit obligations.</p>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="mobile-app.html">Mobile App</a></li>
+                <li><a href="account-security.html">Account Security</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.4 - Secure Messaging</p>
+    </footer>
+</body>
+</html>
