@@ -1,15 +1,18 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
-// Get pool from app.locals (shared pool from server.js)
-let pool;
-
-// Cache for table existence check (expires after 5 minutes)
-let tableExistsCache = {
-  exists: null,
-  timestamp: 0,
-  ttl: 5 * 60 * 1000, // 5 minutes
-};
+// Cache for the table-existence check, keyed BY SCHEMA (expires after 5 minutes).
+//
+// The check itself is per-tenant — to_regclass resolves against the caller's search_path,
+// so the answer differs per schema. A single shared entry therefore let one tenant answer
+// for all of them: a caller whose account resolves to `public` (which holds no audit_logs
+// since the 068 cutover) cached `exists: false`, and for the next five minutes every other
+// clinic on that instance was told to run a migration and refused audit logging. Audit
+// logging is a control, so failing it for an unrelated tenant is not a cosmetic bug.
+const TABLE_CACHE_TTL_MS = 5 * 60 * 1000;
+const tableExistsCache = new Map(); // schema -> { exists, timestamp }
 
 /**
  * Middleware to check if audit_logs table exists
@@ -17,45 +20,59 @@ let tableExistsCache = {
  */
 const checkAuditTableExists = async (req, res, next) => {
   try {
-    // Get pool from app.locals if not already set
-    if (!pool) {
-      pool = req.app.locals.pool;
-    }
+    // SEC-05: audit_logs is a per-tenant table (moved out of public into the tenant
+    // schema at the 068 cutover). Use the request's tenant-scoped db so the check runs
+    // against the caller's schema, and detect the table via search_path (to_regclass)
+    // rather than a hard-coded 'public'.
+    const pool = req.db || req.app.locals.pool;
+    const schema = (req.tenant && req.tenant.schemaName) || 'public';
 
     const now = Date.now();
+    // Whether this refusal came from a remembered answer rather than a fresh look. A stale
+    // negative and a live one need different responses — wait out the TTL, or fix the
+    // schema — and they are indistinguishable from outside without this.
+    let fromCache = false;
+
+    // An account that resolves to `public` is not missing a migration — it is not bound to
+    // an active tenant, and `public` has held no clinical tables since the 068 cutover.
+    // Telling the operator to run 040 sends them to fix a database that is already correct.
+    const missing = () =>
+      schema === 'public'
+        ? res.status(503).json({
+            error: 'No tenant workspace for this account',
+            message:
+              'This account is not bound to an active tenant, so it resolved to the public '
+              + 'schema, which holds no audit_logs table. See GET /api/auth/tenant-status.',
+          })
+        : res.status(503).json({
+            error: 'Audit logs table not found',
+            message: `Schema "${schema}" has no audit_logs table on the connection this request `
+              + `used (tenantDb=${req.db ? 'yes' : 'no'}${fromCache ? ', cached' : ''}). `
+              + 'If the schema does have the table, the request ran on the untenanted pool. '
+              + 'Otherwise run migration 040_create_audit_logs_table.sql.',
+            schema,
+            tenantDb: Boolean(req.db),
+            cached: fromCache,
+            migration: 'backend/migrations/040_create_audit_logs_table.sql',
+          });
 
     // Check cache first
-    if (tableExistsCache.exists !== null && (now - tableExistsCache.timestamp) < tableExistsCache.ttl) {
-      if (!tableExistsCache.exists) {
-        return res.status(503).json({
-          error: 'Audit logs table not found',
-          message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-          migration: 'backend/migrations/040_create_audit_logs_table.sql',
-        });
-      }
-      // Table exists, continue
-      return next();
+    const cached = tableExistsCache.get(schema);
+    if (cached && (now - cached.timestamp) < TABLE_CACHE_TTL_MS) {
+      if (cached.exists) return next();
+      fromCache = true;
+      return missing();
     }
 
-    // Cache miss or expired - check database
+    // Cache miss or expired - check database (search_path-aware; finds it in the tenant schema)
     const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM pg_tables
-        WHERE schemaname = 'public'
-        AND tablename = 'audit_logs'
-      );
+      SELECT to_regclass('audit_logs') IS NOT NULL AS exists;
     `);
 
-    tableExistsCache.exists = tableCheck.rows[0].exists;
-    tableExistsCache.timestamp = now;
+    const exists = tableCheck.rows[0].exists;
+    tableExistsCache.set(schema, { exists, timestamp: now });
 
-    if (!tableExistsCache.exists) {
-      return res.status(503).json({
-        error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
-      });
-    }
+    if (!exists) return missing();
 
     next();
   } catch (error) {
@@ -63,12 +80,12 @@ const checkAuditTableExists = async (req, res, next) => {
 
     // Check if error is due to missing table
     if (error.message && error.message.includes('relation "audit_logs" does not exist')) {
-      tableExistsCache.exists = false;
-      tableExistsCache.timestamp = Date.now();
+      const schema = (req.tenant && req.tenant.schemaName) || 'public';
+      tableExistsCache.set(schema, { exists: false, timestamp: Date.now() });
 
       return res.status(503).json({
         error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
+        message: `Schema "${schema}" has no audit_logs table.`,
         migration: 'backend/migrations/040_create_audit_logs_table.sql',
       });
     }
@@ -109,9 +126,7 @@ const checkAuditTableExists = async (req, res, next) => {
 router.post('/', checkAuditTableExists, async (req, res) => {
   try {
     // Get pool from app.locals if not already set
-    if (!pool) {
-      pool = req.app.locals.pool;
-    }
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const {
       // User information (from frontend)
@@ -226,6 +241,7 @@ router.post('/', checkAuditTableExists, async (req, res) => {
  */
 router.get('/', checkAuditTableExists, async (req, res) => {
   try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       user_id,
       user_email,
@@ -367,6 +383,7 @@ router.get('/', checkAuditTableExists, async (req, res) => {
  */
 router.get('/:id', checkAuditTableExists, async (req, res) => {
   try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const query = 'SELECT * FROM audit_logs WHERE id = $1';
@@ -391,6 +408,7 @@ router.get('/:id', checkAuditTableExists, async (req, res) => {
  */
 router.get('/stats/summary', checkAuditTableExists, async (req, res) => {
   try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { start_date, end_date } = req.query;
 
     const conditions = [];
@@ -454,6 +472,7 @@ router.get('/stats/summary', checkAuditTableExists, async (req, res) => {
  */
 router.get('/stats/top-users', checkAuditTableExists, async (req, res) => {
   try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { limit = 10, start_date, end_date } = req.query;
 
     const conditions = [];
@@ -503,6 +522,7 @@ router.get('/stats/top-users', checkAuditTableExists, async (req, res) => {
  */
 router.get('/stats/top-resources', checkAuditTableExists, async (req, res) => {
   try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { limit = 10, start_date, end_date } = req.query;
 
     const conditions = [];
@@ -556,6 +576,7 @@ router.get('/stats/top-resources', checkAuditTableExists, async (req, res) => {
  */
 router.delete('/cleanup', async (req, res) => {
   try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { days = 90 } = req.query;
 
     const query = `
@@ -584,6 +605,7 @@ router.delete('/cleanup', async (req, res) => {
  */
 router.get('/export/csv', async (req, res) => {
   try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       user_id,
       user_email,

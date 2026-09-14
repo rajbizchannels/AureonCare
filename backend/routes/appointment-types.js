@@ -15,7 +15,7 @@ const toCamelCase = (obj) => {
 // Get all active appointment types (public - no auth required for booking)
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT * FROM appointment_types
       WHERE is_active = true
@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
 // Get all appointment types (admin only - includes inactive)
 router.get('/all', authenticate, authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT * FROM appointment_types
       ORDER BY display_order ASC, name ASC
@@ -50,7 +50,7 @@ router.get('/all', authenticate, authorize('admin'), async (req, res) => {
 // Get single appointment type
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(
@@ -72,7 +72,7 @@ router.get('/:id', async (req, res) => {
 // Create appointment type (admin only)
 router.post('/', authenticate, authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { name, description, durationMinutes, color, isActive, displayOrder } = req.body;
 
     if (!name) {
@@ -106,7 +106,7 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
 // Update appointment type (admin only)
 router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
     const { name, description, durationMinutes, color, isActive, displayOrder } = req.body;
 
@@ -141,7 +141,7 @@ router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
 // Delete appointment type (admin only)
 router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     // Check if type is in use

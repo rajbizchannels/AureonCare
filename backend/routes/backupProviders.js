@@ -1,5 +1,8 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 /**
  * Backup Provider Settings API
@@ -9,7 +12,7 @@ const router = express.Router();
 // Get all backup provider settings
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Check if table exists, if not create it
     try {
@@ -21,18 +24,7 @@ router.get('/', async (req, res) => {
     } catch (tableError) {
       if (tableError.code === '42P01') {
         // Table doesn't exist, create it
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS backup_provider_settings (
-            id SERIAL PRIMARY KEY,
-            provider_type VARCHAR(50) UNIQUE NOT NULL,
-            is_enabled BOOLEAN DEFAULT false,
-            client_id VARCHAR(255),
-            client_secret VARCHAR(255),
-            settings JSONB DEFAULT '{}'::jsonb,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
+        // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
         // Return empty array for now
         res.json([]);
@@ -49,7 +41,7 @@ router.get('/', async (req, res) => {
 // Get single provider settings
 router.get('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
 
     const result = await pool.query(
@@ -71,7 +63,7 @@ router.get('/:providerType', async (req, res) => {
 // Create or update provider settings
 router.post('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
     const {
       is_enabled,
@@ -127,7 +119,7 @@ router.post('/:providerType', async (req, res) => {
 // Delete provider settings
 router.delete('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
 
     const result = await pool.query(
@@ -149,52 +141,28 @@ router.delete('/:providerType', async (req, res) => {
 // Get backup configuration status
 router.get('/config/status', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Ensure table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS backup_provider_settings (
-        id SERIAL PRIMARY KEY,
-        provider_type VARCHAR(50) UNIQUE NOT NULL,
-        is_enabled BOOLEAN DEFAULT false,
-        client_id VARCHAR(255),
-        client_secret VARCHAR(255),
-        settings JSONB DEFAULT '{}'::jsonb,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
     const result = await pool.query(`
       SELECT provider_type, is_enabled,
-             (client_id IS NOT NULL AND client_id != '') as has_credentials,
-             (settings->>'access_token' IS NOT NULL) as has_token
+             (settings->>'access_token' IS NOT NULL AND settings->>'access_token' != '') AS has_token
       FROM backup_provider_settings
       WHERE provider_type IN ('google_drive', 'onedrive')
     `);
 
     const config = {
-      googleDrive: {
-        configured: false,
-        enabled: false
-      },
-      oneDrive: {
-        configured: false,
-        enabled: false
-      }
+      googleDrive: { configured: false, enabled: false },
+      oneDrive:    { configured: false, enabled: false }
     };
 
     result.rows.forEach(row => {
       if (row.provider_type === 'google_drive') {
-        config.googleDrive = {
-          configured: row.has_credentials && row.has_token,
-          enabled: row.is_enabled
-        };
+        config.googleDrive = { configured: row.has_token, enabled: row.is_enabled };
       } else if (row.provider_type === 'onedrive') {
-        config.oneDrive = {
-          configured: row.has_credentials && row.has_token,
-          enabled: row.is_enabled
-        };
+        config.oneDrive = { configured: row.has_token, enabled: row.is_enabled };
       }
     });
 

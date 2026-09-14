@@ -1,11 +1,16 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+const { auditPhiRead } = require('../middleware/phiAccessLog');
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
+const { enforcePatientQuota } = require('../middleware/planEnforcement');
 
 // Get all patients
-router.get('/', async (req, res) => {
+router.get('/', auditPhiRead('patient'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT *,
              date_of_birth as dob
@@ -20,9 +25,9 @@ router.get('/', async (req, res) => {
 });
 
 // Get single patient
-router.get('/:id', async (req, res) => {
+router.get('/:id', auditPhiRead('patient'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM patients WHERE id = $1',
       [req.params.id]
@@ -37,19 +42,24 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new patient
-router.post('/', async (req, res) => {
+// Create new patient  (patient quota check runs first)
+router.post('/', enforcePatientQuota, async (req, res) => {
   const {
     first_name, last_name, mrn, dob, date_of_birth, gender, phone, email,
     address, city, state, zip, insurance, insurance_id, insurance_payer_id,
     allergies, past_history, family_history, status, createUserAccount
   } = req.body;
 
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const client = await req.app.locals.pool.connect();
 
   try {
     await client.query('BEGIN');
+    // SEC-05: scope this transaction to the caller's tenant schema. SET LOCAL is
+    // transaction-scoped and auto-reverts on COMMIT/ROLLBACK, so the pooled
+    // connection returns to the pool without leaking the tenant search_path.
+    const _schema = (req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || ''))
+      ? req.tenant.schemaName : 'public';
+    await client.query(`SET LOCAL search_path TO ${_schema}, public, control`);
 
     // Use date_of_birth (database column name), fall back to dob for compatibility
     const birthDate = date_of_birth || dob;
@@ -60,8 +70,13 @@ router.post('/', async (req, res) => {
     // IMPORTANT: With new schema, patient.id = user.id
     // So we must create the user FIRST to get the ID
 
-    // Create corresponding user account with patient role if email is provided
-    if (email && createUserAccount !== false) {
+    // Auto-create a linked user account when all required fields are present.
+    // Skip silently when first_name or last_name is missing — inserting an
+    // unnamed user row is the root cause of phantom unnamed patient accounts
+    // showing up in GET /api/users.
+    const hasName = first_name && first_name.trim() && last_name && last_name.trim();
+
+    if (email && hasName && createUserAccount !== false) {
       // Check if user with this email already exists
       const existingUser = await client.query(
         'SELECT id FROM users WHERE email = $1',
@@ -69,25 +84,22 @@ router.post('/', async (req, res) => {
       );
 
       if (existingUser.rows.length > 0) {
-        // Use existing user ID
         userId = existingUser.rows[0].id;
       } else {
-        // Create user with patient role
         const bcrypt = require('bcryptjs');
-        // Generate a temporary password (user should reset via patient portal)
+        const { BCRYPT_COST } = require('../utils/passwordPolicy');
         tempPassword = Math.random().toString(36).slice(-8);
-        const passwordHash = await bcrypt.hash(tempPassword, 10);
+        const passwordHash = await bcrypt.hash(tempPassword, BCRYPT_COST);
 
         const userResult = await client.query(
           `INSERT INTO users
-           (id, email, password_hash, first_name, last_name, role, phone, status, created_at, updated_at)
-           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', $5, 'active', NOW(), NOW())
+           (id, email, password_hash, first_name, last_name, role, phone, status, practice_id, created_at, updated_at)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'patient', $5, 'active', $6, NOW(), NOW())
            RETURNING id`,
-          [email, passwordHash, first_name, last_name, phone]
+          [email, passwordHash, first_name.trim(), last_name.trim(), phone, req.user && req.user.practiceId ? req.user.practiceId : null]
         );
 
         userId = userResult.rows[0].id;
-        console.log(`Created user account for patient ${first_name} ${last_name} with temporary password: ${tempPassword}`);
       }
     }
 
@@ -139,7 +151,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     // Use date_of_birth (database column name), fall back to dob for compatibility
     const birthDate = date_of_birth || dob;
 
@@ -263,7 +275,7 @@ router.put('/:id', async (req, res) => {
 // Delete patient
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM patients WHERE id = $1 RETURNING *',
       [req.params.id]

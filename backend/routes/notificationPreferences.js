@@ -1,5 +1,8 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 /**
  * Notification Preferences API
@@ -9,7 +12,7 @@ const router = express.Router();
 // Get notification preferences for a patient
 router.get('/:patientId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.params;
 
     const result = await pool.query(
@@ -27,7 +30,7 @@ router.get('/:patientId', async (req, res) => {
 // Create or update notification preference
 router.post('/:patientId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.params;
     const { channel_type, is_enabled, contact_info } = req.body;
 
@@ -67,7 +70,7 @@ router.post('/:patientId', async (req, res) => {
 // Delete notification preference
 router.delete('/:patientId/:channelType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId, channelType } = req.params;
 
     const result = await pool.query(

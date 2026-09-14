@@ -21,6 +21,13 @@ const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
       .catch(err => console.error('Failed to load onboarding tour:', err));
   }, [userRole]);
 
+  // Declared before the effect that depends on it — a `const` referenced from a
+  // dependency array is still in its temporal dead zone during that render.
+  const handleSkip = useCallback(() => {
+    setIsVisible(false);
+    if (onSkip) onSkip();
+  }, [onSkip]);
+
   // ESC key handler to close tour
   useEffect(() => {
     const handleEscape = (e) => {
@@ -51,11 +58,6 @@ const OnboardingTour = ({ theme, userRole, onComplete, onSkip }) => {
     setIsVisible(false);
     if (onComplete) onComplete();
   };
-
-  const handleSkip = useCallback(() => {
-    setIsVisible(false);
-    if (onSkip) onSkip();
-  }, [onSkip]);
 
   if (!isVisible || tourSteps.length === 0) return null;
 

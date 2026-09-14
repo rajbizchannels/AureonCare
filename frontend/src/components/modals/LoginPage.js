@@ -1,18 +1,17 @@
-import React, { useState } from 'react';
-import { Shield, Sun, Moon } from 'lucide-react';
+import { useState } from 'react';
+import { Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useMsal } from '@azure/msal-react';
-import PrivacyPolicyPage from './PrivacyPolicyPage';
-import TermsOfServicePage from './TermsOfServicePage';
+import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
+import { microsoftOAuthConfig } from '../../config/oauthConfig';
 
-const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
+const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister, onCreatePractice }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
-  const [showToS, setShowToS] = useState(false);
+  const [needsMfa, setNeedsMfa] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
 
-  const { instance } = useMsal();
+  // SEC-20: MSAL is no longer used for sign-in (see handleMicrosoftLogin).
 
   // Helper function to route user based on their role
   const routeUserByRole = (user) => {
@@ -29,7 +28,8 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
     setLoginError('');
 
     try {
-      const response = await api.login(email, password);
+      const response = await api.login(email, password, mfaCode || undefined);
+      api.storeToken(response.token);
       setUser(response.user);
       setIsAuthenticated(true);
 
@@ -38,33 +38,25 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
 
       await addNotification('success', 'Login successful');
     } catch (error) {
+      // The password was right and a second factor is wanted. Reveal the code field and
+      // keep the password the user already typed, rather than making them start over.
+      if (error.mfaRequired) setNeedsMfa(true);
       setLoginError(error.message || 'Login failed');
     }
   };
 
   // Google OAuth Login
+  // SEC-20: authorization-code flow. The browser receives a single-use code instead of a
+  // provider access token, so an XSS on this page has nothing to steal — the code is
+  // redeemed server-side with the client secret. Requires REACT_APP_GG_CID to be the SAME
+  // Google client id as the server's AC_GG_CID.
   const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
       try {
-        // Get user info from Google
-        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: {
-            Authorization: `Bearer ${tokenResponse.access_token}`
-          }
-        });
-        const userInfo = await userInfoResponse.json();
+        const response = await api.exchangeGoogleCode(codeResponse.code, 'postmessage');
 
-        // Login with our backend
-        const response = await api.socialLogin(
-          'google',
-          userInfo.sub,
-          tokenResponse.access_token,
-          userInfo.email,
-          userInfo.given_name,
-          userInfo.family_name,
-          userInfo
-        );
-
+        api.storeToken(response.token);
         setUser(response.user);
         setIsAuthenticated(true);
 
@@ -83,26 +75,18 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
   });
 
   // Microsoft OAuth Login
+  // SEC-20: authorization code + PKCE, redeemed on the server. MSAL is not used here
+  // because it redeems the code inside the browser, leaving a provider access token in
+  // JavaScript — the exposure this change removes. The popup returns only a single-use
+  // code, which is useless without the client secret held by the backend.
   const handleMicrosoftLogin = async () => {
     try {
-      const loginResponse = await instance.loginPopup({
-        scopes: ['user.read']
-      });
-
-      // Get user info
-      const userInfo = loginResponse.account;
-
-      // Login with our backend
-      const response = await api.socialLogin(
-        'microsoft',
-        userInfo.homeAccountId,
-        loginResponse.accessToken,
-        userInfo.username,
-        userInfo.name?.split(' ')[0] || '',
-        userInfo.name?.split(' ').slice(1).join(' ') || '',
-        userInfo
+      const { code, redirectUri, codeVerifier } = await getMicrosoftAuthCode(
+        microsoftOAuthConfig.auth.clientId
       );
+      const response = await api.exchangeMicrosoftCode(code, redirectUri, codeVerifier);
 
+      api.storeToken(response.token);
       setUser(response.user);
       setIsAuthenticated(true);
 
@@ -128,7 +112,26 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
               style={{ aspectRatio: '1/1' }}
             />
           </div>
-          <p className={`mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Sign in to your account</p>
+          {/* App name renders as visible text and matches the name configured on
+              the Google OAuth consent screen exactly. The lines beneath it are the
+              statement of purpose: this sign-in screen is the app's home page, so
+              it has to say what the product actually is. */}
+          <h1 className={`text-3xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            AureonCare
+          </h1>
+          <p className={`mt-2 text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+            Practice management &amp; telehealth for medical clinics
+          </p>
+          <p className={`mt-1.5 text-xs leading-relaxed ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+            Appointment scheduling, patient records, e-prescribing, billing,
+            and secure video visits — in one platform.
+          </p>
+
+          <div className={`my-6 h-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`} />
+
+          <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+            Sign in to your account
+          </p>
         </div>
 
         {loginError && (
@@ -173,6 +176,35 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
               placeholder="Enter your password"
             />
           </div>
+
+          {/* Shown only once the server has asked for it — the password is verified first,
+              so the prompt itself never reveals that an address has an account. */}
+          {needsMfa && (
+            <div>
+              <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Authentication code
+              </label>
+              <input
+                type="text"
+                inputMode="text"
+                autoComplete="one-time-code"
+                autoFocus
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg tracking-widest focus:outline-none focus:border-cyan-500 ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                required
+                placeholder="6-digit code, or a recovery code"
+              />
+              <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                From your authenticator app. If you have lost your device, use one of the
+                recovery codes you saved.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <label className="flex items-center">
@@ -246,6 +278,17 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
               Register here
             </button>
           </p>
+          {onCreatePractice && (
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Running a practice?{' '}
+              <button
+                onClick={onCreatePractice}
+                className="text-cyan-500 hover:text-cyan-400 font-medium transition-colors"
+              >
+                Start a subscription
+              </button>
+            </p>
+          )}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className={`text-sm ${theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-gray-600 hover:text-gray-700'}`}
@@ -253,39 +296,23 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
             {theme === 'dark' ? <Sun className="w-4 h-4 inline mr-1" /> : <Moon className="w-4 h-4 inline mr-1" />}
             {theme === 'dark' ? 'Light' : 'Dark'} Mode
           </button>
+          {/* Real anchor links, not JS-only modals, so reviewers and crawlers can
+              reach these pages without signing in. */}
           <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-            <button
-              type="button"
-              onClick={() => setShowToS(true)}
-              className="hover:text-cyan-500 transition-colors underline"
-            >
+            <a href="/about.html" className="hover:text-cyan-500 transition-colors underline">
+              About
+            </a>
+            <span className="mx-1.5">&bull;</span>
+            <a href="/privacy.html" className="hover:text-purple-500 transition-colors underline">
+              Privacy Policy
+            </a>
+            <span className="mx-1.5">&bull;</span>
+            <a href="/terms.html" className="hover:text-cyan-500 transition-colors underline">
               Terms of Service
-            </button>
-            <span className="mx-1">&bull;</span>
-            <button
-              type="button"
-              onClick={() => setShowPrivacyPolicy(true)}
-              className="hover:text-purple-500 transition-colors underline"
-            >
-              Privacy Policy &amp; HIPAA Notice
-            </button>
+            </a>
           </p>
         </div>
       </div>
-
-      {showToS && (
-        <TermsOfServicePage
-          theme={theme}
-          onClose={() => setShowToS(false)}
-        />
-      )}
-
-      {showPrivacyPolicy && (
-        <PrivacyPolicyPage
-          theme={theme}
-          onClose={() => setShowPrivacyPolicy(false)}
-        />
-      )}
     </div>
   );
 };

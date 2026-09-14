@@ -1,5 +1,8 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const multer = require('multer');
 const { parse835File, convertToPaymentPostings, validate835File, generate835File } = require('../utils/edi835Parser');
 const { generate837File, validateClaimData } = require('../utils/edi837Generator');
@@ -44,7 +47,7 @@ router.post('/835/upload', upload.single('file'), async (req, res) => {
     const claimNumbers = parsed835.claims.map(c => c.claimNumber);
 
     // Look up claim IDs from the database
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const claimQuery = await pool.query(
       'SELECT id, claim_number FROM claims WHERE claim_number = ANY($1)',
       [claimNumbers]
@@ -171,7 +174,7 @@ router.post('/835/upload', upload.single('file'), async (req, res) => {
 router.post('/837/generate/:claimId', async (req, res) => {
   try {
     const { claimId } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Get claim with patient and provider information
     const claimQuery = await pool.query(
@@ -317,7 +320,7 @@ router.post('/837/generate/:claimId', async (req, res) => {
 router.post('/837/submit/:claimId', async (req, res) => {
   try {
     const { claimId } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Check if clearinghouse integration is configured
     const settingsQuery = await pool.query(
@@ -390,7 +393,7 @@ router.post('/837/submit/:claimId', async (req, res) => {
 router.get('/submissions/:claimId', async (req, res) => {
   try {
     const { claimId } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `SELECT * FROM claim_submissions
@@ -413,7 +416,7 @@ router.get('/submissions/:claimId', async (req, res) => {
 router.post('/835/generate/:paymentPostingId', async (req, res) => {
   try {
     const { paymentPostingId } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Check if clearinghouse integration is configured
     const settingsQuery = await pool.query(

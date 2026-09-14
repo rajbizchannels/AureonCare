@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>AureonCare — Platform Console</title>
+<link rel="stylesheet" href="./console.css" />
+</head>
+<body>
+<!--
+  SEC-05 / S10: the super-admin console.
+
+  Served by the BACKEND, deliberately not built into the tenant SPA: operator code should
+  not ship in every clinic user's browser, and keeping the two apps separate mirrors the
+  separation of the two identity planes.
+
+  Script is in an external file because helmet's CSP defaults forbid inline <script>.
+-->
+<header class="topbar">
+  <div class="brand">AureonCare <span>Platform Console</span></div>
+  <div class="who" id="who" hidden>
+    <span id="whoEmail"></span>
+    <button id="signOut" class="link">Sign out</button>
+  </div>
+</header>
+
+<main id="app">
+  <!-- Sign in -->
+  <section id="loginView" class="card narrow">
+    <h1>Operator sign-in</h1>
+    <p class="muted">Platform operators only. This is not the clinic application.</p>
+    <form id="loginForm" autocomplete="off">
+      <label>Email<input id="email" type="email" required autocomplete="username" /></label>
+      <label>Password<input id="password" type="password" required autocomplete="current-password" /></label>
+      <label>MFA code <span class="muted">(if enabled)</span>
+        <input id="mfaCode" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" /></label>
+      <button type="submit" class="primary">Sign in</button>
+    </form>
+    <p id="loginError" class="error" role="alert" hidden></p>
+  </section>
+
+  <!-- Console -->
+  <section id="consoleView" hidden>
+    <nav class="tabs" id="tabs">
+      <button data-tab="tenants" class="active">Tenants</button>
+      <button data-tab="plans">Plans</button>
+      <button data-tab="billing">Billing</button>
+      <button data-tab="coupons">Coupons</button>
+      <button data-tab="operators">Operators</button>
+      <button data-tab="audit">Platform audit</button>
+      <button data-tab="security">Security</button>
+    </nav>
+
+    <!-- Tenants -->
+    <div class="tab" data-panel="tenants">
+      <div class="row between">
+        <h2>Tenants</h2>
+        <button id="newTenantBtn" class="primary">New tenant</button>
+      </div>
+      <form id="newTenantForm" class="card inline" hidden>
+        <label>Name<input id="tName" required /></label>
+        <label>Plan tier<input id="tPlan" placeholder="professional" /></label>
+        <label>Country<input id="tCountry" maxlength="2" placeholder="US" /></label>
+        <label>Timezone<input id="tTz" placeholder="America/New_York" /></label>
+        <div class="row">
+          <button type="submit" class="primary">Create</button>
+          <button type="button" id="cancelTenant" class="link">Cancel</button>
+        </div>
+        <p class="muted small">Creating a tenant provisions its database schema.</p>
+      </form>
+      <div id="tenantList" class="list"></div>
+    </div>
+
+    <!-- Audit -->
+    <div class="tab" data-panel="audit" hidden>
+      <h2>Platform audit trail</h2>
+      <p class="muted small">Append-only. Records operator actions, not clinical activity.</p>
+      <div id="auditList" class="list"></div>
+    </div>
+
+    <!-- Plans -->
+    <div class="tab" data-panel="plans" hidden>
+      <h2>Self-serve plans</h2>
+      <p class="muted small">
+        A plan needs a Stripe Price id before customers can buy it. This is configured once
+        per plan — signups themselves need no operator action.
+      </p>
+      <button id="newPlanBtn" class="primary">New plan</button>
+      <form id="newPlanForm" class="card inline" hidden>
+        <label>Key<input id="pName" placeholder="clinical_pro" required /></label>
+        <label>Display name<input id="pDisplay" placeholder="Clinical Pro" required /></label>
+        <label>Description<input id="pDesc" placeholder="For growing practices" /></label>
+        <label>Price<input id="pPrice" type="number" min="0" step="0.01" required /></label>
+        <label>Currency<select id="pCurrency"><option value="usd" selected>USD</option><option value="eur">EUR</option><option value="gbp">GBP</option><option value="cad">CAD</option><option value="aud">AUD</option><option value="nzd">NZD</option><option value="inr">INR</option><option value="aed">AED</option><option value="sgd">SGD</option><option value="chf">CHF</option><option value="jpy">JPY</option><option value="zar">ZAR</option><option value="sek">SEK</option><option value="nok">NOK</option><option value="dkk">DKK</option></select></label>
+        <label>Billing cycle
+          <select id="pCycle">
+            <option value="monthly">monthly</option>
+            <option value="quarterly">quarterly</option>
+            <option value="yearly">yearly</option>
+            <option value="weekly">weekly</option>
+          </select>
+        </label>
+        <label>Trial days<input id="pTrial" type="number" min="0" value="0" /></label>
+        <label>Max users<input id="pMaxUsers" type="number" value="-1" /></label>
+        <label>Max providers<input id="pMaxProviders" type="number" value="-1" /></label>
+        <button type="submit" class="primary">Create plan</button>
+        <button type="button" id="cancelPlan">Cancel</button>
+        <p id="newPlanMsg" class="small"></p>
+      </form>
+      <div id="plansList" class="list"></div>
+    </div>
+
+    <!-- Billing & accounting -->
+    <div class="tab" data-panel="billing" hidden>
+      <h2>Billing</h2>
+      <p class="muted small">
+        Recurring revenue is what tenants are contracted for; collected is money actually
+        received, from the local ledger. They are different numbers on purpose.
+      </p>
+      <div id="billingConfig"></div>
+      <div id="billingSummary" class="list"></div>
+      <h3>Per tenant</h3>
+      <div id="billingTenants"></div>
+      <h3>Outstanding</h3>
+      <div id="billingAging"></div>
+      <h3>Recent activity</h3>
+      <div id="billingEvents"></div>
+
+      <h3>Post an adjustment</h3>
+      <p class="muted small">
+        Records that money moved without moving it in Stripe — a goodwill credit, a written-off
+        invoice, a bank transfer. A credit reduces what the tenant owes.
+      </p>
+      <form id="adjustForm" class="card inline">
+        <label>Tenant<select id="adjTenant" required></select></label>
+        <label>Kind
+          <select id="adjKind"><option value="credit">Credit</option><option value="debit">Debit</option></select>
+        </label>
+        <label>Amount<input id="adjAmount" type="number" min="0.01" step="0.01" required /></label>
+        <label>Currency<select id="adjCurrency"></select></label>
+        <label style="width:98%">Reason<input id="adjReason" minlength="10" required placeholder="Why this adjustment is being made" /></label>
+        <button type="submit" class="primary">Post adjustment</button>
+        <span id="adjMsg" class="small"></span>
+      </form>
+
+      <h3>Grant free months</h3>
+      <form id="freeForm" class="card inline">
+        <label>Tenant<select id="freeTenant" required></select></label>
+        <label>Months<input id="freeMonths" type="number" min="1" max="36" value="1" required /></label>
+        <label style="width:98%">Reason<input id="freeReason" minlength="10" required placeholder="Why these months are free" /></label>
+        <button type="submit" class="primary">Grant</button>
+        <span id="freeMsg" class="small"></span>
+      </form>
+
+      <p><a id="exportCsv" href="#">Download the ledger as CSV</a></p>
+    </div>
+
+    <!-- Coupons -->
+    <div class="tab" data-panel="coupons" hidden>
+      <h2>Coupons</h2>
+      <p class="muted small">
+        Coupons live in Stripe. A coupon is the discount; a promotion code is the string a
+        customer types. Restricting to plans uses each plan's Stripe product, so a plan must
+        have been created in Stripe first.
+      </p>
+      <form id="couponForm" class="card inline">
+        <label>Code<input id="cCode" placeholder="LAUNCH20" required /></label>
+        <label>Percent off<input id="cPercent" type="number" min="1" max="100" /></label>
+        <label>or Amount off<input id="cAmount" type="number" min="0.01" step="0.01" /></label>
+        <label>Currency<select id="cCurrency"></select></label>
+        <label>Duration
+          <select id="cDuration">
+            <option value="once">once</option>
+            <option value="repeating">repeating</option>
+            <option value="forever">forever</option>
+          </select>
+        </label>
+        <label>Months (if repeating)<input id="cMonths" type="number" min="1" /></label>
+        <label>Max redemptions<input id="cMax" type="number" min="1" /></label>
+        <label>Restrict to plans<select id="cPlans" multiple size="4"></select></label>
+        <button type="submit" class="primary">Create coupon</button>
+        <span id="couponMsg" class="small"></span>
+      </form>
+      <div id="couponList"></div>
+    </div>
+
+    <!-- Operators -->
+    <div class="tab" data-panel="operators" hidden>
+      <h2>Operators</h2>
+      <p class="muted small">
+        readonly reads reports · billing manages plans, coupons and money ·
+        support adds tenant lifecycle and break-glass over PHI · owner adds this page.
+        Changing a role or disabling an account signs that operator out immediately.
+      </p>
+      <form id="operatorForm" class="card inline">
+        <label>Email<input id="oEmail" type="email" required /></label>
+        <label>Name<input id="oName" /></label>
+        <label>Role
+          <select id="oRole">
+            <option value="readonly">readonly</option>
+            <option value="billing">billing</option>
+            <option value="support">support</option>
+            <option value="owner">owner</option>
+          </select>
+        </label>
+        <label>Password<input id="oPassword" type="password" required /></label>
+        <button type="submit" class="primary">Add operator</button>
+        <span id="operatorMsg" class="small"></span>
+      </form>
+      <div id="operatorList"></div>
+      <h3>Recent alerts</h3>
+      <p class="muted small">What has been emailed, and to whom.</p>
+      <div id="notificationList"></div>
+    </div>
+
+    <!-- Security -->
+    <div class="tab" data-panel="security" hidden>
+      <h2>Your account</h2>
+      <div class="card">
+        <h3>Email alerts</h3>
+        <p class="muted small">
+          Operators are emailed about platform events relevant to their role — operator and
+          break-glass changes, tenant lifecycle, money moving, failed payments. This is your
+          own preference; it does not affect anyone else.
+        </p>
+        <label class="check"><input type="checkbox" id="notifyToggle" /> <span>Email me platform events</span></label>
+      </div>
+
+      <div class="card">
+        <h3>Multi-factor authentication</h3>
+        <p class="muted small">Strongly recommended: this account manages every tenant.</p>
+        <div id="mfaState"></div>
+        <button id="mfaEnroll" class="primary">Set up MFA</button>
+        <div id="mfaSetup" hidden>
+          <p class="small"><strong>1. Scan this with your authenticator app</strong></p>
+          <img id="mfaQr" alt="MFA setup QR code" width="220" height="220" hidden />
+          <p class="small">
+            <strong>Or add it by hand:</strong> choose <em>Enter a setup key</em> in Google
+            Authenticator, put your email in <em>Account</em>, and paste the key below into
+            <em>Key</em>. Paste the key only — the full <code>otpauth://</code> link is
+            rejected as containing illegal characters.
+          </p>
+          <label>Setup key<input id="mfaKey" readonly /></label>
+          <button type="button" id="copyMfaKey">Copy key</button>
+          <p class="small"><strong>2. Enter the 6-digit code it shows</strong></p>
+          <form id="mfaVerifyForm" class="row">
+            <input id="mfaVerifyCode" inputmode="numeric" maxlength="6" placeholder="123456" required />
+            <button type="submit" class="primary">Confirm</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden role="status"></div>
+<script src="./console.js"></script>
+</body>
+</html>

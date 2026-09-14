@@ -13,6 +13,8 @@ import FormTemplateLibrary from '../components/forms/FormTemplateLibrary';
 import SignatureCapture from '../components/forms/SignatureCapture';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { FORM_TEMPLATES, FORM_CATEGORIES } from '../data/formTemplates';
+import { useShellTab } from '../hooks/useShellTab';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 // ─── PDF Export ────────────────────────────────────────────────────────────
 const exportToPDF = async (template, submission, signatures) => {
@@ -136,6 +138,8 @@ const StatusBadge = ({ status }) => {
 // ─── Main View ──────────────────────────────────────────────────────────────
 const FormManagementView = ({
   theme = 'light',
+  activeTab: shellTab,
+  onTabChange,
   api,
   addNotification,
   user,
@@ -147,7 +151,7 @@ const FormManagementView = ({
   const { logViewAccess, logAction } = useAudit();
 
   // Tabs: templates | submissions | builder | audit
-  const [activeTab, setActiveTab] = useState('templates');
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'templates');
   const [subView, setSubView] = useState(null); // null | 'edit' | 'preview' | 'submit' | 'view'
 
   // Templates
@@ -190,6 +194,11 @@ const FormManagementView = ({
   });
   const [builderPreview, setBuilderPreview] = useState(false);
 
+  // Send-to-patient modal state
+  const [sendModal, setSendModal] = useState(null); // null | template object
+  const [sendPatientId, setSendPatientId] = useState('');
+  const [sendingForm, setSendingForm] = useState(false);
+
   // Seed local templates (client-side) into state on load
   useEffect(() => {
     logViewAccess('FormManagementView', { module: 'Form Management' });
@@ -228,6 +237,37 @@ const FormManagementView = ({
   useEffect(() => {
     if (activeTab === 'audit') loadAuditLogs();
   }, [activeTab, loadAuditLogs]);
+
+  // ─── Send Form to Patient ──────────────────────────────────────────────
+
+  const handleSendToPatient = async () => {
+    if (!sendModal || !sendPatientId) return;
+    setSendingForm(true);
+    try {
+      await api.createFormSubmission({
+        template_id: sendModal._seed ? null : sendModal.id,
+        template_name: sendModal.name,
+        template_version: sendModal.version || '1.0',
+        patient_id: sendPatientId,
+        form_data: {},
+        status: 'draft',
+        language: 'en',
+        metadata: {
+          trigger: 'practice_sent',
+          template_slug: sendModal.id || sendModal.slug,
+          sent_by: user?.id
+        }
+      });
+      addNotification && addNotification({ type: 'success', message: `"${sendModal.name}" sent to patient successfully` });
+      setSendModal(null);
+      setSendPatientId('');
+      loadData();
+    } catch (err) {
+      addNotification && addNotification({ type: 'error', message: 'Failed to send form to patient' });
+    } finally {
+      setSendingForm(false);
+    }
+  };
 
   // ─── Template actions ───────────────────────────────────────────────────
 
@@ -465,11 +505,12 @@ const FormManagementView = ({
             <p className={`text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{selectedTemplate.description}</p>
           </div>
           <div className="flex gap-2">
-            <select value={submissionLanguage} onChange={e => setSubmissionLanguage(e.target.value)} className={inputCls}>
+            <ThemedSelect
+              theme={theme} value={submissionLanguage} onChange={e => setSubmissionLanguage(e.target.value)}>
               {(selectedTemplate.languages || ['en']).map(lang => (
                 <option key={lang} value={lang}>{lang === 'en' ? 'English' : lang === 'es' ? 'Español' : lang === 'fr' ? 'Français' : lang}</option>
               ))}
-            </select>
+            </ThemedSelect>
             <button onClick={() => handleExportPDF(selectedTemplate, null)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${dark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
               <Download className="w-4 h-4" /> Export PDF
             </button>
@@ -591,24 +632,27 @@ const FormManagementView = ({
             </div>
             <div>
               <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Category</label>
-              <select value={builderSettings.category_slug} onChange={e => setBuilderSettings(p => ({...p, category_slug: e.target.value}))} className={`${inputCls} w-full`}>
+              <ThemedSelect
+                theme={theme} value={builderSettings.category_slug} onChange={e => setBuilderSettings(p => ({...p, category_slug: e.target.value}))}>
                 {FORM_CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Template Type</label>
-              <select value={builderSettings.template_type} onChange={e => setBuilderSettings(p => ({...p, template_type: e.target.value}))} className={`${inputCls} w-full`}>
+              <ThemedSelect
+                theme={theme} value={builderSettings.template_type} onChange={e => setBuilderSettings(p => ({...p, template_type: e.target.value}))}>
                 {['onboarding','medical','consent','privacy','billing','scheduling','clinical','communication','legal','feedback','specialized','operational'].map(t => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Specialty</label>
-              <select value={builderSettings.specialty} onChange={e => setBuilderSettings(p => ({...p, specialty: e.target.value}))} className={`${inputCls} w-full`}>
+              <ThemedSelect
+                theme={theme} value={builderSettings.specialty} onChange={e => setBuilderSettings(p => ({...p, specialty: e.target.value}))}>
                 <option value="">General</option>
                 {['behavioral_health','dentistry','pediatrics','cardiology','orthopedics','oncology','dermatology'].map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Languages</label>
@@ -689,11 +733,7 @@ const FormManagementView = ({
     <div className={`h-full flex flex-col ${dark ? 'bg-slate-900' : 'bg-gray-50'}`}>
       {/* Header */}
       <div className={`flex-shrink-0 px-6 py-4 border-b ${dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className={`text-xl font-bold ${dark ? 'text-slate-100' : 'text-gray-900'}`}>Form Management</h1>
-            <p className={`text-sm ${dark ? 'text-slate-400' : 'text-gray-500'}`}>Dynamic form builder, templates, eSignatures, and submissions</p>
-          </div>
+        <div className="flex items-center justify-end mb-4">
           <div className="flex gap-2">
             <button onClick={loadData} className={`p-2 rounded-lg border transition-colors ${dark ? 'border-slate-600 hover:bg-slate-700 text-slate-400' : 'border-gray-300 hover:bg-gray-50 text-gray-500'}`}>
               <RefreshCw className="w-4 h-4" />
@@ -727,7 +767,8 @@ const FormManagementView = ({
           ))}
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — the app shell's secondary pane replaces these when present */}
+        {!tabsInShell && (
         <div className="flex gap-1">
           {[
             { id: 'templates', label: 'Templates', icon: FileText },
@@ -741,6 +782,7 @@ const FormManagementView = ({
             </button>
           ))}
         </div>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -750,16 +792,18 @@ const FormManagementView = ({
           <input type="text" placeholder={activeTab === 'templates' ? 'Search templates...' : 'Search submissions...'} value={search} onChange={e => setSearch(e.target.value)} className={`${inputCls} w-full pl-9`} />
         </div>
         {activeTab === 'templates' && (
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className={inputCls}>
+          <ThemedSelect
+            theme={theme} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
             <option value="all">All Categories</option>
             {FORM_CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-          </select>
+          </ThemedSelect>
         )}
         {activeTab === 'submissions' && (
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={inputCls}>
+          <ThemedSelect
+            theme={theme} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="all">All Statuses</option>
             {['draft','submitted','reviewed','approved','rejected'].map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          </ThemedSelect>
         )}
         {activeTab === 'templates' && (
           <div className={`flex rounded-lg border overflow-hidden ${dark ? 'border-slate-600' : 'border-gray-200'}`}>
@@ -786,9 +830,11 @@ const FormManagementView = ({
                 templates={filteredTemplates}
                 onSelect={openTemplateForSubmission}
                 onCreateNew={() => { setBuilderFields([]); setBuilderSettings({name:'',description:'',category_slug:'onboarding',template_type:'onboarding',require_signature:false,require_witness:false,languages:['en'],compliance_tags:[],specialty:'',intake_flow_eligible:true,role_visibility:['admin','provider','staff','patient']}); setEditingTemplate(null); setActiveTab('builder'); }}
+                onPreview={openTemplatePreview}
+                onEdit={openTemplateEdit}
+                onSendToPatient={patients && patients.length > 0 ? (t) => { setSendModal(t); setSendPatientId(''); } : null}
                 theme={theme}
                 showStats
-                // Override the select to show action buttons
                 onSelectionChange={null}
               />
             )}
@@ -897,6 +943,62 @@ const FormManagementView = ({
           onCancel={() => setConfirmModal({ isOpen: false })}
           theme={theme}
         />
+      )}
+
+      {/* Send Form to Patient Modal */}
+      {sendModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className={`max-w-md w-full rounded-xl shadow-2xl border ${dark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+            <div className={`flex items-center justify-between p-5 border-b ${dark ? 'border-slate-700' : 'border-gray-200'}`}>
+              <div>
+                <h3 className={`font-semibold text-lg ${dark ? 'text-slate-100' : 'text-gray-900'}`}>Send Form to Patient</h3>
+                <p className={`text-sm mt-0.5 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{sendModal.name}</p>
+              </div>
+              <button onClick={() => setSendModal(null)} className={`p-2 rounded-lg ${dark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${dark ? 'text-slate-300' : 'text-gray-700'}`}>Select Patient <span className="text-red-400">*</span></label>
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:ring-2 focus:ring-blue-500"
+                  className="text-sm"
+                  value={sendPatientId}
+                  onChange={e => setSendPatientId(e.target.value)}
+                >
+                  <option value="">-- Select a patient --</option>
+                  {(patients || []).map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim()} {p.mrn ? `(${p.mrn})` : ''}
+                    </option>
+                  ))}
+                </ThemedSelect>
+              </div>
+              <div className={`p-3 rounded-lg text-sm ${dark ? 'bg-blue-900/20 border border-blue-700/40 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-700'}`}>
+                <Send className="w-4 h-4 inline mr-1.5" />
+                The patient will see this form under "Forms Requested" in their portal and can fill it out online.
+              </div>
+            </div>
+            <div className={`flex gap-3 p-5 border-t ${dark ? 'border-slate-700' : 'border-gray-200'}`}>
+              <button
+                onClick={handleSendToPatient}
+                disabled={!sendPatientId || sendingForm}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium text-sm transition-colors"
+              >
+                {sendingForm ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {sendingForm ? 'Sending...' : 'Send Form'}
+              </button>
+              <button
+                onClick={() => setSendModal(null)}
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${dark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Version History Sidebar */}

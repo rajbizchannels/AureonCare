@@ -1,29 +1,40 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const { requireAdmin } = require('../middleware/auth');
-const { google } = require('googleapis');
-const { Client } = require('@microsoft/microsoft-graph-client');
+const { authenticate, requireAdmin } = require('../middleware/auth');
+// Provider SDKs and token refresh now live in the shared service, so the
+// Google Drive and OneDrive paths cannot drift apart.
+const cloudStorage = require('../services/cloudBackupStorage');
 
 // Middleware to ensure only admins can access backup endpoints
-router.use(requireAdmin);
+router.use(authenticate, requireAdmin);
 
 /**
  * Generate complete backup of all system data
  * GET /api/backup/generate
  */
-router.get('/generate', async (req, res) => {
-  try {
-    console.log('Generating complete system backup...');
+/**
+ * Build a full system backup.
+ *
+ * Called directly rather than over HTTP. This router is gated by
+ * authenticate + requireAdmin, and a self-referential fetch cannot forward
+ * the caller's Authorization header — so the cloud-upload routes used to get
+ * a 401 back from /api/backup/generate and fail with the misleading
+ * "Failed to generate backup data". Calling in-process also avoids a second
+ * serverless invocation and does not depend on req.protocol, which is http
+ * behind the Vercel proxy.
+ */
+async function generateBackup(generatedBy) {
+  console.log('Generating complete system backup...');
 
-    const backup = {
-      timestamp: new Date().toISOString(),
-      version: '1.0',
-      data: {}
-    };
+  const backup = {
+    timestamp: new Date().toISOString(),
+    version: '1.0',
+    data: {}
+  };
 
-    // Define all tables to backup
-    const tables = [
+  // Define all tables to backup
+  const tables = [
       'users',
       'patients',
       'appointments',
@@ -58,28 +69,34 @@ router.get('/generate', async (req, res) => {
       'waitlist'
     ];
 
-    // Backup each table
-    for (const table of tables) {
-      try {
-        const result = await pool.query(`SELECT * FROM ${table}`);
-        backup.data[table] = result.rows;
-        console.log(`Backed up ${table}: ${result.rows.length} rows`);
-      } catch (error) {
-        console.warn(`Warning: Could not backup table ${table}:`, error.message);
-        // Continue with other tables even if one fails
-        backup.data[table] = [];
-      }
+  // Backup each table
+  for (const table of tables) {
+    try {
+      const result = await pool.query(`SELECT * FROM ${table}`);
+      backup.data[table] = result.rows;
+      console.log(`Backed up ${table}: ${result.rows.length} rows`);
+    } catch (error) {
+      console.warn(`Warning: Could not backup table ${table}:`, error.message);
+      // Continue with other tables even if one fails
+      backup.data[table] = [];
     }
+  }
 
-    // Add metadata
-    backup.metadata = {
-      totalTables: tables.length,
-      totalRecords: Object.values(backup.data).reduce((sum, table) => sum + table.length, 0),
-      generatedBy: req.user?.id || req.headers['x-user-id'],
-      generatedAt: new Date().toISOString()
-    };
+  // Add metadata
+  backup.metadata = {
+    totalTables: tables.length,
+    totalRecords: Object.values(backup.data).reduce((sum, table) => sum + table.length, 0),
+    generatedBy,
+    generatedAt: new Date().toISOString()
+  };
 
-    console.log('Backup generated successfully:', backup.metadata);
+  console.log('Backup generated successfully:', backup.metadata);
+  return backup;
+}
+
+router.get('/generate', async (req, res) => {
+  try {
+    const backup = await generateBackup(req.user?.id || req.headers['x-user-id']);
     res.json(backup);
   } catch (error) {
     console.error('Error generating backup:', error);
@@ -88,144 +105,110 @@ router.get('/generate', async (req, res) => {
 });
 
 /**
- * Backup to Google Drive
+ * Upload a full system backup to a connected cloud provider.
+ *
  * POST /api/backup/google-drive
+ * POST /api/backup/onedrive
+ * POST /api/backup/cloud   { provider }
+ *
+ * All three land here. The provider-specific routes are kept so existing
+ * callers keep working; the generic one takes the provider in the body, which
+ * is what the UI uses once the admin has picked from the two.
  */
-router.post('/google-drive', async (req, res) => {
+async function handleCloudBackup(req, res, provider) {
   try {
-    console.log('Starting Google Drive backup...');
-
-    // Check if Google Drive credentials are configured
-    const googleCredentials = process.env.AC_GG_DRV;
-    if (!googleCredentials) {
-      return res.status(400).json({
-        error: 'Google Drive not configured. Please set up Google Drive credentials in environment variables.'
-      });
+    if (!cloudStorage.isSupported(provider)) {
+      return res.status(400).json({ error: `Unknown backup provider: ${provider}` });
     }
 
-    // Generate backup data
-    const backupResponse = await fetch(`${req.protocol}://${req.get('host')}/api/backup/generate`, {
-      headers: {
-        'x-user-id': req.headers['x-user-id'],
-        'x-user-role': req.headers['x-user-role']
-      }
-    });
+    const backupData = await generateBackup(req.user?.id || req.headers['x-user-id']);
+    const fileName = `aureoncare-backup-${new Date().toISOString().split('T')[0]}.json`;
+    const uploaded = await cloudStorage.uploadBackup(pool, provider, fileName, backupData);
 
-    if (!backupResponse.ok) {
-      throw new Error('Failed to generate backup data');
-    }
-
-    const backupData = await backupResponse.json();
-
-    // Initialize Google Drive API
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(googleCredentials),
-      scopes: ['https://www.googleapis.com/auth/drive.file']
-    });
-
-    const drive = google.drive({ version: 'v3', auth });
-
-    // Create file metadata
-    const fileMetadata = {
-      name: `aureoncare-backup-${new Date().toISOString().split('T')[0]}.json`,
-      mimeType: 'application/json'
-    };
-
-    // Upload to Google Drive
-    const media = {
-      mimeType: 'application/json',
-      body: JSON.stringify(backupData, null, 2)
-    };
-
-    const file = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id, name, webViewLink'
-    });
-
-    console.log('Backup uploaded to Google Drive:', file.data);
     res.json({
       success: true,
-      message: 'Backup uploaded to Google Drive successfully',
-      fileId: file.data.id,
-      fileName: file.data.name,
-      link: file.data.webViewLink
+      message: `Backup uploaded to ${uploaded.label} successfully`,
+      provider,
+      fileId: uploaded.fileId,
+      fileName: uploaded.fileName,
+      link: uploaded.link,
     });
   } catch (error) {
-    console.error('Error backing up to Google Drive:', error);
+    console.error(`Error backing up to ${provider}:`, error);
     res.status(500).json({
-      error: 'Failed to backup to Google Drive',
-      details: error.message
+      error: `Failed to backup to ${cloudStorage.providerLabel(provider)}`,
+      details: error.message,
+    });
+  }
+}
+
+router.post('/google-drive', (req, res) => handleCloudBackup(req, res, 'google_drive'));
+router.post('/onedrive',     (req, res) => handleCloudBackup(req, res, 'onedrive'));
+router.post('/cloud',        (req, res) => handleCloudBackup(req, res, req.body?.provider));
+
+/**
+ * Which cloud providers are connected.
+ * GET /api/backup/cloud/providers -> { providers: [{ provider, label }] }
+ *
+ * The UI uses this to decide between uploading straight away and asking which
+ * destination to use.
+ */
+router.get('/cloud/providers', async (req, res) => {
+  try {
+    res.json({ providers: await cloudStorage.getConfiguredProviders(pool) });
+  } catch (error) {
+    console.error('Error listing cloud providers:', error);
+    res.status(500).json({ error: 'Failed to list cloud providers', details: error.message });
+  }
+});
+
+/**
+ * List backups held on a provider.
+ * GET /api/backup/cloud/list?provider=google_drive
+ */
+router.get('/cloud/list', async (req, res) => {
+  const { provider } = req.query;
+  try {
+    if (!cloudStorage.isSupported(provider)) {
+      return res.status(400).json({ error: `Unknown backup provider: ${provider}` });
+    }
+    res.json({ provider, backups: await cloudStorage.listBackups(pool, provider) });
+  } catch (error) {
+    console.error(`Error listing backups on ${provider}:`, error);
+    res.status(500).json({
+      error: `Failed to list backups on ${cloudStorage.providerLabel(provider)}`,
+      details: error.message,
     });
   }
 });
 
 /**
- * Backup to OneDrive
- * POST /api/backup/onedrive
+ * Restore directly from a backup held on a provider, so an admin does not have
+ * to download the file and upload it back.
+ * POST /api/backup/cloud/restore  { provider, fileId }
  */
-router.post('/onedrive', async (req, res) => {
+router.post('/cloud/restore', async (req, res) => {
+  const { provider, fileId } = req.body || {};
   try {
-    console.log('Starting OneDrive backup...');
+    if (!cloudStorage.isSupported(provider)) {
+      return res.status(400).json({ error: `Unknown backup provider: ${provider}` });
+    }
+    if (!fileId) {
+      return res.status(400).json({ error: 'fileId is required' });
+    }
 
-    // Check if OneDrive credentials are configured
-    const oneDriveToken = process.env.AC_OD_TK;
-    if (!oneDriveToken) {
+    const backup = await cloudStorage.downloadBackup(pool, provider, fileId);
+    if (!backup || !backup.data) {
       return res.status(400).json({
-        error: 'OneDrive not configured. Please set up OneDrive access token in environment variables.'
+        error: 'That file is not a full system backup. Accounts and inventory backups restore from their own screens.',
       });
     }
 
-    // Generate backup data
-    const backupResponse = await fetch(`${req.protocol}://${req.get('host')}/api/backup/generate`, {
-      headers: {
-        'x-user-id': req.headers['x-user-id'],
-        'x-user-role': req.headers['x-user-role']
-      }
-    });
-
-    if (!backupResponse.ok) {
-      throw new Error('Failed to generate backup data');
-    }
-
-    const backupData = await backupResponse.json();
-
-    // Initialize Microsoft Graph client
-    const client = Client.init({
-      authProvider: (done) => {
-        done(null, oneDriveToken);
-      }
-    });
-
-    // Upload to OneDrive
-    const fileName = `aureoncare-backup-${new Date().toISOString().split('T')[0]}.json`;
-    const uploadedFile = await client
-      .api('/me/drive/root/children')
-      .post({
-        name: fileName,
-        file: {},
-        '@microsoft.graph.conflictBehavior': 'replace'
-      });
-
-    // Upload content
-    await client
-      .api(`/me/drive/items/${uploadedFile.id}/content`)
-      .put(JSON.stringify(backupData, null, 2));
-
-    console.log('Backup uploaded to OneDrive:', uploadedFile);
-    res.json({
-      success: true,
-      message: 'Backup uploaded to OneDrive successfully',
-      fileId: uploadedFile.id,
-      fileName: uploadedFile.name,
-      link: uploadedFile.webUrl
-    });
+    const result = await restoreBackup(backup, req.user?.id || req.headers['x-user-id']);
+    res.json({ ...result, provider, restoredFrom: cloudStorage.providerLabel(provider) });
   } catch (error) {
-    console.error('Error backing up to OneDrive:', error);
-    res.status(500).json({
-      error: 'Failed to backup to OneDrive',
-      details: error.message
-    });
+    console.error('Error restoring from cloud backup:', error);
+    res.status(500).json({ error: 'Failed to restore backup', details: error.message });
   }
 });
 
@@ -233,16 +216,9 @@ router.post('/onedrive', async (req, res) => {
  * Restore data from backup
  * POST /api/backup/restore
  */
-router.post('/restore', async (req, res) => {
-  try {
+async function restoreBackup(backup, restoredBy) {
+  {
     console.log('Starting data restore...');
-    const { backup } = req.body;
-
-    if (!backup || !backup.data) {
-      return res.status(400).json({
-        error: 'Invalid backup format. Backup data is required.'
-      });
-    }
 
     const restoredTables = [];
     const errors = [];
@@ -288,11 +264,23 @@ router.post('/restore', async (req, res) => {
       totalTables: restoredTables.length,
       errors: errors.length > 0 ? errors : undefined,
       restoredAt: new Date().toISOString(),
-      restoredBy: req.headers['x-user-id']
+      restoredBy
     };
 
     console.log('Restore completed:', response);
-    res.json(response);
+    return response;
+  }
+}
+
+router.post('/restore', async (req, res) => {
+  try {
+    const { backup } = req.body;
+    if (!backup || !backup.data) {
+      return res.status(400).json({
+        error: 'Invalid backup format. Backup data is required.'
+      });
+    }
+    res.json(await restoreBackup(backup, req.user?.id || req.headers['x-user-id']));
   } catch (error) {
     console.error('Error restoring backup:', error);
     res.status(500).json({
@@ -308,13 +296,28 @@ router.post('/restore', async (req, res) => {
  */
 router.get('/config', async (req, res) => {
   try {
+    // Configured = has a valid OAuth access token saved after sign-in
+    let googleConfigured = false;
+    let oneDriveConfigured = false;
+
+    try {
+      const result = await pool.query(
+        `SELECT provider_type,
+                (settings->>'access_token' IS NOT NULL AND settings->>'access_token' != '') AS has_token
+         FROM backup_provider_settings
+         WHERE provider_type IN ('google_drive', 'onedrive')`
+      );
+      result.rows.forEach(row => {
+        if (row.provider_type === 'google_drive') googleConfigured = row.has_token;
+        if (row.provider_type === 'onedrive')     oneDriveConfigured = row.has_token;
+      });
+    } catch (_) {
+      // Table may not exist yet — treat as not configured
+    }
+
     const config = {
-      googleDrive: {
-        configured: !!process.env.AC_GG_DRV
-      },
-      oneDrive: {
-        configured: !!process.env.AC_OD_TK
-      }
+      googleDrive: { configured: googleConfigured },
+      oneDrive:    { configured: oneDriveConfigured }
     };
 
     res.json(config);

@@ -19,6 +19,10 @@
       "dest": "backend/server.js"
     },
     {
+      "src": "/platform(/.*)?",
+      "dest": "backend/server.js"
+    },
+    {
       "src": "/health",
       "dest": "backend/server.js"
     },
@@ -27,8 +31,51 @@
       "dest": "backend/server.js"
     },
     {
+      "src": "/.well-known/microsoft-identity-association.json",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/book/(.*)",
+      "dest": "frontend/index.html"
+    },
+    {
+      "src": "/patient-login",
+      "dest": "frontend/index.html"
+    },
+    {
+      "src": "/signup(/complete)?",
+      "dest": "frontend/index.html"
+    },
+    {
+      "src": "/accept-invite",
+      "dest": "frontend/index.html"
+    },
+    {
+      "src": "/join",
+      "dest": "frontend/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "frontend/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'self'"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
     }
   ],
   "env": {

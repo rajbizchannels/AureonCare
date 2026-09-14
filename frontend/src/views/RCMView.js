@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Eye, Edit, Trash2, CreditCard, ArrowLeft, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp, X, Receipt, FileText, Tag, Bell, ArrowRightLeft, Percent } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, CreditCard, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp, X, Receipt, FileText, Tag, Bell, ArrowRightLeft, Percent } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import NewPaymentForm from '../components/forms/NewPaymentForm';
 import NewClaimForm from '../components/forms/NewClaimForm';
@@ -13,9 +13,12 @@ import NewCouponForm from '../components/forms/NewCouponForm';
 import NewBillingPaymentForm from '../components/forms/NewBillingPaymentForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
+import { useShellTab } from '../hooks/useShellTab';
 
 const RCMView = ({
   theme,
+  activeTab: shellTab,
+  onTabChange,
   claims,
   patients,
   setShowForm,
@@ -27,9 +30,10 @@ const RCMView = ({
   setCurrentModule,
   tasks,
   setTasks,
-  t = {}
+  t = {},
+  currency = 'USD',
 }) => {
-  const [activeTab, setActiveTab] = useState('claims');
+  const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'claims');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [showInsurancePayerForm, setShowInsurancePayerForm] = useState(false);
@@ -160,6 +164,14 @@ const RCMView = ({
       setLoading(false);
     }
   }, [api, addNotification]);
+
+  // Load on mount. Without this the module only ever populated as a side effect
+  // of saving something, so opening Pre-Authorizations, Denials, Payment
+  // Postings, Quotes & Invoices or Insurance Payers showed an empty list on a
+  // fresh visit — including the payer dropdowns those forms depend on.
+  useEffect(() => {
+    fetchRCMData();
+  }, [fetchRCMData]);
 
   // Filter functions
   const filteredClaims = claims.filter(claim => {
@@ -305,7 +317,7 @@ const RCMView = ({
                     <tr key={claim.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{claim.claim_number || 'N/A'}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{patientName}</td>
-                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(claim.amount)}</td>
+                      <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(claim.amount, currency)}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{claim.payer}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(claim.service_date || claim.serviceDate || claim.date)}</td>
                       <td className="px-6 py-4">
@@ -451,7 +463,9 @@ const RCMView = ({
       </div>
 
       {/* Inline Pre-Authorization Form - Between Search and List */}
-      {showPreapprovalForm && (
+      {/* Tab-guarded like every other inline form here: without it the request
+          form stayed on screen after switching to another tab. */}
+      {activeTab === 'preapprovals' && showPreapprovalForm && (
         <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
           <NewPreapprovalForm
             theme={theme}
@@ -617,7 +631,7 @@ const RCMView = ({
                   return (
                     <tr key={payment.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{patientName}</td>
-                      <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount)}</td>
+                      <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount, currency)}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.payment_method || 'N/A'}</td>
                       <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(payment.payment_date)}</td>
                       <td className="px-6 py-4">
@@ -899,7 +913,7 @@ const RCMView = ({
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.patient_name}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.claim_number || 'N/A'}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{posting.insurance_payer_name || 'N/A'}</td>
-                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(posting.payment_amount)}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(posting.payment_amount, currency)}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(posting.posting_date)}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -1034,7 +1048,7 @@ const RCMView = ({
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.patient_name}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.claim_number || 'N/A'}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{denial.denial_category}</td>
-                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(denial.denial_amount)}</td>
+                    <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(denial.denial_amount, currency)}</td>
                     <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(denial.appeal_deadline)}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -1222,7 +1236,7 @@ const RCMView = ({
                 <tr key={quote.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                   <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{quote.quoteNumber}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{quote.patientName || 'N/A'}</td>
-                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(quote.totalAmount)}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(quote.totalAmount, currency)}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(quote.issueDate)}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(quote.expiryDate)}</td>
                   <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(quote.status)}`}>{quote.status?.replace('_', ' ')}</span></td>
@@ -1316,9 +1330,9 @@ const RCMView = ({
                 <tr key={invoice.id} className={`border-b transition-colors ${theme === 'dark' ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-gray-300/50 hover:bg-gray-200/30'} ${idx % 2 === 0 ? (theme === 'dark' ? 'bg-slate-800/10' : 'bg-gray-100/10') : ''}`}>
                   <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{invoice.invoiceNumber}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{invoice.patientName || 'N/A'}</td>
-                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(invoice.totalAmount)}</td>
-                  <td className={`px-6 py-4 text-green-400`}>{formatCurrency(invoice.amountPaid)}</td>
-                  <td className={`px-6 py-4 ${parseFloat(invoice.balanceDue) > 0 ? 'text-red-400' : 'text-green-400'}`}>{formatCurrency(invoice.balanceDue)}</td>
+                  <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatCurrency(invoice.totalAmount, currency)}</td>
+                  <td className={`px-6 py-4 text-green-400`}>{formatCurrency(invoice.amountPaid, currency)}</td>
+                  <td className={`px-6 py-4 ${parseFloat(invoice.balanceDue) > 0 ? 'text-red-400' : 'text-green-400'}`}>{formatCurrency(invoice.balanceDue, currency)}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(invoice.dueDate)}</td>
                   <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(invoice.status)}`}>{invoice.status?.replace('_', ' ')}</span></td>
                   <td className="px-6 py-4">
@@ -1399,7 +1413,7 @@ const RCMView = ({
                   <td className={`px-6 py-4 font-medium font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{coupon.code}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{coupon.name}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : formatCurrency(coupon.discountValue)}
+                    {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : formatCurrency(coupon.discountValue, currency)}
                   </td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                     {coupon.usedCount || 0}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ' / unlimited'}
@@ -1492,7 +1506,7 @@ const RCMView = ({
                   <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{payment.paymentNumber}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.patientName || 'N/A'}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.invoiceNumber || 'N/A'}</td>
-                  <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount)}</td>
+                  <td className={`px-6 py-4 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(payment.amount, currency)}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{payment.paymentMethod?.replace('_', ' ') || 'N/A'}</td>
                   <td className={`px-6 py-4 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{formatDate(payment.paymentDate)}</td>
                   <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(payment.status)}`}>{payment.status}</span></td>
@@ -1677,27 +1691,9 @@ const RCMView = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-          </button>
-          <div>
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Revenue Cycle Management
-            </h2>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              Manage claims, pre-authorizations, payments, insurance payers, and billing
-            </p>
-          </div>
-        </div>
-      </div>
 
-      {/* Tabs */}
+      {/* Tabs — hidden when the app shell's secondary pane already lists them */}
+      {!tabsInShell && (
       <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
         {[
           { id: 'claims', label: 'Claims', icon: DollarSign, count: claims.length },
@@ -1734,6 +1730,7 @@ const RCMView = ({
           );
         })}
       </div>
+      )}
 
       {/* Add Button for Active Tab */}
       <div className="flex justify-end">
@@ -1815,7 +1812,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Patient
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {patients.find(p => p.id === viewingClaim.patient_id) ?
                   `${patients.find(p => p.id === viewingClaim.patient_id).first_name} ${patients.find(p => p.id === viewingClaim.patient_id).last_name}` :
                   'Unknown Patient'}
@@ -1825,7 +1822,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Payer
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {viewingClaim.payer || 'N/A'}
               </div>
             </div>
@@ -1833,7 +1830,7 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Service Date
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 {formatDate(viewingClaim.service_date)}
               </div>
             </div>
@@ -1841,15 +1838,15 @@ const RCMView = ({
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Amount
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
-                {formatCurrency(viewingClaim.amount)}
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
+                {formatCurrency(viewingClaim.amount, currency)}
               </div>
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                 Status
               </label>
-              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   viewingClaim.status === 'Approved' ? 'bg-green-500/20 text-green-400' :
                   viewingClaim.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400' :
@@ -1864,7 +1861,7 @@ const RCMView = ({
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Pre-approval
                 </label>
-                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                   {viewingClaim.preapproval_id}
                 </div>
               </div>
@@ -1874,7 +1871,7 @@ const RCMView = ({
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Notes
                 </label>
-                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50 text-slate-200' : 'bg-gray-100 text-gray-900'}`}>
                   {viewingClaim.notes}
                 </div>
               </div>
@@ -1914,23 +1911,9 @@ const RCMView = ({
         </div>
       )}
 
-      {activeTab === 'preapprovals' && showPreapprovalForm && (
-        <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-          <NewPreapprovalForm
-            theme={theme}
-            api={api}
-            patients={patients}
-            onClose={() => setShowPreapprovalForm(false)}
-            onSuccess={(newPreapproval) => {
-              setShowPreapprovalForm(false);
-              setPreapprovals([...preapprovals, newPreapproval]);
-              addNotification('success', t.preauthorizationCreated || 'Pre-authorization request created successfully');
-            }}
-            addNotification={addNotification}
-            t={t}
-          />
-        </div>
-      )}
+      {/* The pre-authorization form is rendered above, between the search and
+          the list. A second copy here put two identical forms on the page at
+          the same time whenever the request form was open. */}
 
       {activeTab === 'payments' && showPaymentForm && (
         <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
@@ -1974,7 +1957,10 @@ const RCMView = ({
             onClose={() => setShowPaymentPostingForm(false)}
             onSuccess={(newPosting) => {
               setShowPaymentPostingForm(false);
-              setPaymentPostings([...paymentPostings, newPosting]);
+              // Guarded: an undefined entry here reaches the table's filter and
+              // takes the whole view down with it. fetchRCMData refreshes the
+              // list regardless, so skipping the optimistic append is safe.
+              if (newPosting) setPaymentPostings([...paymentPostings, newPosting]);
               fetchRCMData(); // Refresh data
               addNotification('success', 'Payment posting created successfully');
             }}
@@ -1994,7 +1980,7 @@ const RCMView = ({
             onClose={() => setShowDenialForm(false)}
             onSuccess={(newDenial) => {
               setShowDenialForm(false);
-              setDenials([...denials, newDenial]);
+              if (newDenial) setDenials([...denials, newDenial]);
               fetchRCMData(); // Refresh data
               addNotification('success', 'Denial created successfully');
             }}

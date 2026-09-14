@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Bot, Bell, Search, Settings, Menu, X, ChevronRight, Stethoscope, AlertCircle, ArrowLeft, Sun, Moon, LogOut, HelpCircle } from 'lucide-react';
+import { Bot, X, AlertCircle } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -17,6 +17,16 @@ import api from './api/apiService';
 import { getTranslations } from './config/translations';
 import { getModules } from './config/modules';
 import { hasAccess } from './config/planFeatures';
+import {
+  getNavigation,
+  getPatientNavigation,
+  filterNavigation,
+  findNavLocation,
+  defaultItemFor,
+} from './config/navigation';
+
+// App shell (3-pane layout)
+import AppShell from './components/layout/AppShell';
 
 // Views
 import DashboardView from './views/DashboardView';
@@ -32,7 +42,7 @@ import FHIRView from './views/FHIRView';
 import AdminPanelView from './views/AdminPanelView';
 import OfferingManagementView from './views/OfferingManagementView';
 import PatientDiagnosisView from './views/PatientDiagnosisView';
-import PatientHistoryView from './views/PatientHistoryView';
+import PatientHistoryDirectoryView from './views/PatientHistoryDirectoryView';
 import CampaignsManagementView from './views/CampaignsManagementView';
 import AppointmentTypesManagementView from './views/AppointmentTypesManagementView';
 import PatientIntakeView from './views/PatientIntakeView';
@@ -41,15 +51,24 @@ import LaboratoryManagementView from './views/LaboratoryManagementView';
 import ClinicalServicesView from './views/ClinicalServicesView';
 import WaitlistManagementView from './views/WaitlistManagementView';
 import FormManagementView from './views/FormManagementView';
+import MessagesView from './views/MessagesView';
+import AccountsView from './views/AccountsView';
+import InventoryView from './views/InventoryView';
+
+// Public pages
+import PublicBookingPage from './components/scheduling/PublicBookingPage';
 
 // Modals
 import LoginPage from './components/modals/LoginPage';
 import PatientLoginPage from './components/modals/PatientLoginPage';
+import SignupPage from './components/modals/SignupPage';
+import SignupCompletePage from './components/modals/SignupCompletePage';
+import AcceptInvitePage from './components/modals/AcceptInvitePage';
+import JoinPracticePage from './components/modals/JoinPracticePage';
 import RegisterPage from './components/modals/RegisterPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
-import SettingsModal from './components/modals/SettingsModal';
 
 // Forms
 import NewAppointmentForm from './components/forms/NewAppointmentForm';
@@ -127,6 +146,8 @@ function App() {
     setAppointmentViewType,
     calendarViewType,
     setCalendarViewType,
+    currency,
+    setCurrency,
 
     // Data
     appointments,
@@ -221,6 +242,116 @@ function App() {
     }
   }, [currentModule, showForm]);
 
+  // ── Unread messages badge ─────────────────────────────────────────────────
+  // Polled, since no websocket server is wired up. Sixty seconds is slower
+  // than the messaging view's own refresh: the badge only has to be roughly
+  // right, and whoever is actually reading a thread already sees it live.
+  const [unreadMessages, setUnreadMessages] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      setUnreadMessages(0);
+      return undefined;
+    }
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const count = await api.getUnreadMessageCount();
+        if (!cancelled) setUnreadMessages(count);
+      } catch {
+        // A stale badge is not worth a toast on every screen in the app.
+      }
+    };
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+    // currentModule is a dependency so the badge re-checks on navigation:
+    // leaving the messages view should clear it straight away rather than
+    // leave a stale count sitting there for the rest of the minute.
+  }, [isAuthenticated, currentModule]);
+
+  // ── App-shell navigation ──────────────────────────────────────────────────
+  // The shell tracks which sub-module (tab) of a module is on screen. It is
+  // stored together with the module it belongs to so that navigating straight
+  // to a module from elsewhere in the app (search results, deep links inside a
+  // view) falls back to that module's default tab instead of a stale one.
+  const [navSelection, setNavSelection] = React.useState({ module: 'dashboard', tab: null });
+
+  // A patient's Home is the portal, not the practice dashboard, and their rail
+  // carries nothing else.
+  const isPatient = user?.role === 'patient';
+  const navigation = filterNavigation(
+    isPatient ? getPatientNavigation(t) : getNavigation(t),
+    hasModuleAccess
+  );
+  const activeModule = isPatient && currentModule === 'dashboard' ? 'patientPortal' : currentModule;
+
+  // Appointments keep their sub-module in appointmentViewType (list/calendar/waitlist).
+  const moduleTab = navSelection.module === activeModule ? navSelection.tab : null;
+  const activeTab = activeModule === 'practiceManagement' ? appointmentViewType : moduleTab;
+
+  const navLocation = findNavLocation(navigation, activeModule, activeTab);
+  const activeGroup = navLocation?.group || navigation[0];
+  const activeItem = navLocation?.item;
+  const activeTrail = navLocation?.trail || (activeItem ? [activeItem] : []);
+
+  // Selects a sub-module tab from inside a view, keeping the shell in sync.
+  const selectModuleTab = (moduleId, tab) => setNavSelection({ module: moduleId, tab });
+
+  // A patient's portal owns its own tab state — the shell does not drive it,
+  // because their nav group holds a single destination. So asking it to open a
+  // particular tab from outside (the header's Messages icon) is a request it
+  // watches, carrying a nonce so clicking twice re-opens rather than no-ops.
+  const [portalTabRequest, setPortalTabRequest] = React.useState(null);
+
+  const canMessage = isPatient || hasModuleAccess('messages');
+
+  const goToMessages = () => {
+    if (isPatient) {
+      handleSelectNavItem({ module: 'patientPortal' });
+      setPortalTabRequest({ tab: 'messages', nonce: Date.now() });
+    } else {
+      handleSelectNavItem({ module: 'messages' });
+    }
+  };
+
+  const handleSelectNavItem = (item) => {
+    // Grouping-only branches (a report category, say) have nowhere to go —
+    // pane 2 expands them instead.
+    if (!item.module && !item.action) return;
+
+    // Snapshot entries open a quick-view drawer instead of switching modules.
+    if (item.action) {
+      setEditingItem(null);
+      setShowForm(null);
+      setSelectedItem(item.action);
+      return;
+    }
+
+    setSelectedItem(null);
+    setEditingItem(null);
+    setShowForm(null);
+    setNavSelection({ module: item.module, tab: item.tab || null });
+    if (item.module === 'practiceManagement' && item.tab) {
+      setAppointmentViewType(item.tab);
+    }
+    setCurrentModule(item.module);
+  };
+
+  // Anything inside a view that jumps to another module — the dashboard's
+  // module tiles and stat cards, most of all — goes through the shell so the
+  // rail switches group and pane 2 opens the branch that owns the module.
+  const navigateToModule = (moduleId) => handleSelectNavItem({ module: moduleId });
+
+  const handleSelectNavGroup = (group) => {
+    if (group.id === activeGroup?.id) return;
+    const item = defaultItemFor(group);
+    if (item) handleSelectNavItem(item);
+  };
+
   // Modal management: close other modals when opening a new one
   const handleSetEditingItem = (item) => {
     setEditingItem(item);
@@ -247,19 +378,33 @@ function App() {
   };
 
 
-  // Get user initials from first_name and last_name
-  const getUserInitials = () => {
-    if (user?.avatar) return user.avatar;
-    const firstName = user?.firstName || user?.first_name || '';
-    const lastName = user?.lastName || user?.last_name || '';
-    if (firstName && lastName) {
-      return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+  // Provider public booking link: /book/<slug>. Served before the auth gate so
+  // the link works for anyone who receives it.
+  const bookingSlug = React.useMemo(() => {
+    const match = window.location.pathname.match(/^\/book\/([^/?#]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }, []);
+  const [showBookingLogin, setShowBookingLogin] = React.useState(false);
+
+  // Public self-serve routes. Like /book/<slug> these are served before the auth gate,
+  // because the whole point is that nobody has an account yet.
+  // State rather than a memo: these routes are checked before the auth gate, so once one
+  // of them has signed the visitor in (accepting an invite with Google returns a session)
+  // it has to be able to stand down and let the app render. A memo with no dependencies
+  // never recomputes, and the invitee would stay stuck on the invite page.
+  const [publicRoute, setPublicRoute] = React.useState(() => {
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    if (/^\/signup\/complete\/?$/.test(path)) return { kind: 'signupComplete', intentId: params.get('intent') };
+    if (/^\/signup\/?$/.test(path)) return { kind: 'signup' };
+    if (/^\/accept-invite\/?$/.test(path) && params.get('token')) {
+      return { kind: 'acceptInvite', token: params.get('token') };
     }
-    if (firstName) {
-      return firstName.substring(0, 2).toUpperCase();
-    }
-    return 'U';
-  };
+    if (/^\/join\/?$/.test(path)) return { kind: 'join' };
+    return null;
+  });
+  const [showSignup, setShowSignup] = React.useState(false);
+  const goToSignIn = React.useCallback(() => { window.location.assign('/'); }, []);
 
   // Check if URL is patient login page
   const isPatientLoginUrl = React.useMemo(() => {
@@ -271,7 +416,7 @@ function App() {
 
   // Render the appropriate view based on currentModule
   const renderModule = () => {
-    switch (currentModule) {
+    switch (activeModule) {
       case 'dashboard':
         return (
           <DashboardView
@@ -288,7 +433,7 @@ function App() {
             setSelectedItem={handleSetSelectedItem}
             showForm={showForm}
             setShowForm={handleSetShowForm}
-            setCurrentModule={setCurrentModule}
+            setCurrentModule={navigateToModule}
             setAppointmentViewType={setAppointmentViewType}
             setCalendarViewType={setCalendarViewType}
             setAppointments={setAppointments}
@@ -300,6 +445,7 @@ function App() {
             updateUserPreferences={updateUserPreferences}
             addNotification={addNotification}
             planTier={planTier}
+            currency={currency}
           />
         );
       case 'practiceManagement':
@@ -363,16 +509,6 @@ function App() {
             addNotification={addNotification}
             user={user}
             t={t}
-            onViewHistory={(patient) => {
-              setSelectedPatient(patient);
-              setPatientHistoryInitialTab('overview');
-              setCurrentModule('patientHistory');
-            }}
-            onViewPrescriptions={(patient) => {
-              setSelectedPatient(patient);
-              setPatientHistoryInitialTab('prescriptions');
-              setCurrentModule('patientHistory');
-            }}
             onViewTelehealth={(patient) => {
               setCurrentModule('telehealth');
               addNotification('info', `Starting telehealth session with ${patient.first_name} ${patient.last_name}`);
@@ -393,19 +529,19 @@ function App() {
           />
         );
       case 'patientHistory':
+        // The roster is the module; a row expands into that patient's chart.
+        // Arriving with a patient already picked (search, quick view) simply
+        // opens that row.
         return (
-          <PatientHistoryView
+          <PatientHistoryDirectoryView
             theme={theme}
             api={api}
+            patients={patients}
             addNotification={addNotification}
             user={user}
-            patient={selectedPatient}
+            t={t}
+            initialPatientId={selectedPatient?.id || null}
             initialTab={patientHistoryInitialTab}
-            onBack={() => {
-              setCurrentModule('dashboard');
-              setSelectedPatient(null);
-              setPatientHistoryInitialTab('overview'); // Reset to default
-            }}
           />
         );
       case 'telehealth':
@@ -423,6 +559,8 @@ function App() {
         return (
           <RCMView
             theme={theme}
+            activeTab={activeTab || 'claims'}
+            onTabChange={(tab) => selectModuleTab('rcm', tab)}
             claims={claims}
             patients={patients}
             setShowForm={handleSetShowForm}
@@ -434,12 +572,41 @@ function App() {
             setCurrentModule={setCurrentModule}
             tasks={tasks}
             setTasks={setTasks}
+            currency={currency}
+          />
+        );
+      case 'accounts':
+        return (
+          <AccountsView
+            theme={theme}
+            activeTab={activeTab || 'overview'}
+            onTabChange={(tab) => selectModuleTab('accounts', tab)}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            currency={currency}
+          />
+        );
+      case 'inventory':
+        return (
+          <InventoryView
+            theme={theme}
+            activeTab={activeTab || 'overview'}
+            onTabChange={(tab) => selectModuleTab('inventory', tab)}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            currency={currency}
           />
         );
       case 'reports':
         return (
           <ReportsView
             theme={theme}
+            activeTab={activeTab}
+            onTabChange={(tab) => selectModuleTab('reports', tab)}
             patients={patients}
             appointments={appointments}
             claims={claims}
@@ -447,6 +614,7 @@ function App() {
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
             api={api}
+            currency={currency}
           />
         );
       case 'crm':
@@ -464,11 +632,67 @@ function App() {
             t={t}
           />
         );
+      case 'pharmacies':
+        return (
+          <PharmacyManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            t={t}
+          />
+        );
+      case 'laboratories':
+        return (
+          <LaboratoryManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            t={t}
+          />
+        );
+      case 'fhir':
+        return (
+          <FHIRView
+            theme={theme}
+            activeTab={activeTab || 'resources'}
+            onTabChange={(tab) => selectModuleTab('fhir', tab)}
+            api={api}
+            patients={patients}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+          />
+        );
+      case 'messages':
+        return (
+          <MessagesView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            user={user}
+            t={t}
+          />
+        );
+      case 'waitlist':
+        return (
+          <WaitlistManagementView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            setCurrentModule={setCurrentModule}
+            t={t}
+          />
+        );
       case 'patientPortal':
         return (
           <React.Suspense fallback={null}>
             <PatientPortalView
               theme={theme}
+              activeTab={isPatient ? undefined : activeTab || 'profile'}
+              onTabChange={isPatient ? undefined : (tab) => selectModuleTab('patientPortal', tab)}
+              // Only meaningful for patients, whose portal owns its own tabs.
+              requestedTab={isPatient ? portalTabRequest : null}
               api={api}
               addNotification={addNotification}
               user={user}
@@ -479,6 +703,8 @@ function App() {
         return (
           <AdminPanelView
             theme={theme}
+            activeTab={activeTab || 'clinic'}
+            onTabChange={(tab) => selectModuleTab('admin', tab)}
             t={t}
             users={users}
             setUsers={setUsers}
@@ -488,11 +714,14 @@ function App() {
             api={api}
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
+            onCurrencyChange={setCurrency}
           />
         );
       case 'offerings':
         return (
           <OfferingManagementView
+            activeTab={activeTab || 'offerings'}
+            onTabChange={(tab) => selectModuleTab('offerings', tab)}
             theme={theme}
             api={api}
             user={user}
@@ -539,6 +768,8 @@ function App() {
         return (
           <FormManagementView
             theme={theme}
+            activeTab={activeTab || 'templates'}
+            onTabChange={(tab) => selectModuleTab('formManagement', tab)}
             api={api}
             patients={patients}
             user={user}
@@ -551,6 +782,77 @@ function App() {
         return null;
     }
   };
+
+  // ── Public self-serve pages ────────────────────────────────────────────────
+  if (publicRoute?.kind === 'signup') {
+    return <SignupPage theme={theme} onSignIn={goToSignIn} onBack={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'signupComplete') {
+    return <SignupCompletePage theme={theme} intentId={publicRoute.intentId} onSignIn={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'join') {
+    return <JoinPracticePage theme={theme} api={api} onSignIn={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'acceptInvite') {
+    return (
+      <AcceptInvitePage
+        theme={theme}
+        token={publicRoute.token}
+        api={api}
+        addNotification={addNotification}
+        onAccepted={goToSignIn}
+        // Accepting an invite with Google already returns a signed session, so the invitee
+        // goes straight into the app rather than being bounced to a sign-in page to prove
+        // who they are a second time. The URL is reset so a reload does not re-open the
+        // (now redeemed) invite.
+        onAuthenticated={(u, t) => {
+          api.storeToken(t);
+          setUser(u);
+          setIsAuthenticated(true);
+          // Drop the invite route and its token from the URL — it has been redeemed, so a
+          // reload must not try to open it again.
+          window.history.replaceState({}, '', '/');
+          setPublicRoute(null);
+        }}
+        onSignIn={goToSignIn}
+      />
+    );
+  }
+  // Reached from the "Create a practice" link on the sign-in page, without a URL change.
+  if (showSignup && !isAuthenticated) {
+    return <SignupPage theme={theme} onSignIn={() => setShowSignup(false)} onBack={() => setShowSignup(false)} />;
+  }
+
+  // ── Public booking page ────────────────────────────────────────────────────
+  // Open to anyone with the link. A patient may sign in from here to have their
+  // details filled in; signing in happens in-place, so the session survives.
+  if (bookingSlug) {
+    if (showBookingLogin && !isAuthenticated) {
+      return (
+        <PatientLoginPage
+          theme={theme}
+          setTheme={setTheme}
+          api={api}
+          setUser={setUser}
+          setIsAuthenticated={setIsAuthenticated}
+          addNotification={addNotification}
+          setShowForgotPassword={setShowForgotPassword}
+          setShowRegister={setShowRegister}
+          setCurrentModule={setCurrentModule}
+          onBack={() => setShowBookingLogin(false)}
+        />
+      );
+    }
+
+    return (
+      <PublicBookingPage
+        providerSlug={bookingSlug}
+        theme={theme}
+        patient={isAuthenticated && user?.role === 'patient' ? user : null}
+        onSignIn={() => setShowBookingLogin(true)}
+      />
+    );
+  }
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
@@ -586,6 +888,7 @@ function App() {
           />
         ) : (
           <LoginPage
+            onCreatePractice={() => setShowSignup(true)}
             theme={theme}
             setTheme={setTheme}
             api={api}
@@ -609,7 +912,7 @@ function App() {
   }
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gradient-to-br from-gray-100 via-white to-gray-100'}`}>
+    <>
       {/* Loading Overlay */}
       {loading && (
         <div className={`fixed inset-0 z-50 flex items-center justify-center ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`}>
@@ -638,134 +941,41 @@ function App() {
         </div>
       )}
 
-      {/* Header */}
-      <header className={`backdrop-blur-md border-b sticky top-0 z-50 ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800/50' : 'bg-white/50 border-gray-200/50'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <button
-              onClick={() => {
-                // Route to patient portal if user is a patient, otherwise dashboard
-                if (user?.role === 'patient') {
-                  setCurrentModule('patientPortal');
-                } else {
-                  setCurrentModule('dashboard');
-                }
-              }}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            >
-              <img
-                src="/assets/aureoncare-logo-wide.png"
-                alt="AureonCare Logo"
-                className="h-10 w-auto object-contain"
-                style={{ aspectRatio: '3/1' }}
-              />
-            </button>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowSearch(!showSearch)}
-                className={`p-2 rounded-lg transition-colors relative ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title="Search"
-              >
-                <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-              </button>
-
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className={`p-2 rounded-lg transition-colors relative ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title="Notifications"
-              >
-                <Bell className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-                {notifications.length > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setShowHelpDrawer(!showHelpDrawer)}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title="Help & Documentation"
-              >
-                <HelpCircle className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-              </button>
-
-              <button
-                onClick={() => setShowAIAssistant(!showAIAssistant)}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title="AI Assistant"
-              >
-                <Bot className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-              </button>
-
-              {/* Settings button - hidden for patients as they have settings in their profile tab */}
-              {user?.role !== 'patient' && (
-                <button
-                  onClick={() => handleSetShowForm('settings')}
-                  className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                  title="Settings"
-                >
-                  <Settings className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
-                </button>
-              )}
-
-              {/* Theme Toggle */}
-              <button
-                onClick={async () => {
-                  const newTheme = theme === 'dark' ? 'light' : 'dark';
-                  setTheme(newTheme);
-                  await updateUserPreferences({ darkMode: newTheme === 'dark' });
-                  await addNotification('success', `Switched to ${newTheme} mode`);
-                }}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
-                title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-              >
-                {theme === 'dark' ? (
-                  <Sun className="w-5 h-5 text-slate-400" />
-                ) : (
-                  <Moon className="w-5 h-5 text-gray-600" />
-                )}
-              </button>
-
-              {/* User Menu */}
-              <button
-                onClick={() => {
-                  // Only open profile modal for non-patient users
-                  // Patients use the profile tab in patient portal
-                  if (user?.role !== 'patient') {
-                    handleSetShowForm('userProfile');
-                  }
-                }}
-                className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${user?.role === 'patient' ? 'cursor-default' : 'hover:bg-slate-800'}`}
-                title={`${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''} (${user?.role || 'user'})`}
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  {getUserInitials()}
-                </div>
-                <div className="text-left">
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{`${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''}`.trim() || 'User'}</p>
-                  <p className={`text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{user?.role || 'user'}</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsAuthenticated(false);
-                  setUser(null);
-                }}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-gray-600'}`}
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* ── Three-pane app shell ──────────────────────────────────────────── */}
+      <AppShell
+        theme={theme}
+        navigation={navigation}
+        activeGroup={activeGroup}
+        activeItem={activeItem}
+        activeTrail={activeTrail}
+        onSelectGroup={handleSelectNavGroup}
+        onSelectItem={handleSelectNavItem}
+        topBar={{
+          user,
+          notificationCount: notifications.length,
+          messageCount: canMessage ? unreadMessages : 0,
+          onLogoClick: () => handleSelectNavItem({ module: user?.role === 'patient' ? 'patientPortal' : 'dashboard' }),
+          onSearch: () => setShowSearch(!showSearch),
+          onMessages: canMessage ? goToMessages : null,
+          onNotifications: () => setShowNotifications(!showNotifications),
+          onHelp: () => setShowHelpDrawer(!showHelpDrawer),
+          onProfile: () => {
+            // Patients manage their profile from the portal's profile tab
+            if (user?.role !== 'patient') handleSetShowForm('userProfile');
+          },
+          onLogout: () => {
+            api.clearToken();
+            setIsAuthenticated(false);
+            setUser(null);
+          },
+          onToggleTheme: async () => {
+            const newTheme = theme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+            await updateUserPreferences({ darkMode: newTheme === 'dark' });
+            await addNotification('success', `Switched to ${newTheme} mode`);
+          },
+        }}
+      >
         {/* Forms - appointment, patient, task, claim, diagnosis are now handled in their respective views */}
         {/* Only forms not handled by specific views are rendered here */}
 
@@ -914,13 +1124,14 @@ function App() {
               setUser={setUser}
               user={user}
               t={t}
+              currency={currency}
             />
           </div>
         )}
 
         {/* Main View Content */}
         {renderModule()}
-      </main>
+      </AppShell>
 
       {/* Floating AI Assistant Button */}
       {!showAIAssistant && (
@@ -972,6 +1183,7 @@ function App() {
           setEditingItem={handleSetEditingItem}
           setCurrentView={setCurrentView}
           t={t}
+          currency={currency}
         />
       )}
 
@@ -1031,7 +1243,24 @@ function App() {
               'denial': 'rcm'
             };
 
-            const targetModule = moduleMap[result.result_type] || result.module || 'dashboard';
+            // A patient's results are their own records; every one of them
+            // opens inside the portal rather than a practice-side console.
+            const targetModule = isPatient
+              ? 'patientPortal'
+              : moduleMap[result.result_type] || result.module || 'dashboard';
+
+            if (isPatient) {
+              const portalTab = {
+                appointment: 'appointments',
+                diagnosis: 'diagnoses',
+                prescription: 'prescriptions',
+                lab_order: 'records',
+                patient: 'profile',
+              }[result.result_type] || 'profile';
+              setNavSelection({ module: 'patientPortal', tab: portalTab });
+              setCurrentModule('patientPortal');
+              return;
+            }
 
             console.log('Navigating to module:', targetModule, 'with result type:', result.result_type);
 
@@ -1198,27 +1427,6 @@ function App() {
         />
       )}
 
-      {/* Settings Modal */}
-      {showForm === 'settings' && (
-        <SettingsModal
-          theme={theme}
-          user={user}
-          users={users}
-          language={language}
-          onClose={() => setShowForm(null)}
-          setCurrentView={setCurrentView}
-          updateUserPreferences={updateUserPreferences}
-          setTheme={setTheme}
-          setLanguage={setLanguage}
-          setShowForm={handleSetShowForm}
-          setEditingItem={handleSetEditingItem}
-          setUsers={setUsers}
-          setCurrentModule={setCurrentModule}
-          api={api}
-          addNotification={addNotification}
-        />
-      )}
-
       {/* User Profile Modal */}
       {showForm === 'userProfile' && (
         <UserProfileModal
@@ -1236,7 +1444,7 @@ function App() {
           addNotification={addNotification}
         />
       )}
-    </div>
+    </>
   );
 }
 

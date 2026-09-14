@@ -1,0 +1,100 @@
+###############################################################################
+# AureonCare Helm — On-Premises Kubernetes Override Values
+# Usage: helm upgrade --install aureoncare helm/aureoncare/ \
+#          -f helm/aureoncare/values.yaml \
+#          -f helm/aureoncare/values.onprem.yaml \
+#          --set env.AC_TK_S=<secret> \
+#          --set env.AC_EK=<secret> \
+#          --set postgresql.auth.password=<db-password>
+#
+# Optimised for on-premises Kubernetes distributions:
+# Rancher / RKE2 / k3s running on customer hardware.
+# Conservative resource requests — assumes limited hardware budget.
+###############################################################################
+
+replicaCount:
+  backend: 1
+  frontend: 1
+
+image:
+  pullPolicy: IfNotPresent
+
+backend:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+frontend:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+postgresql:
+  enabled: true
+  auth:
+    database: aureoncare
+    username: aureoncare
+    # REQUIRED: set via --set postgresql.auth.password=<strong-password>
+    password: ""
+  primary:
+    persistence:
+      enabled: true
+      # Large persistent volume for long-term on-prem data retention
+      size: 100Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+redis:
+  # Disabled on-prem to reduce resource usage
+  enabled: false
+
+ingress:
+  enabled: true
+  # Traefik is the default ingress controller in k3s / Rancher
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+  # Set to the hostname or IP of the on-prem server
+  host: aureoncare.local
+  tls: true
+  tlsSecret: aureoncare-onprem-tls
+
+# No HPA on-prem — fixed single-node deployment
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 2
+
+updateAgent:
+  enabled: true
+  releaseRegistryUrl: https://api.github.com/repos/aureoncare/aureoncare/releases/latest
+  checkIntervalHours: 24
+  # autoApply: false — IT admin reviews and applies updates manually
+  autoApply: false
+
+uploads:
+  persistence:
+    # Large volume for on-prem long-term file storage
+    size: 50Gi
+    accessMode: ReadWriteOnce
+
+env:
+  NODE_ENV: production
+  AC_LOG_LVL: info
+  AC_USE_RD: "false"
+  AC_TK_E: 24h

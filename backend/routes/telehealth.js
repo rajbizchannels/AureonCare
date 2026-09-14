@@ -1,12 +1,16 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const crypto = require('crypto');
 const TelehealthProviderManager = require('../services/telehealthProviders');
+const notificationService = require('../services/notificationService');
 
 // Get all telehealth sessions
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT
         ts.*,
@@ -37,7 +41,7 @@ router.get('/', async (req, res) => {
 // Get single telehealth session
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(`
@@ -78,7 +82,7 @@ router.get('/:id', async (req, res) => {
 // Create new telehealth session
 router.post('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       appointmentId,
       patientId,
@@ -157,11 +161,19 @@ router.post('/', async (req, res) => {
       meetingResult.provider
     ]);
 
+    const session = result.rows[0];
     res.status(201).json({
-      ...result.rows[0],
+      ...session,
       start_url: meetingResult.startUrl || null,
       meetingDetails: meetingResult
     });
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'telehealth.session_created', {
+      session,
+      patient_id: patientId,
+      provider_id: providerId,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error creating telehealth session:', error);
     // Use 422 for configuration errors, 500 for server errors
@@ -174,7 +186,7 @@ router.post('/', async (req, res) => {
 // Update telehealth session
 router.put('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
     const {
       sessionStatus,
@@ -216,7 +228,7 @@ router.put('/:id', async (req, res) => {
 // Delete telehealth session
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(
@@ -238,7 +250,7 @@ router.delete('/:id', async (req, res) => {
 // Join session (add participant)
 router.post('/:id/join', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
     const { participantName, participantType } = req.body;
 

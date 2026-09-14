@@ -83,7 +83,7 @@ echo Database initialization complete!
 echo ==========================================
 echo.
 echo Test credentials:
-echo   Admin: admin@aureoncare.com / password
+echo   Admin: admin@aureoncare.tech / password
 echo   Patient Portal:
 echo     - john.doe@example.com
 echo     - jane.smith@example.com

@@ -1,10 +1,13 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 // Get all notifications (optionally filtered by user_id)
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { userId } = req.query;
 
     let query = 'SELECT * FROM notifications';
@@ -35,7 +38,7 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `INSERT INTO notifications (user_id, type, message, read, created_at)
        VALUES ($1, $2, $3, $4, NOW())
@@ -52,7 +55,7 @@ router.post('/', async (req, res) => {
 // Mark notification as read
 router.put('/:id/read', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'UPDATE notifications SET read = true WHERE id = $1 RETURNING *',
       [req.params.id]
@@ -70,7 +73,7 @@ router.put('/:id/read', async (req, res) => {
 // Delete notification
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM notifications WHERE id = $1 RETURNING *',
       [req.params.id]
@@ -88,7 +91,7 @@ router.delete('/:id', async (req, res) => {
 // Clear all notifications (optionally filtered by user_id)
 router.delete('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { userId } = req.query;
 
     let query = 'DELETE FROM notifications';

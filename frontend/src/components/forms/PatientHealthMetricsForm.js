@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Save, Ruler, Scale, Droplet, Users, Pill, User, Phone, Mail, MapPin, Calendar, Search } from 'lucide-react';
+import ThemedSelect from './ThemedSelect';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -60,6 +61,34 @@ const PatientHealthMetricsForm = ({
   const currentMedSearchTimeoutRef = useRef(null);
 
   // Fetch enabled telehealth providers for preference dropdown
+  // Load active prescriptions for the patient
+  const loadActivePrescriptions = useCallback(async () => {
+    if (!patient?.id) return;
+
+    setLoadingPrescriptions(true);
+    try {
+      const prescriptions = await api.getPatientActivePrescriptions(patient.id);
+      if (prescriptions && Array.isArray(prescriptions)) {
+        // Map prescriptions to medication format
+        const meds = prescriptions.map(rx => ({
+          id: rx.id,
+          ndc_code: rx.ndc_code || rx.ndcCode,
+          drug_name: rx.medicationName || rx.medication || rx.drug_name || 'Unknown',
+          strength: rx.dosage || rx.strength || '',
+          dosage_form: rx.dosage_form || '',
+          frequency: rx.frequency || '',
+          isPrescription: true // Flag to identify as prescription
+        }));
+        setActivePrescriptions(meds);
+      }
+    } catch (error) {
+      console.error('Error loading prescriptions:', error);
+      setActivePrescriptions([]);
+    } finally {
+      setLoadingPrescriptions(false);
+    }
+  }, [api, patient]);
+
   useEffect(() => {
     if (api.getEnabledTelehealthProviders) {
       api.getEnabledTelehealthProviders()
@@ -126,33 +155,6 @@ const PatientHealthMetricsForm = ({
     }
   }, [patient, loadActivePrescriptions]);
 
-  // Load active prescriptions for the patient
-  const loadActivePrescriptions = useCallback(async () => {
-    if (!patient?.id) return;
-
-    setLoadingPrescriptions(true);
-    try {
-      const prescriptions = await api.getPatientActivePrescriptions(patient.id);
-      if (prescriptions && Array.isArray(prescriptions)) {
-        // Map prescriptions to medication format
-        const meds = prescriptions.map(rx => ({
-          id: rx.id,
-          ndc_code: rx.ndc_code || rx.ndcCode,
-          drug_name: rx.medicationName || rx.medication || rx.drug_name || 'Unknown',
-          strength: rx.dosage || rx.strength || '',
-          dosage_form: rx.dosage_form || '',
-          frequency: rx.frequency || '',
-          isPrescription: true // Flag to identify as prescription
-        }));
-        setActivePrescriptions(meds);
-      }
-    } catch (error) {
-      console.error('Error loading prescriptions:', error);
-      setActivePrescriptions([]);
-    } finally {
-      setLoadingPrescriptions(false);
-    }
-  }, [api, patient]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({
@@ -433,17 +435,17 @@ const PatientHealthMetricsForm = ({
               </div>
               <div>
                 <label className={labelClass}>Gender</label>
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={formData.gender}
                   onChange={(e) => handleChange('gender', e.target.value)}
-                  className={inputClass}
                 >
                   <option value="">Select gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
                   <option value="Prefer not to say">Prefer not to say</option>
-                </select>
+                </ThemedSelect>
               </div>
             </div>
           </div>
@@ -576,16 +578,16 @@ const PatientHealthMetricsForm = ({
                   <Droplet className="w-4 h-4 inline mr-1" />
                   Blood Group
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
                   value={formData.blood_type}
                   onChange={(e) => handleChange('blood_type', e.target.value)}
-                  className={inputClass}
                 >
                   <option value="">Select blood group</option>
                   {BLOOD_TYPES.map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
-                </select>
+                </ThemedSelect>
               </div>
             </div>
 
@@ -915,8 +917,8 @@ const PatientHealthMetricsForm = ({
                 <label className={labelClass}>Telehealth Platform Preference</label>
                 {enabledProviders.length > 1 ? (
                   <>
-                    <select
-                      className={inputClass}
+                    <ThemedSelect
+                      theme={theme}
                       value={formData.telehealth_preference}
                       onChange={(e) => handleChange('telehealth_preference', e.target.value)}
                     >
@@ -926,7 +928,7 @@ const PatientHealthMetricsForm = ({
                           {{zoom: 'Zoom', google_meet: 'Google Meet', microsoft_teams: 'Microsoft Teams', webex: 'Cisco Webex'}[p.provider_type] || p.provider_type}
                         </option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                     <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
                       When multiple telehealth platforms are enabled, the patient's preferred platform will be used for session links.
                     </p>

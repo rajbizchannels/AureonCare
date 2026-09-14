@@ -1,0 +1,39 @@
+# Files excluded from the Vercel deployment upload.
+#
+# Vercel builds two things from this repo: backend/server.js and the CRA app in
+# frontend/. Everything listed here is developer- or marketing-facing material
+# that neither build reads, so shipping it only inflates the upload.
+#
+# Every path below is anchored with a leading slash on purpose. The syntax is
+# .gitignore's, where a bare "docs/" matches a directory at ANY depth — and the
+# CRA app serves two directories that would be caught by exactly that:
+#
+#   frontend/public/docs/   -> /docs/documentation-index.json, read at runtime
+#                              by the help drawer, onboarding tour and assistant
+#   frontend/public/assets/ -> /assets/aureoncare-logo.png and the wide logo,
+#                              referenced by the login, register and top bar
+#
+# Excluding either one would build cleanly and then 404 in production, so keep
+# these anchored and do not add bare directory names here.
+
+# The repository's own docs tree: written documentation, the demo video harness
+# and the rendered marketing videos. The marketing cuts are tens of megabytes
+# each; keeping them out of the upload is the reason this file exists.
+/docs/
+
+# Deployment tooling for other targets — not used by the Vercel build.
+/helm/
+/docker/
+/deployment/
+/update-agent/
+
+# Product collateral committed at the root.
+/*.pptx
+/*.docx
+
+# Test and tooling output.
+/coverage/
+/frontend/coverage/
+/playwright-report/
+/test-results/
+*.log

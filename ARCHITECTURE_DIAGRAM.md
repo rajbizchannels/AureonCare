@@ -44,7 +44,6 @@ graph TB
     subgraph Auth["Identity Providers"]
         GOOGLE["Google OAuth 2.0"]
         MSAZURE["Microsoft Azure AD"]
-        FACEBOOK["Facebook OAuth"]
     end
 
     WEB --> VERCEL
@@ -66,7 +65,6 @@ graph TB
     SVC --> WHATSAPP
     MW --> GOOGLE
     MW --> MSAZURE
-    MW --> FACEBOOK
 ```
 
 ---
@@ -122,7 +120,7 @@ graph TB
 
     subgraph Services["Frontend Services"]
         APISVC["apiService.js<br/>Centralized HTTP Client (Axios)"]
-        OAUTHCFG["oauthConfig.js<br/>Google · Microsoft · Facebook"]
+        OAUTHCFG["oauthConfig.js<br/>Google · Microsoft"]
     end
 
     subgraph Hooks["Custom Hooks"]
@@ -163,7 +161,6 @@ graph TB
         direction TB
         INIT["App Initialization<br/>Port · CORS · Helmet · Rate-Limit"]
         ROUTES["Route Mounting<br/>50+ Router Files"]
-        SOCKET["Socket.io<br/>Real-time Events"]
     end
 
     subgraph Middleware["Middleware Pipeline"]
@@ -441,7 +438,7 @@ sequenceDiagram
 
     rect rgb(200, 200, 230)
         Note over C,OAUTH: OAuth 2.0 Social Login
-        C->>FE: Click Google/Microsoft/Facebook
+        C->>FE: Click Google/Microsoft
         FE->>OAUTH: Authorization request
         OAUTH-->>FE: Auth code + user profile
         FE->>BE: POST /api/auth/social-login
@@ -830,7 +827,6 @@ graph LR
     subgraph Channels["Delivery Channels"]
         EMAIL_CH["Email<br/>(Nodemailer / SendGrid)"]
         WHATSAPP_CH["WhatsApp<br/>API"]
-        IN_APP["In-App<br/>(Socket.io)"]
         SMS_CH["SMS<br/>(future)"]
     end
 
@@ -884,7 +880,7 @@ graph TB
     end
 
     subgraph ExtAPIs["External APIs"]
-        OAUTH_EXT["OAuth Providers<br/>Google · Microsoft · Facebook"]
+        OAUTH_EXT["OAuth Providers<br/>Google · Microsoft"]
         HEALTH_APIS["Healthcare APIs<br/>LabCorp · Optum · SureScripts"]
         VIDEO_APIS["Video APIs<br/>Zoom · Google Meet · Webex"]
         EMAIL_SVC["Email Services<br/>SMTP · SendGrid"]
@@ -999,11 +995,10 @@ flowchart TD
 | **Backend** | Node.js + Express.js 4.x | REST API Server |
 | **Authentication** | JWT + bcryptjs | Auth Tokens + Hashing |
 | **Authorization** | Custom RBAC Middleware | Role/Permission Checks |
-| **Social Auth** | Google + MS MSAL + Facebook OAuth | SSO Integration |
+| **Social Auth** | Google + MS MSAL OAuth | SSO Integration |
 | **Database** | PostgreSQL 12+ (Supabase) | Primary Data Store |
 | **Cache** | Redis 6+ | Session + Performance Cache |
 | **File Storage** | Multer + Local/Cloud | Document Uploads |
-| **Real-time** | Socket.io | Live Notifications |
 | **Email** | Nodemailer + SendGrid | Transactional Email |
 | **Hosting** | Vercel (Frontend + Backend) | Cloud Deployment |
 | **Lab Integration** | LabCorp API | Lab Order Management |

@@ -1,10 +1,14 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
+const notificationService = require('../services/notificationService');
 
 // Get all payments
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId, claimId, status } = req.query;
 
     let query = `
@@ -51,7 +55,7 @@ router.get('/', async (req, res) => {
 // Get single payment
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT p.*,
               CONCAT(pat.first_name, ' ', pat.last_name) as patient_name,
@@ -90,7 +94,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `INSERT INTO payments
@@ -114,7 +118,11 @@ router.post('/', async (req, res) => {
         notes
       ]
     );
-    res.status(201).json(result.rows[0]);
+    const payment = result.rows[0];
+    res.status(201).json(payment);
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'payment.received', { payment, patient_id }).catch(() => {});
   } catch (error) {
     console.error('Error creating payment:', error);
     res.status(500).json({ error: 'Failed to create payment' });
@@ -139,7 +147,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `UPDATE payments
@@ -187,7 +195,7 @@ router.put('/:id', async (req, res) => {
 // Delete payment
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM payments WHERE id::text = $1::text RETURNING *',
       [req.params.id]

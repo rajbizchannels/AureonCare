@@ -5,13 +5,16 @@ import {
   RefreshCw, Eye, Settings2, PlusCircle, Layers, Shield,
   Activity, Clock, AlertTriangle, CheckCircle, XCircle,
   PieChart, LineChart, BarChart2, Grid, Search, ChevronUp,
-  Edit3, Trash2, Save, Play
+  Edit3, Trash2, Save, Play,
+  BookOpen, Scale, Building2, TrendingDown,
+  Package, Truck, ShoppingCart, Boxes, Tag
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatDateTime } from '../utils/formatters';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useAudit } from '../hooks/useAudit';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 // ─────────────────────────────────────────────────────────────
 // SVG CHART COMPONENTS
@@ -340,7 +343,7 @@ const ReportChart = ({ type = 'bar', data = [], theme, onDataClick, valueFormatt
 // REPORT CATEGORIES CONFIG
 // ─────────────────────────────────────────────────────────────
 
-const REPORT_CATEGORIES = [
+export const REPORT_CATEGORIES = [
   {
     id: 'operational',
     name: 'Operational',
@@ -431,6 +434,39 @@ const REPORT_CATEGORIES = [
       { id: 'access-logs', name: 'Access Logs', apiMethod: 'getReportAccessLogs', icon: Eye, defaultChart: 'hbar', description: 'User access activity log' },
       { id: 'hipaa', name: 'HIPAA Compliance Report', apiMethod: 'getReportHIPAACompliance', icon: Shield, defaultChart: 'donut', description: 'PHI access tracking and user roles' },
       { id: 'data-access-history', name: 'Data Access History', apiMethod: 'getReportDataAccessHistory', icon: Clock, defaultChart: 'bar', description: 'Detailed data access records' },
+    ]
+  },
+  {
+    id: 'accounts',
+    name: 'Accounts',
+    icon: BookOpen,
+    color: 'emerald',
+    bgDark: 'bg-emerald-500/10',
+    borderActive: 'border-emerald-500',
+    textActive: 'text-emerald-400',
+    isAccountsModule: true,
+    reports: [
+      { id: 'acct-trial-balance',    name: 'Trial Balance',     apiMethod: 'getTrialBalance',      icon: Scale,        defaultChart: 'bar',  description: 'Debit/credit balances for all GL accounts' },
+      { id: 'acct-income-statement', name: 'Income Statement',  apiMethod: 'getIncomeStatement',   icon: TrendingUp,   defaultChart: 'bar',  description: 'Revenue vs expenses for the period' },
+      { id: 'acct-balance-sheet',    name: 'Balance Sheet',     apiMethod: 'getBalanceSheet',      icon: Building2,    defaultChart: 'donut',description: 'Assets, liabilities, and equity snapshot' },
+      { id: 'acct-ar-aging',         name: 'AR Aging Report',   apiMethod: 'getARAgingReport',     icon: TrendingDown, defaultChart: 'bar',  description: 'Accounts receivable by aging bucket' },
+    ]
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory',
+    icon: Package,
+    color: 'amber',
+    bgDark: 'bg-amber-500/10',
+    borderActive: 'border-amber-500',
+    textActive: 'text-amber-400',
+    isInventoryModule: true,
+    reports: [
+      { id: 'inv-stock-levels',      name: 'Stock Levels',       apiMethod: 'getInventoryStockLevels',    icon: Boxes,        defaultChart: 'bar',  description: 'Current quantity on hand for all items' },
+      { id: 'inv-low-stock',         name: 'Low Stock Alert',    apiMethod: 'getInventoryLowStock',       icon: AlertTriangle, defaultChart: 'bar', description: 'Items at or below reorder level' },
+      { id: 'inv-valuation',         name: 'Inventory Valuation',apiMethod: 'getInventoryValuation',      icon: DollarSign,   defaultChart: 'donut',description: 'Total inventory value by category' },
+      { id: 'inv-movement-history',  name: 'Movement History',   apiMethod: 'getInventoryMovementHistory',icon: TrendingUp,   defaultChart: 'bar',  description: 'Stock movements grouped by type' },
+      { id: 'inv-expiry-alerts',     name: 'Expiry Alerts',      apiMethod: 'getInventoryExpiryAlerts',   icon: Clock,        defaultChart: 'bar',  description: 'Items expiring within 90 days' },
     ]
   }
 ];
@@ -602,20 +638,22 @@ const GraphBuilderModal = ({ onClose, onSave, theme, reportData, currentChart })
 
             <div>
               <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Label Field (X-axis)</label>
-              <select value={labelField} onChange={e => setLabelField(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={labelField} onChange={e => setLabelField(e.target.value)}>
                 <option value="">— select field —</option>
                 {fields.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
               <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Value Field (Y-axis)</label>
-              <select value={valueField} onChange={e => setValueField(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={valueField} onChange={e => setValueField(e.target.value)}>
                 <option value="">— select field —</option>
                 {fields.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
@@ -771,11 +809,12 @@ const CustomReportBuilderModal = ({ onClose, onRun, theme }) => {
               {statusOptions[dataSource]?.length > 0 && (
                 <div>
                   <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Status</label>
-                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                    className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                  <ThemedSelect
+                    theme={theme}
+                    className="text-sm" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                     <option value="">All</option>
                     {statusOptions[dataSource].map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  </ThemedSelect>
                 </div>
               )}
             </div>
@@ -785,30 +824,33 @@ const CustomReportBuilderModal = ({ onClose, onRun, theme }) => {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className={`block text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Sort By</label>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={sortBy} onChange={e => setSortBy(e.target.value)}>
                 <option value="">Default</option>
                 {selectedFields.map(f => <option key={f} value={f}>{f.replace(/_/g, ' ')}</option>)}
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Sort Order</label>
-              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
                 <option value="desc">Descending</option>
                 <option value="asc">Ascending</option>
-              </select>
+              </ThemedSelect>
             </div>
             <div>
               <label className={`block text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Max Rows</label>
-              <select value={limit} onChange={e => setLimit(parseInt(e.target.value))}
-                className={`w-full px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <ThemedSelect
+                theme={theme}
+                className="text-sm" value={limit} onChange={e => setLimit(parseInt(e.target.value))}>
                 <option value="50">50</option>
                 <option value="100">100</option>
                 <option value="200">200</option>
                 <option value="500">500</option>
                 <option value="1000">1000</option>
-              </select>
+              </ThemedSelect>
             </div>
           </div>
         </div>
@@ -829,7 +871,7 @@ const CustomReportBuilderModal = ({ onClose, onRun, theme }) => {
 // DATA TABLE WITH SEARCH, SORT, PAGINATION
 // ─────────────────────────────────────────────────────────────
 
-const DataTable = ({ data = [], columns = [], theme, onRowClick, title }) => {
+const DataTable = ({ data = [], columns = [], theme, onRowClick, title, currency = 'USD' }) => {
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
@@ -864,9 +906,9 @@ const DataTable = ({ data = [], columns = [], theme, onRowClick, title }) => {
     const val = row[col];
     if (val === null || val === undefined) return <span className="opacity-30">—</span>;
     if (col === 'status') return <StatusBadge status={val} />;
-    if (col.includes('amount') || col.includes('revenue') || col.includes('billed') || col.includes('collected') || col.includes('paid')) {
+    if (col.includes('amount') || col.includes('revenue') || col.includes('billed') || col.includes('collected') || col.includes('paid') || col.includes('balance') || col.includes('cost') || col.includes('price') || col.includes('fee') || col.includes('charge')) {
       const num = parseFloat(val);
-      return !isNaN(num) ? formatCurrency(num) : val;
+      return !isNaN(num) ? formatCurrency(num, currency) : val;
     }
     if (col.includes('date') || col.includes('time') || col.includes('_at')) {
       return formatDate(val);
@@ -961,7 +1003,7 @@ const DataTable = ({ data = [], columns = [], theme, onRowClick, title }) => {
 // INDIVIDUAL REPORT CONTENT RENDERERS
 // ─────────────────────────────────────────────────────────────
 
-const ReportContent = ({ category, report, data, loading, error, onRetry, theme, chartConfig, onDataPointClick, onChartConfigChange }) => {
+const ReportContent = ({ category, report, data, loading, error, onRetry, theme, chartConfig, onDataPointClick, onChartConfigChange, currency = 'USD' }) => {
   if (loading) return <Spinner theme={theme} />;
   if (error) return <LoadError onRetry={onRetry} theme={theme} />;
   if (!data) return null;
@@ -983,7 +1025,11 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
     }
     // Defaults per report
     const rd = report.id;
-    if (rd === 'daily-appointments' || rd === 'no-shows') return makeChartData(summary.slice(0, 30).reverse(), 'date', 'total');
+    if (rd === 'daily-appointments') return makeChartData(summary.slice(0, 30).reverse(), 'date', 'total');
+    // The no-show summary has no `total` column — it returns no_shows,
+    // total_appointments and no_show_rate — so charting `total` plotted an
+    // empty series. The point of the report is the no-show trend.
+    if (rd === 'no-shows') return makeChartData(summary.slice(0, 30).reverse(), 'date', 'no_shows');
     if (rd === 'provider-utilization' || rd === 'productivity') return makeChartData(summary, 'provider_name', 'total_appointments');
     if (rd === 'patient-visits' || rd === 'visit-history') return makeChartData(summary.slice(0, 10), 'patient_name', 'total_visits');
     if (rd === 'wait-times') return makeChartData(summary, 'provider_name', 'avg_wait_minutes');
@@ -1006,6 +1052,27 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
     if (rd === 'access-logs') return makeChartData(summary, 'user_name', 'access_count');
     if (rd === 'hipaa') return (phiAccess || []).map(r => ({ label: r.resource_type, value: parseInt(r.total_access) }));
     if (rd === 'data-access-history') return makeChartData(summary.slice(0, 10), 'resource_type', 'count');
+    // Accounts module reports
+    if (rd === 'acct-trial-balance') {
+      const rows = data.rows || [];
+      return rows.map(r => ({ label: r.accountName || r.account_name || '', value: parseFloat(r.debitBalance || r.debit_balance || 0) || parseFloat(r.creditBalance || r.credit_balance || 0) }));
+    }
+    if (rd === 'acct-income-statement') {
+      const rows = data.rows || [];
+      return rows.map(r => ({ label: r.accountName || r.account_name || '', value: Math.abs(parseFloat(r.periodAmount || r.period_amount || 0)) }));
+    }
+    if (rd === 'acct-balance-sheet') {
+      const totals = [
+        { label: 'Assets',      value: Math.abs(parseFloat(data.totalAssets      || data.total_assets      || 0)) },
+        { label: 'Liabilities', value: Math.abs(parseFloat(data.totalLiabilities || data.total_liabilities || 0)) },
+        { label: 'Equity',      value: Math.abs(parseFloat(data.totalEquity      || data.total_equity      || 0)) },
+      ];
+      return totals.filter(t => t.value > 0);
+    }
+    if (rd === 'acct-ar-aging') {
+      const buckets = data.buckets || {};
+      return Object.entries(buckets).map(([key, val]) => ({ label: key.replace(/_/g, ' '), value: parseFloat(val) || 0 }));
+    }
     return makeChartData(summary.slice(0, 10), Object.keys(summary[0] || {})[0] || 'label', Object.keys(summary[0] || {})[1] || 'value');
   };
 
@@ -1014,7 +1081,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
   // Compute KPIs per report
   const getKPIs = () => {
     const rd = report.id;
-    const fmt = formatCurrency;
+    const fmt = (amount) => formatCurrency(amount, currency);
     if (rd === 'daily-appointments') {
       const total = summary.reduce((s, r) => s + (r.total || 0), 0);
       const completed = summary.reduce((s, r) => s + (r.completed || 0), 0);
@@ -1025,6 +1092,20 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
         { label: 'Completed', value: completed, icon: CheckCircle, color: 'green' },
         { label: 'No-Shows', value: noShows, icon: AlertTriangle, color: 'red' },
         { label: 'Completion Rate', value: `${rate}%`, icon: TrendingUp, color: 'purple' },
+      ];
+    }
+    if (rd === 'no-shows') {
+      const scheduled = summary.reduce((s, r) => s + (parseInt(r.total_appointments) || 0), 0);
+      const noShows = summary.reduce((s, r) => s + (parseInt(r.no_shows) || 0), 0);
+      const rate = scheduled > 0 ? (noShows / scheduled * 100).toFixed(1) : '0.0';
+      const lateCancellations = details.filter(
+        (r) => String(r.status || '').toLowerCase().startsWith('cancel')
+      ).length;
+      return [
+        { label: 'Scheduled', value: scheduled, icon: Calendar, color: 'blue' },
+        { label: 'No-Shows', value: noShows, icon: AlertTriangle, color: 'red' },
+        { label: 'No-Show Rate', value: `${rate}%`, icon: TrendingUp, color: 'purple' },
+        { label: 'Late Cancellations', value: lateCancellations, icon: XCircle, color: 'orange' },
       ];
     }
     if (rd === 'provider-utilization' || rd === 'productivity') {
@@ -1093,6 +1174,103 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
         { label: 'Avg Approval Rate', value: summary.length > 0 ? `${Math.round(summary.reduce((s, r) => s + (parseFloat(r.approval_rate) || 0), 0) / summary.length)}%` : '0%', icon: TrendingUp, color: 'purple' },
       ];
     }
+    // Accounts module reports
+    if (rd === 'acct-trial-balance') {
+      const totalDebit  = parseFloat(data.totalDebit  || data.total_debit  || 0);
+      const totalCredit = parseFloat(data.totalCredit || data.total_credit || 0);
+      return [
+        { label: 'Total Debit',  value: fmt(totalDebit),  icon: TrendingUp,  color: 'green'  },
+        { label: 'Total Credit', value: fmt(totalCredit), icon: TrendingDown, color: 'red'   },
+        { label: 'Accounts',     value: (data.rows || []).length, icon: BookOpen, color: 'blue' },
+        { label: 'Balanced',     value: data.isBalanced || data.is_balanced ? '✓ Yes' : '✗ No', icon: CheckCircle, color: data.isBalanced ? 'green' : 'red' },
+      ];
+    }
+    if (rd === 'acct-income-statement') {
+      const revenue    = parseFloat(data.revenue    || 0);
+      const expenses   = parseFloat(data.expenses   || 0);
+      const netIncome  = parseFloat(data.netIncome  || data.net_income  || 0);
+      const netRevenue = parseFloat(data.netRevenue || data.net_revenue || 0);
+      return [
+        { label: 'Total Revenue',  value: fmt(revenue),   icon: TrendingUp,  color: 'green'  },
+        { label: 'Net Revenue',    value: fmt(netRevenue), icon: DollarSign,  color: 'blue'   },
+        { label: 'Total Expenses', value: fmt(expenses),  icon: TrendingDown, color: 'red'   },
+        { label: 'Net Income',     value: fmt(netIncome), icon: Activity,     color: netIncome >= 0 ? 'green' : 'red' },
+      ];
+    }
+    if (rd === 'acct-balance-sheet') {
+      return [
+        { label: 'Total Assets',      value: fmt(parseFloat(data.totalAssets      || data.total_assets      || 0)), icon: Building2,   color: 'blue'  },
+        { label: 'Total Liabilities', value: fmt(parseFloat(data.totalLiabilities || data.total_liabilities || 0)), icon: AlertTriangle, color: 'red'  },
+        { label: 'Total Equity',      value: fmt(parseFloat(data.totalEquity      || data.total_equity      || 0)), icon: DollarSign,  color: 'green' },
+        { label: 'Balanced',          value: data.isBalanced || data.is_balanced ? '✓ Yes' : '✗ No', icon: CheckCircle, color: data.isBalanced ? 'green' : 'red' },
+      ];
+    }
+    if (rd === 'acct-ar-aging') {
+      const buckets = data.buckets || {};
+      const totalAR = parseFloat(data.totalAR || data.total_ar || 0);
+      const overdue = Object.entries(buckets).filter(([k]) => k !== 'current').reduce((s, [, v]) => s + parseFloat(v), 0);
+      return [
+        { label: 'Total AR',      value: fmt(totalAR),            icon: TrendingUp,   color: 'blue'   },
+        { label: 'Current',       value: fmt(parseFloat(buckets.current || 0)), icon: CheckCircle, color: 'green' },
+        { label: 'Overdue',       value: fmt(overdue),            icon: AlertTriangle, color: 'red'   },
+        { label: 'AR Records',    value: (data.rows || []).length, icon: FileText,     color: 'purple' },
+      ];
+    }
+    // Inventory KPIs
+    if (rd === 'inv-stock-levels') {
+      const rows = data.rows || [];
+      const totalItems = rows.length;
+      const totalValue = rows.reduce((s, r) => s + (parseFloat(r.total_value) || 0), 0);
+      const lowStock = rows.filter(r => parseFloat(r.quantity_on_hand) <= parseFloat(r.reorder_level)).length;
+      return [
+        { label: 'Total Items',    value: totalItems,       icon: Package,       color: 'blue'   },
+        { label: 'Total Value',    value: fmt(totalValue),  icon: DollarSign,    color: 'green'  },
+        { label: 'Low Stock',      value: lowStock,         icon: AlertTriangle, color: 'red'    },
+        { label: 'In Stock',       value: totalItems - lowStock, icon: CheckCircle, color: 'teal' },
+      ];
+    }
+    if (rd === 'inv-low-stock') {
+      const rows = data.rows || [];
+      const critical = rows.filter(r => parseFloat(r.quantity_on_hand) === 0).length;
+      return [
+        { label: 'Low Stock Items', value: rows.length,  icon: AlertTriangle, color: 'red'    },
+        { label: 'Out of Stock',    value: critical,     icon: XCircle,       color: 'red'    },
+        { label: 'Need Reorder',    value: rows.length - critical, icon: ShoppingCart, color: 'orange' },
+        { label: 'Categories',      value: new Set(rows.map(r => r.category_name)).size, icon: Tag, color: 'blue' },
+      ];
+    }
+    if (rd === 'inv-valuation') {
+      const rows = data.rows || [];
+      const total = rows.reduce((s, r) => s + (parseFloat(r.total_value) || 0), 0);
+      return [
+        { label: 'Total Value',    value: fmt(total),    icon: DollarSign, color: 'green' },
+        { label: 'Categories',     value: rows.length,   icon: Tag,        color: 'blue'  },
+        { label: 'Avg per Cat',    value: fmt(rows.length ? total / rows.length : 0), icon: BarChart2, color: 'purple' },
+        { label: 'Items Tracked',  value: rows.reduce((s, r) => s + (parseInt(r.item_count) || 0), 0), icon: Package, color: 'teal' },
+      ];
+    }
+    if (rd === 'inv-movement-history') {
+      const rows = data.rows || [];
+      const totalIn = rows.filter(r => r.movement_type === 'receipt').reduce((s, r) => s + (parseFloat(r.total_quantity) || 0), 0);
+      const totalOut = rows.filter(r => r.movement_type === 'issue').reduce((s, r) => s + Math.abs(parseFloat(r.total_quantity) || 0), 0);
+      return [
+        { label: 'Total Movements', value: rows.reduce((s, r) => s + (parseInt(r.count) || 0), 0), icon: TrendingUp, color: 'blue' },
+        { label: 'Total Received',  value: totalIn.toFixed(2), icon: Package,     color: 'green'  },
+        { label: 'Total Issued',    value: totalOut.toFixed(2), icon: Truck,      color: 'orange' },
+        { label: 'Move Types',      value: rows.length,         icon: FileText,   color: 'purple' },
+      ];
+    }
+    if (rd === 'inv-expiry-alerts') {
+      const rows = data.rows || [];
+      const expired = rows.filter(r => new Date(r.expiry_date) < new Date()).length;
+      const within30 = rows.filter(r => { const d = new Date(r.expiry_date); const now = new Date(); return d >= now && d <= new Date(now.getTime() + 30*86400000); }).length;
+      return [
+        { label: 'Expiring Soon', value: rows.length,  icon: AlertTriangle, color: 'red'    },
+        { label: 'Already Expired', value: expired,    icon: XCircle,       color: 'red'    },
+        { label: 'Within 30 Days',  value: within30,   icon: Clock,         color: 'orange' },
+        { label: '31–90 Days',      value: rows.length - expired - within30, icon: CheckCircle, color: 'teal' },
+      ];
+    }
     // Fallback KPIs
     return [
       { label: 'Total Records', value: (summary.length + details.length), icon: FileText, color: 'blue' },
@@ -1100,7 +1278,9 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
   };
 
   const kpis = getKPIs();
-  const tableData = details.length > 0 ? details : summary;
+  const isAccountsReport = report.id?.startsWith('acct-');
+  const isInventoryReport = report.id?.startsWith('inv-');
+  const tableData = (isAccountsReport || isInventoryReport) ? (data.rows || []) : (details.length > 0 ? details : summary);
 
   return (
     <div className="space-y-6">
@@ -1138,7 +1318,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
             theme={theme}
             onDataClick={onDataPointClick}
             valueFormatter={report.id.includes('revenue') || report.id.includes('payment') || report.id.includes('billing') || report.id.includes('outstanding')
-              ? (v) => formatCurrency(v) : undefined}
+              ? (v) => formatCurrency(v, currency) : undefined}
             color={chartConfig?.color}
           />
         </Card>
@@ -1163,7 +1343,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
         <Card theme={theme} className="p-5">
           <h4 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Aging Analysis</h4>
           <ReportChart type="bar" data={aging.map(r => ({ label: r.aging_bucket, value: parseFloat(r.total_amount) }))}
-            theme={theme} valueFormatter={v => formatCurrency(v)} />
+            theme={theme} valueFormatter={v => formatCurrency(v, currency)} />
         </Card>
       )}
 
@@ -1197,7 +1377,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
       {/* Data Table */}
       {tableData.length > 0 && (
         <Card theme={theme} className="p-5">
-          <DataTable data={tableData} theme={theme} onRowClick={onDataPointClick} title="Detailed Records" />
+          <DataTable data={tableData} theme={theme} onRowClick={onDataPointClick} title="Detailed Records" currency={currency} />
         </Card>
       )}
     </div>
@@ -1209,7 +1389,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
 // CUSTOM REPORT RESULT VIEW
 // ─────────────────────────────────────────────────────────────
 
-const CustomReportResultView = ({ result, config, theme, onBack }) => {
+const CustomReportResultView = ({ result, config, theme, onBack, currency = 'USD' }) => {
   const { data = [], fields = [] } = result;
 
   const exportToExcel = () => {
@@ -1259,7 +1439,7 @@ const CustomReportResultView = ({ result, config, theme, onBack }) => {
         </div>
       </div>
       <Card theme={theme} className="p-5">
-        <DataTable data={data} columns={fields} theme={theme} title={`${data.length} Records`} />
+        <DataTable data={data} columns={fields} theme={theme} title={`${data.length} Records`} currency={currency} />
       </Card>
     </div>
   );
@@ -1269,7 +1449,11 @@ const CustomReportResultView = ({ result, config, theme, onBack }) => {
 // MAIN REPORTS VIEW COMPONENT
 // ─────────────────────────────────────────────────────────────
 
-const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api }) => {
+const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api, currency = 'USD', activeTab: shellTab, onTabChange }) => {
+  // The app shell lists the report catalogue in its secondary pane and passes
+  // the selection down as "<categoryId>:<reportId>" (or "custom"). Rendered
+  // outside the shell the view keeps its own sidebar.
+  const tabsInShell = typeof onTabChange === 'function';
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [reportData, setReportData] = useState(null);
@@ -1323,14 +1507,33 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
     }
   }, [selectedReport, selectedCategory, dateRange, customStartDate, customEndDate]);
 
-  const selectReport = (cat, rep) => {
+  const selectReport = useCallback((cat, rep) => {
     setSelectedCategory(cat);
     setSelectedReport(rep);
     setReportData(null);
     setError(null);
     setChartConfig({});
     setCustomResult(null);
-  };
+  }, []);
+
+  // Mirror the shell's pane-2 selection into the view's own state.
+  useEffect(() => {
+    if (!tabsInShell) return;
+
+    if (shellTab === 'custom') {
+      setSelectedReport(null);
+      setSelectedCategory(null);
+      setShowCustomBuilder(true);
+      return;
+    }
+
+    const [catId, repId] = String(shellTab || '').split(':');
+    const cat = REPORT_CATEGORIES.find(c => c.id === catId);
+    const rep = cat?.reports.find(r => r.id === repId);
+    if (!cat || !rep) return;
+    if (selectedReport?.id === rep.id && selectedCategory?.id === cat.id) return;
+    selectReport(cat, rep);
+  }, [tabsInShell, shellTab, selectReport, selectedReport, selectedCategory]);
 
   const toggleCategory = (catId) => {
     setExpandedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
@@ -1354,7 +1557,17 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
       autoTable(doc, {
         startY: 40,
         head: [cols.map(c => c.replace(/_/g, ' ').toUpperCase())],
-        body: tableData.slice(0, 100).map(row => cols.map(c => String(row[c] ?? ''))),
+        body: tableData.slice(0, 100).map(row => cols.map(c => {
+          const val = row[c];
+          if (val === null || val === undefined) return '';
+          if (typeof val === 'number' || (c.includes('amount') || c.includes('revenue') || c.includes('billed') || c.includes('paid') || c.includes('balance') || c.includes('cost') || c.includes('price') || c.includes('outstanding'))) {
+            const num = parseFloat(val);
+            if (!isNaN(num) && (c.includes('amount') || c.includes('revenue') || c.includes('billed') || c.includes('paid') || c.includes('balance') || c.includes('cost') || c.includes('price') || c.includes('outstanding'))) {
+              return formatCurrency(num, currency);
+            }
+          }
+          return String(val ?? '');
+        })),
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
         styles: { fontSize: 8 }
@@ -1412,26 +1625,25 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
   };
 
   // Category color maps
-  const catColor = { operational: 'blue', financial: 'green', insurance: 'purple', patient: 'teal', provider: 'orange', compliance: 'red' };
+  const catColor = { operational: 'blue', financial: 'green', insurance: 'purple', patient: 'teal', provider: 'orange', compliance: 'red', accounts: 'emerald', inventory: 'amber' };
   const catBg = { blue: theme === 'dark' ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600',
                   green: theme === 'dark' ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-600',
                   purple: theme === 'dark' ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-600',
                   teal: theme === 'dark' ? 'bg-teal-500/10 text-teal-400' : 'bg-teal-50 text-teal-600',
                   orange: theme === 'dark' ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-600',
-                  red: theme === 'dark' ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600' };
+                  red: theme === 'dark' ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600',
+                  emerald: theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600',
+                  amber: theme === 'dark' ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600' };
 
   return (
     <div className="flex h-full gap-0">
-      {/* Sidebar */}
+      {/* Sidebar — replaced by the app shell's secondary pane when present */}
+      {!tabsInShell && (
       <div className={`w-64 shrink-0 border-r flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-200'}`}
         style={{ minHeight: 'calc(100vh - 120px)' }}>
         {/* Sidebar Header */}
         <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-2 mb-3">
-            <button onClick={() => setCurrentModule && setCurrentModule('dashboard')}
-              className={`p-1.5 rounded-lg ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-200'}`}>
-              <ArrowLeft className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
-            </button>
             <h2 className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Reports</h2>
           </div>
           <button onClick={() => setShowCustomBuilder(true)}
@@ -1488,19 +1700,16 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
           })}
         </div>
       </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Top Toolbar */}
         <div className={`flex items-center justify-between px-6 py-3 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+          {/* The shell's breadcrumb names the category and report, so only the
+              things it cannot know — a custom report's name, the empty state —
+              are labelled here. */}
           <div className="flex items-center gap-3">
-            {selectedReport && (
-              <>
-                <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{selectedCategory?.name}</span>
-                <ChevronRight className={`w-3 h-3 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
-                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedReport.name}</span>
-              </>
-            )}
             {customResult && !selectedReport && (
               <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{customConfig?.reportName}</span>
             )}
@@ -1512,8 +1721,9 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
             {/* Date Range Selector */}
             {selectedReport && (
               <>
-                <select value={dateRange} onChange={e => { setDateRange(e.target.value); setCustomStartDate(''); setCustomEndDate(''); }}
-                  className={`px-3 py-1.5 rounded-lg border text-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                <ThemedSelect
+                  theme={theme}
+                  className="text-sm" value={dateRange} onChange={e => { setDateRange(e.target.value); setCustomStartDate(''); setCustomEndDate(''); }}>
                   <option value="7">Last 7 Days</option>
                   <option value="30">Last 30 Days</option>
                   <option value="90">Last 90 Days</option>
@@ -1521,7 +1731,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
                   <option value="365">Last Year</option>
                   <option value="all">All Time</option>
                   <option value="custom">Custom Range</option>
-                </select>
+                </ThemedSelect>
                 {dateRange === 'custom' && (
                   <>
                     <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)}
@@ -1596,16 +1806,12 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
           {/* Custom Report Result */}
           {customResult && !selectedReport && (
             <CustomReportResultView result={customResult} config={customConfig} theme={theme}
-              onBack={() => { setCustomResult(null); setCustomConfig(null); }} />
+              onBack={() => { setCustomResult(null); setCustomConfig(null); }} currency={currency} />
           )}
 
           {/* Standard Report */}
           {selectedReport && (
             <div>
-              <div className="mb-5">
-                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedReport.name}</h2>
-                <p className={`text-sm mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{selectedReport.description}</p>
-              </div>
               <ReportContent
                 category={selectedCategory}
                 report={selectedReport}
@@ -1617,6 +1823,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
                 chartConfig={chartConfig}
                 onDataPointClick={(record) => setDrillRecord(record)}
                 onChartConfigChange={(cfg) => setChartConfig(cfg)}
+                currency={currency}
               />
             </div>
           )}

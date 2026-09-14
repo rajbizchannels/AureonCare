@@ -1,11 +1,15 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const vendorIntegrationManager = require('../services/vendorIntegrations');
+const notificationService = require('../services/notificationService');
 
 // Get all claims
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.query;
 
     let query = `
@@ -34,7 +38,7 @@ router.get('/', async (req, res) => {
 // Get single claim
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM claims WHERE id::text = $1::text',
       [req.params.id]
@@ -57,7 +61,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `INSERT INTO claims
@@ -177,6 +181,9 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(claim);
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'claim.created', { claim, patient_id }).catch(() => {});
   } catch (error) {
     console.error('Error creating claim:', error);
     res.status(500).json({ error: 'Failed to create claim' });
@@ -191,7 +198,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `UPDATE claims
@@ -213,7 +220,17 @@ router.put('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Claim not found' });
     }
-    res.json(result.rows[0]);
+    const updatedClaim = result.rows[0];
+    res.json(updatedClaim);
+
+    // Send status change notification (non-blocking)
+    if (status) {
+      notificationService.dispatch(pool, 'claim.status_changed', {
+        claim: updatedClaim,
+        patient_id: updatedClaim.patient_id,
+        old_status: 'previous',
+      }).catch(() => {});
+    }
   } catch (error) {
     console.error('Error updating claim:', error);
     res.status(500).json({ error: 'Failed to update claim' });
@@ -223,7 +240,7 @@ router.put('/:id', async (req, res) => {
 // Delete claim
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM claims WHERE id::text = $1::text RETURNING *',
       [req.params.id]

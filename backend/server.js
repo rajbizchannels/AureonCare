@@ -3,12 +3,19 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const redis = require('redis');
+const path = require('path');
+const fs = require('fs');
 
 // Use centralised Supabase-aware pool from db.js
 const pool = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Trust the first proxy hop (Vercel / load balancer) so req.ip reflects the
+// real client address from X-Forwarded-For — required for correct per-IP rate
+// limiting on the auth endpoints.
+app.set('trust proxy', 1);
 
 // Make pool available to routes
 app.locals.pool = pool;
@@ -43,6 +50,13 @@ app.use(
   helmet({
     crossOriginEmbedderPolicy: { policy: 'credentialless' },
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        frameAncestors: ["'self'"],
+      },
+    },
+    frameguard: { action: 'sameorigin' },
   })
 );
 // Support multiple allowed origins via a comma-separated FRONTEND_URL env var,
@@ -52,17 +66,62 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'https://app.aureoncare.tech
   .map(o => o.trim())
   .filter(Boolean);
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow server-to-server or same-origin requests (no Origin header)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origin '${origin}' not allowed`));
-  },
-  credentials: true
+app.use(cors((req, callback) => {
+  const origin = req.headers.origin;
+  // Server-to-server, or a request the browser sends without an Origin header.
+  if (!origin) return callback(null, { origin: true, credentials: true });
+  if (allowedOrigins.includes(origin)) return callback(null, { origin: true, credentials: true });
+  // Same-origin requests DO carry an Origin header on POST/fetch. The platform console is
+  // served by this process at /platform, so its origin is this host — which need not be in
+  // FRONTEND_URL (that names the SPA). Rejecting it would break every console write.
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  if (host) {
+    try {
+      if (new URL(origin).host === String(host).split(',')[0].trim()) {
+        return callback(null, { origin: true, credentials: true });
+      }
+    } catch { /* unparseable Origin — fall through to the rejection below */ }
+  }
+  callback(new Error(`CORS: origin '${origin}' not allowed`));
 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Stripe webhook MUST be mounted before express.json() so it receives the raw body.
+// Stripe-Signature verification fails if the body has been JSON-parsed first.
+app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }), require('./routes/stripeWebhook'));
+
+// Body parsing — Vercel's @vercel/node runtime consumes the request stream
+// before Express middleware runs but does NOT set req.body, so express.json()
+// always reads an empty stream and throws SyntaxError for every request.
+// Fix: intercept the parse error inside the wrapper and inspect err.body —
+// the raw bytes body-parser actually received. Empty means Vercel ate the
+// stream (treat as empty body); non-empty means genuinely malformed JSON.
+app.use((req, res, next) => {
+  if (req.body !== undefined) return next();
+  express.json({ limit: '10mb' })(req, res, (err) => {
+    if (err && err instanceof SyntaxError && err.status === 400) {
+      let received = '';
+      if (typeof err.body === 'string') {
+        received = err.body.trim();
+      } else if (Buffer.isBuffer(err.body)) {
+        received = err.body.toString('utf8').trim();
+      } else if (err.body != null) {
+        received = String(err.body).trim();
+      }
+      if (!received) {
+        // Stream was empty — Vercel consumed it before we could read it.
+        // Treat as an empty body so routes handle missing fields normally.
+        req.body = {};
+        return next();
+      }
+      return next(err);
+    }
+    if (err) return next(err);
+    next();
+  });
+});
+app.use((req, res, next) => {
+  if (req.body !== undefined) return next();
+  express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+});
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -91,6 +150,27 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Microsoft publisher domain verification.
+//
+// Entra ID fetches this file over HTTPS to confirm we own the domain. It is
+// served from the backend rather than as a static asset in frontend/public,
+// because the build pipeline does not reliably carry a dot-directory through
+// to the deployed output — /.well-known/... returned 404 when it lived there.
+//
+// Set AC_MS_APP_IDS to the Application (client) IDs to associate, comma
+// separated. One file covers every app registration on the domain.
+app.get('/.well-known/microsoft-identity-association.json', (req, res) => {
+  const appIds = (process.env.AC_MS_APP_IDS || '')
+    .split(',')
+    .map(id => id.trim())
+    .filter(Boolean);
+
+  // Microsoft requires this exact content type; res.json sets it for us.
+  res.json({
+    associatedApplications: appIds.map(applicationId => ({ applicationId })),
+  });
+});
+
 // API routes
 app.get('/api/test', (req, res) => {
   res.json({ 
@@ -100,8 +180,38 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Rate limiting — a global backstop across the whole API, plus a strict
+// limiter on authentication endpoints (login, password reset, social login).
+const { apiLimiter, authLimiter } = require('./middleware/rateLimiters');
+app.use('/api', apiLimiter);
+
+// SEC-15: CSRF protection for cookie-authenticated requests. The session cookie must be
+// SameSite=None (the SPA and API are on different origins), so SameSite offers no
+// protection and this double-submit check is what prevents forged state-changing
+// requests. Bearer-authenticated calls are exempt — the browser never attaches that
+// header automatically — so existing token-based clients are unaffected.
+app.use('/api', require('./middleware/csrf').verifyCsrf);
+
 // Import and use routes
-app.use('/api/auth', require('./routes/auth'));
+// SEC-05 (S10): control-plane console — super-admin surface, separate from the tenant app.
+app.use('/api/platform', require('./routes/platform'));
+
+// The console UI itself. Served from the backend rather than bundled into the tenant SPA,
+// so operator code never ships in a clinic user's browser. It is a static shell — every
+// privileged action still goes through /api/platform, which authenticates the operator.
+app.use('/platform', express.static(path.join(__dirname, 'public/platform'), {
+  index: 'index.html',
+  setHeaders: (res) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('Cache-Control', 'no-store');
+  },
+}));
+app.use('/api/auth', authLimiter, require('./routes/auth'));
+// Public self-serve signup (plans, coupon preview, checkout) and staff invites. Both are
+// partly unauthenticated by design and carry their own rate limits.
+app.use('/api/signup', require('./routes/signup'));
+app.use('/api/invites', require('./routes/invites').router);
+app.use('/api/team-access', require('./routes/teamAccess').router);
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/appointment-types', require('./routes/appointment-types'));
@@ -114,6 +224,7 @@ app.use('/api/payment-postings', require('./routes/payment-postings'));
 app.use('/api/denials', require('./routes/denials'));
 app.use('/api/edi', require('./routes/edi'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/messages', require('./routes/messages'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/providers', require('./routes/providers'));
@@ -125,6 +236,7 @@ app.use('/api/telehealth-settings', require('./routes/telehealthSettings'));
 app.use('/api/vendor-integration-settings', require('./routes/vendorIntegrationSettings'));
 app.use('/api/integrations/oauth', require('./routes/integrationOAuth'));
 app.use('/api/backup-providers', require('./routes/backupProviders'));
+app.use('/api/stripe-settings', require('./routes/stripeSettings'));
 app.use('/api/clinic-settings', require('./routes/clinicSettings'));
 app.use('/api/notification-preferences', require('./routes/notificationPreferences'));
 app.use('/api/fhir', require('./routes/fhir'));
@@ -149,16 +261,44 @@ app.use('/api/archive', require('./routes/archive'));
 app.use('/api/archive-rules', require('./routes/archiveRules'));
 app.use('/api/audit', require('./routes/audit'));
 app.use('/api/billing', require('./routes/billing'));
+app.use('/api/accounts', require('./routes/accounts'));
+app.use('/api/inventory', require('./routes/inventory'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/form-management', require('./routes/form-management'));
+app.use('/api/licenses', require('./routes/licenses'));
 
-// Serve uploaded files
-app.use('/uploads', express.static('uploads'));
+// Serve uploaded files — requires a valid authenticated session.
+// express.static is intentionally NOT used here; unauthenticated access to
+// PHI documents (medical records, consent forms) would be a HIPAA violation.
+const { authenticate } = require('./middleware/auth');
+const UPLOADS_ROOT = path.resolve(__dirname, 'uploads');
+
+app.get('/uploads/*', authenticate, (req, res) => {
+  // Resolve the requested path and confirm it stays inside UPLOADS_ROOT
+  // to prevent directory traversal (e.g. ../../etc/passwd).
+  const requestedPath = path.resolve(UPLOADS_ROOT, req.params[0]);
+  if (!requestedPath.startsWith(UPLOADS_ROOT + path.sep) &&
+      requestedPath !== UPLOADS_ROOT) {
+    return res.status(400).json({ error: 'Invalid file path' });
+  }
+
+  if (!fs.existsSync(requestedPath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  res.sendFile(requestedPath);
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  // express.json() throws a SyntaxError for malformed request bodies.
+  // Return 400 so clients get a useful signal rather than a generic 500.
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });

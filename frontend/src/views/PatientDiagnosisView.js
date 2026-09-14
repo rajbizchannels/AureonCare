@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Activity, Plus, Search, Calendar, User, Edit2, Trash2, Filter, AlertCircle } from 'lucide-react';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
+import ThemedSelect from '../components/forms/ThemedSelect';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
 
@@ -37,12 +38,9 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
     });
   }, [logViewAccess, selectedPatient?.id]);
 
-  // Load initial data
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const loadData = async () => {
+  // Declared before the effect that depends on it — a `const` referenced from a
+  // dependency array is still in its temporal dead zone during that render.
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [diagnosesData, patientsData, providersData] = await Promise.all([
@@ -60,7 +58,12 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api, addNotification]);
+
+  // Load initial data
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Handle add new diagnosis
   const handleAddDiagnosis = (patient = null) => {
@@ -222,15 +225,7 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Patient Diagnoses
-            </h1>
-            <p className={`mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Manage patient diagnoses with ICD-10 and CPT codes
-            </p>
-          </div>
+        <div className="flex items-center justify-end mb-4">
           <button
             onClick={() => handleAddDiagnosis()}
             className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg hover:from-green-600 hover:to-teal-600 transition-all flex items-center gap-2 font-medium shadow-lg"
@@ -264,14 +259,10 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
 
           {/* Patient Filter */}
           <div>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={filterPatient}
               onChange={(e) => setFilterPatient(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                theme === 'dark'
-                  ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-              }`}
             >
               <option value="all">All Patients</option>
               {patients.map(patient => (
@@ -279,28 +270,50 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
                   {patient.first_name || patient.firstName} {patient.last_name || patient.lastName}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
 
           {/* Status Filter */}
           <div>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                theme === 'dark'
-                  ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-              }`}
             >
               <option value="all">All Statuses</option>
               <option value="Active">Active</option>
               <option value="Resolved">Resolved</option>
               <option value="Chronic">Chronic</option>
-            </select>
+            </ThemedSelect>
           </div>
         </div>
       </div>
+
+      {/* Diagnosis form — sits above the list so opening it pushes the
+          diagnoses down rather than hiding below them. */}
+      {showDiagnosisForm && (
+        <div className="mb-6">
+          <DiagnosisForm
+            theme={theme}
+            api={api}
+            patient={selectedPatient}
+            patients={patients}
+            providers={providers}
+            user={user}
+            editDiagnosis={editingDiagnosis}
+            // Reached from the module rather than from a patient's chart, so
+            // the form has to ask who this diagnosis is for.
+            allowPatientSelection={!selectedPatient}
+            onClose={() => {
+              setShowDiagnosisForm(false);
+              setSelectedPatient(null);
+              setEditingDiagnosis(null);
+            }}
+            onSuccess={handleFormSuccess}
+            addNotification={addNotification}
+          />
+        </div>
+      )}
 
       {/* Diagnoses List */}
       {filteredDiagnoses.length === 0 ? (
@@ -429,26 +442,6 @@ const PatientDiagnosisView = ({ theme, api, addNotification, user }) => {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Diagnosis Form Modal */}
-      {showDiagnosisForm && (
-        <DiagnosisForm
-          theme={theme}
-          api={api}
-          patient={selectedPatient}
-          patients={patients}
-          providers={providers}
-          user={user}
-          editDiagnosis={editingDiagnosis}
-          onClose={() => {
-            setShowDiagnosisForm(false);
-            setSelectedPatient(null);
-            setEditingDiagnosis(null);
-          }}
-          onSuccess={handleFormSuccess}
-          addNotification={addNotification}
-        />
       )}
 
       {/* Delete Confirmation Modal */}

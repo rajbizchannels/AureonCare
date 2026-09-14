@@ -1,7 +1,53 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const { authenticate } = require('../middleware/auth');
+const { makeTenantDb } = require('../db/requestTenantDb');
 const router = express.Router();
 const crypto = require('crypto');
 const axios = require('axios');
+
+const JWT_SECRET = process.env.AC_TK_S;
+
+/**
+ * `authenticate` is applied per-route rather than to the whole router, because
+ * the OAuth callback must stay open: the provider sends the browser there as a
+ * top-level navigation with no Authorization header, so a blanket gate answers
+ * Google/Zoom/Teams with {"error":"Authentication required"} and the connection
+ * can never complete. The callback authorises on its signed `state` instead.
+ */
+router.use((req, res, next) => {
+  if (/\/callback$/.test(req.path)) return next();
+  return authenticate(req, res, next);
+});
+
+/**
+ * OAuth state: a signed, short-lived token rather than a server-side entry.
+ *
+ * It has to survive the round trip to the provider, and on serverless the
+ * callback may land on a different instance than the one that started the
+ * flow — an in-memory map loses the state and every connection fails with
+ * "Invalid or expired state". Signing it keeps the CSRF guarantee without
+ * shared storage.
+ */
+// SEC-05: the state also carries the TENANT the flow started in. The provider redirects
+// back to an unauthenticated callback with no session, so without this the callback
+// cannot know which tenant schema to write the tokens into. The value is inside the
+// signed token, so a caller cannot tamper with it to target another tenant.
+const signOAuthState = (providerType, userId, tenantId) =>
+  jwt.sign(
+    { providerType, uid: String(userId), tid: tenantId ? String(tenantId) : null },
+    JWT_SECRET,
+    { expiresIn: '10m' }
+  );
+
+const verifyOAuthState = (state, providerType) => {
+  try {
+    const claims = jwt.verify(state, JWT_SECRET);
+    return claims.providerType === providerType ? claims : null;
+  } catch (err) {
+    return null;
+  }
+};
 
 /**
  * Integration OAuth Flow Management
@@ -16,7 +62,6 @@ const axios = require('axios');
  */
 
 // Store OAuth states temporarily (in production, use Redis or database)
-const oauthStates = new Map();
 
 /**
  * Build the frontend URL for post-OAuth redirects.
@@ -98,8 +143,29 @@ function getBaseUrl(req) {
   if (process.env.AC_BE_URL) {
     return process.env.AC_BE_URL.replace(/\/+$/, '');
   }
+  // Host-header injection: x-forwarded-host / host are supplied by the client and are
+  // only trustworthy if a proxy overwrites them. This value becomes the OAuth
+  // redirect_uri, so a forged host aims the provider's redirect elsewhere. Providers
+  // reject redirect URIs that are not registered, which limits the impact, but the
+  // correct fix is to pin the value: set AC_BE_URL in every deployed environment.
+  // AC_TRUSTED_HOSTS (comma-separated) additionally constrains the derived host.
   const protocol = req.get('x-forwarded-proto') || req.protocol;
   const host = req.get('x-forwarded-host') || req.get('host');
+
+  const allowlist = (process.env.AC_TRUSTED_HOSTS || '')
+    .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+  if (allowlist.length > 0 && !allowlist.includes(String(host).toLowerCase())) {
+    throw Object.assign(
+      new Error(`Refusing to build a callback URL for untrusted host "${host}".`),
+      { statusCode: 400 }
+    );
+  }
+  if (allowlist.length === 0) {
+    console.warn(
+      `[integrationOAuth] AC_BE_URL is not set — deriving the OAuth callback from the ` +
+      `client-supplied host "${host}". Set AC_BE_URL (or AC_TRUSTED_HOSTS) to pin it.`
+    );
+  }
   return `${protocol}://${host}`;
 }
 
@@ -116,30 +182,53 @@ const PROVIDER_ENV_MAP = {
   WEBEX_CLIENT_SECRET:         'AC_WBX_CSK',
   GOOGLE_MEET_CLIENT_ID:       'AC_GM_CID',
   GOOGLE_MEET_CLIENT_SECRET:   'AC_GM_CSK',
+  GOOGLE_DRIVE_CLIENT_ID:      'REACT_APP_GG_CID',
+  GOOGLE_DRIVE_CLIENT_SECRET:  'AC_GD_CSK',
+  ONEDRIVE_CLIENT_ID:          'REACT_APP_MS_CID',
+  ONEDRIVE_CLIENT_SECRET:      'AC_OD_CSK',
 };
 
 function resolveProviderEnv(key) {
-  return process.env[PROVIDER_ENV_MAP[key] || key];
+  const mappedKey = PROVIDER_ENV_MAP[key];
+  if (mappedKey) {
+    // Try the canonical abbreviated var first, then the legacy full-name var
+    return process.env[mappedKey] || process.env[key] || null;
+  }
+  return process.env[key] || null;
 }
 
 /**
  * Resolve client_id and client_secret for a telehealth provider.
- * Falls back to env vars (AC_ZM_CID, etc.) when DB has no credentials.
+ * Env vars (AC_ZM_CID, etc.) take precedence over DB values so that
+ * updating credentials after Marketplace approval takes effect immediately.
  */
 function resolveClientCredentials(providerType, dbRow) {
-  let client_id = dbRow?.client_id || null;
-  let client_secret = dbRow?.client_secret || null;
+  const prefix = providerType.toUpperCase();
+  const envPrefixes = providerType === 'microsoft_teams'
+    ? ['TEAMS', prefix]
+    : [prefix];
 
-  if (!client_id || !client_secret) {
-    const prefix = providerType.toUpperCase();
-    // microsoft_teams → try TEAMS_ first, then MICROSOFT_TEAMS_
-    const envPrefixes = providerType === 'microsoft_teams'
-      ? ['TEAMS', prefix]
-      : [prefix];
-    for (const ep of envPrefixes) {
-      client_id = client_id || resolveProviderEnv(`${ep}_CLIENT_ID`) || null;
-      client_secret = client_secret || resolveProviderEnv(`${ep}_CLIENT_SECRET`) || null;
-    }
+  let envClientId = null;
+  let envClientSecret = null;
+  for (const ep of envPrefixes) {
+    envClientId = envClientId || resolveProviderEnv(`${ep}_CLIENT_ID`) || null;
+    envClientSecret = envClientSecret || resolveProviderEnv(`${ep}_CLIENT_SECRET`) || null;
+  }
+
+  const client_id = envClientId || dbRow?.client_id || null;
+  const client_secret = envClientSecret || dbRow?.client_secret || null;
+
+  // SEC-05: the DB columns are DEPRECATED — the OAuth client id/secret are global and
+  // belong in the environment, not duplicated into every tenant's settings row. The
+  // fallback is retained so an environment that has not set its env vars yet keeps
+  // working, but it is reported so it gets fixed, then cleared with
+  // scripts/deprecate-oauth-credentials.js.
+  if (!envClientSecret && dbRow?.client_secret) {
+    console.warn(
+      `[integrationOAuth] DEPRECATED: using database-stored client_secret for "${providerType}". ` +
+      `Set ${prefix}_CLIENT_ID / ${prefix}_CLIENT_SECRET in the environment, then run ` +
+      `scripts/deprecate-oauth-credentials.js to clear the stored copy.`
+    );
   }
 
   return { client_id, client_secret };
@@ -156,10 +245,8 @@ const OAUTH_CONFIGS = {
     scope: [
       'meeting:write:meeting',              // Create / update own meetings
       'meeting:read:meeting',               // Read own meeting details
-      'meeting:delete:meeting',             // Delete own meetings
       'user:read:user',                     // Read own user profile
       'user:read:zak',                      // Read own ZAK token for embedded SDK hosting
-      'cloud_recording:read:list_recordings', // List own cloud recordings
     ].join(' '),
   },
   google_meet: {
@@ -173,9 +260,15 @@ const OAUTH_CONFIGS = {
     scope: 'meeting:schedules_write meeting:schedules_read',
   },
   microsoft_teams: {
-    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    scope: 'OnlineMeetings.ReadWrite User.Read offline_access',
+    // /organizations, not /common: OnlineMeetings.ReadWrite is a work/school
+    // permission that does not exist for personal Microsoft accounts. Under
+    // /common a personal account can authorize, and Microsoft then issues a
+    // token carrying only User.Read -- the Teams scope is dropped silently and
+    // the connection looks successful until the first meeting fails. Limiting
+    // the authority rejects those accounts at sign-in with a clear message.
+    authUrl: 'https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/organizations/oauth2/v2.0/token',
+    scope: 'https://graph.microsoft.com/OnlineMeetings.ReadWrite https://graph.microsoft.com/User.Read offline_access',
   },
   google_drive: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -224,40 +317,15 @@ router.get('/:providerType/initiate', async (req, res) => {
       });
     }
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
     if (!info) return res.status(400).json({ error: 'Invalid provider type' });
 
     // Ensure table exists
     if (info.table === 'telehealth_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id TEXT, client_secret TEXT,
-          access_token TEXT, refresh_token TEXT,
-          token_type VARCHAR(50) DEFAULT 'Bearer',
-          token_scope TEXT, token_expires_at BIGINT,
-          account_id VARCHAR(255), zoom_user_id VARCHAR(255), zoom_user_email VARCHAR(255),
-          api_key TEXT, api_secret TEXT, webhook_secret TEXT,
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } else if (info.table === 'backup_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS backup_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255), client_secret VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     }
 
     // Fetch DB row (may be empty)
@@ -278,43 +346,22 @@ router.get('/:providerType/initiate', async (req, res) => {
       });
     }
 
-    // If credentials came from env vars and there's no DB row yet, create one
+    // SEC-05: the OAuth client id/secret are GLOBAL (one app registration per provider)
+    // and live in the environment. They are deliberately no longer written back into the
+    // per-tenant settings row — that copied the same secret into every tenant schema.
+    // Only the per-practice account and its tokens belong in tenant data. Ensure the row
+    // exists (for enablement + tokens) without persisting any credential.
     if (!dbRow) {
       await pool.query(
-        `INSERT INTO ${info.table} (${info.field}, client_id, client_secret, is_enabled)
-         VALUES ($1, $2, $3, false)
-         ON CONFLICT (${info.field}) DO UPDATE SET
-           client_id = EXCLUDED.client_id,
-           client_secret = EXCLUDED.client_secret,
-           updated_at = CURRENT_TIMESTAMP`,
-        [providerType, client_id, client_secret]
-      );
-    } else if (!dbRow.client_id || !dbRow.client_secret) {
-      // DB row exists but missing creds — persist from env vars
-      await pool.query(
-        `UPDATE ${info.table}
-         SET client_id = COALESCE(client_id, $1),
-             client_secret = COALESCE(client_secret, $2),
-             updated_at = CURRENT_TIMESTAMP
-         WHERE ${info.field} = $3`,
-        [client_id, client_secret, providerType]
+        `INSERT INTO ${info.table} (${info.field}, is_enabled)
+         VALUES ($1, false)
+         ON CONFLICT (${info.field}) DO NOTHING`,
+        [providerType]
       );
     }
 
-    // Generate CSRF state
-    const state = crypto.randomBytes(32).toString('hex');
+    const state = signOAuthState(providerType, req.user.id, req.tenant && req.tenant.tenantId);
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
-
-    oauthStates.set(state, {
-      providerType,
-      timestamp: Date.now(),
-      expiresAt: Date.now() + 10 * 60 * 1000,
-    });
-
-    // Clean up expired states
-    for (const [key, value] of oauthStates.entries()) {
-      if (value.expiresAt < Date.now()) oauthStates.delete(key);
-    }
 
     // Build authorization URL
     const authUrl = new URL(config.authUrl);
@@ -326,6 +373,15 @@ router.get('/:providerType/initiate', async (req, res) => {
 
     if (['google_meet', 'google_drive'].includes(providerType)) {
       authUrl.searchParams.append('access_type', 'offline');
+      authUrl.searchParams.append('prompt', 'consent');
+    }
+
+    // Microsoft reuses an existing consent grant unless re-consent is forced,
+    // and issues a token carrying only the scopes consented to at that time.
+    // Adding a permission in Azure does not retroactively widen a grant, so
+    // without this a disconnect/reconnect returns a token still missing the
+    // new scope and the provider's scope check keeps failing.
+    if (['microsoft_teams', 'onedrive'].includes(providerType)) {
       authUrl.searchParams.append('prompt', 'consent');
     }
 
@@ -350,15 +406,27 @@ router.get('/:providerType/callback', async (req, res) => {
       return sendOAuthResult(res, false, providerType, 'Invalid callback — missing code or state.');
     }
 
-    // Verify state
-    const storedState = oauthStates.get(state);
-    if (!storedState || storedState.providerType !== providerType) {
+    // The signed state is what authorises this unauthenticated callback.
+    const stateClaims = verifyOAuthState(state, providerType);
+    if (!stateClaims) {
       return sendOAuthResult(res, false, providerType, 'Invalid or expired state. Please try again.');
     }
-    oauthStates.delete(state);
 
     const config = OAUTH_CONFIGS[providerType];
-    const pool = req.app.locals.pool;
+    // SEC-05: resolve the tenant from the SIGNED state (never from a query parameter) so
+    // the provider's tokens are written into the schema the flow actually started in.
+    // Falls back to the default tenant for states minted before this claim existed.
+    const basePool = req.app.locals.pool;
+    let callbackDb = null;
+    if (stateClaims.tid) {
+      try {
+        const t = await basePool.query('SELECT schema_name FROM control.tenants WHERE id = $1', [stateClaims.tid]);
+        if (t.rows[0]?.schema_name) callbackDb = makeTenantDb(basePool, t.rows[0].schema_name, res);
+      } catch (e) {
+        console.warn('[integrationOAuth] tenant lookup failed for callback state:', e.message);
+      }
+    }
+    const pool = callbackDb || req.db || basePool;
     const info = getTableInfo(providerType);
 
     // Fetch existing DB row for client credentials
@@ -389,6 +457,14 @@ router.get('/:providerType/callback', async (req, res) => {
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
       tokens = tokenResponse.data;
+      console.log(`[OAuth callback] ${providerType} token exchange succeeded:`, {
+        hasAccessToken: Boolean(tokens.access_token),
+        tokenLength: tokens.access_token?.length,
+        hasRefreshToken: Boolean(tokens.refresh_token),
+        scope: tokens.scope,
+        expiresIn: tokens.expires_in,
+        tokenType: tokens.token_type,
+      });
     } catch (tokenError) {
       console.error('Token exchange error:', tokenError.response?.data || tokenError.message);
       return sendOAuthResult(res, false, providerType, 'Token exchange failed — check your Client Secret and Redirect URL.');
@@ -448,20 +524,29 @@ router.get('/:providerType/callback', async (req, res) => {
       });
 
       await pool.query(
-        `UPDATE telehealth_provider_settings
-         SET access_token = $1,
-             refresh_token = $2,
-             token_type = $3,
-             token_scope = $4,
-             token_expires_at = $5,
-             account_id = COALESCE($6, account_id),
-             zoom_user_id = COALESCE($7, zoom_user_id),
-             zoom_user_email = COALESCE($8, zoom_user_email),
-             is_enabled = true,
-             settings = $10::jsonb,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE provider_type = $9`,
+        `INSERT INTO telehealth_provider_settings
+           (provider_type, client_id, client_secret, access_token, refresh_token,
+            token_type, token_scope, token_expires_at, account_id,
+            zoom_user_id, zoom_user_email, is_enabled, settings)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, $12::jsonb)
+         ON CONFLICT (provider_type) DO UPDATE SET
+           client_id = COALESCE(EXCLUDED.client_id, telehealth_provider_settings.client_id),
+           client_secret = COALESCE(EXCLUDED.client_secret, telehealth_provider_settings.client_secret),
+           access_token = EXCLUDED.access_token,
+           refresh_token = EXCLUDED.refresh_token,
+           token_type = EXCLUDED.token_type,
+           token_scope = EXCLUDED.token_scope,
+           token_expires_at = EXCLUDED.token_expires_at,
+           account_id = COALESCE(EXCLUDED.account_id, telehealth_provider_settings.account_id),
+           zoom_user_id = COALESCE(EXCLUDED.zoom_user_id, telehealth_provider_settings.zoom_user_id),
+           zoom_user_email = COALESCE(EXCLUDED.zoom_user_email, telehealth_provider_settings.zoom_user_email),
+           is_enabled = true,
+           settings = EXCLUDED.settings,
+           updated_at = CURRENT_TIMESTAMP`,
         [
+          providerType,
+          client_id,
+          client_secret,
           tokens.access_token,
           tokens.refresh_token || null,
           tokens.token_type || 'Bearer',
@@ -470,24 +555,27 @@ router.get('/:providerType/callback', async (req, res) => {
           accountId,
           connectedUserId,
           connectedUserEmail,
-          providerType,
           settingsJson,
         ]
       );
     } else {
-      // Backup providers — keep using JSONB settings for now
+      // Backup providers — store tokens in JSONB settings
       const settingsData = {
         access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
+        refresh_token: tokens.refresh_token || null,
         expires_at: expiresAt,
         scope: tokens.scope || config.scope,
       };
 
+      // UPSERT so tokens are saved even if no row exists yet
       await pool.query(
-        `UPDATE ${info.table}
-         SET settings = $1, updated_at = CURRENT_TIMESTAMP
-         WHERE ${info.field} = $2`,
-        [JSON.stringify(settingsData), providerType]
+        `INSERT INTO ${info.table} (${info.field}, is_enabled, settings, updated_at)
+         VALUES ($1, true, $2::jsonb, CURRENT_TIMESTAMP)
+         ON CONFLICT (${info.field}) DO UPDATE
+           SET settings = $2::jsonb,
+               is_enabled = true,
+               updated_at = CURRENT_TIMESTAMP`,
+        [providerType, JSON.stringify(settingsData)]
       );
     }
 
@@ -504,7 +592,7 @@ router.get('/:providerType/callback', async (req, res) => {
 router.get('/:providerType/status', async (req, res) => {
   try {
     const { providerType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
@@ -583,7 +671,7 @@ router.get('/:providerType/redirect-url', (req, res) => {
 router.get('/:providerType/credentials', async (req, res) => {
   try {
     const { providerType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
@@ -628,53 +716,17 @@ router.post('/:providerType/credentials', async (req, res) => {
       return res.status(400).json({ error: 'client_id and client_secret are required' });
     }
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
 
     // Ensure table exists
     if (info.table === 'telehealth_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id TEXT, client_secret TEXT,
-          access_token TEXT, refresh_token TEXT,
-          token_type VARCHAR(50) DEFAULT 'Bearer',
-          token_scope TEXT, token_expires_at BIGINT,
-          account_id VARCHAR(255), zoom_user_id VARCHAR(255), zoom_user_email VARCHAR(255),
-          api_key TEXT, api_secret TEXT, webhook_secret TEXT,
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } else if (info.table === 'backup_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS backup_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255), client_secret VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } else if (info.table === 'vendor_integration_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS vendor_integration_settings (
-          id SERIAL PRIMARY KEY,
-          vendor_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255), client_secret VARCHAR(255),
-          api_key VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     }
 
     // Upsert
@@ -711,7 +763,7 @@ router.post('/:providerType/refresh', async (req, res) => {
   try {
     const { providerType } = req.params;
     const config = OAUTH_CONFIGS[providerType];
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     const result = await pool.query(
@@ -805,7 +857,7 @@ router.post('/:providerType/refresh', async (req, res) => {
 router.delete('/:providerType', async (req, res) => {
   try {
     const { providerType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
 

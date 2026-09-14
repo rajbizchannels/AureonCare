@@ -20,57 +20,27 @@ router.get('/', authenticate, async (req, res) => {
     const userRole = req.user.role;
     const userId = req.user.id;
 
-    // First check if user_id column exists in providers table
-    const columnCheck = await pool.query(`
-      SELECT column_name
-      FROM information_schema.columns
-      WHERE table_name = 'providers' AND column_name = 'user_id'
-    `);
-
-    const hasUserIdColumn = columnCheck.rows.length > 0;
-
     let result;
 
-    // Role-based access control
+    // providers.id = users.id in current schema (migration 025)
     if (userRole === 'admin' || userRole === 'receptionist' || userRole === 'nurse' || userRole === 'patient') {
-      // Admin, receptionist, nurses, and patients can see all providers
-      // Patients need this to book appointments
-      if (hasUserIdColumn) {
-        result = await pool.query(`
-          SELECT p.*, u.status, u.role
-          FROM providers p
-          LEFT JOIN users u ON p.user_id = u.id
-          ORDER BY p.last_name, p.first_name ASC
-        `);
-      } else {
-        // New schema: providers.id = users.id, JOIN on id directly
-        result = await pool.query(`
-          SELECT p.*, u.status, u.role
-          FROM providers p
-          LEFT JOIN users u ON p.id = u.id
-          ORDER BY p.last_name, p.first_name ASC
-        `);
-      }
+      // SEC-05: providers are staff — scope to the caller's practice via users.practice_id
+      // (providers.id = users.id).
+      result = await pool.query(`
+        SELECT p.*, u.status, u.role
+        FROM providers p
+        JOIN users u ON p.id = u.id
+        WHERE u.practice_id = $1
+        ORDER BY p.last_name, p.first_name ASC
+      `, [req.user.practiceId || null]);
     } else if (userRole === 'doctor') {
-      // Doctors can only see their own provider record
-      if (hasUserIdColumn) {
-        result = await pool.query(`
-          SELECT p.*, u.status, u.role
-          FROM providers p
-          LEFT JOIN users u ON p.user_id = u.id
-          WHERE p.user_id::text = $1::text
-          ORDER BY p.last_name, p.first_name ASC
-        `, [userId]);
-      } else {
-        // New schema: providers.id = users.id, filter by provider id directly
-        result = await pool.query(`
-          SELECT p.*, u.status, u.role
-          FROM providers p
-          LEFT JOIN users u ON p.id = u.id
-          WHERE p.id::text = $1::text
-          ORDER BY p.last_name, p.first_name ASC
-        `, [userId]);
-      }
+      result = await pool.query(`
+        SELECT p.*, u.status, u.role
+        FROM providers p
+        LEFT JOIN users u ON p.id = u.id
+        WHERE p.id::text = $1::text
+        ORDER BY p.last_name, p.first_name ASC
+      `, [userId]);
     } else {
       // Other roles cannot access provider management
       return res.status(403).json({
@@ -95,12 +65,14 @@ router.get('/:id', authenticate, async (req, res) => {
     const userId = req.user.id;
     const providerId = req.params.id;
 
+    // SEC-05: only providers in the caller's practice (self always allowed).
     const result = await pool.query(
       `SELECT p.*, u.status, u.role
        FROM providers p
-       LEFT JOIN users u ON p.user_id = u.id
-       WHERE p.id::text = $1::text`,
-      [providerId]
+       JOIN users u ON p.id = u.id
+       WHERE p.id::text = $1::text
+         AND (p.id::text = $2::text OR u.practice_id = $3)`,
+      [providerId, userId, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {
@@ -109,10 +81,9 @@ router.get('/:id', authenticate, async (req, res) => {
 
     const provider = result.rows[0];
 
-    // Check access permissions
+    // providers.id = users.id in current schema
     if (userRole === 'doctor') {
-      // Doctors can only view their own provider record
-      if (provider.user_id && provider.user_id.toString() !== userId.toString()) {
+      if (provider.id && provider.id.toString() !== userId.toString()) {
         return res.status(403).json({
           error: 'Access denied',
           message: 'You can only view your own provider information'
@@ -134,6 +105,7 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // Create new provider (admin/receptionist only)
+// userId / user_id in the request body is the linked users.id — becomes providers.id
 router.post('/', authenticate, authorize('admin', 'receptionist'), async (req, res) => {
   const { firstName, first_name, lastName, last_name, specialization, email, phone, userId, user_id } = req.body;
 
@@ -145,18 +117,16 @@ router.post('/', authenticate, authorize('admin', 'receptionist'), async (req, r
     const finalLastName = last_name || lastName || '';
     const finalUserId = user_id || userId;
 
+    if (!finalUserId) {
+      return res.status(400).json({ error: 'userId is required — providers.id must equal users.id' });
+    }
+
+    // providers.id = users.id (migration 025 schema)
     const result = await pool.query(
-      `INSERT INTO providers (first_name, last_name, specialization, email, phone, user_id, created_at)
+      `INSERT INTO providers (id, first_name, last_name, specialization, email, phone, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())
        RETURNING *`,
-      [
-        finalFirstName,
-        finalLastName,
-        specialization,
-        email,
-        phone,
-        finalUserId
-      ]
+      [finalUserId, finalFirstName, finalLastName, specialization, email, phone]
     );
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (error) {
@@ -175,10 +145,14 @@ router.put('/:id', authenticate, async (req, res) => {
     const userId = req.user.id;
     const providerId = req.params.id;
 
-    // Check if provider exists and get user_id
+    // Check if provider exists and get user_id — SEC-05: scope to caller's practice
+    // (self always allowed). providers.id = users.id.
     const providerCheck = await pool.query(
-      'SELECT * FROM providers WHERE id::text = $1::text',
-      [providerId]
+      `SELECT p.* FROM providers p
+       JOIN users u ON p.id = u.id
+       WHERE p.id::text = $1::text
+         AND (p.id::text = $2::text OR u.practice_id = $3)`,
+      [providerId, userId, req.user.practiceId || null]
     );
 
     if (providerCheck.rows.length === 0) {
@@ -239,9 +213,11 @@ router.put('/:id', authenticate, async (req, res) => {
 router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    // SEC-05: only delete a provider whose linked user is in the caller's practice.
     const result = await pool.query(
-      'DELETE FROM providers WHERE id::text = $1::text RETURNING *',
-      [req.params.id]
+      `DELETE FROM providers WHERE id::text = $1::text
+         AND id IN (SELECT id FROM users WHERE practice_id = $2) RETURNING *`,
+      [req.params.id, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {

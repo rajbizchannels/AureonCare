@@ -1,12 +1,16 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const WhatsAppService = require('../services/whatsappService');
 const TelehealthProviderManager = require('../services/telehealthProviders/index');
+const notificationService = require('../services/notificationService');
 
 // Get all appointments
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId } = req.query;
 
     let query = `
@@ -40,7 +44,7 @@ router.get('/', async (req, res) => {
 // Get single appointment
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'SELECT * FROM appointments WHERE id::text = $1::text',
       [req.params.id]
@@ -63,7 +67,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     console.log('Creating appointment with:', { patient_id, user_id, appointment_type, start_time });
 
@@ -332,6 +336,9 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(finalAppointment);
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'appointment.created', { appointment: finalAppointment }).catch(() => {});
   } catch (error) {
     console.error('Error creating appointment:', error);
 
@@ -364,7 +371,7 @@ router.patch('/:id/status', async (req, res) => {
   }
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `UPDATE appointments SET status = $1, updated_at = NOW() WHERE id::text = $2::text RETURNING *`,
@@ -391,7 +398,14 @@ router.patch('/:id/status', async (req, res) => {
       [result.rows[0].id]
     );
 
-    res.json(fullResult.rows[0] || result.rows[0]);
+    const updated = fullResult.rows[0] || result.rows[0];
+    res.json(updated);
+
+    // Send notification (non-blocking)
+    notificationService.dispatch(pool, 'appointment.status_changed', {
+      appointment: updated,
+      old_status: result.rows[0].status,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error updating appointment status:', error);
     res.status(500).json({ error: 'Failed to update appointment status', details: error.message });
@@ -406,7 +420,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Get old appointment data for comparison
     const oldAppointmentResult = await pool.query(
@@ -559,6 +573,12 @@ router.put('/:id', async (req, res) => {
     }
 
     res.json(updatedAppointment);
+
+    // Send notification (non-blocking)
+    const isCancelled = status === 'cancelled' || status === 'canceled';
+    notificationService.dispatch(pool, isCancelled ? 'appointment.cancelled' : 'appointment.updated', {
+      appointment: updatedAppointment,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error updating appointment:', error);
     res.status(500).json({ error: 'Failed to update appointment' });
@@ -568,7 +588,7 @@ router.put('/:id', async (req, res) => {
 // Delete appointment
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM appointments WHERE id::text = $1::text RETURNING *',
       [req.params.id]
@@ -627,6 +647,9 @@ router.delete('/:id', async (req, res) => {
     }
 
     res.json({ message: 'Appointment deleted successfully' });
+
+    // Send notification (non-blocking)
+    notificationService.dispatch(pool, 'appointment.cancelled', { appointment: deletedAppointment }).catch(() => {});
   } catch (error) {
     console.error('Error deleting appointment:', error);
     res.status(500).json({ error: 'Failed to delete appointment' });

@@ -1,5 +1,8 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 /**
  * Clinic Settings Management
@@ -13,7 +16,7 @@ const router = express.Router();
  */
 router.get('/info', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Try to get organization name from organization_settings first
     const orgResult = await pool.query(`
@@ -66,7 +69,7 @@ router.get('/info', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Get organization settings
     const orgResult = await pool.query(`
@@ -92,6 +95,7 @@ router.get('/', async (req, res) => {
         name: orgResult.rows[0].organization_name || '',
         website: orgSettings.website || '',
         npi: orgSettings.npi || '',
+        currency: orgSettings.currency || 'USD',
       };
     }
 
@@ -120,8 +124,8 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
-    const { name, address, phone, email, website, taxId, npi } = req.body;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+    const { name, address, phone, email, website, taxId, npi, currency } = req.body;
 
     // Start transaction
     await pool.query('BEGIN');
@@ -139,22 +143,26 @@ router.post('/', async (req, res) => {
           SET organization_name = $1,
               settings = jsonb_set(
                 jsonb_set(
-                  COALESCE(settings, '{}'::jsonb),
-                  '{website}',
-                  $2::jsonb
+                  jsonb_set(
+                    COALESCE(settings, '{}'::jsonb),
+                    '{website}',
+                    $2::jsonb
+                  ),
+                  '{npi}',
+                  $3::jsonb
                 ),
-                '{npi}',
-                $3::jsonb
+                '{currency}',
+                $4::jsonb
               ),
               updated_at = CURRENT_TIMESTAMP
-          WHERE id = $4
-        `, [name, JSON.stringify(website || ''), JSON.stringify(npi || ''), orgResult.rows[0].id]);
+          WHERE id = $5
+        `, [name, JSON.stringify(website || ''), JSON.stringify(npi || ''), JSON.stringify(currency || 'USD'), orgResult.rows[0].id]);
       } else {
         // Insert new organization settings
         await pool.query(`
           INSERT INTO organization_settings (organization_name, settings)
           VALUES ($1, $2)
-        `, [name, JSON.stringify({ website: website || '', npi: npi || '' })]);
+        `, [name, JSON.stringify({ website: website || '', npi: npi || '', currency: currency || 'USD' })]);
       }
 
       // Update or insert into practices table
@@ -216,20 +224,10 @@ router.post('/', async (req, res) => {
  */
 router.get('/working-hours', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Create table if it doesn't exist
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS clinic_working_hours (
-        id SERIAL PRIMARY KEY,
-        day VARCHAR(20) NOT NULL UNIQUE,
-        is_working BOOLEAN DEFAULT true,
-        start_time TIME,
-        end_time TIME,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
     const result = await pool.query('SELECT * FROM clinic_working_hours ORDER BY id');
 
@@ -270,21 +268,11 @@ router.get('/working-hours', async (req, res) => {
  */
 router.post('/working-hours', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const workingHours = req.body;
 
     // Create table if it doesn't exist
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS clinic_working_hours (
-        id SERIAL PRIMARY KEY,
-        day VARCHAR(20) NOT NULL UNIQUE,
-        is_working BOOLEAN DEFAULT true,
-        start_time TIME,
-        end_time TIME,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
     // Save each day's working hours
     for (const [day, hours] of Object.entries(workingHours)) {
@@ -313,20 +301,10 @@ router.post('/working-hours', async (req, res) => {
  */
 router.get('/appointment-settings', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     // Create table if it doesn't exist
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS clinic_appointment_settings (
-        id SERIAL PRIMARY KEY,
-        default_duration INTEGER DEFAULT 30,
-        slot_interval INTEGER DEFAULT 15,
-        max_advance_booking INTEGER DEFAULT 90,
-        cancellation_deadline INTEGER DEFAULT 24,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
     const result = await pool.query('SELECT * FROM clinic_appointment_settings LIMIT 1');
 
@@ -359,21 +337,11 @@ router.get('/appointment-settings', async (req, res) => {
  */
 router.post('/appointment-settings', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { defaultDuration, slotInterval, maxAdvanceBooking, cancellationDeadline } = req.body;
 
     // Create table if it doesn't exist
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS clinic_appointment_settings (
-        id SERIAL PRIMARY KEY,
-        default_duration INTEGER DEFAULT 30,
-        slot_interval INTEGER DEFAULT 15,
-        max_advance_booking INTEGER DEFAULT 90,
-        cancellation_deadline INTEGER DEFAULT 24,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
     // Check if settings exist
     const checkResult = await pool.query('SELECT id FROM clinic_appointment_settings LIMIT 1');

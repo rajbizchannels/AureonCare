@@ -1,5 +1,8 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const axios = require('axios');
 const crypto = require('crypto');
 
@@ -12,7 +15,7 @@ const crypto = require('crypto');
 // Returns status + connection info (never raw tokens)
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT id, provider_type, is_enabled, client_id, api_key,
              zoom_user_email, zoom_user_id, account_id,
@@ -41,7 +44,7 @@ router.get('/', async (req, res) => {
 // Get single provider settings
 router.get('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
 
     const result = await pool.query(
@@ -63,7 +66,7 @@ router.get('/:providerType', async (req, res) => {
 // Create or update provider settings
 router.post('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
     const {
       is_enabled,
@@ -128,7 +131,7 @@ router.post('/:providerType', async (req, res) => {
 // Delete provider settings
 router.delete('/:providerType', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
 
     const result = await pool.query(
@@ -150,7 +153,7 @@ router.delete('/:providerType', async (req, res) => {
 // Toggle provider enabled status
 router.patch('/:providerType/toggle', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
     const { is_enabled } = req.body;
 
@@ -188,7 +191,7 @@ router.patch('/:providerType/toggle', async (req, res) => {
 // Get all enabled providers (used by frontend for patient preference dropdown)
 router.get('/enabled/providers', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT provider_type, zoom_user_email
       FROM telehealth_provider_settings
@@ -205,7 +208,7 @@ router.get('/enabled/providers', async (req, res) => {
 // Get active/default provider
 router.get('/active/provider', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT * FROM telehealth_provider_settings
       WHERE is_enabled = true
@@ -229,7 +232,7 @@ router.post('/:providerType/test', async (req, res) => {
   try {
     const { providerType } = req.params;
     const TelehealthProviderManager = require('../services/telehealthProviders');
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const manager = new TelehealthProviderManager(pool);
     const provider = await manager.getProvider(providerType);
@@ -266,7 +269,38 @@ router.post('/:providerType/instant-meeting', async (req, res) => {
     const { providerType } = req.params;
     const { topic, duration, patientName, recordingEnabled } = req.body;
     const TelehealthProviderManager = require('../services/telehealthProviders');
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+
+    // Diagnostic: verify DB state before attempting to create meeting
+    try {
+      const dbCheck = await pool.query(
+        `SELECT provider_type, is_enabled,
+                access_token IS NOT NULL AS has_access_token,
+                refresh_token IS NOT NULL AS has_refresh_token,
+                client_id IS NOT NULL AS has_client_id,
+                client_secret IS NOT NULL AS has_client_secret,
+                token_expires_at,
+                token_scope
+         FROM telehealth_provider_settings WHERE provider_type = $1`,
+        [providerType]
+      );
+      if (dbCheck.rows.length === 0) {
+        console.error(`[instant-meeting] No DB row for ${providerType}. User must reconnect via OAuth.`);
+        return res.status(422).json({
+          error: `${providerType} is not connected. Please connect it in Admin Settings > Integrations.`
+        });
+      }
+      const row = dbCheck.rows[0];
+      console.log(`[instant-meeting] ${providerType} DB state:`, JSON.stringify(row));
+      if (!row.has_access_token) {
+        console.error(`[instant-meeting] ${providerType} row exists but access_token is NULL`);
+        return res.status(422).json({
+          error: `${providerType} access token is missing. Please disconnect and reconnect in Admin Settings.`
+        });
+      }
+    } catch (dbErr) {
+      console.error('[instant-meeting] DB check failed:', dbErr.message);
+    }
 
     const manager = new TelehealthProviderManager(pool);
     const provider = await manager.getProvider(providerType);
@@ -306,7 +340,7 @@ router.post('/:providerType/instant-meeting', async (req, res) => {
  */
 router.get('/zoom/host-token', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { meetingId } = req.query;
 
     // Get stored admin OAuth access token + app credentials (client_id / client_secret)

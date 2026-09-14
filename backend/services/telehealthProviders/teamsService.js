@@ -29,20 +29,54 @@ class TeamsService {
       this.config.token_expires_at ||
       (this.config.settings && this.config.settings.expires_at);
 
+    console.log('[Teams getAccessToken]', {
+      hasAccessToken: Boolean(accessToken),
+      tokenLength: accessToken?.length,
+      hasRefreshToken: Boolean(refreshToken),
+      expiresAt,
+      isExpired: expiresAt ? Date.now() >= Number(expiresAt) : 'unknown',
+      hasClientId: Boolean(this.config.client_id),
+      hasClientSecret: Boolean(this.config.client_secret),
+      tokenScope: this.config.token_scope,
+    });
+
     if (!accessToken) {
       throw new Error(
         'Microsoft Teams is not authenticated. Please sign in via Admin Settings.'
       );
     }
 
-    // Token still valid (60s buffer)
-    if (!expiresAt || Date.now() < expiresAt - 60000) {
+    // Verify the token has the required Graph scope
+    const scope = this.config.token_scope || '';
+    if (!scope.toLowerCase().includes('onlinemeetings')) {
+      throw new Error(
+        'Microsoft Teams token is missing the OnlineMeetings.ReadWrite permission. ' +
+        `Microsoft granted only: ${scope || '(no scope returned)'}. ` +
+        'Most often this means the account that authorized is a personal ' +
+        'Microsoft account -- OnlineMeetings.ReadWrite exists only for work or ' +
+        'school accounts, and Microsoft drops it silently rather than failing. ' +
+        'Reconnect using a Microsoft 365 work account that has a Teams licence. ' +
+        'If it already is a work account, check that the permission is on the ' +
+        'app registration matching AC_MS_CID (Azure Portal > App registrations > ' +
+        'API permissions > Microsoft Graph > Delegated > OnlineMeetings.ReadWrite, ' +
+        'then Grant admin consent), and reconnect Teams in Admin Settings.'
+      );
+    }
+
+    // Token still valid (60s buffer) — only trust this if expiresAt is known
+    if (expiresAt && Date.now() < expiresAt - 60000) {
       return accessToken;
     }
 
-    // Expired — try refresh
+    // Token expired or expiry unknown — refresh if possible
     if (refreshToken) {
       return this.refreshAccessToken(refreshToken);
+    }
+
+    // No refresh token and expiry unknown — return what we have and let the
+    // caller surface the 401 if the token is actually expired.
+    if (!expiresAt) {
+      return accessToken;
     }
 
     throw new Error(
@@ -54,14 +88,23 @@ class TeamsService {
     const clientId = this.config.client_id;
     const clientSecret = this.config.client_secret;
 
+    if (!clientId || !clientSecret) {
+      throw new Error(
+        'Microsoft Teams client credentials are missing. ' +
+        'Please set AC_MS_CID and AC_MS_CSK environment variables, or reconnect Teams in Admin Settings.'
+      );
+    }
+
     const response = await axios.post(
-      'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+      // Must match the authority the code was exchanged against (see
+      // OAUTH_CONFIGS.microsoft_teams in routes/integrationOAuth.js).
+      'https://login.microsoftonline.com/organizations/oauth2/v2.0/token',
       new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
         client_id: clientId,
         client_secret: clientSecret,
-        scope: 'OnlineMeetings.ReadWrite User.Read offline_access',
+        scope: 'https://graph.microsoft.com/OnlineMeetings.ReadWrite https://graph.microsoft.com/User.Read offline_access',
       }).toString(),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
@@ -97,30 +140,30 @@ class TeamsService {
    * Create an online meeting via Microsoft Graph
    */
   async createMeeting(sessionData) {
+    const startDateTime = sessionData.instant
+      ? new Date()
+      : new Date(sessionData.startTime);
+    const endDateTime = new Date(
+      startDateTime.getTime() + (sessionData.duration || 30) * 60000
+    );
+
+    const meetingData = {
+      subject:
+        sessionData.topic ||
+        `Telehealth Session - ${sessionData.patientName}`,
+      startDateTime: startDateTime.toISOString(),
+      endDateTime: endDateTime.toISOString(),
+      lobbyBypassSettings: {
+        scope: 'organizer',
+        isDialInBypassEnabled: false,
+      },
+      isEntryExitAnnounced: true,
+      allowedPresenters: 'organizer',
+    };
+
+    let token = await this.getAccessToken();
+
     try {
-      const token = await this.getAccessToken();
-
-      const startDateTime = sessionData.instant
-        ? new Date()
-        : new Date(sessionData.startTime);
-      const endDateTime = new Date(
-        startDateTime.getTime() + (sessionData.duration || 30) * 60000
-      );
-
-      const meetingData = {
-        subject:
-          sessionData.topic ||
-          `Telehealth Session - ${sessionData.patientName}`,
-        startDateTime: startDateTime.toISOString(),
-        endDateTime: endDateTime.toISOString(),
-        lobbyBypassSettings: {
-          scope: 'organizer',
-          isDialInBypassEnabled: false,
-        },
-        isEntryExitAnnounced: true,
-        allowedPresenters: 'organizer',
-      };
-
       const response = await axios.post(
         `${this.graphBaseUrl}/me/onlineMeetings`,
         meetingData,
@@ -144,10 +187,44 @@ class TeamsService {
         rawData: data,
       };
     } catch (error) {
-      console.error(
-        'Error creating Teams meeting:',
-        error.response?.data || error.message
-      );
+      // 401 means the token is invalid/expired — retry with a fresh token
+      const refreshToken =
+        this.config.refresh_token ||
+        (this.config.settings && this.config.settings.refresh_token);
+
+      if (error.response?.status === 401 && refreshToken) {
+        token = await this.refreshAccessToken(refreshToken);
+        const retryResponse = await axios.post(
+          `${this.graphBaseUrl}/me/onlineMeetings`,
+          meetingData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        const data = retryResponse.data;
+        return {
+          success: true,
+          meetingId: data.id,
+          meetingUrl: data.joinWebUrl || data.joinUrl,
+          roomId: data.id,
+          password: data.videoTeleconferenceId || '',
+          provider: 'microsoft_teams',
+          rawData: data,
+        };
+      }
+
+      console.error('[Teams createMeeting] Graph API error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: JSON.stringify(error.response?.data),
+        headers: error.response?.headers ? {
+          'www-authenticate': error.response.headers['www-authenticate'],
+        } : null,
+        message: error.message,
+      });
       throw new Error(
         'Failed to create Teams meeting: ' +
           (error.response?.data?.error?.message || error.message)

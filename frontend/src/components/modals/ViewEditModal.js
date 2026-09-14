@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Save, Pill, Video, ExternalLink } from 'lucide-react';
 import { formatDate, formatTime, formatCurrency, toLocalDateTimeString, toLocalDateString } from '../../utils/formatters';
+import { isPhoneValid, validateOptionalPhone, validateOptionalEmail } from '../../utils/validators';
 import EPrescribeModal from './ePrescribeModal';
 import { useApp } from '../../context/AppContext';
 import ConfirmationModal from './ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { isProvider, isPatient } from '../../utils/rolePermissions';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 
 const ViewEditModal = ({
   theme,
@@ -23,7 +25,8 @@ const ViewEditModal = ({
   setUsers,
   setUser,
   user,
-  t
+  t,
+  currency = 'USD',
 }) => {
   const { logModalOpen, logModalClose, logError, startAction } = useAudit();
   const [editData, setEditData] = useState(editingItem?.data || {});
@@ -41,6 +44,7 @@ const ViewEditModal = ({
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingInsurancePayers, setLoadingInsurancePayers] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [appointmentTypes, setAppointmentTypes] = useState([]);
 
   // Get setLanguage from AppContext for updating language preference
@@ -294,6 +298,8 @@ const ViewEditModal = ({
           data.darkMode = data.preferences.darkMode !== undefined
             ? data.preferences.darkMode
             : true;
+          data.whatsappNumber = data.preferences.whatsappNumber ?? data.phone ?? '';
+          data.whatsappNotifications = data.preferences.whatsappNotifications ?? false;
         }
       }
 
@@ -402,7 +408,17 @@ const ViewEditModal = ({
   };
 
   const handleSubmit = () => {
-    // Show confirmation modal before saving
+    if (type === 'userProfile' || type === 'user') {
+      const errs = {};
+      const emailErr = validateOptionalEmail(editData.email);
+      if (emailErr) errs.email = emailErr;
+      const phoneErr = validateOptionalPhone(editData.phone);
+      if (phoneErr) errs.phone = phoneErr;
+      const waErr = validateOptionalPhone(editData.whatsappNumber);
+      if (waErr) errs.whatsappNumber = waErr;
+      if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+      setFieldErrors({});
+    }
     setShowConfirmation(true);
   };
 
@@ -488,10 +504,13 @@ const ViewEditModal = ({
         const avatar = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
 
         // Package preferences into nested object
+        const whatsappNum = editData.whatsappNumber || '';
         const preferences = {
           emailNotifications: editData.emailNotifications !== undefined ? editData.emailNotifications : true,
           smsAlerts: editData.smsAlerts !== undefined ? editData.smsAlerts : true,
-          darkMode: editData.darkMode !== undefined ? editData.darkMode : true
+          darkMode: editData.darkMode !== undefined ? editData.darkMode : true,
+          whatsappNumber: whatsappNum,
+          whatsappNotifications: whatsappNum ? (editData.whatsappNotifications ?? false) : false,
         };
 
         const userData = {
@@ -526,11 +545,17 @@ const ViewEditModal = ({
         // Generate avatar from initials
         const avatar = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
 
+        const userWhatsappNum = editData.whatsappNumber || '';
         const userData = {
           ...editData,
           firstName,
           lastName,
-          avatar: avatar || editData.avatar
+          avatar: avatar || editData.avatar,
+          preferences: {
+            ...(editData.preferences || {}),
+            whatsappNumber: userWhatsappNum,
+            whatsappNotifications: userWhatsappNum ? (editData.whatsappNotifications ?? false) : false,
+          },
         };
         const updated = await api.updateUser(editData.id, userData);
         setUsers(prev => prev.map(u =>
@@ -610,13 +635,14 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.patient}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-cyan-500"
                       value={editData.patientId || editData.patient_id}
                       onChange={(e) => {
                         const patient = patients.find(p => p.id.toString() === e.target.value);
                         setEditData({...editData, patientId: e.target.value, patient_id: e.target.value, patient: patient?.name || `${patient?.first_name} ${patient?.last_name}`});
                       }}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="">{t.selectPatient || 'Select Patient'}</option>
                       {patients.map(p => (
@@ -624,7 +650,7 @@ const ViewEditModal = ({
                           {p.name || `${p.first_name} ${p.last_name}` || `${p.firstName} ${p.lastName}`} {p.mrn ? `- ${p.mrn}` : ''}
                         </option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -632,13 +658,14 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.doctor || editData.provider_name || t.notApplicable || 'N/A'}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-cyan-500"
                       value={editData.providerId || editData.provider_id}
                       onChange={(e) => {
                         const provider = users?.find(u => u.id.toString() === e.target.value);
                         setEditData({...editData, providerId: e.target.value, provider_id: e.target.value, doctor: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}` : ''});
                       }}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="">{t.selectProvider || 'Select Provider'}</option>
                       {users?.filter(u => u.role === 'doctor' || u.role === 'physician' || u.role === 'provider' || u.role === 'admin').map(provider => (
@@ -646,7 +673,7 @@ const ViewEditModal = ({
                           {`${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() || provider.email}
                         </option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -680,10 +707,11 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.type}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-cyan-500"
                       value={editData.type}
                       onChange={(e) => setEditData({...editData, type: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="">{t.selectType || 'Select Type'}</option>
                       {appointmentTypes.map(type => (
@@ -691,7 +719,7 @@ const ViewEditModal = ({
                           {type.name}
                         </option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -716,16 +744,17 @@ const ViewEditModal = ({
                       {editData.status}
                     </span>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-cyan-500"
                       value={editData.status}
                       onChange={(e) => setEditData({...editData, status: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="Scheduled">{t.scheduled || 'Scheduled'}</option>
                       <option value="Confirmed">{t.confirmed || 'Confirmed'}</option>
                       <option value="Completed">{t.completed || 'Completed'}</option>
                       <option value="Cancelled">{t.cancelled || 'Cancelled'}</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
               </div>
@@ -831,16 +860,17 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.gender || t.notApplicable || 'N/A'}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-purple-500"
                       value={editData.gender || ''}
                       onChange={(e) => setEditData({...editData, gender: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="">{t.select || 'Select'}</option>
                       <option value="Male">{t.male || 'Male'}</option>
                       <option value="Female">{t.female || 'Female'}</option>
                       <option value="Other">{t.other || 'Other'}</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -1057,10 +1087,11 @@ const ViewEditModal = ({
                             : t.notApplicable || 'N/A'}
                         </p>
                       ) : (
-                        <select
+                        <ThemedSelect
+                          theme={theme}
+                          focusClass="focus:border-purple-500"
                           value={editData.insurance_payer_id || ''}
                           onChange={(e) => setEditData({...editData, insurance_payer_id: e.target.value})}
-                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                         >
                           <option value="">{t.selectInsurancePayer || 'Select Insurance Payer'}</option>
                           {insurancePayers.map((payer) => (
@@ -1068,7 +1099,7 @@ const ViewEditModal = ({
                               {payer.name} ({payer.payer_id})
                             </option>
                           ))}
-                        </select>
+                        </ThemedSelect>
                       )}
                     </div>
                   )}
@@ -1125,10 +1156,11 @@ const ViewEditModal = ({
                         <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                           {preferredPharmacies.length > 0 ? (t.changePreferredPharmacy || 'Change Preferred Pharmacy') : (t.selectPreferredPharmacy || 'Select Preferred Pharmacy')}
                         </label>
-                        <select
+                        <ThemedSelect
+                          theme={theme}
+                          focusClass="focus:border-purple-500"
                           value={selectedPharmacyId}
                           onChange={(e) => setSelectedPharmacyId(e.target.value)}
-                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                         >
                           <option value="">{t.selectAPharmacy || 'Select a pharmacy...'}</option>
                           {pharmacies.map((pharmacy) => (
@@ -1136,7 +1168,7 @@ const ViewEditModal = ({
                               {pharmacy.pharmacyName || pharmacy.pharmacy_name} - {pharmacy.city}, {pharmacy.state}
                             </option>
                           ))}
-                        </select>
+                        </ThemedSelect>
                         <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                           {t.pharmacyWillBeSaved || 'Pharmacy will be saved with your other changes'}
                         </p>
@@ -1263,12 +1295,15 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.email || t.notApplicable || 'N/A'}</p>
                   ) : (
-                    <input
-                      type="email"
-                      value={editData.email || ''}
-                      onChange={(e) => setEditData({...editData, email: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                    />
+                    <>
+                      <input
+                        type="email"
+                        value={editData.email || ''}
+                        onChange={(e) => { setEditData({...editData, email: e.target.value}); setFieldErrors(p => ({...p, email: validateOptionalEmail(e.target.value) || undefined})); }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.email ? 'border-red-500' : ''}`}
+                      />
+                      {fieldErrors.email && <p className="mt-1 text-xs text-red-500">{fieldErrors.email}</p>}
+                    </>
                   )}
                 </div>
                 <div>
@@ -1276,12 +1311,16 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.phone || t.notApplicable || 'N/A'}</p>
                   ) : (
-                    <input
-                      type="tel"
-                      value={editData.phone || ''}
-                      onChange={(e) => setEditData({...editData, phone: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                    />
+                    <>
+                      <input
+                        type="tel"
+                        value={editData.phone || ''}
+                        onChange={(e) => { setEditData({...editData, phone: e.target.value}); setFieldErrors(p => ({...p, phone: validateOptionalPhone(e.target.value) || undefined})); }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.phone ? 'border-red-500' : ''}`}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                      {fieldErrors.phone && <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>}
+                    </>
                   )}
                 </div>
                 <div>
@@ -1315,17 +1354,18 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.language || 'English'}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-purple-500"
                       value={editData.language || 'English'}
                       onChange={(e) => setEditData({...editData, language: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="English">English</option>
                       <option value="Spanish">Español</option>
                       <option value="French">Français</option>
                       <option value="German">Deutsch</option>
                       <option value="Arabic">العربية</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
               </div>
@@ -1370,6 +1410,66 @@ const ViewEditModal = ({
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                           (editData.smsAlerts !== false) ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {/* WhatsApp Number */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {t.whatsappNumber || 'WhatsApp Number'}
+                    </label>
+                    {isView ? (
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.whatsappNumber || (t.notApplicable || 'N/A')}</p>
+                    ) : (
+                      <>
+                        <input
+                          type="tel"
+                          value={editData.whatsappNumber || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditData({
+                              ...editData,
+                              whatsappNumber: val,
+                              whatsappNotifications: isPhoneValid(val) ? editData.whatsappNotifications : false,
+                            });
+                            setFieldErrors(p => ({...p, whatsappNumber: validateOptionalPhone(val) || undefined}));
+                          }}
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.whatsappNumber ? 'border-red-500' : ''}`}
+                          placeholder="+1 (555) 123-4567"
+                        />
+                        {fieldErrors.whatsappNumber && <p className="mt-1 text-xs text-red-500">{fieldErrors.whatsappNumber}</p>}
+                      </>
+                    )}
+                  </div>
+                  {/* WhatsApp Notifications toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.whatsappNotifications || 'WhatsApp Notifications'}</span>
+                      {!isPhoneValid(editData.whatsappNumber) && !isView && (
+                        <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                          {editData.whatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isView || !isPhoneValid(editData.whatsappNumber)}
+                      onClick={() => {
+                        if (!isPhoneValid(editData.whatsappNumber)) return;
+                        setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        isView || !isPhoneValid(editData.whatsappNumber)
+                          ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                          : (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber))
+                            ? 'bg-green-500 cursor-pointer'
+                            : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
                         }`}
                       />
                     </button>
@@ -1420,12 +1520,15 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.email}</p>
                   ) : (
-                    <input
-                      type="email"
-                      value={editData.email || ''}
-                      onChange={(e) => setEditData({...editData, email: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                    />
+                    <>
+                      <input
+                        type="email"
+                        value={editData.email || ''}
+                        onChange={(e) => { setEditData({...editData, email: e.target.value}); setFieldErrors(p => ({...p, email: validateOptionalEmail(e.target.value) || undefined})); }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.email ? 'border-red-500' : ''}`}
+                      />
+                      {fieldErrors.email && <p className="mt-1 text-xs text-red-500">{fieldErrors.email}</p>}
+                    </>
                   )}
                 </div>
                 <div>
@@ -1433,12 +1536,16 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.phone || 'N/A'}</p>
                   ) : (
-                    <input
-                      type="tel"
-                      value={editData.phone || ''}
-                      onChange={(e) => setEditData({...editData, phone: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
-                    />
+                    <>
+                      <input
+                        type="tel"
+                        value={editData.phone || ''}
+                        onChange={(e) => { setEditData({...editData, phone: e.target.value}); setFieldErrors(p => ({...p, phone: validateOptionalPhone(e.target.value) || undefined})); }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.phone ? 'border-red-500' : ''}`}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                      {fieldErrors.phone && <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>}
+                    </>
                   )}
                 </div>
                 <div>
@@ -1446,11 +1553,12 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.role}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-purple-500"
                       value={editData.role || ''}
                       onChange={(e) => setEditData({...editData, role: e.target.value})}
                       disabled={loadingRoles}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${loadingRoles ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {loadingRoles ? (
                         <option>Loading roles...</option>
@@ -1466,7 +1574,7 @@ const ViewEditModal = ({
                           ))}
                         </>
                       )}
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -1500,18 +1608,76 @@ const ViewEditModal = ({
                   {isView ? (
                     <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.language || 'English'}</p>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-purple-500"
                       value={editData.language || 'English'}
                       onChange={(e) => setEditData({...editData, language: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="English">English</option>
                       <option value="Spanish">Spanish</option>
                       <option value="French">French</option>
                       <option value="German">German</option>
                       <option value="Arabic">Arabic</option>
-                    </select>
+                    </ThemedSelect>
                   )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.whatsappNumber || 'WhatsApp Number'}</label>
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{editData.whatsappNumber || (t.notApplicable || 'N/A')}</p>
+                  ) : (
+                    <>
+                      <input
+                        type="tel"
+                        value={editData.whatsappNumber || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditData({
+                            ...editData,
+                            whatsappNumber: val,
+                            whatsappNotifications: isPhoneValid(val) ? editData.whatsappNotifications : false,
+                          });
+                          setFieldErrors(p => ({...p, whatsappNumber: validateOptionalPhone(val) || undefined}));
+                        }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} ${fieldErrors.whatsappNumber ? 'border-red-500' : ''}`}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                      {fieldErrors.whatsappNumber && <p className="mt-1 text-xs text-red-500">{fieldErrors.whatsappNumber}</p>}
+                    </>
+                  )}
+                </div>
+              </div>
+              {/* WhatsApp Notifications toggle for type=user */}
+              <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.whatsappNotifications || 'WhatsApp Notifications'}</span>
+                    {!isPhoneValid(editData.whatsappNumber) && !isView && (
+                      <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        {editData.whatsappNumber ? 'Enter a valid WhatsApp number' : 'Enter a WhatsApp number first'}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isView || !isPhoneValid(editData.whatsappNumber)}
+                    onClick={() => {
+                      if (!isPhoneValid(editData.whatsappNumber)) return;
+                      setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      isView || !isPhoneValid(editData.whatsappNumber)
+                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                        : (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber))
+                          ? 'bg-green-500 cursor-pointer'
+                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -1533,17 +1699,18 @@ const ViewEditModal = ({
                       {editData.status}
                     </span>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-yellow-500"
                       value={editData.status}
                       onChange={(e) => setEditData({...editData, status: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-yellow-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="Pending">Pending</option>
                       <option value="Submitted">Submitted</option>
                       <option value="Approved">Approved</option>
                       <option value="Denied">Denied</option>
                       <option value="Paid">Paid</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -1553,7 +1720,7 @@ const ViewEditModal = ({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Amount</label>
                   {isView ? (
-                    <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(editData.amount)}</p>
+                    <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(editData.amount, currency)}</p>
                   ) : (
                     <input
                       type="number"
@@ -1665,15 +1832,15 @@ const ViewEditModal = ({
                       {editData.priority}
                     </span>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.priority || 'medium'}
                       onChange={(e) => setEditData({...editData, priority: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
                       <option value="high">High</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div>
@@ -1687,15 +1854,15 @@ const ViewEditModal = ({
                       {editData.status}
                     </span>
                   ) : (
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={editData.status || 'pending'}
                       onChange={(e) => setEditData({...editData, status: e.target.value})}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                     >
                       <option value="pending">Pending</option>
                       <option value="in_progress">In Progress</option>
                       <option value="completed">Completed</option>
-                    </select>
+                    </ThemedSelect>
                   )}
                 </div>
                 <div className="col-span-2">
@@ -2005,14 +2172,7 @@ const ViewEditModal = ({
 
       {/* ePrescribe Modal */}
       {showEPrescribe && type === 'patient' && (() => {
-        // Debug logging for ePrescribe modal props
-        console.log('[ViewEditModal] Opening ePrescribe with:');
-        console.log('[ViewEditModal] Patient (editData):', editData);
-        console.log('[ViewEditModal] Patient ID:', editData?.id);
-        console.log('[ViewEditModal] Provider (user):', user);
-        console.log('[ViewEditModal] Provider ID:', user?.id);
-        console.log('[ViewEditModal] Provider user_id:', user?.user_id);
-
+        // SEC-14: removed debug logging of patient/provider PHI objects and IDs.
         return (
           <EPrescribeModal
             theme={theme}
@@ -2133,15 +2293,15 @@ const ViewEditModal = ({
                     </div>
                     <div>
                       <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
-                      <select
+                      <ThemedSelect
+                        theme={theme}
                         value={editingPrescription.status || 'Active'}
                         onChange={(e) => setEditingPrescription({...editingPrescription, status: e.target.value})}
-                        className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                       >
                         <option value="Active">Active</option>
                         <option value="Completed">Completed</option>
                         <option value="Cancelled">Cancelled</option>
-                      </select>
+                      </ThemedSelect>
                     </div>
                   </div>
                   <div>

@@ -1,5 +1,7 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
 
 const getDateRange = (query) => {
   const { startDate, endDate, days } = query;
@@ -20,7 +22,7 @@ const getDateRange = (query) => {
 
 router.get('/operational/daily-appointments', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -62,7 +64,7 @@ router.get('/operational/daily-appointments', async (req, res) => {
 
 router.get('/operational/provider-utilization', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -108,7 +110,7 @@ router.get('/operational/provider-utilization', async (req, res) => {
 
 router.get('/operational/patient-visits', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -154,7 +156,7 @@ router.get('/operational/patient-visits', async (req, res) => {
 
 router.get('/operational/no-shows', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -196,7 +198,7 @@ router.get('/operational/no-shows', async (req, res) => {
 
 router.get('/operational/wait-times', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -246,7 +248,7 @@ router.get('/operational/wait-times', async (req, res) => {
 
 router.get('/financial/revenue', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -284,7 +286,7 @@ router.get('/financial/revenue', async (req, res) => {
 
 router.get('/financial/billing-summary', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -332,7 +334,7 @@ router.get('/financial/billing-summary', async (req, res) => {
 
 router.get('/financial/outstanding-payments', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -387,7 +389,7 @@ router.get('/financial/outstanding-payments', async (req, res) => {
 
 router.get('/financial/payment-collection', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -437,7 +439,7 @@ router.get('/financial/payment-collection', async (req, res) => {
 
 router.get('/financial/refunds', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -478,7 +480,7 @@ router.get('/financial/refunds', async (req, res) => {
 
 router.get('/insurance/claim-status', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -516,7 +518,7 @@ router.get('/insurance/claim-status', async (req, res) => {
 
 router.get('/insurance/claim-rejections', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -553,7 +555,7 @@ router.get('/insurance/claim-rejections', async (req, res) => {
 
 router.get('/insurance/denial-analysis', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -597,7 +599,7 @@ router.get('/insurance/denial-analysis', async (req, res) => {
 
 router.get('/insurance/payer-performance', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -645,7 +647,7 @@ router.get('/insurance/payer-performance', async (req, res) => {
 
 router.get('/patient/demographics', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const genderResult = await pool.query(`
       SELECT COALESCE(gender, 'Unknown') AS gender, COUNT(id)::int AS count
@@ -697,7 +699,7 @@ router.get('/patient/demographics', async (req, res) => {
 
 router.get('/patient/visit-history', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -739,7 +741,7 @@ router.get('/patient/visit-history', async (req, res) => {
 
 router.get('/patient/retention', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -784,7 +786,7 @@ router.get('/patient/retention', async (req, res) => {
 
 router.get('/patient/satisfaction', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -833,7 +835,7 @@ router.get('/patient/satisfaction', async (req, res) => {
 
 router.get('/provider/productivity', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -879,7 +881,7 @@ router.get('/provider/productivity', async (req, res) => {
 
 router.get('/provider/appointment-volume', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const byProvider = await pool.query(`
@@ -918,7 +920,7 @@ router.get('/provider/appointment-volume', async (req, res) => {
 
 router.get('/provider/revenue', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     // Claims don't have provider_id; join via appointments
@@ -969,7 +971,7 @@ router.get('/provider/revenue', async (req, res) => {
 
 router.get('/provider/telehealth-usage', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -1014,7 +1016,7 @@ router.get('/provider/telehealth-usage', async (req, res) => {
 
 router.get('/compliance/audit-logs', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -1048,7 +1050,7 @@ router.get('/compliance/audit-logs', async (req, res) => {
 
 router.get('/compliance/access-logs', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -1085,7 +1087,7 @@ router.get('/compliance/access-logs', async (req, res) => {
 
 router.get('/compliance/hipaa', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const phiResult = await pool.query(`
@@ -1130,7 +1132,7 @@ router.get('/compliance/hipaa', async (req, res) => {
 
 router.get('/compliance/data-access-history', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
 
     const summaryResult = await pool.query(`
@@ -1170,7 +1172,7 @@ router.get('/compliance/data-access-history', async (req, res) => {
 
 router.post('/custom', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { dataSource, fields, filters, sortBy, sortOrder, limit = 200 } = req.body;
 
     const allowedTables = {

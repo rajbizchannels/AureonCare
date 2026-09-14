@@ -1,0 +1,825 @@
+/* SEC-05 / S10 — Platform console client.
+ *
+ * The operator session is an HttpOnly cookie scoped to /api/platform, so this script never
+ * holds or stores the token: there is nothing here for an XSS to steal. The CSRF token is
+ * read from its companion (readable) cookie and echoed in X-CSRF-Token, which is what
+ * proves a state-changing request came from this page rather than another site.
+ *
+ * Plain DOM, no framework and no build step — an internal tool for a handful of operators.
+ */
+(function () {
+  'use strict';
+  var API = '/api/platform';
+
+  // ── helpers ────────────────────────────────────────────────────────────────
+  function $(id) { return document.getElementById(id); }
+  function readCookie(name) {
+    var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function toast(msg, isError) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (isError ? ' err' : '');
+    t.hidden = false;
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.hidden = true; }, isError ? 6000 : 3000);
+  }
+  // Escape before inserting anything server-provided into the DOM. Tenant names and audit
+  // details are operator/tenant supplied, so they are untrusted here.
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmt(ts) { return ts ? new Date(ts).toLocaleString() : '—'; }
+
+  async function api(path, options) {
+    options = options || {};
+    var headers = { 'Content-Type': 'application/json' };
+    var csrf = readCookie('ac_platform_csrf');
+    if (csrf) headers['X-CSRF-Token'] = csrf;
+    var res = await fetch(API + path, {
+      method: options.method || 'GET',
+      credentials: 'include',          // send the HttpOnly operator cookie
+      headers: headers,
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+    var data = null;
+    try { data = await res.json(); } catch (e) { /* empty body */ }
+    if (!res.ok) {
+      if (res.status === 401) { showLogin(); throw new Error(data && data.error || 'Session expired'); }
+      // Stripe failures carry a classification; without it the operator sees only
+      // "502 Bad Gateway" in the browser console and nothing actionable on the page.
+      if (data && data.stripeType) {
+        throw new Error(data.stripeType + ': ' + (data.error || 'Stripe rejected the request.'));
+      }
+      throw new Error((data && (data.error || data.message)) || ('Request failed (' + res.status + ')'));
+    }
+    return data;
+  }
+
+  // ── views ──────────────────────────────────────────────────────────────────
+  function showLogin() {
+    $('loginView').hidden = false;
+    $('consoleView').hidden = true;
+    $('who').hidden = true;
+  }
+  function showConsole(op) {
+    $('loginView').hidden = true;
+    $('consoleView').hidden = false;
+    $('who').hidden = false;
+    $('whoEmail').textContent = op.email + (op.role ? ' · ' + op.role : '');
+    renderMfaState(op);
+    // Default to on when the field is absent (an older /me response), matching the column
+    // default — a toggle that shows "off" when alerts are actually on is worse than wrong.
+    $('notifyToggle').checked = op.notifyPlatformEvents !== false;
+    loadTenants();
+  }
+
+  // ── auth ───────────────────────────────────────────────────────────────────
+  $('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    $('loginError').hidden = true;
+    try {
+      var body = { email: $('email').value.trim(), password: $('password').value };
+      var code = $('mfaCode').value.trim();
+      if (code) body.mfaCode = code;
+      var out = await api('/login', { method: 'POST', body: body });
+      $('password').value = '';
+      showConsole(out.operator);
+    } catch (err) {
+      $('loginError').textContent = err.message;
+      $('loginError').hidden = false;
+    }
+  });
+
+  $('signOut').addEventListener('click', async function () {
+    try { await api('/logout', { method: 'POST' }); } catch (e) { /* clear locally anyway */ }
+    showLogin();
+  });
+
+  // ── plans ──────────────────────────────────────────────────────────────────
+  // Stripe wants a lower-case ISO-4217 code; a free-text box invited typos that Stripe
+  // would only reject at push time, so the choice is constrained here instead.
+  var CURRENCIES = ["usd", "eur", "gbp", "cad", "aud", "nzd", "inr", "aed", "sgd", "chf", "jpy", "zar", "sek", "nok", "dkk"];
+  function currencyOptions(selected) {
+    var cur = String(selected || 'usd').toLowerCase();
+    return CURRENCIES.map(function (c) {
+      return '<option value="' + c + '"' + (c === cur ? ' selected' : '') + '>' + c.toUpperCase() + '</option>';
+    }).join('');
+  }
+
+  // Everything the server returns is escaped through esc(); this page never builds
+  // markup from unescaped data.
+  async function loadPlans() {
+    var el = $('plansList');
+    el.textContent = 'Loading…';
+    try {
+      var plans = await api('/plans');
+      if (!plans.length) { el.innerHTML = '<p class="muted">No active plans.</p>'; return; }
+      el.innerHTML = plans.map(function (p) {
+        // A plan is only offered on the public signup page when BOTH are true. Saying so
+        // per plan turns "No plans are available" from a mystery into a checklist.
+        var sellable = p.is_active && p.self_serve && p.stripe_price_id;
+        var why = !p.is_active
+          ? 'inactive'
+          : (!p.stripe_price_id
+              ? 'not sellable — no Stripe price yet'
+              : (!p.self_serve ? 'not sellable — "Sell on the public signup page" is off'
+                               : 'live on the signup page'));
+        return '<div class="card">' +
+          '<h3>' + esc(p.display_name || p.name) +
+          ' <span class="small" style="font-weight:400">' + (sellable ? '✓ ' : '· ') + esc(why) + '</span></h3>' +
+          '<p class="muted small">' + (p.price != null ? esc(p.price) + ' ' + esc((p.currency || 'usd').toUpperCase()) : 'no price') +
+          ' · ' + esc(p.billing_cycle || 'monthly') +
+          (p.stripe_price_id ? ' · ' + esc(p.stripe_price_id) : '') + '</p>' +
+          '<form class="planForm" data-id="' + esc(p.id) + '">' +
+            '<label class="check"><input type="checkbox" name="isActive"' +
+              (p.is_active ? ' checked' : '') + ' /> <span>Active</span></label>' +
+            '<label class="check"><input type="checkbox" name="selfServe"' +
+              (p.self_serve ? ' checked' : '') + ' /> <span>Sell on the public signup page</span></label>' +
+            '<label>Price<input name="price" type="number" min="0" step="0.01" value="' +
+              esc(p.price == null ? '' : p.price) + '" /></label>' +
+            '<label>Currency<select name="currency">' + currencyOptions(p.currency) + '</select></label>' +
+            '<label>Stripe price id<input name="stripePriceId" placeholder="price_…" value="' +
+              esc(p.stripe_price_id || '') + '" /></label>' +
+            '<label>Trial days<input name="trialDays" type="number" min="0" value="' +
+              esc(p.trial_days == null ? 0 : p.trial_days) + '" /></label>' +
+            '<label>Free months<input name="freeMonths" type="number" min="0" value="' +
+              esc(p.free_months == null ? 0 : p.free_months) + '" /></label>' +
+            '<label>Display name<input name="displayName" value="' + esc(p.display_name || '') + '" /></label>' +
+            '<label>Key<input name="name" value="' + esc(p.name || '') + '" /></label>' +
+            '<button type="submit" class="primary">Save</button>' +
+            '<button type="button" class="pushStripe" data-id="' + esc(p.id) + '">' +
+              (p.stripe_price_id ? 'Re-create price in Stripe' : 'Create in Stripe') + '</button>' +
+            '<span class="planMsg small"></span>' +
+          '</form>' +
+        '</div>';
+      }).join('');
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  document.addEventListener('submit', async function (e) {
+    var form = e.target.closest('form.planForm');
+    if (!form) return;
+    e.preventDefault();
+    var msg = form.querySelector('.planMsg');
+    msg.textContent = 'Saving…';
+    try {
+      await api('/plans/' + encodeURIComponent(form.dataset.id), {
+        method: 'PUT',
+        body: {
+          isActive: form.isActive.checked,
+          selfServe: form.selfServe.checked,
+          stripePriceId: form.stripePriceId.value.trim(),
+          trialDays: Number(form.trialDays.value || 0),
+          price: form.price.value === '' ? null : Number(form.price.value),
+          currency: form.currency.value,
+          freeMonths: form.freeMonths.value === '' ? null : Number(form.freeMonths.value),
+          displayName: form.displayName.value.trim() || null,
+          name: form.name.value.trim() || null,
+        },
+      });
+      msg.textContent = 'Saved.';
+      // Re-read from the server: the badge must reflect what was stored, not what was typed.
+      loadPlans();
+    } catch (err) {
+      msg.textContent = err.message;
+    }
+  });
+
+  // Create the Product and Price in Stripe, so an operator never has to copy a price id
+  // out of the Stripe dashboard. Confirm first when it would replace an existing price:
+  // Stripe prices are immutable, so this mints a new one and archives the old.
+  document.addEventListener('click', async function (e) {
+    var btn = e.target.closest('button.pushStripe');
+    if (!btn) return;
+    var form = btn.closest('form.planForm');
+    var msg = form.querySelector('.planMsg');
+    var replacing = form.stripePriceId.value.trim();
+    if (replacing && !window.confirm(
+      'This creates a NEW Stripe price and archives ' + replacing + '.\n\n' +
+      'Existing subscribers keep paying their current price; only new customers get the new one.\n\nContinue?'
+    )) return;
+
+    btn.disabled = true;
+    msg.textContent = 'Creating in Stripe…';
+    try {
+      var updated = await api('/plans/' + encodeURIComponent(btn.dataset.id) + '/stripe', { method: 'POST' });
+      msg.textContent = 'Created ' + updated.stripe_price_id +
+        (updated.archivedPriceId ? ' (archived ' + updated.archivedPriceId + ')' : '');
+      loadPlans();
+    } catch (err) {
+      msg.textContent = err.message;
+      msg.className = 'planMsg small error';
+      toast(err.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ── new plan ───────────────────────────────────────────────────────────────
+  $('newPlanBtn').addEventListener('click', function () {
+    var f = $('newPlanForm');
+    f.hidden = !f.hidden;
+  });
+  $('cancelPlan').addEventListener('click', function () { $('newPlanForm').hidden = true; });
+
+  $('newPlanForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('newPlanMsg');
+    msg.textContent = 'Creating…';
+    try {
+      await api('/plans', {
+        method: 'POST',
+        body: {
+          name: $('pName').value.trim(),
+          displayName: $('pDisplay').value.trim(),
+          description: $('pDesc').value.trim() || null,
+          price: Number($('pPrice').value),
+          currency: $('pCurrency').value.trim() || 'usd',
+          billingCycle: $('pCycle').value,
+          trialDays: Number($('pTrial').value || 0),
+          maxUsers: Number($('pMaxUsers').value || -1),
+          maxProviders: Number($('pMaxProviders').value || -1),
+        },
+      });
+      msg.textContent = 'Created. Now use "Create in Stripe", then tick "Sell on the public signup page".';
+      $('newPlanForm').reset();
+      loadPlans();
+    } catch (err) {
+      msg.textContent = err.message;
+    }
+  });
+
+  // ── billing & accounting ───────────────────────────────────────────────────
+  function money(v, cur) {
+    return (v == null ? '—' : Number(v).toFixed(2) + ' ' + String(cur || 'usd').toUpperCase());
+  }
+
+  async function loadBilling() {
+    fillCurrencies($('adjCurrency'));
+    fillTenantPickers().catch(function () { /* pickers are optional */ });
+    loadAging();
+    loadBillingConfig();
+    var sum = $('billingSummary'), ten = $('billingTenants'), ev = $('billingEvents');
+    sum.textContent = 'Loading…';
+    try {
+      var s = await api('/billing/summary');
+      var statuses = Object.keys(s.byStatus).map(function (k) {
+        return esc(k) + ': ' + esc(s.byStatus[k]);
+      }).join(' · ') || 'none';
+      sum.innerHTML =
+        '<div class="card"><h3>' + esc(s.mrr.toFixed(2)) + ' MRR</h3>' +
+          '<p class="muted small">' + esc(s.arr.toFixed(2)) + ' ARR · ' + esc(s.tenants) +
+          ' tenant(s) · ' + statuses + '</p>' +
+          (s.failedPayments90d.count
+            ? '<p class="error small">' + esc(s.failedPayments90d.count) +
+              ' failed payment(s) in the last 90 days</p>'
+            : '') +
+        '</div>' +
+        '<div class="card"><h3>Collected</h3>' +
+          (s.collectedByMonth.length
+            ? '<table><tr><th>Month</th><th>Amount</th></tr>' +
+              s.collectedByMonth.map(function (m) {
+                return '<tr><td>' + esc(m.month) + '</td><td>' + esc(money(m.amount, m.currency)) + '</td></tr>';
+              }).join('') + '</table>'
+            : '<p class="muted small">No payments recorded yet. The ledger fills as Stripe ' +
+              'webhooks arrive — it is not backfilled from Stripe history.</p>') +
+        '</div>';
+    } catch (e) {
+      sum.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+      return;
+    }
+
+    try {
+      var rows = await api('/billing/tenants');
+      ten.innerHTML = rows.length
+        ? '<table><tr><th>Tenant</th><th>Plan</th><th>Status</th><th>MRR</th>' +
+          '<th>Collected</th><th>Refunded</th><th>Net</th><th>Last payment</th></tr>' +
+          rows.map(function (r) {
+            return '<tr><td>' + esc(r.name || r.slug) + '</td>' +
+              '<td>' + esc(r.plan_name || '—') + '</td>' +
+              '<td>' + esc(r.subscription_status || '—') + '</td>' +
+              '<td>' + esc(money(r.mrr, r.currency)) + '</td>' +
+              '<td>' + esc(money(r.collected, r.currency)) + '</td>' +
+              '<td>' + esc(money(r.refunded, r.currency)) + '</td>' +
+              '<td>' + esc(money(r.net, r.currency)) + '</td>' +
+              '<td>' + esc(r.last_payment_at ? new Date(r.last_payment_at).toLocaleDateString() : '—') + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">No tenants.</p>';
+    } catch (e) {
+      ten.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+
+    try {
+      var events = await api('/billing/events?limit=50');
+      ev.innerHTML = events.length
+        ? '<table><tr><th>When</th><th>Tenant</th><th>Event</th><th>Amount</th><th>Detail</th></tr>' +
+          events.map(function (e2) {
+            return '<tr><td>' + esc(new Date(e2.occurred_at).toLocaleString()) + '</td>' +
+              '<td>' + esc(e2.tenant_name || e2.tenant_slug || '—') + '</td>' +
+              '<td>' + esc(e2.event_type) + '</td>' +
+              '<td>' + esc(money(e2.amount, e2.currency)) + '</td>' +
+              '<td>' + esc(e2.description || '') + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">No billing activity recorded yet.</p>';
+    } catch (e) {
+      ev.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  // Surfaces what the running process sees, so a missing key is diagnosed here rather
+  // than by guessing at the dashboard.
+  async function loadBillingConfig() {
+    var el = $('billingConfig');
+    try {
+      var c = await api('/billing/config');
+      if (c.secretKeyPresent && c.webhookSecretPresent) {
+        el.innerHTML = '<p class="muted small">Stripe: ' + esc(c.mode) + ' mode via ' +
+          esc(c.secretKeyVar) + ' · webhook secret set.</p>';
+        return;
+      }
+      var lines = [];
+      if (!c.secretKeyPresent) {
+        lines.push('<strong>AC_STRIPE_SK is not visible to this deployment.</strong> ' +
+          'In Vercel a shared variable must be linked to THIS project and the project ' +
+          'redeployed — variables are baked into a deployment, so an existing one never ' +
+          'picks them up. Check the environment too: a Production value is not visible to ' +
+          'a Preview deployment.');
+      }
+      if (c.secretKeyPresent && c.mode === 'unrecognised') {
+        lines.push('AC_STRIPE_SK does not look like a Stripe secret key (expected sk_live_ ' +
+          'or sk_test_). It may have been truncated on paste — it is ' + esc(c.secretKeyLength) +
+          ' characters.');
+      }
+      if (!c.webhookSecretPresent) {
+        lines.push('AC_STRIPE_WHS is not set, so webhooks cannot be verified and signups ' +
+          'will not provision.');
+      } else if (!c.webhookSecretLooksRight) {
+        lines.push('AC_STRIPE_WHS does not start with whsec_ — that is the signing secret, ' +
+          'not the endpoint id.');
+      }
+      el.innerHTML = '<div class="card"><p class="error small">' + lines.join('</p><p class="error small">') + '</p></div>';
+    } catch (e) {
+      el.innerHTML = '';
+    }
+  }
+
+  // ── billing extras: aging, adjustments, free months, CSV ───────────────────
+  var CURRENCY_OPTS = null;
+  function fillCurrencies(el) {
+    if (!CURRENCY_OPTS) CURRENCY_OPTS = currencyOptions('usd');
+    el.innerHTML = CURRENCY_OPTS;
+  }
+
+  async function fillTenantPickers() {
+    var tenants = await api('/tenants');
+    var opts = tenants.map(function (t) {
+      return '<option value="' + esc(t.id) + '">' + esc(t.name || t.slug) + '</option>';
+    }).join('');
+    $('adjTenant').innerHTML = opts;
+    $('freeTenant').innerHTML = opts;
+  }
+
+  async function loadAging() {
+    var el = $('billingAging');
+    try {
+      var rows = await api('/billing/aging');
+      el.innerHTML = rows.length
+        ? '<table><tr><th>Tenant</th><th>Subscription</th><th>Last failure</th>' +
+          '<th>Days</th><th>MRR at risk</th></tr>' +
+          rows.map(function (r) {
+            return '<tr><td>' + esc(r.name || r.slug) + '</td>' +
+              '<td>' + esc(r.subscription_status || '—') + '</td>' +
+              '<td>' + esc(r.last_failure_at ? new Date(r.last_failure_at).toLocaleDateString() : '—') + '</td>' +
+              '<td>' + esc(r.days_since_failure == null ? '—' : r.days_since_failure) + '</td>' +
+              '<td>' + esc(money(r.mrrAtRisk, r.currency)) + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">Nothing outstanding.</p>';
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  $('adjustForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('adjMsg');
+    msg.textContent = 'Posting…';
+    try {
+      var out = await api('/billing/adjustments', {
+        method: 'POST',
+        body: {
+          tenantId: $('adjTenant').value,
+          kind: $('adjKind').value,
+          amount: Number($('adjAmount').value),
+          currency: $('adjCurrency').value,
+          reason: $('adjReason').value.trim(),
+        },
+      });
+      msg.textContent = 'Posted ' + out.amount.toFixed(2) + '.';
+      $('adjAmount').value = ''; $('adjReason').value = '';
+      loadBilling();
+    } catch (err) { msg.textContent = err.message; }
+  });
+
+  $('freeForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('freeMsg');
+    msg.textContent = 'Granting…';
+    try {
+      var out = await api('/tenants/' + encodeURIComponent($('freeTenant').value) + '/free-months', {
+        method: 'POST',
+        body: { months: Number($('freeMonths').value), reason: $('freeReason').value.trim() },
+      });
+      msg.textContent = out.months + ' free month(s) applied in Stripe.';
+      $('freeReason').value = '';
+      loadBilling();
+    } catch (err) { msg.textContent = err.message; }
+  });
+
+  $('exportCsv').addEventListener('click', function (e) {
+    e.preventDefault();
+    // A plain link would not carry the CSRF/cookie handling api() does, and the response is
+    // a file rather than JSON — so fetch it and hand the browser a blob.
+    fetch(API + '/billing/export.csv', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.blob() : Promise.reject(new Error('Export failed')); })
+      .then(function (b) {
+        var url = URL.createObjectURL(b);
+        var a = document.createElement('a');
+        a.href = url; a.download = 'billing.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      })
+      .catch(function (err) { toast(err.message, true); });
+  });
+
+  // ── coupons ────────────────────────────────────────────────────────────────
+  async function loadCoupons() {
+    fillCurrencies($('cCurrency'));
+    try {
+      var plans = await api('/plans');
+      $('cPlans').innerHTML = plans.map(function (p) {
+        return '<option value="' + esc(p.id) + '"' + (p.stripe_product_id ? '' : ' disabled') + '>' +
+          esc(p.display_name || p.name) + (p.stripe_product_id ? '' : ' (not in Stripe yet)') + '</option>';
+      }).join('');
+    } catch (e) { /* the list is optional */ }
+
+    var el = $('couponList');
+    el.textContent = 'Loading…';
+    try {
+      var out = await api('/coupons');
+      if (!out.configured) {
+        el.innerHTML = '<p class="muted small">Platform billing is not configured (AC_STRIPE_SK).</p>';
+        return;
+      }
+      el.innerHTML = out.coupons.length
+        ? '<table><tr><th>Code</th><th>Discount</th><th>Duration</th><th>Redeemed</th>' +
+          '<th>Active</th><th></th></tr>' +
+          out.coupons.map(function (c) {
+            var disc = c.percentOff ? c.percentOff + '%' : money(c.amountOff, c.currency);
+            var dur = c.duration === 'repeating' ? c.durationInMonths + ' months' : c.duration;
+            return '<tr><td>' + esc(c.code) + '</td><td>' + esc(disc) + '</td>' +
+              '<td>' + esc(dur) + '</td>' +
+              '<td>' + esc(c.timesRedeemed) + (c.maxRedemptions ? ' / ' + esc(c.maxRedemptions) : '') + '</td>' +
+              '<td>' + (c.active ? 'yes' : 'no') + '</td>' +
+              '<td>' + (c.active
+                ? '<button class="deactivateCoupon" data-id="' + esc(c.promotionCodeId) + '">Deactivate</button>'
+                : '') + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">No coupons yet.</p>';
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  $('couponForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('couponMsg');
+    msg.textContent = 'Creating…';
+    var planIds = Array.prototype.filter.call($('cPlans').options, function (o) { return o.selected; })
+      .map(function (o) { return Number(o.value); });
+    try {
+      var out = await api('/coupons', {
+        method: 'POST',
+        body: {
+          code: $('cCode').value.trim(),
+          percentOff: $('cPercent').value === '' ? null : Number($('cPercent').value),
+          amountOff: $('cAmount').value === '' ? null : Number($('cAmount').value),
+          currency: $('cCurrency').value,
+          duration: $('cDuration').value,
+          durationInMonths: $('cMonths').value === '' ? null : Number($('cMonths').value),
+          maxRedemptions: $('cMax').value === '' ? null : Number($('cMax').value),
+          planIds: planIds,
+        },
+      });
+      msg.textContent = 'Created ' + out.code + '.';
+      $('couponForm').reset();
+      loadCoupons();
+    } catch (err) { msg.textContent = err.message; }
+  });
+
+  document.addEventListener('click', async function (e) {
+    var btn = e.target.closest('button.deactivateCoupon');
+    if (!btn) return;
+    if (!window.confirm('Stop this code being redeemed? Customers already on the discount keep it.')) return;
+    try {
+      await api('/coupons/' + encodeURIComponent(btn.dataset.id) + '/deactivate', { method: 'POST' });
+      loadCoupons();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // ── operators ──────────────────────────────────────────────────────────────
+  async function loadOperators() {
+    var el = $('operatorList');
+    el.textContent = 'Loading…';
+    try {
+      var ops = await api('/operators');
+      el.innerHTML = '<table><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th>' +
+        '<th>MFA</th><th>Alerts</th><th>Last login</th><th></th></tr>' +
+        ops.map(function (o) {
+          return '<tr><td>' + esc(o.email) + '</td><td>' + esc(o.name || '—') + '</td>' +
+            '<td><select class="opRole" data-id="' + esc(o.id) + '">' +
+              ['owner', 'billing', 'support', 'readonly'].map(function (r) {
+                return '<option value="' + r + '"' + (o.role === r ? ' selected' : '') + '>' + r + '</option>';
+              }).join('') + '</select></td>' +
+            '<td>' + esc(o.status) + '</td>' +
+            '<td>' + (o.mfa_enabled ? 'on' : '<span class="error">off</span>') + '</td>' +
+            '<td>' + (o.notify_platform_events ? 'on' : 'off') + '</td>' +
+            '<td>' + esc(o.last_login ? new Date(o.last_login).toLocaleDateString() : '—') + '</td>' +
+            '<td><button class="opToggle" data-id="' + esc(o.id) + '" data-status="' + esc(o.status) + '">' +
+              (o.status === 'active' ? 'Disable' : 'Enable') + '</button></td></tr>';
+        }).join('') + '</table>';
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  $('operatorForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var msg = $('operatorMsg');
+    msg.textContent = 'Creating…';
+    try {
+      await api('/operators', {
+        method: 'POST',
+        body: {
+          email: $('oEmail').value.trim(), name: $('oName').value.trim() || null,
+          role: $('oRole').value, password: $('oPassword').value,
+        },
+      });
+      msg.textContent = 'Operator added. They should enrol MFA at first sign-in.';
+      $('operatorForm').reset();
+      loadOperators();
+    } catch (err) { msg.textContent = err.message; }
+  });
+
+  document.addEventListener('change', async function (e) {
+    var sel = e.target.closest('select.opRole');
+    if (!sel) return;
+    try {
+      await api('/operators/' + encodeURIComponent(sel.dataset.id), {
+        method: 'PUT', body: { role: sel.value },
+      });
+      toast('Role updated; that operator has been signed out.');
+      loadOperators();
+    } catch (err) { toast(err.message, true); loadOperators(); }
+  });
+
+  document.addEventListener('click', async function (e) {
+    var btn = e.target.closest('button.opToggle');
+    if (!btn) return;
+    var next = btn.dataset.status === 'active' ? 'disabled' : 'active';
+    try {
+      await api('/operators/' + encodeURIComponent(btn.dataset.id), {
+        method: 'PUT', body: { status: next },
+      });
+      loadOperators();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // ── tabs ───────────────────────────────────────────────────────────────────
+  $('tabs').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-tab]');
+    if (!btn) return;
+    var tab = btn.dataset.tab;
+    Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function (b) {
+      b.classList.toggle('active', b === btn);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (p) {
+      p.hidden = p.dataset.panel !== tab;
+    });
+    if (tab === 'audit') loadAudit();
+    if (tab === 'tenants') loadTenants();
+    if (tab === 'plans') loadPlans();
+    if (tab === 'billing') loadBilling();
+    if (tab === 'coupons') loadCoupons();
+    if (tab === 'operators') { loadOperators(); loadNotifications(); }
+  });
+
+  // ── tenants ────────────────────────────────────────────────────────────────
+  async function loadTenants() {
+    var el = $('tenantList');
+    el.textContent = 'Loading…';
+    try {
+      var tenants = await api('/tenants');
+      if (!tenants.length) { el.textContent = 'No tenants yet.'; return; }
+      el.innerHTML = tenants.map(function (t) {
+        return '<div class="item" data-id="' + esc(t.id) + '">' +
+          '<div class="row between"><h4>' + esc(t.name) +
+            ' <span class="pill ' + esc(t.status) + '">' + esc(t.status) + '</span></h4>' +
+            '<div class="row">' +
+              '<button data-act="sub">Subscription</button>' +
+              (t.status === 'active'
+                 ? '<button data-act="suspend">Suspend</button>'
+                 : '<button data-act="resume">Resume</button>') +
+              '<button data-act="bg">Break-glass</button>' +
+            '</div></div>' +
+          '<div class="meta">slug ' + esc(t.slug) + ' · schema ' + esc(t.schema_name) +
+            ' · ' + esc(t.user_count || 0) + ' users · created ' + esc(fmt(t.created_at)) + '</div>' +
+          '<div class="detail" hidden></div></div>';
+      }).join('');
+    } catch (err) { el.textContent = err.message; }
+  }
+
+  $('tenantList').addEventListener('click', async function (e) {
+    var btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    var item = btn.closest('.item');
+    var id = item.dataset.id;
+    var detail = item.querySelector('.detail');
+    try {
+      if (btn.dataset.act === 'suspend' || btn.dataset.act === 'resume') {
+        var act = btn.dataset.act;
+        if (act === 'suspend' && !confirm('Suspend this tenant? Its users will be blocked from signing in.')) return;
+        await api('/tenants/' + id + '/' + act, { method: 'POST' });
+        toast('Tenant ' + act + 'd');
+        loadTenants();
+      } else if (btn.dataset.act === 'sub') {
+        var sub = await api('/tenants/' + id + '/subscription').catch(function () { return null; });
+        var plans = await api('/plans');
+        detail.hidden = false;
+        detail.innerHTML =
+          '<hr><div class="row"><label>Plan<select data-f="plan">' +
+            plans.map(function (p) {
+              return '<option value="' + esc(p.id) + '"' + (sub && sub.plan_id === p.id ? ' selected' : '') +
+                     '>' + esc(p.display_name || p.name) + '</option>';
+            }).join('') + '</select></label>' +
+          '<label>Status<select data-f="status">' +
+            ['trialing', 'active', 'past_due', 'canceled'].map(function (s) {
+              return '<option' + (sub && sub.status === s ? ' selected' : '') + '>' + s + '</option>';
+            }).join('') + '</select></label>' +
+          '<label>Seats<input data-f="seats" type="number" min="0" value="' + esc(sub && sub.seats || 0) + '" /></label>' +
+          '<button data-act="save-sub" class="primary">Save</button></div>' +
+          '<p class="muted small">past_due or canceled makes the workspace read-only.</p>';
+      } else if (btn.dataset.act === 'save-sub') {
+        var body = {
+          planId: Number(detail.querySelector('[data-f=plan]').value),
+          status: detail.querySelector('[data-f=status]').value,
+          seats: Number(detail.querySelector('[data-f=seats]').value)
+        };
+        await api('/tenants/' + id + '/subscription', { method: 'PUT', body: body });
+        toast('Subscription updated');
+        detail.hidden = true;
+      } else if (btn.dataset.act === 'bg') {
+        var reason = prompt('Break-glass access is time-boxed and audited.\n\nWhy do you need to read this tenant\'s activity? (min 8 characters)');
+        if (!reason || reason.trim().length < 8) { if (reason !== null) toast('A justification of at least 8 characters is required', true); return; }
+        var session = await api('/tenants/' + id + '/break-glass', { method: 'POST', body: { reason: reason.trim(), ttlMinutes: 30 } });
+        var rows = await api('/tenants/' + id + '/tenant-audit');
+        detail.hidden = false;
+        detail.innerHTML = '<hr><div class="row between"><strong>Tenant activity</strong>' +
+          '<button data-act="end-bg" data-session="' + esc(session.id) + '">End session</button></div>' +
+          '<p class="muted small">This read has been recorded in the platform audit trail.</p>' +
+          (rows.length ? '<table><tr><th>When</th><th>Action</th><th>Resource</th><th>User</th></tr>' +
+            rows.map(function (r) {
+              return '<tr><td>' + esc(fmt(r.created_at)) + '</td><td>' + esc(r.action_type) +
+                     '</td><td>' + esc(r.resource_name || r.resource_type) + '</td><td>' + esc(r.user_email || '—') + '</td></tr>';
+            }).join('') + '</table>' : '<p class="muted">No activity recorded.</p>');
+      } else if (btn.dataset.act === 'end-bg') {
+        await api('/break-glass/' + btn.dataset.session + '/end', { method: 'POST' });
+        toast('Break-glass session ended');
+        detail.hidden = true;
+      }
+    } catch (err) { toast(err.message, true); }
+  });
+
+  $('newTenantBtn').addEventListener('click', function () { $('newTenantForm').hidden = false; });
+  $('cancelTenant').addEventListener('click', function () { $('newTenantForm').hidden = true; });
+  $('newTenantForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    try {
+      await api('/tenants', { method: 'POST', body: {
+        name: $('tName').value.trim(),
+        planTier: $('tPlan').value.trim() || undefined,
+        country: $('tCountry').value.trim() || undefined,
+        timezone: $('tTz').value.trim() || undefined
+      }});
+      toast('Tenant created and its schema provisioned');
+      $('newTenantForm').hidden = true;
+      $('tName').value = '';
+      loadTenants();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // ── audit ──────────────────────────────────────────────────────────────────
+  async function loadAudit() {
+    var el = $('auditList');
+    el.textContent = 'Loading…';
+    try {
+      var rows = await api('/audit?limit=100');
+      if (!rows.length) { el.textContent = 'No entries.'; return; }
+      el.innerHTML = '<table><tr><th>When</th><th>Operator</th><th>Action</th><th>Target</th><th>Detail</th></tr>' +
+        rows.map(function (r) {
+          return '<tr><td>' + esc(fmt(r.created_at)) + '</td><td>' + esc(r.operator_email || '—') +
+            '</td><td>' + esc(r.action) + '</td><td>' + esc(r.target_type || '') + ' ' + esc((r.target_id || '').slice(0, 8)) +
+            '</td><td class="small muted">' + esc(r.detail ? JSON.stringify(r.detail) : '') + '</td></tr>';
+        }).join('') + '</table>';
+    } catch (err) { el.textContent = err.message; }
+  }
+
+  // ── MFA ────────────────────────────────────────────────────────────────────
+  function renderMfaState(op) {
+    var enabled = op && op.mfaEnabled;
+    $('mfaState').innerHTML = enabled
+      ? '<p class="pill active">Enabled</p>'
+      : '<p class="pill suspended">Not enabled</p>';
+    $('mfaEnroll').hidden = !!enabled;
+  }
+  $('notifyToggle').addEventListener('change', async function () {
+    try {
+      await api('/me/notifications', { method: 'PUT', body: { enabled: $('notifyToggle').checked } });
+      toast($('notifyToggle').checked ? 'You will be emailed platform events.' : 'Platform emails turned off.');
+    } catch (err) {
+      // Put the box back: a toggle that looks changed but was not is worse than an error.
+      $('notifyToggle').checked = !$('notifyToggle').checked;
+      toast(err.message, true);
+    }
+  });
+
+  async function loadNotifications() {
+    var el = $('notificationList');
+    try {
+      var rows = await api('/notifications');
+      el.innerHTML = rows.length
+        ? '<table><tr><th>When</th><th>Severity</th><th>Event</th><th>Tenant</th><th>Sent to</th></tr>' +
+          rows.map(function (n) {
+            return '<tr><td>' + esc(new Date(n.sent_at).toLocaleString()) + '</td>' +
+              '<td>' + esc(n.severity) + '</td>' +
+              '<td>' + esc(n.action) + '</td>' +
+              '<td>' + esc(n.tenant_name || '—') + '</td>' +
+              '<td>' + esc((n.recipients || []).join(', ')) + '</td></tr>';
+          }).join('') + '</table>'
+        : '<p class="muted small">No alerts sent yet.</p>';
+    } catch (e) {
+      el.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    }
+  }
+
+  $('mfaEnroll').addEventListener('click', async function () {
+    try {
+      var out = await api('/mfa/enroll', { method: 'POST' });
+      // The QR carries the otpauth:// URL; the text field carries the base32 SECRET.
+      // They are not interchangeable — an authenticator's manual-entry field rejects the
+      // URL, because base32 has no ':' '/' '?' or '='.
+      if (out.qrDataUrl) {
+        $('mfaQr').src = out.qrDataUrl;
+        $('mfaQr').hidden = false;
+      }
+      $('mfaKey').value = out.base32 || '';
+      $('mfaSetup').hidden = false;
+    } catch (err) { toast(err.message, true); }
+  });
+  $('copyMfaKey').addEventListener('click', function () {
+    var f = $('mfaKey');
+    f.select();
+    try {
+      navigator.clipboard.writeText(f.value);
+      toast('Setup key copied');
+    } catch (e) {
+      // Clipboard access can be blocked; the field is selected either way.
+      toast('Press Ctrl+C to copy the selected key');
+    }
+  });
+
+  $('mfaVerifyForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    try {
+      await api('/mfa/verify', { method: 'POST', body: { code: $('mfaVerifyCode').value.trim() } });
+      toast('MFA enabled');
+      $('mfaSetup').hidden = true;
+      renderMfaState({ mfaEnabled: true });
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // ── boot: restore the session from the cookie, if there is one ─────────────
+  (async function init() {
+    try {
+      var me = await api('/me');
+      showConsole(me.operator);
+    } catch (e) {
+      showLogin();
+    }
+  })();
+})();

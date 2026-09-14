@@ -1,7 +1,12 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+const { auditPhiRead } = require('../middleware/phiAccessLog');
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const vendorIntegrationManager = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
+const notificationService = require('../services/notificationService');
 
 /**
  * Lab Orders API
@@ -11,7 +16,7 @@ const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 // Get all lab orders with optional filters
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, provider_id, status } = req.query;
 
     let query = 'SELECT * FROM lab_orders WHERE 1=1';
@@ -67,9 +72,9 @@ router.get('/', async (req, res) => {
 });
 
 // Get single lab order
-router.get('/:id', async (req, res) => {
+router.get('/:id', auditPhiRead('lab_order'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     const result = await pool.query(
@@ -110,7 +115,7 @@ router.get('/:id', async (req, res) => {
 // Create new lab order
 router.post('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       patient_id,
       provider_id,
@@ -137,16 +142,7 @@ router.post('/', async (req, res) => {
 
     // Check if new columns exist, if not add them
     try {
-      await pool.query(`
-        ALTER TABLE lab_orders
-        ADD COLUMN IF NOT EXISTS laboratory_id UUID REFERENCES laboratories(id),
-        ADD COLUMN IF NOT EXISTS linked_diagnosis_id UUID REFERENCES diagnoses(id),
-        ADD COLUMN IF NOT EXISTS order_status VARCHAR(20) DEFAULT 'one-time',
-        ADD COLUMN IF NOT EXISTS order_status_date DATE,
-        ADD COLUMN IF NOT EXISTS frequency VARCHAR(20),
-        ADD COLUMN IF NOT EXISTS collection_class VARCHAR(20) DEFAULT 'clinic-collect',
-        ADD COLUMN IF NOT EXISTS result_recipients JSONB DEFAULT '[]'::jsonb
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } catch (err) {
       // Column might already exist, continue
       console.log('Lab orders table columns already exist or error:', err.message);
@@ -154,19 +150,7 @@ router.post('/', async (req, res) => {
 
     // Also update existing VARCHAR result_recipients column to JSONB if it exists
     try {
-      await pool.query(`
-        DO $$
-        BEGIN
-          IF EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = 'lab_orders'
-            AND column_name = 'result_recipients'
-            AND data_type = 'character varying'
-          ) THEN
-            ALTER TABLE lab_orders ALTER COLUMN result_recipients TYPE JSONB USING result_recipients::jsonb;
-          END IF;
-        END $$;
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } catch (err) {
       console.log('Could not convert result_recipients to JSONB:', err.message);
     }
@@ -360,6 +344,13 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(labOrder);
+
+    // Send notifications (non-blocking)
+    notificationService.dispatch(pool, 'lab_order.created', {
+      order: labOrder,
+      patient_id,
+      provider_id,
+    }).catch(() => {});
   } catch (error) {
     console.error('Error creating lab order:', error);
     res.status(500).json({ error: 'Failed to create lab order' });
@@ -369,7 +360,7 @@ router.post('/', async (req, res) => {
 // Update lab order
 router.put('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
     const {
       status,
@@ -453,6 +444,16 @@ router.put('/:id', async (req, res) => {
     }
 
     res.json(updatedLabOrder);
+
+    // Send status change notification (non-blocking)
+    if (status) {
+      notificationService.dispatch(pool, 'lab_order.status_changed', {
+        order: updatedLabOrder,
+        patient_id: updatedLabOrder.patient_id,
+        provider_id: updatedLabOrder.provider_id,
+        old_status: 'previous',
+      }).catch(() => {});
+    }
   } catch (error) {
     console.error('Error updating lab order:', error);
     res.status(500).json({ error: 'Failed to update lab order' });
@@ -462,7 +463,7 @@ router.put('/:id', async (req, res) => {
 // Cancel lab order
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     // Get order details
@@ -506,7 +507,7 @@ router.delete('/:id', async (req, res) => {
 // Get lab results for an order
 router.get('/:id/results', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
     // Get order

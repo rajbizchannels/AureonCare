@@ -2,72 +2,330 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
+const { storeFor } = require('../middleware/rateLimitStore');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
+const { validateSocialToken } = require('../utils/socialTokenValidator');
+const { exchangeAuthCode } = require('../utils/oauthExchange');
+const { authenticate } = require('../middleware/auth');
+const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('../utils/filedDocuments');
+const { resolveTenantForUser } = require('../services/tenantCatalog');
+const { makeTenantDb } = require('../db/requestTenantDb');
+const { withTenant } = require('../db/tenantClient');
+const {
+  tenantForSession, candidateTenantsForEmail, registerSession, forgetSession, registerIdentity,
+  defaultTenant, searchOrderForPatient,
+} = require('../services/portalRouting');
 
-// Patient portal login
-router.post('/login', async (req, res) => {
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+// Per-IP limiter: blunt protection against one host hammering the login
+// endpoint (credential stuffing across many accounts, DoS). Counts every
+// request regardless of outcome.
+const loginIpLimiter = rateLimit({
+  store: storeFor('portal-ip'),   // SEC-21: shared across instances
+  windowMs: LOGIN_WINDOW_MS,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({ error: 'Too many login attempts from this device. Please try again later.' });
+  },
+});
+
+// Per-account lockout: counts only FAILED logins (skipSuccessfulRequests),
+// keyed by the submitted email, so a single account cannot be brute-forced
+// even from a rotating set of IPs. A successful login resets the counter.
+// Social logins (no password) bypass this — they can't be brute-forced and
+// would otherwise share a single 'unknown'-email bucket.
+const loginAccountLimiter = rateLimit({
+  store: storeFor('portal-account'),  // SEC-21: shared across instances
+  windowMs: LOGIN_WINDOW_MS,
+  max: 3,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.body?.email || 'unknown').toLowerCase(),
+  skip: (req) => Boolean(req.body?.provider && req.body?.providerId),
+  handler: (req, res) => {
+    res.status(429).json({ error: 'Account temporarily locked due to too many failed attempts. Please try again in 15 minutes.' });
+  },
+});
+
+// Session tokens are stored HASHED (SHA-256) in patient_portal_sessions.session_token.
+// The raw token is only ever held by the client; a DB leak exposes only hashes,
+// which cannot be replayed as bearer tokens. SHA-256 (not bcrypt) is used because
+// lookups must be deterministic — we query by the hash — and the token is already
+// 256 bits of CSPRNG entropy, so slow hashing buys nothing.
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+// Verify the portal session token and bind it to the URL :patientId.
+// Runs automatically for every route that includes :patientId in its path.
+router.param('patientId', async (req, res, next, patientId) => {
   try {
-    const pool = req.app.locals.pool;
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Portal session required' });
+    }
+
+    const token = authHeader.slice(7);
+    const tokenHash = hashToken(token);
+    const basePool = req.app.locals.pool;
+
+    // SEC-05 (Option D): resolve the tenant from the shared routing table FIRST. That
+    // table maps a random token hash to a clinic and contains no identifiers, so it can
+    // be consulted before any tenant context exists. The session itself is then verified
+    // inside that tenant's schema, where patient_portal_sessions actually lives.
+    const routed = await tenantForSession(basePool, tokenHash);
+    req.tenant = { practiceId: null, tenantId: routed.tenantId, schemaName: routed.schemaName };
+    req.db = makeTenantDb(basePool, routed.schemaName, req.res);
+
+    const pool = req.db;
+    const result = await pool.query(
+      'SELECT patient_id FROM patient_portal_sessions WHERE session_token = $1 AND expires_at > NOW()',
+      [tokenHash]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid or expired portal session' });
+    }
+
+    const sessionPatientId = String(result.rows[0].patient_id);
+    req.portalPatientId = sessionPatientId;
+
+    if (String(patientId) !== sessionPatientId) {
+      return res.status(403).json({ error: 'Access denied: session does not belong to this patient' });
+    }
+
+    // Enrich req.tenant with the practice id for downstream entitlement checks. The
+    // schema is already settled by the session route above and must NOT be re-derived
+    // here — that lookup ran inside the tenant we just routed to.
+    try {
+      const t = await resolveTenantForUser(basePool, sessionPatientId);
+      if (t && t.practiceId) req.tenant.practiceId = t.practiceId;
+    } catch (e) {
+      console.warn('[portal] practice lookup unavailable:', e.message);
+    }
+
+    next();
+  } catch (error) {
+    console.error('Portal session validation error:', error);
+    res.status(500).json({ error: 'Session validation failed' });
+  }
+});
+
+// Patient portal login — rate limited per IP and locked out per account
+// SEC-20: extracted so the authorization-code exchange can reuse this exact path.
+// Every portal protection lives here (SEC-03 provider-token validation, SEC-19
+// canonical-id matching, the Option D tenant routing and session creation).
+const portalLoginHandler = async (req, res) => {
+  try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { email, password, provider, providerId, accessToken } = req.body;
 
     let patient;
+    // SEC-05 (Option D): the tenant that authenticated this login. Set by the credential
+    // branch below; the session row and its routing entry are written against it.
+    let tenantDb = pool;
+    let loginTenantId = null;
 
-    // Social login
-    if (provider && providerId) {
-      // Check if social auth exists
-      const socialAuth = await pool.query(
-        'SELECT patient_id FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
-        [provider, providerId]
+    // Social login. providerId is no longer required: since SEC-19 the canonical id
+    // comes from the provider-verified token, and the authorization-code flow has no
+    // client-side id at all.
+    if (provider && (providerId || accessToken)) {
+      // SEC-03: validate the access token server-side with the provider before
+      // trusting providerId. A providerId is a public identifier, not a secret;
+      // without this check anyone could forge a session by supplying a known id.
+      if (!accessToken) {
+        return res.status(400).json({ error: 'Provider access token is required' });
+      }
+      let verified;
+      try {
+        verified = await validateSocialToken(provider, accessToken);
+      } catch (validationErr) {
+        console.log(`[DEBUG sec03-social] portal social token validation failed: provider=${provider}`);
+        return res.status(401).json({ error: 'Social provider token validation failed. Please sign in again.' });
+      }
+      // Only trust the provider-verified canonical id, never the client-claimed providerId.
+      const canonicalProviderId = verified.providerId;
+      console.log(`[DEBUG sec03-social] portal social login verified: provider=${provider} canonicalId=${String(canonicalProviderId).slice(0, 8)}…`);
+
+      // SEC-19: match only on the provider-verified canonical id (never the
+      // client-supplied providerId). The Microsoft OID-prefix fallback matches
+      // not-yet-migrated homeAccountId rows using verified data alone.
+      let socialAuth = await pool.query(
+        `SELECT user_id FROM social_auth
+         WHERE provider = $1
+           AND (provider_user_id = $2
+                OR ($1 = 'microsoft' AND provider_user_id LIKE $2 || '.%'))`,
+        [provider, canonicalProviderId]
       );
 
+      // SEC-19 safe re-link: recover an existing link stored under a non-canonical id
+      // (e.g. Microsoft personal-account homeAccountId) using the provider-VERIFIED
+      // email only — never client input — then re-key it to the canonical id.
+      if (socialAuth.rows.length === 0 && verified.email) {
+        const relink = await pool.query(
+          `SELECT sa.id, sa.user_id FROM social_auth sa
+           JOIN patients p ON p.id = sa.patient_id
+           WHERE sa.provider = $1 AND LOWER(p.email) = LOWER($2)`,
+          [provider, verified.email]
+        );
+        if (relink.rows.length > 0) {
+          await pool.query(
+            'UPDATE social_auth SET provider_user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [canonicalProviderId, relink.rows[0].id]
+          );
+          socialAuth = { rows: [{ user_id: relink.rows[0].user_id }] };
+          console.log('[DEBUG sec19-relink] portal: re-keyed legacy social_auth to canonical id via verified email');
+        }
+      }
+
       if (socialAuth.rows.length > 0) {
-        const patientResult = await pool.query(`
-          SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
-          FROM patients p
-          LEFT JOIN users u ON p.id = u.id
-          WHERE p.id = $1 AND p.portal_enabled = true
-        `, [socialAuth.rows[0].patient_id]);
-        patient = patientResult.rows[0];
+        const patientId = socialAuth.rows[0].user_id;
+        // SEC-05: social_auth is global, but `patients` lives in a tenant schema — so the
+        // patient row must be located, not assumed. This previously ran unscoped and so
+        // always read the default tenant, meaning a patient at any other clinic could not
+        // sign in socially (and, on a single-tenant install, appeared to work by accident).
+        //
+        // Search the blind-index candidates for the verified email first, then the default
+        // tenant, then any remaining active tenant. The id is a primary key in every
+        // schema, so each probe is a single index lookup.
+        const order = await searchOrderForPatient(req.app.locals.pool, verified.email);
+        let matchedSchema = null;
+        for (const cand of order) {
+          try {
+            // Probe with withTenant, NOT makeTenantDb: makeTenantDb holds its pooled client
+            // until the response ends, so probing N tenants pins N connections and exhausts
+            // the pool (max 10) as soon as a deployment has more tenants than that — every
+            // social portal login then fails with a connect timeout. withTenant checks a
+            // client out and releases it per probe.
+            const row = await withTenant(req.app.locals.pool, cand.schemaName, async (c) => {
+              const r = await c.query(`
+                SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
+                FROM patients p
+                LEFT JOIN users u ON p.id = u.id
+                WHERE p.id = $1 AND p.portal_enabled = true
+              `, [patientId]);
+              return r.rows[0] || null;
+            });
+            if (row) {
+              patient = row;
+              matchedSchema = cand.schemaName;
+              loginTenantId = cand.tenantId;
+              break;
+            }
+          } catch (err) {
+            // A tenant whose schema is mid-migration must not block a login that belongs
+            // to a different tenant.
+            console.warn(`[portal] social lookup failed in ${cand.schemaName}:`, err.message);
+          }
+        }
+        // Only the winning tenant gets a request-lifetime handle, for the session write.
+        if (matchedSchema) tenantDb = makeTenantDb(req.app.locals.pool, matchedSchema, req.res);
       } else {
         return res.status(404).json({ error: 'Social account not linked to a patient' });
       }
     } else {
       // Traditional login
-      const result = await pool.query(`
-        SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
-        FROM patients p
-        LEFT JOIN users u ON p.id = u.id
-        WHERE p.email = $1 AND p.portal_enabled = true
-      `, [email]);
+      // Match either address: patients.email is what the portal registers, but a
+      // record created through the staff EHR may only carry the email on the
+      // linked users row, and the patient signs in with the address they know.
+      // SEC-05 (Option D): the email is not stored in the shared routing table in the
+      // clear — it is looked up as a keyed hash that yields only candidate TENANTS. The
+      // credential is then verified inside each candidate's own schema, so the shared
+      // slice never holds a password and never confirms where someone is a patient.
+      const candidates = await candidateTenantsForEmail(req.app.locals.pool, email);
 
-      if (result.rows.length === 0) {
-        return res.status(401).json({ error: 'Invalid credentials or portal not enabled' });
+      let candidate = null;
+      let matchedTenant = null;
+      let anyCompareRun = false;
+
+      for (const cand of candidates) {
+        const candDb = makeTenantDb(req.app.locals.pool, cand.schemaName, req.res);
+        let row;
+        try {
+          const r = await candDb.query(`
+            SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
+            FROM patients p
+            LEFT JOIN users u ON p.id = u.id
+            WHERE (LOWER(p.email) = LOWER($1) OR LOWER(u.email) = LOWER($1))
+              AND p.portal_enabled = true
+          `, [email]);
+          row = r.rows[0];
+        } finally {
+          candDb.release();
+        }
+
+        // SEC-17: run a compare for every candidate, using a dummy hash when the row or
+        // its password is absent, so timing does not reveal which clinic (if any) knows
+        // this address.
+        const hashToCompare = row && row.portal_password_hash ? row.portal_password_hash : DUMMY_PASSWORD_HASH;
+        const ok = await bcrypt.compare(password, hashToCompare);
+        anyCompareRun = true;
+
+        if (row && row.portal_password_hash && ok) {
+          candidate = row;
+          matchedTenant = cand;
+          break; // first authenticated match wins; a picker would be post-auth UX
+        }
       }
 
-      patient = result.rows[0];
+      // Guarantee at least one compare even when there were no candidates at all.
+      if (!anyCompareRun) await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
 
-      // Verify password
-      const validPassword = await bcrypt.compare(password, patient.portal_password_hash || '');
-      if (!validPassword) {
+      if (!candidate) {
         return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      patient = candidate;
+      if (matchedTenant) {
+        req.tenant = { practiceId: null, tenantId: matchedTenant.tenantId, schemaName: matchedTenant.schemaName };
+        tenantDb = makeTenantDb(req.app.locals.pool, matchedTenant.schemaName, req.res);
+        loginTenantId = matchedTenant.tenantId;
       }
     }
 
-    // Create session token
+    // Create session token — return the raw token to the client but persist only
+    // its SHA-256 hash, so the DB never holds a replayable credential.
     const sessionToken = crypto.randomBytes(32).toString('hex');
+    const sessionTokenHash = hashToken(sessionToken);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    await pool.query(`
+    // Last-resort fallback. Both login paths now identify their own tenant, so this only
+    // fires when the control plane could not answer at all — without a routing entry the
+    // next request could not find this session.
+    if (!loginTenantId) {
+      const d = await defaultTenant(req.app.locals.pool);
+      loginTenantId = d.tenantId;
+    }
+
+    // Record the identity route so the NEXT login for this address is a single indexed
+    // lookup rather than a search. Social logins previously never populated this, which is
+    // why they had nothing to route on. Best-effort: registerIdentity swallows its own
+    // errors, and a missing route only costs a slower next login.
+    await registerIdentity(req.app.locals.pool, patient.email || email, loginTenantId);
+
+    // The session row lives in the tenant that authenticated this login.
+    await tenantDb.query(`
       INSERT INTO patient_portal_sessions (patient_id, session_token, ip_address, user_agent, expires_at)
       VALUES ($1, $2, $3, $4, $5)
-    `, [patient.id, sessionToken, req.ip, req.get('user-agent'), expiresAt]);
+    `, [patient.id, sessionTokenHash, req.ip, req.get('user-agent'), expiresAt]);
 
-    // Return patient data without sensitive info
+    // SEC-05 (Option D): record token_hash -> tenant in the shared routing table so the
+    // next request can find this session before any tenant context exists. The row holds
+    // no patient id and no identifier — only a random hash and a clinic.
+    await registerSession(req.app.locals.pool, sessionTokenHash, loginTenantId, expiresAt);
+
+    // Return patient data without sensitive info.
+    // `role` is stated explicitly: the patients table has no role column, and
+    // the frontend keys navigation and access checks off user.role — without it
+    // a portal session looks role-less and falls through to the staff shell.
     const { portal_password_hash, ...patientData } = patient;
 
     res.json({
       message: 'Login successful',
-      patient: patientData,
+      patient: { ...patientData, role: 'patient' },
       sessionToken,
       expiresAt
     });
@@ -75,16 +333,56 @@ router.post('/login', async (req, res) => {
     console.error('Error in patient portal login:', error);
     res.status(500).json({ error: 'Login failed' });
   }
+};
+
+router.post('/login', loginIpLimiter, loginAccountLimiter, portalLoginHandler);
+
+// SEC-20: portal authorization-code exchange. The patient's browser receives only a
+// single-use code; it is redeemed here with the client secret and the provider token
+// never reaches the browser. The request is then handed to portalLoginHandler unchanged,
+// so SEC-03 token validation, SEC-19 canonical-id matching and the Option D tenant
+// routing all still apply.
+router.post('/oauth/:provider/exchange', loginIpLimiter, async (req, res) => {
+  const { provider } = req.params;
+  try {
+    if (provider !== 'google' && provider !== 'microsoft') {
+      return res.status(400).json({ error: `Unsupported provider: ${provider}` });
+    }
+    const { code, redirectUri, codeVerifier } = req.body || {};
+    const { accessToken, refreshToken } = await exchangeAuthCode(provider, { code, redirectUri, codeVerifier });
+
+    req.body = { provider, providerId: null, accessToken, refreshToken };
+    return portalLoginHandler(req, res);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    console.error(`Error during portal ${provider} code exchange:`, err);
+    res.status(500).json({ error: 'Social login failed' });
+  }
 });
 
 // Register/Enable patient portal
-router.post('/register', async (req, res) => {
+// SEC-02: requires a valid staff JWT. Previously unauthenticated, which let
+// anyone enable the portal and set a password for ANY patientId (account takeover).
+router.post('/register', authenticate, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, email, password } = req.body;
 
+    // Staff may enable any patient's portal; a patient may only enable their own.
+    if (req.user.role === 'patient' && String(req.user.id) !== String(patientId)) {
+      console.log(`[DEBUG sec02-register] blocked: patient ${req.user.id} tried to register portal for ${patientId}`);
+      return res.status(403).json({ error: 'You may only enable the portal for your own account' });
+    }
+    console.log(`[DEBUG sec02-register] caller=${req.user.id} role=${req.user.role} target=${patientId}`);
+
+    // SEC-12: enforce the shared password policy before enabling the portal
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.valid) {
+      return res.status(400).json({ error: pwCheck.message });
+    }
+
     // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
 
     // Enable portal and set password
     const result = await pool.query(`
@@ -100,9 +398,17 @@ router.post('/register', async (req, res) => {
 
     const { portal_password_hash, ...patientData } = result.rows[0];
 
+    // SEC-05 (Option D): record which tenant this address can sign in at, as a keyed
+    // hash — the shared table never stores the address itself, and holds no credential.
+    await registerIdentity(
+      req.app.locals.pool,
+      email || patientData.email,
+      (req.tenant && req.tenant.tenantId) || (await defaultTenant(req.app.locals.pool)).tenantId
+    );
+
     res.json({
       message: 'Patient portal enabled successfully',
-      patient: patientData
+      patient: { ...patientData, role: 'patient' }
     });
   } catch (error) {
     console.error('Error registering patient portal:', error);
@@ -113,7 +419,7 @@ router.post('/register', async (req, res) => {
 // Get patient appointments
 router.get('/:patientId/appointments', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
 
     const result = await pool.query(`
@@ -141,7 +447,7 @@ router.get('/:patientId/appointments', async (req, res) => {
 // Update patient appointment
 router.put('/:patientId/appointments/:appointmentId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, appointmentId } = req.params;
     const { startTime, endTime, reason, notes, appointmentType, providerId } = req.body;
 
@@ -173,7 +479,7 @@ router.put('/:patientId/appointments/:appointmentId', async (req, res) => {
 // Delete patient appointment
 router.delete('/:patientId/appointments/:appointmentId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, appointmentId } = req.params;
 
     const result = await pool.query(
@@ -195,7 +501,7 @@ router.delete('/:patientId/appointments/:appointmentId', async (req, res) => {
 // Get patient profile
 router.get('/:patientId/profile', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
 
     // Join with users table to get language preference, country, and timezone
@@ -224,7 +530,7 @@ router.get('/:patientId/profile', async (req, res) => {
 // Update patient profile
 router.put('/:patientId/profile', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
     const { first_name, last_name, phone, email, address, date_of_birth, emergencyContact, language, country } = req.body;
 
@@ -341,7 +647,7 @@ router.put('/:patientId/profile', async (req, res) => {
 // Get patient case history/medical records
 router.get('/:patientId/medical-records', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
 
     const result = await pool.query(`
@@ -366,10 +672,118 @@ router.get('/:patientId/medical-records', async (req, res) => {
   }
 });
 
+/**
+ * Documents that arrived through a secure message.
+ *
+ * A patient signed in with a portal session has no staff JWT, so they cannot
+ * reach /medical-records or /form-management. These mirror those routes for
+ * the portal, scoped by the :patientId the session is already bound to (see
+ * the router.param above), which is the whole authorisation check.
+ */
+router.get('/:patientId/medical-records/:recordId/attachments/:attachmentId', async (req, res) => {
+  try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
+    const { patientId, recordId, attachmentId } = req.params;
+
+    const recordResult = await pool.query(
+      'SELECT * FROM medical_records WHERE id = $1 AND patient_id = $2',
+      [recordId, patientId]
+    );
+    if (recordResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Record not found' });
+    }
+    if (!recordReferencesAttachment(recordResult.rows[0], attachmentId)) {
+      return res.status(404).json({ error: 'Attachment is not part of this record' });
+    }
+
+    const attachment = await loadAttachment(pool, attachmentId);
+    if (!attachment) {
+      return res.status(404).json({ error: 'Attachment no longer available' });
+    }
+    if (!sendAttachment(res, attachment)) {
+      return res.status(500).json({ error: 'Document could not be decrypted' });
+    }
+  } catch (error) {
+    console.error('Error downloading portal document:', error);
+    res.status(500).json({ error: 'Failed to download document' });
+  }
+});
+
+/** Forms Requested, for a portal session. */
+router.get('/:patientId/form-requests', async (req, res) => {
+  try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
+    const result = await pool.query(
+      `SELECT id, template_id, template_name, status, source,
+              document_attachment_id, document_name, document_action,
+              created_at, submitted_at
+         FROM form_submissions
+        WHERE patient_id = $1
+        ORDER BY created_at DESC`,
+      [req.params.patientId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching portal form requests:', error);
+    res.status(500).json({ error: 'Failed to load requested forms' });
+  }
+});
+
+router.get('/:patientId/form-requests/:submissionId/document', async (req, res) => {
+  try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
+    const { patientId, submissionId } = req.params;
+
+    const result = await pool.query(
+      'SELECT document_attachment_id FROM form_submissions WHERE id = $1 AND patient_id = $2',
+      [submissionId, patientId]
+    );
+    if (result.rows.length === 0 || !result.rows[0].document_attachment_id) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    const attachment = await loadAttachment(pool, result.rows[0].document_attachment_id);
+    if (!attachment) {
+      return res.status(404).json({ error: 'Document no longer available' });
+    }
+    if (!sendAttachment(res, attachment)) {
+      return res.status(500).json({ error: 'Document could not be decrypted' });
+    }
+  } catch (error) {
+    console.error('Error downloading requested document:', error);
+    res.status(500).json({ error: 'Failed to download document' });
+  }
+});
+
+router.post('/:patientId/form-requests/:submissionId/acknowledge', async (req, res) => {
+  try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
+    const { patientId, submissionId } = req.params;
+
+    const result = await pool.query(
+      `UPDATE form_submissions
+          SET status = 'submitted', submitted_at = CURRENT_TIMESTAMP,
+              submitted_by = $1, submitted_by_role = 'patient',
+              ip_address = $2, user_agent = $3, updated_at = NOW()
+        WHERE id = $4 AND patient_id = $1 AND status = 'draft'
+          AND document_attachment_id IS NOT NULL
+        RETURNING *`,
+      [patientId, req.ip, req.get('user-agent'), submissionId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No open document request with that id' });
+    }
+    res.json({ success: true, submission: result.rows[0] });
+  } catch (error) {
+    console.error('Error acknowledging requested document:', error);
+    res.status(500).json({ error: 'Failed to complete request' });
+  }
+});
+
 // Update patient medical record
 router.put('/:patientId/medical-records/:recordId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, recordId} = req.params;
     const { title, description, providerId } = req.body;
 
@@ -398,7 +812,7 @@ router.put('/:patientId/medical-records/:recordId', async (req, res) => {
 // Delete patient medical record
 router.delete('/:patientId/medical-records/:recordId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId, recordId } = req.params;
     const fs = require('fs');
     const path = require('path');
@@ -424,12 +838,17 @@ router.delete('/:patientId/medical-records/:recordId', async (req, res) => {
 
         if (Array.isArray(attachments)) {
           attachments.forEach(attachment => {
-            if (attachment.filename) {
-              const filePath = path.join(__dirname, '../uploads/medical-records', attachment.filename);
-              if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-                console.log('Deleted file:', filePath);
-              }
+            // Support new dated path format (attachment.path) and legacy filename-only format
+            let filePath;
+            if (attachment.path) {
+              // attachment.path is a URL path like /uploads/medical-records/2026-03-28/filename.ext
+              filePath = path.join(__dirname, '..', attachment.path);
+            } else if (attachment.filename) {
+              filePath = path.join(__dirname, '../uploads/medical-records', attachment.filename);
+            }
+            if (filePath && fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+              console.log('Deleted file:', filePath);
             }
           });
         }
@@ -455,12 +874,38 @@ router.delete('/:patientId/medical-records/:recordId', async (req, res) => {
 // Link social auth to patient
 router.post('/:patientId/link-social', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
     const { provider, providerId, accessToken, refreshToken, profileData } = req.body;
 
+    // SEC-08: validate the token with the provider and store ONLY the verified
+    // canonical id, never the client-claimed providerId. (The :patientId param
+    // guard already bound this request to the caller's portal session.)
+    if (!provider || !accessToken) {
+      return res.status(400).json({ error: 'Provider and access token are required' });
+    }
+    let verified;
+    try {
+      verified = await validateSocialToken(provider, accessToken);
+    } catch (validationErr) {
+      console.log(`[DEBUG sec08-link] portal link token validation failed: patient=${patientId} provider=${provider}`);
+      return res.status(401).json({ error: 'Social provider token validation failed. Please try again.' });
+    }
+    const canonicalProviderId = verified.providerId;
+
+    // If this social identity is already linked to a different patient, refuse.
+    const existing = await pool.query(
+      'SELECT patient_id FROM social_auth WHERE provider = $1 AND provider_user_id = $2',
+      [provider, canonicalProviderId]
+    );
+    if (existing.rows.length > 0 && String(existing.rows[0].patient_id) !== String(patientId)) {
+      return res.status(409).json({ error: 'This social account is already linked to another user' });
+    }
+
+    // patient.id === user.id in the current schema, so populate both columns.
     const result = await pool.query(`
       INSERT INTO social_auth (
+        user_id,
         patient_id,
         provider,
         provider_user_id,
@@ -468,16 +913,17 @@ router.post('/:patientId/link-social', async (req, res) => {
         refresh_token,
         profile_data
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $1, $2, $3, $4, $5, $6)
       ON CONFLICT (provider, provider_user_id)
       DO UPDATE SET
+        user_id = $1,
         patient_id = $1,
         access_token = $4,
         refresh_token = $5,
         profile_data = $6,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *
-    `, [patientId, provider, providerId, accessToken, refreshToken, JSON.stringify(profileData)]);
+    `, [patientId, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
     res.json({
       message: 'Social account linked successfully',
@@ -492,13 +938,24 @@ router.post('/:patientId/link-social', async (req, res) => {
 // Logout (delete session)
 router.post('/logout', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { sessionToken } = req.body;
 
-    await pool.query(
-      'DELETE FROM patient_portal_sessions WHERE session_token = $1',
-      [sessionToken]
-    );
+    // Sessions are stored hashed — hash the presented token to find the row.
+    const logoutHash = sessionToken ? hashToken(sessionToken) : null;
+
+    // SEC-05 (Option D): resolve the tenant from the routing table so the session is
+    // deleted from the schema it actually lives in, then drop the routing entry.
+    if (logoutHash) {
+      const routed = await tenantForSession(req.app.locals.pool, logoutHash);
+      const logoutDb = makeTenantDb(req.app.locals.pool, routed.schemaName, req.res);
+      try {
+        await logoutDb.query('DELETE FROM patient_portal_sessions WHERE session_token = $1', [logoutHash]);
+      } finally {
+        logoutDb.release();
+      }
+      await forgetSession(req.app.locals.pool, logoutHash);
+    }
 
     res.json({ message: 'Logged out successfully' });
   } catch (error) {

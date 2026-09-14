@@ -1,10 +1,13 @@
 const express = require('express');
+const { authenticate } = require('../middleware/auth');
 const router = express.Router();
+router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 // Get all payment postings
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patientId, claimId, insurancePayerId, status } = req.query;
 
     let query = `
@@ -60,7 +63,7 @@ router.get('/', async (req, res) => {
 // Get single payment posting
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT pp.*,
               CONCAT(pat.first_name, ' ', pat.last_name) as patient_name,
@@ -88,7 +91,7 @@ router.get('/:id', async (req, res) => {
 // Get payment postings by claim
 router.get('/claim/:claimId', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT pp.*,
               ip.name as insurance_payer_name
@@ -133,7 +136,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `INSERT INTO payment_postings
@@ -204,7 +207,7 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
     const result = await pool.query(
       `UPDATE payment_postings
@@ -272,7 +275,7 @@ router.put('/:id', async (req, res) => {
 // Delete payment posting
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM payment_postings WHERE id::text = $1::text RETURNING *',
       [req.params.id]

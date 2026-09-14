@@ -3,10 +3,10 @@ import { ArrowLeft, Shield, ChevronDown, ChevronRight, Lock, Eye, FileText, User
 
 const EFFECTIVE_DATE = 'February 28, 2026';
 const LAST_UPDATED = 'February 28, 2026';
-const CONTACT_EMAIL = 'privacy@aureoncare.com';
+const CONTACT_EMAIL = 'privacy@aureoncare.tech';
 const CONTACT_ADDRESS = 'AureonCare, Inc., Privacy Office, 97816 Lohr am Main, BY, Germany';
-const DPO_EMAIL = 'dpo@aureoncare.com';
-const HIPAA_PRIVACY_OFFICER = 'privacy@aureoncare.com';
+const DPO_EMAIL = 'dpo@aureoncare.tech';
+const HIPAA_PRIVACY_OFFICER = 'privacy@aureoncare.tech';
 
 const Section = ({ title, icon: Icon, children, theme, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
