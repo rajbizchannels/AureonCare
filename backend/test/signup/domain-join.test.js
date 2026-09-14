@@ -292,9 +292,42 @@ const PW = 'A-Strong-Passphrase!23';
     { domain: `leaving-${RUN}.example` }, auth(leaverLogin.body.token));
   check('the departing admin claimed a domain', leaverClaim.status === 201);
 
-  const del = await api('DELETE', `/api/users/${leaver.id}`, undefined, auth(A.token));
-  check('a user who claimed a domain can still be deleted', del.status === 200);
+  // audit_logs is append-only (tenant migration 002), and its user_id foreign key was
+  // declared ON DELETE SET NULL — a SET NULL is an UPDATE, so the trigger rejected it and
+  // deleting ANY user who had ever been audited failed with P0001. Write a real audit row
+  // first so the deletion has to survive that.
+  const { rows: schemaRow } = await pool.query(
+    'SELECT schema_name FROM control.tenants WHERE practice_id = $1', [A.practiceId]);
+  const tenantSchema = schemaRow[0].schema_name;
+  const ac = await pool.connect();
+  try {
+    await ac.query('BEGIN');
+    await ac.query(`SET LOCAL search_path TO ${tenantSchema}, public, control`);
+    await ac.query(
+      `INSERT INTO audit_logs (user_id,user_email,user_name,user_role,action_type,
+         resource_type,resource_name,action_description,module,status)
+       VALUES ($1,$2,'Leaving Soon','admin','view','patient','chart','viewed a chart','EHR','success')`,
+      [leaver.id, leaver.email]
+    );
+    await ac.query('COMMIT');
+  } catch (e) { await ac.query('ROLLBACK').catch(() => {}); throw e; } finally { ac.release(); }
 
+  const del = await api('DELETE', `/api/users/${leaver.id}`, undefined, auth(A.token));
+  check('a user who has been audited can still be deleted', del.status === 200);
+
+  const ac2 = await pool.connect();
+  let auditRow = null;
+  try {
+    await ac2.query('BEGIN');
+    await ac2.query(`SET LOCAL search_path TO ${tenantSchema}, public, control`);
+    const r = await ac2.query('SELECT user_id, user_email FROM audit_logs WHERE user_email = $1',
+      [leaver.email]);
+    auditRow = r.rows[0] || null;
+    await ac2.query('COMMIT');
+  } finally { ac2.release(); }
+  check('the audit record survives the deletion', Boolean(auditRow));
+  check('and keeps the id, so the trail is not broken',
+    Boolean(auditRow) && auditRow.user_id === leaver.id);
   const { rows: survived } = await pool.query(
     'SELECT created_by FROM public.practice_domains WHERE domain = $1', [`leaving-${RUN}.example`]);
   check('the claim survives the deletion, so self-join keeps working', survived.length === 1);
