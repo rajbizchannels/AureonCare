@@ -60,6 +60,9 @@ const { provisionTenant } = require(path.join(BACKEND, 'services/tenantProvision
 process.env.PORT = process.env.TEST_PORT || '4894';
 process.env.NODE_ENV = 'development';
 process.env.AC_COOKIE_INSECURE = 'true';
+// This suite makes many /api/auth calls in seconds; the auth limiter would block it and
+// report failures unrelated to what is under test. Double-gated, see middleware/rateLimiters.
+process.env.AC_RL_TEST_BYPASS = '1';
 process.env.AC_JWT_S = process.env.AC_JWT_S || crypto.randomBytes(48).toString('base64');
 const BASE = `http://127.0.0.1:${process.env.PORT}`;
 
@@ -93,13 +96,25 @@ const PW = 'A-Strong-Passphrase!23';
     const { practiceId } = await provisionTenant(pool, { name: `${label} ${RUN}` });
     const email = `admin_${label}_${RUN}@${label === 'A' ? DOMAIN : OTHER}`;
     const hash = await bcrypt.hash(PW, 12);
-    await pool.query(
+    const { rows } = await pool.query(
       `INSERT INTO public.users (id,email,first_name,last_name,role,status,password_hash,practice_id,created_at)
-       VALUES (gen_random_uuid(),$1,'Ada','Admin','admin','active',$2,$3,NOW())`,
+       VALUES (gen_random_uuid(),$1,'Ada','Admin','admin','active',$2,$3,NOW()) RETURNING id`,
       [email, hash, practiceId]
     );
     const login = await api('POST', '/api/auth/login', { email, password: PW });
-    return { practiceId, email, token: login.body && login.body.token };
+    return { practiceId, email, userId: rows[0].id, token: login.body && login.body.token };
+  };
+
+  /** An extra account at a given practice, for cases that end in its deletion. */
+  const mkUser = async (label, role, domain) => {
+    const email = `${label}_${RUN}@${domain}`;
+    const hash = await bcrypt.hash(PW, 12);
+    const { rows } = await pool.query(
+      `INSERT INTO public.users (id,email,first_name,last_name,role,status,password_hash,practice_id,created_at)
+       VALUES (gen_random_uuid(),$1,'Leaving','Soon',$2,'active',$3,$4,NOW()) RETURNING id`,
+      [email, role, hash, A.practiceId]
+    );
+    return { id: rows[0].id, email };
   };
   const A = await mkPractice('A');
   const B = await mkPractice('B');
@@ -265,6 +280,34 @@ const PW = 'A-Strong-Passphrase!23';
   const staffClaim = await api('POST', '/api/team-access/domains',
     { domain: `sneaky-${RUN}.example` }, auth(staffLogin.body.token));
   check('a non-admin cannot claim a domain', staffClaim.status === 403);
+
+  // ── Deleting a user who claimed a domain or decided a request ─────────────
+  // 080 pointed practice_domains.created_by and join_requests.decided_by at users(id) with
+  // no ON DELETE action, so deleting such an account raised a foreign key violation that
+  // surfaced as a flat 500 — and the account most likely to hold those references is the
+  // administrator who set the practice up.
+  const leaver = await mkUser('leaver', 'admin', DOMAIN);
+  const leaverLogin = await api('POST', '/api/auth/login', { email: leaver.email, password: PW });
+  const leaverClaim = await api('POST', '/api/team-access/domains',
+    { domain: `leaving-${RUN}.example` }, auth(leaverLogin.body.token));
+  check('the departing admin claimed a domain', leaverClaim.status === 201);
+
+  const del = await api('DELETE', `/api/users/${leaver.id}`, undefined, auth(A.token));
+  check('a user who claimed a domain can still be deleted', del.status === 200);
+
+  const { rows: survived } = await pool.query(
+    'SELECT created_by FROM public.practice_domains WHERE domain = $1', [`leaving-${RUN}.example`]);
+  check('the claim survives the deletion, so self-join keeps working', survived.length === 1);
+  check('only the attribution is cleared', survived.length === 1 && survived[0].created_by === null);
+
+  const ghost = await api('DELETE', '/api/users/00000000-0000-0000-0000-000000000000',
+    undefined, auth(A.token));
+  check('deleting a non-existent user is a plain 404', ghost.status === 404);
+
+  const crossDelete = await api('DELETE', `/api/users/${B.userId}`, undefined, auth(A.token));
+  check('deleting another practice\'s user is refused', crossDelete.status === 404);
+  check('and says so, rather than claiming the user does not exist',
+    crossDelete.body && /different practice/i.test(crossDelete.body.error || ''));
 
   // ── Report ────────────────────────────────────────────────────────────────
   let pass = 0;

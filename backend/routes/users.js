@@ -427,48 +427,80 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
 // Delete user — admin only
 router.delete('/:id', authorize('admin'), async (req, res) => {
   const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  // SEC-05: patient_portal_sessions moved into the tenant schema at the 068 cutover, so a
+  // raw pooled client — whose search_path is the default — cannot see it and every deletion
+  // failed with `relation "patient_portal_sessions" does not exist`, reported as a flat 500.
+  // req.db is the caller's tenant-scoped handle; public tables still resolve through it.
+  const db = req.db;
+  if (!db) {
+    return res.status(409).json({
+      error: 'This account is not linked to an active tenant workspace, so user records '
+        + 'cannot be changed. See GET /api/auth/tenant-status.',
+    });
+  }
   try {
     const userId = req.params.id;
-    await client.query('BEGIN');
+    await db.query('BEGIN');
 
     // social_auth has no FK to users, so it does not cascade on user deletion.
     // Explicitly remove the account's linked social identities (rows carry the
     // user id in BOTH user_id and patient_id) so no orphaned link survives — an
     // orphan would also keep the UNIQUE(provider, provider_user_id) slot occupied
     // and block that identity from linking to a new account later.
-    await client.query(
+    await db.query(
       'DELETE FROM social_auth WHERE user_id::text = $1::text OR patient_id::text = $1::text',
       [userId]
     );
 
     // Portal sessions are keyed by patient_id (= user id) and likewise do not
     // cascade; drop them so a deleted account leaves no usable session behind.
-    await client.query(
+    await db.query(
       'DELETE FROM patient_portal_sessions WHERE patient_id::text = $1::text',
       [userId]
     );
 
     // SEC-05: only delete a user in the caller's practice. A cross-practice id
     // matches 0 rows -> rollback (undoing the cascade deletes above) -> 404.
-    const result = await client.query(
+    const result = await db.query(
       'DELETE FROM users WHERE id::text = $1::text AND practice_id = $2 RETURNING *',
       [userId, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'User not found' });
+      await db.query('ROLLBACK');
+      // 0 rows has two quite different causes and they need different fixes: no such user,
+      // or a user who exists but is not in the caller's practice — including one with no
+      // practice at all, since `practice_id = $2` never matches NULL. Saying only "not
+      // found" for the second sends an admin looking for a record that is right there.
+      const exists = await pool.query(
+        'SELECT practice_id FROM users WHERE id::text = $1::text', [userId]
+      );
+      if (exists.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      return res.status(404).json({
+        error: exists.rows[0].practice_id
+          ? 'That user belongs to a different practice.'
+          : 'That account is not linked to any practice, so it cannot be deleted from here.',
+      });
     }
 
-    await client.query('COMMIT');
+    await db.query('COMMIT');
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
-    await client.query('ROLLBACK');
+    await db.query('ROLLBACK');
     console.error('Error deleting user:', error);
+    // A foreign key violation means something still points at this account. Naming the
+    // table turns an unactionable 500 into a specific thing to go and clear.
+    if (error.code === '23503') {
+      return res.status(409).json({
+        error: 'That user cannot be deleted while other records still refer to them'
+          + (error.table ? ` (${error.table})` : '')
+          + '. Reassign or remove those first.',
+        constraint: error.constraint || undefined,
+      });
+    }
     res.status(500).json({ error: 'Failed to delete user' });
-  } finally {
-    client.release();
   }
 });
 

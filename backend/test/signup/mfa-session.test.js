@@ -20,6 +20,9 @@ const { provisionTenant } = require(path.join(BACKEND, 'services/tenantProvision
 process.env.PORT = process.env.TEST_PORT || '4896';
 process.env.NODE_ENV = 'development';
 process.env.AC_COOKIE_INSECURE = 'true';
+// This suite makes many /api/auth calls in seconds; the auth limiter would block it and
+// report failures unrelated to what is under test. Double-gated, see middleware/rateLimiters.
+process.env.AC_RL_TEST_BYPASS = '1';
 process.env.AC_JWT_S = process.env.AC_JWT_S || crypto.randomBytes(48).toString('base64');
 const BASE = `http://127.0.0.1:${process.env.PORT}`;
 
