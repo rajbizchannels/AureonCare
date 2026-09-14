@@ -749,7 +749,13 @@ const api = {
     const response = await authenticatedFetch(`${API_BASE_URL}/users/${id}`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to delete user');
+    if (!response.ok) {
+      // "Failed to delete user" told the admin nothing — it was the same message whether
+      // the account was in another practice, unlinked, or still referenced by other
+      // records. The server distinguishes those; pass its answer through.
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to delete user');
+    }
     return response.json();
   },
 
