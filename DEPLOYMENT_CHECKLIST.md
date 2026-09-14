@@ -56,10 +56,17 @@ Then, and on every deploy after:
 
 ```bash
 node backend/run-migrations.js          # global: public + control — applies only what is new
-node backend/run-tenant-migrations.js   # fans out tenant/001, 002 to every tenant schema
+node backend/run-tenant-migrations.js   # fans tenant/001, 002, 003 out to every tenant schema
 ```
 
 Add `--dry-run` to either to see what would run without touching anything.
+
+> **Tenant migrations are not optional.** `run-migrations.js` only touches `public` and
+> `control`. Skipping `run-tenant-migrations.js` leaves per-tenant tables behind — and
+> tenant/003 in particular is what makes it possible to delete a user at all: without it,
+> the `ON DELETE SET NULL` on `audit_logs.user_id` tries to rewrite a table that
+> tenant/002 made append-only, and the deletion fails with
+> `P0001: audit_logs is append-only`.
 
 - [ ] `--adopt` run exactly once on the existing database (skip on a brand-new one)
 - [ ] Global migrations complete without error
