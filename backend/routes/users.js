@@ -442,22 +442,38 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
     const userId = req.params.id;
     await db.query('BEGIN');
 
+    // These two are housekeeping, not the deletion itself, and the tables they touch have
+    // moved between `public` and the tenant schema across the SEC-05 cutover — so on some
+    // deployments one of them is not visible from this connection at all. A missing table
+    // has no rows to orphan, so it must not be able to block the deletion; anything other
+    // than "relation does not exist" still aborts, because that would mean rows we failed
+    // to clean up. Each runs in a savepoint so a skip does not poison the transaction.
+    const skippedCleanups = [];
+    const cleanup = async (label, sql) => {
+      await db.query('SAVEPOINT cleanup');
+      try {
+        await db.query(sql, [userId]);
+        await db.query('RELEASE SAVEPOINT cleanup');
+      } catch (err) {
+        await db.query('ROLLBACK TO SAVEPOINT cleanup');
+        if (err.code !== '42P01') throw err;
+        console.warn(`[users] skipping ${label} cleanup — table not visible from this schema`);
+        skippedCleanups.push(label);
+      }
+    };
+
     // social_auth has no FK to users, so it does not cascade on user deletion.
     // Explicitly remove the account's linked social identities (rows carry the
     // user id in BOTH user_id and patient_id) so no orphaned link survives — an
     // orphan would also keep the UNIQUE(provider, provider_user_id) slot occupied
     // and block that identity from linking to a new account later.
-    await db.query(
-      'DELETE FROM social_auth WHERE user_id::text = $1::text OR patient_id::text = $1::text',
-      [userId]
-    );
+    await cleanup('social_auth',
+      'DELETE FROM social_auth WHERE user_id::text = $1::text OR patient_id::text = $1::text');
 
     // Portal sessions are keyed by patient_id (= user id) and likewise do not
     // cascade; drop them so a deleted account leaves no usable session behind.
-    await db.query(
-      'DELETE FROM patient_portal_sessions WHERE patient_id::text = $1::text',
-      [userId]
-    );
+    await cleanup('patient_portal_sessions',
+      'DELETE FROM patient_portal_sessions WHERE patient_id::text = $1::text');
 
     // SEC-05: only delete a user in the caller's practice. A cross-practice id
     // matches 0 rows -> rollback (undoing the cascade deletes above) -> 404.
@@ -486,9 +502,12 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
     }
 
     await db.query('COMMIT');
-    res.json({ message: 'User deleted successfully' });
+    res.json({
+      message: 'User deleted successfully',
+      skippedCleanups: skippedCleanups.length ? skippedCleanups : undefined,
+    });
   } catch (error) {
-    await db.query('ROLLBACK');
+    await db.query('ROLLBACK').catch(() => {});
     console.error('Error deleting user:', error);
     // A foreign key violation means something still points at this account. Naming the
     // table turns an unactionable 500 into a specific thing to go and clear.
@@ -500,7 +519,16 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
         constraint: error.constraint || undefined,
       });
     }
-    res.status(500).json({ error: 'Failed to delete user' });
+    // Everything else has been answered with a bare "Failed to delete user", which is the
+    // same string for a missing relation, a broken constraint and a dead connection. The
+    // admin who sees it cannot act on it and nobody without server log access can diagnose
+    // it. Carry the database's own code and message — this route is admin-only, and the
+    // text is schema detail, never patient data.
+    res.status(500).json({
+      error: 'Failed to delete user',
+      code: error.code || undefined,
+      detail: String(error.message || '').slice(0, 300) || undefined,
+    });
   }
 });
 
