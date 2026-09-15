@@ -31,6 +31,12 @@
 /*.pptx
 /*.docx
 
+# Internal architecture documentation. Neither build reads it, and it describes
+# tenancy internals, the security control set and where that control set is
+# still incomplete — detail that has no reason to travel to the deployment.
+# Anchored, so backend/ and frontend/public/docs/ markdown are unaffected.
+/ARCHITECTURE_DIAGRAM.md
+
 # Test and tooling output.
 /coverage/
 /frontend/coverage/
