@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope } from 'lucide-react';
 import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
 import { FORM_TEMPLATES } from '../data/formTemplates';
 import { formatDate, formatTime, toLocalDateString } from '../utils/formatters';
@@ -15,6 +15,14 @@ import AddToCalendarButton from '../components/calendar/AddToCalendarButton';
 import { useCalendarSync } from '../components/calendar/useCalendarSync';
 import ThemedSelect from '../components/forms/ThemedSelect';
 import SecureMessaging from '../components/messaging/SecureMessaging';
+
+// A provider record carries its specialty as `specialization` (providers table)
+// or `specialty` (users table), depending on which query filled it in.
+const providerSpecialtyOf = (provider) =>
+  (provider.specialization || provider.specialty || '').trim();
+
+const providerNameOf = (provider) =>
+  `${provider.firstName || provider.first_name || ''} ${provider.lastName || provider.last_name || ''}`.trim();
 
 const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange, requestedTab = null }) => {
   const { language, setLanguage, setTheme } = useApp();
@@ -81,6 +89,10 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   });
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  // Narrows the booking provider list. Kept out of bookingData so clearing the
+  // form after a booking leaves the patient's search where they left it.
+  const [providerSpecialtyFilter, setProviderSpecialtyFilter] = useState('');
+  const [providerSearchQuery, setProviderSearchQuery] = useState('');
 
   // Appointment editing state
   const [editingAppointment, setEditingAppointment] = useState(null);
@@ -101,6 +113,43 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [editRecordData, setEditRecordData] = useState({ title: '', description: '', providerId: '' });
+
+  // Specialties actually present among this practice's providers, de-duplicated
+  // case-insensitively so "Cardiology" and "cardiology" collapse to one entry.
+  const specialtyOptions = useMemo(() => {
+    const byKey = new Map();
+    providers.forEach((provider) => {
+      const specialty = providerSpecialtyOf(provider);
+      if (specialty && !byKey.has(specialty.toLowerCase())) {
+        byKey.set(specialty.toLowerCase(), specialty);
+      }
+    });
+    return [...byKey.values()].sort((a, b) => a.localeCompare(b));
+  }, [providers]);
+
+  const filteredProviders = useMemo(() => {
+    const query = providerSearchQuery.trim().toLowerCase();
+    return providers.filter((provider) => {
+      const specialty = providerSpecialtyOf(provider);
+      if (providerSpecialtyFilter && specialty.toLowerCase() !== providerSpecialtyFilter.toLowerCase()) {
+        return false;
+      }
+      if (!query) return true;
+      return `${providerNameOf(provider)} ${specialty}`.toLowerCase().includes(query);
+    });
+  }, [providers, providerSpecialtyFilter, providerSearchQuery]);
+
+  // A provider the filter has hidden must not stay selected, or the patient
+  // submits a booking against someone they can no longer see.
+  useEffect(() => {
+    if (!bookingData.providerId) return;
+    const stillListed = filteredProviders.some(
+      (provider) => String(provider.id) === String(bookingData.providerId)
+    );
+    if (!stillListed) {
+      setBookingData((prev) => ({ ...prev, providerId: '', time: '' }));
+    }
+  }, [filteredProviders, bookingData.providerId]);
 
   const { logViewAccess } = useAudit();
 
@@ -2712,19 +2761,62 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   {providersError}. Please refresh the page or contact support.
                 </div>
               ) : (
-                <ThemedSelect
-                  theme={theme}
-                  value={bookingData.providerId}
-                  onChange={(e) => setBookingData({...bookingData, providerId: e.target.value, time: ''})}
-                  required
-                >
-                  <option value="">Select a provider</option>
-                  {providers.map(provider => (
-                    <option key={provider.id} value={provider.id}>
-                      Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name} {(provider.specialization || provider.specialty) ? `- ${provider.specialization || provider.specialty}` : ''}
-                    </option>
-                  ))}
-                </ThemedSelect>
+                <div className="space-y-3">
+                  {/* Narrow the list before picking: by specialty, by name, or both. */}
+                  <div className={`grid grid-cols-1 gap-3 ${specialtyOptions.length > 0 ? 'sm:grid-cols-2' : ''}`}>
+                    {specialtyOptions.length > 0 && (
+                      <div>
+                        <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          <Stethoscope className="w-3 h-3 inline mr-1" />
+                          {t.filterBySpecialty || 'Filter by Specialty'}
+                        </label>
+                        <ThemedSelect
+                          theme={theme}
+                          value={providerSpecialtyFilter}
+                          onChange={(e) => setProviderSpecialtyFilter(e.target.value)}
+                        >
+                          <option value="">{t.allSpecialties || 'All Specialties'}</option>
+                          {specialtyOptions.map(specialty => (
+                            <option key={specialty} value={specialty}>{specialty}</option>
+                          ))}
+                        </ThemedSelect>
+                      </div>
+                    )}
+                    <div>
+                      <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        <Search className="w-3 h-3 inline mr-1" />
+                        {t.search || 'Search'}
+                      </label>
+                      <input
+                        type="text"
+                        value={providerSearchQuery}
+                        onChange={(e) => setProviderSearchQuery(e.target.value)}
+                        placeholder={t.searchProvidersPlaceholder || 'Search by provider name or specialty...'}
+                        className={`w-full min-h-[42px] px-3 py-2 border rounded-lg outline-none transition-colors ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500 focus:border-blue-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {filteredProviders.length === 0 ? (
+                    <div className={`w-full px-4 py-2 border rounded-lg text-sm ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-600'}`}>
+                      {t.noProvidersMatch || 'No providers match your search'}
+                    </div>
+                  ) : (
+                    <ThemedSelect
+                      theme={theme}
+                      value={bookingData.providerId}
+                      onChange={(e) => setBookingData({...bookingData, providerId: e.target.value, time: ''})}
+                      required
+                    >
+                      <option value="">Select a provider</option>
+                      {filteredProviders.map(provider => (
+                        <option key={provider.id} value={provider.id}>
+                          Dr. {providerNameOf(provider)} {providerSpecialtyOf(provider) ? `- ${providerSpecialtyOf(provider)}` : ''}
+                        </option>
+                      ))}
+                    </ThemedSelect>
+                  )}
+                </div>
               )}
             </div>
           )}
