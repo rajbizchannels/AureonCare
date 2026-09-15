@@ -1,6 +1,8 @@
 # AureonCare Architecture Diagram
 
-This document provides comprehensive architecture diagrams for all components and infrastructure of the AureonCare healthcare practice management system.
+Comprehensive architecture diagrams for all components and infrastructure of the AureonCare healthcare practice management system.
+
+> **Accuracy note.** These diagrams document what is **implemented in the code**, verified by reading the source. Several packages are declared in `package.json` but never imported; they are listed in §21 as *not implemented* rather than drawn as if they exist.
 
 ---
 
@@ -9,459 +11,466 @@ This document provides comprehensive architecture diagrams for all components an
 ```mermaid
 graph TB
     subgraph Clients["Client Layer"]
-        WEB["Web Browser<br/>(React SPA)"]
-        PATIENT["Patient Portal<br/>(React SPA)"]
-        MOBILE["Mobile Browser<br/>(PWA)"]
+        WEB["Clinic Web App<br/>React 18 SPA"]
+        PORTAL["Patient Portal<br/>React SPA routes"]
+        MOB["Native Mobile App<br/>React Native + Expo 54"]
+        CONSOLE["Platform Console<br/>Static HTML/JS<br/>served by backend"]
     end
 
-    subgraph CDN["CDN / Hosting"]
-        VERCEL["Vercel<br/>Static Hosting + Serverless"]
+    subgraph Edge["Edge / Ingress"]
+        VERCEL["Vercel<br/>Static + Serverless"]
+        NGINX["Nginx / K8s Ingress<br/>self-hosted"]
     end
 
-    subgraph Backend["Backend Layer (Node.js / Express)"]
-        API["Express.js API Server<br/>50+ Route Handlers"]
-        MW["Middleware<br/>Auth · CORS · Rate Limit · Helmet"]
-        SVC["Service Layer<br/>Business Logic"]
+    subgraph Backend["Backend — Node.js / Express (single service)"]
+        MW["Middleware Chain<br/>helmet · CORS · CSRF · rate limit<br/>authenticate · tenant context"]
+        API["59 Route Modules<br/>/api/*"]
+        PLAT["Control Plane API<br/>/api/platform"]
+        SVC["20+ Services<br/>business logic"]
     end
 
-    subgraph Data["Data Layer"]
-        PG["PostgreSQL<br/>(Supabase Hosted)<br/>76 Tables"]
-        REDIS["Redis Cache<br/>(Optional)"]
-        FILES["File Storage<br/>Multer / Local"]
+    subgraph Data["Data Layer — PostgreSQL"]
+        CTRL["control schema<br/>tenant registry · billing · operators"]
+        TPL["template schema<br/>golden structural clone"]
+        T1["tenant_a schema<br/>PHI"]
+        T2["tenant_b schema<br/>PHI"]
+        PUB["public schema<br/>identity + shared master data"]
+    end
+
+    subgraph Infra["Supporting Infra"]
+        REDIS["Redis<br/>rate-limit store · send quota"]
+        FILES["File Storage<br/>Multer → disk / PVC"]
     end
 
     subgraph External["External Services"]
-        ZOOM["Zoom SDK"]
-        GMEET["Google Meet"]
-        WEBEX["Cisco Webex"]
-        LABCORP["LabCorp API"]
-        OPTUM["Optum API"]
-        SURESX["SureScripts eRx"]
-        SMTP["SMTP / SendGrid<br/>(Email)"]
-        WHATSAPP["WhatsApp API"]
+        STRIPE["Stripe<br/>billing + webhooks"]
+        VIDEO["Zoom · Google Meet<br/>Webex · Teams"]
+        VENDOR["LabCorp · Optum<br/>SureScripts"]
+        GOOG["Google APIs<br/>Drive backup · Calendar"]
+        MSGRAPH["Microsoft Graph"]
+        COMMS["SMTP / SendGrid<br/>WhatsApp Graph API"]
     end
 
-    subgraph Auth["Identity Providers"]
-        GOOGLE["Google OAuth 2.0"]
-        MSAZURE["Microsoft Azure AD"]
-    end
-
-    WEB --> VERCEL
-    PATIENT --> VERCEL
-    MOBILE --> VERCEL
-    VERCEL --> API
-    API --> MW
-    MW --> SVC
-    SVC --> PG
-    SVC --> REDIS
+    WEB --> Edge
+    PORTAL --> Edge
+    MOB --> Edge
+    CONSOLE --> Edge
+    Edge --> MW
+    MW --> API
+    MW --> PLAT
+    API --> SVC
+    PLAT --> CTRL
+    SVC --> PUB
+    SVC --> T1
+    SVC --> T2
+    CTRL -.provisions from.-> TPL
+    TPL -.stamps.-> T1
+    TPL -.stamps.-> T2
+    MW --> REDIS
     SVC --> FILES
-    SVC --> ZOOM
-    SVC --> GMEET
-    SVC --> WEBEX
-    SVC --> LABCORP
-    SVC --> OPTUM
-    SVC --> SURESX
-    SVC --> SMTP
-    SVC --> WHATSAPP
-    MW --> GOOGLE
-    MW --> MSAZURE
+    SVC --> STRIPE
+    SVC --> VIDEO
+    SVC --> VENDOR
+    SVC --> GOOG
+    SVC --> MSGRAPH
+    SVC --> COMMS
 ```
 
 ---
 
-## 2. Frontend Architecture
+## 2. Multi-Tenancy Architecture (SEC-05 "Model D")
+
+The single largest architectural change. Isolation is **schema-per-tenant**, enforced in application code plus a CI guard. There is **no Postgres Row-Level Security** anywhere in the codebase.
 
 ```mermaid
 graph TB
-    subgraph Entry["Entry Point"]
-        IDX["index.js<br/>React DOM Root"]
-        APP["App.js<br/>Router + Context Provider"]
+    REQ["Incoming Request<br/>Bearer JWT or session cookie"]
+
+    subgraph Resolve["Tenant Resolution"]
+        AUTH["authenticate()<br/>middleware/auth.js"]
+        ATTACH["attachTenantContext()<br/>auth.js:99"]
+        CAT["tenantCatalog.js<br/>resolveTenantForUser()<br/>60s in-process cache"]
     end
 
-    subgraph Context["Global State"]
-        CTX["AppContext.js<br/>React Context API<br/>Auth · User · Permissions"]
+    subgraph Lookup["Resolution Chain"]
+        U["public.users.practice_id"]
+        TEN["control.tenants<br/>status = 'active'"]
+        SCH["schema_name"]
     end
 
-    subgraph Router["React Router v6"]
-        direction LR
-        PUB["Public Routes<br/>Login · Register · Patient Portal"]
-        PRIV["Protected Routes<br/>Role-Based Access"]
+    subgraph Scoped["Scoped DB Handle"]
+        MK["makeTenantDb(pool, schema, res)<br/>db/requestTenantDb.js"]
+        VAL["validate schema name<br/>/^[a-z_][a-z0-9_]*$/"]
+        TX["per-statement transaction<br/>SET LOCAL search_path TO<br/>tenant, public, control"]
+        REL["release client on<br/>res finish / close"]
     end
 
-    subgraph Views["24+ Page Views"]
-        DASH["Dashboard"]
-        PATIENTS["Patients"]
-        APPTS["Appointments"]
-        EHR["EHR / Medical Records"]
-        TELE["Telehealth"]
-        RCM["Revenue Cycle (RCM)"]
-        FHIR["FHIR Integration"]
-        CRM["CRM"]
-        REPORTS["Reports & Analytics"]
-        ADMIN["Admin Panel"]
-        PPVIEW["Patient Portal"]
-        PROVIDERS["Provider Management"]
-        SCHED["Scheduling"]
-        FORMS["Form Management"]
-        INTEG["Integrations"]
+    RDB["req.db<br/>tenant-scoped pool"]
+
+    subgraph Alt["Other Entry Points Setting req.db"]
+        MSG["messagingAuth.js:130"]
+        PORT["patient-portal.js:81<br/>routed by token hash, pre-auth"]
     end
 
-    subgraph Components["Reusable Components"]
-        MODALS["Modals"]
-        CARDS["Cards"]
-        FORMS_C["Forms"]
-        PANELS["Side Panels"]
-        CALENDAR["Calendar"]
-        QUICKV["Quick Views"]
-        ADMIN_C["Admin Components"]
-        HELP["Help / Support"]
-        SCHED_C["Scheduling Components"]
-    end
-
-    subgraph Services["Frontend Services"]
-        APISVC["apiService.js<br/>Centralized HTTP Client (Axios)"]
-        OAUTHCFG["oauthConfig.js<br/>Google · Microsoft"]
-    end
-
-    subgraph Hooks["Custom Hooks"]
-        USEAUDIT["useAudit"]
-        USEPERM["usePermissions"]
-        USEHOOKS["Other Hooks"]
-    end
-
-    subgraph UILibs["UI Libraries"]
-        TAILWIND["Tailwind CSS 3.4"]
-        LUCIDE["Lucide React Icons"]
-        RECHARTS["Recharts / Chart.js"]
-        ZOOM_SDK["@zoom/meetingsdk"]
-        JSPDF["jsPDF"]
-        XLSX["XLSX (Excel)"]
-        DATEFNS["date-fns"]
-    end
-
-    IDX --> APP
-    APP --> CTX
-    APP --> Router
-    Router --> PUB
-    Router --> PRIV
-    PRIV --> Views
-    Views --> Components
-    Views --> Services
-    Views --> Hooks
-    Components --> UILibs
+    REQ --> AUTH --> ATTACH --> CAT
+    CAT --> U --> TEN --> SCH
+    SCH --> MK --> VAL --> TX --> RDB
+    MK --> REL
+    MSG --> RDB
+    PORT --> RDB
 ```
 
----
+**Why per-statement `SET LOCAL`:** Supabase's transaction pooler can hand consecutive statements to different backends, so a connection-level `search_path` is unreliable. Each statement is wrapped in its own transaction with `SET LOCAL`.
 
-## 3. Backend Architecture
+**Fallback behaviour:** unresolved tenants fall back to `public`, which holds **no clinical tables** — so the fallback fails loudly and is logged as a broken account rather than silently leaking.
 
-```mermaid
-graph TB
-    subgraph Server["Express.js Server (server.js)"]
-        direction TB
-        INIT["App Initialization<br/>Port · CORS · Helmet · Rate-Limit"]
-        ROUTES["Route Mounting<br/>50+ Router Files"]
-    end
-
-    subgraph Middleware["Middleware Pipeline"]
-        AUTHM["auth.js<br/>JWT Verification · Session Check"]
-        ERRM["Error Handler<br/>Centralized Error Responses"]
-        LOGM["Winston Logger<br/>Request / Error Logging"]
-        UPLOADM["Multer<br/>File Upload Handling"]
-    end
-
-    subgraph RouteGroups["API Route Groups"]
-        direction LR
-        subgraph Clinical["Clinical"]
-            R_PAT["patients"]
-            R_APPT["appointments"]
-            R_EHR["medical-records"]
-            R_RX["prescriptions"]
-            R_DX["diagnosis"]
-            R_LAB["lab-orders"]
-            R_TELE["telehealth"]
-            R_FHIR["fhir"]
-            R_MED["medications"]
-        end
-
-        subgraph RCM_R["Revenue Cycle"]
-            R_CLAIMS["claims"]
-            R_PAY["payments"]
-            R_PAYPOST["payment-postings"]
-            R_PREAUTH["preapprovals"]
-            R_DENY["denials"]
-            R_EDI["edi"]
-            R_INS["insurance-payers"]
-        end
-
-        subgraph AuthAdmin["Auth & Admin"]
-            R_AUTH["auth"]
-            R_USERS["users"]
-            R_ROLES["roles"]
-            R_PERM["permissions"]
-            R_PLANS["plans"]
-            R_CLINIC["clinic-settings"]
-        end
-
-        subgraph PatientEng["Patient Engagement"]
-            R_PP["patient-portal"]
-            R_NOTIF["notifications"]
-            R_WAIT["waitlist"]
-            R_INTAKE["intake-forms"]
-            R_CAMP["campaigns"]
-        end
-
-        subgraph Practice["Practice Management"]
-            R_PROV["providers"]
-            R_SCHED["scheduling"]
-            R_OFFER["healthcare-offerings"]
-            R_FORMS["form-management"]
-            R_TASK["tasks"]
-        end
-
-        subgraph IntegR["Integration"]
-            R_OAUTH["integrations/oauth"]
-            R_VENDOR["vendor-integration-settings"]
-            R_MCODE["medical-codes"]
-            R_CALSYNC["calendar-sync"]
-            R_SEARCH["search"]
-            R_BACKUP["backup"]
-        end
-    end
-
-    subgraph ServiceLayer["Service Layer"]
-        TELE_SVC["Telehealth Providers<br/>Zoom · Google Meet · Webex"]
-        VENDOR_SVC["Vendor Integrations<br/>LabCorp · Optum · SureScripts"]
-        EDI_SVC["EDI / HL7 Parser<br/>837 Claims Processing"]
-        EMAIL_SVC["Email Service<br/>Nodemailer / SendGrid"]
-        WHATSAPP_SVC["WhatsApp Service"]
-        FHIR_SVC["FHIR R4 Service"]
-        CRYPT["Encryption Utility<br/>(AES-256)"]
-        TZ["Timezone Utilities"]
-    end
-
-    subgraph DB_LAYER["Data Access Layer"]
-        DBJS["db.js<br/>PostgreSQL Pool (pg)"]
-        SBJS["supabase.js<br/>Supabase Client"]
-        ARCHDB["archiveDb.js<br/>Data Archival"]
-    end
-
-    INIT --> ROUTES
-    INIT --> SOCKET
-    ROUTES --> Middleware
-    Middleware --> RouteGroups
-    RouteGroups --> ServiceLayer
-    RouteGroups --> DB_LAYER
-    ServiceLayer --> DB_LAYER
-```
-
----
-
-## 4. Database Schema Overview
-
-```mermaid
-erDiagram
-    users ||--o{ user_roles : has
-    users ||--o{ social_auth : has
-    users ||--o{ audit_logs : generates
-    roles ||--o{ user_roles : assigned_via
-    roles ||--o{ role_permissions : has
-    permissions ||--o{ role_permissions : granted_via
-
-    patients ||--o{ appointments : books
-    patients ||--o{ medical_records : has
-    patients ||--o{ prescriptions : receives
-    patients ||--o{ diagnosis : has
-    patients ||--o{ lab_orders : orders
-    patients ||--o{ claims : generates
-    patients ||--o{ payments : makes
-    patients ||--o{ telehealth_sessions : attends
-    patients ||--o{ patient_allergies : has
-    patients ||--o{ patient_pharmacies : prefers
-    patients ||--o{ fhir_resources : has
-    patients ||--o{ notifications : receives
-
-    providers ||--o{ appointments : conducts
-    providers ||--o{ telehealth_sessions : hosts
-    providers ||--o{ doctor_availability : has
-    providers ||--o{ doctor_time_off : takes
-    providers ||--o{ prescriptions : writes
-
-    appointments ||--o{ appointment_reminders : triggers
-    appointments ||--o{ claims : generates
-
-    claims ||--o{ claim_submissions : tracked_via
-    claims ||--o{ payment_postings : reconciled_via
-    claims ||--o{ denials : may_have
-
-    payments ||--o{ payment_postings : posted_via
-
-    healthcare_offerings ||--o{ offering_pricing : has
-    healthcare_offerings ||--o{ offering_packages : bundled_in
-    healthcare_offerings ||--o{ offering_insurance_mappings : covered_by
-```
-
----
-
-## 5. Database Domain Map
+### Portal routing without a tenant context
 
 ```mermaid
 graph LR
-    subgraph IAM["Identity & Access (8 tables)"]
-        T_USERS["users"]
-        T_ROLES["roles"]
-        T_PERMS["permissions"]
-        T_ROLEPERMS["role_permissions"]
-        T_USERROLES["user_roles"]
-        T_URHIST["user_role_history"]
-        T_SOCIAL["social_auth"]
-        T_PPSESS["patient_portal_sessions"]
-    end
+    PLOGIN["Patient login<br/>email + password"]
+    BI["blindIndex.js<br/>HMAC-SHA256(email, pepper)<br/>AC_IDX_K · KEY_VERSION"]
+    ROUTE["control.portal_identity_route<br/>control.portal_session_route"]
+    TSCHEMA["→ tenant schema"]
 
-    subgraph PATIENT_DOM["Patient Management (7 tables)"]
-        T_PAT["patients"]
-        T_PALLERG["patient_allergies"]
-        T_PPHARM["patient_pharmacies"]
-        T_PCONSENT["patient_consent_forms"]
-        T_PENROLL["patient_offering_enrollments"]
-        T_PINTAKE["patient_intake_forms"]
-        T_PINTFLOW["patient_intake_flows"]
-    end
-
-    subgraph CLINICAL_DOM["Clinical / EHR (10 tables)"]
-        T_MR["medical_records"]
-        T_RX["prescriptions"]
-        T_RXHIST["prescription_history"]
-        T_DX["diagnosis"]
-        T_MEDS["medications"]
-        T_MEDALTS["medication_alternatives"]
-        T_DRUGIX["drug_interactions"]
-        T_MCODE["medical_codes"]
-        T_LAB["lab_orders"]
-        T_FHIR["fhir_resources"]
-    end
-
-    subgraph SCHED_DOM["Scheduling (11 tables)"]
-        T_APPT["appointments"]
-        T_APPTTYPE["appointment_types"]
-        T_APPTREM["appointment_reminders"]
-        T_WAITLIST["appointment_waitlist"]
-        T_APPTCFG["appointment_type_config"]
-        T_CLNAPPTSET["clinic_appointment_settings"]
-        T_PVBKCFG["provider_booking_config"]
-        T_DOCAVAIL["doctor_availability"]
-        T_DOCTOFF["doctor_time_off"]
-        T_RECAPPT["recurring_appointments"]
-        T_BKANALYTICS["booking_analytics"]
-    end
-
-    subgraph TELE_DOM["Telehealth (2 tables)"]
-        T_TELESESS["telehealth_sessions"]
-        T_TELESET["telehealth_provider_settings"]
-    end
-
-    subgraph RCM_DOM["Revenue Cycle (7 tables)"]
-        T_CLAIMS["claims"]
-        T_CLMSUB["claim_submissions"]
-        T_PYMTS["payments"]
-        T_PAYPOST["payment_postings"]
-        T_PREAUTH["preapprovals"]
-        T_DENIALS["denials"]
-        T_INSPAY["insurance_payers"]
-    end
-
-    subgraph OFFER_DOM["Offerings & Services (7 tables)"]
-        T_OFFER["healthcare_offerings"]
-        T_OFFPKG["offering_packages"]
-        T_OFFPRICE["offering_pricing"]
-        T_OFFPROMO["offering_promotions"]
-        T_OFFINSMAPPL["offering_insurance_mappings"]
-        T_OFFREV["offering_reviews"]
-        T_SVCCAT["service_categories"]
-    end
-
-    subgraph PROV_DOM["Providers & Practices (5 tables)"]
-        T_PROVS["providers"]
-        T_PRACTICES["practices"]
-        T_CLINIC["clinic_info"]
-        T_CLINICHRS["clinic_working_hours"]
-        T_BACKUPPROV["backup_provider_settings"]
-    end
-
-    subgraph INTEG_DOM["Integration (5 tables)"]
-        T_FHIRTRACK["fhir_tracking"]
-        T_FHIRTRACKEVT["fhir_tracking_events"]
-        T_FHIRERR["fhir_error_actions"]
-        T_VENDSET["vendor_integration_settings"]
-        T_VENDLOG["vendor_transaction_log"]
-        T_ERX["erx_message_queue"]
-    end
-
-    subgraph BIZ_DOM["Business & Engagement (4 tables)"]
-        T_TASKS["tasks"]
-        T_NOTIF["notifications"]
-        T_NOTIFPREF["notification_preferences"]
-        T_CAMP["campaigns"]
-    end
-
-    subgraph ORG_DOM["Organization & Compliance (5 tables)"]
-        T_ORGSETT["organization_settings"]
-        T_SUBPLANS["subscription_plans"]
-        T_AUDIT["audit_logs"]
-        T_ARCHIVE["archives"]
-        T_ARCHRULES["archive_rules"]
-    end
+    PLOGIN --> BI --> ROUTE --> TSCHEMA
 ```
+
+A blind index keeps the shared routing table from being a readable "which patient belongs to which clinic" map. Documented caveat in-file: this is a *coded identifier*, not de-identification under HIPAA Safe Harbor.
+
+### Sweep coverage (honest status)
+
+| Metric | Value |
+|---|---|
+| Route files using tenant-scoped `req.db` | 44 |
+| Route files still using `app.locals.pool` directly | 56 |
+| Enforcement | `backend/scripts/check-tenant-scoping.js` + explicit `RAW_POOL_ALLOWLIST` |
+| Allowlist rationale | identity plane, shared master data, control-plane billing |
+| CI gates | SEC-05 Tenant-Scoping Guard + Cross-Tenant Isolation Test |
+
+> `SEC-05_MULTI_TENANCY_PLAN.md` still reads *"Nothing in here is built yet."* That statement is **stale** — Model D shipped (migrations `063`–`074`, `backend/migrations/tenant/`, and the CI isolation test prove it).
 
 ---
 
-## 6. Authentication & Authorization Flow
+## 3. Database Schema Topology
+
+```mermaid
+graph TB
+    subgraph PUBLIC["public — identity & shared master data"]
+        USERS["users<br/>+ mfa_secret, mfa_enabled<br/>mfa_backup_codes, last_activity_at"]
+        PRACT["practices<br/>+ session_idle_minutes, require_mfa"]
+        ROLES["roles · permissions<br/>role_permissions · user_roles"]
+        MASTER["medical_codes · medications<br/>insurance_payers · pharmacies<br/>laboratories"]
+    end
+
+    subgraph CONTROL["control — control plane (13 tables)"]
+        TENANTS["tenants"]
+        TTABLES["tenant_tables"]
+        CFG["config_baseline"]
+        OPS["operators<br/>separate secret + own TOTP"]
+        CAUDIT["audit_log<br/>immutable"]
+        SUBS["subscriptions<br/>subscription_grants"]
+        BILL["billing_events"]
+        SIGNUP["signup_intents"]
+        PROUTE["portal_identity_route<br/>portal_session_route"]
+        PNOTIF["platform_notifications"]
+        BG["break_glass_sessions"]
+    end
+
+    subgraph TEMPLATE["template — golden clone, no data"]
+        TSTRUCT["full tenant structure"]
+    end
+
+    subgraph TENANT["tenant_* — one schema per clinic (PHI)"]
+        PHI["patients · appointments · claims<br/>medical_records · prescriptions<br/>lab_orders · diagnosis · payments<br/>payment_postings · denials · preapprovals<br/>patient_intake_forms · patient_portal_sessions<br/>fhir_resources · audit_logs"]
+    end
+
+    TENANTS -->|schema_name| TENANT
+    TEMPLATE -.stamped into.-> TENANT
+    TTABLES -.canonical table list.-> TENANT
+    USERS -->|practice_id| PRACT
+    PRACT -.maps to.-> TENANTS
+```
+
+### Migration tracks
+
+```mermaid
+graph LR
+    subgraph G["Global track"]
+        GM["backend/migrations/*.sql<br/>001 – 082"]
+        GR["run-migrations.js<br/>targets public + control"]
+    end
+
+    subgraph T["Tenant fan-out track"]
+        TM["backend/migrations/tenant/*.sql<br/>001 adopt_runtime_created_tables<br/>002 audit_log_append_only<br/>003 audit_logs_keep_history"]
+        TR["run-tenant-migrations.js<br/>npm run migrate:tenants"]
+    end
+
+    GM --> GR
+    TM --> TR
+    GR -->|"1. first"| DEPLOY["Deploy"]
+    TR -->|"2. then, every tenant + template"| DEPLOY
+```
+
+Each tenant schema tracks applied versions in its own `<schema>.schema_migrations`, so the runner is idempotent and a safe no-op when the directory is empty.
+
+---
+
+## 4. Backend Architecture
+
+```mermaid
+graph TB
+    subgraph Boot["server.js"]
+        RAW["/api/stripe-webhook<br/>express.raw() — mounted BEFORE json()<br/>so signature verification works"]
+        JSON["express.json()"]
+        HELM["helmet<br/>COEP credentialless (Zoom WASM)<br/>COOP same-origin-allow-popups<br/>CSP frame-ancestors 'self'"]
+        CORSM["CORS multi-origin allowlist<br/>+ same-host fallback for /platform"]
+        STATIC["/platform static console<br/>X-Robots-Tag noindex · no-store"]
+        UPL["/uploads/* — authenticate<br/>+ path-traversal check<br/>(express.static deliberately NOT used)"]
+        HEALTH["GET /health<br/>pings Postgres"]
+    end
+
+    subgraph MWChain["Middleware"]
+        CSRF["csrf.js<br/>double-submit; Bearer exempt"]
+        RL["rateLimiters.js<br/>authLimiter 10/15min<br/>apiLimiter 1000/15min"]
+        RLS["rateLimitStore.js<br/>Redis-backed, else MemoryStore"]
+        AUTHM["auth.js<br/>JWT HS256 · token_version<br/>session idle timeout · tenant context"]
+        PLATA["platformAuth.js<br/>control-plane operators"]
+        MSGA["messagingAuth.js"]
+        PHIL["phiAccessLog.js<br/>auditPhiRead()"]
+        PLANE["planEnforcement.js<br/>entitlements"]
+    end
+
+    subgraph Routes["Route Groups (59 modules)"]
+        CLIN["Clinical<br/>patients · appointments · medical-records<br/>prescriptions · diagnosis · lab-orders<br/>medications · telehealth · fhir"]
+        RCMR["Revenue Cycle<br/>claims · payments · payment-postings<br/>preapprovals · denials · edi<br/>insurance-payers · billing"]
+        FIN["Finance — NEW<br/>accounts (GL) · inventory · licenses<br/>stripeSettings · stripeWebhook"]
+        IAMR["Identity<br/>auth · users · roles · permissions<br/>plans · invites · teamAccess"]
+        TENR["Tenancy — NEW<br/>platform · signup"]
+        ENG["Engagement<br/>patient-portal · notifications<br/>waitlist · campaigns · intake-forms<br/>messages"]
+        PRACR["Practice<br/>providers · scheduling · offerings<br/>clinicSettings · form-management · tasks"]
+        INTR["Integration<br/>integrationOAuth · vendorIntegrationSettings<br/>medical-codes · calendar-sync · search<br/>backup · archive · audit"]
+    end
+
+    subgraph Services["Services"]
+        TENS["tenantCatalog · tenantProvisioning<br/>entitlements · portalRouting"]
+        PLATS["platformAudit · platformBilling<br/>platformNotify · billingLedger"]
+        SECS["userMfa (speakeasy+qrcode)<br/>phiAudit · domainJoin"]
+        INTS["telehealthProviders/<br/>zoom · teams · googleMeet · webex"]
+        VENS["vendorIntegrations/<br/>labcorp · optum · surescripts"]
+        MISC["archiveScheduler · reminderService<br/>notificationService · whatsappService<br/>licenseService · cloudBackupStorage<br/>fhirTracking · messageDocumentFiling"]
+    end
+
+    RAW --> JSON --> HELM --> CORSM
+    CORSM --> MWChain
+    MWChain --> Routes
+    Routes --> Services
+    RL --> RLS
+```
+
+### New route modules
+
+| Route | Mount | Purpose |
+|---|---|---|
+| `platform.js` | `/api/platform` | Control-plane console API — tenant fleet, subscriptions, break-glass. Operators authenticate against `control.operators` with a **separate secret and their own TOTP**. |
+| `signup.js` | `/api/signup` | Public self-serve signup — plan selection, coupon preview, Stripe checkout. Two-phase commit across DB + Stripe. |
+| `invites.js` | `/api/invites` | Staff invites; binds OAuth-created accounts to a practice (closes the `practice_id IS NULL` → `public` hole). |
+| `teamAccess.js` | `/api/team-access` | Verified email-domain claims, self-service join requests with admin approval, **and security-policy endpoints**. |
+| `messages.js` | `/api/messages` | Secure messaging — care-team and patient threads, attachments, AES-256-GCM at rest. |
+| `accounts.js` | `/api/accounts` | Accounting / general ledger. |
+| `inventory.js` | `/api/inventory` | Inventory management. |
+| `licenses.js` | `/api/licenses` | Provider license tracking. |
+| `stripeSettings.js` | `/api/stripe-settings` | Stripe configuration. |
+| `stripeWebhook.js` | `/api/stripe-webhook` | Raw-body webhook receiver for signature verification. |
+
+---
+
+## 5. Frontend Architecture
+
+```mermaid
+graph TB
+    subgraph Entry["Entry"]
+        IDX["index.js"]
+        APP["App.js — Router + Context"]
+        CTX["AppContext.js<br/>auth · user · permissions"]
+        EB["ErrorBoundary.js"]
+    end
+
+    subgraph Views["27 Views"]
+        CORE["Dashboard · EHR · RCM · CRM<br/>Reports · Telehealth · FHIR"]
+        PAT["PatientPortal · PatientHistory<br/>PatientHistoryDirectory<br/>PatientIntake · PatientDiagnosis"]
+        MGMT["AdminPanel · PracticeManagement<br/>ProviderManagement · OfferingManagement<br/>LaboratoryManagement · PharmacyManagement<br/>AppointmentTypesManagement<br/>CampaignsManagement · WaitlistManagement"]
+        NEW["NEW: Accounts · Inventory · Messages<br/>FormManagement · ClinicalServices<br/>Integrations"]
+    end
+
+    subgraph Comps["Notable Components"]
+        SEC["TwoFactorPanel.js — 2FA enrolment UI"]
+        TEAM["TeamAccessPanel.js<br/>InviteStaffPanel.js"]
+        SUB["SubscriptionPlansPanel.js"]
+        ZOOM["ZoomMeetingEmbed.js"]
+        SHARED["IntegrationCard · Toggle<br/>modals · forms · panels · cards"]
+    end
+
+    subgraph API["API Layer"]
+        SVCAPI["apiService.js<br/>CSRF token echo<br/>credentials: 'include'"]
+        OAUTHC["oauthConfig.js<br/>Google · Microsoft (+ legacy Facebook)"]
+    end
+
+    IDX --> APP --> CTX
+    APP --> EB
+    APP --> Views
+    Views --> Comps
+    Views --> API
+```
+
+**Build:** React 18 + CRA/craco + Tailwind CSS. `@zoom/meetingsdk`, `jspdf`/`jspdf-autotable`, `xlsx`, `date-fns`, `lucide-react`, `@azure/msal-*`, `@react-oauth/google`.
+
+### Platform console — a deliberately separate UI
+
+`backend/public/platform/{index.html, console.js, console.css}` is served as **static files by the backend** at `/platform`, with `X-Robots-Tag: noindex` and `Cache-Control: no-store`. It is intentionally not part of the React SPA so operator code never ships in a clinic user's bundle.
+
+---
+
+## 6. Mobile App Architecture
+
+```mermaid
+graph TB
+    subgraph Shell["React Native 0.81 + Expo SDK 54"]
+        ROOT["RootNavigator.tsx<br/>React Navigation v7"]
+        STACK["Native Stack<br/>SignIn · Server · App"]
+    end
+
+    subgraph Tabs["Actor-Selected Tab Sets"]
+        STAFF["StaffTabs"]
+        PATIENT["PatientTabs"]
+    end
+
+    subgraph StaffS["Staff Screens"]
+        TODAY["TodayScreen"]
+        SCHED["ScheduleScreen"]
+        PATS["PatientsScreen"]
+        CHART["ChartScreen<br/>tablet split-view"]
+        ORD["OrdersScreen"]
+        BILLS["BillingScreen"]
+    end
+
+    subgraph PatS["Patient Screens"]
+        HOME["HomeScreen"]
+        VIS["VisitsScreen"]
+        REC["RecordsScreen"]
+    end
+
+    subgraph SharedS["Shared"]
+        SIGN["SignInScreen"]
+        SERV["ServerScreen"]
+        MORE["MoreScreen"]
+        MSGS["messaging/<br/>MessagesScreen · ThreadList · Conversation"]
+    end
+
+    subgraph Lib["src/lib"]
+        APICL["api.ts<br/>Credential union:<br/>staff token | portal token+patientId"]
+        STOR["storage.ts<br/>SecureStore (tokens)<br/>AsyncStorage (prefs)"]
+        HLTH["health.ts<br/>probes /health then /api/health"]
+        RES["useResource.ts · chart.ts<br/>server.ts · url.ts · device.ts"]
+    end
+
+    subgraph Ctx["Contexts"]
+        SESS["SessionContext"]
+        ACTIVE["ActivePatientContext"]
+    end
+
+    ROOT --> STACK --> Tabs
+    Tabs --> STAFF --> StaffS
+    Tabs --> PATIENT --> PatS
+    STACK --> SharedS
+    StaffS --> Lib
+    PatS --> Lib
+    Lib --> Ctx
+```
+
+- Native app (not a webview wrapper), `newArchEnabled: true`, bundle IDs `tech.aureoncare.app` (iOS + Android).
+- Both credential kinds ride the same `Authorization: Bearer` header; only `/patient-portal/*` is portal-only.
+- Tests: `mobile/tests/*.test.mjs` (node:test).
+
+> Biometric unlock, push notifications and native OAuth are **described in `mobile/README.md` but not implemented** — see §21.
+
+---
+
+## 7. Authentication & Authorization Flow
 
 ```mermaid
 sequenceDiagram
     participant C as Client
-    participant FE as React Frontend
-    participant BE as Express Backend
-    participant AUTH as Auth Middleware
+    participant BE as Backend
     participant DB as PostgreSQL
-    participant OAUTH as OAuth Provider
+    participant MFA as userMfa.js
 
-    rect rgb(200, 230, 200)
-        Note over C,DB: Standard Email/Password Login
-        C->>FE: Submit credentials
-        FE->>BE: POST /api/auth/login
-        BE->>DB: SELECT user + bcrypt verify
-        DB-->>BE: User record
-        BE-->>FE: JWT token + user info
-        FE->>FE: Store token in localStorage
+    rect rgb(220, 235, 220)
+        Note over C,MFA: Login with 2FA
+        C->>BE: POST /api/auth/login {email, password, mfaCode?}
+        BE->>BE: bcrypt compare (always runs<br/>DUMMY_PASSWORD_HASH if user absent)
+        BE->>DB: load user + practice policy
+        alt practice requires MFA and user has none
+            BE-->>C: 403 {mfaEnrolmentRequired: true}
+        else MFA enabled, no code supplied
+            BE-->>C: {mfaRequired: true}
+        else code supplied
+            BE->>MFA: verify TOTP (30s step, window 1)
+            MFA->>DB: else compare all backup-code hashes<br/>(no short-circuit) and array_remove on use
+            BE-->>C: JWT (HS256) + HttpOnly cookie
+        end
     end
 
-    rect rgb(200, 200, 230)
-        Note over C,OAUTH: OAuth 2.0 Social Login
-        C->>FE: Click Google/Microsoft
-        FE->>OAUTH: Authorization request
-        OAUTH-->>FE: Auth code + user profile
-        FE->>BE: POST /api/auth/social-login
-        BE->>DB: Upsert user + social_auth record
-        DB-->>BE: User record
-        BE-->>FE: JWT token
-    end
-
-    rect rgb(230, 200, 200)
-        Note over C,DB: Authenticated API Request
-        C->>FE: User action
-        FE->>BE: API Request + Bearer JWT
-        BE->>AUTH: Verify JWT token
-        AUTH->>DB: Check user_roles + permissions
-        DB-->>AUTH: Role/Permission set
-        AUTH-->>BE: Authorized context
-        BE-->>FE: API Response
+    rect rgb(225, 225, 240)
+        Note over C,DB: Authenticated request
+        C->>BE: Bearer JWT or session cookie
+        BE->>DB: re-check token_version (tv) claim
+        BE->>DB: check last_activity_at vs<br/>practices.session_idle_minutes
+        alt idle beyond policy
+            BE-->>C: 401 {sessionTimedOut: true}
+        else active
+            BE->>DB: resolve tenant → req.db
+            BE-->>C: response
+        end
     end
 ```
 
+| Control | Detail |
+|---|---|
+| **TOTP 2FA** | `speakeasy` + `qrcode`; 30s step, `window: 1` (±30s skew). Two-phase enrolment — secret stored, `mfa_enabled` stays false until a code verifies. |
+| **Backup codes** | 10 codes, SHA-256 hashed, single-use, struck via `array_remove` before the session is issued. Verification compares against every hash without short-circuiting, so timing can't leak how many remain. |
+| **Session idle timeout** | Server-enforced. `practices.session_idle_minutes` (CHECK 5–1440, NULL = unlimited). Activity stamp refreshed at most once per 60s to avoid a per-request row lock. |
+| **Token revocation** | `token_version` (`tv`) claim re-checked against the DB every request; bumping it revokes all prior tokens. |
+| **Algorithm pinning** | JWT pinned to `HS256`; startup **throws** if `AC_TK_S` < 32 bytes. |
+| **Role integrity** | `requireAdmin` re-fetches role from the DB — never trusts the JWT role claim. |
+| **Policy management** | `GET/PATCH /api/team-access/security-policy`; PATCH refuses `require_mfa=true` with 409 while any admin lacks 2FA. |
+
+**MFA endpoints:** `/mfa/status`, `/mfa/enroll`, `/mfa/verify`, `/mfa/disable`, `/mfa/backup-codes`.
+
+### OAuth
+
+```mermaid
+graph LR
+    subgraph Current["Current — server-side code exchange"]
+        G["/oauth/google/exchange"]
+        M["/oauth/microsoft/exchange"]
+    end
+    subgraph Legacy["Legacy — token validation"]
+        L["POST /api/auth/social-login"]
+        FB["validateFacebook()"]
+        KILL["AC_DISABLE_LEGACY_SOCIAL_TOKEN=true<br/>→ 410 Gone"]
+    end
+    G --> OK["Canonical provider ID<br/>resolved server-side"]
+    M --> OK
+    L --> FB
+    KILL -.retires.-> L
+```
+
+Facebook is reachable **only** through the legacy endpoint, which a single env var retires. Treat it as deprecated, not a supported path.
+
 ---
 
-## 7. RBAC Permission Model
+## 8. RBAC Permission Model
 
 ```mermaid
 graph TD
@@ -469,542 +478,428 @@ graph TD
         ADMIN["Admin"]
         DOCTOR["Doctor"]
         NURSE["Nurse"]
-        RECEPTIONIST["Receptionist"]
+        RECEPT["Receptionist"]
         BILLING["Billing Manager"]
-        CRM_R["CRM Manager"]
+        CRMR["CRM Manager"]
         STAFF["Staff"]
-        PATIENT_R["Patient"]
+        PATIENT["Patient"]
+    end
+
+    subgraph Sep["Separate Identity Plane"]
+        OPER["control.operators<br/>platform super-admins<br/>own secret + own TOTP"]
     end
 
     subgraph Modules["Permission Modules"]
-        M_PAT["Patients Module"]
-        M_APPT["Appointments Module"]
-        M_BILLING["Billing Module"]
-        M_CRM["CRM Module"]
-        M_EHR["EHR Module"]
-        M_REPORTS["Reports Module"]
-        M_ADMIN["Admin Module"]
+        M["Patients · Appointments · Billing<br/>CRM · EHR · Reports · Admin"]
     end
 
-    subgraph Actions["Permission Actions"]
-        A_VIEW["view"]
-        A_CREATE["create"]
-        A_EDIT["edit"]
-        A_DELETE["delete"]
-        A_MANAGE["manage"]
-        A_PROCESS["process"]
-        A_EXPORT["export"]
+    subgraph Actions["Actions"]
+        A["view · create · edit · delete<br/>manage · process · export"]
     end
 
-    ADMIN -->|"full access"| M_PAT & M_APPT & M_BILLING & M_CRM & M_EHR & M_REPORTS & M_ADMIN
-    DOCTOR -->|"clinical access"| M_PAT & M_APPT & M_EHR & M_REPORTS
-    NURSE -->|"clinical support"| M_PAT & M_APPT & M_EHR
-    RECEPTIONIST -->|"scheduling"| M_PAT & M_APPT
-    BILLING -->|"financial"| M_BILLING & M_REPORTS
-    CRM_R -->|"engagement"| M_CRM & M_REPORTS
-    STAFF -->|"limited"| M_PAT & M_APPT
-    PATIENT_R -->|"own data only"| M_PAT
+    subgraph Gate["Additional Gate"]
+        ENT["planEnforcement.js<br/>entitlements.js<br/>per-tenant plan limits"]
+    end
 
-    M_PAT --> A_VIEW & A_CREATE & A_EDIT & A_DELETE
-    M_BILLING --> A_PROCESS & A_EXPORT
-    M_REPORTS --> A_VIEW & A_EXPORT
-    M_ADMIN --> A_MANAGE
+    Roles --> Modules --> Actions
+    Modules --> Gate
+    OPER -.never a clinic role.-> Sep
 ```
+
+Clinic RBAC and platform-operator access are **entirely separate identity planes** — an Admin in a clinic has no path to the control plane.
 
 ---
 
-## 8. Clinical Data Flow
+## 9. Clinical Data Flow
 
 ```mermaid
 flowchart TD
-    subgraph Intake["Patient Intake"]
-        REG["Patient Registration"]
-        INTAKE_FORM["Intake Forms"]
-        CONSENT["Consent Management"]
+    subgraph Intake["Intake"]
+        REG["Registration"]
+        FORMS["Intake Forms"]
+        CONSENT["Consent"]
     end
 
-    subgraph Scheduling["Appointment Scheduling"]
-        BOOK["Booking Request"]
-        AVAIL["Provider Availability Check"]
-        CONFIRM["Appointment Confirmation"]
-        REMIND["Automated Reminders"]
-        WAITLIST["Waitlist Management"]
+    subgraph Sched["Scheduling"]
+        BOOK["Booking"]
+        AVAIL["Availability Check"]
+        CONF["Confirmation"]
+        REMIND["Reminders"]
+        WAIT["Waitlist"]
     end
 
-    subgraph Clinical["Clinical Encounter"]
-        VISIT["Visit / Encounter"]
-        EHR_ENTRY["EHR Entry<br/>(Vitals, Notes, SOAP)"]
+    subgraph Enc["Encounter"]
+        VISIT["Visit"]
+        TELE["Telehealth Session"]
+        EHR["EHR / SOAP Notes"]
         DX["Diagnosis (ICD-10)"]
-        RX["E-Prescriptions<br/>(SureScripts)"]
-        LAB["Lab Orders<br/>(LabCorp)"]
-        TELE_SESS["Telehealth Session<br/>(Zoom / Meet / Webex)"]
-        FHIR_SYNC["FHIR R4 Sync"]
+        RX["e-Prescribe → SureScripts"]
+        LAB["Lab Order → LabCorp"]
+        FHIRS["FHIR R4 Sync"]
     end
 
-    subgraph RCM_FLOW["Revenue Cycle"]
-        CODING["Medical Coding<br/>(ICD-10 + CPT)"]
-        PREAUTH["Pre-Authorization<br/>(Optum)"]
-        CLAIM["Claim Generation<br/>(EDI 837)"]
-        SUBMISSION["Claim Submission"]
-        ERA["ERA Processing<br/>(EDI 835)"]
-        PAYMENT["Payment Posting"]
-        DENIAL["Denial Management"]
-        RECONCILE["Reconciliation"]
+    subgraph RCM["Revenue Cycle"]
+        CODE["Coding (CPT + ICD-10)"]
+        PRE["Pre-Auth → Optum"]
+        CLAIM["Claim → EDI 837"]
+        ERA["ERA ← EDI 835"]
+        POST["Payment Posting"]
+        DENY["Denial Management"]
     end
 
-    subgraph PatientEng["Patient Engagement"]
-        NOTIF_E["Email / WhatsApp Notifications"]
-        PORTAL["Patient Portal<br/>Self-Service"]
-        RECORDS_ACCESS["Records Access"]
+    subgraph Eng["Engagement"]
+        MSG["Secure Messaging"]
+        NOTIF["Email / WhatsApp"]
+        PORTAL["Patient Portal"]
     end
 
-    REG --> INTAKE_FORM --> CONSENT
-    CONSENT --> BOOK
-    BOOK --> AVAIL --> CONFIRM
-    CONFIRM --> REMIND
-    CONFIRM --> VISIT
-    VISIT --> TELE_SESS
-    VISIT --> EHR_ENTRY
-    EHR_ENTRY --> DX
+    REG --> FORMS --> CONSENT --> BOOK
+    BOOK --> AVAIL --> CONF
+    CONF --> REMIND
+    CONF --> VISIT --> TELE
+    VISIT --> EHR --> DX
     DX --> RX
     DX --> LAB
-    DX --> CODING
-    EHR_ENTRY --> FHIR_SYNC
-    CODING --> PREAUTH
-    PREAUTH --> CLAIM
-    CLAIM --> SUBMISSION
-    SUBMISSION --> ERA
-    ERA --> PAYMENT
-    ERA --> DENIAL
-    PAYMENT --> RECONCILE
-    DENIAL --> CODING
-
-    CONFIRM --> NOTIF_E
-    REMIND --> NOTIF_E
-    EHR_ENTRY --> PORTAL
-    PORTAL --> RECORDS_ACCESS
+    DX --> CODE
+    EHR --> FHIRS
+    CODE --> PRE --> CLAIM --> ERA
+    ERA --> POST
+    ERA --> DENY --> CODE
+    CONF --> NOTIF
+    EHR --> PORTAL
+    PORTAL --> MSG
 ```
 
 ---
 
-## 9. Telehealth Integration Architecture
+## 10. Billing & Subscription Architecture (Stripe)
 
 ```mermaid
 graph TB
-    subgraph FE_TELE["Frontend - Telehealth View"]
-        TELE_UI["TelehealthView.js"]
-        ZOOM_SDK_FE["@zoom/meetingsdk<br/>In-Browser Meeting"]
-        GMEET_URL["Google Meet URL Redirect"]
-        WEBEX_URL["Webex URL Redirect"]
+    subgraph Signup["Self-Serve Signup"]
+        PLAN["Plan selection"]
+        COUPON["Coupon preview"]
+        INTENT["control.signup_intents"]
+        CHECKOUT["Stripe Checkout"]
     end
 
-    subgraph BE_TELE["Backend - Telehealth Service"]
-        TELE_ROUTE["/api/telehealth"]
-        TELE_SETT["/api/telehealth-settings"]
-        OAUTH_ROUTE["/api/integrations/oauth"]
-        TELE_SVC_B["telehealthProviders/<br/>Service Classes"]
+    subgraph Webhook["Webhook Path"]
+        RAWW["/api/stripe-webhook<br/>express.raw() before json()"]
+        VERIFY["Signature verification"]
+        EVENTS["control.billing_events"]
     end
 
-    subgraph Providers["Video Platform APIs"]
-        ZOOM_API["Zoom OAuth API<br/>Meeting Creation"]
-        GMEET_API["Google Calendar API<br/>Meet Link Generation"]
-        WEBEX_API["Cisco Webex API<br/>Meeting Scheduling"]
-        TEAMS_API["Microsoft Teams<br/>(Azure AD)"]
+    subgraph State["Subscription State"]
+        SUBS["control.subscriptions"]
+        GRANTS["control.subscription_grants"]
+        ENTL["entitlements.js"]
+        ENFORCE["planEnforcement.js"]
     end
 
-    subgraph DB_TELE["Database"]
-        TELE_DB["telehealth_sessions"]
-        TELE_SET_DB["telehealth_provider_settings"]
-        VENDOR_DB["vendor_integration_settings"]
+    subgraph Provision["Tenant Provisioning"]
+        PROV["tenantProvisioning.js"]
+        STAMP["stamp schema from template"]
+        TENREC["control.tenants row"]
     end
 
-    TELE_UI --> ZOOM_SDK_FE
-    TELE_UI --> GMEET_URL
-    TELE_UI --> WEBEX_URL
-    TELE_UI --> TELE_ROUTE
+    subgraph Ledger["Internal Accounting"]
+        BL["billingLedger.js"]
+        ACCT["accounts.js — GL"]
+    end
 
-    TELE_ROUTE --> TELE_SVC_B
-    TELE_SETT --> VENDOR_DB
-    OAUTH_ROUTE --> ZOOM_API
-    OAUTH_ROUTE --> GMEET_API
-
-    TELE_SVC_B --> ZOOM_API
-    TELE_SVC_B --> GMEET_API
-    TELE_SVC_B --> WEBEX_API
-    TELE_SVC_B --> TEAMS_API
-
-    TELE_SVC_B --> TELE_DB
-    TELE_SVC_B --> TELE_SET_DB
+    PLAN --> COUPON --> INTENT --> CHECKOUT
+    CHECKOUT --> RAWW --> VERIFY --> EVENTS
+    EVENTS --> SUBS --> GRANTS --> ENTL --> ENFORCE
+    EVENTS --> PROV --> STAMP --> TENREC
+    SUBS --> BL --> ACCT
 ```
+
+Signup is a **two-phase commit across the database and Stripe**. `platformBilling.js` is the only consumer of the `stripe` SDK.
 
 ---
 
-## 10. Revenue Cycle Management (RCM) Flow
-
-```mermaid
-flowchart LR
-    subgraph Eligibility["Eligibility Verification"]
-        INS_CHECK["Insurance Payer Lookup"]
-        ELIG_API["Optum Eligibility API"]
-        ELIG_RESULT["Eligibility Result"]
-    end
-
-    subgraph PreAuth["Pre-Authorization"]
-        PREAUTH_REQ["Pre-Auth Request"]
-        PREAUTH_DB["preapprovals table"]
-        PREAUTH_RESP["Auth Decision"]
-    end
-
-    subgraph Claims["Claim Processing"]
-        CLAIM_GEN["Claim Generation<br/>(CPT + ICD-10 codes)"]
-        EDI_837["EDI 837 Formatting<br/>(HL7 Parser)"]
-        CLAIM_SUB["Claim Submission<br/>claim_submissions table"]
-        CLAIM_TRACK["Claim Tracking<br/>claims table"]
-    end
-
-    subgraph Payments["Payment Processing"]
-        ERA_835["EDI 835<br/>Remittance Advice"]
-        PAY_POST["Payment Posting<br/>payment_postings table"]
-        PAY_RECORD["Payment Record<br/>payments table"]
-        RECONCILE["Reconciliation<br/>Reports"]
-    end
-
-    subgraph Denials["Denial Management"]
-        DENIAL_RECV["Denial Receipt"]
-        DENIAL_TRACK["Denial Tracking<br/>denials table"]
-        APPEAL["Appeal / Resubmission"]
-    end
-
-    INS_CHECK --> ELIG_API --> ELIG_RESULT
-    ELIG_RESULT --> PREAUTH_REQ
-    PREAUTH_REQ --> PREAUTH_DB --> PREAUTH_RESP
-    PREAUTH_RESP --> CLAIM_GEN
-    CLAIM_GEN --> EDI_837
-    EDI_837 --> CLAIM_SUB
-    CLAIM_SUB --> CLAIM_TRACK
-    CLAIM_TRACK --> ERA_835
-    ERA_835 --> PAY_POST
-    ERA_835 --> DENIAL_RECV
-    PAY_POST --> PAY_RECORD
-    PAY_RECORD --> RECONCILE
-    DENIAL_RECV --> DENIAL_TRACK
-    DENIAL_TRACK --> APPEAL
-    APPEAL --> CLAIM_GEN
-```
-
----
-
-## 11. FHIR R4 Integration Architecture
+## 11. Telehealth Integration
 
 ```mermaid
 graph TB
-    subgraph FE_FHIR["Frontend"]
-        FHIR_VIEW["FHIRView.js"]
-        FHIR_API_FE["apiService.js - FHIR endpoints"]
+    subgraph FE["Frontend"]
+        TV["TelehealthView.js"]
+        ZE["ZoomMeetingEmbed.js<br/>@zoom/meetingsdk in-browser"]
     end
 
-    subgraph BE_FHIR["Backend FHIR Layer"]
-        FHIR_ROUTE["/api/fhir<br/>FHIR R4 Resource CRUD"]
-        FHIR_TRACK_R["/api/fhir-tracking<br/>Tracking & Events"]
+    subgraph BE["Backend"]
+        TR["/api/telehealth"]
+        TS["/api/telehealth-settings"]
+        OA["/api/integrations/oauth"]
+        TSVC["services/telehealthProviders/"]
     end
 
-    subgraph FHIR_DB["FHIR Database Tables"]
-        FHIR_RES["fhir_resources<br/>(Patient, Observation,<br/>Condition, MedicationRequest...)"]
-        FHIR_TRACK_T["fhir_tracking"]
-        FHIR_EVT["fhir_tracking_events"]
-        FHIR_ERR["fhir_error_actions"]
+    subgraph Providers["Platforms"]
+        Z["Zoom — OAuth + Meeting SDK"]
+        GM["Google Meet — Calendar API"]
+        WX["Cisco Webex"]
+        MT["Microsoft Teams — Graph"]
     end
 
-    subgraph FHIR_RESOURCES["FHIR R4 Resource Types"]
-        R_PATIENT["Patient"]
-        R_OBSERVATION["Observation"]
-        R_CONDITION["Condition"]
-        R_MEDREQ["MedicationRequest"]
-        R_DIAGRPT["DiagnosticReport"]
-        R_ENCOUNTER["Encounter"]
-        R_ALLERGY["AllergyIntolerance"]
-        R_IMMUNIZE["Immunization"]
-        R_PRACTITIONER["Practitioner"]
-        R_ORGANIZATION["Organization"]
-        R_CAREPLAN["CarePlan"]
-        R_CLAIM_FHIR["Claim (FHIR)"]
+    subgraph DB["Storage"]
+        TSESS["telehealth_sessions"]
+        TSET["telehealth_provider_settings"]
+        VSET["vendor_integration_settings"]
     end
 
-    subgraph External_FHIR["External FHIR Consumers"]
-        EHR_EXT["External EHR Systems"]
-        PAYER_EXT["Insurance Payers"]
-        HEALTH_GOV["Health Registries"]
-    end
-
-    FHIR_VIEW --> FHIR_API_FE
-    FHIR_API_FE --> FHIR_ROUTE
-    FHIR_ROUTE --> FHIR_RES
-    FHIR_TRACK_R --> FHIR_TRACK_T
-    FHIR_TRACK_R --> FHIR_EVT
-    FHIR_TRACK_R --> FHIR_ERR
-    FHIR_RES --> FHIR_RESOURCES
-    FHIR_ROUTE <--> External_FHIR
+    TV --> ZE
+    TV --> TR --> TSVC
+    TS --> VSET
+    OA --> Z
+    OA --> GM
+    TSVC --> Z & GM & WX & MT
+    TSVC --> TSESS & TSET
 ```
+
+Zoom's in-browser SDK is why `helmet` sets COEP `credentialless` and COOP `same-origin-allow-popups` — the WASM runtime requires it.
 
 ---
 
-## 12. Vendor Integration Architecture
+## 12. FHIR R4 & Vendor Integrations
 
 ```mermaid
 graph TB
-    subgraph BE_VENDOR["Backend Vendor Layer"]
-        VENDOR_ROUTE["/api/vendor-integration-settings"]
-        VENDOR_SVC_DIR["services/vendorIntegrations/"]
+    subgraph FHIR["FHIR R4"]
+        FR["/api/fhir"]
+        FT["/api/fhir-tracking"]
+        FRES["fhir_resources (per tenant)"]
+        FTRK["fhir_tracking · tracking_events<br/>error_actions"]
+        FTYPES["Patient · Observation · Condition<br/>MedicationRequest · DiagnosticReport<br/>Encounter · AllergyIntolerance<br/>Immunization · Practitioner · CarePlan"]
     end
 
-    subgraph LabCorp["LabCorp Integration"]
-        LC_SVC["labcorpService.js"]
-        LC_ORDERS["/api/lab-orders"]
-        LC_DB["lab_orders table"]
-        LC_API["LabCorp API"]
+    subgraph Vendors["Vendor Integrations"]
+        LC["labcorpService.js → LabCorp<br/>lab orders + results"]
+        OPT["optumService.js → Optum<br/>eligibility + claims"]
+        SS["surescriptsService.js → SureScripts<br/>e-prescription network"]
+        VLOG["vendor_transaction_log"]
+        ERXQ["erx_message_queue"]
     end
 
-    subgraph Optum["Optum Integration"]
-        OPT_SVC["optumService.js"]
-        OPT_CLAIMS["/api/claims + /api/preapprovals"]
-        OPT_DB["preapprovals + insurance_payers tables"]
-        OPT_API["Optum Health API"]
+    subgraph Ext["External Consumers"]
+        EHRX["External EHR Systems"]
+        PAYERS["Insurance Payers"]
     end
 
-    subgraph SureScripts["SureScripts eRx Integration"]
-        SS_SVC["surescriptsService.js"]
-        SS_RX["/api/prescriptions"]
-        SS_QUEUE["erx_message_queue table"]
-        SS_LOG["vendor_transaction_log table"]
-        SS_API["SureScripts Network"]
-    end
-
-    subgraph VendorConfig["Vendor Configuration DB"]
-        VEND_SET_DB["vendor_integration_settings"]
-        VEND_LOG_DB["vendor_transaction_log"]
-    end
-
-    VENDOR_ROUTE --> VEND_SET_DB
-    VENDOR_SVC_DIR --> LC_SVC
-    VENDOR_SVC_DIR --> OPT_SVC
-    VENDOR_SVC_DIR --> SS_SVC
-
-    LC_SVC --> LC_ORDERS --> LC_DB
-    LC_SVC --> LC_API
-    LC_SVC --> VEND_LOG_DB
-
-    OPT_SVC --> OPT_CLAIMS --> OPT_DB
-    OPT_SVC --> OPT_API
-    OPT_SVC --> VEND_LOG_DB
-
-    SS_SVC --> SS_RX --> SS_QUEUE
-    SS_SVC --> SS_API
-    SS_SVC --> SS_LOG
+    FR --> FRES --> FTYPES
+    FT --> FTRK
+    FR <--> Ext
+    LC --> VLOG
+    OPT --> VLOG
+    SS --> ERXQ
+    SS --> VLOG
 ```
+
+**Standards:** FHIR R4, HL7 v2 / EDI 837 + 835, ICD-10, CPT.
 
 ---
 
-## 13. Notification & Communication Architecture
+## 13. Messaging & Notifications
 
 ```mermaid
 graph LR
-    subgraph Triggers["Event Triggers"]
-        APPT_BOOK["Appointment Booked"]
-        APPT_REMIND["Appointment Reminder"]
-        CLAIM_UPDATE["Claim Status Update"]
-        RX_READY["Prescription Ready"]
-        LAB_RESULT["Lab Results Available"]
-        PORTAL_MSG["Patient Portal Message"]
+    subgraph Triggers["Events"]
+        T["Appointment booked / reminder<br/>Claim status · Rx ready<br/>Lab result · Portal message"]
     end
 
-    subgraph NotifService["Notification Service"]
-        NOTIF_ROUTE["/api/notifications"]
-        NOTIF_PREF["/api/notification-preferences"]
-        NOTIF_DB["notifications table"]
-        PREF_DB["notification_preferences table"]
+    subgraph Msg["Secure Messaging — messages.js"]
+        THREADS["Care-team + patient threads"]
+        ATT["Attachments"]
+        CRYPTO["messageCrypto.js<br/>AES-256-GCM envelope<br/>versioned keys"]
+        FILING["messageDocumentFiling.js"]
     end
 
-    subgraph Channels["Delivery Channels"]
-        EMAIL_CH["Email<br/>(Nodemailer / SendGrid)"]
-        WHATSAPP_CH["WhatsApp<br/>API"]
-        SMS_CH["SMS<br/>(future)"]
+    subgraph Notif["Notifications"]
+        NR["/api/notifications"]
+        NP["/api/notification-preferences"]
+        NS["notificationService.js"]
     end
 
-    subgraph Templates["Notification Templates"]
-        APPT_TMPL["Appointment Templates"]
-        CLAIM_TMPL["Claim Templates"]
-        CLINICAL_TMPL["Clinical Alert Templates"]
+    subgraph Channels["Delivery"]
+        EMAIL["Email — Nodemailer / SendGrid"]
+        WA["WhatsApp — Meta Graph API v18"]
+        INAPP["In-app — REST polling"]
     end
 
-    Triggers --> NotifService
-    NotifService --> NOTIF_DB
-    PREF_DB --> NotifService
-    NotifService --> Channels
-    Templates --> NotifService
+    T --> Notif --> NS --> Channels
+    NP --> NS
+    T --> Msg
+    THREADS --> CRYPTO
+    ATT --> CRYPTO
+    ATT --> FILING
 ```
+
+> **Delivery is poll-based REST, not push.** There is no WebSocket or SSE transport — `MessagesView.js` and the mobile `useResource.ts` fetch on interval/refresh. Message bodies are encrypted at rest but this is explicitly **not** end-to-end encryption; the rationale is documented in `messageCrypto.js`.
 
 ---
 
-## 14. Deployment & Infrastructure Architecture
+## 14. Deployment & Infrastructure
+
+AureonCare now targets **three deployment models** from one codebase.
 
 ```mermaid
 graph TB
-    subgraph Internet["Internet"]
-        USER_BR["User Browser"]
-        PATIENT_BR["Patient Browser"]
+    subgraph Vercel["Model 1 — Vercel (SaaS)"]
+        VN["@vercel/node → backend/server.js"]
+        VS["@vercel/static-build → frontend"]
+        VR["Routes: /api/* · /platform* · /health<br/>/uploads/* · microsoft-identity-association<br/>SPA rewrites: /book/* · /patient-login<br/>/signup · /accept-invite · /join"]
+        VH["Static security headers"]
     end
 
-    subgraph Vercel["Vercel Platform"]
-        subgraph FE_VERCEL["Frontend (Static)"]
-            REACT_BUILD["React Build (npm run build)<br/>Served as Static Files"]
-            CDN_VERCEL["Vercel Edge CDN<br/>Global Distribution"]
-        end
-
-        subgraph BE_VERCEL["Backend (Serverless)"]
-            NODE_SLS["@vercel/node Runtime<br/>Serverless Functions"]
-            API_FUNC["Express.js API Handler<br/>/api/* routes"]
-        end
-
-        VERCEL_CFG["vercel.json<br/>Route Config + Build Settings"]
+    subgraph Compose["Model 2 — Docker Compose (self-host)"]
+        PG["postgres:15-alpine"]
+        RD["redis:7-alpine"]
+        BK["backend"]
+        FE["frontend + nginx"]
+        UA["update-agent"]
+        VOL["volumes: pgdata · uploads-data<br/>network: aureoncare-net"]
     end
 
-    subgraph Supabase["Supabase Cloud"]
-        PG_SB["PostgreSQL Database<br/>76 Tables"]
-        SB_AUTH["Supabase Auth<br/>(optional)"]
-        SB_STORAGE["Supabase Storage<br/>(optional)"]
-        SB_REALTIME["Supabase Realtime"]
+    subgraph K8s["Model 3 — Kubernetes / Helm"]
+        CHART["helm/aureoncare"]
+        DEPL["backend-deployment<br/>frontend-deployment"]
+        CFG["configmap · secret"]
+        ING["ingress"]
+        HPA["hpa — autoscaling"]
+        PVC["pvc — uploads"]
+        PROF["values.saas.yaml<br/>values.customer-cloud.yaml<br/>values.onprem.yaml"]
     end
 
-    subgraph Redis_Infra["Redis (Optional)"]
-        REDIS_INST["Redis Instance<br/>Session Cache · Rate Limiting"]
+    subgraph Onprem["On-Premises Lifecycle"]
+        INST["deployment/onprem/install.sh"]
+        AGENT["update-agent/agent.js<br/>polls release registry<br/>webhook on new version<br/>optional docker compose pull && up -d<br/>/status endpoint on :8080"]
+        ARGO["deployment/saas/argocd-app.yaml"]
     end
 
-    subgraph ExtAPIs["External APIs"]
-        OAUTH_EXT["OAuth Providers<br/>Google · Microsoft"]
-        HEALTH_APIS["Healthcare APIs<br/>LabCorp · Optum · SureScripts"]
-        VIDEO_APIS["Video APIs<br/>Zoom · Google Meet · Webex"]
-        EMAIL_SVC["Email Services<br/>SMTP · SendGrid"]
-    end
-
-    USER_BR -->|"HTTPS"| CDN_VERCEL
-    PATIENT_BR -->|"HTTPS"| CDN_VERCEL
-    CDN_VERCEL --> REACT_BUILD
-    REACT_BUILD -->|"API calls /api/*"| NODE_SLS
-    NODE_SLS --> API_FUNC
-    API_FUNC -->|"pg driver + SSL"| PG_SB
-    API_FUNC -->|"@supabase/supabase-js"| SB_AUTH
-    API_FUNC -->|"ioredis"| REDIS_INST
-    API_FUNC -->|"HTTPS"| OAUTH_EXT
-    API_FUNC -->|"HTTPS"| HEALTH_APIS
-    API_FUNC -->|"HTTPS"| VIDEO_APIS
-    API_FUNC -->|"SMTP/TLS"| EMAIL_SVC
+    Compose --> UA --> AGENT
+    K8s --> PROF
+    Onprem --> INST
 ```
+
+**Health check:** exactly one endpoint — `GET /health` (`backend/server.js:127`), pinging Postgres. Referenced by `vercel.json`, both Helm probes, and the compose healthcheck. There is **no `/api/health`**; the mobile client probes `['/health', '/api/health']` in order purely as proxy tolerance.
+
+**Redis status:** live for the rate-limit store and send quota when `AC_RD_H`/`AC_RD_URL` are set. The `redisClient` in `server.js` is **commented out**, so `/health` reports Redis as `"not configured"` even when the rate limiter is using it.
 
 ---
 
-## 15. Security Architecture
+## 15. CI/CD Pipeline
 
 ```mermaid
 graph TB
-    subgraph Network["Network Security"]
-        HELMET["Helmet.js<br/>HTTP Security Headers"]
-        CORS_SEC["CORS Policy<br/>Allowed Origins Only"]
-        RATELIMIT["Rate Limiting<br/>express-rate-limit"]
-        HTTPS_ENF["HTTPS Enforcement<br/>(Vercel TLS)"]
+    subgraph CI[".github/workflows/ci.yml"]
+        J1["1 · Lint and Test<br/>backend + frontend, Node 18"]
+        J2["2 · Docker Build Verification<br/>backend · frontend · update-agent<br/>GHA cache, no push"]
+        J3["3 · Helm Lint<br/>chart + all 3 values files<br/>+ dry-run template render"]
+        J4["4 · SEC-05 Tenant-Scoping Guard<br/>npm run check:tenant-scoping"]
+        J5["5 · SEC-05 Cross-Tenant Isolation Test<br/>postgres:16 service<br/>schema + migrations 063–073<br/>tenant fan-out<br/>isolation.test.js<br/>+ check-db-role.js (not superuser)"]
     end
 
-    subgraph AppSecurity["Application Security"]
-        JWT_AUTH["JWT Authentication<br/>HS256 Signed Tokens"]
-        BCRYPT["bcryptjs<br/>Password Hashing"]
-        AES["AES-256 Encryption<br/>Sensitive Data at Rest"]
-        RBAC_SEC["RBAC Authorization<br/>Role + Permission Checks"]
-        INPUT_VAL["Input Validation<br/>Joi Schema Validation"]
-        SQL_PARAM["Parameterized Queries<br/>SQL Injection Prevention"]
+    subgraph REL[".github/workflows/release.yml — on v*.*.* tags"]
+        R1["Build and Push Docker Images → ghcr.io"]
+        R2["Package Helm Chart"]
+        R3["Create On-Premises Bundle"]
     end
 
-    subgraph DataSecurity["Data Security"]
-        PG_SSL["PostgreSQL SSL<br/>Encrypted Connections"]
-        ENV_VARS["Environment Variables<br/>No Secrets in Code"]
-        AUDIT_LOG["Audit Logging<br/>All Data Changes Tracked"]
-        ARCHIVE["Data Archival<br/>Retention Policies"]
-    end
-
-    subgraph Compliance["Healthcare Compliance"]
-        FHIR_COMP["FHIR R4 Compliance<br/>Interoperability Standard"]
-        HL7_COMP["HL7 v2 / EDI<br/>Claims Standards"]
-        ICD_CPT["ICD-10 + CPT Codes<br/>Clinical Standards"]
-        AUDIT_TRAIL["Complete Audit Trail<br/>audit_logs table"]
-    end
-
-    Network --> AppSecurity
-    AppSecurity --> DataSecurity
-    DataSecurity --> Compliance
+    J1 --> J2
+    J4 --> J5
+    R1 --> R2 --> R3
 ```
+
+**Backend test suites** (`backend/test/`): `sec05/isolation.test.js`, and `signup/{flow, plan-change, billing, accounting, notify, domain-join, mfa-session}.test.js` — wired to `test:sec05`, `test:signup`, `test:plans`, `test:billing`, `test:accounting`, `test:notify`, `test:domains`, `test:mfa`.
 
 ---
 
-## 16. Data Flow Summary
+## 16. Security Architecture
 
 ```mermaid
-flowchart TD
-    subgraph External_In["External Inputs"]
-        PATIENT_INPUT["Patient Data Input"]
-        PROVIDER_INPUT["Provider Input"]
-        INSURANCE_INPUT["Insurance Data"]
-        LAB_RESULTS["Lab Results (LabCorp)"]
-        ERA_INPUT["EDI 835 Remittance"]
+graph TB
+    subgraph Net["Network / Transport"]
+        HELMET["helmet — COEP · COOP · CSP frame-ancestors"]
+        CORSX["CORS allowlist + /platform fallback"]
+        RATE["Rate limiting — Redis-backed store"]
+        TLS["TLS at edge (Vercel / ingress)"]
     end
 
-    subgraph Processing["AureonCare System"]
-        FE_PROC["React Frontend<br/>Presentation Layer"]
-        BE_PROC["Express API<br/>Business Logic"]
-        DB_PROC["PostgreSQL<br/>Data Storage"]
-        CACHE["Redis Cache<br/>Session/Performance"]
+    subgraph App["Application"]
+        CSRFX["CSRF double-submit"]
+        JWTX["JWT HS256 pinned · 32-byte secret enforced<br/>token_version revocation"]
+        MFAX["TOTP 2FA + hashed backup codes"]
+        IDLE["Server-enforced session idle timeout"]
+        PWD["Password policy — 12+ chars, 4 classes<br/>bcrypt cost 12"]
+        TIMING["DUMMY_PASSWORD_HASH<br/>constant-time login"]
+        LOCK["Portal lockout — 20/IP + 3/account per 15min"]
+        UPLOADX["Authenticated uploads<br/>+ path-traversal check"]
     end
 
-    subgraph External_Out["External Outputs"]
-        ERX_OUT["E-Prescriptions<br/>(SureScripts)"]
-        CLAIM_OUT["EDI 837 Claims<br/>(Insurance Payers)"]
-        FHIR_OUT["FHIR Resources<br/>(External EHRs)"]
-        NOTIF_OUT["Notifications<br/>(Email/WhatsApp)"]
-        TELE_OUT["Telehealth Sessions<br/>(Zoom/Meet/Webex)"]
-        REPORTS_OUT["Reports & Analytics"]
-        CALENDAR_OUT["Calendar Events<br/>(Google/MS)"]
+    subgraph Data["Data"]
+        TENANTX["Schema-per-tenant isolation<br/>+ CI guard"]
+        MSGENC["AES-256-GCM message envelope"]
+        BAKENC["backupCrypto.js"]
+        BLIND["Blind index — HMAC-SHA256 + pepper"]
+        HASHSESS["Portal session tokens SHA-256 hashed"]
+        LEASTP["aureoncare_app least-privilege role<br/>CI asserts not superuser"]
     end
 
-    External_In --> FE_PROC
-    FE_PROC <--> BE_PROC
-    BE_PROC <--> DB_PROC
-    BE_PROC <--> CACHE
-    BE_PROC --> External_Out
+    subgraph Audit["Audit & Compliance"]
+        PHIA["PHI read trail — phiAccessLog + phiAudit<br/>logs resource, not payload; 2xx only"]
+        APPEND["Append-only audit_logs<br/>BEFORE UPDATE/DELETE trigger raises"]
+        CIMM["control.audit_log immutable"]
+        BGLASS["break_glass_sessions"]
+        STD["FHIR R4 · HL7 · ICD-10 · CPT"]
+    end
+
+    Net --> App --> Data --> Audit
 ```
+
+**Not present:** Row-Level Security (zero policies), dedicated secrets-manager integration, WAF configuration. Staff login has no `failed_login_count`/`locked_until` columns — account lockout is portal-only; staff rely on the generic `authLimiter`.
 
 ---
 
-## Component Summary Table
+## 17. Component Summary
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Frontend** | React 18.2 + Tailwind CSS | SPA Web Application |
-| **State Management** | React Context API | Global App State |
-| **Routing** | React Router v6 | Client-Side Navigation |
-| **API Client** | Axios | HTTP Communication |
-| **Charts** | Recharts + Chart.js | Analytics Visualization |
-| **PDF/Excel** | jsPDF + XLSX | Document Export |
-| **Video SDK** | @zoom/meetingsdk | In-Browser Telehealth |
-| **Backend** | Node.js + Express.js 4.x | REST API Server |
-| **Authentication** | JWT + bcryptjs | Auth Tokens + Hashing |
-| **Authorization** | Custom RBAC Middleware | Role/Permission Checks |
-| **Social Auth** | Google + MS MSAL OAuth | SSO Integration |
-| **Database** | PostgreSQL 12+ (Supabase) | Primary Data Store |
-| **Cache** | Redis 6+ | Session + Performance Cache |
-| **File Storage** | Multer + Local/Cloud | Document Uploads |
-| **Email** | Nodemailer + SendGrid | Transactional Email |
-| **Hosting** | Vercel (Frontend + Backend) | Cloud Deployment |
-| **Lab Integration** | LabCorp API | Lab Order Management |
-| **Insurance** | Optum API | Claims + Eligibility |
-| **e-Prescriptions** | SureScripts | Electronic Prescriptions |
-| **Telehealth** | Zoom + Google Meet + Webex + Teams | Video Consultations |
-| **Interoperability** | FHIR R4 + HL7 v2/EDI | Healthcare Standards |
-| **Compliance** | Audit Logs + AES-256 | HIPAA-Aligned Controls |
-| **Security** | Helmet + CORS + Rate Limiting | Network Protection |
+| Layer | Technology | Status |
+|---|---|---|
+| **Clinic web** | React 18, CRA/craco, Tailwind, React Router v6 | Active |
+| **Mobile** | React Native 0.81, Expo SDK 54, React Navigation v7, TypeScript | Active |
+| **Platform console** | Static HTML/JS served by backend at `/platform` | Active |
+| **Backend** | Node.js 18, Express 4, 59 route modules, 20+ services | Active |
+| **Database** | PostgreSQL — `public` + `control` + `template` + per-tenant schemas | Active |
+| **Tenancy** | Schema-per-tenant, `search_path` pinned per statement | Active |
+| **Cache** | Redis — rate-limit store + send quota | Partial (client commented out in `server.js`) |
+| **Auth** | JWT HS256, HttpOnly cookie, TOTP 2FA, idle timeout | Active |
+| **Social auth** | Google + Microsoft code exchange | Active |
+| **Social auth (legacy)** | Facebook via `/social-login` | Deprecated — retired by env var |
+| **Billing** | Stripe Checkout + webhooks, internal GL | Active |
+| **Messaging** | REST polling, AES-256-GCM at rest | Active |
+| **Telehealth** | Zoom SDK, Google Meet, Webex, Teams | Active |
+| **Vendors** | LabCorp, Optum, SureScripts | Active |
+| **Interop** | FHIR R4, HL7 v2 / EDI 837+835, ICD-10, CPT | Active |
+| **Containers** | Docker (backend, frontend, update-agent) | Active |
+| **Orchestration** | Helm chart, 3 values profiles, HPA, ingress, PVC | Active |
+| **On-prem** | `install.sh` + auto-update agent | Active |
+| **CI/CD** | GitHub Actions — 5 CI jobs, tagged releases to ghcr.io | Active |
+
+---
+
+## 18. Declared But **Not Implemented**
+
+These appear in dependency manifests or prose documentation but have **zero imports in the codebase**. They are recorded here so the diagrams above are not read as claiming them.
+
+| Item | Reality |
+|---|---|
+| `socket.io` (root `package.json`) | **0 usages.** No WebSocket/SSE anywhere. `server.js` calls plain `app.listen()` and never creates an `http.Server` to attach to. Messaging is poll-based REST. |
+| `winston` | **0 requires.** All logging is `console.*`. |
+| `joi` | **0 requires.** Validation is hand-rolled. |
+| Row-Level Security | **No policies exist.** Isolation is schema + `search_path`, enforced in app code and CI. |
+| Redis client in `server.js` | **Commented out.** Redis is genuinely used by the rate-limit store, but `/health` reports `"not configured"`. |
+| `expo-local-authentication` (biometric unlock) | Declared in mobile, **0 imports**. A `biometrics` preference key exists in `storage.ts` but nothing reads the biometric API. |
+| `expo-notifications` (push / APNs / FCM) | Declared in mobile, **0 imports**. |
+| `expo-auth-session` / `expo-web-browser` | Declared in mobile, **0 imports**; `app.json` client IDs are empty placeholders. |
+| `expo-document-picker`, `expo-crypto`, `expo-linking`, `react-native-svg` | Declared in mobile, **0 imports** (RN's own `Linking` is used). |
+| Backend `@azure/msal-*`, `@react-oauth/google`, `react` | Frontend dependencies leaked into the backend manifest; **0 backend requires**. |
+
+`mobile/README.md` cites biometrics, push notifications and deep links as *motivation for choosing React Native* — that is rationale, not shipped functionality.
