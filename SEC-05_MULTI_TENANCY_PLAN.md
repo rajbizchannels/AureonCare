@@ -1,11 +1,61 @@
 # SEC-05 — Multi-Tenant Data Isolation: Implementation Plan
 
-**Finding (High / P1, effort XL):** No route scopes PHI queries by an owning clinic/org.
-Any authenticated user can read every clinic's patients and PHI. Filters are by record id
-only, never by an owner tied to `req.user`.
+> ## ⚠️ SUPERSEDED — this plan has been implemented
+>
+> **Status: Model D was chosen and shipped.** This document is kept for the design
+> rationale in §0–§10 and for the audit trail. It is **no longer an accurate
+> description of the system** — read §0.1 below for what actually exists, then treat
+> the rest as history.
+>
+> The original text of this header read *"Plan for sign-off. Nothing in here is built
+> yet."* That was true when written and is now wrong; it is corrected here rather than
+> deleted, because the sign-off state is part of the record.
+>
+> **Current architecture:** `ARCHITECTURE_DIAGRAM.md` §2 (Multi-Tenancy) and §3
+> (Database Schema Topology).
 
-**Status:** Plan for sign-off. Nothing in here is built yet. One product decision (below)
-gates the entire effort.
+**Original finding (High / P1, effort XL):** No route scopes PHI queries by an owning
+clinic/org. Any authenticated user can read every clinic's patients and PHI. Filters are
+by record id only, never by an owner tied to `req.user`.
+
+---
+
+## 0.1 What actually shipped (supersedes §0–§9)
+
+**Model D — schema-per-tenant.** One Postgres schema per clinic, a shared `control`
+schema as the control plane, and a golden `template` schema that new tenants are
+stamped from. **Model C was not taken: there is no Row-Level Security anywhere in the
+codebase** (`grep -riE 'ROW LEVEL SECURITY|CREATE POLICY' --include=*.sql` → 0 hits).
+Isolation is the schema boundary plus `search_path`, enforced in application code and
+policed by CI — not by the database.
+
+| Piece | Where |
+|---|---|
+| Control plane, template schema, provisioning, portal routing | `backend/migrations/063…074_sec05_*.sql` |
+| Per-tenant fan-out migrations | `backend/migrations/tenant/001…003`, applied by `backend/run-tenant-migrations.js` |
+| Tenant resolution (`users.practice_id` → `control.tenants` → `schema_name`) | `backend/services/tenantCatalog.js` (`resolveTenantForUser`, 60s cache) |
+| Scoped handle `req.db` | `backend/db/requestTenantDb.js` (`makeTenantDb`) |
+| Where `req.db` is attached | `middleware/auth.js:99`, `middleware/messagingAuth.js:130`, `routes/patient-portal.js:81` |
+| Portal routing without a tenant context | `backend/utils/blindIndex.js` (HMAC-SHA256 + pepper) |
+| Least-privilege DB role | `migrations/073_sec05_least_privilege_role.sql`, asserted by `scripts/check-db-role.js` |
+| CI enforcement | `scripts/check-tenant-scoping.js`; `test/sec05/isolation.test.js` |
+
+**One implementation note worth carrying forward:** `search_path` is set per *statement*,
+inside a transaction, not once per connection. Supabase's transaction pooler can hand
+consecutive statements to different backends, so a connection-level `search_path` is not
+reliable. See `requestTenantDb.js`.
+
+### The sweep is not finished
+
+Of 60 route files, **44 use the tenant-scoped `req.db` and 56 still reference
+`app.locals.pool` directly** — the two sets overlap, because a file can do both. The
+remaining raw-pool use is held to an explicit `RAW_POOL_ALLOWLIST` in
+`scripts/check-tenant-scoping.js` (identity plane, shared master data, control-plane
+billing), and CI fails on anything new that is not listed.
+
+This is the live gap. §1's original framing — that there is no repository layer to
+centralize a `WHERE`, and that this is why RLS was attractive — still applies to the
+files that have not been converted. Anyone reducing the allowlist should start there.
 
 ---
 
@@ -501,6 +551,15 @@ Per-tenant *rollout* then happens by **flipping flags/config per tenant**, not b
 
 ---
 
-*Prepared for review. §0/§8 choose the model; §9 details the enterprise "isolate + update-safely"
-pattern; §10 details per-tenant feature/patch rollout under Model D. On sign-off of the model +
-Q1–Q4, Phase 0/1 (or S1/S2 for model D) can start behind the cross-tenant test.*
+*Originally prepared for review: §0/§8 choose the model; §9 details the enterprise
+"isolate + update-safely" pattern; §10 details per-tenant feature/patch rollout under
+Model D.*
+
+**Outcome:** Model D was signed off and built. §9's S1–S5 steps and §10's per-tenant
+rollout are reflected in the shipped control plane, the `template` schema and the tenant
+migration fan-out runner. The cross-tenant test the plan asked to build behind now exists
+and gates CI (`backend/test/sec05/isolation.test.js`).
+
+**Still open:** the raw-pool allowlist described in §0.1 — 56 of 60 route files still
+touch `app.locals.pool`. Closing that is the remaining SEC-05 work; everything else in
+this plan is done. See `ARCHITECTURE_DIAGRAM.md` §2 for the current-state view.
