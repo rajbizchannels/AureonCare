@@ -765,7 +765,12 @@ const api = {
   // Providers
   getProviders: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/providers`);
-    if (!response.ok) throw new Error('Failed to fetch providers');
+    if (!response.ok) {
+      // The server distinguishes "not linked to a practice" from a generic failure;
+      // discarding the body turned that into an unactionable "Failed to fetch providers".
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.message || body.error || 'Failed to fetch providers');
+    }
     return response.json();
   },
   getProvider: async (id) => {
