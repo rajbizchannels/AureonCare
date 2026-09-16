@@ -2739,87 +2739,87 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
             <input
               type="date"
               value={bookingData.date}
-              onChange={(e) => setBookingData({...bookingData, date: e.target.value, providerId: '', time: ''})}
+              onChange={(e) => setBookingData({...bookingData, date: e.target.value, time: ''})}
               required
               min={new Date().toISOString().split('T')[0]}
               className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
             />
           </div>
 
-          {/* Step 2: Provider Selection (only after date is selected) */}
-          {bookingData.date && (
-            <div>
-              <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                2. {t.selectProvider}
-              </label>
-              {loadingProviders ? (
-                <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
-                  Loading providers...
-                </div>
-              ) : providersError ? (
-                <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border-red-700 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
-                  {providersError}. Please refresh the page or contact support.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {/* Narrow the list before picking: by specialty, by name, or both. */}
-                  <div className={`grid grid-cols-1 gap-3 ${specialtyOptions.length > 0 ? 'sm:grid-cols-2' : ''}`}>
-                    {specialtyOptions.length > 0 && (
-                      <div>
-                        <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          <Stethoscope className="w-3 h-3 inline mr-1" />
-                          {t.filterBySpecialty || 'Filter by Specialty'}
-                        </label>
-                        <ThemedSelect
-                          theme={theme}
-                          value={providerSpecialtyFilter}
-                          onChange={(e) => setProviderSpecialtyFilter(e.target.value)}
-                        >
-                          <option value="">{t.allSpecialties || 'All Specialties'}</option>
-                          {specialtyOptions.map(specialty => (
-                            <option key={specialty} value={specialty}>{specialty}</option>
-                          ))}
-                        </ThemedSelect>
-                      </div>
-                    )}
+          {/* Step 2: Provider Selection. Not gated on the date — searching for a
+              provider by specialty is how a patient decides who to book with, so
+              it has to be reachable before they have a date in mind. */}
+          <div>
+            <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              2. {t.selectProvider}
+            </label>
+            {loadingProviders ? (
+              <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                Loading providers...
+              </div>
+            ) : providersError ? (
+              <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border-red-700 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                {providersError}. Please refresh the page or contact support.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Narrow the list before picking: by specialty, by name, or both. */}
+                <div className={`grid grid-cols-1 gap-3 ${specialtyOptions.length > 0 ? 'sm:grid-cols-2' : ''}`}>
+                  {specialtyOptions.length > 0 && (
                     <div>
                       <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        <Search className="w-3 h-3 inline mr-1" />
-                        {t.search || 'Search'}
+                        <Stethoscope className="w-3 h-3 inline mr-1" />
+                        {t.filterBySpecialty || 'Filter by Specialty'}
                       </label>
-                      <input
-                        type="text"
-                        value={providerSearchQuery}
-                        onChange={(e) => setProviderSearchQuery(e.target.value)}
-                        placeholder={t.searchProvidersPlaceholder || 'Search by provider name or specialty...'}
-                        className={`w-full min-h-[42px] px-3 py-2 border rounded-lg outline-none transition-colors ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500 focus:border-blue-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'}`}
-                      />
+                      <ThemedSelect
+                        theme={theme}
+                        value={providerSpecialtyFilter}
+                        onChange={(e) => setProviderSpecialtyFilter(e.target.value)}
+                      >
+                        <option value="">{t.allSpecialties || 'All Specialties'}</option>
+                        {specialtyOptions.map(specialty => (
+                          <option key={specialty} value={specialty}>{specialty}</option>
+                        ))}
+                      </ThemedSelect>
                     </div>
-                  </div>
-
-                  {filteredProviders.length === 0 ? (
-                    <div className={`w-full px-4 py-2 border rounded-lg text-sm ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-600'}`}>
-                      {t.noProvidersMatch || 'No providers match your search'}
-                    </div>
-                  ) : (
-                    <ThemedSelect
-                      theme={theme}
-                      value={bookingData.providerId}
-                      onChange={(e) => setBookingData({...bookingData, providerId: e.target.value, time: ''})}
-                      required
-                    >
-                      <option value="">Select a provider</option>
-                      {filteredProviders.map(provider => (
-                        <option key={provider.id} value={provider.id}>
-                          Dr. {providerNameOf(provider)} {providerSpecialtyOf(provider) ? `- ${providerSpecialtyOf(provider)}` : ''}
-                        </option>
-                      ))}
-                    </ThemedSelect>
                   )}
+                  <div>
+                    <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      <Search className="w-3 h-3 inline mr-1" />
+                      {t.search || 'Search'}
+                    </label>
+                    <input
+                      type="text"
+                      value={providerSearchQuery}
+                      onChange={(e) => setProviderSearchQuery(e.target.value)}
+                      placeholder={t.searchProvidersPlaceholder || 'Search by provider name or specialty...'}
+                      className={`w-full min-h-[42px] px-3 py-2 border rounded-lg outline-none transition-colors ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500 focus:border-blue-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'}`}
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+
+                {filteredProviders.length === 0 ? (
+                  <div className={`w-full px-4 py-2 border rounded-lg text-sm ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-300 text-gray-600'}`}>
+                    {t.noProvidersMatch || 'No providers match your search'}
+                  </div>
+                ) : (
+                  <ThemedSelect
+                    theme={theme}
+                    value={bookingData.providerId}
+                    onChange={(e) => setBookingData({...bookingData, providerId: e.target.value, time: ''})}
+                    required
+                  >
+                    <option value="">Select a provider</option>
+                    {filteredProviders.map(provider => (
+                      <option key={provider.id} value={provider.id}>
+                        Dr. {providerNameOf(provider)} {providerSpecialtyOf(provider) ? `- ${providerSpecialtyOf(provider)}` : ''}
+                      </option>
+                    ))}
+                  </ThemedSelect>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Step 3: Time Slot Selection (only after provider is selected) */}
           {bookingData.providerId && bookingData.date && (
