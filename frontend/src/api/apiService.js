@@ -819,7 +819,7 @@ const api = {
       err.mfaEnrolmentRequired = Boolean(data.mfaEnrolmentRequired);
       throw err;
     }
-    return response.json();
+    return api._storePortalSessionToken(await response.json());
   },
   changePassword: async (currentPassword, newPassword) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/change-password`, {
@@ -874,7 +874,7 @@ const api = {
       const e = await response.json().catch(() => ({}));
       throw new Error(e.error || 'Google sign-in failed');
     }
-    return response.json();
+    return api._storePortalSessionToken(await response.json());
   },
   exchangeMicrosoftCode: async (code, redirectUri, codeVerifier, inviteToken) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/microsoft/exchange`, {
@@ -885,7 +885,7 @@ const api = {
       const e = await response.json().catch(() => ({}));
       throw new Error(e.error || 'Microsoft sign-in failed');
     }
-    return response.json();
+    return api._storePortalSessionToken(await response.json());
   },
 
   socialLogin: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
@@ -895,7 +895,7 @@ const api = {
       body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
     });
     if (!response.ok) throw new Error('Failed to login with social account');
-    return response.json();
+    return api._storePortalSessionToken(await response.json());
   },
   socialRegister: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-register`, {
@@ -3690,6 +3690,20 @@ const api = {
     } catch (e) {
       console.error('Failed to clear token:', e);
     }
+  },
+  // A login response carries portalSessionToken only when the account is a patient with
+  // portal access. Unlike the JWT above this is always persisted, same-origin or not: the
+  // portal's router.param guard reads the Authorization header and nothing else, so there
+  // is no cookie to fall back on. This mirrors what PatientLoginPage already does after a
+  // direct portal login.
+  _storePortalSessionToken: (data) => {
+    if (!data || !data.portalSessionToken) return data;
+    try {
+      sessionStorage.setItem('portalSessionToken', data.portalSessionToken);
+    } catch (e) {
+      console.error('Failed to store portal session token:', e);
+    }
+    return data;
   },
   // SEC-16: revoke the session server-side before dropping local state. Bumps the
   // account's token_version (invalidating this and any other clinician JWT) and clears
