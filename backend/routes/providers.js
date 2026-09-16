@@ -12,6 +12,29 @@ const toCamelCase = (obj) => {
   return newObj;
 };
 
+// SEC-05: `providers` and `users` are identity-plane tables in `public`, scoped by
+// practice_id rather than by tenant schema — which is why this file is on the
+// RAW_POOL_ALLOWLIST in scripts/check-tenant-scoping.js and must NOT be routed through
+// req.db. (req.db would pin search_path to the tenant schema first, so a shadow copy of
+// `providers` there would be read instead of the real table — the migration-071 bug.)
+//
+// The scoping itself is only meaningful when the caller has a practice. `practice_id = NULL`
+// is never true in SQL, so an unbound account used to match zero rows and receive an empty
+// list — indistinguishable from a practice that genuinely has no providers. Say which it is.
+const requirePractice = (req, res) => {
+  const practiceId = req.user.practiceId ?? null;
+  if (!practiceId) {
+    res.status(409).json({
+      error: 'Account is not linked to a practice',
+      message:
+        'This account is not attached to a practice, so its providers cannot be listed. ' +
+        'An administrator can link it, or check /api/auth/tenant-status for details.'
+    });
+    return null;
+  }
+  return practiceId;
+};
+
 // Get all providers (requires authentication)
 // Admin/receptionist can see all, doctors can only see themselves
 router.get('/', authenticate, async (req, res) => {
@@ -26,13 +49,16 @@ router.get('/', authenticate, async (req, res) => {
     if (userRole === 'admin' || userRole === 'receptionist' || userRole === 'nurse' || userRole === 'patient') {
       // SEC-05: providers are staff — scope to the caller's practice via users.practice_id
       // (providers.id = users.id).
+      const practiceId = requirePractice(req, res);
+      if (!practiceId) return;
+
       result = await pool.query(`
         SELECT p.*, u.status, u.role
         FROM providers p
         JOIN users u ON p.id = u.id
         WHERE u.practice_id = $1
         ORDER BY p.last_name, p.first_name ASC
-      `, [req.user.practiceId || null]);
+      `, [practiceId]);
     } else if (userRole === 'doctor') {
       result = await pool.query(`
         SELECT p.*, u.status, u.role
@@ -65,14 +91,16 @@ router.get('/:id', authenticate, async (req, res) => {
     const userId = req.user.id;
     const providerId = req.params.id;
 
-    // SEC-05: only providers in the caller's practice (self always allowed).
+    // SEC-05: only providers in the caller's practice (self always allowed). No
+    // requirePractice guard here: a null practice makes the second clause never match,
+    // which correctly narrows this to self-only rather than matching nothing at all.
     const result = await pool.query(
       `SELECT p.*, u.status, u.role
        FROM providers p
        JOIN users u ON p.id = u.id
        WHERE p.id::text = $1::text
          AND (p.id::text = $2::text OR u.practice_id = $3)`,
-      [providerId, userId, req.user.practiceId || null]
+      [providerId, userId, req.user.practiceId ?? null]
     );
 
     if (result.rows.length === 0) {
@@ -146,13 +174,14 @@ router.put('/:id', authenticate, async (req, res) => {
     const providerId = req.params.id;
 
     // Check if provider exists and get user_id — SEC-05: scope to caller's practice
-    // (self always allowed). providers.id = users.id.
+    // (self always allowed). providers.id = users.id. As in GET /:id, a null practice
+    // narrows this to self-only, which is the safe reading.
     const providerCheck = await pool.query(
       `SELECT p.* FROM providers p
        JOIN users u ON p.id = u.id
        WHERE p.id::text = $1::text
          AND (p.id::text = $2::text OR u.practice_id = $3)`,
-      [providerId, userId, req.user.practiceId || null]
+      [providerId, userId, req.user.practiceId ?? null]
     );
 
     if (providerCheck.rows.length === 0) {
@@ -214,10 +243,15 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     // SEC-05: only delete a provider whose linked user is in the caller's practice.
+    // Without a practice the subquery is empty and the delete quietly removes nothing,
+    // reporting "not found" for what is really an unlinked account.
+    const practiceId = requirePractice(req, res);
+    if (!practiceId) return;
+
     const result = await pool.query(
       `DELETE FROM providers WHERE id::text = $1::text
          AND id IN (SELECT id FROM users WHERE practice_id = $2) RETURNING *`,
-      [req.params.id, req.user.practiceId || null]
+      [req.params.id, practiceId]
     );
 
     if (result.rows.length === 0) {
