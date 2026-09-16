@@ -2761,6 +2761,13 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
               <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border-red-700 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
                 {providersError}. Please refresh the page or contact support.
               </div>
+            ) : providers.length === 0 ? (
+              /* No providers and no error: the fetch never ran, because it is
+                 gated on `user` being loaded. Say so rather than rendering a
+                 search box over an empty list, which looks like broken search. */
+              <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border-red-700 text-red-400' : 'bg-red-50 border-red-300 text-red-600'}`}>
+                {t.failedToLoadProviders || 'Failed to load providers'}. Please refresh the page or contact support.
+              </div>
             ) : (
               <div className="space-y-3">
                 {/* Narrow the list before picking: by specialty, by name, or both. */}
