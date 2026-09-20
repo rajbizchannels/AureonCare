@@ -846,8 +846,6 @@ helm upgrade aureoncare helm/aureoncare/ \
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `REACT_APP_SVC_URL` | **Yes** | — | Backend API base URL, e.g. `https://api.clinic.com/api` |
-| `REACT_APP_SB_URL` | No | — | Supabase project URL (if using Supabase auth) |
-| `REACT_APP_SB_PK` | No | — | Supabase publishable key |
 | `REACT_APP_GG_CID` | No | — | Google OAuth client ID |
 | `REACT_APP_MS_CID` | No | — | Microsoft OAuth client ID |
 | `REACT_APP_FB_AID` | No | — | Facebook OAuth App ID |
