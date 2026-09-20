@@ -35,6 +35,23 @@ const readCookie = (name) => {
   }
 };
 
+/**
+ * Headers for the PUBLIC endpoints — signup, invite acceptance, domain join.
+ *
+ * These are reached with no account, so they deliberately skip authenticatedFetch. But the
+ * API is same-origin, which means the browser attaches any session cookie the visitor
+ * already has WITHOUT being asked. verifyCsrf then sees a cookie-authenticated request and
+ * rejects it for want of a token — so registering a new subscription, or accepting an
+ * invite, failed with 403 for anyone who happened to be signed in or merely had a stale
+ * cookie. Sending the token when we have one keeps the protection and fixes the flow.
+ */
+const publicPostHeaders = () => {
+  const headers = { 'Content-Type': 'application/json' };
+  const csrf = readCookie('ac_csrf');
+  if (csrf) headers['X-CSRF-Token'] = csrf;
+  return headers;
+};
+
 const getAuthHeaders = () => {
   const headers = { 'Content-Type': 'application/json' };
   try {
@@ -3724,7 +3741,7 @@ const api = {
   startSignup: async (payload) => {
     const r = await fetch(`${API_BASE_URL}/signup`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: publicPostHeaders(),
       body: JSON.stringify(payload),
     });
     const data = await r.json().catch(() => ({}));
@@ -3780,7 +3797,7 @@ const api = {
   acceptInvite: async (payload) => {
     const r = await fetch(`${API_BASE_URL}/invites/accept`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: publicPostHeaders(),
       body: JSON.stringify(payload),
     });
     const data = await r.json().catch(() => ({}));
@@ -3938,7 +3955,7 @@ const api = {
   joinPractice: async (payload) => {
     const r = await fetch(`${API_BASE_URL}/team-access/join`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: publicPostHeaders(),
       body: JSON.stringify(payload),
     });
     const data = await r.json().catch(() => ({}));
