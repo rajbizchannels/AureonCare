@@ -295,13 +295,18 @@ router.post('/restore', async (req, res) => {
  * GET /api/backup/config
  */
 router.get('/config', async (req, res) => {
+  // Same handle the token is written with. backup_provider_settings is a per-tenant table
+  // (migration 068), so reading it through the raw pool — whose search_path is the default
+  // — would look at a different schema than the write did, and a freshly saved token would
+  // read back as "not configured".
+  const db = req.db || pool;
   try {
     // Configured = has a valid OAuth access token saved after sign-in
     let googleConfigured = false;
     let oneDriveConfigured = false;
 
     try {
-      const result = await pool.query(
+      const result = await db.query(
         `SELECT provider_type,
                 (settings->>'access_token' IS NOT NULL AND settings->>'access_token' != '') AS has_token
          FROM backup_provider_settings
@@ -372,10 +377,23 @@ router.post('/config/google-drive', async (req, res) => {
 /**
  * Update OneDrive access token
  * POST /api/backup/config/onedrive
+ *
+ * This used to do `process.env.AC_OD_TK = accessToken`, which was wrong twice over.
+ *
+ * process.env is process-global, so in a multi-tenant system one practice's OneDrive
+ * token was readable by every other tenant's request — a cross-tenant credential leak,
+ * in a system holding PHI. It was also useless: nothing ever read AC_OD_TK, so a token
+ * saved here never reached an upload. The value additionally vanished on the next cold
+ * start and never existed on the other serverless instances.
+ *
+ * The token now goes where every other integration token goes — the per-tenant
+ * backup_provider_settings row that cloudBackupStorage reads and refreshes — so it is
+ * scoped to one practice, survives restarts, and actually gets used.
  */
 router.post('/config/onedrive', async (req, res) => {
+  const db = req.db || pool;
   try {
-    const { accessToken } = req.body;
+    const { accessToken, refreshToken } = req.body;
 
     if (!accessToken) {
       return res.status(400).json({
@@ -383,8 +401,29 @@ router.post('/config/onedrive', async (req, res) => {
       });
     }
 
-    // Store in environment variable (runtime only)
-    process.env.AC_OD_TK = accessToken;
+    // Merge rather than replace: the row may already hold a refresh token, and losing it
+    // would mean the next expiry could not be recovered without re-authorising.
+    const { rowCount } = await db.query(
+      `UPDATE backup_provider_settings
+          SET settings = COALESCE(settings, '{}'::jsonb)
+                         || jsonb_strip_nulls(jsonb_build_object(
+                              'access_token', $1::text,
+                              'refresh_token', $2::text)),
+              is_enabled = true,
+              updated_at = CURRENT_TIMESTAMP
+        WHERE provider_type = 'onedrive'`,
+      [accessToken, refreshToken || null]
+    );
+
+    if (rowCount === 0) {
+      await db.query(
+        `INSERT INTO backup_provider_settings (provider_type, is_enabled, settings)
+         VALUES ('onedrive', true,
+                 jsonb_strip_nulls(jsonb_build_object(
+                   'access_token', $1::text, 'refresh_token', $2::text)))`,
+        [accessToken, refreshToken || null]
+      );
+    }
 
     res.json({
       success: true,
