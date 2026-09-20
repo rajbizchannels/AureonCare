@@ -6,6 +6,50 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 // Google Drive and OneDrive paths cannot drift apart.
 const cloudStorage = require('../services/cloudBackupStorage');
 
+// The tables a full backup covers, and the ONLY tables a restore may touch.
+//
+// restoreBackup used to iterate whatever keys the uploaded file happened to contain and
+// interpolate them straight into `TRUNCATE TABLE ${name} CASCADE`. A hand-edited backup
+// file could therefore truncate any table the connection could reach — including global
+// ones shared by every tenant — or inject SQL through the name itself. The upload is
+// admin-only, but an admin restoring a corrupted or malicious file should not be able to
+// destroy another practice's data.
+const BACKUP_TABLES = [
+  'users',
+  'patients',
+  'appointments',
+  'appointment_types',
+  'medical_records',
+  'medications',
+  'prescriptions',
+  'lab_orders',
+  'claims',
+  'insurance_payers',
+  'payments',
+  'providers',
+  'roles',
+  'permissions',
+  'user_roles',
+  'role_permissions',
+  'diagnosis_codes',
+  'medical_codes',
+  'notifications',
+  'notification_preferences',
+  'offerings',
+  'offering_packages',
+  'offering_categories',
+  'offering_promotions',
+  'campaigns',
+  'pharmacies',
+  'laboratories',
+  'telehealth_sessions',
+  'telehealth_settings',
+  'vendor_integration_settings',
+  'tasks',
+  'waitlist',
+];
+const BACKUP_TABLE_SET = new Set(BACKUP_TABLES);
+
 // Middleware to ensure only admins can access backup endpoints
 router.use(authenticate, requireAdmin);
 
@@ -24,7 +68,7 @@ router.use(authenticate, requireAdmin);
  * serverless invocation and does not depend on req.protocol, which is http
  * behind the Vercel proxy.
  */
-async function generateBackup(generatedBy) {
+async function generateBackup(db, generatedBy) {
   console.log('Generating complete system backup...');
 
   const backup = {
@@ -33,46 +77,12 @@ async function generateBackup(generatedBy) {
     data: {}
   };
 
-  // Define all tables to backup
-  const tables = [
-      'users',
-      'patients',
-      'appointments',
-      'appointment_types',
-      'medical_records',
-      'medications',
-      'prescriptions',
-      'lab_orders',
-      'claims',
-      'insurance_payers',
-      'payments',
-      'providers',
-      'roles',
-      'permissions',
-      'user_roles',
-      'role_permissions',
-      'diagnosis_codes',
-      'medical_codes',
-      'notifications',
-      'notification_preferences',
-      'offerings',
-      'offering_packages',
-      'offering_categories',
-      'offering_promotions',
-      'campaigns',
-      'pharmacies',
-      'laboratories',
-      'telehealth_sessions',
-      'telehealth_settings',
-      'vendor_integration_settings',
-      'tasks',
-      'waitlist'
-    ];
+  const tables = BACKUP_TABLES;
 
   // Backup each table
   for (const table of tables) {
     try {
-      const result = await pool.query(`SELECT * FROM ${table}`);
+      const result = await db.query(`SELECT * FROM ${table}`);
       backup.data[table] = result.rows;
       console.log(`Backed up ${table}: ${result.rows.length} rows`);
     } catch (error) {
@@ -96,7 +106,7 @@ async function generateBackup(generatedBy) {
 
 router.get('/generate', async (req, res) => {
   try {
-    const backup = await generateBackup(req.user?.id || req.headers['x-user-id']);
+    const backup = await generateBackup(req.db || pool, req.user?.id || req.headers['x-user-id']);
     res.json(backup);
   } catch (error) {
     console.error('Error generating backup:', error);
@@ -121,9 +131,9 @@ async function handleCloudBackup(req, res, provider) {
       return res.status(400).json({ error: `Unknown backup provider: ${provider}` });
     }
 
-    const backupData = await generateBackup(req.user?.id || req.headers['x-user-id']);
+    const backupData = await generateBackup(req.db || pool, req.user?.id || req.headers['x-user-id']);
     const fileName = `aureoncare-backup-${new Date().toISOString().split('T')[0]}.json`;
-    const uploaded = await cloudStorage.uploadBackup(pool, provider, fileName, backupData);
+    const uploaded = await cloudStorage.uploadBackup(req.db || pool, provider, fileName, backupData);
 
     res.json({
       success: true,
@@ -155,7 +165,7 @@ router.post('/cloud',        (req, res) => handleCloudBackup(req, res, req.body?
  */
 router.get('/cloud/providers', async (req, res) => {
   try {
-    res.json({ providers: await cloudStorage.getConfiguredProviders(pool) });
+    res.json({ providers: await cloudStorage.getConfiguredProviders(req.db || pool) });
   } catch (error) {
     console.error('Error listing cloud providers:', error);
     res.status(500).json({ error: 'Failed to list cloud providers', details: error.message });
@@ -172,7 +182,7 @@ router.get('/cloud/list', async (req, res) => {
     if (!cloudStorage.isSupported(provider)) {
       return res.status(400).json({ error: `Unknown backup provider: ${provider}` });
     }
-    res.json({ provider, backups: await cloudStorage.listBackups(pool, provider) });
+    res.json({ provider, backups: await cloudStorage.listBackups(req.db || pool, provider) });
   } catch (error) {
     console.error(`Error listing backups on ${provider}:`, error);
     res.status(500).json({
@@ -197,14 +207,14 @@ router.post('/cloud/restore', async (req, res) => {
       return res.status(400).json({ error: 'fileId is required' });
     }
 
-    const backup = await cloudStorage.downloadBackup(pool, provider, fileId);
+    const backup = await cloudStorage.downloadBackup(req.db || pool, provider, fileId);
     if (!backup || !backup.data) {
       return res.status(400).json({
         error: 'That file is not a full system backup. Accounts and inventory backups restore from their own screens.',
       });
     }
 
-    const result = await restoreBackup(backup, req.user?.id || req.headers['x-user-id']);
+    const result = await restoreBackup(req.db || pool, backup, req.user?.id || req.headers['x-user-id']);
     res.json({ ...result, provider, restoredFrom: cloudStorage.providerLabel(provider) });
   } catch (error) {
     console.error('Error restoring from cloud backup:', error);
@@ -216,12 +226,18 @@ router.post('/cloud/restore', async (req, res) => {
  * Restore data from backup
  * POST /api/backup/restore
  */
-async function restoreBackup(backup, restoredBy) {
+async function restoreBackup(db, backup, restoredBy) {
   {
     console.log('Starting data restore...');
 
     const restoredTables = [];
     const errors = [];
+    const skipped = [];
+
+    // Which schema this request is pinned to. A table that resolves OUTSIDE it is shared
+    // by every tenant, so restoring into it would overwrite other practices' data.
+    const { rows: schemaRows } = await db.query('SELECT current_schema() AS schema');
+    const tenantSchema = schemaRows[0].schema;
 
     // Restore each table
     for (const [tableName, rows] of Object.entries(backup.data)) {
@@ -230,9 +246,37 @@ async function restoreBackup(backup, restoredBy) {
         continue;
       }
 
+      // The name is interpolated into DDL below, so it must come from our own list and
+      // never from the uploaded file.
+      if (!BACKUP_TABLE_SET.has(tableName)) {
+        console.warn(`[backup] refusing to restore unknown table: ${tableName}`);
+        skipped.push({ table: tableName, reason: 'not a known backup table' });
+        continue;
+      }
+
       try {
-        // Clear existing data (optional - can be made configurable)
-        await pool.query(`TRUNCATE TABLE ${tableName} CASCADE`);
+        const { rows: loc } = await db.query(
+          `SELECT n.nspname AS schema
+             FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE c.oid = to_regclass($1)`,
+          [tableName]
+        );
+        const livesIn = loc[0] && loc[0].schema;
+        if (!livesIn) {
+          skipped.push({ table: tableName, reason: 'table not present in this workspace' });
+          continue;
+        }
+
+        // TRUNCATE only within this tenant's own schema. `users` and the other identity
+        // tables live in public and are shared across every practice — wiping them here
+        // would delete every tenant's accounts. Those rows are still inserted, with
+        // ON CONFLICT DO NOTHING, so a restore adds what is missing without destroying
+        // anything that belongs to someone else.
+        if (livesIn === tenantSchema) {
+          await db.query(`TRUNCATE TABLE ${tableName} CASCADE`);
+        } else {
+          skipped.push({ table: tableName, reason: `shared table in "${livesIn}" — not cleared` });
+        }
 
         // Insert backup data
         for (const row of rows) {
@@ -241,12 +285,12 @@ async function restoreBackup(backup, restoredBy) {
           const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
           const query = `
-            INSERT INTO ${tableName} (${columns.join(', ')})
+            INSERT INTO ${tableName} (${columns.map((c) => `"${c.replace(/"/g, '""')}"`).join(', ')})
             VALUES (${placeholders})
             ON CONFLICT DO NOTHING
           `;
 
-          await pool.query(query, values);
+          await db.query(query, values);
         }
 
         restoredTables.push(tableName);
@@ -262,6 +306,7 @@ async function restoreBackup(backup, restoredBy) {
       message: 'Data restore completed',
       restoredTables,
       totalTables: restoredTables.length,
+      skipped: skipped.length > 0 ? skipped : undefined,
       errors: errors.length > 0 ? errors : undefined,
       restoredAt: new Date().toISOString(),
       restoredBy
@@ -280,7 +325,7 @@ router.post('/restore', async (req, res) => {
         error: 'Invalid backup format. Backup data is required.'
       });
     }
-    res.json(await restoreBackup(backup, req.user?.id || req.headers['x-user-id']));
+    res.json(await restoreBackup(req.db || pool, backup, req.user?.id || req.headers['x-user-id']));
   } catch (error) {
     console.error('Error restoring backup:', error);
     res.status(500).json({
