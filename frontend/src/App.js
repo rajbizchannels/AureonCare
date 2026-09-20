@@ -706,6 +706,9 @@ function App() {
             activeTab={activeTab || 'clinic'}
             onTabChange={(tab) => selectModuleTab('admin', tab)}
             t={t}
+            // Needed for Intl formatting (dates, number grouping) in confirmation copy —
+            // the browser default does not necessarily match the language on screen.
+            language={language}
             users={users}
             setUsers={setUsers}
             setShowForm={handleSetShowForm}

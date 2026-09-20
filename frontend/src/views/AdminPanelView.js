@@ -311,6 +311,7 @@ const AdminPanelView = ({
   addNotification,
   setCurrentModule = () => {},
   t = {},
+  language = 'en',
   onCurrencyChange,
 }) => {
   // ==================== CONTEXT ====================
@@ -2029,30 +2030,39 @@ const AdminPanelView = ({
       }
       event.target.value = ''; // let the same file be chosen again after a cancel
       if (!backupData || !backupData.data) {
-        await addNotification('alert', 'That file is not a valid backup.');
+        await addNotification('alert', t.invalidBackupFile || 'That file is not a valid backup.');
         return;
       }
 
       const tableCount = Object.keys(backupData.data).length;
       const rowCount = Object.values(backupData.data)
         .reduce((sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0), 0);
+      // Dates and thousands separators differ by locale, so format with the active one
+      // rather than assuming the browser default matches the language on screen.
       const takenAt = backupData.timestamp
-        ? new Date(backupData.timestamp).toLocaleString()
-        : 'an unknown date';
+        ? new Date(backupData.timestamp).toLocaleString(language)
+        : '—';
+
+      // The detail string is a template rather than assembled here: word order around the
+      // numbers differs between languages, so building it by concatenation only ever reads
+      // correctly in English.
+      const detail = (t.confirmRestoreBackupDetail
+        || 'This backup was taken on {date} and contains {records} records across {tables} '
+           + 'tables. Restoring replaces your practice\'s current data with it — anything '
+           + 'recorded since then will be lost, and this cannot be undone. Continue?')
+        .replace('{date}', takenAt)
+        .replace('{records}', rowCount.toLocaleString(language))
+        .replace('{tables}', tableCount.toLocaleString(language));
 
       setConfirmModalConfig({
         title: t.restoreBackupTitle || 'Restore from backup?',
-        message: `This backup was taken on ${takenAt} and contains ${rowCount} `
-          + `record${rowCount === 1 ? '' : 's'} across ${tableCount} `
-          + `table${tableCount === 1 ? '' : 's'}. Restoring replaces your practice's current `
-          + 'data with it — anything recorded since then will be lost, and this cannot be '
-          + 'undone. Continue?',
+        message: detail,
         confirmText: t.restoreAndOverwrite || 'Restore and overwrite',
         onConfirm: () => performFileRestore(backupData),
       });
       setShowConfirmModal(true);
     },
-    [addNotification, performFileRestore, t]
+    [addNotification, performFileRestore, t, language]
   );
 
 
@@ -5115,6 +5125,7 @@ AdminPanelView.propTypes = {
   addNotification: PropTypes.func.isRequired,
   setCurrentModule: PropTypes.func,
   t: PropTypes.object,
+  language: PropTypes.string,
 };
 
 export default React.memo(AdminPanelView);
