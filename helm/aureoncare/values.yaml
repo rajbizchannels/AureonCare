@@ -174,7 +174,6 @@ env:
   AC_OD_CSK: ""          # OneDrive / Azure AD client secret
   AC_WBX_CID: ""         # Cisco Webex OAuth client ID
   AC_WBX_CSK: ""         # Cisco Webex OAuth client secret
-  AC_SB_SK: ""           # Supabase secret key (only if using Supabase)
 
   # Subscription key for the update agent
   SUBSCRIPTION_KEY: ""

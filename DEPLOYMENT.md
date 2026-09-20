@@ -811,8 +811,6 @@ helm upgrade aureoncare helm/aureoncare/ \
 | `AC_DB_W` | **Yes*** | — | PostgreSQL password |
 | `AC_DB_S` | No | `false` | Set `true` when using Supabase TLS connection pooler |
 | `AC_SB_URL` | No | — | Supabase project URL (only for Supabase-hosted DB) |
-| `AC_SB_PK` | No | — | Supabase publishable key |
-| `AC_SB_SK` | No | — | Supabase secret key (server-side only) |
 | `AC_USE_RD` | No | `false` | Set `true` to enable Redis session store |
 | `AC_RD_H` | No | `localhost` | Redis host |
 | `AC_RD_P` | No | `6379` | Redis port |
