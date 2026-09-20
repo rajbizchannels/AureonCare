@@ -1114,7 +1114,9 @@ router.post('/backup', authorize('admin'), async (req, res) => {
     let cloudError = null;
     if (destination && cloudStorage.isSupported(destination)) {
       try {
-        cloud = await cloudStorage.uploadBackup(pool, destination, fileName, backupData);
+        // backup_provider_settings is per-tenant, so the connected provider must be looked
+        // up through this request's schema — the raw pool reads a different one.
+        cloud = await cloudStorage.uploadBackup(req.db || pool, destination, fileName, backupData);
       } catch (uploadErr) {
         console.error(`Accounts backup upload to ${destination} failed:`, uploadErr);
         cloudError = uploadErr.message;

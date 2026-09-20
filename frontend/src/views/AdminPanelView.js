@@ -1870,8 +1870,12 @@ const AdminPanelView = ({
     setDestinationModal({ isOpen: true, mode: 'restore', title: 'Restore from' });
   }, [cloudProviders, addNotification]);
 
-  const runCloudRestore = useCallback(async (provider, fileId) => {
-    setDestinationModal({ isOpen: false, mode: 'backup', title: '' });
+  /**
+   * Actually perform the restore. Only ever reached after the confirmation below —
+   * a restore clears this practice's tables and reloads them from the file, so anything
+   * recorded since that backup was taken is lost, and there is no undo.
+   */
+  const performCloudRestore = useCallback(async (provider, fileId) => {
     try {
       setRestoreLoading(true);
       await addNotification('info', 'Starting data restore...');
@@ -1884,6 +1888,20 @@ const AdminPanelView = ({
       setRestoreLoading(false);
     }
   }, [api, addNotification]);
+
+  const runCloudRestore = useCallback((provider, fileId) => {
+    setDestinationModal({ isOpen: false, mode: 'backup', title: '' });
+    setConfirmModalConfig({
+      title: t.restoreBackupTitle || 'Restore from backup?',
+      message: t.confirmRestoreBackup
+        || 'This replaces your practice\'s current data with the contents of the backup. '
+           + 'Anything recorded since the backup was taken will be lost, and this cannot be '
+           + 'undone. Continue?',
+      confirmText: t.restoreAndOverwrite || 'Restore and overwrite',
+      onConfirm: () => performCloudRestore(provider, fileId),
+    });
+    setShowConfirmModal(true);
+  }, [performCloudRestore, t]);
 
   /**
    * Google Drive backup
@@ -1973,21 +1991,11 @@ const AdminPanelView = ({
   /**
    * Restore from backup file
    */
-  const handleRestoreBackup = useCallback(
-    async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-
+  const performFileRestore = useCallback(
+    async (backupData) => {
       try {
         setRestoreLoading(true);
         await addNotification('info', 'Starting data restore...');
-
-        const fileContent = await file.text();
-        const backupData = safeJSONParse(fileContent);
-
-        if (!backupData) {
-          throw new Error('Invalid backup file format');
-        }
 
         const result = await api.restoreBackup(backupData);
 
@@ -2000,11 +2008,53 @@ const AdminPanelView = ({
         await addNotification('alert', error.message || 'Failed to restore backup');
       } finally {
         setRestoreLoading(false);
-        event.target.value = ''; // Clear file input
       }
     },
     [api, addNotification]
   );
+
+  const handleRestoreBackup = useCallback(
+    async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Parse BEFORE asking. A malformed file should be rejected outright rather than
+      // after the admin has confirmed something destructive, and the row counts make the
+      // confirmation concrete instead of generic.
+      let backupData;
+      try {
+        backupData = safeJSONParse(await file.text());
+      } catch (error) {
+        backupData = null;
+      }
+      event.target.value = ''; // let the same file be chosen again after a cancel
+      if (!backupData || !backupData.data) {
+        await addNotification('alert', 'That file is not a valid backup.');
+        return;
+      }
+
+      const tableCount = Object.keys(backupData.data).length;
+      const rowCount = Object.values(backupData.data)
+        .reduce((sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0), 0);
+      const takenAt = backupData.timestamp
+        ? new Date(backupData.timestamp).toLocaleString()
+        : 'an unknown date';
+
+      setConfirmModalConfig({
+        title: t.restoreBackupTitle || 'Restore from backup?',
+        message: `This backup was taken on ${takenAt} and contains ${rowCount} `
+          + `record${rowCount === 1 ? '' : 's'} across ${tableCount} `
+          + `table${tableCount === 1 ? '' : 's'}. Restoring replaces your practice's current `
+          + 'data with it — anything recorded since then will be lost, and this cannot be '
+          + 'undone. Continue?',
+        confirmText: t.restoreAndOverwrite || 'Restore and overwrite',
+        onConfirm: () => performFileRestore(backupData),
+      });
+      setShowConfirmModal(true);
+    },
+    [addNotification, performFileRestore, t]
+  );
+
 
   /**
    * Custom role form submission
@@ -4997,7 +5047,9 @@ const AdminPanelView = ({
         title={confirmModalConfig.title}
         message={confirmModalConfig.message}
         type="warning"
-        confirmText="Confirm"
+        // A destructive action should not offer the same neutral "Confirm" as every other
+        // prompt — the button ought to say what it will do.
+        confirmText={confirmModalConfig.confirmText || 'Confirm'}
         showCancel={true}
       />
 

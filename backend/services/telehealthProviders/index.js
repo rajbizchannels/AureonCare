@@ -8,12 +8,22 @@ const TeamsService = require('./teamsService');
  * Manages different telehealth provider integrations
  */
 
+// `id` may be a plain variable name or a resolver. Teams shares the platform's Azure app
+// registration, whose client id also has to be readable by the browser, so it resolves
+// through utils/oauthClientIds rather than naming one variable — otherwise Teams and
+// sign-in could end up on different app registrations.
+const { microsoftClientId } = require('../../utils/oauthClientIds');
+
 const ENV_CREDENTIALS = {
   zoom:             { id: 'AC_ZM_CID',  secret: 'AC_ZM_CSK' },
   google_meet:      { id: 'AC_GM_CID',  secret: 'AC_GM_CSK' },
   webex:            { id: 'AC_WBX_CID', secret: 'AC_WBX_CSK' },
-  microsoft_teams:  { id: 'AC_MS_CID',  secret: 'AC_MS_CSK' },
+  microsoft_teams:  { id: microsoftClientId, secret: 'AC_MS_CSK' },
 };
+
+/** An entry is either an env var name or a function that returns the value. */
+const readCred = (entry) =>
+  typeof entry === 'function' ? entry() : process.env[entry];
 
 class TelehealthProviderManager {
   constructor(pool) {
@@ -131,8 +141,9 @@ class TelehealthProviderManager {
     // DB row has NULL client_id / client_secret.
     const envCreds = ENV_CREDENTIALS[providerType];
     if (envCreds) {
-      if (!config.client_id && process.env[envCreds.id]) {
-        config.client_id = process.env[envCreds.id];
+      const envClientId = readCred(envCreds.id);
+      if (!config.client_id && envClientId) {
+        config.client_id = envClientId;
       }
       if (!config.client_secret && process.env[envCreds.secret]) {
         config.client_secret = process.env[envCreds.secret];

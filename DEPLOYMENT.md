@@ -810,9 +810,7 @@ helm upgrade aureoncare helm/aureoncare/ \
 | `AC_DB_U` | No | `postgres` | PostgreSQL username |
 | `AC_DB_W` | **Yes*** | — | PostgreSQL password |
 | `AC_DB_S` | No | `false` | Set `true` when using Supabase TLS connection pooler |
-| `AC_SB_URL` | No | — | Supabase project URL (only for Supabase-hosted DB) |
-| `AC_SB_PK` | No | — | Supabase publishable key |
-| `AC_SB_SK` | No | — | Supabase secret key (server-side only) |
+| `REACT_APP_SB_URL` | No | — | Supabase project URL. Read server-side by `backend/supabase.js`; the `REACT_APP_` prefix lets the same variable reach the browser bundle if the frontend ever needs it. Not a secret. |
 | `AC_USE_RD` | No | `false` | Set `true` to enable Redis session store |
 | `AC_RD_H` | No | `localhost` | Redis host |
 | `AC_RD_P` | No | `6379` | Redis port |
@@ -831,11 +829,9 @@ helm upgrade aureoncare helm/aureoncare/ \
 | `AC_ZM_CSK` | No | — | Zoom OAuth client secret |
 | `AC_GM_CID` | No | — | Google Meet OAuth client ID |
 | `AC_GM_CSK` | No | — | Google Meet OAuth client secret |
-| `AC_MS_CID` | No | — | Microsoft Teams Azure AD client ID |
 | `AC_MS_CSK` | No | — | Microsoft Teams Azure AD client secret |
 | `AC_WBX_CID` | No | — | Cisco Webex OAuth client ID |
 | `AC_WBX_CSK` | No | — | Cisco Webex OAuth client secret |
-| `AC_GG_CID` | No | — | Google Calendar OAuth client ID (patient calendar sync) |
 | `AC_GG_CSK` | No | — | Google Calendar OAuth client secret |
 | `AC_GG_URI` | No | `{AC_BE_URL}/api/calendar-sync/callback` | Google Calendar OAuth redirect URI |
 | `AC_GD_CSK` | No | — | Google Drive OAuth client secret |
@@ -848,10 +844,8 @@ helm upgrade aureoncare helm/aureoncare/ \
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `REACT_APP_SVC_URL` | **Yes** | — | Backend API base URL, e.g. `https://api.clinic.com/api` |
-| `REACT_APP_SB_URL` | No | — | Supabase project URL (if using Supabase auth) |
-| `REACT_APP_SB_PK` | No | — | Supabase publishable key |
-| `REACT_APP_GG_CID` | No | — | Google OAuth client ID |
-| `REACT_APP_MS_CID` | No | — | Microsoft OAuth client ID |
+| `REACT_APP_GG_CID` | No | — | Google OAuth client ID. **Also read by the backend** (sign-in, Drive backup, Calendar sync) — one id shared by both sides, because a code issued to one client cannot be redeemed by another. `AC_GG_CID` is a deprecated fallback. |
+| `REACT_APP_MS_CID` | No | — | Azure AD application (client) ID. **Also read by the backend** (sign-in, Teams, OneDrive). `AC_MS_CID` is a deprecated fallback. |
 | `REACT_APP_FB_AID` | No | — | Facebook OAuth App ID |
 | `REACT_APP_AUTH_URI` | No | `http://localhost:3001` | OAuth redirect URI (must match OAuth provider config) |
 

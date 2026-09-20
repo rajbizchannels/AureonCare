@@ -1,12 +1,12 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.AC_SB_URL;
+const supabaseUrl = process.env.REACT_APP_SB_URL;
 const supabaseSecretKey = process.env.AC_SB_SK;
 
 if (!supabaseUrl || !supabaseSecretKey) {
   console.warn(
-    '[supabase.js] AC_SB_URL or AC_SB_SK not set. ' +
+    '[supabase.js] REACT_APP_SB_URL or AC_SB_SK not set. ' +
     'Supabase client features (storage, realtime) will be unavailable.'
   );
 }

@@ -6,6 +6,7 @@
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+const { microsoftClientId, googleClientId } = require('./oauthClientIds');
 
 /**
  * @param {'google'|'microsoft'} provider
@@ -21,8 +22,8 @@ async function exchangeAuthCode(provider, { code, redirectUri, codeVerifier }) {
 
   let url, body;
   if (provider === 'google') {
-    const id = process.env.AC_GG_CID, secret = process.env.AC_GG_CSK;
-    if (!id || !secret) fail(503, 'Google sign-in is not configured on the server (AC_GG_CID / AC_GG_CSK).');
+    const id = googleClientId(), secret = process.env.AC_GG_CSK;
+    if (!id || !secret) fail(503, 'Google sign-in is not configured on the server (REACT_APP_GG_CID / AC_GG_CSK).');
     url = GOOGLE_TOKEN_URL;
     body = {
       code, client_id: id, client_secret: secret,
@@ -31,8 +32,8 @@ async function exchangeAuthCode(provider, { code, redirectUri, codeVerifier }) {
       grant_type: 'authorization_code',
     };
   } else if (provider === 'microsoft') {
-    const id = process.env.AC_MS_CID, secret = process.env.AC_MS_CSK;
-    if (!id || !secret) fail(503, 'Microsoft sign-in is not configured on the server (AC_MS_CID / AC_MS_CSK).');
+    const id = microsoftClientId(), secret = process.env.AC_MS_CSK;
+    if (!id || !secret) fail(503, 'Microsoft sign-in is not configured on the server (REACT_APP_MS_CID / AC_MS_CSK).');
     if (!redirectUri) fail(400, 'redirectUri is required');
     url = MS_TOKEN_URL;
     body = {

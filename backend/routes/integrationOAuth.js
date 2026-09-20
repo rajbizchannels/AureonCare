@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { authenticate } = require('../middleware/auth');
 const { makeTenantDb } = require('../db/requestTenantDb');
+const { microsoftClientId, googleClientId } = require('../utils/oauthClientIds');
 const router = express.Router();
 const crypto = require('crypto');
 const axios = require('axios');
@@ -189,6 +190,17 @@ const PROVIDER_ENV_MAP = {
 };
 
 function resolveProviderEnv(key) {
+  // Client ids resolve through the shared helper so this file, oauthExchange and
+  // cloudBackupStorage cannot disagree about which app registration we are. They did:
+  // sign-in read AC_MS_CID while this read REACT_APP_MS_CID, so two names holding
+  // different values sent each flow to a different app.
+  if (key === 'ONEDRIVE_CLIENT_ID' || key === 'MICROSOFT_TEAMS_CLIENT_ID'
+      || key === 'TEAMS_CLIENT_ID') {
+    return microsoftClientId() || process.env[key] || null;
+  }
+  if (key === 'GOOGLE_DRIVE_CLIENT_ID' || key === 'GOOGLE_MEET_CLIENT_ID') {
+    return googleClientId() || process.env[key] || null;
+  }
   const mappedKey = PROVIDER_ENV_MAP[key];
   if (mappedKey) {
     // Try the canonical abbreviated var first, then the legacy full-name var
