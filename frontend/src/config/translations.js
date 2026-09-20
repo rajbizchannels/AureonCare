@@ -69,6 +69,11 @@ export const translations = {
     editUser: 'Edit User',
     deleteUser: 'Delete User',
     confirmDeleteUser: 'Are you sure you want to delete this user?',
+    restoreBackupTitle: 'Restore from backup?',
+    confirmRestoreBackup: 'This replaces your practice\'s current data with the contents of the backup. Anything recorded since the backup was taken will be lost, and this cannot be undone. Continue?',
+    confirmRestoreBackupDetail: 'This backup was taken on {date} and contains {records} records across {tables} tables. Restoring replaces your practice\'s current data with it — anything recorded since then will be lost, and this cannot be undone. Continue?',
+    restoreAndOverwrite: 'Restore and overwrite',
+    invalidBackupFile: 'That file is not a valid backup.',
     confirmApproveUser: 'Are you sure you want to approve this user?',
 
     // User Interface
@@ -1060,6 +1065,11 @@ export const translations = {
     editUser: 'Editar Usuario',
     deleteUser: 'Eliminar Usuario',
     confirmDeleteUser: '¿Está seguro de que desea eliminar este usuario?',
+    restoreBackupTitle: '¿Restaurar desde una copia de seguridad?',
+    confirmRestoreBackup: 'Esto reemplaza los datos actuales de su consulta con el contenido de la copia de seguridad. Todo lo registrado desde que se creó la copia se perderá y no se puede deshacer. ¿Desea continuar?',
+    confirmRestoreBackupDetail: 'Esta copia de seguridad se creó el {date} y contiene {records} registros en {tables} tablas. Al restaurarla se reemplazarán los datos actuales de su consulta; todo lo registrado desde entonces se perderá y no se puede deshacer. ¿Desea continuar?',
+    restoreAndOverwrite: 'Restaurar y sobrescribir',
+    invalidBackupFile: 'Ese archivo no es una copia de seguridad válida.',
     confirmApproveUser: '¿Está seguro de que desea aprobar este usuario?',
 
     // User Interface
@@ -2051,6 +2061,11 @@ export const translations = {
     editUser: 'Modifier Utilisateur',
     deleteUser: 'Supprimer Utilisateur',
     confirmDeleteUser: 'Êtes-vous sûr de vouloir supprimer cet utilisateur?',
+    restoreBackupTitle: 'Restaurer à partir d\'une sauvegarde ?',
+    confirmRestoreBackup: 'Cette opération remplace les données actuelles de votre cabinet par le contenu de la sauvegarde. Tout ce qui a été enregistré depuis la création de la sauvegarde sera perdu, et cette action est irréversible. Continuer ?',
+    confirmRestoreBackupDetail: 'Cette sauvegarde date du {date} et contient {records} enregistrements répartis sur {tables} tables. La restauration remplacera les données actuelles de votre cabinet ; tout ce qui a été enregistré depuis sera perdu, et cette action est irréversible. Continuer ?',
+    restoreAndOverwrite: 'Restaurer et écraser',
+    invalidBackupFile: 'Ce fichier n\'est pas une sauvegarde valide.',
     confirmApproveUser: 'Êtes-vous sûr de vouloir approuver cet utilisateur?',
 
     // User Interface
@@ -3042,6 +3057,11 @@ export const translations = {
     editUser: 'Benutzer Bearbeiten',
     deleteUser: 'Benutzer Löschen',
     confirmDeleteUser: 'Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?',
+    restoreBackupTitle: 'Aus Sicherung wiederherstellen?',
+    confirmRestoreBackup: 'Dadurch werden die aktuellen Daten Ihrer Praxis durch den Inhalt der Sicherung ersetzt. Alles, was seit der Erstellung der Sicherung erfasst wurde, geht verloren. Dieser Vorgang kann nicht rückgängig gemacht werden. Fortfahren?',
+    confirmRestoreBackupDetail: 'Diese Sicherung wurde am {date} erstellt und enthält {records} Datensätze in {tables} Tabellen. Beim Wiederherstellen werden die aktuellen Daten Ihrer Praxis ersetzt; alles, was seitdem erfasst wurde, geht verloren. Dieser Vorgang kann nicht rückgängig gemacht werden. Fortfahren?',
+    restoreAndOverwrite: 'Wiederherstellen und überschreiben',
+    invalidBackupFile: 'Diese Datei ist keine gültige Sicherung.',
     confirmApproveUser: 'Sind Sie sicher, dass Sie diesen Benutzer genehmigen möchten?',
 
     // User Interface
@@ -4033,6 +4053,11 @@ export const translations = {
     editUser: 'تعديل مستخدم',
     deleteUser: 'حذف مستخدم',
     confirmDeleteUser: 'هل أنت متأكد أنك تريد حذف هذا المستخدم؟',
+    restoreBackupTitle: 'استعادة من نسخة احتياطية؟',
+    confirmRestoreBackup: 'سيؤدي هذا إلى استبدال بيانات عيادتك الحالية بمحتوى النسخة الاحتياطية. وسيُفقد كل ما تم تسجيله منذ إنشاء النسخة الاحتياطية، ولا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟',
+    confirmRestoreBackupDetail: 'أُنشئت هذه النسخة الاحتياطية في {date} وتحتوي على {records} سجلاً في {tables} جدولاً. ستحل الاستعادة محل بيانات عيادتك الحالية، وسيُفقد كل ما سُجِّل منذ ذلك الحين، ولا يمكن التراجع عن ذلك. هل تريد المتابعة؟',
+    restoreAndOverwrite: 'استعادة واستبدال',
+    invalidBackupFile: 'هذا الملف ليس نسخة احتياطية صالحة.',
     confirmApproveUser: 'هل أنت متأكد أنك تريد الموافقة على هذا المستخدم؟',
 
     // User Interface
