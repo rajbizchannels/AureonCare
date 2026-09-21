@@ -339,12 +339,56 @@ async function postWebhook(secret, event) {
       password: PW6, firstName: 'L', lastName: 'S', planId: planId,
     });
 
+    // This used to assert a 403 — the behaviour before the session-independent exemption.
+    // Signup does not act as the cookie's user, so it is now allowed through; what must
+    // still hold is that it works WHETHER OR NOT the visitor happens to carry a cookie.
     const noToken = await fetch(BASE + '/api/signup', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
       body: signupBody,
     });
-    check('a public POST without the CSRF header is refused while a cookie is present',
-      noToken.status === 403);
+    check('signup works with a stale session cookie and no CSRF header',
+      noToken.status !== 403);
+
+    // The exemption must cover the session-independent endpoints...
+    const exemptSignup = await fetch(BASE + '/api/signup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: signupBody,
+    });
+    check('signup is exempt from CSRF even with a session cookie and no token',
+      exemptSignup.status !== 403);
+
+    const exemptJoin = await fetch(BASE + '/api/team-access/join', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: JSON.stringify({ email: `j_${RUN6}@unclaimed-${RUN6}.example`, password: PW6 }),
+    });
+    check('domain join is exempt too', exemptJoin.status !== 403);
+
+    const exemptAccept = await fetch(BASE + '/api/invites/accept', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: JSON.stringify({ token: 'not-a-real-token', password: PW6 }),
+    });
+    check('invite acceptance is exempt too', exemptAccept.status !== 403);
+
+    // ...and must NOT cover anything that acts as the cookie's user. A forged login signs
+    // the victim's browser into the ATTACKER'S account, so it stays protected.
+    const loginGuarded = await fetch(BASE + '/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: JSON.stringify({ email: email6, password: PW6 }),
+    });
+    check('login is NOT exempt — a forged login is a real attack', loginGuarded.status === 403);
+
+    const usersGuarded = await fetch(BASE + '/api/users', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: JSON.stringify({ email: 'x@y.test' }),
+    });
+    check('an authenticated route is still protected', usersGuarded.status === 403);
+
+    // A path underneath an exempt one must not inherit the exemption.
+    const nested = await fetch(BASE + '/api/signup/something-else', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: '{}',
+    });
+    check('a nested path does not inherit the exemption', nested.status === 403);
 
     const withToken = await fetch(BASE + '/api/signup', {
       method: 'POST',
