@@ -13,6 +13,9 @@
 const dns = require('dns').promises;
 const crypto = require('crypto');
 
+// Logged once, not per request: a missing table is a deployment state, not an event.
+let warnedMissingTable = false;
+
 const TXT_PREFIX = 'aureoncare-domain-verification=';
 
 /** Domains nobody may claim: control of a mailbox here says nothing about an employer. */
@@ -96,16 +99,36 @@ async function resolveDomainClaim(pool, email) {
   const domain = domainOf(email);
   if (!domain || PUBLIC_EMAIL_DOMAINS.has(domain)) return null;
 
-  const { rows } = await pool.query(
-    `SELECT d.id, d.practice_id, d.domain, d.join_policy, d.default_role, p.name AS practice_name
-       FROM public.practice_domains d
-       JOIN public.practices p ON p.id = d.practice_id
-      WHERE LOWER(d.domain) = $1
-        AND d.verified_at IS NOT NULL
-        AND d.join_policy <> 'disabled'
-      LIMIT 1`,
-    [domain]
-  );
+  let rows;
+  try {
+    ({ rows } = await pool.query(
+      `SELECT d.id, d.practice_id, d.domain, d.join_policy, d.default_role, p.name AS practice_name
+         FROM public.practice_domains d
+         JOIN public.practices p ON p.id = d.practice_id
+        WHERE LOWER(d.domain) = $1
+          AND d.verified_at IS NOT NULL
+          AND d.join_policy <> 'disabled'
+        LIMIT 1`,
+      [domain]
+    ));
+  } catch (err) {
+    // Migration 080 has not been applied here. This lookup runs on the SOCIAL SIGN-IN
+    // path, so letting 42P01 escape turned "no domain claims exist" into a 500 on every
+    // Google and Microsoft login that had no invite — the feature is additive and must
+    // never be able to break authentication on a database that predates it.
+    if (err.code === '42P01') {
+      if (!warnedMissingTable) {
+        warnedMissingTable = true;
+        console.warn(
+          '[domainJoin] public.practice_domains is missing — treating every address as '
+          + 'unclaimed. Apply migration 080_domain_join_requests.sql to enable '
+          + 'domain-verified self-service joining.'
+        );
+      }
+      return null;
+    }
+    throw err;
+  }
   return rows[0] || null;
 }
 

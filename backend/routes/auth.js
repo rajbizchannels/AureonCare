@@ -1031,6 +1031,19 @@ const socialLoginHandler = async (req, res) => {
           // makes this a staff signup just as an invite does, so it skips it too;
           // otherwise a new clinician would silently acquire a patient record.
           if (!invite && !domainClaim) {
+          // SEC-05: `patients` and `roles` moved into the tenant schemas at the 068 cutover,
+          // and sl_client is a RAW pool connection whose search_path is the default — so
+          // these reads resolved against `public`, where the tables no longer exist, and
+          // every new social sign-up died with 42P01 reported as "Social login failed".
+          //
+          // A patient self-registering has no tenant context to pin: no invite, no domain
+          // claim, no session. There is genuinely no schema to write a chart into. Rather
+          // than fail the sign-in, create the account and skip the chart — which is the
+          // same unallocated state this path already produced, and which
+          // GET /api/auth/tenant-status explains. The savepoint keeps the skip from
+          // aborting the surrounding transaction.
+          await sl_client.query('SAVEPOINT patient_chart');
+          try {
           // Create patient record — patients.id = users.id in current schema
           const sl_patientCheck = await sl_client.query(
             'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
@@ -1056,6 +1069,18 @@ const socialLoginHandler = async (req, res) => {
             await sl_client.query(
               `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
               [user.id, sl_roleResult.rows[0].id]
+            );
+          }
+          await sl_client.query('RELEASE SAVEPOINT patient_chart');
+          } catch (chartErr) {
+            await sl_client.query('ROLLBACK TO SAVEPOINT patient_chart');
+            // Only a missing relation is tolerated. Anything else is a real fault and must
+            // still fail the sign-in rather than silently producing a half-made account.
+            if (chartErr.code !== '42P01') throw chartErr;
+            console.warn(
+              '[social-login] patients/roles are not reachable from the default search_path, '
+              + 'so ' + user.email + ' was created without a patient chart. A self-registration '
+              + 'has no tenant to write one into — see GET /api/auth/tenant-status.'
             );
           }
           } // end patient self-registration path
