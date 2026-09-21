@@ -366,6 +366,34 @@ const PW = 'A-Strong-Passphrase!23';
     tdb.release();
   }
 
+  // ── The feature must not break sign-in where it was never migrated ────────
+  // resolveDomainClaim runs on the social sign-in path. When migration 080 has not been
+  // applied, letting 42P01 escape turned "no domain claims exist" into a 500 on every
+  // Google and Microsoft login without an invite. The rename is inside a transaction, so
+  // only this connection sees the table disappear.
+  {
+    const { resolveDomainClaim } = require(path.join(BACKEND, 'services/domainJoin.js'));
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query('ALTER TABLE public.practice_domains RENAME TO practice_domains_absent');
+      let threw = null, value;
+      try { value = await resolveDomainClaim(c, `anyone_${RUN}@${DOMAIN}`); }
+      catch (e) { threw = e.code || e.message; }
+      check('an unmigrated database does not break the domain lookup', threw === null);
+      check('and it reports no claim, so sign-in proceeds', value === null);
+      await c.query('ROLLBACK');
+    } finally { c.release(); }
+
+    // The real error classes must still surface — swallowing everything would hide a
+    // genuine fault behind "nobody has claimed this domain".
+    const broken = { query: async () => { const e = new Error('permission denied'); e.code = '42501'; throw e; } };
+    let propagated = null;
+    try { await resolveDomainClaim(broken, `anyone_${RUN}@${DOMAIN}`); }
+    catch (e) { propagated = e.code; }
+    check('a permission error is NOT swallowed', propagated === '42501');
+  }
+
   // ── Report ────────────────────────────────────────────────────────────────
   let pass = 0;
   for (const [name, ok] of results) {
