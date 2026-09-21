@@ -201,9 +201,9 @@ graph LR
         GR["run-migrations.js<br/>targets public + control"]
     end
 
-    subgraph T["Tenant fan-out track"]
-        TM["backend/migrations/tenant/*.sql<br/>001 adopt_runtime_created_tables<br/>002 audit_log_append_only<br/>003 audit_logs_keep_history"]
-        TR["run-tenant-migrations.js<br/>npm run migrate:tenants"]
+    subgraph DB_LAYER["Data Access Layer"]
+        DBJS["db.js<br/>PostgreSQL Pool (pg)"]
+        ARCHDB["archiveDb.js<br/>Data Archival"]
     end
 
     GM --> GR
@@ -759,14 +759,9 @@ graph TB
         VOL["volumes: pgdata · uploads-data<br/>network: aureoncare-net"]
     end
 
-    subgraph K8s["Model 3 — Kubernetes / Helm"]
-        CHART["helm/aureoncare"]
-        DEPL["backend-deployment<br/>frontend-deployment"]
-        CFG["configmap · secret"]
-        ING["ingress"]
-        HPA["hpa — autoscaling"]
-        PVC["pvc — uploads"]
-        PROF["values.saas.yaml<br/>values.customer-cloud.yaml<br/>values.onprem.yaml"]
+    subgraph Supabase["Supabase Cloud"]
+        %% Database only. The app speaks the Postgres wire protocol; it uses no Supabase HTTP API.
+        PG_SB["PostgreSQL Database<br/>76 Tables"]
     end
 
     subgraph Onprem["On-Premises Lifecycle"]
@@ -775,9 +770,24 @@ graph TB
         ARGO["deployment/saas/argocd-app.yaml"]
     end
 
-    Compose --> UA --> AGENT
-    K8s --> PROF
-    Onprem --> INST
+    subgraph ExtAPIs["External APIs"]
+        OAUTH_EXT["OAuth Providers<br/>Google · Microsoft"]
+        HEALTH_APIS["Healthcare APIs<br/>LabCorp · Optum · SureScripts"]
+        VIDEO_APIS["Video APIs<br/>Zoom · Google Meet · Webex"]
+        EMAIL_SVC["Email Services<br/>SMTP · SendGrid"]
+    end
+
+    USER_BR -->|"HTTPS"| CDN_VERCEL
+    PATIENT_BR -->|"HTTPS"| CDN_VERCEL
+    CDN_VERCEL --> REACT_BUILD
+    REACT_BUILD -->|"API calls /api/*"| NODE_SLS
+    NODE_SLS --> API_FUNC
+    API_FUNC -->|"pg driver + SSL"| PG_SB
+    API_FUNC -->|"ioredis"| REDIS_INST
+    API_FUNC -->|"HTTPS"| OAUTH_EXT
+    API_FUNC -->|"HTTPS"| HEALTH_APIS
+    API_FUNC -->|"HTTPS"| VIDEO_APIS
+    API_FUNC -->|"SMTP/TLS"| EMAIL_SVC
 ```
 
 **Health check:** exactly one endpoint — `GET /health` (`backend/server.js:127`), pinging Postgres. Referenced by `vercel.json`, both Helm probes, and the compose healthcheck. There is **no `/api/health`**; the mobile client probes `['/health', '/api/health']` in order purely as proxy tolerance.
