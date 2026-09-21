@@ -253,7 +253,14 @@ function resolveClientCredentials(providerType, dbRow) {
     );
   }
 
-  return { client_id, client_secret };
+  // Where each half came from, by NAME not value. invalid_client means the id and the
+  // secret belong to different OAuth clients, and the only way to see that from outside is
+  // to know which source supplied each — Google Meet, for instance, has its own
+  // AC_GM_CID/AC_GM_CSK pair while Drive shares the sign-in client.
+  const idSource = envClientId ? 'env' : (dbRow?.client_id ? 'database' : 'unset');
+  const secretSource = envClientSecret ? 'env' : (dbRow?.client_secret ? 'database' : 'unset');
+
+  return { client_id, client_secret, idSource, secretSource };
 }
 
 const OAUTH_CONFIGS = {
@@ -457,7 +464,7 @@ router.get('/:providerType/callback', async (req, res) => {
       [providerType]
     );
     const dbRow = result.rows[0] || null;
-    const { client_id, client_secret } = resolveClientCredentials(providerType, dbRow);
+    const { client_id, client_secret, idSource, secretSource } = resolveClientCredentials(providerType, dbRow);
 
     if (!client_id || !client_secret) {
       return sendOAuthResult(res, false, providerType, 'Provider not configured — missing Client ID or Secret on the server.');
@@ -494,9 +501,10 @@ router.get('/:providerType/callback', async (req, res) => {
       // same sentence for a mismatched client, a wrong secret and an unregistered redirect,
       // and the one fact that separates them went only to the log.
       const code = detail && (detail.error || detail.error_description);
+      const where = `id from ${idSource}, secret from ${secretSource}`;
       return sendOAuthResult(res, false, providerType,
         'Token exchange failed — check your Client Secret and Redirect URL.'
-        + (code ? ` [${String(code).slice(0, 120)}]` : ''));
+        + (code ? ` [${String(code).slice(0, 120)} | ${where}]` : ` [${where}]`));
     }
 
     const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;
