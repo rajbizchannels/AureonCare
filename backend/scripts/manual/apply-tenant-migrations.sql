@@ -9,44 +9,26 @@
 --     ERROR: 42P01: relation "audit_logs" does not exist
 -- which is a statement about how they were run, not about the migrations.
 --
--- This sets the search_path per schema itself, so it can be pasted into the Supabase SQL
--- editor or piped to psql. It covers every tenant schema plus `template`, so tenants
--- provisioned later start current.
+-- The file bodies are carried below as ORDINARY QUOTED TEXT rather than dollar-quoted
+-- blocks, and every anonymous dollar-quote inside them has been given an explicit tag.
+-- An earlier version nested three levels of dollar quoting, which Postgres accepts but the
+-- Supabase SQL editor's own parser does not:
+--     ERROR: 42601: unterminated dollar-quoted string
+-- Only one dollar-quoted block remains (the DO below) and nothing is nested inside it, so
+-- this pastes into the editor as well as it pipes to psql. Note for future edits: keep
+-- dollar-quote tokens out of the comments too — a parser that does not skip comments would
+-- treat a lone tag there as opening a string.
 --
--- Safe to re-run: each file is idempotent AND the per-schema ledger is honoured, so
--- nothing is applied twice and run-tenant-migrations.js will not repeat the work.
+-- Covers every tenant schema plus `template`. Safe to re-run: each file is idempotent AND
+-- the per-schema ledger is honoured, so nothing is applied twice and
+-- run-tenant-migrations.js will not repeat the work.
 
-DO $outer$
-DECLARE
-  sch  text;
-  done boolean;
-  n_schemas int := 0;
-  n_applied int := 0;
-BEGIN
-  FOR sch IN
-    SELECT schema_name FROM control.tenants
-     WHERE schema_name IS NOT NULL AND status <> 'suspended'
-    UNION SELECT 'template'
-    UNION SELECT nspname FROM pg_namespace WHERE nspname LIKE 'tenant\_%'
-  LOOP
-    -- Only touch schemas that are actually provisioned tenants. Creating these objects in
-    -- anything else would leave half a tenant behind.
-    CONTINUE WHEN to_regclass(format('%I.patients', sch)) IS NULL;
-    n_schemas := n_schemas + 1;
+BEGIN;
 
-    EXECUTE format(
-      'CREATE TABLE IF NOT EXISTS %I.schema_migrations (
-         version integer PRIMARY KEY, name text NOT NULL,
-         applied_at timestamptz NOT NULL DEFAULT now())', sch);
+CREATE TEMP TABLE tenant_migration_files (version int, name text, body text) ON COMMIT DROP;
 
-    -- The runner pins search_path per tenant before each file; do the same.
-    EXECUTE format('SET LOCAL search_path TO %I, public, control', sch);
-
-    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I.schema_migrations WHERE version = 1)', sch)
-      INTO done;
-    IF NOT done THEN
-      EXECUTE $mig001$
--- Tenant migration 001: adopt tables that routes used to create at runtime
+INSERT INTO tenant_migration_files (version, name, body) VALUES
+  (1, '001_adopt_runtime_created_tables.sql', '-- Tenant migration 001: adopt tables that routes used to create at runtime
 --
 -- These tables were created lazily by route handlers (CREATE TABLE IF NOT EXISTS on
 -- first use), so they never appeared in schema.sql. That pattern caused the tenant
@@ -84,21 +66,21 @@ CREATE TABLE IF NOT EXISTS form_templates (
       template_type VARCHAR(100),
       is_system_template BOOLEAN DEFAULT false,
       is_active BOOLEAN DEFAULT true,
-      version VARCHAR(20) DEFAULT '1.0',
+      version VARCHAR(20) DEFAULT ''1.0'',
       version_number INTEGER DEFAULT 1,
-      fields JSONB DEFAULT '[]'::jsonb,
-      settings JSONB DEFAULT '{}'::jsonb,
+      fields JSONB DEFAULT ''[]''::jsonb,
+      settings JSONB DEFAULT ''{}''::jsonb,
       fhir_questionnaire JSONB,
-      role_visibility JSONB DEFAULT '["admin","provider","staff","patient"]'::jsonb,
+      role_visibility JSONB DEFAULT ''["admin","provider","staff","patient"]''::jsonb,
       require_signature BOOLEAN DEFAULT false,
       require_witness BOOLEAN DEFAULT false,
       allow_pdf_export BOOLEAN DEFAULT true,
-      languages JSONB DEFAULT '["en"]'::jsonb,
-      translations JSONB DEFAULT '{}'::jsonb,
-      tags JSONB DEFAULT '[]'::jsonb,
+      languages JSONB DEFAULT ''["en"]''::jsonb,
+      translations JSONB DEFAULT ''{}''::jsonb,
+      tags JSONB DEFAULT ''[]''::jsonb,
       intake_flow_eligible BOOLEAN DEFAULT true,
       specialty VARCHAR(100),
-      compliance_tags JSONB DEFAULT '[]'::jsonb,
+      compliance_tags JSONB DEFAULT ''[]''::jsonb,
       created_by UUID,
       updated_by UUID,
       created_at TIMESTAMP DEFAULT NOW(),
@@ -111,8 +93,8 @@ CREATE TABLE IF NOT EXISTS form_template_versions (
       template_id UUID NOT NULL REFERENCES form_templates(id) ON DELETE CASCADE,
       version VARCHAR(20) NOT NULL,
       version_number INTEGER NOT NULL,
-      fields JSONB DEFAULT '[]'::jsonb,
-      settings JSONB DEFAULT '{}'::jsonb,
+      fields JSONB DEFAULT ''[]''::jsonb,
+      settings JSONB DEFAULT ''{}''::jsonb,
       fhir_questionnaire JSONB,
       change_summary TEXT,
       changed_by UUID,
@@ -132,9 +114,9 @@ CREATE TABLE IF NOT EXISTS form_submissions (
       intake_flow_id UUID,
       submitted_by UUID,
       submitted_by_role VARCHAR(50),
-      form_data JSONB DEFAULT '{}'::jsonb,
-      status VARCHAR(50) DEFAULT 'draft',
-      language VARCHAR(10) DEFAULT 'en',
+      form_data JSONB DEFAULT ''{}''::jsonb,
+      status VARCHAR(50) DEFAULT ''draft'',
+      language VARCHAR(10) DEFAULT ''en'',
       ip_address INET,
       user_agent TEXT,
       submitted_at TIMESTAMP,
@@ -144,7 +126,7 @@ CREATE TABLE IF NOT EXISTS form_submissions (
       expires_at TIMESTAMP,
       is_signed BOOLEAN DEFAULT false,
       fhir_response JSONB,
-      metadata JSONB DEFAULT '{}'::jsonb,
+      metadata JSONB DEFAULT ''{}''::jsonb,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
@@ -157,7 +139,7 @@ CREATE TABLE IF NOT EXISTS form_signatures (
       signer_role VARCHAR(100),
       signer_user_id UUID,
       signature_data TEXT NOT NULL,
-      signature_type VARCHAR(50) DEFAULT 'drawn',
+      signature_type VARCHAR(50) DEFAULT ''drawn'',
       is_witness BOOLEAN DEFAULT false,
       relation VARCHAR(100),
       ip_address INET,
@@ -227,7 +209,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
           subject VARCHAR(500),
           email_content TEXT,
           target_audience VARCHAR(100),
-          status VARCHAR(50) DEFAULT 'draft',
+          status VARCHAR(50) DEFAULT ''draft'',
           scheduled_date TIMESTAMP,
           offering_id TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -263,11 +245,11 @@ CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
           is_enabled BOOLEAN DEFAULT false,
           client_id TEXT, client_secret TEXT,
           access_token TEXT, refresh_token TEXT,
-          token_type VARCHAR(50) DEFAULT 'Bearer',
+          token_type VARCHAR(50) DEFAULT ''Bearer'',
           token_scope TEXT, token_expires_at BIGINT,
           account_id VARCHAR(255), zoom_user_id VARCHAR(255), zoom_user_email VARCHAR(255),
           api_key TEXT, api_secret TEXT, webhook_secret TEXT,
-          settings JSONB DEFAULT '{}'::jsonb,
+          settings JSONB DEFAULT ''{}''::jsonb,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -279,7 +261,7 @@ CREATE TABLE IF NOT EXISTS backup_provider_settings (
             is_enabled BOOLEAN DEFAULT false,
             client_id VARCHAR(255),
             client_secret VARCHAR(255),
-            settings JSONB DEFAULT '{}'::jsonb,
+            settings JSONB DEFAULT ''{}''::jsonb,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
@@ -291,7 +273,7 @@ CREATE TABLE IF NOT EXISTS vendor_integration_settings (
           is_enabled BOOLEAN DEFAULT false,
           client_id VARCHAR(255), client_secret VARCHAR(255),
           api_key VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
+          settings JSONB DEFAULT ''{}''::jsonb,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -302,7 +284,7 @@ CREATE TABLE IF NOT EXISTS offering_form_links (
     offering_id UUID NOT NULL REFERENCES healthcare_offerings(id) ON DELETE CASCADE,
     form_template_id TEXT NOT NULL,
     form_template_name VARCHAR(255),
-    trigger_on VARCHAR(50) DEFAULT 'order',
+    trigger_on VARCHAR(50) DEFAULT ''order'',
     is_active BOOLEAN DEFAULT true,
     created_by UUID,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -315,20 +297,11 @@ ALTER TABLE lab_orders ALTER COLUMN result_recipients TYPE JSONB USING result_re
 -- prescriptions (was created at runtime)
 ALTER TABLE prescriptions
         ADD COLUMN IF NOT EXISTS diagnosis_id UUID REFERENCES diagnosis(id) ON DELETE SET NULL;
-
-      $mig001$;
-      EXECUTE format('INSERT INTO %I.schema_migrations (version, name) VALUES (1, %L)', sch, '001_adopt_runtime_created_tables.sql');
-      n_applied := n_applied + 1;
-    END IF;
-
-    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I.schema_migrations WHERE version = 2)', sch)
-      INTO done;
-    IF NOT done THEN
-      EXECUTE $mig002$
--- Tenant migration 002: make the per-tenant audit log append-only (SEC-25)
+'),
+  (2, '002_audit_log_append_only.sql', '-- Tenant migration 002: make the per-tenant audit log append-only (SEC-25)
 --
 -- control.audit_log (the platform trail) was made immutable in migration 069, but each
--- tenant's own audit_logs table — the one that records clinical activity, and the one an
+-- tenant''s own audit_logs table — the one that records clinical activity, and the one an
 -- auditor asks about — is still freely UPDATE/DELETE-able by the application. An audit
 -- trail that the application can rewrite is not evidence of anything.
 --
@@ -340,27 +313,18 @@ ALTER TABLE prescriptions
 -- search_path set per tenant — hence the unqualified names.
 
 CREATE OR REPLACE FUNCTION audit_logs_append_only() RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $body002$
 BEGIN
-  RAISE EXCEPTION 'audit_logs is append-only (% is not permitted)', TG_OP
-    USING HINT = 'Audit records may be inserted and read, never altered or removed.';
-END $$;
+  RAISE EXCEPTION ''audit_logs is append-only (% is not permitted)'', TG_OP
+    USING HINT = ''Audit records may be inserted and read, never altered or removed.'';
+END $body002$;
 
 DROP TRIGGER IF EXISTS audit_logs_no_mutate ON audit_logs;
 CREATE TRIGGER audit_logs_no_mutate
   BEFORE UPDATE OR DELETE ON audit_logs
   FOR EACH ROW EXECUTE FUNCTION audit_logs_append_only();
-
-      $mig002$;
-      EXECUTE format('INSERT INTO %I.schema_migrations (version, name) VALUES (2, %L)', sch, '002_audit_log_append_only.sql');
-      n_applied := n_applied + 1;
-    END IF;
-
-    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I.schema_migrations WHERE version = 3)', sch)
-      INTO done;
-    IF NOT done THEN
-      EXECUTE $mig003$
--- Tenant migration 003: stop foreign keys from trying to rewrite the audit log.
+'),
+  (3, '003_audit_logs_keep_history.sql', '-- Tenant migration 003: stop foreign keys from trying to rewrite the audit log.
 --
 -- Migration 002 made audit_logs append-only with a BEFORE UPDATE OR DELETE trigger. But
 -- audit_logs.user_id, .patient_id and .provider_id were declared ON DELETE SET NULL — and
@@ -389,7 +353,7 @@ CREATE TRIGGER audit_logs_no_mutate
 -- Applied by run-tenant-migrations.js to every tenant schema and the template, with
 -- search_path set per tenant — hence the unqualified names.
 
-DO $$
+DO $body003$
 DECLARE
   con record;
 BEGIN
@@ -402,41 +366,96 @@ BEGIN
       JOIN pg_namespace n ON n.oid = c.relnamespace
       JOIN unnest(k.conkey) AS ck(attnum) ON true
       JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ck.attnum
-     WHERE k.contype = 'f'
-       AND c.relname = 'audit_logs'
+     WHERE k.contype = ''f''
+       AND c.relname = ''audit_logs''
        AND n.nspname = current_schema()
-       AND a.attname IN ('user_id', 'patient_id', 'provider_id')
+       AND a.attname IN (''user_id'', ''patient_id'', ''provider_id'')
   LOOP
-    EXECUTE format('ALTER TABLE audit_logs DROP CONSTRAINT %I', con.conname);
-    RAISE NOTICE 'dropped %.% ', current_schema(), con.conname;
+    EXECUTE format(''ALTER TABLE audit_logs DROP CONSTRAINT %I'', con.conname);
+    RAISE NOTICE ''dropped %.% '', current_schema(), con.conname;
   END LOOP;
-END $$;
+END $body003$;
 
 -- The ids are still looked up constantly ("everything this user touched"), and without the
 -- foreign key there is no longer an implicit index behind them.
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id    ON audit_logs (user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_patient_id ON audit_logs (patient_id);
+');
 
-      $mig003$;
-      EXECUTE format('INSERT INTO %I.schema_migrations (version, name) VALUES (3, %L)', sch, '003_audit_logs_keep_history.sql');
+DO $outer$
+DECLARE
+  sch  text;
+  mig  record;
+  done boolean;
+  n_schemas int := 0;
+  n_applied int := 0;
+BEGIN
+  FOR sch IN
+    SELECT schema_name FROM control.tenants
+     WHERE schema_name IS NOT NULL AND status <> 'suspended'
+    UNION SELECT 'template'
+    UNION SELECT nspname FROM pg_namespace WHERE nspname LIKE 'tenant~_%' ESCAPE '~'
+  LOOP
+    -- Only touch schemas that are actually provisioned tenants. Creating these objects in
+    -- anything else would leave half a tenant behind.
+    CONTINUE WHEN to_regclass(format('%I.patients', sch)) IS NULL;
+    n_schemas := n_schemas + 1;
+
+    EXECUTE format(
+      'CREATE TABLE IF NOT EXISTS %I.schema_migrations (
+         version integer PRIMARY KEY, name text NOT NULL,
+         applied_at timestamptz NOT NULL DEFAULT now())', sch);
+
+    -- The runner pins search_path per tenant before each file; do the same.
+    EXECUTE format('SET LOCAL search_path TO %I, public, control', sch);
+
+    FOR mig IN SELECT * FROM tenant_migration_files ORDER BY version LOOP
+      EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I.schema_migrations WHERE version = %s)',
+                     sch, mig.version) INTO done;
+      CONTINUE WHEN done;
+      EXECUTE mig.body;
+      EXECUTE format('INSERT INTO %I.schema_migrations (version, name) VALUES (%s, %L)',
+                     sch, mig.version, mig.name);
       n_applied := n_applied + 1;
-    END IF;
-
+    END LOOP;
   END LOOP;
 
   RAISE NOTICE 'tenant migrations: % schema(s) processed, % file(s) applied', n_schemas, n_applied;
 END $outer$;
 
--- ── Verification — expect zero rows ─────────────────────────────────────────
--- Any provisioned tenant schema still missing one of the tenant migrations:
-SELECT t.schema_name, v.version AS missing_version
-  FROM (SELECT schema_name FROM control.tenants
-         WHERE schema_name IS NOT NULL AND status <> 'suspended'
-        UNION SELECT 'template') t
- CROSS JOIN (SELECT generate_series(1, 3) AS version) v
- WHERE to_regclass(format('%I.patients', t.schema_name)) IS NOT NULL
-   AND NOT EXISTS (
-     SELECT 1 FROM pg_class c
-       JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = t.schema_name AND c.relname = 'schema_migrations')
- ORDER BY 1, 2;
+COMMIT;
+
+-- ── Verification ─────────────────────────────────────────────────────────────
+-- Each schema's ledger lives in that schema, so this needs dynamic SQL rather than a
+-- plain SELECT — an earlier attempt tried the latter and failed with
+--     ERROR: column "version" does not exist
+-- Any shortfall is raised as a WARNING; silence means every provisioned schema is current.
+DO $verify$
+DECLARE
+  sch text;
+  got text;
+  want int := (SELECT max(version) FROM (SELECT 1 AS version UNION SELECT 2 UNION SELECT 3) v);
+  missing int := 0;
+BEGIN
+  FOR sch IN
+    SELECT schema_name FROM control.tenants
+     WHERE schema_name IS NOT NULL AND status <> 'suspended'
+    UNION SELECT 'template'
+    UNION SELECT nspname FROM pg_namespace WHERE nspname LIKE 'tenant~_%' ESCAPE '~'
+  LOOP
+    CONTINUE WHEN to_regclass(format('%I.patients', sch)) IS NULL;
+    EXECUTE format(
+      'SELECT string_agg(version::text, '','' ORDER BY version) FROM %I.schema_migrations
+        WHERE version BETWEEN 1 AND %s', sch, want) INTO got;
+    IF got IS DISTINCT FROM '1,2,3' THEN
+      RAISE WARNING 'incomplete: % has [%], expected 1,2,3', sch, COALESCE(got, 'none');
+      missing := missing + 1;
+    END IF;
+  END LOOP;
+
+  IF missing = 0 THEN
+    RAISE NOTICE 'verified: every provisioned tenant schema has tenant migrations 1, 2 and 3';
+  ELSE
+    RAISE WARNING '% schema(s) incomplete — see the warnings above', missing;
+  END IF;
+END $verify$;
