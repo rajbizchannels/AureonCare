@@ -31,6 +31,25 @@
 /*.pptx
 /*.docx
 
+# Documentation committed at the root: architecture and security material
+# (ARCHITECTURE_DIAGRAM, SAST, SSDLC, SEC-05_MULTI_TENANCY_PLAN, audit and
+# refactoring guides), operator runbooks (DEPLOYMENT, SETUP, OAUTH_SETUP) and
+# business collateral (COMPETITIVE_ANALYSIS, EXECUTIVE_SUMMARY). Between them
+# they describe tenancy internals, the security control set and where it is
+# still incomplete, and our read of the market — none of which has any reason
+# to travel to the deployment.
+#
+# Neither build reads any of it: the frontend's only prebuild step copies the
+# Zoom lib, and nothing in backend/ or frontend/src references a root .md.
+# The help drawer's content is a separate tree under frontend/public/docs/
+# that this pattern cannot reach.
+#
+# The pattern is anchored and single-level, so it matches only markdown sitting
+# directly at the repo root — backend/**.md and frontend/public/docs/**.md are
+# untouched. README.md stays as the repository's front door.
+/*.md
+!/README.md
+
 # Test and tooling output.
 /coverage/
 /frontend/coverage/

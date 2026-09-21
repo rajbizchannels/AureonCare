@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mobile App - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📱 Mobile App</h1>
+                    <p>Native apps for iOS and Android</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.4</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Mobile App</h1>
+            <p>AureonCare ships native mobile apps for both staff and patients. They are real native applications sharing the platform's API — not a wrapped website.</p>
+
+            <h2>Requirements</h2>
+            <ul>
+                <li>iOS 15 or later, or Android 8 (API 26) or later</li>
+                <li>Biometric hardware for Face ID / Touch ID / fingerprint unlock</li>
+                <li>Notifications permission for appointment and message alerts</li>
+            </ul>
+
+            <h2>Installing</h2>
+            <ol>
+                <li>Search for <strong>AureonCare</strong> in the App Store (iOS) or Google Play (Android)</li>
+                <li>Install and open the app</li>
+                <li>Enter the practice URL if prompted</li>
+                <li>Sign in with the same email and password you use on the web</li>
+            </ol>
+            <p>The app chooses the right experience automatically based on your account — you do not pick "staff" or "patient".</p>
+
+            <h2>Signing In &amp; Security</h2>
+
+            <h3>Biometric Unlock</h3>
+            <ol>
+                <li>Sign in with your password once</li>
+                <li>When prompted, enable <strong>Face ID</strong>, <strong>Touch ID</strong>, or <strong>fingerprint unlock</strong></li>
+                <li>Subsequent launches unlock biometrically</li>
+            </ol>
+            <p>Credentials are held in the device's secure hardware store (iOS Keychain / Android Keystore).</p>
+
+            <h3>Two-Factor Authentication</h3>
+            <p>If your account has 2FA enabled, the app asks for your authenticator code at sign-in exactly as the web app does.</p>
+
+            <h3>Automatic Sign-Out</h3>
+            <p>The app signs you out if the server rejects your stored credential — for example after a password change or an administrator disabling the account.</p>
+            <p><strong>Enable a device passcode and biometric lock.</strong> An unlocked phone with the app installed is an unlocked chart.</p>
+
+            <h2>Staff App</h2>
+            <h3>Tabs on a Phone</h3>
+            <table>
+                <tr><th>Tab</th><th>What it shows</th></tr>
+                <tr><td>Schedule</td><td>Today's appointments, with the ability to open each one</td></tr>
+                <tr><td>Patients</td><td>Patient search and chart summary</td></tr>
+                <tr><td>Orders</td><td>Lab and prescription orders</td></tr>
+                <tr><td>Billing</td><td>Claims and payment status</td></tr>
+                <tr><td>More</td><td>Messages, settings, sign out</td></tr>
+            </table>
+
+            <h3>Additional Tablet Tabs</h3>
+            <p>On a tablet the app adds the workflows that need more room:</p>
+            <ul>
+                <li><strong>Encounter capture</strong> — document a visit</li>
+                <li><strong>Orders</strong> with multi-select pickers</li>
+                <li><strong>Revenue cycle</strong> with side-by-side context</li>
+            </ul>
+
+            <h2>Patient App</h2>
+            <table>
+                <tr><th>Tab</th><th>What it shows</th></tr>
+                <tr><td>Home</td><td>Next appointment, recent activity, outstanding forms</td></tr>
+                <tr><td>Visits</td><td>Upcoming and past appointments</td></tr>
+                <tr><td>Records</td><td>Medical records, prescriptions, results</td></tr>
+                <tr><td>Messages</td><td>Secure messages with the practice</td></tr>
+                <tr><td>More</td><td>Profile, notification settings, sign out</td></tr>
+            </table>
+
+            <h2>Responsive Layout</h2>
+            <p>The app measures the window width live rather than assuming a device type:</p>
+            <ul>
+                <li><strong>Under 600dp</strong> — phone layout, screens stack</li>
+                <li><strong>900dp and above</strong> — tablet layout, list and detail side by side</li>
+            </ul>
+            <p>This matters for iPad Split View and Android foldables, which change size while the app is running.</p>
+
+            <h2>Push Notifications</h2>
+            <p>Enable notifications when first prompted, or later in your device settings. You will be notified for:</p>
+            <ul>
+                <li>New secure messages</li>
+                <li>Appointment reminders</li>
+                <li>Appointment changes and cancellations</li>
+                <li>Lab results (patients)</li>
+                <li>Task assignments (staff)</li>
+            </ul>
+            <p>Notification preferences follow the same settings as email and WhatsApp.</p>
+
+            <h2>Camera Capture</h2>
+            <ol>
+                <li>Open a message thread</li>
+                <li>Tap the camera icon</li>
+                <li>Take the photo</li>
+                <li>Review and send</li>
+            </ol>
+            <p>The photo is encrypted and attached to the message. Staff can file it into the patient's chart.</p>
+            <p><strong>Tip:</strong> This is the fastest way for a patient to send an insurance card, a rash photo, or a home reading.</p>
+
+            <h2>Troubleshooting</h2>
+            <table>
+                <tr><th>Problem</th><th>Fix</th></tr>
+                <tr><td>Cannot sign in</td><td>Confirm the practice URL, and that your account works on the web</td></tr>
+                <tr><td>Biometric unlock stopped working</td><td>Sign in with your password; the stored credential is cleared when it is rejected</td></tr>
+                <tr><td>No notifications</td><td>Check notification permission in device settings, then your in-app preferences</td></tr>
+                <tr><td>Data looks stale</td><td>Pull down to refresh</td></tr>
+                <tr><td>Signed out unexpectedly</td><td>Your session hit the idle timeout, or an administrator changed your account</td></tr>
+            </table>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="messaging.html">Secure Messaging</a></li>
+                <li><a href="account-security.html">Account Security</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.4 - Mobile App</p>
+    </footer>
+</body>
+</html>

@@ -7,6 +7,7 @@ const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 const { issueAuthCookies, clearAuthCookies } = require('../utils/authCookies');
+const { issuePortalSession } = require('../services/portalSession');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { findUsableInvite, claimInvite } = require('./invites');
 const { resolveDomainClaim } = require('../services/domainJoin');
@@ -133,11 +134,20 @@ router.post('/login', async (req, res) => {
     // clients; the frontend migrates to the cookie and stops storing it.
     const csrfToken = issueAuthCookies(res, token);
 
+    // A patient signing in here lands in the portal, whose routes accept only a portal
+    // session token — the JWT above is not one. Null for every non-patient, and for a
+    // patient whose portal access is off.
+    const portalSession = await issuePortalSession(pool, user, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     res.json({
       message: 'Login successful',
       token,
       csrfToken,
-      user: toCamelCase(userData)
+      user: toCamelCase(userData),
+      ...(portalSession ? { portalSessionToken: portalSession.sessionToken } : {})
     });
   } catch (error) {
     console.error('Error during login:', error);
@@ -1105,12 +1115,19 @@ const socialLoginHandler = async (req, res) => {
 
     const csrfToken = issueAuthCookies(res, token);
 
+    // Same as the password path: a patient needs a portal session, not just the JWT.
+    const portalSession = await issuePortalSession(pool, user, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     res.json({
       message: 'Social login successful',
       token,
       csrfToken,
       user: toCamelCase(userData),
-      isNewUser
+      isNewUser,
+      ...(portalSession ? { portalSessionToken: portalSession.sessionToken } : {})
     });
 
   } catch (error) {
