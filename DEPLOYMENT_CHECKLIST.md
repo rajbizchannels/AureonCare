@@ -67,6 +67,14 @@ Add `--dry-run` to either to see what would run without touching anything.
 > the `ON DELETE SET NULL` on `audit_logs.user_id` tries to rewrite a table that
 > tenant/002 made append-only, and the deletion fails with
 > `P0001: audit_logs is append-only`.
+>
+> **Do not paste `migrations/tenant/*.sql` into a SQL editor.** Those files use
+> *unqualified* table names because the runner sets `search_path` per tenant before each
+> one. Run directly, `audit_logs` resolves against `public` where it does not exist and you
+> get `ERROR: 42P01: relation "audit_logs" does not exist` — which describes how they were
+> run, not the migrations. Without node, use
+> `backend/scripts/manual/apply-tenant-migrations.sql`, which does the per-schema loop
+> itself.
 
 - [ ] `--adopt` run exactly once on the existing database (skip on a brand-new one)
 - [ ] Global migrations complete without error

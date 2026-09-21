@@ -889,7 +889,10 @@ const api = {
     });
     if (!response.ok) {
       const e = await response.json().catch(() => ({}));
-      throw new Error(e.error || 'Google sign-in failed');
+      // providerError is the short OAuth/AADSTS code. Showing it turns an unactionable
+      // "try again" into something whoever configured the app can look up.
+      throw new Error((e.error || 'Google sign-in failed')
+        + (e.providerError ? ` [${e.providerError}]` : ''));
     }
     return api._storePortalSessionToken(await response.json());
   },
@@ -900,7 +903,10 @@ const api = {
     });
     if (!response.ok) {
       const e = await response.json().catch(() => ({}));
-      throw new Error(e.error || 'Microsoft sign-in failed');
+      // providerError is the short OAuth/AADSTS code. Showing it turns an unactionable
+      // "try again" into something whoever configured the app can look up.
+      throw new Error((e.error || 'Microsoft sign-in failed')
+        + (e.providerError ? ` [${e.providerError}]` : ''));
     }
     return api._storePortalSessionToken(await response.json());
   },

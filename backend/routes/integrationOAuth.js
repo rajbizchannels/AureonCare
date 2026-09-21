@@ -198,8 +198,18 @@ function resolveProviderEnv(key) {
       || key === 'TEAMS_CLIENT_ID') {
     return microsoftClientId() || process.env[key] || null;
   }
-  if (key === 'GOOGLE_DRIVE_CLIENT_ID' || key === 'GOOGLE_MEET_CLIENT_ID') {
+  // Drive genuinely shares the sign-in client — .env.example says so, and it only ever
+  // read AC_GG_CID/REACT_APP_GG_CID.
+  if (key === 'GOOGLE_DRIVE_CLIENT_ID') {
     return googleClientId() || process.env[key] || null;
+  }
+  // Meet does NOT. It has its own pair, AC_GM_CID / AC_GM_CSK, and always did — so its own
+  // id must win. Folding it into the shared helper took the id from the sign-in client
+  // while the secret still came from AC_GM_CSK, and Google rejects a mismatched pair with
+  // invalid_client. Consolidating names that pointed at ONE client was right; forcing two
+  // genuinely different clients together was not.
+  if (key === 'GOOGLE_MEET_CLIENT_ID') {
+    return process.env.AC_GM_CID || googleClientId() || process.env[key] || null;
   }
   const mappedKey = PROVIDER_ENV_MAP[key];
   if (mappedKey) {
@@ -478,8 +488,15 @@ router.get('/:providerType/callback', async (req, res) => {
         tokenType: tokens.token_type,
       });
     } catch (tokenError) {
-      console.error('Token exchange error:', tokenError.response?.data || tokenError.message);
-      return sendOAuthResult(res, false, providerType, 'Token exchange failed — check your Client Secret and Redirect URL.');
+      const detail = tokenError.response?.data;
+      console.error('Token exchange error:', detail || tokenError.message);
+      // Name the provider's own error. "check your Client Secret and Redirect URL" is the
+      // same sentence for a mismatched client, a wrong secret and an unregistered redirect,
+      // and the one fact that separates them went only to the log.
+      const code = detail && (detail.error || detail.error_description);
+      return sendOAuthResult(res, false, providerType,
+        'Token exchange failed — check your Client Secret and Redirect URL.'
+        + (code ? ` [${String(code).slice(0, 120)}]` : ''));
     }
 
     const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;

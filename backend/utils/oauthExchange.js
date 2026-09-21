@@ -56,7 +56,24 @@ async function exchangeAuthCode(provider, { code, redirectUri, codeVerifier }) {
     data = await resp.json();
     if (!resp.ok || !data.access_token) {
       console.warn(`[SEC-20] ${provider} code exchange failed:`, data.error_description || data.error || resp.status);
-      fail(401, 'Sign-in failed. Please try again.');
+      // Carry the provider's own reason back, not just "try again".
+      //
+      // A rejected exchange is almost always a CONFIGURATION fault — wrong client secret,
+      // the redirect URI registered under the wrong platform, a consumed code — and none
+      // of those get better by retrying. The message was identical for all of them, so the
+      // only way to tell them apart was the server log, which whoever is configuring the
+      // app usually cannot read.
+      //
+      // Only the short machine-readable codes are passed on: the OAuth `error` value and,
+      // for Entra, the AADSTS number. The full description is deliberately left in the log
+      // because it carries correlation ids, tenant ids and timestamps. Knowing that an
+      // app's secret is wrong does not help an attacker authenticate.
+      const aadsts = /AADSTS\d+/.exec(data.error_description || '');
+      const reason = [data.error, aadsts && aadsts[0]].filter(Boolean).join(' ');
+      const e = new Error('Sign-in failed. Please try again.');
+      e.statusCode = 401;
+      if (reason) e.providerError = reason;
+      throw e;
     }
   } catch (err) {
     if (err.statusCode) throw err;

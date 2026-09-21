@@ -1184,7 +1184,14 @@ router.post('/oauth/microsoft/exchange', async (req, res) => {
     req.body = { provider: 'microsoft', providerId: null, accessToken, refreshToken, profileData: {}, inviteToken: (req.body || {}).inviteToken };
     return socialLoginHandler(req, res);
   } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    if (err.statusCode) {
+      // providerError is the short OAuth/AADSTS code, set by exchangeAuthCode. It is the
+      // difference between "try again" and knowing the client secret is wrong.
+      return res.status(err.statusCode).json({
+        error: err.message,
+        providerError: err.providerError || undefined,
+      });
+    }
     console.error('Error during microsoft code exchange:', err);
     res.status(500).json({ error: 'Social login failed' });
   }
@@ -1200,7 +1207,14 @@ router.post('/oauth/google/exchange', async (req, res) => {
     req.body = { provider: 'google', providerId: null, accessToken, refreshToken, profileData: {}, inviteToken: (req.body || {}).inviteToken };
     return socialLoginHandler(req, res);
   } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    if (err.statusCode) {
+      // providerError is the short OAuth/AADSTS code, set by exchangeAuthCode. It is the
+      // difference between "try again" and knowing the client secret is wrong.
+      return res.status(err.statusCode).json({
+        error: err.message,
+        providerError: err.providerError || undefined,
+      });
+    }
     console.error('Error during google code exchange:', err);
     res.status(500).json({ error: 'Social login failed' });
   }
