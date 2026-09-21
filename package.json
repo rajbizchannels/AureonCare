@@ -31,7 +31,6 @@
     "@azure/msal-react": "^3.0.20",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@react-oauth/google": "^0.12.2",
-    "@supabase/supabase-js": "^2.49.1",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

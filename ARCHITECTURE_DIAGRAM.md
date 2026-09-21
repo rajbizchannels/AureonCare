@@ -242,7 +242,6 @@ graph TB
 
     subgraph DB_LAYER["Data Access Layer"]
         DBJS["db.js<br/>PostgreSQL Pool (pg)"]
-        SBJS["supabase.js<br/>Supabase Client"]
         ARCHDB["archiveDb.js<br/>Data Archival"]
     end
 
@@ -869,10 +868,8 @@ graph TB
     end
 
     subgraph Supabase["Supabase Cloud"]
+        %% Database only. The app speaks the Postgres wire protocol; it uses no Supabase HTTP API.
         PG_SB["PostgreSQL Database<br/>76 Tables"]
-        SB_AUTH["Supabase Auth<br/>(optional)"]
-        SB_STORAGE["Supabase Storage<br/>(optional)"]
-        SB_REALTIME["Supabase Realtime"]
     end
 
     subgraph Redis_Infra["Redis (Optional)"]
@@ -892,7 +889,6 @@ graph TB
     REACT_BUILD -->|"API calls /api/*"| NODE_SLS
     NODE_SLS --> API_FUNC
     API_FUNC -->|"pg driver + SSL"| PG_SB
-    API_FUNC -->|"@supabase/supabase-js"| SB_AUTH
     API_FUNC -->|"ioredis"| REDIS_INST
     API_FUNC -->|"HTTPS"| OAUTH_EXT
     API_FUNC -->|"HTTPS"| HEALTH_APIS

@@ -810,7 +810,6 @@ helm upgrade aureoncare helm/aureoncare/ \
 | `AC_DB_U` | No | `postgres` | PostgreSQL username |
 | `AC_DB_W` | **Yes*** | — | PostgreSQL password |
 | `AC_DB_S` | No | `false` | Set `true` when using Supabase TLS connection pooler |
-| `REACT_APP_SB_URL` | No | — | Supabase project URL. Read server-side by `backend/supabase.js`; the `REACT_APP_` prefix lets the same variable reach the browser bundle if the frontend ever needs it. Not a secret. |
 | `AC_USE_RD` | No | `false` | Set `true` to enable Redis session store |
 | `AC_RD_H` | No | `localhost` | Redis host |
 | `AC_RD_P` | No | `6379` | Redis port |
