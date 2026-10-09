@@ -46,7 +46,7 @@ Its distinguishing properties, each of which the current product contradicts som
 | Reminders / results / WhatsApp | `services/notificationService.js`, `reminderService.js`, `whatsappService.js` |
 | Reporting | `routes/reports.js`, `booking_analytics`, `REPORT_CATEGORIES` |
 | Access control + compliance | `roles` / `permissions` / `role_permissions`, append-only `audit_logs`, `archive_rules` |
-| Plan gating | `middleware/planEnforcement.js` (`requireFeature`, line ~235), `config/planFeatures.js` |
+| Plan gating | `middleware/planEnforcement.js` (`enforceFeature`, line ~226), `config/planFeatures.js` |
 
 That is a lot — roughly 70% of a camp module already exists as parts. The missing 30% is
 structural, not cosmetic.
@@ -202,7 +202,7 @@ expensive item in the proposal and the easiest to get wrong; it should not be in
   will create empty shadow copies that read zero rows.
 - Tenant migrations run **inside a transaction** — no `CREATE INDEX CONCURRENTLY`.
 - All routes use `req.db` (per-request tenant pool), never `req.app.locals.pool`.
-- Gate the module: `subscription_plans.features.camps` + `requireFeature('camps')` in
+- Gate the module: `subscription_plans.features.camps` + `enforceFeature('camps')` in
   `middleware/planEnforcement.js`, a `camps` entry in `config/planFeatures.js`
   (clinical_pro and above), a module in `config/modules.js`, and nav in
   `config/navigation.js`.
