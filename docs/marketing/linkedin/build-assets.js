@@ -428,7 +428,65 @@ const v04 = {
     'Read your own day on your own dashboard.') },
 };
 
-const ISSUES = { v01, v02, v03, v04 };
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Issue 05 — Document a visit (video V05)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const v05 = {
+  '01-cover.png': { w: 1200, h: 627, html: () => coverCard(
+    'Issue 05',
+    'Document<br>a visit',
+    'Read before you write &mdash; and remember the second reader.'
+  ) },
+
+  /* The three tabs a clinician reads before touching the keyboard. */
+  '02-read-first.png': { w: 1200, h: 675, html: () => {
+    const tab = (label, note, accent, lead) => `
+      <div style="flex:1;display:flex;flex-direction:column;">
+        <div style="border-radius:16px 16px 0 0;border:1px solid ${accent}3d;border-bottom:none;
+          background:${accent}${lead ? '1f' : '10'};padding:20px 24px;font-size:26px;font-weight:700;
+          color:${lead ? BRAND.paper : '#cbd5e1'};">${label}</div>
+        <div style="height:5px;background:${accent};opacity:${lead ? 1 : 0.45};"></div>
+        <div style="padding:24px 24px 0;font-size:21px;color:${BRAND.slate};line-height:1.4;">${note}</div>
+      </div>`;
+
+    return card('Before you write', `
+      ${headline('Read the chart first')}
+      <div style="display:flex;gap:22px;margin-top:54px;align-items:flex-start;">
+        ${tab('Patient Chart', 'Demographics, medical<br>history, allergies', BRAND.amber, true)}
+        ${tab('Diagnoses', 'The active problem list &mdash;<br>what you are treating', BRAND.teal)}
+        ${tab('Records', 'Notes from previous<br>visits, newest first', BRAND.tealLight)}
+      </div>`,
+      'Patient History is the longitudinal chart &mdash; every visit, not just today&rsquo;s');
+  } },
+
+  '03-allergies-first.png': { w: 1200, h: 675, html: () => statementCard(
+    'The one rule',
+    'Read the allergies<br>first. Always.',
+    'They sit on the Patient Chart tab, alongside demographics and medical '
+    + 'history. It is the first thing to look at and the last thing you want '
+    + 'to find out afterwards.') },
+
+  /* The thesis: everything written here has two audiences. */
+  '04-two-readers.png': { w: 1200, h: 675, html: () => card('Who reads it', `
+    ${headline('What you save has<br>two readers', 880)}
+    ${columns([
+      ['The care team', 'One record, visible to everyone<br>treating this patient, immediately', BRAND.amber],
+      ['The patient', 'Records, diagnoses and prescriptions<br>appear in their portal', BRAND.teal],
+    ])}`,
+    'So write for both of them') },
+
+  '05-recap.png': { w: 1200, h: 675, html: () => recapCard([
+    'Patients &#9656; Patient History is the chart across every visit',
+    'Read allergies, diagnoses and previous records before you write',
+    'What you save reaches the care team and the patient&rsquo;s portal',
+  ], 'Video 5 of 8 &nbsp;&middot;&nbsp; 2 min 19 s &nbsp;&middot;&nbsp; AureonCare Getting Started') },
+
+  '06-cta.png': { w: 1200, h: 675, html: () => ctaCard(
+    'Open a chart and document a visit in your own workspace.') },
+};
+
+const ISSUES = { v01, v02, v03, v04, v05 };
 
 /** Shared across issues, so it sits at the root of assets/ rather than in one. */
 const SHARED = { 'newsletter-logo.png': { w: 300, h: 300, html: logoSquare } };

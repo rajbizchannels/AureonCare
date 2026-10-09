@@ -11,6 +11,7 @@ the new hire.
 | 02 | V02 — Register a new patient | [`o63zQ53LEow`](https://youtu.be/o63zQ53LEow) | [`v02-register-a-new-patient.md`](v02-register-a-new-patient.md) |
 | 03 | V03 — Book an appointment | [`faMT4PZbVsY`](https://youtu.be/faMT4PZbVsY) | [`v03-book-an-appointment.md`](v03-book-an-appointment.md) |
 | 04 | V04 — Read your day on the dashboard | *pending* | [`v04-read-your-day-on-the-dashboard.md`](v04-read-your-day-on-the-dashboard.md) |
+| 05 | V05 — Document a visit | *pending* | [`v05-document-a-visit.md`](v05-document-a-visit.md) |
 
 Each issue file is a publishing document, not a draft: fenced blocks are pasted
 verbatim into LinkedIn, everything outside them is production notes. Assets are
@@ -24,8 +25,13 @@ them to ignore the ending.
 Each issue also links its source video, on its own line so LinkedIn renders a
 preview card rather than blue text. From Issue 03 the link is repeated through
 the body with an explicit invitation to watch, rather than parked at the end.
-Video URLs are published without their `?si=` share token. Issues 01 and 04
+Video URLs are published without their `?si=` share token. Issues 01, 04 and 05
 carry `[ VIDEO n LINK ]` placeholders until their URLs are supplied.
+
+Issues 01–04 are written for the front desk and the practice manager. Issue 05
+is the first written for clinicians, and the register shifts with it — less
+"here is where the button is", more "here is the habit". Keep that split as the
+series moves into the clinical videos.
 
 ## This branch
 
