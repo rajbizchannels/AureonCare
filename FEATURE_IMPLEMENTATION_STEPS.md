@@ -38,9 +38,39 @@ migration.
 
 ---
 
-# Part A — Phase 0: `locations` (shared prerequisite)
+# Part A — Phase 0: `locations` (shared prerequisite) — ✅ IMPLEMENTED
 
 Do this first. Both features need it, and building it twice is the expensive mistake.
+
+**Shipped as:** `migrations/tenant/004_locations.sql`,
+`migrations/tenant/005_location_id_columns.sql`, `migrations/083_locations_tenant_table.sql`,
+`utils/locations.js`, `routes/locations.js`, the `locations` seed in
+`services/tenantProvisioning.js`, `components/admin/LocationsTab.js`, and
+`test/locations/sites.test.js` (`npm run test:locations` — 54 checks).
+
+**Four deviations from the plan below, each for a reason worth keeping:**
+
+1. **A2 needs no clone.** 071 cloned because those tables existed in `tenant_default` but
+   not `template`. Here the tenant runner targets `template` like any other schema, so
+   tenant/004 creates it there directly and 083 is registration only.
+2. **A3 does not backfill `appointments` or `inventory_stock_movements.`** They grow
+   without bound and tenant migrations run in one transaction, so a blind historical
+   UPDATE is the lock-heavy change `tenant/README.md` warns against. `location_id IS NULL`
+   means "the primary site", resolved through `utils/locations.js`. Only the two bounded
+   configuration tables are backfilled.
+3. **A4's permission rows do not apply.** `permissions` / `roles` / `role_permissions`
+   live in `public`, `permissions` is empty, and there is no `requirePermission`
+   middleware — this codebase gates with `authorize('admin')`. The route follows that:
+   authenticated read (scheduling needs the list), admin-only write.
+4. **Added, not in the plan:** `POST /:id/make-primary`, a partial unique index enforcing
+   exactly one primary, server-side refusal to delete or deactivate the primary, and
+   refusal to delete a referenced site with the referencing counts named. The FK is
+   `ON DELETE SET NULL`, so a permitted delete would silently detach history rather than
+   fail — the refusal is the real protection and the FK is the fallback.
+
+**Not done, deliberately:** nothing consumes `location_id` yet. Scheduling, inventory and
+working hours are untouched, so single-site tenants behave exactly as before. Making
+scheduling site-aware is B3's job.
 
 ### A1. Tenant migration — create the table
 **Create** `backend/migrations/tenant/004_locations.sql`

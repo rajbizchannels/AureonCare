@@ -51,8 +51,25 @@ async function provisionTenant(pool, opts) {
     );
     const practiceId = pr[0].id;
     const schema = 'tenant_' + practiceId.replace(/-/g, '');
+    // Derived from a database-generated uuid, so this is already hex-and-underscores —
+    // but it is interpolated into DDL below, so assert rather than assume.
+    if (!/^tenant_[0-9a-f]{32}$/.test(schema)) {
+      throw new Error(`refusing to provision unsafe schema name: ${schema}`);
+    }
 
     await client.query('SELECT control.provision_schema($1)', [schema]);
+
+    // Seed the tenant's primary site. provision_schema clones structure only, and
+    // tenant/004 will never run for this schema (it inherits template's
+    // schema_migrations), so this is the ONLY path that gives a new tenant its primary
+    // location. Without it the tenant has an empty `locations` table and every
+    // "default site" lookup comes back null.
+    await client.query(
+      `INSERT INTO ${schema}.locations
+         (name, location_type, country, timezone, is_primary, is_active)
+       VALUES ($1, 'clinic', $2, $3, true, true)`,
+      [name, country || null, timezone || null]
+    );
 
     let slug = slugify(name) || ('t' + practiceId.slice(0, 8));
     const clash = await client.query('SELECT 1 FROM control.tenants WHERE slug = $1', [slug]);

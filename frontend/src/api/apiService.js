@@ -1824,6 +1824,75 @@ const api = {
     return response.json();
   },
 
+  // Locations (sites)
+  //
+  // The server answers a refused write with { error: <code>, message: <what to do> } —
+  // a site cannot be deleted while history references it, and the primary site cannot be
+  // deleted or deactivated. Surface `message` first so the UI shows the remedy rather
+  // than a generic failure.
+  getLocations: async ({ includeInactive = false, type } = {}) => {
+    const params = new URLSearchParams();
+    if (includeInactive) params.set('includeInactive', 'true');
+    if (type) params.set('type', type);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch locations');
+    return response.json();
+  },
+  getPrimaryLocation: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/primary`);
+    if (response.status === 404) return null; // tenant has no primary site yet
+    if (!response.ok) throw new Error('Failed to fetch primary location');
+    return response.json();
+  },
+  getLocation: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch location');
+    return response.json();
+  },
+  createLocation: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to create location');
+    }
+    return response.json();
+  },
+  updateLocation: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to update location');
+    }
+    return response.json();
+  },
+  makeLocationPrimary: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}/make-primary`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to set primary location');
+    }
+    return response.json();
+  },
+  deleteLocation: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to delete location');
+    }
+    return response.json();
+  },
+
   // Waitlist
   addToWaitlist: async (data) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/waitlist`, {
