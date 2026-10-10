@@ -1893,6 +1893,111 @@ const api = {
     return response.json();
   },
 
+  // Medical camps
+  //
+  // The camp API answers a refused action with { error: <code>, message: <what to do> } and,
+  // for a lifecycle change, a `blockers` array naming every outstanding requirement at
+  // once. Surface `message` first; show `blockers` where there is room for a list.
+  getCamps: async ({ status, from, to, locationId } = {}) => {
+    const p = new URLSearchParams();
+    if (status) p.set('status', status);
+    if (from) p.set('from', from);
+    if (to) p.set('to', to);
+    if (locationId) p.set('locationId', locationId);
+    const qs = p.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/camps${qs ? `?${qs}` : ''}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to fetch camps');
+    }
+    return response.json();
+  },
+  getCamp: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/camps/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch camp');
+    return response.json();
+  },
+  getCampReadiness: async (id, to) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/camps/${id}/readiness${to ? `?to=${to}` : ''}`);
+    if (!response.ok) throw new Error('Failed to check camp readiness');
+    return response.json();
+  },
+  createCamp: async (data) => api._campWrite('POST', '/camps', data, 'create camp'),
+  updateCamp: async (id, data) => api._campWrite('PUT', `/camps/${id}`, data, 'update camp'),
+  setCampStatus: async (id, status) => api._campWrite('POST', `/camps/${id}/status`, { status }, 'change camp status'),
+  deleteCamp: async (id) => api._campWrite('DELETE', `/camps/${id}`, undefined, 'delete camp'),
+
+  getCampServices: async (id) => api._campRead(`/camps/${id}/services`),
+  addCampService: async (id, data) => api._campWrite('POST', `/camps/${id}/services`, data, 'add service'),
+  removeCampService: async (serviceId) => api._campWrite('DELETE', `/camps/services/${serviceId}`, undefined, 'remove service'),
+
+  getCampStaff: async (id) => api._campRead(`/camps/${id}/staff`),
+  getCampStaffConflicts: async (id, userId) => api._campRead(`/camps/${id}/staff/conflicts?userId=${userId}`),
+  addCampStaff: async (id, data) => api._campWrite('POST', `/camps/${id}/staff`, data, 'roster staff'),
+  removeCampStaff: async (staffId) => api._campWrite('DELETE', `/camps/staff/${staffId}`, undefined, 'remove staff'),
+
+  getCampStations: async (id) => api._campRead(`/camps/${id}/stations`),
+  addCampStation: async (id, data) => api._campWrite('POST', `/camps/${id}/stations`, data, 'add station'),
+  updateCampStation: async (stationId, data) => api._campWrite('PUT', `/camps/stations/${stationId}`, data, 'update station'),
+  removeCampStation: async (stationId) => api._campWrite('DELETE', `/camps/stations/${stationId}`, undefined, 'delete station'),
+
+  getCampAllocations: async (id) => api._campRead(`/camps/${id}/allocations`),
+  getCampCost: async (id) => api._campRead(`/camps/${id}/cost`),
+  issueCampStock: async (id, data) => api._campWrite('POST', `/camps/${id}/allocations`, data, 'issue stock'),
+  reconcileCampStock: async (allocId, data) => api._campWrite('POST', `/camps/allocations/${allocId}/reconcile`, data, 'reconcile stock'),
+
+  getCampBoard: async (id) => api._campRead(`/camps/${id}/board`),
+  getCampStationQueue: async (stationId) => api._campRead(`/camps/stations/${stationId}/queue`),
+  startCampVisit: async (visitId) => api._campWrite('POST', `/camps/visits/${visitId}/start`, {}, 'start visit'),
+  completeCampVisit: async (visitId, data) => api._campWrite('POST', `/camps/visits/${visitId}/complete`, data, 'complete visit'),
+
+  registerCampAttendee: async (data) => api._campWrite('POST', '/camp-registrations', data, 'register attendee'),
+  getCampRegistrations: async (campId, { status, q, promoted } = {}) => {
+    const p = new URLSearchParams({ campId });
+    if (status) p.set('status', status);
+    if (q) p.set('q', q);
+    if (promoted !== undefined) p.set('promoted', String(promoted));
+    return api._campRead(`/camp-registrations?${p.toString()}`);
+  },
+  getCampRegistration: async (id) => api._campRead(`/camp-registrations/${id}`),
+  updateCampRegistration: async (id, data) => api._campWrite('PUT', `/camp-registrations/${id}`, data, 'update registration'),
+  recordCampConsent: async (id, data = {}) => api._campWrite('POST', `/camp-registrations/${id}/consent`, data, 'record consent'),
+  setCampRegistrationStatus: async (id, status) => api._campWrite('POST', `/camp-registrations/${id}/status`, { status }, 'update status'),
+  matchCampRegistration: async (id) => api._campRead(`/camp-registrations/${id}/match`),
+  promoteCampRegistration: async (id, data = {}) => api._campWrite('POST', `/camp-registrations/${id}/promote`, data, 'promote registration'),
+  queueCampAttendee: async (id, stationId) => api._campWrite('POST', `/camp-registrations/${id}/queue`, { stationId }, 'queue attendee'),
+
+  getCampReport: async (campId) => api._campRead(`/camp-reports/${campId}`),
+  // Aggregates only — the server refuses to put attendee data in this response.
+  getCampSponsorReport: async (campId) => api._campRead(`/camp-reports/${campId}/sponsor`),
+
+  _campRead: async (path) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      const err = new Error(error.message || error.error || 'Request failed');
+      err.code = error.error;
+      throw err;
+    }
+    return response.json();
+  },
+  _campWrite: async (method, path, data, what) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
+      method,
+      body: data === undefined ? undefined : JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      const err = new Error(error.message || error.error || `Failed to ${what}`);
+      err.code = error.error;
+      err.blockers = error.blockers;
+      err.conflicts = error.conflicts;
+      err.references = error.references;
+      throw err;
+    }
+    return response.json();
+  },
+
   // Waitlist
   addToWaitlist: async (data) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/waitlist`, {

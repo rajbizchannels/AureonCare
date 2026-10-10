@@ -37,6 +37,7 @@
 28. [Secure Messaging](#28-secure-messaging)
 29. [Mobile App](#29-mobile-app)
 30. [Account Security](#30-account-security)
+31. [Medical Camps](#31-medical-camps)
 
 ---
 
@@ -6159,6 +6160,122 @@ To review: **Settings → System → Audit Logs**. See Section 19 for filtering 
 
 ---
 
+## 31. Medical Camps
+
+**🆕 NEW IN V1.5** — available on Clinical Pro and above.
+
+A camp is a time-boxed event at a venue you do not own: a screening drive, a health fair,
+a corporate or community camp, a mobile clinic. It is run as a *station pipeline* rather
+than a slot calendar, so the software treats it differently from clinic work.
+
+Everything clinical a camp produces — records, diagnoses, prescriptions, lab orders — is
+an ordinary record in the patient's chart, stamped with the camp it came from. There is no
+separate "camp chart" to reconcile later.
+
+### 31.1 Setting up the venue
+
+A camp needs a **site**. Go to *Admin → Locations* and add the venue with type
+**Camp venue**. Sites are shared across the practice, so a hall you visit every year is
+added once.
+
+### 31.2 Planning a camp
+
+*Scheduling → Medical Camps → New camp*. A camp starts as a **draft** and must satisfy four
+things before it can be published:
+
+| Requirement | Where |
+|---|---|
+| A venue | the camp's own details |
+| At least one service | Plan → Services offered |
+| At least one member of staff | Plan → Staff on duty |
+| At least one active station | Plan → Station pipeline |
+
+The screen lists everything still outstanding at once, so you are not told one missing item
+per attempt.
+
+**Services** come from your healthcare offerings catalogue, or can be typed in as a one-off.
+A camp marked *free for attendees* cannot hold a priced service — clear the prices or mark
+the camp as paid.
+
+**Staff.** A camp takes a clinician away from the practice for the whole camp window, so
+rostering someone who already has clinic appointments in that window is refused and the
+clashing appointments are listed. Move or cancel them, or choose *Roster anyway* if you have
+already decided. Once rostered, that person's clinic slots on the camp day disappear from
+the booking screens — so nobody can be booked against a camp.
+
+**Stations** are the steps an attendee walks through, in order: registration, vitals,
+consult, lab, pharmacy, exit counselling. Mark a station **clinical** if it involves
+examining or treating someone. Registration and exit counselling are usually non-clinical.
+
+**Supplies.** Issuing stock to a camp moves it out of the store and records the movement
+against the camp. Nothing is lost track of: before a camp can close, every allocation must
+be reconciled — what was used plus what came back must equal what went out, and the unused
+balance is returned to the store automatically.
+
+### 31.3 Running the camp
+
+Move the camp to **Open the doors** when you arrive on site.
+
+**Registration desk.** This is the fast screen: a name, a phone number and an age are
+enough, and the attendee's queue token appears immediately. Focus returns to the name field
+after each save, so a desk can work keyboard-only. Several desks can register at once
+without ever issuing the same token twice.
+
+> **Consent.** Tick *Consent taken* at the desk, or record it later from the attendee list.
+> An attendee without consent on record can be registered and can sit at a non-clinical
+> station — but **no clinical station will accept them**, at the queue or at the station
+> itself. This is deliberate and cannot be worked around under queue pressure.
+
+**Station board.** Shows every station with how many are waiting, how many are being seen,
+and the longest wait — so you can see where the camp is backing up. Pick a station to work
+its queue: *Start*, then *Done* with an outcome (normal, referred, follow-up, declined,
+no show).
+
+**Patient records.** A registration is *not* a patient record — that is what keeps the desk
+fast and the patient index clean. When a clinician first needs a chart, or you are making a
+referral, use *Create or link patient record*. The system first offers existing patients who
+might be the same person (a matching phone number ranks highest), so a duplicate is a choice
+rather than an accident.
+
+A patient record needs a date of birth, and camp attendees often know only their age. Enter
+the date if you have it; leave it blank and the system estimates 1 January of the birth year
+and tells you it has done so. It never invents a precise date silently.
+
+### 31.4 Closing and reporting
+
+A camp will not close while stock is unaccounted for, or while attendees are still
+mid-pipeline. Once closed, its details and counts are frozen so its reports stay
+reproducible. A closed camp cannot be reopened.
+
+**Outcomes** shows attendance, consent, station throughput, average wait and service times,
+cost against budget, and **referral conversion** — how many camp attendees went on to book
+at the practice. That last figure is usually the business case for running camps at all.
+
+**Sponsor report.** Sponsors fund camps and want to know what was achieved. The sponsor
+report is produced separately from the clinical one and contains **counts only**: attendance,
+age bands, gender split, services delivered, conditions screened and referrals made. It
+carries no names, contact details, dates of birth, tokens or clinical notes. Groups smaller
+than the minimum size are combined, because in a camp of eighty people "one case of X" plus
+local knowledge can identify somebody. Only an administrator can produce it, and every
+export is written to the audit log.
+
+### 31.5 Outreach
+
+Camp invitations use the existing campaign tools (*CRM → Campaigns*): create a campaign and
+attach it to the camp. There is no separate camp mailing list to maintain.
+
+### 31.6 Best practices
+
+- ✅ Add the venue as a site before planning, so the same hall is reused year to year
+- ✅ Make registration the first station and mark it non-clinical — it is where consent is taken
+- ✅ Roster staff early; the conflict warning is most useful before appointments pile up
+- ✅ Reconcile stock on site, while the boxes are still in front of you
+- ✅ Promote and link attendees as you go rather than in a batch afterwards
+- ❌ Don't record consent in advance "to save time" — the gate exists for a reason
+- ❌ Don't send the clinical report to a sponsor; use the sponsor report
+
+---
+
 ## Appendix A: Keyboard Shortcuts
 
 **Global Shortcuts:**
@@ -6266,6 +6383,11 @@ To review: **Settings → System → Audit Logs**. See Section 19 for filtering 
 - In-app Help Drawer with Browse, Search, and AI Assistant tabs
 - Publicly accessible documentation website
 - Context-aware AI-powered help assistant
+
+**Version 1.5** - October 2026 - Updated with:
+- Locations: multiple sites per practice, with one primary site
+- Medical Camps: planning, staffing conflicts, registration desk with queue tokens,
+  station board, consent gate, stock reconciliation, and an aggregates-only sponsor report
 
 **Version 1.1** - December 2025 - Updated with:
 - Waitlist management integration into Practice Management

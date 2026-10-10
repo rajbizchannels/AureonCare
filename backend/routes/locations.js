@@ -25,6 +25,7 @@ const REFERENCING_TABLES = [
   { table: 'inventory_stock_movements', label: 'stock movements' },
   { table: 'doctor_availability', label: 'provider availability entries' },
   { table: 'clinic_working_hours', label: 'working-hours entries' },
+  { table: 'camps', label: 'medical camps' },
 ];
 
 /** Shared field validation for create/update. Returns an error string, or null. */
@@ -271,6 +272,11 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
 
     const references = [];
     for (const { table, label } of REFERENCING_TABLES) {
+      // A tenant that has not yet run the migration which creates one of these tables
+      // (camps arrives in tenant/006) must not get a 500 here — a missing table simply
+      // references nothing.
+      const { rows: present } = await db.query('SELECT to_regclass($1) IS NOT NULL AS ok', [table]);
+      if (!present[0].ok) continue;
       const { rows } = await db.query(
         `SELECT COUNT(*)::int AS n FROM ${table} WHERE location_id = $1`, [id]
       );

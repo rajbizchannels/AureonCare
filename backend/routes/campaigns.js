@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTableExists(pool);
 
-    const { status, offeringId } = req.query;
+    const { status, offeringId, campId } = req.query;
 
     let query = 'SELECT * FROM campaigns WHERE 1=1';
     const params = [];
@@ -40,6 +40,13 @@ router.get('/', async (req, res) => {
     if (offeringId) {
       params.push(offeringId);
       query += ` AND offering_id = $${params.length}`;
+    }
+
+    // Camp outreach reuses this engine rather than growing a second one — a campaign can
+    // simply belong to a camp.
+    if (campId) {
+      params.push(campId);
+      query += ` AND camp_id = $${params.length}`;
     }
 
     query += ' ORDER BY created_at DESC';
@@ -84,7 +91,8 @@ router.post('/', async (req, res) => {
     targetAudience,
     status,
     scheduledDate,
-    offeringId
+    offeringId,
+    campId
   } = req.body;
 
   try {
@@ -93,9 +101,9 @@ router.post('/', async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO campaigns (
-        name, subject, email_content, target_audience, status, scheduled_date, offering_id, created_at, updated_at
+        name, subject, email_content, target_audience, status, scheduled_date, offering_id, camp_id, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
       RETURNING *`,
       [
         name,
@@ -104,7 +112,8 @@ router.post('/', async (req, res) => {
         targetAudience || 'all',
         status || 'draft',
         scheduledDate || null,
-        offeringId || null
+        offeringId || null,
+        campId || null
       ]
     );
 
@@ -124,7 +133,8 @@ router.put('/:id', async (req, res) => {
     targetAudience,
     status,
     scheduledDate,
-    offeringId
+    offeringId,
+    campId
   } = req.body;
 
   try {
@@ -140,10 +150,11 @@ router.put('/:id', async (req, res) => {
            status = COALESCE($5, status),
            scheduled_date = COALESCE($6, scheduled_date),
            offering_id = COALESCE($7, offering_id),
+           camp_id = COALESCE($8, camp_id),
            updated_at = NOW()
-       WHERE id = $8
+       WHERE id = $9
        RETURNING *`,
-      [name, subject, emailContent, targetAudience, status, scheduledDate, offeringId, req.params.id]
+      [name, subject, emailContent, targetAudience, status, scheduledDate, offeringId, campId || null, req.params.id]
     );
 
     if (result.rows.length === 0) {
