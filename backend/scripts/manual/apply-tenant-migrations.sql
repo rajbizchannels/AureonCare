@@ -13,8 +13,11 @@
 --   * per-statement dollar-quote tags containing DIGITS, which a letters-only tag matcher
 --     does not recognise
 -- So there is now NO nested dollar quoting anywhere. The per-schema DDL is executed from
--- ordinary single-quoted strings, and the only dollar-quoted blocks are the three
+-- ordinary single-quoted strings, and the only dollar-quoted blocks are the four
 -- top-level ones below, whose tags are letters only.
+--
+-- Covers tenant migrations 001 to 006. Idempotent: each schema's own schema_migrations
+-- ledger is consulted first, so re-pasting this skips whatever is already applied.
 
 BEGIN;
 
@@ -26,6 +29,20 @@ BEGIN
   RAISE EXCEPTION 'audit_logs is append-only (% is not permitted)', TG_OP
     USING HINT = 'Audit records may be inserted and read, never altered or removed.';
 END $fn$;
+
+-- ADD CONSTRAINT has no IF NOT EXISTS, and a manual run may meet a schema that is
+-- half-applied. One helper keeps that check to a single line per constraint instead of a
+-- four-line IF block, and keeps its body dollar-quoted once, at the top level.
+CREATE OR REPLACE FUNCTION public.ac_add_constraint(p_schema text, p_table text, p_name text, p_def text)
+RETURNS void LANGUAGE plpgsql AS $fnc$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = p_name AND connamespace = p_schema::regnamespace
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD CONSTRAINT %I %s', p_schema, p_table, p_name, p_def);
+  END IF;
+END $fnc$;
 
 DO $outer$
 DECLARE
@@ -100,6 +117,85 @@ BEGIN
       EXECUTE format('INSERT INTO %I.schema_migrations (version, name) VALUES (3, %L)', sch, '003_audit_logs_keep_history.sql');
       n_applied := n_applied + 1;
     END IF;
+
+    -- 004: locations (physical sites)
+    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I.schema_migrations WHERE version = 4)', sch) INTO done;
+    IF NOT done THEN
+      EXECUTE 'CREATE TABLE IF NOT EXISTS locations ( id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name varchar(255) NOT NULL, location_type varchar(30) NOT NULL DEFAULT ''clinic'', address text, city varchar(100), state varchar(100), country varchar(2), postal_code varchar(20), phone varchar(50), email varchar(255), latitude numeric(9,6), longitude numeric(9,6), timezone varchar(100), notes text, is_primary boolean NOT NULL DEFAULT false, is_active boolean NOT NULL DEFAULT true, created_at timestamp DEFAULT CURRENT_TIMESTAMP, updated_at timestamp DEFAULT CURRENT_TIMESTAMP, CONSTRAINT locations_type_chk CHECK (location_type IN (''clinic'', ''camp'', ''mobile'', ''partner'')) )';
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_locations_active ON %I.locations (is_active)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_locations_type ON %I.locations (location_type)', sch);
+      EXECUTE format('CREATE UNIQUE INDEX IF NOT EXISTS uq_locations_single_primary ON %I.locations (is_primary) WHERE is_primary', sch);
+      -- Seed the primary site. current_schema() is sch because of the SET LOCAL above, so
+      -- `template` (which has no control.tenants row) gets the table and no row — exactly
+      -- as the runner leaves it. New tenants are seeded by services/tenantProvisioning.js.
+      EXECUTE 'WITH tp AS (SELECT p.name, p.phone, p.email, p.country, p.timezone FROM control.tenants t JOIN public.practices p ON p.id = t.practice_id WHERE t.schema_name = current_schema() LIMIT 1), tc AS (SELECT name, address, phone, email FROM clinic_info ORDER BY id LIMIT 1) INSERT INTO locations (name, location_type, address, phone, email, country, timezone, is_primary, is_active) SELECT COALESCE(NULLIF(c.name, ''''), NULLIF(p.name, ''''), ''Main Clinic''), ''clinic'', c.address, COALESCE(c.phone, p.phone), COALESCE(c.email, p.email), p.country, p.timezone, true, true FROM tp p LEFT JOIN tc c ON true WHERE NOT EXISTS (SELECT 1 FROM locations)';
+      EXECUTE format('INSERT INTO %I.schema_migrations (version, name) VALUES (4, %L)', sch, '004_locations.sql');
+      n_applied := n_applied + 1;
+    END IF;
+
+    -- 005: location_id on the tables that need a site
+    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I.schema_migrations WHERE version = 5)', sch) INTO done;
+    IF NOT done THEN
+      EXECUTE 'ALTER TABLE appointments ADD COLUMN IF NOT EXISTS location_id uuid';
+      EXECUTE 'ALTER TABLE inventory_stock_movements ADD COLUMN IF NOT EXISTS location_id uuid';
+      EXECUTE 'ALTER TABLE doctor_availability ADD COLUMN IF NOT EXISTS location_id uuid';
+      EXECUTE 'ALTER TABLE clinic_working_hours ADD COLUMN IF NOT EXISTS location_id uuid';
+      PERFORM public.ac_add_constraint(sch, 'appointments', 'appointments_location_id_fkey', format('FOREIGN KEY (location_id) REFERENCES %I.locations(id) ON DELETE SET NULL', sch));
+      PERFORM public.ac_add_constraint(sch, 'inventory_stock_movements', 'inventory_stock_movements_location_id_fkey', format('FOREIGN KEY (location_id) REFERENCES %I.locations(id) ON DELETE SET NULL', sch));
+      PERFORM public.ac_add_constraint(sch, 'doctor_availability', 'doctor_availability_location_id_fkey', format('FOREIGN KEY (location_id) REFERENCES %I.locations(id) ON DELETE SET NULL', sch));
+      PERFORM public.ac_add_constraint(sch, 'clinic_working_hours', 'clinic_working_hours_location_id_fkey', format('FOREIGN KEY (location_id) REFERENCES %I.locations(id) ON DELETE SET NULL', sch));
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_appointments_location ON %I.appointments (location_id)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_inv_movements_location ON %I.inventory_stock_movements (location_id)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_doctor_availability_location ON %I.doctor_availability (location_id)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_clinic_working_hours_location ON %I.clinic_working_hours (location_id)', sch);
+      -- Configuration tables only. appointments and inventory_stock_movements grow without
+      -- bound, so NULL there means the primary site (backend/utils/locations.js).
+      EXECUTE 'UPDATE clinic_working_hours SET location_id = (SELECT id FROM locations WHERE is_primary LIMIT 1) WHERE location_id IS NULL AND EXISTS (SELECT 1 FROM locations WHERE is_primary)';
+      EXECUTE 'UPDATE doctor_availability SET location_id = (SELECT id FROM locations WHERE is_primary LIMIT 1) WHERE location_id IS NULL AND EXISTS (SELECT 1 FROM locations WHERE is_primary)';
+      EXECUTE format('INSERT INTO %I.schema_migrations (version, name) VALUES (5, %L)', sch, '005_location_id_columns.sql');
+      n_applied := n_applied + 1;
+    END IF;
+
+    -- 006: medical camps
+    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I.schema_migrations WHERE version = 6)', sch) INTO done;
+    IF NOT done THEN
+      EXECUTE 'CREATE TABLE IF NOT EXISTS camps ( id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name varchar(255) NOT NULL, description text, location_id uuid REFERENCES locations(id) ON DELETE SET NULL, sponsor_name varchar(255), sponsor_contact varchar(255), funding_source varchar(30) NOT NULL DEFAULT ''self_funded'', is_free boolean NOT NULL DEFAULT true, budget numeric(14,2), currency varchar(3), starts_at timestamp NOT NULL, ends_at timestamp NOT NULL, timezone varchar(100), capacity integer, status varchar(20) NOT NULL DEFAULT ''draft'', next_token_no integer NOT NULL DEFAULT 1, published_at timestamp, started_at timestamp, closed_at timestamp, closed_by uuid, notes text, created_by uuid, created_at timestamp DEFAULT CURRENT_TIMESTAMP, updated_at timestamp DEFAULT CURRENT_TIMESTAMP, CONSTRAINT camps_status_chk CHECK (status IN (''draft'', ''published'', ''in_progress'', ''closed'', ''archived'')), CONSTRAINT camps_funding_chk CHECK (funding_source IN (''self_funded'', ''sponsored'', ''government'', ''ngo'', ''csr'')), CONSTRAINT camps_window_chk CHECK (ends_at > starts_at), CONSTRAINT camps_capacity_chk CHECK (capacity IS NULL OR capacity > 0), CONSTRAINT camps_budget_chk CHECK (budget IS NULL OR budget >= 0) )';
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camps_status ON %I.camps (status)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camps_starts ON %I.camps (starts_at)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camps_location ON %I.camps (location_id)', sch);
+      EXECUTE 'CREATE TABLE IF NOT EXISTS camp_services ( id uuid PRIMARY KEY DEFAULT gen_random_uuid(), camp_id uuid NOT NULL REFERENCES camps(id) ON DELETE CASCADE, offering_id uuid REFERENCES healthcare_offerings(id) ON DELETE CASCADE, label varchar(255), is_free boolean NOT NULL DEFAULT true, price numeric(12,2), display_order integer NOT NULL DEFAULT 0, created_at timestamp DEFAULT CURRENT_TIMESTAMP, CONSTRAINT camp_services_identified_chk CHECK (offering_id IS NOT NULL OR label IS NOT NULL), CONSTRAINT camp_services_price_chk CHECK (price IS NULL OR price >= 0), CONSTRAINT camp_services_free_price_chk CHECK (NOT (is_free AND price IS NOT NULL AND price > 0)) )';
+      EXECUTE format('CREATE UNIQUE INDEX IF NOT EXISTS uq_camp_services_offering ON %I.camp_services (camp_id, offering_id) WHERE offering_id IS NOT NULL', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_services_camp ON %I.camp_services (camp_id)', sch);
+      EXECUTE 'CREATE TABLE IF NOT EXISTS camp_staff ( id uuid PRIMARY KEY DEFAULT gen_random_uuid(), camp_id uuid NOT NULL REFERENCES camps(id) ON DELETE CASCADE, user_id uuid NOT NULL, camp_role varchar(30) NOT NULL DEFAULT ''clinician'', notes text, created_at timestamp DEFAULT CURRENT_TIMESTAMP, CONSTRAINT camp_staff_role_chk CHECK (camp_role IN (''lead'', ''registrar'', ''clinician'', ''nurse'', ''lab'', ''pharmacy'', ''volunteer'')), CONSTRAINT uq_camp_staff UNIQUE (camp_id, user_id) )';
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_staff_camp ON %I.camp_staff (camp_id)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_staff_user ON %I.camp_staff (user_id)', sch);
+      EXECUTE 'CREATE TABLE IF NOT EXISTS camp_stations ( id uuid PRIMARY KEY DEFAULT gen_random_uuid(), camp_id uuid NOT NULL REFERENCES camps(id) ON DELETE CASCADE, name varchar(255) NOT NULL, step_order integer NOT NULL DEFAULT 0, offering_id uuid REFERENCES healthcare_offerings(id) ON DELETE SET NULL, form_template_id uuid REFERENCES form_templates(id) ON DELETE SET NULL, is_clinical boolean NOT NULL DEFAULT true, is_active boolean NOT NULL DEFAULT true, created_at timestamp DEFAULT CURRENT_TIMESTAMP, updated_at timestamp DEFAULT CURRENT_TIMESTAMP )';
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_stations_camp ON %I.camp_stations (camp_id, step_order)', sch);
+      EXECUTE 'CREATE TABLE IF NOT EXISTS camp_inventory_allocations ( id uuid PRIMARY KEY DEFAULT gen_random_uuid(), camp_id uuid NOT NULL REFERENCES camps(id) ON DELETE CASCADE, item_id uuid NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT, qty_issued numeric(12,3) NOT NULL, qty_consumed numeric(12,3) NOT NULL DEFAULT 0, qty_returned numeric(12,3) NOT NULL DEFAULT 0, issue_movement_id uuid REFERENCES inventory_stock_movements(id) ON DELETE SET NULL, return_movement_id uuid REFERENCES inventory_stock_movements(id) ON DELETE SET NULL, reconciled_at timestamp, reconciled_by uuid, notes text, created_at timestamp DEFAULT CURRENT_TIMESTAMP, updated_at timestamp DEFAULT CURRENT_TIMESTAMP, CONSTRAINT camp_alloc_issued_chk CHECK (qty_issued > 0), CONSTRAINT camp_alloc_consumed_chk CHECK (qty_consumed >= 0), CONSTRAINT camp_alloc_returned_chk CHECK (qty_returned >= 0), CONSTRAINT camp_alloc_balance_chk CHECK (qty_consumed + qty_returned <= qty_issued), CONSTRAINT uq_camp_alloc UNIQUE (camp_id, item_id) )';
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_alloc_camp ON %I.camp_inventory_allocations (camp_id)', sch);
+      EXECUTE 'CREATE TABLE IF NOT EXISTS camp_registrations ( id uuid PRIMARY KEY DEFAULT gen_random_uuid(), camp_id uuid NOT NULL REFERENCES camps(id) ON DELETE CASCADE, token_no integer NOT NULL, full_name varchar(255) NOT NULL, phone varchar(50), email varchar(255), age_years integer, date_of_birth date, gender varchar(20), address text, city varchar(100), consent_given_at timestamp, consent_form_submission_id uuid REFERENCES form_submissions(id) ON DELETE SET NULL, status varchar(20) NOT NULL DEFAULT ''registered'', patient_id uuid REFERENCES patients(id) ON DELETE SET NULL, promoted_at timestamp, registered_by uuid, notes text, created_at timestamp DEFAULT CURRENT_TIMESTAMP, updated_at timestamp DEFAULT CURRENT_TIMESTAMP, CONSTRAINT camp_reg_status_chk CHECK (status IN (''registered'', ''in_progress'', ''completed'', ''left_early'', ''cancelled'')), CONSTRAINT camp_reg_age_chk CHECK (age_years IS NOT NULL OR date_of_birth IS NOT NULL), CONSTRAINT camp_reg_age_range_chk CHECK (age_years IS NULL OR (age_years >= 0 AND age_years <= 130)), CONSTRAINT uq_camp_reg_token UNIQUE (camp_id, token_no) )';
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_reg_camp ON %I.camp_registrations (camp_id, token_no)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_reg_phone ON %I.camp_registrations (phone)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_reg_patient ON %I.camp_registrations (patient_id)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_reg_status ON %I.camp_registrations (camp_id, status)', sch);
+      EXECUTE 'CREATE TABLE IF NOT EXISTS camp_station_visits ( id uuid PRIMARY KEY DEFAULT gen_random_uuid(), registration_id uuid NOT NULL REFERENCES camp_registrations(id) ON DELETE CASCADE, station_id uuid NOT NULL REFERENCES camp_stations(id) ON DELETE CASCADE, status varchar(20) NOT NULL DEFAULT ''queued'', queued_at timestamp DEFAULT CURRENT_TIMESTAMP, started_at timestamp, completed_at timestamp, handled_by uuid, outcome varchar(30), notes text, created_at timestamp DEFAULT CURRENT_TIMESTAMP, updated_at timestamp DEFAULT CURRENT_TIMESTAMP, CONSTRAINT camp_visit_status_chk CHECK (status IN (''queued'', ''in_progress'', ''completed'', ''skipped'')), CONSTRAINT camp_visit_outcome_chk CHECK (outcome IS NULL OR outcome IN (''normal'', ''referred'', ''follow_up'', ''declined'', ''no_show'')), CONSTRAINT uq_camp_visit UNIQUE (registration_id, station_id) )';
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_visit_station ON %I.camp_station_visits (station_id, status)', sch);
+      EXECUTE format('CREATE INDEX IF NOT EXISTS idx_camp_visit_reg ON %I.camp_station_visits (registration_id)', sch);
+      -- The camp_id stamps. Nullable and ON DELETE SET NULL: deleting a camp must never
+      -- cascade into clinical history.
+      FOR con IN SELECT unnest(ARRAY['campaigns', 'appointments', 'medical_records', 'diagnosis', 'prescriptions', 'lab_orders']) AS t LOOP
+        EXECUTE format('ALTER TABLE %I.%I ADD COLUMN IF NOT EXISTS camp_id uuid', sch, con.t);
+        PERFORM public.ac_add_constraint(sch, con.t, con.t || '_camp_id_fkey', format('FOREIGN KEY (camp_id) REFERENCES %I.camps(id) ON DELETE SET NULL', sch));
+        EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I.%I (camp_id)', 'idx_' || con.t || '_camp', sch, con.t);
+      END LOOP;
+      -- 055 constrained reference_type to four values, so issuing stock to a camp would
+      -- fail the CHECK. Widen it rather than overload 'department', which would make camp
+      -- consumption indistinguishable from internal transfers in every stock report.
+      EXECUTE format('ALTER TABLE %I.inventory_stock_movements DROP CONSTRAINT IF EXISTS inventory_stock_movements_reference_type_check', sch);
+      PERFORM public.ac_add_constraint(sch, 'inventory_stock_movements', 'inventory_stock_movements_reference_type_check', 'CHECK (reference_type IS NULL OR reference_type IN (''purchase_order'', ''patient'', ''department'', ''adjustment'', ''camp''))');
+      EXECUTE format('INSERT INTO %I.schema_migrations (version, name) VALUES (6, %L)', sch, '006_camps.sql');
+      n_applied := n_applied + 1;
+    END IF;
   END LOOP;
 
   RAISE NOTICE 'tenant migrations: % schema(s) processed, % file(s) applied', n_schemas, n_applied;
@@ -121,13 +217,13 @@ BEGIN
     UNION SELECT nspname FROM pg_namespace WHERE nspname LIKE 'tenant~_%' ESCAPE '~'
   LOOP
     CONTINUE WHEN to_regclass(format('%I.patients', sch)) IS NULL;
-    EXECUTE format('SELECT string_agg(version::text, '','' ORDER BY version) FROM %I.schema_migrations WHERE version BETWEEN 1 AND 3', sch) INTO got;
-    IF got IS DISTINCT FROM '1,2,3' THEN
-      RAISE WARNING 'incomplete: % has [%], expected 1,2,3', sch, COALESCE(got, 'none');
+    EXECUTE format('SELECT string_agg(version::text, '','' ORDER BY version) FROM %I.schema_migrations WHERE version BETWEEN 1 AND 6', sch) INTO got;
+    IF got IS DISTINCT FROM '1,2,3,4,5,6' THEN
+      RAISE WARNING 'incomplete: % has [%], expected 1,2,3,4,5,6', sch, COALESCE(got, 'none');
       missing := missing + 1;
     END IF;
   END LOOP;
   IF missing = 0 THEN
-    RAISE NOTICE 'verified: every provisioned tenant schema has tenant migrations 1, 2 and 3';
+    RAISE NOTICE 'verified: every provisioned tenant schema has tenant migrations 1 to 6';
   END IF;
 END $verify$;
