@@ -41,14 +41,20 @@ DECLARE
   in_template int;
   gated int;
 BEGIN
+  -- The seven tables are named rather than matched with `LIKE 'camp%'`: that pattern also
+  -- matches `campaigns`, a tenant table since 071, so a count of 7 could be six camp
+  -- tables plus campaigns and the check below would pass while one was missing.
   SELECT count(*) INTO registered FROM control.tenant_tables
-   WHERE table_name LIKE 'camp%';
+   WHERE table_name IN ('camps', 'camp_services', 'camp_staff', 'camp_stations',
+                        'camp_inventory_allocations', 'camp_registrations', 'camp_station_visits');
   SELECT count(*) INTO in_template FROM information_schema.tables
-   WHERE table_schema = 'template' AND table_name LIKE 'camp%';
+   WHERE table_schema = 'template'
+     AND table_name IN ('camps', 'camp_services', 'camp_staff', 'camp_stations',
+                        'camp_inventory_allocations', 'camp_registrations', 'camp_station_visits');
   SELECT count(*) INTO gated FROM public.subscription_plans
    WHERE features ? 'camps';
 
-  RAISE NOTICE '084: camp tables registered=% present_in_template=% plans_with_camps=%',
+  RAISE NOTICE '084: camp tables registered=%/7 present_in_template=%/7 plans_with_camps=%',
     registered, in_template, gated;
 
   IF in_template < 7 THEN
