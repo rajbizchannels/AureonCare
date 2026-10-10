@@ -71,6 +71,7 @@ import { useAudit } from '../hooks/useAudit';
 import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
+import LocationsTab from '../components/admin/LocationsTab';
 import { useClinicSettings } from '../hooks/useClinicSettings';
 import { apiFetch } from '../api/apiService';
 import { useShellTab } from '../hooks/useShellTab';
@@ -514,6 +515,7 @@ const AdminPanelView = ({
   const tabs = useMemo(
     () => [
       { id: ADMIN_TABS.CLINIC, label: t.clinicSettings || 'Clinic Settings', icon: Building2 },
+      { id: ADMIN_TABS.LOCATIONS, label: t.locations || 'Locations', icon: MapPin },
       { id: ADMIN_TABS.USERS, label: t.userManagement || 'User Management', icon: Users },
       { id: ADMIN_TABS.ROLES, label: t.rolesPermissions || 'Roles & Permissions', icon: Shield },
       // Billing is admin-only. The API enforces this too (authorize('admin') on
@@ -4930,6 +4932,9 @@ const AdminPanelView = ({
         {/* Tab Content */}
         <div>
           {activeTab === ADMIN_TABS.CLINIC && renderClinicSettingsTab()}
+          {activeTab === ADMIN_TABS.LOCATIONS && (
+            <LocationsTab theme={theme} t={t} api={api} addNotification={addNotification} />
+          )}
           {activeTab === ADMIN_TABS.USERS && renderUserManagementTab()}
           {activeTab === ADMIN_TABS.ROLES && renderRolesPermissionsTab()}
           {activeTab === ADMIN_TABS.PLANS && renderSubscriptionPlansTab()}

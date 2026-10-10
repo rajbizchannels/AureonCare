@@ -38,6 +38,7 @@ import {
   ShoppingCart,
   Truck,
   Tag,
+  MapPin,
   Megaphone,
   Send,
   Sparkles,
@@ -708,6 +709,14 @@ export const getNavigation = (t = {}) => [
             icon: Building2,
             module: 'admin',
             tab: ADMIN_TABS.CLINIC,
+            access: 'adminPanel',
+          },
+          {
+            id: 'settings.locations',
+            label: t.locations || 'Locations',
+            icon: MapPin,
+            module: 'admin',
+            tab: ADMIN_TABS.LOCATIONS,
             access: 'adminPanel',
           },
           {
