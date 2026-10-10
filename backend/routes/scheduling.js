@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
+const { rosteredCampWindows } = require('../services/camps');
 
 // ============================================================================
 // DOCTOR AVAILABILITY ROUTES
@@ -717,7 +718,14 @@ router.put('/booking-config/:providerId', authenticate, authorize('admin', 'rece
  * Query params: date (YYYY-MM-DD), appointmentTypeId, timezone
  * No authentication required - public endpoint for booking
  */
-router.get('/slots/:providerId', async (req, res) => {
+// NOTE: optionalAuth added with the camps work. Without any auth middleware this handler
+// never got req.db, so since the SEC-05 cutover moved the tenant tables out of `public` it
+// was querying doctor_availability / provider_booking_config through a public-pinned pool
+// and failing with 42P01 for every tenant. optionalAuth resolves the tenant (and attaches
+// req.db) for a signed-in caller while still letting the endpoint answer anonymously.
+// The genuinely anonymous path remains unresolved — a public booking page needs tenant
+// routing of its own (see services/portalRouting.js); that is a separate fix.
+router.get('/slots/:providerId', optionalAuth, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
@@ -791,6 +799,21 @@ router.get('/slots/:providerId', async (req, res) => {
              AND end_date >= $2::timestamp`,
             [providerId, date]
         );
+
+        // A provider rostered to a medical camp is away from the practice for the camp's
+        // whole window, so those hours must not be offered here. Shaped like a time-off row
+        // and appended to the same list, so the blocking logic below stays single-path.
+        const campWindows = await rosteredCampWindows(
+            pool, providerId, date, `${date} 23:59:59`
+        ).catch((e) => {
+            // A tenant that has not yet run tenant/006 has no camp tables; absent camps
+            // must not take the whole slot endpoint down.
+            if (e.code !== '42P01') throw e;
+            return [];
+        });
+        timeOffResult.rows.push(...campWindows.map((c) => ({
+            start_date: c.start_date, end_date: c.end_date,
+        })));
 
         // Generate time slots
         const slots = [];
@@ -880,7 +903,7 @@ router.get('/slots/:providerId', async (req, res) => {
  * Query params: startDate, endDate, appointmentTypeId
  * No authentication required - public endpoint for booking
  */
-router.get('/available-dates/:providerId', async (req, res) => {
+router.get('/available-dates/:providerId', optionalAuth, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
@@ -913,8 +936,18 @@ router.get('/available-dates/:providerId', async (req, res) => {
             [providerId, endDate, startDate]
         );
 
+        // Camp days are not bookable at the practice either — see /slots. Without this the
+        // date picker would offer a camp day and then show no slots on it.
+        // End of the last day, not its midnight: a camp running 09:00-17:00 on the final
+        // day of the range would otherwise fall outside `starts_at <= endDate`.
+        const campWindows = await rosteredCampWindows(pool, providerId, startDate, `${endDate} 23:59:59`)
+            .catch((e) => {
+                if (e.code !== '42P01') throw e; // tenant/006 not applied yet
+                return [];
+            });
+
         const timeOffDates = new Set();
-        timeOffResult.rows.forEach(timeOff => {
+        [...timeOffResult.rows, ...campWindows].forEach(timeOff => {
             const start = new Date(timeOff.start_date);
             const end = new Date(timeOff.end_date);
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {

@@ -54,6 +54,7 @@ import FormManagementView from './views/FormManagementView';
 import MessagesView from './views/MessagesView';
 import AccountsView from './views/AccountsView';
 import InventoryView from './views/InventoryView';
+import CampsManagementView from './views/CampsManagementView';
 
 // Public pages
 import PublicBookingPage from './components/scheduling/PublicBookingPage';
@@ -599,6 +600,18 @@ function App() {
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
             currency={currency}
+          />
+        );
+      case 'camps':
+        return (
+          <CampsManagementView
+            theme={theme}
+            t={t}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            activeTab={activeTab}
+            onTabChange={(tab) => selectModuleTab('camps', tab)}
           />
         );
       case 'reports':

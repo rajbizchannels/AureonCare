@@ -168,6 +168,7 @@ export const modulePermissions = {
   rcm: 'rcm', // Requires rcm.view
   accounts: 'accounts', // Requires accounts.view
   inventory: null, // No dedicated permission yet — open to all authenticated staff
+  camps: 'appointments', // Camps are scheduled work — anyone who can see appointments can see camps
   crm: 'crm', // Requires crm.view
   reports: 'reports', // Requires reports.view
   integrations: 'admin', // Requires admin permissions

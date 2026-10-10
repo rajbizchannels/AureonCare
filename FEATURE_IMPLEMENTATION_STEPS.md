@@ -121,7 +121,56 @@ unchanged for single-site tenants (null `location_id` must behave exactly as tod
 
 ---
 
-# Part B — Medical Camps
+# Part B — Medical Camps — ✅ IMPLEMENTED
+
+**Shipped as:** `migrations/tenant/006_camps.sql`, `migrations/084_camps_tenant_tables.sql`,
+`services/camps.js`, `routes/camps.js`, `routes/camp-registrations.js`,
+`routes/camp-reports.js`, camp awareness in `routes/scheduling.js` and
+`routes/campaigns.js`, `views/CampsManagementView.js` with
+`components/panels/camps/{CampPlanningPanel,CampRegistrationDesk,CampStationBoard,CampDashboardPanel}.js`,
+and `test/camps/camps.test.js` (`npm run test:camps` — 122 checks).
+
+**Deviations from the plan below, each deliberate:**
+
+1. **B2's "published → in_progress requires inventory allocations" was wrong, so it is not
+   implemented.** A counselling camp may carry no supplies at all, and blocking it would be
+   a bug. What `published` requires instead is **at least one active station** — a pipeline
+   with no stations opens an empty board. Reconciliation is enforced at *close*, and only
+   for allocations that actually exist.
+2. **B9 needed no "billing bypass", because nothing auto-bills.** `payments` and `claims`
+   are only ever created by explicit calls to their own routes; no appointment, encounter or
+   camp produces one. Inventing a bypass would have implied a risk that is not there.
+   What shipped instead is the invariant that keeps it true — a free camp cannot hold a
+   priced service, enforced in the route (the parent row is invisible to a CHECK) and
+   re-checked when a camp is switched to free — plus `GET /api/camps/:id/cost`, which is the
+   camp's real financial picture: budget against stock actually consumed.
+3. **Sponsor-report suppression was added beyond the plan.** An allowlisted projection stops
+   columns leaking, but a *count* of one still re-identifies in a small cohort, so buckets
+   below five are combined. The test asserts a single diagnosis is not published as one case.
+4. **Actor columns carry no foreign key.** `created_by`, `user_id`, `handled_by` and friends
+   are plain uuid, because `users` lives in `public` and `control.replicate_intra_fks` only
+   reproduces FKs between tenant tables — a FK to `public.users` would exist in migrated
+   tenants and silently not in newly provisioned ones. `template` has zero cross-schema FKs
+   and this did not add the first.
+5. **`inventory_stock_movements.reference_type` had to be widened.** Migration 055
+   constrained it to purchase_order/patient/department/adjustment, so issuing stock to a camp
+   failed the CHECK. `camp` was added rather than overloading `department`, which would make
+   camp consumption indistinguishable from internal transfers in every stock report.
+
+**Pre-existing bug found and fixed in passing:** `GET /api/scheduling/slots/:providerId` and
+`/available-dates/:providerId` had no auth middleware at all, so they never received
+`req.db` and had been querying `doctor_availability` / `provider_booking_config` through a
+`public`-pinned pool — failing with 42P01 for every tenant since the SEC-05 cutover moved
+those tables out of `public`. Adding `optionalAuth` fixes the signed-in path. **The
+genuinely anonymous path is still broken** and is out of scope here: a public booking page
+needs tenant routing of its own (see `services/portalRouting.js`).
+
+**Not done, deliberately:** B4's offline capture (Phase 4) — see the note at the end of
+this part.
+
+---
+
+# Part B — original plan
 
 ## B1. Schema
 

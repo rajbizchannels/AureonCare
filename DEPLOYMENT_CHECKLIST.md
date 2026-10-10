@@ -495,6 +495,19 @@ npm run migrate:core       # public/control migrations
 npm run migrate:tenants    # fans the tenant/*.sql set out across every tenant schema
 ```
 
+Run them **in that order, both of them**, every release. A table that only the first runner
+knows about does not exist in any tenant; a table only the second knows about is missing
+from every tenant provisioned afterwards, because `control.provision_schema` clones exactly
+what `control.tenant_tables` lists. Migrations 083 and 084 (locations, medical camps) are
+registration-only for that reason, with the tables themselves created by `tenant/004`–`006`.
+
+Afterwards, `npm run check:schema-health` should report every tenant schema complete. A
+tenant left behind is reported there rather than failing at request time.
+
+Camps are gated by the `camps` key in `subscription_plans.features`, which migration 084
+adds to `clinical_pro`, `enterprise` and `onprem` and deliberately not to `essentials`. No
+new environment variables are involved.
+
 If your Supabase project blocks connections from arbitrary IPs, either allowlist your
 address for the duration or run these from a bastion — do **not** add a bootstrap endpoint
 to the API to work around it. An HTTP route that can mint an operator is a permanent
