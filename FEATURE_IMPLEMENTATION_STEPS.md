@@ -367,8 +367,51 @@ seven types nothing can draw (`time`, `datetime`, `multiselect`, `file`, `divide
 validated cleanly and then appeared to a patient as an unanswerable label. A test now fails
 if the three vocabularies drift apart again.
 
-**C11 itself (migrating `data/formTemplates.js` into packs) is deliberately NOT done**, and
-the plan was wrong about it. Of its 22 templates, **17 are generic** (HIPAA notice, financial
+**The template linkage is now fixed (C11 steps 1–4), and fixing it surfaced three further
+defects that had all been failing silently.** `form_templates` had been empty in every
+tenant since the module shipped, so the UI rendered a hard-coded frontend array and sent
+forms with `template_id: null`. Now:
+
+- `migrations/tenant/008_seed_form_library.sql` seeds 22 templates, 14 categories and 283
+  field definitions into every tenant and into `template`, stamped `source_pack = 'base'`
+  so the pack machinery protects them on upgrade. It is **generated** by
+  `scripts/generate-form-library-migration.js`, whose `--verify` mode diffs the committed
+  SQL back against `frontend/src/data/formTemplates.js` field by field — hand-copying 283
+  field definitions has a dropped `required: true` on a consent checkbox as its failure
+  mode, which is invisible in review.
+- `services/tenantProvisioning.js` copies the library out of `template` for newly
+  provisioned tenants, since `provision_schema` clones structure and never data.
+- The submissions endpoint resolves `template_slug` server-side and **pins the name and
+  version from the template row**, so a submission records what the patient was shown
+  rather than what the client claimed. An unresolvable reference is now a 400, not a
+  silent null.
+- All four frontend consumers were fixed: `FormManagementView` reads the API and sends a
+  real id, `NewPatientForm` and `DiagnosisForm` send the slug, and
+  `NewHealthcareOfferingForm` picks from database rows — its `consent_form_id` column is a
+  uuid with a foreign key, so the seed array's slug ids could only ever have produced an
+  invalid reference.
+
+Three pre-existing failures found in the process, each surviving because nothing checked
+the response:
+
+1. **`POST /api/offerings` failed for every request ever made to it** — the insert supplied
+   28 values for 29 placeholders (`bind message supplies 28 parameters, but prepared
+   statement requires 29`). Creating a healthcare offering through the API had never
+   worked, which is why the pack engine and the camp tests both inserted directly.
+   `consent_form_id` was also never populated: the value list had
+   `_consent_form_url || _consent_form_id` where two separate columns needed two values.
+2. **`POST /api/form-management/submissions` failed for every request** —
+   `CASE WHEN $10 = 'submitted'` made Postgres deduce text for the same parameter the
+   `status` varchar column needed, giving 42P08. All three callers wrapped it in
+   `.catch(console.error)` labelled "non-critical", so form submissions silently never
+   worked at all. That, not disuse, is why the table was empty.
+3. The two above are why there was no evidence of the linkage problem in the data: nothing
+   could be written to be orphaned.
+
+**What remains of C11** is moving the five specialty-tagged templates out of the base
+library into their matching specialty packs, which is a product decision rather than a
+defect: the library is in the database and correctly linked either way. The plan's framing
+was wrong about the rest of it. Of its 22 templates, **17 are generic** (HIPAA notice, financial
 policy, general consent) — they are not specialty content, and putting them in a specialty
 pack would mean a practice only gets them if it happens to pick that specialty. Doing this
 properly needs a product decision about where universal templates live (a `general_practice`

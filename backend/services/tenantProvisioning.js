@@ -71,6 +71,41 @@ async function provisionTenant(pool, opts) {
       [name, country || null, timezone || null]
     );
 
+    // Copy the system form library out of `template`.
+    //
+    // control.provision_schema clones structure, never data, and tenant/008 will not run
+    // for this schema (it inherits template's schema_migrations) — so without this a new
+    // tenant has an empty form library, FormManagementView falls back to the frontend's
+    // seed array, and every form it sends a patient lands with template_id = null. Exactly
+    // the defect 008 exists to fix, reintroduced for every tenant created after it.
+    //
+    // Copied rather than re-declared: the content lives in one place, and the ids are
+    // deterministic, so a template has the same id here as in `template` and in every
+    // other tenant.
+    await client.query(
+      `INSERT INTO ${schema}.form_categories
+         (id, name, slug, description, color, icon, parent_id, sort_order, is_active)
+       SELECT id, name, slug, description, color, icon, parent_id, sort_order, is_active
+         FROM template.form_categories
+       ON CONFLICT (slug) DO NOTHING`
+    );
+    await client.query(
+      `INSERT INTO ${schema}.form_templates
+         (id, name, slug, description, category_id, category_slug, subcategory, template_type,
+          is_system_template, is_active, version, version_number, fields, settings,
+          require_signature, require_witness, allow_pdf_export, languages, tags,
+          intake_flow_eligible, specialty, compliance_tags, source_pack, source_pack_version,
+          is_customised)
+       SELECT id, name, slug, description, category_id, category_slug, subcategory, template_type,
+              is_system_template, is_active, version, version_number, fields, settings,
+              require_signature, require_witness, allow_pdf_export, languages, tags,
+              intake_flow_eligible, specialty, compliance_tags, source_pack, source_pack_version,
+              false
+         FROM template.form_templates
+        WHERE source_pack = 'base'
+       ON CONFLICT (slug) DO NOTHING`
+    );
+
     // Mark the specialty wizard as not yet run. Packs are deliberately NOT applied here:
     // applying one is an authenticated admin action so it is attributable in audit_logs,
     // and a tenant has to be fully usable before anyone configures it.

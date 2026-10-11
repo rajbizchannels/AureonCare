@@ -27,7 +27,8 @@
     "test:mfa": "node backend/test/signup/mfa-session.test.js",
     "test:locations": "node backend/test/locations/sites.test.js",
     "test:camps": "node backend/test/camps/camps.test.js",
-    "test:specialty": "node backend/test/specialty/packs.test.js"
+    "test:specialty": "node backend/test/specialty/packs.test.js",
+    "test:forms": "node backend/test/forms/linkage.test.js"
   },
   "dependencies": {
     "@azure/msal-browser": "^4.25.1",

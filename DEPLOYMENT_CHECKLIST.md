@@ -515,7 +515,14 @@ npm run packs:load         # validates backend/data/specialty-packs/*.json, then
 ```
 
 It validates every file first and loads nothing if any one fails, so a bad pack cannot
-leave a half-populated catalogue. Packs land with `clinical_review_status = 'pending'` —
+leave a half-populated catalogue.
+
+`migrate:tenants` also seeds the system form library (tenant/008): 22 templates, 14
+categories and 283 field definitions per tenant. After it runs,
+`SELECT count(*) FROM <schema>.form_templates WHERE source_pack = 'base'` should be 22 in
+every tenant schema and in `template`. If it is 0 anywhere, forms sent to patients from
+that tenant will have no template linkage — which is the defect tenant/008 exists to fix.
+`npm run test:forms` asserts it end to end. Packs land with `clinical_review_status = 'pending'` —
 they are usable, but the API refuses to apply one without an explicit acknowledgement and
 the wizard says the content is an engineering draft. Re-running never overwrites a version
 a clinician has approved; edited content must get a new version number. No new environment

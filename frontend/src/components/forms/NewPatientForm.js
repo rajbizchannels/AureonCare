@@ -102,8 +102,11 @@ const NewPatientForm = ({ theme, api, patients = [], onClose, onSuccess, addNoti
       seen.add(form.slug);
       try {
         await api.createFormSubmission({
+          // The server resolves this to a template row and pins the name and version from
+          // it. Without the slug the submission was orphaned: no link from a signed form
+          // back to the template the patient actually filled in.
+          template_slug: form.slug,
           template_name: form.name,
-          template_version: form.version,
           patient_id: patientId,
           form_data: {},
           status: 'draft',
