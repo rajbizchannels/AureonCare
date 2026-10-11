@@ -299,7 +299,74 @@ inventory reconciliation, staffing conflict, and the sponsor-report PHI assertio
 
 ---
 
-# Part C — Specialty Configuration Wizard
+# Part C — Specialty Configuration Wizard — ✅ IMPLEMENTED (C1–C10, C13–C14)
+
+**Shipped as:** `migrations/085_specialty_catalog.sql`,
+`migrations/tenant/007_pack_provenance.sql`, `utils/specialtyPackSchema.js`,
+`services/specialtyPack.js`, `scripts/load-specialty-packs.js`,
+`data/specialty-packs/{dentistry,ophthalmology,paediatrics}.v1.json` + its README,
+`routes/practiceSetup.js`, the `is_customised` stamps in four existing routes,
+`views/PracticeSetupWizardView.js`, `hooks/usePracticeSetup.js`,
+`isModuleVisible`/`hiddenBySpecialty` in `config/planFeatures.js`, `applyTerminology` in
+`config/translations.js`, and `test/specialty/packs.test.js`
+(`npm run test:specialty` — 119 checks).
+
+**Five deviations, each forced by what the schema actually is:**
+
+1. **Per-practice state is in `public.practices.setup`, NOT
+   `organization_settings.settings`** as the proposal said. That table holds exactly ONE
+   row in `public` and is not in `control.tenant_tables`, so all tenants share it — putting
+   a practice's specialty profile, terminology or hidden modules there would leak them to
+   every other practice. `practices` has one row per practice and is already where 081 put
+   `session_idle_minutes`. (The `organization_settings` sharing is a pre-existing problem
+   of its own; this did not make it worse and did not try to fix it.)
+2. **C3 is a global migration, not `tenant/008`.** `providers` is a `public` table, so
+   `specialty_code` and its backfill live in 085.
+3. **The `roles` pack section was dropped, not implemented.** `roles`, `role_permissions`
+   and `medical_codes` are all `public` tables shared by every tenant, so a pack could not
+   seed them per-practice without polluting other practices. The validator now *rejects* a
+   `roles` section outright, and `codeSets` became a per-practice shortlist in
+   `practices.setup.favouriteCodes` rather than flags on the shared `medical_codes` rows.
+4. **`modules.hide` intersects on merge, it does not union.** A cardiology pack hiding
+   `rcm` must not take billing away from a hospital that also does oncology and bills for
+   it, so a module is hidden only when *every* chosen specialty hides it.
+5. **Clinical review (C12's gate) is implemented as a column, not a process note.**
+   `specialty_packs.clinical_review_status` defaults to `pending`; a pending pack can be
+   applied but only with an explicit `acknowledgeUnreviewed`, the wizard makes an admin
+   tick a box, and `packs:load` refuses to overwrite a version a clinician has approved —
+   approval is attached to `(code, version)`, so edited content must get a new version.
+
+**Found and fixed while testing, in my own work:**
+
+- The validator rejected ordinary clinical prose: `\bselect\b` and `\bcreate\b` match
+  "Select the affected tooth" and "create a treatment plan". Prose fields are now exempt
+  (they are bound parameters, never interpolated) and a form field's `type` is checked
+  against an allowlist instead — `select` is a perfectly ordinary widget name.
+- `reports.show` was computed, reported and then never written anywhere. Now persisted as
+  `setup.visibleReports`, with an assertion.
+- **The test suite was not hermetic.** An earlier draft inserted `dentistry` v2/v3 to test
+  upgrades, leaving them in the global catalogue — so the next run seeded v3 instead of v1
+  and every count assertion drifted. It now brings its own run-scoped specialty and removes
+  it in a `finally`, because a crashed run that left packs behind poisoned later runs too.
+- Four **mutation tests** were used to confirm the suite is load-bearing rather than
+  decorative: removing the `is_customised` stamp, letting the engine overwrite a customised
+  row, letting preview write, and dropping the review gate. The first three initially
+  produced a harness *crash* rather than named failures, which stops every later check — so
+  response accessors were hardened until each mutant fails cleanly by name.
+
+**C11 (migrating `data/formTemplates.js` into packs) is deliberately NOT done**, and the
+plan was wrong about it. Of its 22 templates, **17 are generic** (HIPAA notice, financial
+policy, general consent) — they are not specialty content, and putting them in a specialty
+pack would mean a practice only gets them if it happens to pick that specialty. Doing this
+properly needs a product decision about where universal templates live (a `general_practice`
+pack applied to everyone, or the existing form-management seed path), not a mechanical move.
+Also noted for whoever does it: the file uses `pediatrics` while the taxonomy uses
+`paediatrics`, consistent with `orthopaedics` and `anaesthesiology` — the migration has to
+normalise that or the tag will silently miss.
+
+---
+
+# Part C — original plan
 
 Build the engine before the UI. Building the wizard first tends to bake pack semantics into
 React state, where they cannot be re-applied, upgraded or audited.

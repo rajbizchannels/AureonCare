@@ -113,6 +113,9 @@ router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
     const result = await pool.query(`
       UPDATE appointment_types
       SET
+        -- A user edit makes this row the practice's own; a specialty-pack upgrade must
+        -- never overwrite it afterwards (tenant/007, services/specialtyPack.js).
+        is_customised = true,
         name = COALESCE($1, name),
         description = COALESCE($2, description),
         duration_minutes = COALESCE($3, duration_minutes),

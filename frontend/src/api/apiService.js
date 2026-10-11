@@ -1893,6 +1893,55 @@ const api = {
     return response.json();
   },
 
+  // Practice setup — the specialty configuration wizard.
+  //
+  // getPracticeSetupState is read by the shell on load, not only by the wizard: the
+  // hidden-module list and the terminology overrides come from there. It is readable by
+  // any authenticated user; everything else is admin-only.
+  getPracticeSetupState: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/practice-setup/state`);
+    if (!response.ok) return null; // no tenant, or not configured — the shell carries on
+    return response.json();
+  },
+  savePracticeSetupState: async (data) => api._setupWrite('PUT', '/practice-setup/state', data, 'save setup state'),
+  getSpecialties: async () => api._setupRead('/practice-setup/specialties'),
+  getSpecialtyPacks: async () => api._setupRead('/practice-setup/packs'),
+  getPackFootprint: async (code) => api._setupRead(`/practice-setup/footprint?code=${encodeURIComponent(code)}`),
+  previewSpecialtyPack: async (specialtyCodes) =>
+    api._setupWrite('POST', '/practice-setup/preview', { specialtyCodes }, 'preview the pack'),
+  applySpecialtyPack: async (specialtyCodes, { mode = 'seed', acknowledgeUnreviewed = false } = {}) =>
+    api._setupWrite('POST', '/practice-setup/apply',
+      { specialtyCodes, mode, acknowledgeUnreviewed }, 'apply the pack'),
+  setPinnedModules: async (pinnedModules) =>
+    api._setupWrite('PUT', '/practice-setup/modules', { pinnedModules }, 'update module visibility'),
+  setTerminology: async (terminology) =>
+    api._setupWrite('PUT', '/practice-setup/terminology', { terminology }, 'update terminology'),
+
+  _setupRead: async (path) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`);
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      const err = new Error(e.message || e.error || 'Request failed');
+      err.code = e.error;
+      throw err;
+    }
+    return response.json();
+  },
+  _setupWrite: async (method, path, data, what) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
+      method, body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      const err = new Error(e.message || e.error || `Failed to ${what}`);
+      err.code = e.error;
+      err.errors = e.errors;
+      err.reviewStatus = e.reviewStatus;
+      throw err;
+    }
+    return response.json();
+  },
+
   // Medical camps
   //
   // The camp API answers a refused action with { error: <code>, message: <what to do> } and,

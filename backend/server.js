@@ -242,6 +242,7 @@ app.use('/api/locations', require('./routes/locations'));
 app.use('/api/camps', require('./routes/camps'));
 app.use('/api/camp-registrations', require('./routes/camp-registrations'));
 app.use('/api/camp-reports', require('./routes/camp-reports'));
+app.use('/api/practice-setup', require('./routes/practiceSetup'));
 app.use('/api/notification-preferences', require('./routes/notificationPreferences'));
 app.use('/api/fhir', require('./routes/fhir'));
 app.use('/api/fhir-tracking', require('./routes/fhir-tracking'));

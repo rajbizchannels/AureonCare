@@ -147,3 +147,35 @@ export const hasAccess = (planTier, moduleId, user = null) => {
 
   return hasPlanAccess;
 };
+
+/**
+ * The third axis of module visibility: specialty.
+ *
+ * Plan tier and role decide what a practice MAY see. A specialty pack only ever decides
+ * what it sees BY DEFAULT, and only ever subtracts:
+ *
+ *     visible = (plan ∩ role) \ (specialtyHidden \ adminPinned)
+ *
+ * It cannot reveal a module the plan or the role forbids — that would be an entitlement
+ * bypass dressed as configuration — and an administrator can always pin a module back,
+ * because hiding something a practice pays for with no way back is both a support burden
+ * and lost upsell surface.
+ */
+export const isModuleVisible = (planTier, moduleId, user = null, setup = null) => {
+  if (!hasAccess(planTier, moduleId, user)) return false;
+  if (!setup) return true;
+  const hidden = Array.isArray(setup.hiddenModules) ? setup.hiddenModules : [];
+  if (!hidden.includes(moduleId)) return true;
+  const pinned = Array.isArray(setup.pinnedModules) ? setup.pinnedModules : [];
+  return pinned.includes(moduleId);
+};
+
+/** Modules a specialty pack is hiding that the plan and role would otherwise allow. */
+export const hiddenBySpecialty = (planTier, user, setup) => {
+  if (!setup || !Array.isArray(setup.hiddenModules)) return [];
+  const pinned = Array.isArray(setup.pinnedModules) ? setup.pinnedModules : [];
+  return setup.hiddenModules.filter(
+    (m) => !pinned.includes(m) && hasAccess(planTier, m, user)
+  );
+};
+

@@ -756,6 +756,14 @@ export const getNavigation = (t = {}) => [
             access: 'adminPanel',
           },
           {
+            id: 'settings.practiceSetup',
+            label: t.setupTitle || 'Practice Setup',
+            description: t.setupNavDescription || 'Specialty, starter services, forms and terminology',
+            icon: Sparkles,
+            module: 'practiceSetup',
+            access: 'adminPanel',
+          },
+          {
             id: 'settings.locations',
             label: t.locations || 'Locations',
             icon: MapPin,

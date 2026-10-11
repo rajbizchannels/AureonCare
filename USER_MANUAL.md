@@ -38,6 +38,7 @@
 29. [Mobile App](#29-mobile-app)
 30. [Account Security](#30-account-security)
 31. [Medical Camps](#31-medical-camps)
+32. [Practice Setup & Specialties](#32-practice-setup--specialties)
 
 ---
 
@@ -6276,6 +6277,96 @@ attach it to the camp. There is no separate camp mailing list to maintain.
 
 ---
 
+## 32. Practice Setup & Specialties
+
+**🆕 NEW IN V1.5**
+
+A new practice starts generic: every module, every menu item, no services. The setup wizard
+configures the product for the specialty you actually practise — and it is an accelerator,
+never a gate. Skip it and you get the ordinary product, complete and usable.
+
+Find it at *Admin → Practice Setup*, or from the banner a new practice sees on first sign-in.
+
+### 32.1 What it actually does
+
+You pick a specialty. We create the things that specialty needs:
+
+- **Services** — a starting catalogue with durations and procedure codes
+- **Appointment types** — with sensible lengths for that specialty's work
+- **Forms** — the intake and consent forms the work requires
+- **Supply categories** — for the inventory module
+- **Terminology** — a dental practice reads "Chair Visit" where the product says
+  "Appointment"; a paediatric practice reads "Child" where it says "Patient"
+- **Menu defaults** — menu items that specialty does not use are hidden
+
+### 32.2 The six steps
+
+| Step | What happens |
+|---|---|
+| 1. Practice profile | Confirms what we already know from your signup |
+| 2. Specialty | Pick one, or several for a multi-specialty hospital |
+| 3. Services | See what will be created |
+| 4. Team | Reminder to invite colleagues and set hours — nothing is created |
+| 5. Forms | See which forms will be created |
+| 6. Review and apply | The exact list of changes, then one button |
+
+Every step can be revisited, and the wizard remembers where you were if you leave.
+
+> **Nothing is written until step 6.** Step 6 shows exactly what will be created, what will
+> be updated, what is already there and what will be left alone. Apply is never a leap of
+> faith.
+
+### 32.3 Your edits are safe
+
+This is the part worth understanding, because it is what makes the wizard safe to use on a
+practice that is already running.
+
+Every row created by setup is tagged with where it came from. **The moment you edit one, it
+becomes yours.** If we later publish an improved version of that specialty's starter
+content, your edited version is left exactly as it is and reported to you as "left alone".
+We never silently revert your work.
+
+The same applies in reverse: if you already had a service called "Scaling & Polishing"
+before running setup, the wizard does not take it over. It leaves your row alone and tells
+you it did.
+
+### 32.4 Multi-specialty hospitals
+
+Pick several specialties. The **first one you pick leads** — it decides terminology and
+settings wherever the specialties disagree, and step 6 lists every disagreement so nothing
+is decided behind your back.
+
+Service catalogues and form sets combine. Menu hiding does **not**: a menu item is only
+hidden if *every* specialty you picked hides it. A cardiology-plus-oncology hospital that
+bills for treatment keeps its billing menu.
+
+### 32.5 Showing hidden menu items again
+
+A specialty hides menu items by default; it never takes them away. *Admin → Practice Setup*
+lists everything your specialty has hidden, with a tick box to show any of them again. Your
+plan already includes them — the specialty is only choosing a sensible default.
+
+### 32.6 About the starter content
+
+The starter content for each specialty is written by our engineering team and, until a
+clinician has reviewed it, is **marked as a draft**. You can still use it — the wizard asks
+you to confirm you will check it against your own protocols first.
+
+What that means in practice: treat the service names, appointment durations, procedure codes
+and form questions as a well-informed starting point to review and adapt, not as clinical
+guidance. Once reviewed, the draft warning disappears for that specialty.
+
+### 32.7 Best practices
+
+- ✅ Run setup before entering real data — it is far easier on an empty practice
+- ✅ Review the procedure codes against your own billing practice before using them
+- ✅ Edit freely afterwards; your edits are protected from future updates
+- ✅ Pick your busiest specialty first in a multi-specialty hospital — it leads
+- ❌ Don't skip step 6; it is the only place the full list of changes appears
+- ❌ Don't treat the starter codes and forms as reviewed clinical content until they are
+
+---
+
 ## Appendix A: Keyboard Shortcuts
 
 **Global Shortcuts:**
@@ -6388,6 +6479,8 @@ attach it to the camp. There is no separate camp mailing list to maintain.
 - Locations: multiple sites per practice, with one primary site
 - Medical Camps: planning, staffing conflicts, registration desk with queue tokens,
   station board, consent gate, stock reconciliation, and an aggregates-only sponsor report
+- Practice Setup: specialty configuration wizard with previewed changes, protection for
+  your own edits, multi-specialty merging and per-practice terminology
 
 **Version 1.1** - December 2025 - Updated with:
 - Waitlist management integration into Practice Management
