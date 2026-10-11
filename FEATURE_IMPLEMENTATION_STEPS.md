@@ -354,15 +354,41 @@ inventory reconciliation, staffing conflict, and the sponsor-report PHI assertio
   produced a harness *crash* rather than named failures, which stops every later check — so
   response accessors were hardened until each mutant fails cleanly by name.
 
-**C11 (migrating `data/formTemplates.js` into packs) is deliberately NOT done**, and the
-plan was wrong about it. Of its 22 templates, **17 are generic** (HIPAA notice, financial
+**C11 prerequisite fixed separately:** investigating C11 turned up a live defect unrelated
+to where the content lives. `DynamicFormRenderer` dispatches on `field.type` as a chain
+with no `else`, and the seed data said `checkbox_group` where the renderer says
+`checkboxes` — so **18 fields across 10 of the 22 templates rendered as a bare label with
+no input**, including the HIPAA authorisation and release-of-information forms. Fixed by
+normalising the seed data to `checkboxes` (the name the renderer and the form builder
+already agreed on, and the one zero database rows contradicted), adding a visible fallback
+so the next mismatch is loud, and narrowing this part's own `FIELD_TYPES` — it had invented
+seven types nothing can draw (`time`, `datetime`, `multiselect`, `file`, `divider`,
+`yesno`, plus `checkboxgroup` for `checkboxes`), so a pack could have declared a field that
+validated cleanly and then appeared to a patient as an unanswerable label. A test now fails
+if the three vocabularies drift apart again.
+
+**C11 itself (migrating `data/formTemplates.js` into packs) is deliberately NOT done**, and
+the plan was wrong about it. Of its 22 templates, **17 are generic** (HIPAA notice, financial
 policy, general consent) — they are not specialty content, and putting them in a specialty
 pack would mean a practice only gets them if it happens to pick that specialty. Doing this
 properly needs a product decision about where universal templates live (a `general_practice`
 pack applied to everyone, or the existing form-management seed path), not a mechanical move.
-Also noted for whoever does it: the file uses `pediatrics` while the taxonomy uses
-`paediatrics`, consistent with `orthopaedics` and `anaesthesiology` — the migration has to
-normalise that or the tag will silently miss.
+Three things noted for whoever does it:
+
+- The file uses `pediatrics` while the taxonomy uses `paediatrics`, consistent with
+  `orthopaedics` and `anaesthesiology` — the migration has to normalise that or the tag
+  will silently miss.
+- `FORM_TEMPLATES` has **four** consumers, not one: `FormManagementView`,
+  `NewHealthcareOfferingForm`, `NewPatientForm` and `DiagnosisForm`. All four have to move
+  to the API before the file can be deleted.
+- Fields are keyed on `id`, not `name`, and the renderer reads `formData[field.id]`, so
+  submitted data is keyed by `id`. Renaming to `name` would break every existing
+  submission's data keys — the pack validator has to accept `id` instead.
+- `form_templates` is empty in every tenant, and `FormManagementView` sends a seed template
+  with `template_id: null`, so a signed consent has no durable link to the version the
+  patient saw. That linkage defect is the real argument for doing C11, and it also means
+  seeding has zero conflict risk today — which will stop being true as practices start
+  hand-building forms.
 
 ---
 

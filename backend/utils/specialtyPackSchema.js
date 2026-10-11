@@ -39,10 +39,16 @@ const SLUG = /^[a-z0-9][a-z0-9_-]{0,59}$/;
 
 // Form widget types the form engine renders. A closed vocabulary, so it is allowlisted
 // rather than pattern-matched — which also keeps "select" from tripping the SQL check.
+//
+// This list is EXACTLY what frontend DynamicFormRenderer can draw and what
+// DynamicFormBuilder offers. An earlier version of this file invented seven types nothing
+// renders (time, datetime, multiselect, file, divider, yesno, and `checkboxgroup` for what
+// the renderer calls `checkboxes`), so a pack could declare a field that validated cleanly
+// and then appeared to the patient as a label with no input. Three consumers, one
+// vocabulary: change it in all three or in none.
 const FIELD_TYPES = [
-  'text', 'textarea', 'number', 'date', 'time', 'datetime', 'email', 'phone',
-  'select', 'multiselect', 'radio', 'checkbox', 'checkboxgroup', 'signature',
-  'file', 'heading', 'paragraph', 'divider', 'scale', 'yesno',
+  'text', 'textarea', 'select', 'radio', 'checkbox', 'checkboxes', 'date', 'number',
+  'email', 'phone', 'scale', 'signature', 'heading', 'paragraph',
 ];
 
 function isPlainObject(v) {

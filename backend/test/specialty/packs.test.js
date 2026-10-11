@@ -30,7 +30,7 @@ const BASE = `http://127.0.0.1:${process.env.PORT}`;
 const pool = require(path.join(BACKEND, 'db.js'));
 const bcrypt = require(path.join(BACKEND, '..', 'node_modules', 'bcryptjs'));
 const { provisionTenant } = require(path.join(BACKEND, 'services/tenantProvisioning.js'));
-const { validatePack } = require(path.join(BACKEND, 'utils/specialtyPackSchema.js'));
+const { validatePack, FIELD_TYPES } = require(path.join(BACKEND, 'utils/specialtyPackSchema.js'));
 const packSvc = require(path.join(BACKEND, 'services/specialtyPack.js'));
 
 require(path.join(BACKEND, 'server.js'));
@@ -141,6 +141,51 @@ const tenantSql = (schema) => async (text, params) => {
     v({ formTemplates: [{ slug: 'f', name: 'F', fields: [{ name: 'a', type: 'select', options: ['Yes'] }] }] }).valid);
   check('an unknown field type is rejected',
     !v({ formTemplates: [{ slug: 'f', name: 'F', fields: [{ name: 'a', type: 'sqlwidget' }] }] }).valid);
+
+  // ── one vocabulary across three files ──────────────────────────────────────
+  //
+  // The form renderer dispatches on field.type as a chain with no else, so a type it does
+  // not know renders as a LABEL WITH NO INPUT. That is how 18 fields across 10 seed
+  // templates — the HIPAA authorisation and release-of-information forms among them —
+  // became unanswerable: the seed data said `checkbox_group` where the renderer says
+  // `checkboxes`, and this validator allowed seven further types nothing can draw.
+  //
+  // Asserted here, from the backend, because the invariant spans the boundary: a pack that
+  // validates must be a pack the browser can actually render.
+  {
+    const fs = require('fs');
+    const FE = path.join(BACKEND, '..', 'frontend', 'src', 'components', 'forms');
+    const rendererSrc = fs.readFileSync(path.join(FE, 'DynamicFormRenderer.js'), 'utf8');
+    // Comments mention `field.type === 'x'` as an example; only code counts.
+    const rendererCode = rendererSrc.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+    const draws = [...new Set([...rendererCode.matchAll(/field\.type === '([a-z_]+)'/g)].map((m) => m[1]))].sort();
+    const declared = (rendererSrc.match(/const SUPPORTED_FIELD_TYPES = \[([\s\S]*?)\]/) || [])[1];
+    const declaredList = declared
+      ? declared.match(/'([a-z_]+)'/g).map((x) => x.replace(/'/g, '')).sort() : [];
+    const builderSrc = fs.readFileSync(path.join(FE, 'DynamicFormBuilder.js'), 'utf8');
+    const offers = [...new Set([...builderSrc.matchAll(/^ {2}\{ type: '([a-z_]+)'/gm)].map((m) => m[1]))].sort();
+    const allowed = FIELD_TYPES.slice().sort();
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+    check('the renderer declares exactly the field types it can draw', same(declaredList, draws));
+    check('the form builder offers exactly those types', same(offers, draws));
+    check('the pack validator allows exactly those types — no type a pack can declare is unrenderable',
+      same(allowed, draws) || (() => {
+        console.log('     validator:', allowed.join(' '));
+        console.log('     renderer :', draws.join(' '));
+        return false;
+      })());
+
+    // And the seed library itself only uses types that render.
+    const seedSrc = fs.readFileSync(
+      path.join(BACKEND, '..', 'frontend', 'src', 'data', 'formTemplates.js'), 'utf8');
+    const templateTypes = new Set([...seedSrc.matchAll(/template_type: '([a-z_]+)'/g)].map((m) => m[1]));
+    const seedFieldTypes = [...new Set([...seedSrc.matchAll(/type: '([a-z_]+)'/g)].map((m) => m[1]))]
+      .filter((t) => !templateTypes.has(t));
+    const unrenderable = seedFieldTypes.filter((t) => !draws.includes(t));
+    check('every field in the seed form library uses a renderable type',
+      unrenderable.length === 0 || (() => { console.log('     unrenderable:', unrenderable); return false; })());
+  }
 
   check('an offering naming an undefined category is rejected',
     !v({ offerings: [{ name: 'X', categoryName: 'Nowhere' }] }).valid);
