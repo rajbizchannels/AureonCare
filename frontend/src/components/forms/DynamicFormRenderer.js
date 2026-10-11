@@ -9,6 +9,20 @@ import ThemedSelect from './ThemedSelect';
 // Supports: conditional fields, multi-language, role-based visibility, eSignature
 // ============================================================================
 
+// Every field type this component can actually draw. The dispatch in renderField is a
+// chain of `field.type === ...` with no else, so a type that is not in this list used to
+// render as a LABEL WITH NO INPUT — silently. That is how 18 fields across 10 seed
+// templates (including the HIPAA authorisation and release-of-information forms) ended up
+// unanswerable: the seed data said `checkbox_group` where this file says `checkboxes`.
+//
+// Keep this list in step with DynamicFormBuilder's FIELD_TYPES and with
+// backend/utils/specialtyPackSchema.js — all three must agree, and a test in
+// backend/test/specialty/packs.test.js fails if they drift apart.
+const SUPPORTED_FIELD_TYPES = [
+  'text', 'textarea', 'select', 'radio', 'checkbox', 'checkboxes', 'date', 'number',
+  'email', 'phone', 'scale', 'signature', 'heading', 'paragraph',
+];
+
 const DynamicFormRenderer = ({
   fields = [],
   formData = {},
@@ -70,6 +84,23 @@ const DynamicFormRenderer = ({
 
   const renderField = (field) => {
     if (!isVisible(field)) return null;
+
+    // An unknown type is a defect in the template, not something to swallow. Show it, so
+    // whoever is looking at the form can see a question exists and cannot be answered.
+    if (!SUPPORTED_FIELD_TYPES.includes(field.type)) {
+      return (
+        <div key={field.id} className="col-span-2">
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 text-amber-900 text-xs">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              <strong>{getLabel(field)}</strong> cannot be shown: this form asks for a
+              &ldquo;{String(field.type)}&rdquo; field, which this version does not support.
+              Please ask your practice to update the form.
+            </span>
+          </div>
+        </div>
+      );
+    }
 
     const value = formData[field.id] !== undefined ? formData[field.id] : '';
     const error = errors[field.id];
