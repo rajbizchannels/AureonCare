@@ -508,6 +508,19 @@ Camps are gated by the `camps` key in `subscription_plans.features`, which migra
 adds to `clinical_pro`, `enterprise` and `onprem` and deliberately not to `essentials`. No
 new environment variables are involved.
 
+The specialty packs need a third command, after both runners:
+
+```bash
+npm run packs:load         # validates backend/data/specialty-packs/*.json, then loads them
+```
+
+It validates every file first and loads nothing if any one fails, so a bad pack cannot
+leave a half-populated catalogue. Packs land with `clinical_review_status = 'pending'` —
+they are usable, but the API refuses to apply one without an explicit acknowledgement and
+the wizard says the content is an engineering draft. Re-running never overwrites a version
+a clinician has approved; edited content must get a new version number. No new environment
+variables are involved here either.
+
 If your Supabase project blocks connections from arbitrary IPs, either allowlist your
 address for the duration or run these from a bastion — do **not** add a bootstrap endpoint
 to the API to work around it. An HTTP route that can mint an operator is a permanent

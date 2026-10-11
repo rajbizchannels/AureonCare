@@ -290,8 +290,11 @@ router.put('/templates/:id', async (req, res) => {
     updateFields.push(`updated_at = NOW()`);
     params.push(req.params.id);
 
+    // A user edit makes this template the practice's own; a specialty-pack upgrade must
+    // never overwrite it afterwards (tenant/007, services/specialtyPack.js). Appended to
+    // the SQL rather than taken from the body, so it cannot be spoofed by a caller.
     const result = await pool.query(
-      `UPDATE form_templates SET ${updateFields.join(', ')} WHERE id = $${pi} RETURNING *`,
+      `UPDATE form_templates SET ${updateFields.join(', ')}, is_customised = true WHERE id = $${pi} RETURNING *`,
       params
     );
     const updated = result.rows[0];
@@ -364,7 +367,7 @@ router.post('/templates/:id/versions/:versionId/restore', async (req, res) => {
     const newVersionNum = previous.version_number + 1;
 
     const result = await pool.query(
-      `UPDATE form_templates SET fields=$1, settings=$2, fhir_questionnaire=$3, version_number=$4, version=$5, updated_at=NOW()
+      `UPDATE form_templates SET fields=$1, settings=$2, fhir_questionnaire=$3, version_number=$4, version=$5, is_customised=true, updated_at=NOW()
        WHERE id=$6 RETURNING *`,
       [version.fields, version.settings, version.fhir_questionnaire, newVersionNum,
        `${Math.floor(newVersionNum/10)}.${newVersionNum%10}`, req.params.id]

@@ -14,9 +14,9 @@ import { googleOAuthConfig, microsoftOAuthConfig } from './config/oauthConfig';
 import api from './api/apiService';
 
 // Config
-import { getTranslations } from './config/translations';
+import { getTranslations, applyTerminology } from './config/translations';
 import { getModules } from './config/modules';
-import { hasAccess } from './config/planFeatures';
+import { hasAccess, isModuleVisible } from './config/planFeatures';
 import {
   getNavigation,
   getPatientNavigation,
@@ -55,6 +55,8 @@ import MessagesView from './views/MessagesView';
 import AccountsView from './views/AccountsView';
 import InventoryView from './views/InventoryView';
 import CampsManagementView from './views/CampsManagementView';
+import PracticeSetupWizardView from './views/PracticeSetupWizardView';
+import usePracticeSetup from './hooks/usePracticeSetup';
 
 // Public pages
 import PublicBookingPage from './components/scheduling/PublicBookingPage';
@@ -183,13 +185,25 @@ function App() {
     clearAllNotifications
   } = useApp();
 
-  // Get translations and modules
-  const t = getTranslations(language);
+  // The practice's specialty configuration: what the navigation hides, and what the
+  // labels say. Fails quiet — an unconfigured practice gets the generic product.
+  const { setup: practiceSetup, reload: reloadPracticeSetup, shouldOfferWizard } = usePracticeSetup(user);
+  // Dismissed for this session only. Pressing "Skip for now" INSIDE the wizard is what
+  // records the decision on the server; waving the banner away should not.
+  const [wizardDismissed, setWizardDismissed] = React.useState(false);
+
+  // Get translations and modules. Terminology overrides resolve as
+  // packOverride ?? translations[locale][key], so a dental practice reads "Chair Visit"
+  // where the product says "Appointment" without forking the locale files.
+  const t = applyTerminology(getTranslations(language), practiceSetup && practiceSetup.terminology);
   const allModules = getModules(t);
-  // Check both plan-based and role-based access
+  // Plan tier and role decide what this practice MAY see; the specialty pack only decides
+  // what it sees by DEFAULT, and only ever subtracts. hasModuleAccess stays the
+  // entitlement question — anything gating a capability must keep using it.
   const hasModuleAccess = (moduleId) => hasAccess(planTier, moduleId, user);
-  // Filter modules based on user's role and plan permissions
-  const modules = allModules.filter(module => hasModuleAccess(module.id));
+  const modules = allModules.filter(
+    (module) => isModuleVisible(planTier, module.id, user, practiceSetup)
+  );
 
   // Local state for patient history
   const [selectedPatient, setSelectedPatient] = React.useState(null);
@@ -600,6 +614,18 @@ function App() {
             addNotification={addNotification}
             setCurrentModule={setCurrentModule}
             currency={currency}
+          />
+        );
+      case 'practiceSetup':
+        return (
+          <PracticeSetupWizardView
+            theme={theme}
+            t={t}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            onApplied={reloadPracticeSetup}
+            onClose={() => setCurrentModule('dashboard')}
           />
         );
       case 'camps':
@@ -1142,6 +1168,35 @@ function App() {
               t={t}
               currency={currency}
             />
+          </div>
+        )}
+
+        {/* First-run offer. Non-blocking by design: the wizard is an accelerator, and a
+            practice that ignores it gets the ordinary generic product. */}
+        {shouldOfferWizard && !wizardDismissed && activeModule !== 'practiceSetup' && (
+          <div className={`mb-4 p-4 rounded-lg flex items-start justify-between gap-4 flex-wrap ${
+            theme === 'dark' ? 'bg-blue-900/30 text-blue-100' : 'bg-blue-50 text-blue-900'}`}>
+            <div>
+              <p className="font-medium">{t.setupOfferTitle || 'Set this practice up for your specialty'}</p>
+              <p className="text-sm mt-1">
+                {t.setupOfferBody || 'Pick your specialty and we will create the services, appointment types and forms it needs. Takes a couple of minutes, and nothing is written until you confirm.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => navigateToModule('practiceSetup')}
+                className="px-3 py-2 rounded-lg text-sm text-white bg-blue-600 hover:bg-blue-700"
+              >
+                {t.setupOfferStart || 'Set up now'}
+              </button>
+              <button
+                onClick={() => setWizardDismissed(true)}
+                className={`px-3 py-2 rounded-lg text-sm ${
+                  theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100'}`}
+              >
+                {t.setupOfferLater || 'Not now'}
+              </button>
+            </div>
           </div>
         )}
 

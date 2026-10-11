@@ -71,6 +71,19 @@ async function provisionTenant(pool, opts) {
       [name, country || null, timezone || null]
     );
 
+    // Mark the specialty wizard as not yet run. Packs are deliberately NOT applied here:
+    // applying one is an authenticated admin action so it is attributable in audit_logs,
+    // and a tenant has to be fully usable before anyone configures it.
+    await client.query(
+      `UPDATE public.practices
+          SET setup = COALESCE(setup, '{}'::jsonb)
+                      || jsonb_build_object('onboarding',
+                           jsonb_build_object('startedAt', NULL, 'completedAt', NULL,
+                                              'currentStep', NULL, 'skipped', false))
+        WHERE id = $1`,
+      [practiceId]
+    );
+
     let slug = slugify(name) || ('t' + practiceId.slice(0, 8));
     const clash = await client.query('SELECT 1 FROM control.tenants WHERE slug = $1', [slug]);
     if (clash.rows.length) slug = `${slug}-${practiceId.slice(0, 6)}`;

@@ -1,0 +1,105 @@
+{
+  "code": "ophthalmology",
+  "version": 1,
+  "label": "Eye Clinic",
+  "description": "Starting configuration for an ophthalmology clinic: refraction and investigation appointment types, a cataract and retina service catalogue, and surgical consent.",
+  "modules": {
+    "hide": ["telehealth"]
+  },
+  "terminology": {
+    "provider": "Ophthalmologist",
+    "providers": "Ophthalmologists"
+  },
+  "appointmentTypes": [
+    { "name": "New Patient Consultation", "durationMinutes": 40, "color": "#2563EB", "displayOrder": 10 },
+    { "name": "Follow-up Consultation", "durationMinutes": 20, "color": "#0EA5E9", "displayOrder": 20 },
+    { "name": "Refraction", "durationMinutes": 30, "color": "#14B8A6", "displayOrder": 30 },
+    { "name": "Dilated Fundus Examination", "durationMinutes": 45, "color": "#8B5CF6", "displayOrder": 40 },
+    { "name": "Intravitreal Injection", "durationMinutes": 30, "color": "#F59E0B", "displayOrder": 50 },
+    { "name": "Pre-operative Assessment", "durationMinutes": 45, "color": "#64748B", "displayOrder": 60 },
+    { "name": "Post-operative Review", "durationMinutes": 15, "color": "#22C55E", "displayOrder": 70 }
+  ],
+  "serviceCategories": [
+    { "name": "Diagnostics", "icon": "search", "color": "#0EA5E9", "displayOrder": 10 },
+    { "name": "Medical Retina", "icon": "eye", "color": "#8B5CF6", "displayOrder": 20 },
+    { "name": "Cataract and Lens", "icon": "circle", "color": "#F59E0B", "displayOrder": 30 },
+    { "name": "Glaucoma", "icon": "gauge", "color": "#EF4444", "displayOrder": 40 },
+    { "name": "Optical", "icon": "glasses", "color": "#14B8A6", "displayOrder": 50 }
+  ],
+  "offerings": [
+    { "name": "Comprehensive Eye Examination", "categoryName": "Diagnostics", "durationMinutes": 40, "cptCodes": ["92004"] },
+    { "name": "Established Patient Eye Examination", "categoryName": "Diagnostics", "durationMinutes": 20, "cptCodes": ["92014"] },
+    { "name": "Optical Coherence Tomography", "categoryName": "Diagnostics", "durationMinutes": 20, "cptCodes": ["92134"] },
+    { "name": "Visual Field Testing", "categoryName": "Diagnostics", "durationMinutes": 30, "cptCodes": ["92083"] },
+    { "name": "Fundus Photography", "categoryName": "Diagnostics", "durationMinutes": 15, "cptCodes": ["92250"] },
+    { "name": "Fluorescein Angiography", "categoryName": "Medical Retina", "durationMinutes": 45, "cptCodes": ["92235"], "requiresPreparation": true, "preparationInstructions": "Bring someone who can drive you home. Your vision will be blurred for several hours after the dye and the drops." },
+    { "name": "Intravitreal Anti-VEGF Injection", "categoryName": "Medical Retina", "durationMinutes": 30, "cptCodes": ["67028"], "consentFormRequired": true },
+    { "name": "Laser Photocoagulation, Retina", "categoryName": "Medical Retina", "durationMinutes": 40, "cptCodes": ["67228"], "consentFormRequired": true },
+    { "name": "Cataract Surgery with Intraocular Lens", "categoryName": "Cataract and Lens", "durationMinutes": 60, "cptCodes": ["66984"], "consentFormRequired": true, "requiresPreparation": true, "preparationInstructions": "Nothing to eat for six hours beforehand. Continue your usual eye drops unless told otherwise. Arrange someone to take you home." },
+    { "name": "YAG Capsulotomy", "categoryName": "Cataract and Lens", "durationMinutes": 20, "cptCodes": ["66821"], "consentFormRequired": true },
+    { "name": "Tonometry and Glaucoma Review", "categoryName": "Glaucoma", "durationMinutes": 25, "cptCodes": ["92020"] },
+    { "name": "Selective Laser Trabeculoplasty", "categoryName": "Glaucoma", "durationMinutes": 30, "cptCodes": ["65855"], "consentFormRequired": true },
+    { "name": "Spectacle Prescription", "categoryName": "Optical", "durationMinutes": 20, "cptCodes": ["92015"] },
+    { "name": "Contact Lens Fitting", "categoryName": "Optical", "durationMinutes": 45, "cptCodes": ["92310"] }
+  ],
+  "formTemplates": [
+    {
+      "slug": "ophthalmology-intake",
+      "name": "Eye Clinic Intake",
+      "templateType": "onboarding",
+      "fields": [
+        { "name": "presenting_complaint", "type": "textarea", "label": "What is the problem with your eyes?", "required": true },
+        { "name": "affected_eye", "type": "radio", "label": "Which eye?", "options": ["Right", "Left", "Both"], "required": true },
+        { "name": "duration", "type": "text", "label": "How long has it been going on?" },
+        { "name": "wears_glasses", "type": "radio", "label": "Do you wear glasses or contact lenses?", "options": ["Neither", "Glasses", "Contact lenses", "Both"] },
+        { "name": "eye_surgery_history", "type": "textarea", "label": "Any previous eye surgery or injury?" },
+        { "name": "family_glaucoma", "type": "checkbox", "label": "Does anyone in your family have glaucoma?" },
+        { "name": "diabetes", "type": "checkbox", "label": "Do you have diabetes?" },
+        { "name": "current_eye_drops", "type": "textarea", "label": "Eye drops you are currently using" }
+      ]
+    },
+    {
+      "slug": "ophthalmology-surgical-consent",
+      "name": "Consent to Eye Surgery",
+      "templateType": "consent",
+      "requireSignature": true,
+      "fields": [
+        { "name": "procedure", "type": "text", "label": "Procedure", "required": true },
+        { "name": "operative_eye", "type": "radio", "label": "Eye to be operated on", "options": ["Right", "Left"], "required": true },
+        { "name": "eye_confirmed_with_patient", "type": "checkbox", "label": "The eye has been confirmed with the patient and marked", "required": true },
+        { "name": "risks_explained", "type": "checkbox", "label": "The risks have been explained, including infection, bleeding, raised pressure, retinal detachment and loss of vision", "required": true },
+        { "name": "lens_choice_discussed", "type": "checkbox", "label": "Lens options and the expected refractive outcome have been discussed" },
+        { "name": "questions_answered", "type": "checkbox", "label": "I have had the chance to ask questions and they were answered", "required": true }
+      ]
+    },
+    {
+      "slug": "ophthalmology-injection-record",
+      "name": "Intravitreal Injection Record",
+      "templateType": "clinical",
+      "fields": [
+        { "name": "drug", "type": "text", "label": "Agent injected", "required": true },
+        { "name": "eye", "type": "radio", "label": "Eye", "options": ["Right", "Left"], "required": true },
+        { "name": "batch_number", "type": "text", "label": "Batch number" },
+        { "name": "injection_number", "type": "number", "label": "Injection number in this series" },
+        { "name": "complications", "type": "textarea", "label": "Complications" },
+        { "name": "next_due", "type": "date", "label": "Next injection due" }
+      ]
+    }
+  ],
+  "codeSets": {
+    "icd10": ["H25.9", "H35.31", "H40.11X0", "H33.20", "E11.319", "H52.4", "H02.401"],
+    "cpt": ["92004", "92014", "92015", "92020", "92083", "92134", "92235", "92250", "92310", "65855", "66821", "66984", "67028", "67228"]
+  },
+  "inventoryCategories": [
+    { "code": "intraocular_lenses", "name": "Intraocular Lenses" },
+    { "code": "ophthalmic_drops", "name": "Ophthalmic Drops and Dyes" },
+    { "code": "intravitreal", "name": "Intravitreal Agents" },
+    { "code": "viscoelastics", "name": "Viscoelastics" },
+    { "code": "surgical_disposables", "name": "Surgical Disposables" }
+  ],
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": { "show": ["clinical", "operational"] }
+}
