@@ -12,7 +12,7 @@ import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
 import FormTemplateLibrary from '../components/forms/FormTemplateLibrary';
 import SignatureCapture from '../components/forms/SignatureCapture';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
-import { FORM_TEMPLATES, FORM_CATEGORIES } from '../data/formTemplates';
+import { FORM_CATEGORIES } from '../data/formTemplates';
 import { useShellTab } from '../hooks/useShellTab';
 import ThemedSelect from '../components/forms/ThemedSelect';
 
@@ -215,11 +215,12 @@ const FormManagementView = ({
         api.getFormManagementStats().catch(() => ({}))
       ]);
 
-      // Merge API templates with local seed templates (show local ones with is_system_template marker)
-      const seedTemplates = FORM_TEMPLATES.map(t => ({ ...t, _seed: true }));
-      const apiIds = new Set(apiTemplates.map(t => t.slug));
-      const uniqueSeeds = seedTemplates.filter(t => !apiIds.has(t.id));
-      setTemplates([...apiTemplates, ...uniqueSeeds]);
+      // The library lives in the database (tenant migration 008 seeds it, and provisioning
+      // copies it into each new tenant). It used to be merged with a hard-coded frontend
+      // array, which is why forms sent to patients had template_id = null: a seed template
+      // had no row to point at. There is no fallback here on purpose — an empty list means
+      // the migration has not run, and that should be visible rather than papered over.
+      setTemplates(apiTemplates);
       setSubmissions(subData);
       setStats(statsData);
     } catch (e) {
@@ -245,9 +246,9 @@ const FormManagementView = ({
     setSendingForm(true);
     try {
       await api.createFormSubmission({
-        template_id: sendModal._seed ? null : sendModal.id,
-        template_name: sendModal.name,
-        template_version: sendModal.version || '1.0',
+        // Always a real template id. The server pins the name and version from that row,
+        // so the submission records the version the patient was actually shown.
+        template_id: sendModal.id,
         patient_id: sendPatientId,
         form_data: {},
         status: 'draft',

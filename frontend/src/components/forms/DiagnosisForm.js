@@ -403,8 +403,11 @@ const DiagnosisForm = ({
       if (selectedDiagnosisForms.length > 0 && formData.patientId) {
         for (const tmpl of selectedDiagnosisForms) {
           api.createFormSubmission({
+            // SLUG, not id: these options come from the frontend seed array where `id` is
+            // a slug string, not the uuid of a form_templates row. The server resolves it
+            // (backend/routes/form-management.js) and pins the version from that row.
+            template_slug: tmpl.slug || tmpl.id,
             template_name: tmpl.name,
-            template_version: tmpl.version || '1.0',
             patient_id: formData.patientId,
             form_data: {},
             status: 'draft',

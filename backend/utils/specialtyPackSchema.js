@@ -229,11 +229,50 @@ function validatePack(pack, opts = {}) {
     if (row.templateType !== undefined && typeof row.templateType !== 'string') {
       err(`${path}.templateType must be a string`);
     }
+    // The form_templates columns this section used to drop on the floor. Carrying them
+    // matters: `requireWitness` on a consent form is a clinical property, `languages`
+    // decides whether a patient is offered the form in their own language, and
+    // `complianceTags` is what a HIPAA audit filters on. A pack that could not express
+    // them could not be the home for a real template.
+    for (const key of ['subcategory', 'categorySlug', 'version']) {
+      if (row[key] !== undefined && typeof row[key] !== 'string') {
+        err(`${path}.${key} must be a string`);
+      }
+    }
+    for (const key of ['requireWitness', 'intakeFlowEligible', 'allowPdfExport']) {
+      if (row[key] !== undefined && typeof row[key] !== 'boolean') {
+        err(`${path}.${key} must be a boolean`);
+      }
+    }
+    for (const key of ['languages', 'tags', 'complianceTags']) {
+      if (row[key] === undefined) continue;
+      if (!Array.isArray(row[key])) { err(`${path}.${key} must be an array of strings`); continue; }
+      row[key].forEach((v, j) => {
+        if (typeof v !== 'string' || !v.trim()) err(`${path}.${key}[${j}] must be a non-empty string`);
+      });
+    }
+    if (row.languages !== undefined) {
+      row.languages.forEach((l, j) => {
+        if (!/^[a-z]{2}(-[A-Z]{2})?$/.test(l)) err(`${path}.languages[${j}] must be a language code like "en" or "pt-BR"`);
+      });
+    }
     if (row.fields !== undefined) {
       if (!Array.isArray(row.fields)) err(`${path}.fields must be an array of field definitions`);
       else row.fields.forEach((f, j) => {
         if (!isPlainObject(f)) { err(`${path}.fields[${j}] must be an object`); return; }
-        if (typeof f.name !== 'string' || !f.name.trim()) err(`${path}.fields[${j}].name is required`);
+        // `id`, NOT `name`, and required. DynamicFormRenderer keys everything on
+        // field.id — formData[field.id], the React key, the change handler — so submitted
+        // form data is keyed by id. A field without one renders with an undefined key and
+        // collides with every other such field, which is how the first three packs shipped
+        // with 57 unusable fields.
+        //
+        // `name` was briefly accepted as an alias and normalised by the apply engine. That
+        // path is gone: no pack uses it, so it was untested code papering over exactly the
+        // mistake this check exists to catch. Rejecting it at load time is better.
+        if (typeof f.id !== 'string' || !f.id.trim()) {
+          err(`${path}.fields[${j}].id is required — the form renderer keys submitted data by it`
+            + (f.name ? ` (found "name": "${f.name}"; rename it to "id")` : ''));
+        }
         if (typeof f.type !== 'string' || !FIELD_TYPES.includes(f.type)) {
           err(`${path}.fields[${j}].type must be one of: ${FIELD_TYPES.join(', ')}`);
         }

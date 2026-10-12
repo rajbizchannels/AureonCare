@@ -390,7 +390,13 @@ router.post('/', async (req, res) => {
         min_age, max_age, gender_restriction || 'any',
         contraindications, prerequisites, allowed_provider_specializations,
         image_url, video_url, brochure_url,
-        _consent_form_required || false, _consent_form_url || _consent_form_id,
+        // consent_form_url and consent_form_id are TWO columns and need two values. This
+        // list supplied 28 values for 29 placeholders, so every POST /api/offerings failed
+        // outright with `bind message supplies 28 parameters, but prepared statement
+        // requires 29` — creating an offering through the API never worked. The old
+        // `_consent_form_url || _consent_form_id` also meant consent_form_id was never
+        // populated, so an offering could not reference its consent form at all.
+        _consent_form_required || false, _consent_form_url || null, _consent_form_id || null,
         seo_title, seo_description, seo_keywords, created_by
       ]
     );
