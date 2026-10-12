@@ -104,19 +104,34 @@ function rowFor(section, item, ctx) {
         consent_form_required: item.consentFormRequired ?? false,
         is_active: true,
       };
-    case 'formTemplates':
+    case 'formTemplates': {
+      // Fields reach the database exactly as the pack declares them. `id` is mandatory and
+      // checked at load time (utils/specialtyPackSchema.js) rather than patched here — the
+      // renderer keys submitted data by it, so a silent fix-up would hide a real mistake.
+      const fields = item.fields ?? [];
       return {
         slug: item.slug,
         name: item.name,
         description: item.description ?? null,
         template_type: item.templateType ?? null,
+        category_slug: item.categorySlug ?? null,
+        subcategory: item.subcategory ?? null,
         specialty: ctx.pack.code,
-        fields: JSON.stringify(item.fields ?? []),
+        fields: JSON.stringify(fields),
         settings: JSON.stringify(item.settings ?? {}),
         require_signature: item.requireSignature ?? false,
+        require_witness: item.requireWitness ?? false,
+        allow_pdf_export: item.allowPdfExport ?? true,
+        intake_flow_eligible: item.intakeFlowEligible ?? true,
+        languages: JSON.stringify(item.languages ?? ['en']),
+        tags: JSON.stringify(item.tags ?? []),
+        compliance_tags: JSON.stringify(item.complianceTags ?? []),
+        version: item.version ?? '1.0',
+        version_number: parseInt(item.version, 10) || 1,
         is_system_template: true,
         is_active: true,
       };
+    }
     case 'inventoryCategories':
       return {
         code: String(item.code).toLowerCase(),

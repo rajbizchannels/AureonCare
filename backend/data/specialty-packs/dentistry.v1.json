@@ -4,7 +4,11 @@
   "label": "Dental Practice",
   "description": "Starting configuration for a general dental practice: chair-side appointment types, a restorative and preventive service catalogue, and the consent forms dental work needs.",
   "modules": {
-    "hide": ["rcm", "clinicalServices", "telehealth"]
+    "hide": [
+      "rcm",
+      "clinicalServices",
+      "telehealth"
+    ]
   },
   "terminology": {
     "appointment": "Chair Visit",
@@ -13,35 +17,192 @@
     "providers": "Dentists"
   },
   "appointmentTypes": [
-    { "name": "New Patient Examination", "durationMinutes": 45, "color": "#2563EB", "displayOrder": 10 },
-    { "name": "Routine Check-up", "durationMinutes": 20, "color": "#0EA5E9", "displayOrder": 20 },
-    { "name": "Scale and Polish", "durationMinutes": 30, "color": "#14B8A6", "displayOrder": 30 },
-    { "name": "Restorative Treatment", "durationMinutes": 60, "color": "#F59E0B", "displayOrder": 40 },
-    { "name": "Extraction", "durationMinutes": 45, "color": "#EF4444", "displayOrder": 50 },
-    { "name": "Root Canal Treatment", "durationMinutes": 90, "color": "#8B5CF6", "displayOrder": 60 },
-    { "name": "Emergency Attendance", "durationMinutes": 20, "color": "#DC2626", "displayOrder": 70 }
+    {
+      "name": "New Patient Examination",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Routine Check-up",
+      "durationMinutes": 20,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Scale and Polish",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Restorative Treatment",
+      "durationMinutes": 60,
+      "color": "#F59E0B",
+      "displayOrder": 40
+    },
+    {
+      "name": "Extraction",
+      "durationMinutes": 45,
+      "color": "#EF4444",
+      "displayOrder": 50
+    },
+    {
+      "name": "Root Canal Treatment",
+      "durationMinutes": 90,
+      "color": "#8B5CF6",
+      "displayOrder": 60
+    },
+    {
+      "name": "Emergency Attendance",
+      "durationMinutes": 20,
+      "color": "#DC2626",
+      "displayOrder": 70
+    }
   ],
   "serviceCategories": [
-    { "name": "Preventive", "icon": "shield", "color": "#14B8A6", "displayOrder": 10 },
-    { "name": "Restorative", "icon": "wrench", "color": "#F59E0B", "displayOrder": 20 },
-    { "name": "Endodontics", "icon": "activity", "color": "#8B5CF6", "displayOrder": 30 },
-    { "name": "Oral Surgery", "icon": "scissors", "color": "#EF4444", "displayOrder": 40 },
-    { "name": "Orthodontics", "icon": "align-center", "color": "#2563EB", "displayOrder": 50 }
+    {
+      "name": "Preventive",
+      "icon": "shield",
+      "color": "#14B8A6",
+      "displayOrder": 10
+    },
+    {
+      "name": "Restorative",
+      "icon": "wrench",
+      "color": "#F59E0B",
+      "displayOrder": 20
+    },
+    {
+      "name": "Endodontics",
+      "icon": "activity",
+      "color": "#8B5CF6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Oral Surgery",
+      "icon": "scissors",
+      "color": "#EF4444",
+      "displayOrder": 40
+    },
+    {
+      "name": "Orthodontics",
+      "icon": "align-center",
+      "color": "#2563EB",
+      "displayOrder": 50
+    }
   ],
   "offerings": [
-    { "name": "Periodic Oral Evaluation", "categoryName": "Preventive", "durationMinutes": 20, "cptCodes": ["D0120"] },
-    { "name": "Comprehensive Oral Evaluation", "categoryName": "Preventive", "durationMinutes": 45, "cptCodes": ["D0150"] },
-    { "name": "Adult Prophylaxis", "categoryName": "Preventive", "durationMinutes": 30, "cptCodes": ["D1110"], "minAge": 14 },
-    { "name": "Child Prophylaxis", "categoryName": "Preventive", "durationMinutes": 25, "cptCodes": ["D1120"], "maxAge": 13 },
-    { "name": "Topical Fluoride Application", "categoryName": "Preventive", "durationMinutes": 15, "cptCodes": ["D1208"] },
-    { "name": "Composite Filling, One Surface", "categoryName": "Restorative", "durationMinutes": 45, "cptCodes": ["D2391"] },
-    { "name": "Composite Filling, Two Surfaces", "categoryName": "Restorative", "durationMinutes": 60, "cptCodes": ["D2392"] },
-    { "name": "Porcelain Crown", "categoryName": "Restorative", "durationMinutes": 90, "cptCodes": ["D2740"] },
-    { "name": "Root Canal, Anterior", "categoryName": "Endodontics", "durationMinutes": 75, "cptCodes": ["D3310"] },
-    { "name": "Root Canal, Molar", "categoryName": "Endodontics", "durationMinutes": 120, "cptCodes": ["D3330"] },
-    { "name": "Simple Extraction", "categoryName": "Oral Surgery", "durationMinutes": 30, "cptCodes": ["D7140"], "consentFormRequired": true },
-    { "name": "Surgical Extraction", "categoryName": "Oral Surgery", "durationMinutes": 60, "cptCodes": ["D7210"], "consentFormRequired": true, "requiresPreparation": true, "preparationInstructions": "Nothing to eat for six hours before the appointment if sedation is planned. Bring a list of current medicines." },
-    { "name": "Orthodontic Assessment", "categoryName": "Orthodontics", "durationMinutes": 45, "cptCodes": ["D8660"] }
+    {
+      "name": "Periodic Oral Evaluation",
+      "categoryName": "Preventive",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "D0120"
+      ]
+    },
+    {
+      "name": "Comprehensive Oral Evaluation",
+      "categoryName": "Preventive",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "D0150"
+      ]
+    },
+    {
+      "name": "Adult Prophylaxis",
+      "categoryName": "Preventive",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "D1110"
+      ],
+      "minAge": 14
+    },
+    {
+      "name": "Child Prophylaxis",
+      "categoryName": "Preventive",
+      "durationMinutes": 25,
+      "cptCodes": [
+        "D1120"
+      ],
+      "maxAge": 13
+    },
+    {
+      "name": "Topical Fluoride Application",
+      "categoryName": "Preventive",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "D1208"
+      ]
+    },
+    {
+      "name": "Composite Filling, One Surface",
+      "categoryName": "Restorative",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "D2391"
+      ]
+    },
+    {
+      "name": "Composite Filling, Two Surfaces",
+      "categoryName": "Restorative",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "D2392"
+      ]
+    },
+    {
+      "name": "Porcelain Crown",
+      "categoryName": "Restorative",
+      "durationMinutes": 90,
+      "cptCodes": [
+        "D2740"
+      ]
+    },
+    {
+      "name": "Root Canal, Anterior",
+      "categoryName": "Endodontics",
+      "durationMinutes": 75,
+      "cptCodes": [
+        "D3310"
+      ]
+    },
+    {
+      "name": "Root Canal, Molar",
+      "categoryName": "Endodontics",
+      "durationMinutes": 120,
+      "cptCodes": [
+        "D3330"
+      ]
+    },
+    {
+      "name": "Simple Extraction",
+      "categoryName": "Oral Surgery",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "D7140"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Surgical Extraction",
+      "categoryName": "Oral Surgery",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "D7210"
+      ],
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Nothing to eat for six hours before the appointment if sedation is planned. Bring a list of current medicines."
+    },
+    {
+      "name": "Orthodontic Assessment",
+      "categoryName": "Orthodontics",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "D8660"
+      ]
+    }
   ],
   "formTemplates": [
     {
@@ -49,13 +210,49 @@
       "name": "Dental Intake",
       "templateType": "onboarding",
       "fields": [
-        { "name": "reason_for_visit", "type": "textarea", "label": "What brings you in today?", "required": true },
-        { "name": "last_dental_visit", "type": "date", "label": "Date of last dental visit" },
-        { "name": "pain_now", "type": "radio", "label": "Are you in pain at the moment?", "options": ["No", "Mild", "Moderate", "Severe"], "required": true },
-        { "name": "bleeding_gums", "type": "checkbox", "label": "Do your gums bleed when brushing?" },
-        { "name": "grinding", "type": "checkbox", "label": "Do you grind or clench your teeth?" },
-        { "name": "anaesthetic_reaction", "type": "textarea", "label": "Any previous reaction to local anaesthetic?" },
-        { "name": "bisphosphonates", "type": "checkbox", "label": "Have you ever taken bisphosphonate medicines?" }
+        {
+          "id": "reason_for_visit",
+          "type": "textarea",
+          "label": "What brings you in today?",
+          "required": true
+        },
+        {
+          "id": "last_dental_visit",
+          "type": "date",
+          "label": "Date of last dental visit"
+        },
+        {
+          "id": "pain_now",
+          "type": "radio",
+          "label": "Are you in pain at the moment?",
+          "options": [
+            "No",
+            "Mild",
+            "Moderate",
+            "Severe"
+          ],
+          "required": true
+        },
+        {
+          "id": "bleeding_gums",
+          "type": "checkbox",
+          "label": "Do your gums bleed when brushing?"
+        },
+        {
+          "id": "grinding",
+          "type": "checkbox",
+          "label": "Do you grind or clench your teeth?"
+        },
+        {
+          "id": "anaesthetic_reaction",
+          "type": "textarea",
+          "label": "Any previous reaction to local anaesthetic?"
+        },
+        {
+          "id": "bisphosphonates",
+          "type": "checkbox",
+          "label": "Have you ever taken bisphosphonate medicines?"
+        }
       ]
     },
     {
@@ -64,10 +261,30 @@
       "templateType": "consent",
       "requireSignature": true,
       "fields": [
-        { "name": "tooth_reference", "type": "text", "label": "Tooth or teeth to be removed", "required": true },
-        { "name": "risks_explained", "type": "checkbox", "label": "The risks have been explained to me, including bleeding, infection, swelling, bruising and possible nerve injury", "required": true },
-        { "name": "alternatives_explained", "type": "checkbox", "label": "The alternatives to extraction have been explained to me", "required": true },
-        { "name": "questions_answered", "type": "checkbox", "label": "I have had the chance to ask questions and they were answered", "required": true }
+        {
+          "id": "tooth_reference",
+          "type": "text",
+          "label": "Tooth or teeth to be removed",
+          "required": true
+        },
+        {
+          "id": "risks_explained",
+          "type": "checkbox",
+          "label": "The risks have been explained to me, including bleeding, infection, swelling, bruising and possible nerve injury",
+          "required": true
+        },
+        {
+          "id": "alternatives_explained",
+          "type": "checkbox",
+          "label": "The alternatives to extraction have been explained to me",
+          "required": true
+        },
+        {
+          "id": "questions_answered",
+          "type": "checkbox",
+          "label": "I have had the chance to ask questions and they were answered",
+          "required": true
+        }
       ]
     },
     {
@@ -75,26 +292,82 @@
       "name": "Post-operative Instructions",
       "templateType": "clinical",
       "fields": [
-        { "name": "procedure", "type": "text", "label": "Procedure carried out", "required": true },
-        { "name": "given_to_patient", "type": "checkbox", "label": "Written instructions given to the patient", "required": true },
-        { "name": "review_date", "type": "date", "label": "Review appointment" }
+        {
+          "id": "procedure",
+          "type": "text",
+          "label": "Procedure carried out",
+          "required": true
+        },
+        {
+          "id": "given_to_patient",
+          "type": "checkbox",
+          "label": "Written instructions given to the patient",
+          "required": true
+        },
+        {
+          "id": "review_date",
+          "type": "date",
+          "label": "Review appointment"
+        }
       ]
     }
   ],
   "codeSets": {
-    "icd10": ["K02.9", "K04.0", "K05.10", "K08.109", "K01.1", "K12.30"],
-    "cpt": ["D0120", "D0150", "D0210", "D1110", "D1120", "D1208", "D2391", "D2392", "D2740", "D3310", "D3330", "D7140", "D7210"]
+    "icd10": [
+      "K02.9",
+      "K04.0",
+      "K05.10",
+      "K08.109",
+      "K01.1",
+      "K12.30"
+    ],
+    "cpt": [
+      "D0120",
+      "D0150",
+      "D0210",
+      "D1110",
+      "D1120",
+      "D1208",
+      "D2391",
+      "D2392",
+      "D2740",
+      "D3310",
+      "D3330",
+      "D7140",
+      "D7210"
+    ]
   },
   "inventoryCategories": [
-    { "code": "restorative", "name": "Restorative Materials" },
-    { "code": "endodontic", "name": "Endodontic Supplies" },
-    { "code": "anaesthetic", "name": "Local Anaesthetics" },
-    { "code": "burs", "name": "Burs and Rotary Instruments" },
-    { "code": "impression", "name": "Impression Materials" }
+    {
+      "code": "restorative",
+      "name": "Restorative Materials"
+    },
+    {
+      "code": "endodontic",
+      "name": "Endodontic Supplies"
+    },
+    {
+      "code": "anaesthetic",
+      "name": "Local Anaesthetics"
+    },
+    {
+      "code": "burs",
+      "name": "Burs and Rotary Instruments"
+    },
+    {
+      "code": "impression",
+      "name": "Impression Materials"
+    }
   ],
   "settings": {
     "defaultAppointmentDuration": 30,
     "slotIntervalMinutes": 15
   },
-  "reports": { "show": ["clinical", "financial", "operational"] }
+  "reports": {
+    "show": [
+      "clinical",
+      "financial",
+      "operational"
+    ]
+  }
 }

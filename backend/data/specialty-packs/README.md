@@ -114,13 +114,35 @@ Several packs merge, and the **first code chosen is primary**:
   it — a cardiology pack hiding `rcm` must not take billing away from a hospital that also
   does oncology and bills for it.
 
+## Form fields use `id`, not `name`
+
+`DynamicFormRenderer` keys everything on `field.id` — `formData[field.id]`, the React key,
+the change handler — so submitted form data is keyed by id. A field without one renders
+with an undefined key and collides with every other such field. The validator rejects it.
+
+The first three packs shipped with `name`, which made 57 fields unusable. There was briefly
+an alias normalising `name` to `id` in the apply engine; it is gone, because no pack uses it
+and untested code that papers over exactly the mistake a check exists to catch is worse
+than the check alone.
+
 ## Shipped packs
 
-| Code | Version | Review |
-|---|---|---|
-| `dentistry` | 1 | pending |
-| `ophthalmology` | 1 | pending |
-| `paediatrics` | 1 | pending |
+| Code | Version | Review | Notes |
+|---|---|---|---|
+| `behavioral_health` | 1 | pending | PHQ-9, GAD-7 and intake, moved out of the base library |
+| `dentistry` | 1, 2 | pending | v2 adds the dental health history form |
+| `ophthalmology` | 1, 2 | pending | v2 is the field-key fix only; no content change |
+| `paediatrics` | 1, 2 | pending | v2 adds the paediatric wellness intake |
+
+Five form templates moved out of the base form library into these packs (tenant/009), so a
+practice gets them because it does that specialty rather than because it exists. PHQ-9 and
+GAD-7 are standardised instruments — the clinical-review gate matters especially for them,
+since the item wording and scoring are part of the instrument's validity.
+
+`backend/scripts/generate-form-library-migration.js --pack-forms <specialty>` converts a
+template from the seed library into pack format, carrying every column. It was used for
+those 71 field definitions; retyping them is the kind of job where a dropped
+`required: true` on a consent checkbox never gets noticed.
 
 All three are **engineering drafts**. The service names, durations, code shortlists and form
 fields are plausible rather than authoritative, and need a clinician's eye per specialty

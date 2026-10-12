@@ -66,9 +66,19 @@ const tenantSql = (schema) => async (text, params) => {
   } finally { c.release(); }
 };
 
-const EXPECTED_TEMPLATES = 22;
+// 22 seeded by tenant/008, less the 5 handed to specialty packs by tenant/009.
+const EXPECTED_TEMPLATES = 17;
 const EXPECTED_CATEGORIES = 14;
-const EXPECTED_FIELDS = 283;
+const EXPECTED_FIELDS = 283 - 71; // the five moved templates carry 71 fields between them
+
+// The five that are now a specialty pack's job, not the base library's.
+const MOVED_TO_PACKS = [
+  'phq9-depression-screening',
+  'gad7-anxiety-screening',
+  'behavioral-health-intake',
+  'pediatric-wellness-intake',
+  'dental-health-history',
+];
 
 (async () => {
   for (let i = 0; i < 40; i++) {
@@ -289,8 +299,86 @@ const EXPECTED_FIELDS = 283;
       ok = false;
       out = String((e.stdout || '') + (e.stderr || ''));
     }
+    // Checks tenant/008 against the data file — still all 22, because 008 is an applied
+    // migration and therefore a record of what ran. tenant/009 is what removes the five.
     check('the committed migration still matches frontend/src/data/formTemplates.js',
       ok || (() => { console.log('     ', out.trim().split('\n').slice(0, 5).join('\n      ')); return false; })());
+  }
+
+  // ── the five specialty forms belong to packs now ───────────────────────────
+  {
+    const placeholders = MOVED_TO_PACKS.map((_, i) => `$${i + 1}`).join(',');
+    const left = await A.sql(
+      `SELECT slug FROM form_templates WHERE slug IN (${placeholders}) AND source_pack = 'base'`,
+      MOVED_TO_PACKS
+    );
+    check('no specialty form is left in the base library of a clean tenant',
+      left.rows.length === 0
+      || (() => { console.log('     still base:', left.rows.map((r) => r.slug)); return false; })());
+
+    // Their categories stay: a practice that keeps one of these forms (because it edited
+    // it, or something references it) still needs the category it points at.
+    const cats = await A.sql(
+      "SELECT count(*)::int AS n FROM form_categories WHERE slug IN ('behavioral_health','pediatrics','dentistry')");
+    check('their form categories are kept', cats.rows[0].n === 3);
+
+    // And they are reachable again by applying the owning pack.
+    const applied = await api('POST', '/api/practice-setup/apply',
+      { specialtyCodes: ['behavioral_health'], mode: 'seed', acknowledgeUnreviewed: true },
+      auth(A.token));
+    check('the behavioural health pack applies', applied.status === 200);
+    const back = await A.sql(
+      "SELECT slug, source_pack FROM form_templates WHERE slug = 'phq9-depression-screening'");
+    check('PHQ-9 comes back, owned by the pack rather than the base library',
+      back.rows.length === 1 && back.rows[0].source_pack === 'behavioral_health');
+
+    // Every field a pack seeds must carry an id — the renderer keys submitted data by it.
+    const fields = await A.sql(
+      `SELECT fields FROM form_templates WHERE source_pack = 'behavioral_health'`);
+    const all = fields.rows.flatMap((r) => r.fields || []);
+    check('pack-seeded form fields all carry an id (the renderer keys data by it)',
+      all.length > 0 && all.every((f) => typeof f.id === 'string' && f.id.length > 0));
+
+    // The move is lossless: the columns the pack format used to drop are populated.
+    const kept = await A.sql(
+      `SELECT subcategory, languages, tags, compliance_tags, version, category_slug
+         FROM form_templates WHERE slug = 'phq9-depression-screening'`);
+    const k = kept.rows[0] || {};
+    check('the move keeps subcategory', k.subcategory === 'Depression Screening');
+    check('the move keeps the language list',
+      Array.isArray(k.languages) && k.languages.includes('es'));
+    check('the move keeps the tags', Array.isArray(k.tags) && k.tags.includes('PHQ-9'));
+    check('the move keeps the compliance tags',
+      Array.isArray(k.compliance_tags) && k.compliance_tags.includes('HIPAA'));
+    check('the move keeps the template version', k.version === '1.0');
+    check('the move keeps the category link', k.category_slug === 'behavioral_health');
+  }
+
+  // ── the library has a repair path ──────────────────────────────────────────
+  // A tenant provisioned while the provisioning copy fails would otherwise have no library
+  // forever: tenant/008 cannot re-run for it, because it inherited template's ledger.
+  {
+    const { execFileSync } = require('child_process');
+    // Its own practice: A and B carry submissions from the assertions above, and the
+    // foreign key from form_submissions rightly refuses to let their templates be deleted.
+    const C = await mkPractice('C');
+    await C.sql("DELETE FROM form_templates WHERE source_pack = 'base'");
+    const gone = await C.sql("SELECT count(*)::int AS n FROM form_templates WHERE source_pack = 'base'");
+    check('a tenant can end up with no library at all', gone.rows[0].n === 0);
+
+    let detected = false;
+    try {
+      execFileSync('node', [path.join(BACKEND, 'scripts', 'repair-form-library.js'), '--check'],
+        { encoding: 'utf8', stdio: 'pipe' });
+    } catch (e) {
+      detected = String(e.stdout || '').includes(C.schema);
+    }
+    check('THE CHECK DETECTS IT', detected);
+
+    execFileSync('node', [path.join(BACKEND, 'scripts', 'repair-form-library.js')],
+      { encoding: 'utf8', stdio: 'pipe' });
+    const back = await C.sql("SELECT count(*)::int AS n FROM form_templates WHERE source_pack = 'base'");
+    check('and the repair restores it', back.rows[0].n === EXPECTED_TEMPLATES);
   }
 
   // ── Report ─────────────────────────────────────────────────────────────────

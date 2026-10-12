@@ -408,10 +408,40 @@ the response:
 3. The two above are why there was no evidence of the linkage problem in the data: nothing
    could be written to be orphaned.
 
-**What remains of C11** is moving the five specialty-tagged templates out of the base
-library into their matching specialty packs, which is a product decision rather than a
-defect: the library is in the database and correctly linked either way. The plan's framing
-was wrong about the rest of it. Of its 22 templates, **17 are generic** (HIPAA notice, financial
+**C11 is now complete.** The five specialty-tagged templates moved out of the base library
+into their packs: `behavioral_health` v1 (a new pack, carrying PHQ-9, GAD-7 and the
+behavioural health intake), `dentistry` v2 and `paediatrics` v2. `tenant/009` removes them
+from the base library — but only where that is safe, leaving a row in place when the
+practice has edited it, when a `form_submission` points at it, or when a
+`healthcare_offering` uses it as its consent form. Anything skipped is reported and stays a
+base row, and because the pack uses the same slug the apply engine later reports it as a
+conflict and leaves it alone. The 71 field definitions were converted by
+`generate-form-library-migration.js --pack-forms`, not retyped.
+
+Doing it surfaced two more defects, both of them mine:
+
+1. **The three Part C packs' form fields used `name`, and the renderer keys everything on
+   `field.id`** — `formData[field.id]`, the React key, the change handler. 57 fields across
+   those packs would have rendered with an undefined key and collided with each other.
+   `id` is now required by the validator, with an error that says to rename it; the
+   normalising alias I briefly added is gone, because no pack uses it and untested code
+   that papers over the exact mistake a check exists to catch is worse than the check.
+   Ophthalmology got a v2 whose only change is this fix, so every tenant has an upgrade
+   path to working forms.
+2. **The pack `formTemplates` section really was lossy**, as this document already noted
+   without acting on it: moving the five templates would have dropped `subcategory`,
+   `categorySlug`, `complianceTags`, `languages`, `tags` and `version`. The section now
+   carries every `form_templates` column, and the test asserts the move is lossless rather
+   than trusting it.
+
+It also exposed an operational gap worth keeping: **the provisioning copy of the form
+library had no repair path.** A tenant created while that copy fails is left with no library
+forever, because it inherited `template`'s ledger and so tenant/008 can never run for it —
+and the symptom is just an empty screen. `npm run check:form-library` reports any tenant
+that is short and `npm run repair:form-library` copies the missing rows from `template`;
+both are covered by `test:forms`. Found because six tenants in the development database had
+zero templates, created by test runs during which the copy had been deliberately disabled
+for a mutation test, and nothing had noticed. Of its 22 templates, **17 are generic** (HIPAA notice, financial
 policy, general consent) — they are not specialty content, and putting them in a specialty
 pack would mean a practice only gets them if it happens to pick that specialty. Doing this
 properly needs a product decision about where universal templates live (a `general_practice`

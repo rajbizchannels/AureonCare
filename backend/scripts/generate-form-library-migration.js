@@ -21,6 +21,36 @@ const SOURCE = path.join(__dirname, '..', '..', 'frontend', 'src', 'data', 'form
 const VERIFY = process.argv.includes('--verify');
 const OUTPUT = path.join(__dirname, '..', 'migrations', 'tenant', '008_seed_form_library.sql');
 
+// --pack-forms <specialty>: emit the `formTemplates` array for a specialty pack, converted
+// from the seed file's column names to the pack format. These five templates are moving out
+// of the base library and into their specialty packs, and that is 71 field definitions —
+// converted, not retyped, for the same reason the migration is generated.
+const PACK_FORMS = (() => {
+  const i = process.argv.indexOf('--pack-forms');
+  return i >= 0 ? process.argv[i + 1] : null;
+})();
+
+/** Seed-file template -> pack `formTemplates` entry. Carries every column, loses nothing. */
+function toPackForm(t) {
+  const out = {
+    slug: t.slug,
+    name: t.name,
+    description: t.description,
+    templateType: t.template_type,
+    categorySlug: t.category_slug,
+    version: t.version || '1.0',
+  };
+  if (t.subcategory) out.subcategory = t.subcategory;
+  if (t.require_signature) out.requireSignature = true;
+  if (t.require_witness) out.requireWitness = true;
+  if (t.intake_flow_eligible === false) out.intakeFlowEligible = false;
+  if (Array.isArray(t.languages) && t.languages.length) out.languages = t.languages;
+  if (Array.isArray(t.tags) && t.tags.length) out.tags = t.tags;
+  if (Array.isArray(t.compliance_tags) && t.compliance_tags.length) out.complianceTags = t.compliance_tags;
+  out.fields = t.fields || [];
+  return out;
+}
+
 /**
  * Load the data file. It is plain object literals with no imports, so turning the two
  * `export const` declarations into a CommonJS module is enough — no transpiler, and no
@@ -212,7 +242,19 @@ function verify({ FORM_TEMPLATES, FORM_CATEGORIES }) {
 }
 
 const data = loadSource();
-if (VERIFY) {
+if (PACK_FORMS) {
+  // The seed file spells it `pediatrics`; the taxonomy (and the rest of the product)
+  // spells the specialty `paediatrics`, consistent with orthopaedics and anaesthesiology.
+  // Accept either so the caller can ask by the taxonomy code.
+  const alias = { paediatrics: 'pediatrics' };
+  const want = alias[PACK_FORMS] || PACK_FORMS;
+  const forms = data.FORM_TEMPLATES.filter((t) => t.specialty === want).map(toPackForm);
+  if (!forms.length) {
+    console.error(`No templates in the seed file carry specialty "${want}"`);
+    process.exit(1);
+  }
+  process.stdout.write(JSON.stringify(forms, null, 2) + '\n');
+} else if (VERIFY) {
   process.exit(verify(data));
 } else {
   process.stdout.write(generate(data));

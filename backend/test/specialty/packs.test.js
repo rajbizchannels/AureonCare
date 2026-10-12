@@ -138,9 +138,22 @@ const tenantSql = (schema) => async (text, params) => {
       }],
     }).valid);
   check('a form field of type "select" is accepted',
-    v({ formTemplates: [{ slug: 'f', name: 'F', fields: [{ name: 'a', type: 'select', options: ['Yes'] }] }] }).valid);
+    v({ formTemplates: [{ slug: 'f', name: 'F', fields: [{ id: 'a', type: 'select', options: ['Yes'] }] }] }).valid);
   check('an unknown field type is rejected',
-    !v({ formTemplates: [{ slug: 'f', name: 'F', fields: [{ name: 'a', type: 'sqlwidget' }] }] }).valid);
+    !v({ formTemplates: [{ slug: 'f', name: 'F', fields: [{ id: 'a', type: 'sqlwidget' }] }] }).valid);
+
+  // A field without an `id` renders with an undefined key and collides with every other
+  // such field — which is how the first three packs shipped 57 unusable fields.
+  {
+    const noId = v({ formTemplates: [{ slug: 'f', name: 'F', fields: [{ type: 'text', label: 'X' }] }] });
+    check('a form field without an id is rejected', !noId.valid);
+    const onlyName = v({ formTemplates: [{ slug: 'f', name: 'F', fields: [{ name: 'a', type: 'text' }] }] });
+    check('a field keyed on "name" instead of "id" is rejected', !onlyName.valid);
+    check('and the error says to rename it',
+      onlyName.errors.some((e) => /rename it to "id"/.test(e)));
+    check('a field with an id is accepted',
+      v({ formTemplates: [{ slug: 'f', name: 'F', fields: [{ id: 'a', type: 'text' }] }] }).valid);
+  }
 
   // ── one vocabulary across three files ──────────────────────────────────────
   //
@@ -320,12 +333,16 @@ const tenantSql = (schema) => async (text, params) => {
     check('offerings are stamped with the pack', off.rows[0].n === 13);
     check('categories are stamped', cats.rows[0].n === 5);
     check('appointment types are stamped', types.rows[0].n === 7);
-    check('form templates are stamped', forms.rows[0].n === 3);
+    // dentistry is at v2 since the dental history form moved out of the base library and
+    // into the pack (tenant/009).
+    check('form templates are stamped', forms.rows[0].n === 4);
     check('inventory categories are stamped', inv.rows[0].n === 5);
     const ver = await A.sql(
       "SELECT DISTINCT source_pack_version AS v FROM healthcare_offerings WHERE source_pack='dentistry'");
+    const { rows: latest } = await pool.query(
+      "SELECT max(version) AS v FROM public.specialty_packs WHERE code = 'dentistry' AND is_active");
     check('the pack VERSION is recorded, not just the code',
-      ver.rows.length === 1 && ver.rows[0].v === 1);
+      ver.rows.length === 1 && ver.rows[0].v === latest[0].v);
   }
   {
     // Offerings reference the categories the same pack created, by name.
@@ -659,10 +676,21 @@ const tenantSql = (schema) => async (text, params) => {
   // the shipped one, and every count assertion above would drift.
   await cleanupSpecialties();
   {
-    const { rows } = await pool.query(
-      `SELECT code, count(*)::int AS versions FROM public.specialty_packs GROUP BY code ORDER BY code`);
-    check('the pack catalogue is back to the three shipped packs, one version each',
-      rows.length === 3 && rows.every((r) => r.versions === 1));
+    // The point of this check is that the synthetic pack this suite created is gone, so a
+    // later run seeds the shipped version rather than a leftover newer one. The shipped set
+    // itself is read from disk rather than hard-coded, so adding a pack does not break it.
+    const fs = require('fs');
+    const shipped = new Set(
+      fs.readdirSync(path.join(BACKEND, 'data', 'specialty-packs'))
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => f.replace(/\.v\d+\.json$/, ''))
+    );
+    const { rows } = await pool.query('SELECT DISTINCT code FROM public.specialty_packs ORDER BY code');
+    const inDb = rows.map((r) => r.code);
+    check('the catalogue holds exactly the packs shipped on disk',
+      inDb.length === shipped.size && inDb.every((c) => shipped.has(c))
+      || (() => { console.log('     db:', inDb.join(','), '| disk:', [...shipped].join(',')); return false; })());
+    check('the synthetic test pack left no trace', !inDb.some((c) => c.startsWith('ptest_')));
   }
 
   // ── Report ─────────────────────────────────────────────────────────────────
