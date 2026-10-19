@@ -95,8 +95,9 @@ export const MoreScreen: React.FC<{
       {!isPatient && (
         <Card style={styles.note}>
           <Text style={styles.noteText}>
-            Admin, reports, billing setup and form authoring stay on the web app — this build is
-            for the ward round, not the back office.
+            What you see is set by your role, and the server checks it again on every
+            request. Authoring — form templates, custom reports, plans and backups — stays
+            on the web app, where there is room to get it right.
           </Text>
         </Card>
       )}
