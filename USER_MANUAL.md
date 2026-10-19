@@ -1,6 +1,6 @@
 # AureonCare User Manual
 
-**Version 1.4 - Updated September 2026**
+**Version 1.5 - Updated October 2026**
 **Modern Healthcare Practice Management System**
 
 ---
@@ -38,7 +38,8 @@
 29. [Mobile App](#29-mobile-app)
 30. [Account Security](#30-account-security)
 31. [Medical Camps](#31-medical-camps)
-32. [Practice Setup & Specialties](#32-practice-setup--specialties)
+32. [Locations](#32-locations)
+33. [Practice Setup Wizard](#33-practice-setup-wizard)
 
 ---
 
@@ -51,6 +52,9 @@ AureonCare is a comprehensive, enterprise-grade medical practice management plat
 **Key Capabilities:**
 - Electronic Health Records (EHR) management
 - Appointment scheduling, waitlist, and public self-booking links
+- Medical camps: outreach events run as a station pipeline
+- Multi-site support with locations for clinics, camps, mobile and partner venues
+- Specialty configuration for dentistry, ophthalmology, paediatrics and behavioural health
 - Revenue Cycle Management (RCM) with claims and billing
 - Double-entry accounting and inventory management
 - Custom form building with automated patient intake
@@ -106,7 +110,67 @@ This manual is designed for:
 - 💡 **Tip** - Helpful suggestions and best practices
 - ✅ **Note** - Additional information
 
-### 1.5 What's New in Version 1.4 (September 2026)
+### 1.5 What's New in Version 1.5 (October 2026)
+
+**Major New Features:**
+
+🆕 **Medical Camps**
+- Run time-boxed outreach events at venues your practice does not own
+- Four working screens: **Camp Planning**, **Registration Desk**, **Station Board**, **Camp Outcomes**
+- A camp runs as a station pipeline rather than a slot calendar
+- Walk-in registration captures just a name, phone number and age — no MRN required
+- Promote a registration to a full patient record when you choose, with duplicate matching
+- Live queue lengths and waiting times per station
+- Sponsor reporting that cannot leak individual identities
+- Available on Clinical Pro and above
+- See Section 31
+
+🆕 **Locations**
+- Sites are now a first-class entity rather than one implied clinic
+- Four types: **Clinic**, **Camp**, **Mobile**, **Partner**
+- Supports multi-branch practices, departments, and anything held off-site
+- Appointments, stock movements, provider availability and working hours can each carry a location
+- Exactly one site is marked primary
+- Removing a site never deletes clinical or stock history
+- See Section 32
+
+🆕 **Practice Setup Wizard**
+- Six-step wizard that configures a new practice for what it actually does
+- Steps: Profile → Specialty → Services → Providers → Forms → Review
+- Specialty packs available for **Behavioural Health**, **Dentistry**, **Ophthalmology** and **Paediatrics**
+- A pack seeds starter services, forms and terminology
+- A pack **never overwrites anything you have edited** — it reports a conflict instead
+- Specialty only ever narrows the menu; administrators can pin any module back
+- See Section 33
+
+🆕 **Booking by Specialty**
+- Patients booking an appointment can now filter providers by specialty
+- Free-text search across provider name and specialty
+- Specialty options come from the providers actually on staff, so they cannot go stale
+
+🆕 **Restore Now Asks First**
+- Restoring a backup previously ran the moment you chose a file — no prompt, no undo
+- Both restore paths now confirm first
+- The file is read **before** you are asked, so the prompt tells you when the backup was taken, how many records it holds, and across how many tables
+- A malformed file is rejected outright rather than after you have agreed
+- Confirmation text is translated across all supported locales
+
+🆕 **Backup and Restore Scoped to Your Practice**
+- Backup and restore now operate only on your own practice's data
+- A restore no longer touches tables shared across practices
+
+🆕 **Form Fixes**
+- Fixed 18 form fields that displayed a label with no input box
+- Submissions now record the exact template version the patient filled in, so a later template edit never changes what someone answered
+- Five specialty form templates moved into their matching specialty packs
+
+🆕 **Clearer Error Messages**
+- An account not linked to a practice is now told why it sees no providers
+- A provider list that fails to load says so, rather than appearing empty
+- Sign-in through Google or Microsoft reports why an authorisation was rejected
+- Provider search is reachable before you pick a date
+
+### 1.6 What's New in Version 1.4 (September 2026)
 
 **Major New Features:**
 
@@ -185,7 +249,7 @@ This manual is designed for:
 - A published library of short how-to videos covering front desk, clinical, finance, and administration workflows
 - Linked from the in-app help drawer
 
-### 1.6 What's New in Version 1.3 (August 2026)
+### 1.7 What's New in Version 1.3 (August 2026)
 
 **Major New Features:**
 
@@ -279,7 +343,7 @@ This manual is designed for:
 - CI/CD pipelines and an automated update agent
 - Supports cloud, customer-cloud, and on-premises deployment
 
-### 1.7 What's New in Version 1.2 (January 2026)
+### 1.8 What's New in Version 1.2 (January 2026)
 
 **Major New Features:**
 
@@ -376,7 +440,7 @@ This manual is designed for:
 - Contextual help based on current module
 - Quick access via Help icon in header or ?help=true URL parameter
 
-### 1.8 What's New in Version 1.1 (December 2025)
+### 1.9 What's New in Version 1.1 (December 2025)
 
 **Previous Enhancements:**
 
@@ -578,6 +642,7 @@ Every module in AureonCare lives in exactly one workspace group. Use this map to
 **📅 Scheduling**
 - *Calendar:* Calendar view (day/week/month), Appointment list, Waitlist
 - *Providers:* Provider management
+- *Medical Camps:* Camp planning, Registration desk, Station board, Camp outcomes
 - *Setup:* Appointment types
 
 **👥 Patients**
@@ -610,11 +675,13 @@ Every module in AureonCare lives in exactly one workspace group. Use this map to
 - Custom report builder
 
 **🔧 Settings**
-- *Practice:* Clinic settings, Working hours, Appointment settings
+- *Practice:* Practice setup, Clinic settings, Locations, Working hours, Appointment settings
 - *Access:* Users, Roles, Plans
 - *System:* Integrations, Telehealth setup, Backup, Archive, Audit logs
 
-💡 **Tip:** What you see depends on your subscription tier *and* your role. A module must be included in your plan **and** permitted by your role before it appears. See Section 27.
+💡 **Tip:** What you see depends on three things: your subscription tier, your role, and your practice's specialty. A module must be in your plan **and** permitted by your role before it appears; a specialty pack can then hide modules you do not use, and an administrator can pin any of those back. See Sections 27 and 33.
+
+🆕 **Added in V1.5:** Medical Camps under **Scheduling**; Practice Setup and Locations under **Settings → Practice**.
 
 **Common Actions:**
 - **View** - Click on a record to see details
@@ -3295,11 +3362,18 @@ Public bookings arrive in the normal appointment queue. If the contact details m
 
 **Booking Appointments:**
 1. Click **Book Appointment**
-2. Select provider (or any available)
-3. Select appointment type
+2. Select appointment type
+3. Choose a provider:
+   - 🆕 **Filter by specialty** (V1.5) — narrow the list to the right kind of clinician
+   - 🆕 **Search by name or specialty** (V1.5) — type to find someone directly
+   - Or leave it open and take any available provider
 4. Choose available date and time from calendar
 5. Add reason for visit
 6. Click **Book Appointment**
+
+💡 **Tip (V1.5):** The specialty list is built from the practice's actual staff, so it always reflects who really works there. If you change the filter and the provider you had chosen is no longer shown, the selection clears — so you cannot accidentally book with someone the filter has hidden.
+
+✅ **Note:** Provider search is available before you pick a date, so you can find the right clinician first and then see when they are free.
 7. Receive confirmation email
 
 **Rescheduling Appointments:**
@@ -4665,16 +4739,32 @@ Status: Success
 
 ⚠️ **Warning:** Restore operations will overwrite current data. Always create a backup before restoring!
 
+🆕 **NEW IN V1.5 — Restore now asks before it runs.** Previously, choosing a backup file started the restore immediately: a misclick in a file dialog was enough to wipe and reload the practice's tables with no prompt and no undo. Both restore paths now confirm first.
+
+**What the confirmation tells you:**
+
+The backup file is read *before* you are asked, so the prompt shows:
+- When the backup was taken
+- How many records it contains
+- How many tables it spans
+
+A malformed or unreadable file is rejected at that point — you are never asked to approve something that could not have worked.
+
+✅ **Scope (V1.5):** Backup and restore operate only on **your own practice's data**. A restore no longer touches tables shared between practices.
+
 **Full Restore:**
 1. Go to **Backup & Restore**
 2. View list of available backups
 3. Select backup to restore
 4. Click **Restore**
-5. Confirm action (requires admin password)
-6. System performs restore (may take several minutes)
-7. Users are logged out during restore
-8. System restarts automatically
-9. Verify data after restore
+5. **Read the confirmation carefully** — check the backup date and record count match what you expect
+6. Confirm action (requires admin password)
+7. System performs restore (may take several minutes)
+8. Users are logged out during restore
+9. System restarts automatically
+10. Verify data after restore
+
+💡 **Tip:** If the date or record count in the confirmation is not what you expected, cancel. That prompt exists precisely to catch the wrong file.
 
 **Partial Restore:**
 1. Select backup
@@ -5334,6 +5424,10 @@ AureonCare ships with starter templates for common intake scenarios — new pati
 
 Editing a published template creates a new version. Submissions stay attached to the version that was live when the patient completed the form, so historical records never change retroactively.
 
+🆕 **V1.5:** Each submission now records the exact template version the patient saw. A later edit to the template cannot change what someone answered, or how the question was worded when they answered it.
+
+🆕 **V1.5:** Fixed 18 form fields that previously rendered as a label with no input box. If you built a template before this release and a field looked unanswerable, re-open the template — it will now render correctly.
+
 ### 24.2 Default Intake Forms
 
 Mark a template as a **default intake form** and it is assigned automatically when a new patient registers.
@@ -5664,12 +5758,22 @@ Supplier performance — order volume, on-time delivery, average lead time — i
 
 ### 27.1 How Access is Determined
 
-A module appears for a user only when **both** conditions hold:
+**🆕 UPDATED IN V1.5:** There are now three filters, not two.
+
+A module appears for a user only when **both** of these hold:
 
 1. The module is included in the practice's **subscription tier**
 2. The user's **role** permits access to it
 
-If either check fails, the module does not appear in the navigation.
+If either check fails, the module does not appear. On top of that, a third filter can *hide* a module that passes both:
+
+3. Your practice's **specialty** may hide modules it typically does not use — unless an administrator has pinned the module back
+
+```
+visible  =  (plan  ∩  role)  minus  (specialty-hidden, unless pinned)
+```
+
+⚠️ **Important:** Specialty can only ever narrow the menu. It can never reveal a module your plan or your role forbids — so it cannot be used to reach a feature you have not paid for. See Section 33.
 
 ### 27.2 Subscription Tiers
 
@@ -5687,7 +5791,10 @@ If either check fails, the module does not appear in the navigation.
 | Inventory | ✅ | ✅ | ✅ | ✅ |
 | Secure Messaging | ✅ | ✅ | ✅ | ✅ |
 | Mobile App | ✅ | ✅ | ✅ | ✅ |
+| Locations | ✅ | ✅ | ✅ | ✅ |
+| Practice Setup Wizard | ✅ | ✅ | ✅ | ✅ |
 | Administration | ✅ | ✅ | ✅ | ✅ |
+| Medical Camps | — | ✅ | ✅ | ✅ |
 | Telehealth | — | ✅ | ✅ | ✅ |
 | Revenue Cycle (RCM) | — | ✅ | ✅ | ✅ |
 | CRM | — | ✅ | ✅ | ✅ |
@@ -5697,7 +5804,7 @@ If either check fails, the module does not appear in the navigation.
 **Tier Summary:**
 
 - **Practice Essentials** — Core clinical and operational tools for a single practice
-- **Clinical Pro** — Adds telehealth, revenue cycle, CRM, and offerings
+- **Clinical Pro** — Adds telehealth, revenue cycle, CRM, offerings, and medical camps
 - **Enterprise** — Adds third-party integrations
 - **On-Premises / Customer Cloud** — Enterprise feature set, deployed on infrastructure you control
 
@@ -6163,207 +6270,281 @@ To review: **Settings → System → Audit Logs**. See Section 19 for filtering 
 
 ## 31. Medical Camps
 
-**🆕 NEW IN V1.5** — available on Clinical Pro and above.
+**🆕 NEW IN V1.5** — Found under **Scheduling → Medical Camps** | Clinical Pro and above
 
-A camp is a time-boxed event at a venue you do not own: a screening drive, a health fair,
-a corporate or community camp, a mobile clinic. It is run as a *station pipeline* rather
-than a slot calendar, so the software treats it differently from clinic work.
+Medical Camps supports time-boxed outreach events held at a venue your practice does not own — a school hall, a community centre, a partner site.
 
-Everything clinical a camp produces — records, diagnoses, prescriptions, lab orders — is
-an ordinary record in the patient's chart, stamped with the camp it came from. There is no
-separate "camp chart" to reconcile later.
+### 31.1 How a Camp Differs From a Clinic Day
 
-### 31.1 Setting up the venue
+A camp is **not** a slot calendar. Nobody books a 09:20 appointment. Instead:
 
-A camp needs a **site**. Go to *Admin → Locations* and add the venue with type
-**Camp venue**. Sites are shared across the practice, so a hall you visit every year is
-added once.
+- Attendees arrive as walk-ins and are registered at a desk
+- They receive a **queue token**
+- They move through a pipeline of **stations** — registration, vitals, consultation, pharmacy, and so on
+- Each station has its own queue
 
-### 31.2 Planning a camp
+A camp is a scheduling and reporting context laid over your normal clinical records. Notes, diagnoses, prescriptions and lab orders written at a camp live in the usual places — there is no second clinical system to reconcile afterwards.
 
-*Scheduling → Medical Camps → New camp*. A camp starts as a **draft** and must satisfy four
-things before it can be published:
+### 31.2 Camp Planning
 
-| Requirement | Where |
-|---|---|
-| A venue | the camp's own details |
-| At least one service | Plan → Services offered |
-| At least one member of staff | Plan → Staff on duty |
-| At least one active station | Plan → Station pipeline |
+**Scheduling → Medical Camps → Camp Planning**
 
-The screen lists everything still outstanding at once, so you are not told one missing item
-per attempt.
+**Creating a camp:**
 
-**Services** come from your healthcare offerings catalogue, or can be typed in as a one-off.
-A camp marked *free for attendees* cannot hold a priced service — clear the prices or mark
-the camp as paid.
+1. Click **+ New Camp**
+2. Enter the camp details:
 
-**Staff.** A camp takes a clinician away from the practice for the whole camp window, so
-rostering someone who already has clinic appointments in that window is refused and the
-clashing appointments are listed. Move or cancel them, or choose *Roster anyway* if you have
-already decided. Once rostered, that person's clinic slots on the camp day disappear from
-the booking screens — so nobody can be booked against a camp.
+| Field | Description |
+|-------|-------------|
+| **Camp Name** | What the event is called |
+| **Venue** | Choose a location, or create one of type *Camp* (see Section 32) |
+| **Start / End Date** | The window the camp runs |
+| **Sponsor** | Organisation funding or hosting, if any |
+| **Expected Attendance** | Used for planning supplies and staffing |
 
-**Stations** are the steps an attendee walks through, in order: registration, vitals,
-consult, lab, pharmacy, exit counselling. Mark a station **clinical** if it involves
-examining or treating someone. Registration and exit counselling are usually non-clinical.
+3. Add the **services** the camp will offer
+4. Define the **stations** attendees pass through, in order
+5. Assign **staff** to stations
+6. List the **supplies** the camp needs — drawn from Inventory where you track it
+7. Click **Save**
 
-**Supplies.** Issuing stock to a camp moves it out of the store and records the movement
-against the camp. Nothing is lost track of: before a camp can close, every allocation must
-be reconciled — what was used plus what came back must equal what went out, and the unused
-balance is returned to the store automatically.
+**Camp statuses:**
 
-### 31.3 Running the camp
+- 📝 **Draft** — Being planned, not visible to the desk
+- 📋 **Published** — Plan agreed, staff and stations fixed
+- ▶️ **In Progress** — Running; the desk and board are live
+- ✅ **Completed** — Finished; reporting available
+- ❌ **Cancelled** — Called off
 
-Move the camp to **Open the doors** when you arrive on site.
+### 31.3 Registration Desk
 
-**Registration desk.** This is the fast screen: a name, a phone number and an age are
-enough, and the attendee's queue token appears immediately. Focus returns to the name field
-after each save, so a desk can work keyboard-only. Several desks can register at once
-without ever issuing the same token twice.
+**Scheduling → Medical Camps → Registration Desk**
 
-> **Consent.** Tick *Consent taken* at the desk, or record it later from the attendee list.
-> An attendee without consent on record can be registered and can sit at a non-clinical
-> station — but **no clinical station will accept them**, at the queue or at the station
-> itself. This is deliberate and cannot be worked around under queue pressure.
+Built for speed under queue pressure.
 
-**Station board.** Shows every station with how many are waiting, how many are being seen,
-and the longest wait — so you can see where the camp is backing up. Pick a station to work
-its queue: *Start*, then *Done* with an outcome (normal, referred, follow-up, declined,
-no show).
+**Registering an attendee:**
 
-**Patient records.** A registration is *not* a patient record — that is what keeps the desk
-fast and the patient index clean. When a clinician first needs a chart, or you are making a
-referral, use *Create or link patient record*. The system first offers existing patients who
-might be the same person (a matching phone number ranks highest), so a duplicate is a choice
-rather than an accident.
+1. Enter **name**, **phone number** and **age**
+2. Capture **consent**
+3. Click **Register**
+4. A **queue token** is issued and printed or shown
 
-A patient record needs a date of birth, and camp attendees often know only their age. Enter
-the date if you have it; leave it blank and the system estimates 1 January of the birth year
-and tells you it has done so. It never invents a precise date silently.
+✅ **Note:** A camp registration is deliberately *not* a patient record. The patient index requires an MRN and an exact date of birth; a registration desk has a name, a number and an approximate age. Keeping them separate is what lets the desk move quickly without filling your patient list with half-complete records.
 
-### 31.4 Closing and reporting
+**Consent is required.** An attendee without recorded consent cannot be started at a station — the check is enforced at the station as well as at the desk, so "we'll take the consent later" is not available under pressure.
 
-A camp will not close while stock is unaccounted for, or while attendees are still
-mid-pipeline. Once closed, its details and counts are frozen so its reports stay
-reproducible. A closed camp cannot be reopened.
+### 31.4 Promoting a Registration to a Patient
 
-**Outcomes** shows attendance, consent, station throughput, average wait and service times,
-cost against budget, and **referral conversion** — how many camp attendees went on to book
-at the practice. That last figure is usually the business case for running camps at all.
+When a camp attendee becomes an ongoing patient — a referral, a follow-up, a prescription to dispense later — promote their registration.
 
-**Sponsor report.** Sponsors fund camps and want to know what was achieved. The sponsor
-report is produced separately from the clinical one and contains **counts only**: attendance,
-age bands, gender split, services delivered, conditions screened and referrals made. It
-carries no names, contact details, dates of birth, tokens or clinical notes. Groups smaller
-than the minimum size are combined, because in a camp of eighty people "one case of X" plus
-local knowledge can identify somebody. Only an administrator can produce it, and every
-export is written to the audit log.
+1. Open the registration
+2. Click **Promote to Patient**
+3. The system shows **existing patients who may be the same person**, with phone-number matches ranked highest
+4. Either:
+   - **Link** to an existing patient, or
+   - **Create** a new patient record
+5. Supply a **date of birth**
 
-### 31.5 Outreach
+⚠️ **Warning:** Promotion will not invent a date of birth. Enter the real one, or explicitly ask for an estimate — in which case the record is marked as holding an estimated date, so nobody later mistakes it for a verified one.
 
-Camp invitations use the existing campaign tools (*CRM → Campaigns*): create a campaign and
-attach it to the camp. There is no separate camp mailing list to maintain.
+💡 **Tip:** Promotion is the only bridge between camp registrations and your patient index, and it always shows possible duplicates first. That makes merging a decision someone made, rather than something that happened by accident at volume.
 
-### 31.6 Best practices
+### 31.5 Station Board
 
-- ✅ Add the venue as a site before planning, so the same hall is reused year to year
-- ✅ Make registration the first station and mark it non-clinical — it is where consent is taken
-- ✅ Roster staff early; the conflict warning is most useful before appointments pile up
-- ✅ Reconcile stock on site, while the boxes are still in front of you
-- ✅ Promote and link attendees as you go rather than in a batch afterwards
-- ❌ Don't record consent in advance "to save time" — the gate exists for a reason
-- ❌ Don't send the clinical report to a sponsor; use the sponsor report
+**Scheduling → Medical Camps → Station Board**
+
+A live view of the camp while it runs:
+
+- Every station, with its current queue length
+- Average and current waiting time per station
+- Which attendee is in progress at each station
+- Completed counts per station
+
+Use it to spot a bottleneck and move staff while the camp is still running.
+
+**Working a station:**
+
+1. Select your station
+2. Call the next token
+3. Click **Start Visit** — refused if consent was never recorded
+4. Deliver care and document it as you normally would
+5. Click **Complete** — the attendee moves to the next station in the pipeline
+
+### 31.6 Camp Outcomes
+
+**Scheduling → Medical Camps → Camp Outcomes**
+
+Two distinct reports:
+
+**Clinical report** — for the practice. Full detail: attendees seen, conditions found, referrals made, prescriptions issued, throughput per station and per hour.
+
+**Sponsor report** — for the funding organisation. Aggregate only, built from an explicit list of permitted fields rather than by filtering the clinical report.
+
+⚠️ **Privacy:** In the sponsor report, any category with fewer than five people is merged into a larger bucket. In a camp of eighty, a count of one plus local knowledge identifies somebody. Do not work around this by exporting the clinical report to a sponsor.
+
+**Exports:** PDF, Excel and CSV.
+
+### 31.7 Best Practices
+
+- ✅ Create the venue as a **Location** before planning the camp
+- ✅ Publish the camp before the day so the desk and board are ready
+- ✅ Order stations in the sequence attendees physically walk
+- ✅ Record consent at registration, every time
+- ✅ Promote registrations the same day, while staff still recall the attendee
+- ✅ Send sponsors the sponsor report, never the clinical one
+- ❌ Don't register attendees as full patients to "save time later" — it fills the index with incomplete records
+- ❌ Don't skip the consent step under queue pressure; the station will refuse the visit anyway
 
 ---
 
-## 32. Practice Setup & Specialties
+## 32. Locations
 
-**🆕 NEW IN V1.5**
+**🆕 NEW IN V1.5** — Found under **Settings → Practice → Locations**
 
-A new practice starts generic: every module, every menu item, no services. The setup wizard
-configures the product for the specialty you actually practise — and it is an accelerator,
-never a gate. Skip it and you get the ordinary product, complete and usable.
+Until this release AureonCare assumed one implicit place. Locations makes sites explicit, which is what multi-branch practices, departments, and anything held off-site need.
 
-Find it at *Admin → Practice Setup*, or from the banner a new practice sees on first sign-in.
+### 32.1 Location Types
 
-### 32.1 What it actually does
+| Type | Use For |
+|------|---------|
+| **Clinic** | A permanent site your practice operates |
+| **Camp** | A venue used for an outreach event (see Section 31) |
+| **Mobile** | A vehicle or travelling service |
+| **Partner** | A site operated by someone else where you deliver care |
 
-You pick a specialty. We create the things that specialty needs:
+### 32.2 Adding a Location
 
-- **Services** — a starting catalogue with durations and procedure codes
-- **Appointment types** — with sensible lengths for that specialty's work
-- **Forms** — the intake and consent forms the work requires
-- **Supply categories** — for the inventory module
-- **Terminology** — a dental practice reads "Chair Visit" where the product says
-  "Appointment"; a paediatric practice reads "Child" where it says "Patient"
-- **Menu defaults** — menu items that specialty does not use are hidden
+1. Go to **Settings → Practice → Locations**
+2. Click **+ New Location**
+3. Enter the details:
 
-### 32.2 The six steps
+| Field | Description |
+|-------|-------------|
+| **Name** | What the site is called |
+| **Type** | Clinic, Camp, Mobile or Partner |
+| **Address** | Street address |
+| **City** | City or town |
+| **Phone** | Site contact number |
+| **Time Zone** | The site's local time zone |
+| **Primary Site** | Whether this is the practice's main site |
 
-| Step | What happens |
-|---|---|
-| 1. Practice profile | Confirms what we already know from your signup |
-| 2. Specialty | Pick one, or several for a multi-specialty hospital |
-| 3. Services | See what will be created |
-| 4. Team | Reminder to invite colleagues and set hours — nothing is created |
-| 5. Forms | See which forms will be created |
-| 6. Review and apply | The exact list of changes, then one button |
+4. Click **Save**
 
-Every step can be revisited, and the wizard remembers where you were if you leave.
+✅ **Note:** Exactly one location is the primary site. Marking a different site primary moves the flag rather than creating a second one. Your existing clinic details became the primary site automatically when you upgraded.
 
-> **Nothing is written until step 6.** Step 6 shows exactly what will be created, what will
-> be updated, what is already there and what will be left alone. Apply is never a leap of
-> faith.
+### 32.3 What Carries a Location
 
-### 32.3 Your edits are safe
+Once sites exist, these records can each name one:
 
-This is the part worth understanding, because it is what makes the wizard safe to use on a
-practice that is already running.
+- **Appointments** — where the appointment takes place
+- **Provider availability** — which site a clinician works from, and when
+- **Working hours** — opening hours per site
+- **Inventory stock movements** — which site stock moved at
 
-Every row created by setup is tagged with where it came from. **The moment you edit one, it
-becomes yours.** If we later publish an improved version of that specialty's starter
-content, your edited version is left exactly as it is and reported to you as "left alone".
-We never silently revert your work.
+A record without a location is still valid; the field is optional everywhere.
 
-The same applies in reverse: if you already had a service called "Scaling & Polishing"
-before running setup, the wizard does not take it over. It leaves your row alone and tells
-you it did.
+### 32.4 Removing a Location
 
-### 32.4 Multi-specialty hospitals
+1. Open the location
+2. Click **Delete**
+3. Confirm
 
-Pick several specialties. The **first one you pick leads** — it decides terminology and
-settings wherever the specialties disagree, and step 6 lists every disagreement so nothing
-is decided behind your back.
+⚠️ **Note:** Deleting a site never deletes history. Appointments, stock movements and availability that referenced it simply lose the location reference; the records themselves stay intact.
 
-Service catalogues and form sets combine. Menu hiding does **not**: a menu item is only
-hidden if *every* specialty you picked hides it. A cardiology-plus-oncology hospital that
-bills for treatment keeps its billing menu.
+### 32.5 Best Practices
 
-### 32.5 Showing hidden menu items again
+- ✅ Create a location before scheduling anything at it
+- ✅ Set the time zone correctly — appointment times depend on it
+- ✅ Use **Camp** type for outreach venues rather than creating a permanent clinic
+- ✅ Keep the primary site pointing at your main place of business
+- ❌ Don't delete a site to "clean up" — mark it inactive if it may return
 
-A specialty hides menu items by default; it never takes them away. *Admin → Practice Setup*
-lists everything your specialty has hidden, with a tick box to show any of them again. Your
-plan already includes them — the specialty is only choosing a sensible default.
+---
 
-### 32.6 About the starter content
+## 33. Practice Setup Wizard
 
-The starter content for each specialty is written by our engineering team and, until a
-clinician has reviewed it, is **marked as a draft**. You can still use it — the wizard asks
-you to confirm you will check it against your own protocols first.
+**🆕 NEW IN V1.5** — Found under **Settings → Practice → Practice Setup** | Administrators only
 
-What that means in practice: treat the service names, appointment durations, procedure codes
-and form questions as a well-informed starting point to review and adapt, not as clinical
-guidance. Once reviewed, the draft warning disappears for that specialty.
+A new practice starts generic: every module visible, every menu item present, no services defined. The Practice Setup Wizard configures AureonCare for what your practice actually does.
 
-### 32.7 Best practices
+### 33.1 The Six Steps
 
-- ✅ Run setup before entering real data — it is far easier on an empty practice
-- ✅ Review the procedure codes against your own billing practice before using them
-- ✅ Edit freely afterwards; your edits are protected from future updates
-- ✅ Pick your busiest specialty first in a multi-specialty hospital — it leads
-- ❌ Don't skip step 6; it is the only place the full list of changes appears
-- ❌ Don't treat the starter codes and forms as reviewed clinical content until they are
+| Step | What it does |
+|------|--------------|
+| **1. Profile** | Practice name, address, contact details |
+| **2. Specialty** | Choose one or more specialties |
+| **3. Services** | Review the starter services your specialty suggests |
+| **4. Providers** | Add clinicians and their specialties |
+| **5. Forms** | Review the intake and clinical forms your specialty suggests |
+| **6. Review** | See everything that will change, then apply |
+
+You can leave the wizard at any step and return — your progress is saved.
+
+### 33.2 Specialty Packs
+
+A specialty pack is a starting configuration: suggested services, forms, and terminology for a kind of practice.
+
+**Available packs:**
+
+| Pack | Covers |
+|------|--------|
+| **Behavioural Health** | Counselling and behavioural health practice |
+| **Dentistry** | General dental practice, chair-side appointments |
+| **Ophthalmology** | Refraction and investigation workflows |
+| **Paediatrics** | Well-child visits and immunisation schedules |
+
+Choosing a pack does not commit you to it. Step 6 shows exactly what would be created or changed before anything happens.
+
+### 33.3 What a Pack Will and Will Not Do
+
+**A pack will:**
+- Create services, forms and terminology you do not already have
+- Hide modules your specialty typically does not use
+
+**A pack will never:**
+- Overwrite anything you have edited — it reports a **conflict** and leaves your version alone
+- Take ownership of a service or form it did not create
+- Reveal a module your subscription tier or your role does not permit
+
+✅ **Note:** The third point matters. Specialty can only ever *narrow* the menu, never widen it. A pack cannot be used to reach a feature your plan does not include.
+
+### 33.4 Module Visibility
+
+From V1.5 there are three filters on what you see:
+
+```
+visible  =  (what your plan includes  ∩  what your role permits)
+            minus  (what your specialty hides, unless an admin pinned it back)
+```
+
+**Pinning a module back:**
+
+If your specialty hid something you do use:
+
+1. Go to **Settings → Practice → Practice Setup**
+2. Open **Hidden modules**
+3. Click **Pin** next to the module
+4. It reappears in the navigation for everyone whose plan and role allow it
+
+💡 **Tip:** Hiding is a convenience, not a restriction. Anything your plan covers can always be pinned back.
+
+### 33.5 Re-running the Wizard
+
+You can run the wizard again at any time — to add a second specialty, or after a pack update.
+
+Re-running:
+- Shows a fresh preview of what would change
+- Still refuses to touch anything you have edited since
+- Leaves your pinned modules pinned
+
+### 33.6 Best Practices
+
+- ✅ Run the wizard before adding real patient data
+- ✅ Read the Step 6 preview properly — it is the last point before changes apply
+- ✅ Adjust seeded services and forms afterwards; they are starting points, not rules
+- ✅ Pin back any module your specialty hid but you actually use
+- ❌ Don't expect a pack to overwrite your edits — it is designed not to
+- ❌ Don't choose a specialty you do not practise just to get one of its forms; copy the form instead
 
 ---
 
@@ -6424,6 +6605,20 @@ guidance. Once reviewed, the draft warning disappears for that specialty.
 ---
 
 ## Document Version History
+
+**Version 1.5** - October 2026 - Major Update with:
+- Medical Camps: planning, registration desk, station board and outcome reporting
+- Camp registrations kept separate from the patient index, with a deliberate promotion step and duplicate matching
+- Sponsor reporting with small-group suppression
+- Locations: sites as a first-class entity (clinic, camp, mobile, partner)
+- Practice Setup Wizard with specialty packs for behavioural health, dentistry, ophthalmology and paediatrics
+- Specialty as a third filter on module visibility, narrowing only, with administrator pinning
+- Patients can filter and search providers by specialty when booking
+- Restore now confirms before overwriting, showing the backup's date, record count and table count
+- Backup and restore scoped to the caller's own practice
+- Form submissions linked to the exact template version the patient saw
+- Fixed 18 form fields that rendered without an input
+- Clearer errors for unlinked accounts, failed provider loads and rejected OAuth sign-ins
 
 **Version 1.4** - September 2026 - Major Update with:
 - Secure Messaging between staff, and between the practice and its patients
