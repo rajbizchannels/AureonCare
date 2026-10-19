@@ -486,7 +486,54 @@ const v05 = {
     'Open a chart and document a visit in your own workspace.') },
 };
 
-const ISSUES = { v01, v02, v03, v04, v05 };
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Issue 06 — Run a telehealth visit (video V06)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const v06 = {
+  '01-cover.png': { w: 1200, h: 627, html: () => coverCard(
+    'Issue 06',
+    'Run a<br>telehealth visit',
+    'Built from the booking, so nothing gets retyped.'
+  ) },
+
+  /* The session inherits everything the appointment already knows. */
+  '02-from-the-booking.png': { w: 1200, h: 675, html: () => card('Creating the session', `
+    ${headline('The session is built<br>from the booking', 900)}
+    <div style="display:flex;gap:18px;margin-top:54px;">
+      ${chip('Patient')} ${chip('Provider')} ${chip('Time')}
+    </div>
+    <div style="margin-top:40px;font-size:29px;color:${BRAND.slate};line-height:1.45;max-width:920px;">
+      All three are already right, because they came from the appointment.
+    </div>`,
+    'Clinical &#9656; Telehealth &mdash; the banner names the connected platform') },
+
+  '03-consent-before.png': { w: 1200, h: 675, html: () => statementCard(
+    'Consent',
+    'Before the call,<br>not during it',
+    'Attach a consent form when you create the session and it lands in the '
+    + 'patient&rsquo;s portal ahead of time &mdash; so the first two minutes of '
+    + 'the visit are not spent on paperwork.') },
+
+  '04-two-ways-in.png': { w: 1200, h: 675, html: () => card('Scheduled or instant', `
+    ${headline('Two ways into a call')}
+    ${columns([
+      ['Scheduled', 'From a booked appointment. Sits under<br>Upcoming Sessions with its join link', BRAND.amber],
+      ['Instant', 'A room immediately, with no booking<br>behind it. For the unplanned', BRAND.teal],
+    ])}`,
+    'Joining marks the session in progress, so the team can see you are in it') },
+
+  '05-recap.png': { w: 1200, h: 675, html: () => recapCard([
+    'Clinical &#9656; Telehealth, with the connected platform named in the banner',
+    'A session built from a booking already has the patient, provider and time',
+    'Attach consent before the call; Instant covers the unplanned',
+  ], 'Video 6 of 8 &nbsp;&middot;&nbsp; 2 min 18 s &nbsp;&middot;&nbsp; AureonCare Getting Started') },
+
+  '06-cta.png': { w: 1200, h: 675, html: () => ctaCard(
+    'Create a telehealth session in your own workspace.') },
+};
+
+const ISSUES = { v01, v02, v03, v04, v05, v06 };
 
 /** Shared across issues, so it sits at the root of assets/ rather than in one. */
 const SHARED = { 'newsletter-logo.png': { w: 300, h: 300, html: logoSquare } };

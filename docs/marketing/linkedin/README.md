@@ -12,6 +12,7 @@ the new hire.
 | 03 | V03 — Book an appointment | [`faMT4PZbVsY`](https://youtu.be/faMT4PZbVsY) | [`v03-book-an-appointment.md`](v03-book-an-appointment.md) |
 | 04 | V04 — Read your day on the dashboard | *pending* | [`v04-read-your-day-on-the-dashboard.md`](v04-read-your-day-on-the-dashboard.md) |
 | 05 | V05 — Document a visit | *pending* | [`v05-document-a-visit.md`](v05-document-a-visit.md) |
+| 06 | V06 — Run a telehealth visit | *pending* | [`v06-run-a-telehealth-visit.md`](v06-run-a-telehealth-visit.md) |
 
 Each issue file is a publishing document, not a draft: fenced blocks are pasted
 verbatim into LinkedIn, everything outside them is production notes. Assets are
@@ -25,8 +26,14 @@ them to ignore the ending.
 Each issue also links its source video, on its own line so LinkedIn renders a
 preview card rather than blue text. From Issue 03 the link is repeated through
 the body with an explicit invitation to watch, rather than parked at the end.
-Video URLs are published without their `?si=` share token. Issues 01, 04 and 05
+Video URLs are published without their `?si=` share token. Issues 01 and 04–06
 carry `[ VIDEO n LINK ]` placeholders until their URLs are supplied.
+
+**Named third parties need checking before publication.** Issue 06 mentions
+Google Meet, because the video's banner shows it. It is worded as the platform
+*connected in the demo*, not as the platform AureonCare uses. Keep that
+distinction in any issue that names an outside product — tightening it into a
+commitment is easy to do and hard to walk back once published.
 
 Issues 01–04 are written for the front desk and the practice manager. Issue 05
 is the first written for clinicians, and the register shifts with it — less
