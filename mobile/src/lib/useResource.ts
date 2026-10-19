@@ -98,3 +98,20 @@ export const fullName = (
 ): string => [first, last].filter(Boolean).join(' ') || fallback;
 
 export const isUpcoming = (iso: string): boolean => new Date(iso).getTime() >= Date.now();
+
+/**
+ * Same calendar day in the device's own timezone — which is the one the
+ * person reading "Today" is standing in, even when the practice stores
+ * timestamps in another.
+ */
+export const isToday = (iso: string | null | undefined): boolean => {
+  if (!iso) return false;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+};
