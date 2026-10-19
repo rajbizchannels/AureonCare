@@ -38,8 +38,11 @@
     "react-native-svg": "15.12.1"
   },
   "devDependencies": {
+    "@expo/metro-runtime": "~6.1.2",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.0",
+    "react-dom": "19.1.0",
+    "react-native-web": "~0.21.0",
     "typescript": "~5.9.2"
   }
 }

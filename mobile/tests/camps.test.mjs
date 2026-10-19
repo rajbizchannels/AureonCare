@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -14,8 +16,8 @@ test('only published and running camps take registrations', () => {
   assert.equal(acceptsRegistrations({ status: 'published' }), true);
   assert.equal(acceptsRegistrations({ status: 'in_progress' }), true);
   assert.equal(acceptsRegistrations({ status: 'draft' }), false);
-  assert.equal(acceptsRegistrations({ status: 'completed' }), false);
-  assert.equal(acceptsRegistrations({ status: 'cancelled' }), false);
+  assert.equal(acceptsRegistrations({ status: 'closed' }), false);
+  assert.equal(acceptsRegistrations({ status: 'archived' }), false);
 });
 
 test('only a running camp has a live board', () => {
@@ -23,9 +25,31 @@ test('only a running camp has a live board', () => {
   assert.equal(hasLiveBoard({ status: 'published' }), false);
 });
 
+test('the status vocabulary is the backend’s, read from the backend', () => {
+  // This assertion exists because the first version of this file invented
+  // 'completed' and 'cancelled'. Both are plausible and neither is real, so
+  // every camp would have sorted into the archive bucket and campIsOver would
+  // have been permanently false. Reading CAMP_STATUSES rather than restating
+  // it is the only version of this check that cannot drift.
+  const { CAMP_STATUSES } = require('../../backend/services/camps.js');
+  assert.deepEqual([...CAMP_STATUSES].sort(),
+    ['archived', 'closed', 'draft', 'in_progress', 'published']);
+
+  // Every status must be classified by exactly one of the three predicates,
+  // or a camp ends up in no bucket at all.
+  for (const status of CAMP_STATUSES) {
+    const classified = [
+      acceptsRegistrations({ status }),
+      campIsOver({ status }),
+      status === 'draft',
+    ].filter(Boolean).length;
+    assert.equal(classified, 1, `${status} is classified ${classified} times`);
+  }
+});
+
 test('campIsOver covers both terminal states', () => {
-  assert.equal(campIsOver({ status: 'completed' }), true);
-  assert.equal(campIsOver({ status: 'cancelled' }), true);
+  assert.equal(campIsOver({ status: 'closed' }), true);
+  assert.equal(campIsOver({ status: 'archived' }), true);
   assert.equal(campIsOver({ status: 'draft' }), false);
 });
 
@@ -121,7 +145,7 @@ test('an empty board summarises to zeroes rather than throwing', () => {
 
 test('camps sort by what is happening now, then by when', () => {
   const camps = [
-    { id: 'done', status: 'completed', startsAt: '2026-01-01T09:00:00Z' },
+    { id: 'done', status: 'closed', startsAt: '2026-01-01T09:00:00Z' },
     { id: 'later', status: 'published', startsAt: '2026-12-01T09:00:00Z' },
     { id: 'now', status: 'in_progress', startsAt: '2026-06-01T09:00:00Z' },
     { id: 'soon', status: 'published', startsAt: '2026-07-01T09:00:00Z' },
@@ -135,8 +159,8 @@ test('camps sort by what is happening now, then by when', () => {
 
 test('the archive reads most recent first', () => {
   const camps = [
-    { id: 'old', status: 'completed', startsAt: '2024-01-01T09:00:00Z' },
-    { id: 'recent', status: 'completed', startsAt: '2026-01-01T09:00:00Z' },
+    { id: 'old', status: 'closed', startsAt: '2024-01-01T09:00:00Z' },
+    { id: 'recent', status: 'closed', startsAt: '2026-01-01T09:00:00Z' },
   ];
   assert.deepEqual(sortCamps(camps).map((c) => c.id), ['recent', 'old']);
 });
@@ -151,7 +175,7 @@ test('a malformed date sorts last instead of scrambling the order', () => {
 
 test('sortCamps does not mutate its input', () => {
   const camps = [
-    { id: 'a', status: 'completed', startsAt: '2026-01-01T09:00:00Z' },
+    { id: 'a', status: 'closed', startsAt: '2026-01-01T09:00:00Z' },
     { id: 'b', status: 'in_progress', startsAt: '2026-06-01T09:00:00Z' },
   ];
   sortCamps(camps);

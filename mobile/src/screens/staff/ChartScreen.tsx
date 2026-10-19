@@ -6,7 +6,7 @@ import {
 import { useSession } from '@/context/SessionContext';
 import { useActivePatient } from '@/context/ActivePatientContext';
 import { Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
-import { formatDate, fullName, useResource } from '@/lib/useResource';
+import { formatDate, fullName, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 import { buildTimeline, countByKind, type ChartKind } from '@/lib/chart';
@@ -143,7 +143,7 @@ export const StaffChartScreen: React.FC = () => {
                   <Text style={styles.entryDate}>
                     {item.at === -Infinity ? 'Undated' : formatDate(new Date(item.at).toISOString())}
                   </Text>
-                  {item.status ? <Chip label={item.status} tone="neutral" /> : null}
+                  {item.status ? <Chip label={humanStatus(item.status)} tone="neutral" /> : null}
                   {item.flag === 'pending_review' ? <Chip label="Awaiting review" tone="warning" /> : null}
                 </View>
                 <Text style={styles.entryTitle}>{item.title}</Text>

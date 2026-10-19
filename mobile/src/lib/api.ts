@@ -270,7 +270,14 @@ export interface Location {
   isActive: boolean;
 }
 
-export type CampStatus = 'draft' | 'published' | 'in_progress' | 'completed' | 'cancelled';
+/**
+ * The five states a camp moves through, from `CAMP_STATUSES` in
+ * backend/services/camps.js. The transition map there is deliberately sparse —
+ * draft → published → in_progress → closed → archived, with no way back —
+ * because reopening a closed camp would let its frozen counts and its sponsor
+ * report disagree.
+ */
+export type CampStatus = 'draft' | 'published' | 'in_progress' | 'closed' | 'archived';
 
 export interface Camp {
   id: string;

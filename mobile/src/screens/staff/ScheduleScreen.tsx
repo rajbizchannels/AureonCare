@@ -3,7 +3,7 @@ import { FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, View } 
 import { CalendarDays, ChevronLeft, ChevronRight, Video } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { Card, Chip, EmptyState, ErrorNote, Loading, PrimaryButton } from '@/components/ui';
-import { formatTime, useResource } from '@/lib/useResource';
+import { formatTime, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, space, type } from '@/theme/tokens';
 import type { Appointment } from '@/lib/api';
@@ -128,7 +128,7 @@ export const StaffScheduleScreen: React.FC = () => {
                 </View>
                 {item.status ? (
                   <Chip
-                    label={item.status}
+                    label={humanStatus(item.status)}
                     tone={item.status === 'cancelled' ? 'danger' : item.status === 'completed' ? 'success' : 'neutral'}
                   />
                 ) : null}

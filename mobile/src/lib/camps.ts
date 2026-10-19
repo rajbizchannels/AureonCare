@@ -16,7 +16,7 @@ export const acceptsRegistrations = (camp: Pick<Camp, 'status'>): boolean =>
 export const hasLiveBoard = (camp: Pick<Camp, 'status'>): boolean => camp.status === 'in_progress';
 
 export const campIsOver = (camp: Pick<Camp, 'status'>): boolean =>
-  camp.status === 'completed' || camp.status === 'cancelled';
+  camp.status === 'closed' || camp.status === 'archived';
 
 /**
  * Why a camp will not take registrations, phrased for the person at the desk
@@ -136,8 +136,8 @@ const STATUS_RANK: Record<string, number> = {
   in_progress: 0,
   published: 1,
   draft: 2,
-  completed: 3,
-  cancelled: 4,
+  closed: 3,
+  archived: 4,
 };
 
 export const sortCamps = (camps: Camp[]): Camp[] =>

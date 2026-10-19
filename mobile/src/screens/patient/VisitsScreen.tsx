@@ -3,7 +3,7 @@ import { FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, View } 
 import { CalendarDays, Video } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { Card, Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
-import { formatTime, fullName, isUpcoming, useResource } from '@/lib/useResource';
+import { formatTime, fullName, humanStatus, isUpcoming, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, type } from '@/theme/tokens';
 import type { Appointment } from '@/lib/api';
@@ -91,7 +91,7 @@ export const PatientVisitsScreen: React.FC = () => {
                   {item.meeting_url ? <Chip label="Video" tone="success" /> : null}
                   {item.status && item.status !== 'scheduled' ? (
                     <Chip
-                      label={item.status}
+                      label={humanStatus(item.status)}
                       tone={item.status === 'cancelled' ? 'danger' : 'neutral'}
                     />
                   ) : null}
